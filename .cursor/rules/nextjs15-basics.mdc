@@ -1,0 +1,57 @@
+---
+alwaysApply: true
+description: Next.js 15 project setup with Tailwind v4, lucide-react icons, and English copy
+---
+
+# Next.js 15 Project Basics
+
+## Tech Stack
+- **Framework**: Next.js 15 with App Router
+- **Styling**: Tailwind CSS v4
+- **Icons**: lucide-react
+- **Language**: English for all user-facing text
+
+## Key Conventions
+
+### Component Structure
+- Use functional components with TypeScript
+- Prefer server components by default, use client components only when necessary
+- Place components in `components/` directory with PascalCase naming
+- Use `.tsx` extension for all React components
+
+### Styling Guidelines
+- Use Tailwind CSS utility classes exclusively (no custom CSS)
+- Follow mobile-first responsive design approach
+- Use consistent spacing scale (4, 8, 12, 16, 20, 24, 32, 48, 64px)
+- Use semantic color names from Tailwind's default palette
+
+### Icon Usage
+- Import icons from `lucide-react` package
+- Use PascalCase for icon names (e.g., `HomeIcon`, `SettingsIcon`)
+- Set icon sizes using Tailwind classes (e.g., `w-4 h-4`, `w-6 h-6`)
+
+### Copy Guidelines
+- All user-facing text must be in English
+- Use clear, concise language
+- Follow sentence case for headings and labels
+- Use American English spelling (color, organize, analyze)
+
+### File Organization
+```
+app/                    # App Router pages
+  (workspace)/          # Route groups for organization
+    page.tsx           # Main page components
+    layout.tsx         # Layout components
+components/            # Reusable components
+  ui/                  # Base UI components (Button, Input, etc.)
+lib/                   # Utilities and shared logic
+  db/                  # Database schema and queries
+  ai/                  # AI-related utilities
+```
+
+### Code Style
+- Use TypeScript for type safety
+- Prefer async/await over promises
+- Use descriptive variable and function names
+- Add JSDoc comments for complex functions
+- Follow ESLint and Biome configuration
