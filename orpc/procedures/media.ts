@@ -1,10 +1,9 @@
 import { os } from '@orpc/server'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '~/lib/db'
 
-// Procedure: media
-// Returns paginated list of media items.
-export const media = os
+const list = os
 	.input(
 		z.object({
 			page: z.number().min(1).optional().default(1),
@@ -33,3 +32,18 @@ export const media = os
 			limit,
 		}
 	})
+
+const byId = os
+	.input(z.object({ id: z.string() }))
+	.handler(async ({ input }) => {
+		const { id } = input
+		const item = await db.query.media.findFirst({
+			where: eq(schema.media.id, id),
+		})
+		return item
+	})
+
+export const media = {
+	list,
+	byId,
+}

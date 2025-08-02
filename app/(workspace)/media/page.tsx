@@ -16,6 +16,7 @@ import {
 	PaginationPrevious,
 } from '~/components/ui/pagination'
 import { Skeleton } from '~/components/ui/skeleton'
+import { type schema } from '~/lib/db'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 const PAGE_SIZE = 9
@@ -24,14 +25,14 @@ export default function MediaPage() {
 	const [page, setPage] = useState(1)
 
 	type PaginatedMedia = {
-		items: any[]
+		items: (typeof schema.media.$inferSelect)[]
 		total: number
 		page: number
 		limit: number
 	}
 
 	const mediaQuery = useQuery<PaginatedMedia, Error>(
-		queryOrpc.media.queryOptions({
+		queryOrpc.media.list.queryOptions({
 			input: { page, limit: PAGE_SIZE },
 		}),
 	)
@@ -80,30 +81,32 @@ export default function MediaPage() {
 			{mediaQuery.isSuccess && mediaQuery.data.items.length > 0 && (
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					{mediaQuery.data.items.map((media) => (
-						<Card key={media.id} className="overflow-hidden">
-							{media.thumbnail && (
-								<Image
-									src={media.thumbnail}
-									alt={media.title}
-									width={400}
-									height={225}
-									className="w-full h-40 object-cover"
-								/>
-							)}
-							<CardHeader>
-								<CardTitle className="text-lg line-clamp-2">
-									{media.title}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<p className="text-sm text-muted-foreground mb-2">
-									{media.author}
-								</p>
-								<p className="text-sm text-muted-foreground">
-									Views: {media.viewCount}
-								</p>
-							</CardContent>
-						</Card>
+						<Link href={`/media/${media.id}`} key={media.id}>
+							<Card className="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200">
+								{media.thumbnail && (
+									<Image
+										src={media.thumbnail}
+										alt={media.title}
+										width={400}
+										height={225}
+										className="w-full h-40 object-cover"
+									/>
+								)}
+								<CardHeader>
+									<CardTitle className="text-lg line-clamp-2">
+										{media.title}
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<p className="text-sm text-muted-foreground mb-2">
+										{media.author}
+									</p>
+									<p className="text-sm text-muted-foreground">
+										Views: {media.viewCount}
+									</p>
+								</CardContent>
+							</Card>
+						</Link>
 					))}
 				</div>
 			)}

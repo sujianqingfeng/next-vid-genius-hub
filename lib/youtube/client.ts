@@ -1,4 +1,4 @@
-import { Innertube, Platform, UniversalCache } from 'youtubei.js'
+import { Innertube, UniversalCache } from 'youtubei.js'
 
 export type YouTubeClientConfig = {
 	proxy?: string
@@ -9,7 +9,9 @@ export async function getYouTubeClient(
 	config: YouTubeClientConfig = {},
 ): Promise<Innertube> {
 	const cache = new UniversalCache(config.cacheEnabled !== false)
-	const options: any = { cache }
+	const options: { cache: UniversalCache; fetch_options?: { agent: string } } = {
+		cache,
+	}
 
 	// 如果提供了代理配置，添加到选项中
 	if (config.proxy) {

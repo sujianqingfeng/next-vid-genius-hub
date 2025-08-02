@@ -24,7 +24,7 @@ export default function NewDownloadPage() {
 			toast.success('Download started successfully!')
 			setError(null)
 		},
-		onError: (err: any) => {
+		onError: (err: Error) => {
 			console.error(err)
 			setError(err.message || 'Failed to start download')
 		},
@@ -32,7 +32,7 @@ export default function NewDownloadPage() {
 
 	const formAction = async (formData: FormData) => {
 		const url = formData.get('url') as string
-		const quality = formData.get('quality') as string
+		const quality = formData.get('quality') as '1080p' | '720p'
 
 		if (!url) {
 			setError('Please enter a valid URL')
@@ -40,7 +40,7 @@ export default function NewDownloadPage() {
 		}
 
 		setError(null)
-		downloadMutation.mutate({ url, quality: quality as any })
+		downloadMutation.mutate({ url, quality })
 	}
 
 	return (
