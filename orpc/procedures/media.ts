@@ -43,7 +43,16 @@ const byId = os
 		return item
 	})
 
+const deleteById = os
+	.input(z.object({ id: z.string() }))
+	.handler(async ({ input }) => {
+		const { id } = input
+		await db.delete(schema.media).where(eq(schema.media.id, id))
+		return { success: true }
+	})
+
 export const media = {
 	list,
 	byId,
+	delete: deleteById,
 }

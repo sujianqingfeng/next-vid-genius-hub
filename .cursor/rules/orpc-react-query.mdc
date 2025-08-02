@@ -14,13 +14,13 @@ pnpm add @orpc/tanstack-query@latest
 ```
 
 ### 2. 创建工具类
-在 `lib/orpc/query-utils.ts` 中创建工具函数：
+在 `lib/orpc/query-client.ts` 中创建工具函数：
 
 ```typescript
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import { client } from './client'
+import { orpc } from './client'
 
-export const orpc = createTanstackQueryUtils(client)
+export const queryOrpc = createTanstackQueryUtils(orpc)
 ```
 
 ### 3. 避免键冲突
@@ -43,10 +43,10 @@ export const mediaORPC = createTanstackQueryUtils(mediaClient, {
 ### 基础查询
 ```typescript
 import { useQuery } from '@tanstack/react-query'
-import { orpc } from '~/lib/orpc/query-utils'
+import { queryOrpc } from '~/lib/orpc/query-client'
 
 const { data, isLoading, error } = useQuery(
-  orpc.media.list.queryOptions({
+  queryOrpc.media.list.queryOptions({
     input: { limit: 10 },
     context: { cache: true }
   })
@@ -63,7 +63,7 @@ const {
   hasNextPage,
   isFetchingNextPage
 } = useInfiniteQuery(
-  orpc.media.list.infiniteOptions({
+  queryOrpc.media.list.infiniteOptions({
     input: (pageParam: number | undefined) => ({ 
       limit: 20, 
       offset: pageParam 
@@ -79,7 +79,7 @@ const {
 import { useQuery } from '@tanstack/react-query'
 
 const { data } = useQuery(
-  orpc.media.process.streamedOptions({
+  queryOrpc.media.process.streamedOptions({
     input: { id: 'video-123' },
     queryFnOptions: {
       refetchMode: 'reset',
@@ -93,7 +93,7 @@ const { data } = useQuery(
 ### 实时查询
 ```typescript
 const { data } = useQuery(
-  orpc.media.status.liveOptions({
+  queryOrpc.media.status.liveOptions({
     input: { id: 'video-123' },
     retry: true,
   })
@@ -107,12 +107,12 @@ const { data } = useQuery(
 import { useMutation } from '@tanstack/react-query'
 
 const mutation = useMutation(
-  orpc.media.create.mutationOptions({
+  queryOrpc.media.create.mutationOptions({
     context: { cache: true },
     onSuccess: () => {
       // 成功后刷新列表
       queryClient.invalidateQueries({
-        queryKey: orpc.media.key()
+        queryKey: queryOrpc.media.key()
       })
     }
   })
@@ -133,17 +133,17 @@ const queryClient = useQueryClient()
 
 // 使所有媒体查询失效
 queryClient.invalidateQueries({
-  queryKey: orpc.media.key()
+  queryKey: queryOrpc.media.key()
 })
 
 // 使特定查询失效
 queryClient.invalidateQueries({
-  queryKey: orpc.media.find.key({ input: { id: '123' } })
+  queryKey: queryOrpc.media.find.key({ input: { id: '123' } })
 })
 
 // 更新查询数据
 queryClient.setQueryData(
-  orpc.media.find.queryKey({ input: { id: '123' } }),
+  queryOrpc.media.find.queryKey({ input: { id: '123' } }),
   (old) => ({ ...old, title: '新标题' })
 )
 ```
@@ -153,7 +153,7 @@ queryClient.setQueryData(
 import { skipToken } from '@tanstack/react-query'
 
 const { data } = useQuery(
-  orpc.media.find.queryOptions({
+  queryOrpc.media.find.queryOptions({
     input: id ? { id } : skipToken,
   })
 )
@@ -166,7 +166,7 @@ const { data } = useQuery(
 import { isDefinedError } from '@orpc/client'
 
 const mutation = useMutation(
-  orpc.media.download.mutationOptions({
+  queryOrpc.media.download.mutationOptions({
     onError: (error) => {
       if (isDefinedError(error)) {
         // 处理类型安全的错误
@@ -224,7 +224,7 @@ export default async function MediaPage() {
   const queryClient = getQueryClient()
   
   await queryClient.prefetchQuery(
-    orpc.media.list.queryOptions({ limit: 20 })
+    queryOrpc.media.list.queryOptions({ limit: 20 })
   )
 
   return (
@@ -242,7 +242,7 @@ export default async function MediaPage() {
 lib/
   orpc/
     client.ts          # oRPC客户端配置
-    query-utils.ts     # React Query工具函数
+    query-client.ts    # React Query工具函数
   query/
     client.ts          # QueryClient配置
     hydration.tsx      # SSR hydration支持
@@ -254,7 +254,7 @@ components/
 ```
 
 ### 命名规范
-- 查询工具实例：`orpc` (小写)
+- 查询工具实例：`queryOrpc` (驼峰命名)
 - 功能模块工具：`mediaORPC`, `userORPC` (驼峰命名)
 - 查询键：使用oRPC自动生成的键，避免手动创建
 
@@ -278,7 +278,7 @@ components/
 const [search, setSearch] = useState('')
 
 const { data } = useQuery(
-  orpc.media.search.queryOptions({
+  queryOrpc.media.search.queryOptions({
     input: search ? { q: search } : skipToken,
     staleTime: 5 * 60 * 1000, // 5分钟缓存
   })
@@ -288,10 +288,10 @@ const { data } = useQuery(
 ### 轮询更新
 ```typescript
 const { data } = useQuery(
-  orpc.media.processingStatus.queryOptions({
+  queryOrpc.media.processingStatus.queryOptions({
     input: { id: 'video-123' },
-    refetchInterval: (data) => {
-      return data?.status === 'processing' ? 2000 : false
+    refetchInterval: (query) => {
+      return query.state.data?.status === 'processing' ? 2000 : false
     },
   })
 )

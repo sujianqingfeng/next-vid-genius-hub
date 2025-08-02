@@ -20,5 +20,4 @@ export const media = sqliteTable('media', {
 	url: text('url').notNull().unique(),
 	filePath: text('file_path'),
 	audioFilePath: text('audio_file_path'),
-	transcription: text('transcription'),
 })

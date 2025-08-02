@@ -1,10 +1,22 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
+import { toast } from 'sonner'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from '~/components/ui/alert-dialog'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
@@ -23,6 +35,7 @@ const PAGE_SIZE = 9
 
 export default function MediaPage() {
 	const [page, setPage] = useState(1)
+	const queryClient = useQueryClient()
 
 	type PaginatedMedia = {
 		items: (typeof schema.media.$inferSelect)[]
@@ -36,6 +49,19 @@ export default function MediaPage() {
 			input: { page, limit: PAGE_SIZE },
 		}),
 	)
+
+	const deleteMediaMutation = useMutation({
+		...queryOrpc.media.delete.mutationOptions(),
+		onSuccess: () => {
+			toast.success('Media deleted successfully.')
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.media.list.queryKey(),
+			})
+		},
+		onError: (error) => {
+			toast.error(`Failed to delete media: ${error.message}`)
+		},
+	})
 
 	const total = mediaQuery.data?.total ?? 0
 	const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -81,8 +107,11 @@ export default function MediaPage() {
 			{mediaQuery.isSuccess && mediaQuery.data.items.length > 0 && (
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					{mediaQuery.data.items.map((media) => (
-						<Link href={`/media/${media.id}`} key={media.id}>
-							<Card className="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200">
+						<Card
+							key={media.id}
+							className="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 flex flex-col"
+						>
+							<Link href={`/media/${media.id}`} className="block">
 								{media.thumbnail && (
 									<Image
 										src={media.thumbnail}
@@ -105,8 +134,41 @@ export default function MediaPage() {
 										Views: {media.viewCount}
 									</p>
 								</CardContent>
-							</Card>
-						</Link>
+							</Link>
+							<div className="mt-auto p-4 flex justify-end">
+								<AlertDialog>
+									<AlertDialogTrigger asChild>
+										<Button
+											variant="destructive"
+											size="sm"
+											className="flex items-center gap-1"
+										>
+											<Trash2 className="w-4 h-4" />
+											Delete
+										</Button>
+									</AlertDialogTrigger>
+									<AlertDialogContent>
+										<AlertDialogHeader>
+											<AlertDialogTitle>Are you sure?</AlertDialogTitle>
+											<AlertDialogDescription>
+												This action cannot be undone. This will permanently
+												delete the media file and all associated data.
+											</AlertDialogDescription>
+										</AlertDialogHeader>
+										<AlertDialogFooter>
+											<AlertDialogCancel>Cancel</AlertDialogCancel>
+											<AlertDialogAction
+												onClick={() =>
+													deleteMediaMutation.mutate({ id: media.id })
+												}
+											>
+												Continue
+											</AlertDialogAction>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+								</AlertDialog>
+							</div>
+						</Card>
 					))}
 				</div>
 			)}
