@@ -73,6 +73,11 @@ lib/                   # Utilities and shared logic
   ai/                  # AI-related utilities
 ```
 
+### Path Aliasing
+- Use `~/*` for absolute imports from the project root.
+- Configure this in `tsconfig.json`.
+- Example: `import { Button } from '~/components/ui/button'`
+
 ### Code Style
 - Use TypeScript for type safety
 - Prefer async/await over promises
