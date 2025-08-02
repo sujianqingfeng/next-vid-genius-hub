@@ -104,3 +104,4 @@ pnpm test
 -   **Video Downloading:** The `lib/youtube/download.ts` file contains the core video download logic using `yt-dlp-wrap`.
 -   **Linting:** The project uses Biome for linting and formatting.
 -   **Styling:** Tailwind CSS is used for styling.
+-   **Development Server:** The development server is usually started manually by the developer. Do not start it again if it is already running.

@@ -76,7 +76,7 @@ export default function MediaDetailPage() {
 							</CardContent>
 						</Card>
 					</div>
-					<div className="md:col-span-2">
+					<div className="md:col-span-2 space-y-4">
 						<Card>
 							<CardHeader>
 								<CardTitle>Details</CardTitle>
@@ -112,6 +112,16 @@ export default function MediaDetailPage() {
 									</p>
 									<p>{new Date(media.createdAt).toLocaleString()}</p>
 								</div>
+							</CardContent>
+						</Card>
+						<Card>
+							<CardHeader>
+								<CardTitle>Actions</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<Link href={`/media/${id}/subtitles`}>
+									<Button>Generate Subtitles</Button>
+								</Link>
 							</CardContent>
 						</Card>
 					</div>

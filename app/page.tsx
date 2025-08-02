@@ -1,5 +1,8 @@
 
 
+import { Button } from "~/components/ui/button";
+import Link from "next/link";
+
 export default function Home() {
 	return (
 		<div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
@@ -10,6 +13,9 @@ export default function Home() {
 				<p className="text-lg text-center sm:text-left max-w-[600px]">
 					Your Next.js application is ready to go!
 				</p>
+				<Link href="/media">
+					<Button>Go to Media</Button>
+				</Link>
 			</main>
 		</div>
 	)

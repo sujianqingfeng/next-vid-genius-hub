@@ -15,6 +15,13 @@
       "when": 1754118715993,
       "tag": "0001_organic_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1754145648684,
+      "tag": "0002_modern_zaladane",
+      "breakpoints": true
     }
   ]
 }
