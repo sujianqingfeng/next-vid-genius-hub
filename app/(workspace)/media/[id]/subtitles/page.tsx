@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '~/components/ui/button'
@@ -13,15 +13,21 @@ import {
 } from '~/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
+import { type AIModelId, AIModelIds } from '~/lib/ai/models'
+import { orpc } from '~/lib/orpc/client'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 type Model = 'whisper-large' | 'whisper-medium'
 
 export default function SubtitlesPage() {
+	const queryClient = useQueryClient()
 	const [activeTab, setActiveTab] = useState('step1')
 	const [transcription, setTranscription] = useState<string>('')
 	const [translation, setTranslation] = useState<string>('')
 	const [selectedModel, setSelectedModel] = useState<Model>('whisper-medium')
+	const [selectedAIModel, setSelectedAIModel] = useState<AIModelId>(
+		AIModelIds[0],
+	)
 	const params = useParams()
 	const mediaId = params.id as string
 
@@ -48,16 +54,12 @@ export default function SubtitlesPage() {
 	)
 
 	const translateMutation = useMutation({
-		mutationFn: async (variables: { text: string }) => {
-			// This is a placeholder. In a real scenario, you'd call a translation API.
-			console.log('Translating to a fixed language, e.g., Chinese')
-			await new Promise((resolve) => setTimeout(resolve, 1000)) // Simulate network delay
-			return {
-				translation: `[Translated] ${variables.text.substring(0, 200)}...`,
-			}
-		},
+		mutationFn: orpc.translate.translate,
 		onSuccess: (data) => {
 			setTranslation(data.translation)
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+			})
 		},
 	})
 
@@ -67,7 +69,7 @@ export default function SubtitlesPage() {
 
 	const handleStartTranslation = () => {
 		if (transcription) {
-			translateMutation.mutate({ text: transcription })
+			translateMutation.mutate({ text: transcription, model: selectedAIModel })
 		}
 	}
 
@@ -124,6 +126,24 @@ export default function SubtitlesPage() {
 				<TabsContent value="step2">
 					<div className="space-y-4 py-4">
 						<div className="flex items-center gap-4">
+							<Select
+								value={selectedAIModel}
+								onValueChange={(value) =>
+									setSelectedAIModel(value as AIModelId)
+								}
+								disabled={translateMutation.isPending}
+							>
+								<SelectTrigger className="w-[200px]">
+									<SelectValue placeholder="Select model" />
+								</SelectTrigger>
+								<SelectContent>
+									{AIModelIds.map((id) => (
+										<SelectItem key={id} value={id}>
+											{id}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 							<Button
 								onClick={handleStartTranslation}
 								disabled={translateMutation.isPending || !transcription}
