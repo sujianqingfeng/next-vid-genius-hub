@@ -1,7 +1,7 @@
-import { test } from './procedures/test'
+import { download } from './procedures/download'
 
 export const router = {
-	test,
+	download,
 }
 
 export type AppRouter = typeof router

@@ -4,7 +4,7 @@ import type { RouterClient } from '@orpc/server'
 import type { AppRouter } from '~/orpc/router'
 
 const link = new RPCLink({
-	url: `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/orpc`,
+	url: `${typeof window !== 'undefined' ? `${window.location.origin}/api/orpc` : 'http://localhost:3000/api/orpc'}`,
 	headers: async () => {
 		if (typeof window !== 'undefined') {
 			return {}
