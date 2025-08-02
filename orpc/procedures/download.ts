@@ -1,11 +1,13 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { os } from '@orpc/server'
-import ffmpeg from 'fluent-ffmpeg'
-import { Innertube, UniversalCache } from 'youtubei.js'
-import YTDlpWrap from 'yt-dlp-wrap'
+import { createId } from '@paralleldrive/cuid2'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { OPERATIONS_DIR } from '~/lib/constants'
+import { OPERATIONS_DIR, PROXY_URL } from '~/lib/constants'
+import { db, schema } from '~/lib/db'
+import { extractAudio } from '~/lib/media'
+import { downloadVideo, extractVideoId, getYouTubeClient } from '~/lib/youtube'
 
 export const download = os
 	.input(
@@ -17,41 +19,86 @@ export const download = os
 	.handler(async ({ input }) => {
 		const { url, quality } = input
 
-		// Ensure operations directory exists
-		await fs.mkdir(OPERATIONS_DIR, { recursive: true })
-
-		// Fetch video info using YouTube.js
-		const yt = await Innertube.create({ cache: new UniversalCache(false) })
-		const info = await yt.getBasicInfo(url)
-		const title = info.basic_info?.title ?? 'video'
-		const sanitizedTitle = title.replace(/[^a-z0-9_-]/gi, '_').slice(0, 60)
-
-		const videoPath = path.join(OPERATIONS_DIR, `${sanitizedTitle}.mp4`)
-		const audioPath = path.join(OPERATIONS_DIR, `${sanitizedTitle}.mp3`)
-
-		// Download video with yt-dlp
-		const ytdlp = new YTDlpWrap()
-		await ytdlp.execPromise([
-			url,
-			'-f',
-			quality === '1080p'
-				? 'bestvideo[height<=1080]+bestaudio/best'
-				: 'bestvideo[height<=720]+bestaudio/best',
-			'-o',
-			videoPath,
-		])
-
-		// Extract audio using ffmpeg
-		await new Promise<void>((resolve, reject) => {
-			ffmpeg(videoPath)
-				.noVideo()
-				.audioCodec('libmp3lame')
-				.save(audioPath)
-				.on('end', () => resolve())
-				.on('error', reject)
+		// 1. Find existing download or prepare a new one
+		let downloadRecord = await db.query.media.findFirst({
+			where: eq(schema.media.url, url),
 		})
 
+		const isNewDownload = !downloadRecord
+		const id = downloadRecord?.id ?? createId()
+		const operationDir = path.join(OPERATIONS_DIR, id)
+		await fs.mkdir(operationDir, { recursive: true })
+
+		const videoPath =
+			downloadRecord?.filePath ?? path.join(operationDir, `${id}.mp4`)
+		const audioPath =
+			downloadRecord?.audioFilePath ?? path.join(operationDir, `${id}.mp3`)
+
+		// 2. Check for video file and download if missing
+		const videoExists = await fs
+			.access(videoPath)
+			.then(() => true)
+			.catch(() => false)
+
+		let info // Will be fetched if needed
+
+		if (!videoExists) {
+			const videoId = extractVideoId(url) ?? url
+			const yt = await getYouTubeClient({
+				proxy: PROXY_URL,
+			})
+			info = await yt.getBasicInfo(videoId)
+			await downloadVideo(url, quality, videoPath)
+		}
+
+		// 3. Check for audio file and extract if missing
+		const audioExists = await fs
+			.access(audioPath)
+			.then(() => true)
+			.catch(() => false)
+		if (!audioExists) {
+			await extractAudio(videoPath, audioPath)
+		}
+
+		// Ensure we have video info if it's a new record
+		if (!info && !downloadRecord) {
+			const videoId = extractVideoId(url) ?? url
+			const yt = await getYouTubeClient({
+				proxy: PROXY_URL,
+			})
+			info = await yt.getBasicInfo(videoId)
+		}
+
+		// 4. Upsert database record
+		const data = {
+			title: info?.basic_info.title ?? downloadRecord?.title ?? 'video',
+			author: info?.basic_info.author ?? downloadRecord?.author ?? '',
+			thumbnail:
+				info?.basic_info.thumbnail?.[0]?.url ?? downloadRecord?.thumbnail ?? '',
+			viewCount: info?.basic_info.view_count ?? downloadRecord?.viewCount ?? 0,
+			likeCount: info?.basic_info.like_count ?? downloadRecord?.likeCount ?? 0,
+			filePath: videoPath,
+			audioFilePath: audioPath,
+			quality,
+		}
+
+		await db
+			.insert(schema.media)
+			.values({
+				id,
+				url,
+				source: 'youtube',
+				...data,
+			})
+			.onConflictDoUpdate({
+				target: schema.media.url,
+				set: data,
+			})
+
+		// 5. Return result
+		const title = info?.basic_info?.title ?? downloadRecord?.title ?? 'video'
 		return {
+			id,
 			videoPath,
 			audioPath,
 			title,

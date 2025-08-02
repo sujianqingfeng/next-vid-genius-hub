@@ -1,7 +1,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
-export const downloads = sqliteTable('downloads', {
+export const media = sqliteTable('media', {
 	id: text('id')
 		.unique()
 		.notNull()
@@ -17,7 +17,7 @@ export const downloads = sqliteTable('downloads', {
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date()),
-	downloadUrl: text('download_url').notNull(),
+	url: text('url').notNull().unique(),
 	filePath: text('file_path'),
 	audioFilePath: text('audio_file_path'),
 })

@@ -19,19 +19,9 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const menuItems = [
 	{
-		title: 'Downloads',
-		href: '/downloads',
+		title: 'Media',
+		href: '/media',
 		icon: Download,
-	},
-	{
-		title: 'Videos',
-		href: '/videos',
-		icon: Video,
-	},
-	{
-		title: 'Settings',
-		href: '/settings',
-		icon: Settings,
 	},
 ]
 

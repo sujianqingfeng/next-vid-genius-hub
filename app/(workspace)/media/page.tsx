@@ -8,7 +8,7 @@ export default function DownloadsPage() {
 	const router = useRouter()
 
 	const handleNewDownload = () => {
-		router.push('/downloads/new')
+		router.push('/media/download')
 	}
 
 	return (

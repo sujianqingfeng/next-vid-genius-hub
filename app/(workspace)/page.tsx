@@ -8,7 +8,7 @@ export default function DashboardPage() {
 					<p className="text-3xl font-bold text-primary">0</p>
 				</div>
 				<div className="rounded-lg border bg-card p-6">
-					<h3 className="text-lg font-semibold mb-2">Downloads</h3>
+					<h3 className="text-lg font-semibold mb-2">Media</h3>
 					<p className="text-3xl font-bold text-primary">0</p>
 				</div>
 				<div className="rounded-lg border bg-card p-6">

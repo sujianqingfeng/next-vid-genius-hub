@@ -1,5 +1,13 @@
 {
-	"cSpell.words": ["libsql", "orpc", "paralleldrive", "tiktok", "turbopack"],
+	"cSpell.words": [
+		"Innertube",
+		"libsql",
+		"orpc",
+		"paralleldrive",
+		"tiktok",
+		"turbopack",
+		"youtubei"
+	],
 	"editor.formatOnSave": true,
 	"editor.defaultFormatter": "biomejs.biome",
 	"editor.codeActionsOnSave": {
