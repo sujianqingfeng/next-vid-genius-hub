@@ -1,4 +1,4 @@
-CREATE TABLE `downloads` (
+CREATE TABLE `media` (
 	`id` text NOT NULL,
 	`title` text NOT NULL,
 	`author` text,
@@ -9,9 +9,11 @@ CREATE TABLE `downloads` (
 	`like_count` integer DEFAULT 0,
 	`comment_count` integer DEFAULT 0,
 	`created_at` integer NOT NULL,
-	`download_url` text NOT NULL,
+	`url` text NOT NULL,
 	`file_path` text,
-	`audio_file_path` text
+	`audio_file_path` text,
+	`transcription` text
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `downloads_id_unique` ON `downloads` (`id`);
+CREATE UNIQUE INDEX `media_id_unique` ON `media` (`id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `media_url_unique` ON `media` (`url`);

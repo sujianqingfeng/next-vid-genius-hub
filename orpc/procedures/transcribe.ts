@@ -1,9 +1,8 @@
 import { os } from '@orpc/server'
-import { spawn } from 'child_process'
 import { eq } from 'drizzle-orm'
-import fs from 'fs/promises'
-import path from 'path'
 import { z } from 'zod'
+import { transcribeWithWhisper } from '~/lib/asr/whisper'
+import { WHISPER_CPP_PATH } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 
 export const transcribe = os
@@ -24,56 +23,24 @@ export const transcribe = os
 			throw new Error('Media not found or audio file path is missing.')
 		}
 
-		const audioPath = mediaRecord.audioFilePath
-		const whisperProjectPath = process.env.WHISPER_CPP_PATH
-
-		if (!whisperProjectPath) {
+		if (!WHISPER_CPP_PATH) {
 			throw new Error(
 				'WHISPER_CPP_PATH is not set in the environment variables.',
 			)
 		}
 
-		const whisperExecutablePath = path.join(
-			whisperProjectPath,
-			'build/bin/whisper-cli',
-		)
-		const whisperModelPath = path.join(
-			whisperProjectPath,
-			model === 'whisper-large'
-				? 'models/ggml-large-v3-turbo-q8_0.bin'
-				: 'models/ggml-medium.bin',
-		)
+		const vttContent = await transcribeWithWhisper({
+			audioPath: mediaRecord.audioFilePath,
+			model,
+			whisperProjectPath: WHISPER_CPP_PATH,
+		})
 
-		try {
-			// Step 1: Transcribe using whisper.cpp
-			await new Promise<void>((resolve, reject) => {
-				const whisper = spawn(whisperExecutablePath, [
-					'-m',
-					whisperModelPath,
-					audioPath,
-					'-ovtt',
-				])
-
-				whisper.on('close', (code) => {
-					if (code === 0) {
-						resolve()
-					} else {
-						reject(new Error(`whisper.cpp exited with code ${code}`))
-					}
-				})
-
-				whisper.stderr.on('data', (data) => {
-					console.error(`whisper.cpp stderr: ${data}`)
-				})
+		await db
+			.update(schema.media)
+			.set({
+				transcription: vttContent,
 			})
+			.where(eq(schema.media.id, mediaId))
 
-			const vttPath = `${audioPath}.vtt`
-			const vttContent = await fs.readFile(vttPath, 'utf-8')
-
-			await fs.unlink(vttPath)
-
-			return { success: true, transcription: vttContent }
-		} catch (error) {
-			throw error
-		}
+		return { success: true, transcription: vttContent }
 	})

@@ -4,3 +4,5 @@ export const DATABASE_URL = process.env.DATABASE_URL
 export const PROXY_URL = process.env.PROXY_URL
 
 export const OPERATIONS_DIR = `${PROJECT_DIR}/.operations`
+
+export const WHISPER_CPP_PATH = process.env.WHISPER_CPP_PATH

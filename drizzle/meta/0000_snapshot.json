@@ -1,11 +1,11 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "29007fe0-a867-4cc7-8278-c1c4c43dfa30",
+  "id": "f7202271-2fa6-4b30-ab34-41230151241d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "downloads": {
-      "name": "downloads",
+    "media": {
+      "name": "media",
       "columns": {
         "id": {
           "name": "id",
@@ -80,8 +80,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "download_url": {
-          "name": "download_url",
+        "url": {
+          "name": "url",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -100,13 +100,27 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "transcription": {
+          "name": "transcription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
-        "downloads_id_unique": {
-          "name": "downloads_id_unique",
+        "media_id_unique": {
+          "name": "media_id_unique",
           "columns": [
             "id"
+          ],
+          "isUnique": true
+        },
+        "media_url_unique": {
+          "name": "media_url_unique",
+          "columns": [
+            "url"
           ],
           "isUnique": true
         }

@@ -1,6 +1,9 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { OPERATIONS_DIR } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 
 const list = os
@@ -48,6 +51,8 @@ const deleteById = os
 	.handler(async ({ input }) => {
 		const { id } = input
 		await db.delete(schema.media).where(eq(schema.media.id, id))
+		const operationDir = path.join(OPERATIONS_DIR, id)
+		await fs.rm(operationDir, { recursive: true, force: true })
 		return { success: true }
 	})
 
