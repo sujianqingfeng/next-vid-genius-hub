@@ -1,9 +1,12 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateText } from '~/lib/ai'
-import { PROXY_URL } from '~/lib/constants'
+import { OPERATIONS_DIR, PROXY_URL } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
+import { renderVideoWithInfoAndComments } from '~/lib/media'
 import {
 	downloadYoutubeComments,
 	extractVideoId,
@@ -115,9 +118,67 @@ export const renderWithInfo = os
 		}),
 	)
 	.handler(async ({ input }) => {
-		// TODO: Implement video rendering, attaching video info and comments
-		console.log(`Rendering video for mediaId: ${input.mediaId}`)
-		return {
-			message: 'Rendering with info and comments started',
+		const { mediaId } = input
+
+		// Get media data
+		const media = await db.query.media.findFirst({
+			where: eq(schema.media.id, mediaId),
+		})
+
+		if (!media) {
+			throw new Error('Media not found')
+		}
+
+		if (!media.filePath) {
+			throw new Error('Media file path not found')
+		}
+
+		if (!media.comments || media.comments.length === 0) {
+			throw new Error('No comments found for this media')
+		}
+
+		// Create operation directory
+		const operationDir = path.join(OPERATIONS_DIR, media.id)
+		await fs.mkdir(operationDir, { recursive: true })
+
+		// Define output path
+		const outputPath = path.join(operationDir, 'rendered_with_info.mp4')
+
+		// Prepare video info
+		const videoInfo = {
+			title: media.title,
+			translatedTitle: media.translatedTitle || undefined,
+			viewCount: media.viewCount || 0,
+			author: media.author || undefined,
+			thumbnail: media.thumbnail || undefined,
+		}
+
+		// Take first 10 comments for rendering (to keep video length reasonable)
+		const commentsToRender = media.comments.slice(0, 10)
+
+		try {
+			// Render video with info and comments
+			await renderVideoWithInfoAndComments(
+				media.filePath,
+				outputPath,
+				videoInfo,
+				commentsToRender,
+			)
+
+			// Update database with rendered path
+			await db
+				.update(schema.media)
+				.set({ renderedPath: outputPath })
+				.where(eq(schema.media.id, mediaId))
+
+			return {
+				success: true,
+				message: 'Video rendered with info and comments successfully',
+				renderedPath: outputPath,
+				commentsCount: commentsToRender.length,
+			}
+		} catch (error) {
+			console.error('Error rendering video with info:', error)
+			throw new Error(`Failed to render video: ${(error as Error).message}`)
 		}
 	})
