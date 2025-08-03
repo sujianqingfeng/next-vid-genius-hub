@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
+import { Eye, Plus, Trash2, User, Video } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -31,7 +31,7 @@ import { Skeleton } from '~/components/ui/skeleton'
 import { type schema } from '~/lib/db'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
-const PAGE_SIZE = 9
+const PAGE_SIZE = 12
 
 export default function MediaPage() {
 	const [page, setPage] = useState(1)
@@ -51,7 +51,7 @@ export default function MediaPage() {
 	)
 
 	const deleteMediaMutation = useMutation({
-		...queryOrpc.media.delete.mutationOptions(),
+		...queryOrpc.media.deleteById.mutationOptions(),
 		onSuccess: () => {
 			toast.success('Media deleted successfully.')
 			queryClient.invalidateQueries({
@@ -67,155 +67,244 @@ export default function MediaPage() {
 	const totalPages = Math.ceil(total / PAGE_SIZE)
 
 	return (
-		<div className="container mx-auto py-8">
-			<div className="flex justify-between items-center mb-6">
-				<h1 className="text-3xl font-bold">Media Library</h1>
-				<Link href="/media/download">
-					<Button className="flex items-center gap-2">
-						<Plus className="w-4 h-4" />
-						Download Media
-					</Button>
-				</Link>
+		<div className="min-h-full bg-background">
+			{/* Header Section */}
+			<div className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
+				<div className="container mx-auto px-4 py-6">
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div className="space-y-1">
+							<h1 className="text-3xl font-bold tracking-tight">
+								Media Library
+							</h1>
+							<p className="text-muted-foreground">
+								Manage and organize your video content
+							</p>
+						</div>
+						<Link href="/media/download">
+							<Button className="flex items-center gap-2 shadow-sm">
+								<Plus className="w-4 h-4" />
+								Download Media
+							</Button>
+						</Link>
+					</div>
+				</div>
 			</div>
 
-			{/* Loading state */}
-			{mediaQuery.isLoading && (
-				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{Array.from({ length: PAGE_SIZE }).map((_, idx) => (
-						<Skeleton key={idx} className="h-40 w-full rounded-lg" />
-					))}
-				</div>
-			)}
-
-			{/* Error state */}
-			{mediaQuery.isError && (
-				<div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-					Failed to load media list
-				</div>
-			)}
-
-			{/* Empty state */}
-			{mediaQuery.isSuccess && mediaQuery.data.items.length === 0 && (
-				<div className="rounded-lg shadow-md p-6 bg-card">
-					<p className="text-muted-foreground">
-						No media files in your library yet
-					</p>
-				</div>
-			)}
-
-			{/* List */}
-			{mediaQuery.isSuccess && mediaQuery.data.items.length > 0 && (
-				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{mediaQuery.data.items.map((media) => (
-						<Card
-							key={media.id}
-							className="overflow-hidden h-full hover:shadow-lg transition-shadow duration-200 flex flex-col"
-						>
-							<Link href={`/media/${media.id}`} className="block">
-								{media.thumbnail && (
-									<Image
-										src={media.thumbnail}
-										alt={media.title}
-										width={400}
-										height={225}
-										className="w-full h-40 object-cover"
-									/>
-								)}
-								<CardHeader>
-									<CardTitle className="text-lg line-clamp-2">
-										{media.title}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<p className="text-sm text-muted-foreground mb-2">
-										{media.author}
-									</p>
-									<p className="text-sm text-muted-foreground">
-										Views: {media.viewCount}
-									</p>
+			{/* Main Content */}
+			<div className="container mx-auto px-4 py-8">
+				{/* Stats Section */}
+				{mediaQuery.isSuccess && (
+					<div className="mb-8">
+						<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+							<Card className="bg-card/50">
+								<CardContent className="p-4">
+									<div className="flex items-center gap-2">
+										<Video className="h-4 w-4 text-muted-foreground" />
+										<span className="text-sm font-medium text-muted-foreground">
+											Total Videos
+										</span>
+									</div>
+									<p className="text-2xl font-bold">{total}</p>
 								</CardContent>
-							</Link>
-							<div className="mt-auto p-4 flex justify-end">
-								<AlertDialog>
-									<AlertDialogTrigger asChild>
-										<Button
-											variant="destructive"
-											size="sm"
-											className="flex items-center gap-1"
-										>
-											<Trash2 className="w-4 h-4" />
-											Delete
-										</Button>
-									</AlertDialogTrigger>
-									<AlertDialogContent>
-										<AlertDialogHeader>
-											<AlertDialogTitle>Are you sure?</AlertDialogTitle>
-											<AlertDialogDescription>
-												This action cannot be undone. This will permanently
-												delete the media file and all associated data.
-											</AlertDialogDescription>
-										</AlertDialogHeader>
-										<AlertDialogFooter>
-											<AlertDialogCancel>Cancel</AlertDialogCancel>
-											<AlertDialogAction
-												onClick={() =>
-													deleteMediaMutation.mutate({ id: media.id })
-												}
-											>
-												Continue
-											</AlertDialogAction>
-										</AlertDialogFooter>
-									</AlertDialogContent>
-								</AlertDialog>
-							</div>
-						</Card>
-					))}
-				</div>
-			)}
+							</Card>
+						</div>
+					</div>
+				)}
 
-			{/* Pagination */}
-			{mediaQuery.isSuccess && totalPages > 1 && (
-				<Pagination className="mt-8">
-					<PaginationContent>
-						<PaginationItem>
-							<PaginationPrevious
-								href="#"
-								onClick={(e) => {
-									e.preventDefault()
-									setPage((p) => Math.max(1, p - 1))
-								}}
-								className={page === 1 ? 'pointer-events-none opacity-50' : ''}
-							/>
-						</PaginationItem>
-						{Array.from({ length: totalPages }).map((_, idx) => (
-							<PaginationItem key={idx}>
-								<PaginationLink
-									href="#"
-									isActive={idx + 1 === page}
-									onClick={(e) => {
-										e.preventDefault()
-										setPage(idx + 1)
-									}}
-								>
-									{idx + 1}
-								</PaginationLink>
-							</PaginationItem>
+				{/* Loading state */}
+				{mediaQuery.isLoading && (
+					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{Array.from({ length: PAGE_SIZE }).map((_, idx) => (
+							<Card key={idx} className="overflow-hidden">
+								<Skeleton className="h-48 w-full" />
+								<CardHeader className="p-4">
+									<Skeleton className="h-4 w-3/4" />
+									<Skeleton className="h-3 w-1/2" />
+								</CardHeader>
+								<CardContent className="p-4 pt-0">
+									<Skeleton className="h-3 w-1/3" />
+								</CardContent>
+							</Card>
 						))}
-						<PaginationItem>
-							<PaginationNext
-								href="#"
-								onClick={(e) => {
-									e.preventDefault()
-									setPage((p) => Math.min(totalPages, p + 1))
-								}}
-								className={
-									page === totalPages ? 'pointer-events-none opacity-50' : ''
-								}
-							/>
-						</PaginationItem>
-					</PaginationContent>
-				</Pagination>
-			)}
+					</div>
+				)}
+
+				{/* Error state */}
+				{mediaQuery.isError && (
+					<Card className="border-destructive/50 bg-destructive/5">
+						<CardContent className="p-6 text-center">
+							<div className="mx-auto mb-4 h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+								<Video className="h-6 w-6 text-destructive" />
+							</div>
+							<h3 className="mb-2 text-lg font-semibold text-destructive">
+								Failed to load media
+							</h3>
+							<p className="text-muted-foreground">
+								There was an error loading your media library. Please try again.
+							</p>
+							<Button
+								variant="outline"
+								className="mt-4"
+								onClick={() => mediaQuery.refetch()}
+							>
+								Try Again
+							</Button>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Empty state */}
+				{mediaQuery.isSuccess && mediaQuery.data.items.length === 0 && (
+					<Card className="border-dashed">
+						<CardContent className="p-12 text-center">
+							<div className="mx-auto mb-4 h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+								<Video className="h-8 w-8 text-muted-foreground" />
+							</div>
+							<h3 className="mb-2 text-lg font-semibold">No media files yet</h3>
+							<p className="mb-6 text-muted-foreground max-w-sm mx-auto">
+								Get started by downloading your first video to begin building
+								your media library.
+							</p>
+							<Link href="/media/download">
+								<Button className="flex items-center gap-2">
+									<Plus className="w-4 h-4" />
+									Download Your First Video
+								</Button>
+							</Link>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Media Grid */}
+				{mediaQuery.isSuccess && mediaQuery.data.items.length > 0 && (
+					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{mediaQuery.data.items.map((media) => (
+							<Card
+								key={media.id}
+								className="group overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-border/50"
+							>
+								<Link href={`/media/${media.id}`} className="block">
+									<div className="relative aspect-video overflow-hidden bg-muted">
+										{media.thumbnail ? (
+											<Image
+												src={media.thumbnail}
+												alt={media.title}
+												fill
+												className="object-cover transition-transform duration-200 group-hover:scale-105"
+											/>
+										) : (
+											<div className="flex h-full items-center justify-center">
+												<Video className="h-12 w-12 text-muted-foreground" />
+											</div>
+										)}
+									</div>
+									<CardHeader className="p-4 pb-2">
+										<CardTitle className="text-base font-semibold line-clamp-2 leading-tight">
+											{media.title}
+										</CardTitle>
+									</CardHeader>
+									<CardContent className="p-4 pt-0 space-y-2">
+										<div className="flex items-center gap-2 text-sm text-muted-foreground">
+											<User className="h-3 w-3" />
+											<span className="line-clamp-1">{media.author}</span>
+										</div>
+										<div className="flex items-center gap-2 text-sm text-muted-foreground">
+											<Eye className="h-3 w-3" />
+											<span>
+												{(media.viewCount ?? 0).toLocaleString()} views
+											</span>
+										</div>
+									</CardContent>
+								</Link>
+								<div className="p-4 pt-0">
+									<AlertDialog>
+										<AlertDialogTrigger asChild>
+											<Button
+												variant="outline"
+												size="sm"
+												className="w-full flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/5"
+											>
+												<Trash2 className="w-3 h-3" />
+												Delete
+											</Button>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>Delete Media</AlertDialogTitle>
+												<AlertDialogDescription>
+													This action cannot be undone. This will permanently
+													delete the media file and all associated data.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel>Cancel</AlertDialogCancel>
+												<AlertDialogAction
+													onClick={() =>
+														deleteMediaMutation.mutate({ id: media.id })
+													}
+													className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+												>
+													Delete
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
+								</div>
+							</Card>
+						))}
+					</div>
+				)}
+
+				{/* Pagination */}
+				{mediaQuery.isSuccess && totalPages > 1 && (
+					<div className="mt-12 flex justify-center">
+						<Pagination>
+							<PaginationContent>
+								<PaginationItem>
+									<PaginationPrevious
+										href="#"
+										onClick={(e) => {
+											e.preventDefault()
+											setPage((p) => Math.max(1, p - 1))
+										}}
+										className={
+											page === 1 ? 'pointer-events-none opacity-50' : ''
+										}
+									/>
+								</PaginationItem>
+								{Array.from({ length: totalPages }).map((_, idx) => (
+									<PaginationItem key={idx}>
+										<PaginationLink
+											href="#"
+											isActive={idx + 1 === page}
+											onClick={(e) => {
+												e.preventDefault()
+												setPage(idx + 1)
+											}}
+										>
+											{idx + 1}
+										</PaginationLink>
+									</PaginationItem>
+								))}
+								<PaginationItem>
+									<PaginationNext
+										href="#"
+										onClick={(e) => {
+											e.preventDefault()
+											setPage((p) => Math.min(totalPages, p + 1))
+										}}
+										className={
+											page === totalPages
+												? 'pointer-events-none opacity-50'
+												: ''
+										}
+									/>
+								</PaginationItem>
+							</PaginationContent>
+						</Pagination>
+					</div>
+				)}
+			</div>
 		</div>
 	)
 }
