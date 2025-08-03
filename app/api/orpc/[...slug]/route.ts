@@ -1,8 +1,8 @@
 import { onError } from '@orpc/server'
 import { RPCHandler } from '@orpc/server/fetch'
-import { router } from '~/orpc/router'
+import { appRouter } from '~/orpc/router'
 
-const handler = new RPCHandler(router, {
+const handler = new RPCHandler(appRouter, {
 	interceptors: [
 		onError((error: unknown) => {
 			console.error(error)

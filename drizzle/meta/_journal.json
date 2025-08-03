@@ -36,6 +36,13 @@
       "when": 1754218768547,
       "tag": "0004_narrow_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1754228575342,
+      "tag": "0005_cool_bulldozer",
+      "breakpoints": true
     }
   ]
 }

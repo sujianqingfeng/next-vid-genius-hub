@@ -17,6 +17,7 @@ export const media = sqliteTable('media', {
 		.notNull()
 		.$defaultFn(() => createId()),
 	title: text('title').notNull(),
+	translatedTitle: text('translated_title'),
 	author: text('author'),
 	source: text('source', { enum: ['youtube', 'tiktok'] }).notNull(),
 	quality: text('quality', { enum: ['720p', '1080p'] }).notNull(),

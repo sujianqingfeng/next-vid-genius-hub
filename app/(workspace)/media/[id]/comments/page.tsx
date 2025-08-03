@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Download, Film } from 'lucide-react'
+import { ArrowLeft, Download, Film, LanguagesIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
@@ -16,6 +16,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
+import { AIModelIds } from '~/lib/ai'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 export default function CommentsPage() {
@@ -23,6 +24,7 @@ export default function CommentsPage() {
 	const id = params.id as string
 	const queryClient = useQueryClient()
 	const [pages, setPages] = useState('3')
+	const [model, setModel] = useState<string>(AIModelIds[0])
 
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
@@ -40,6 +42,20 @@ export default function CommentsPage() {
 			},
 			onError: (error) => {
 				toast.error(`Failed to download comments: ${error.message}`)
+			},
+		}),
+	)
+
+	const translateCommentsMutation = useMutation(
+		queryOrpc.comment.translateComments.mutationOptions({
+			onSuccess: () => {
+				queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+				})
+				toast.success('Comments translated!')
+			},
+			onError: (error) => {
+				toast.error(`Failed to translate comments: ${error.message}`)
 			},
 		}),
 	)
@@ -92,6 +108,29 @@ export default function CommentsPage() {
 							? 'Downloading...'
 							: 'Download Comments'}
 					</Button>
+					<Select value={model} onValueChange={setModel}>
+						<SelectTrigger className="w-[280px]">
+							<SelectValue placeholder="Select model" />
+						</SelectTrigger>
+						<SelectContent>
+							{AIModelIds.map((modelId) => (
+								<SelectItem key={modelId} value={modelId}>
+									{modelId}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<Button
+						onClick={() =>
+							translateCommentsMutation.mutate({ mediaId: id, model })
+						}
+						disabled={translateCommentsMutation.isPending}
+					>
+						<LanguagesIcon className="w-4 h-4 mr-2" />
+						{translateCommentsMutation.isPending
+							? 'Translating...'
+							: 'Translate Comments'}
+					</Button>
 					<Button
 						onClick={() => renderMutation.mutate({ mediaId: id })}
 						disabled={renderMutation.isPending}
@@ -105,9 +144,16 @@ export default function CommentsPage() {
 
 			{mediaQuery.isLoading && <Skeleton className="h-8 w-1/2 mb-4" />}
 			{mediaQuery.data && (
-				<h1 className="text-3xl font-bold mb-6">
-					Comments for {mediaQuery.data.title}
-				</h1>
+				<div className="mb-6">
+					<h1 className="text-3xl font-bold">
+						Comments for {mediaQuery.data.title}
+					</h1>
+					{mediaQuery.data.translatedTitle && (
+						<p className="text-lg text-muted-foreground mt-2">
+							{mediaQuery.data.translatedTitle}
+						</p>
+					)}
+				</div>
 			)}
 
 			<Card>
@@ -136,6 +182,11 @@ export default function CommentsPage() {
 								<div className="flex-1">
 									<p className="font-semibold">{comment.author}</p>
 									<p className="text-sm">{comment.content}</p>
+									{comment.translatedContent && (
+										<p className="mt-2 border-l-2 border-primary pl-2 text-sm text-muted-foreground">
+											{comment.translatedContent}
+										</p>
+									)}
 									<div className="text-xs text-gray-500 flex items-center gap-4 mt-1">
 										<span>Likes: {comment.likes}</span>
 										<span>Replies: {comment.replyCount}</span>
