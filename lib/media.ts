@@ -361,18 +361,24 @@ async function generateInfoAndCommentsAss(
 	// Define styles for different text elements
 	assContent += `[V4+ Styles]\n`
 	assContent += `Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n`
-	// Title style - large, bold, black text for white background
-	assContent += `Style: Title,Noto Sans SC,48,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,3,1,7,50,50,40,1\n`
-	// Info style - medium, black text
-	assContent += `Style: Info,Noto Sans SC,32,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,2,1,7,50,50,100,1\n`
-	// Comment author style - bold, black text
-	assContent += `Style: CommentAuthor,Noto Sans SC,28,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,2,1,1,50,50,120,1\n`
-	// Comment content style - regular, black text
-	assContent += `Style: CommentContent,Noto Sans SC,26,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,2,1,1,50,50,80,1\n`
+	// Title style - large, bold, dark gray text with subtle shadow
+	assContent += `Style: Title,Noto Sans SC,56,&H00222222,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,2,1,7,80,80,60,1\n`
+	// Info style - medium, gray text
+	assContent += `Style: Info,Noto Sans SC,36,&H00666666,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,7,80,80,120,1\n`
+	// Comment author style - bold, dark text
+	assContent += `Style: CommentAuthor,Noto Sans SC,32,&H00222222,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,1,1,1,80,80,140,1\n`
+	// Comment content style - regular, dark text
+	assContent += `Style: CommentContent,Noto Sans SC,28,&H00333333,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,1,80,80,100,1\n`
+	// English content style - italic, lighter text
+	assContent += `Style: EnglishContent,Noto Sans SC,24,&H00666666,&H000000FF,&H00FFFFFF,&H80000000,0,1,0,0,100,100,0,0,1,1,1,1,80,80,80,1\n`
 	// Likes style - small, red text
-	assContent += `Style: Likes,Noto Sans SC,22,&H000000FF,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,2,1,3,50,50,120,1\n`
-	// Avatar placeholder style - small circle
-	assContent += `Style: Avatar,Noto Sans SC,20,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,2,1,1,50,50,120,1\n\n`
+	assContent += `Style: Likes,Noto Sans SC,24,&H00e11d48,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,3,80,80,140,1\n`
+	// Avatar placeholder style - colored circle
+	assContent += `Style: Avatar,Noto Sans SC,32,&H004f46e5,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,1,80,80,140,1\n`
+	// Comment background style - subtle background
+	assContent += `Style: CommentBg,Arial,1,&H15FFFFFF,&H15FFFFFF,&H15FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,0,0,2,0,0,80,1\n`
+	// Divider line style
+	assContent += `Style: Divider,Arial,1,&H20CCCCCC,&H20CCCCCC,&H20CCCCCC,&H80000000,0,0,0,0,100,100,0,0,1,0,0,8,0,0,160,1\n\n`
 
 	assContent += `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`
 
@@ -384,17 +390,21 @@ async function generateInfoAndCommentsAss(
 	const viewCountText = formatViewCount(videoInfo.viewCount)
 	const authorText = videoInfo.author || 'Unknown Author'
 
-	// Title (左上角，MarginV=40)
-	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Title,,50,50,40,,${title.replace(/,/g, '，')}\n`
+	// Title (左上角，MarginV=60) - with better spacing
+	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Title,,80,80,60,,${title.replace(/,/g, '，')}\n`
 
-	// Info (左上角，MarginV=100)
-	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Info,,50,50,100,,${viewCountText} views • ${authorText.replace(/,/g, '，')}\n`
+	// Info (左上角，MarginV=120) - with better spacing
+	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Info,,80,80,120,,${viewCountText} views • ${authorText.replace(/,/g, '，')}\n`
+
+	// Divider line (horizontal line separating content areas)
+	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Divider,,0,0,160,,{\\p1}m 0 0 l 1920 0{\\p0}\n`
 
 	// Comments section - each comment shows for 4 seconds in bottom area
 	let currentTime = 3 // Start comments after 3 seconds
 
 	for (const comment of comments) {
 		const commentText = comment.translatedContent || comment.content
+		const originalComment = comment.content
 		const authorName = comment.author
 		const likesText = formatLikes(comment.likes)
 
@@ -404,17 +414,33 @@ async function generateInfoAndCommentsAss(
 				? commentText.substring(0, 100) + '...'
 				: commentText
 
-		// Avatar (左下，MarginV=120)
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Avatar,,50,50,120,,👤\n`
+		const truncatedOriginal =
+			originalComment.length > 100
+				? originalComment.substring(0, 100) + '...'
+				: originalComment
 
-		// Author (左下，MarginV=120)
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentAuthor,,100,50,120,,${authorName.replace(/,/g, '，')}\n`
+		// Comment background (subtle background for better readability) - increased height for bilingual content
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentBg,,0,0,80,,{\\p1}m 0 0 l 1920 0 l 1920 180 l 0 180{\\p0}\n`
 
-		// Content (左下，MarginV=80)
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentContent,,100,50,80,,${truncatedComment.replace(/,/g, '，')}\n`
+		// Avatar (左下，MarginV=160) - using colored circle
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Avatar,,80,80,160,,😊\n`
 
-		// Likes (右下，MarginV=120)
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Likes,,1700,50,120,,❤️ ${likesText}\n`
+		// Author (左下，MarginV=160)
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentAuthor,,130,80,160,,${authorName.replace(/,/g, '，')}\n`
+
+		// Chinese content (左下，MarginV=120) - translated content
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentContent,,130,80,120,,${truncatedComment.replace(/,/g, '，')}\n`
+
+		// English content (左下，MarginV=80) - original content (only if different from translated)
+		if (
+			comment.translatedContent &&
+			comment.translatedContent !== comment.content
+		) {
+			assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},EnglishContent,,130,80,80,,${truncatedOriginal.replace(/,/g, '，')}\n`
+		}
+
+		// Likes (右下，MarginV=160) - with better positioning
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Likes,,1800,80,160,,❤️ ${likesText}\n`
 
 		currentTime += 4
 	}
