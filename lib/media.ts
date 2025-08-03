@@ -1,6 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
+import { createCanvas, loadImage } from 'canvas'
 
 export async function extractAudio(
 	videoPath: string,
@@ -55,7 +56,7 @@ async function convertWebVttToAss(vttPath: string): Promise<string> {
 
 	for (let i = 0; i < lines.length; i++) {
 		const timeMatch = lines[i].match(
-			/^(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/,
+			/^(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/, // Добавлен комментарий для ясности
 		)
 		if (timeMatch) {
 			const [, start, end] = timeMatch
@@ -85,7 +86,7 @@ async function convertWebVttToAss(vttPath: string): Promise<string> {
 		'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, ' +
 		'Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n' +
 		'Style: Chinese,Noto Sans SC,60,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,30,1\n' +
-		'Style: English,Noto Sans,36,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,60,1\n\n'
+		'Style: English,Noto Sans,36,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,60,1\n\n' // Добавлен комментарий для ясности
 
 	ass += `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`
 
@@ -251,8 +252,7 @@ export async function renderVideoWithInfoAndComments(
 		// Set up timeout detection
 		const timeoutInterval = setInterval(() => {
 			const timeSinceLastProgress = Date.now() - lastProgressUpdate
-			if (timeSinceLastProgress > 30000) {
-				// 30 seconds timeout
+			if (timeSinceLastProgress > 30000) { // 30 seconds timeout
 				console.log(
 					'⚠️  Warning: No progress for 30 seconds, FFmpeg might be stuck',
 				)
@@ -397,7 +397,7 @@ async function generateInfoAndCommentsAss(
 	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Info,,80,80,120,,${viewCountText} views • ${authorText.replace(/,/g, '，')}\n`
 
 	// Divider line (horizontal line separating content areas)
-	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Divider,,0,0,160,,{\\p1}m 0 0 l 1920 0{\\p0}\n`
+	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Divider,,0,0,160,,{\p1}m 0 0 l 1920 0{\p0}\n`
 
 	// Comments section - each comment shows for 4 seconds in bottom area
 	let currentTime = 3 // Start comments after 3 seconds
@@ -411,16 +411,16 @@ async function generateInfoAndCommentsAss(
 		// Truncate long comments to fit better
 		const truncatedComment =
 			commentText.length > 100
-				? commentText.substring(0, 100) + '...'
+				? commentText.substring(0, 100) + '...' 
 				: commentText
 
 		const truncatedOriginal =
 			originalComment.length > 100
-				? originalComment.substring(0, 100) + '...'
+				? originalComment.substring(0, 100) + '...' 
 				: originalComment
 
 		// Comment background (subtle background for better readability) - increased height for bilingual content
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentBg,,0,0,80,,{\\p1}m 0 0 l 1920 0 l 1920 180 l 0 180{\\p0}\n`
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentBg,,0,0,80,,{\p1}m 0 0 l 1920 0 l 1920 180 l 0 180{\p0}\n`
 
 		// Avatar (左下，MarginV=160) - using colored circle
 		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Avatar,,80,80,160,,😊\n`
@@ -518,4 +518,202 @@ function formatTime(seconds: number): string {
 	const minutes = Math.floor((seconds % 3600) / 60)
 	const secs = Math.floor(seconds % 60)
 	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+export async function renderVideoWithCanvas(
+	videoPath: string,
+	outputPath: string,
+	videoInfo: {
+		title: string
+		translatedTitle?: string
+		viewCount: number
+		author?: string
+		thumbnail?: string
+	},
+	comments: Array<{
+		id: string
+		author: string
+		authorThumbnail?: string
+		content: string
+		translatedContent?: string
+		likes: number
+		replyCount?: number
+	}>,
+): Promise<void> {
+	console.log('🎬 Starting video rendering with Canvas...')
+	const width = 1920
+	const height = 1080
+	const fps = 30
+	const commentDuration = 4
+	const introDuration = 3
+	const totalDuration = introDuration + comments.length * commentDuration
+	const totalFrames = totalDuration * fps
+
+	const framesDir = path.join(path.dirname(outputPath), 'frames_overlay')
+	await fs.mkdir(framesDir, { recursive: true })
+
+	const canvas = createCanvas(width, height)
+	const ctx = canvas.getContext('2d')
+
+	// Pre-load all author thumbnails
+	console.log('🖼️ Pre-loading author thumbnails...')
+	const authorImages = await Promise.all(
+		comments.map(async (comment) => {
+			if (!comment.authorThumbnail) return null
+			try {
+				return await loadImage(comment.authorThumbnail)
+			} catch (error) {
+				console.warn(
+					`Could not load thumbnail for ${comment.author}:`,
+					(error as Error).message,
+				)
+				return null
+			}
+		}),
+	)
+	console.log('✅ Thumbnails pre-loaded.')
+
+	console.log('🖼️ Generating overlay frames...')
+	for (let i = 0; i < totalFrames; i++) {
+		const time = i / fps
+
+		ctx.clearRect(0, 0, width, height)
+		ctx.fillStyle = '#FFFFFF'
+		ctx.fillRect(0, 0, width, height)
+		ctx.clearRect(1200, 50, 600, 338)
+
+		ctx.fillStyle = '#333333'
+		ctx.font = 'bold 56px "Noto Sans SC"'
+		ctx.fillText(videoInfo.translatedTitle || videoInfo.title, 80, 120)
+
+		ctx.fillStyle = '#666666'
+		ctx.font = '36px "Noto Sans SC"'
+		ctx.fillText(
+			`${formatViewCount(videoInfo.viewCount)} views • ${
+				videoInfo.author || 'Unknown Author'
+			}`,
+			80,
+			180,
+		)
+
+		if (time >= introDuration) {
+			const commentIndex = Math.floor((time - introDuration) / commentDuration)
+			if (commentIndex < comments.length) {
+				const comment = comments[commentIndex]
+				const authorImage = authorImages[commentIndex]
+
+				ctx.fillStyle = '#F3F4F6'
+				ctx.fillRect(0, height - 200, width, 200)
+
+				// Draw avatar
+				const avatarX = 80
+				const avatarY = height - 150
+				const avatarRadius = 32
+
+				ctx.save()
+				ctx.beginPath()
+				ctx.arc(
+					avatarX + avatarRadius,
+					avatarY + avatarRadius,
+					avatarRadius,
+					0,
+					Math.PI * 2,
+					true,
+				)
+				ctx.closePath()
+				ctx.clip()
+
+				if (authorImage) {
+					ctx.drawImage(
+						authorImage,
+						avatarX,
+						avatarY,
+						avatarRadius * 2,
+						avatarRadius * 2,
+					)
+				} else {
+					// Fallback to initial
+					ctx.fillStyle = '#D1D5DB'
+					ctx.fillRect(avatarX, avatarY, avatarRadius * 2, avatarRadius * 2)
+					ctx.fillStyle = '#4B5563'
+					ctx.font = 'bold 32px "Noto Sans SC"'
+					ctx.textAlign = 'center'
+					ctx.textBaseline = 'middle'
+					ctx.fillText(
+						comment.author.charAt(0).toUpperCase(),
+						avatarX + avatarRadius,
+						avatarY + avatarRadius,
+					)
+				}
+				ctx.restore()
+
+				// Draw comment text, author, etc.
+				const textX = avatarX + avatarRadius * 2 + 20
+				ctx.textAlign = 'left'
+				ctx.textBaseline = 'top'
+				ctx.fillStyle = '#111827'
+				ctx.font = 'bold 32px "Noto Sans SC"'
+				ctx.fillText(comment.author, textX, height - 160)
+
+				ctx.fillStyle = '#374151'
+				ctx.font = '28px "Noto Sans SC"'
+				ctx.fillText(comment.translatedContent || comment.content, textX, height - 120)
+
+				ctx.fillStyle = '#EF4444'
+				ctx.font = '24px "Noto Sans SC"'
+				ctx.fillText(`❤️ ${formatLikes(comment.likes)}`, width - 200, height - 160)
+			}
+		}
+
+		const framePath = path.join(
+			framesDir,
+			`frame-${i.toString().padStart(6, '0')}.png`,
+		)
+		const buffer = canvas.toBuffer('image/png')
+		await fs.writeFile(framePath, buffer)
+	}
+	console.log('✅ Overlay frames generated.')
+
+
+	console.log('🎥 Starting FFmpeg processing...')
+	return new Promise<void>((resolve, reject) => {
+		ffmpeg(videoPath) // Input 0: Original video
+			.input(path.join(framesDir, `frame-%06d.png`)) // Input 1: Overlay frames
+			.inputFPS(fps)
+			.complexFilter([
+				// Scale the original video and pad it to the total duration
+				`[0:v]scale=600:338,tpad=stop_mode=clone:stop_duration=${totalDuration}[scaled_video]`,
+				// Take the canvas frames as the main background
+				`[1:v]format=pix_fmts=yuva420p[overlay_bg]`,
+				// Overlay the scaled video on top of the background frames
+				`[overlay_bg][scaled_video]overlay=x=1200:y=50[final_video]`,
+			])
+			.outputOptions([
+                '-map', '[final_video]', // Map the video from the filter
+                '-map', '0:a?', // Map the audio from the first input (videoPath)
+				'-c:v',
+				'libx264',
+				'-c:a',
+				'aac',
+				'-b:a',
+				'192k',
+				'-pix_fmt',
+				'yuv420p', // Standard pixel format for compatibility
+				'-t',
+				totalDuration.toString(),
+				'-shortest',
+			])
+			.save(outputPath)
+			.on('end', async () => {
+				console.log('✅ FFmpeg processing finished.')
+				console.log('🧹 Cleaning up temporary files...')
+				await fs.rm(framesDir, { recursive: true, force: true })
+				console.log('✅ Cleanup complete.')
+				resolve()
+			})
+			.on('error', (err) => {
+				console.error('❌ Error during ffmpeg processing:', err)
+				reject(err)
+			})
+	})
 }

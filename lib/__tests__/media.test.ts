@@ -1,6 +1,6 @@
 import path from 'path'
 import { describe, expect, it } from 'vitest'
-import { renderVideoWithInfoAndComments } from '../media'
+import { renderVideoWithCanvas, renderVideoWithInfoAndComments } from '../media'
 
 describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 	it('should render video with info and comments for visual verification', async () => {
@@ -22,7 +22,8 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 			{
 				id: 'comment1',
 				author: 'User1',
-				authorThumbnail: 'https://example.com/avatar1.jpg',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
 				content: 'This is an amazing video! Really enjoyed watching it.',
 				translatedContent: '这是一个很棒的视频！真的很喜欢看。',
 				likes: 1250,
@@ -31,7 +32,8 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 			{
 				id: 'comment2',
 				author: 'User2',
-				authorThumbnail: 'https://example.com/avatar2.jpg',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
 				content: 'Thanks for sharing this content. Very informative!',
 				translatedContent: '感谢分享这个内容。非常有信息量！',
 				likes: 856,
@@ -40,7 +42,8 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 			{
 				id: 'comment3',
 				author: 'User3',
-				authorThumbnail: 'https://example.com/avatar3.jpg',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
 				content: 'Great work! Looking forward to more videos like this.',
 				translatedContent: '做得很好！期待更多这样的视频。',
 				likes: 432,
@@ -49,7 +52,8 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 			{
 				id: 'comment4',
 				author: 'User4',
-				authorThumbnail: 'https://example.com/avatar4.jpg',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
 				content: 'This helped me a lot. Thank you!',
 				translatedContent: '这对我帮助很大。谢谢！',
 				likes: 298,
@@ -58,7 +62,8 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 			{
 				id: 'comment5',
 				author: 'User5',
-				authorThumbnail: 'https://example.com/avatar5.jpg',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
 				content: 'Excellent explanation. Very clear and easy to understand.',
 				translatedContent: '解释得很棒。非常清晰易懂。',
 				likes: 567,
@@ -73,12 +78,7 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 		console.log(`💬 Comments count: ${comments.length}`)
 
 		// Execute the rendering function
-		await renderVideoWithInfoAndComments(
-			testVideoPath,
-			outputPath,
-			videoInfo,
-			comments,
-		)
+		await renderVideoWithCanvas(testVideoPath, outputPath, videoInfo, comments)
 
 		console.log('✅ Video rendering completed!')
 		console.log(`📁 Check the output video at: ${outputPath}`)
