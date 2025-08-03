@@ -22,6 +22,20 @@
       "when": 1754215925384,
       "tag": "0002_strange_rumiko_fujikawa",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1754218518484,
+      "tag": "0003_illegal_wendigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1754218768547,
+      "tag": "0004_narrow_beast",
+      "breakpoints": true
     }
   ]
 }

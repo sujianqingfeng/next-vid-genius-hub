@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, MessageSquare } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -118,9 +118,15 @@ export default function MediaDetailPage() {
 							<CardHeader>
 								<CardTitle>Actions</CardTitle>
 							</CardHeader>
-							<CardContent>
+							<CardContent className="flex flex-wrap gap-2">
 								<Link href={`/media/${id}/subtitles`}>
 									<Button>Generate Subtitles</Button>
+								</Link>
+								<Link href={`/media/${id}/comments`}>
+									<Button className="flex items-center gap-2">
+										<MessageSquare className="w-4 h-4" />
+										Comments
+									</Button>
 								</Link>
 							</CardContent>
 						</Card>

@@ -1,6 +1,16 @@
 import { createId } from '@paralleldrive/cuid2'
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
+export interface Comment {
+	id: string
+	author: string
+	authorThumbnail?: string
+	content: string
+	translatedContent?: string
+	likes: number
+	replyCount?: number
+}
+
 export const media = sqliteTable('media', {
 	id: text('id')
 		.unique()
@@ -23,4 +33,5 @@ export const media = sqliteTable('media', {
 	transcription: text('transcription'),
 	translation: text('translation'),
 	renderedPath: text('rendered_path'),
+	comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
 })
