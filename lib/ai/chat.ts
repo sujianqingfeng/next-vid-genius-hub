@@ -25,9 +25,7 @@ export async function generateText(options: {
 	prompt: string
 }) {
 	const { model: modelId, ...rest } = options
-	console.log('🚀 ~ generateText ~ modelId:', modelId)
 	const model = getModel(modelId)
-	console.log('🚀 ~ generateText ~ model:', model)
 
 	return generateTextFromAI({
 		...rest,

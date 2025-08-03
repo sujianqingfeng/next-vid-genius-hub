@@ -1,14 +1,12 @@
 import { os } from '@orpc/server'
 import { download } from './procedures/download'
 import { media } from './procedures/media'
-import { transcribe } from './procedures/transcribe'
-import { translate } from './procedures/translate'
+import { subtitle } from './procedures/subtitle'
 
 export const router = os.router({
 	download,
 	media,
-	transcribe,
-	translate,
+	subtitle,
 })
 
 export type AppRouter = typeof router

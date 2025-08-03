@@ -14,7 +14,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
-import { orpc } from '~/lib/orpc/client'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 type Model = 'whisper-large' | 'whisper-medium'
@@ -40,10 +39,13 @@ export default function SubtitlesPage() {
 			setTranscription(mediaQuery.data.transcription)
 			setActiveTab('step2')
 		}
+		if (mediaQuery.data?.translation) {
+			setTranslation(mediaQuery.data.translation)
+		}
 	}, [mediaQuery.data])
 
 	const transcribeMutation = useMutation(
-		queryOrpc.transcribe.mutationOptions({
+		queryOrpc.subtitle.transcribe.mutationOptions({
 			onSuccess: (data) => {
 				if (data.transcription) {
 					setTranscription(data.transcription)
@@ -53,15 +55,16 @@ export default function SubtitlesPage() {
 		}),
 	)
 
-	const translateMutation = useMutation({
-		mutationFn: orpc.translate.translate,
-		onSuccess: (data) => {
-			setTranslation(data.translation)
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-			})
-		},
-	})
+	const translateMutation = useMutation(
+		queryOrpc.subtitle.translate.mutationOptions({
+			onSuccess: (data) => {
+				setTranslation(data.translation)
+				queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+				})
+			},
+		}),
+	)
 
 	const handleStartTranscription = () => {
 		transcribeMutation.mutate({ mediaId, model: selectedModel })
@@ -69,7 +72,7 @@ export default function SubtitlesPage() {
 
 	const handleStartTranslation = () => {
 		if (transcription) {
-			translateMutation.mutate({ text: transcription, model: selectedAIModel })
+			translateMutation.mutate({ mediaId, model: selectedAIModel })
 		}
 	}
 
