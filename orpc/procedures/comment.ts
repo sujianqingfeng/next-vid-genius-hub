@@ -51,3 +51,17 @@ export const downloadComments = os
 
 		return { success: true, count: comments.length }
 	})
+
+export const renderWithInfo = os
+	.input(
+		z.object({
+			mediaId: z.string(),
+		}),
+	)
+	.handler(async ({ input }) => {
+		// TODO: Implement video rendering, attaching video info and comments
+		console.log(`Rendering video for mediaId: ${input.mediaId}`)
+		return {
+			message: 'Rendering with info and comments started',
+		}
+	})

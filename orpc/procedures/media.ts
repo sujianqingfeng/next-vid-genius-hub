@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { OPERATIONS_DIR } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 
-const list = os
+export const list = os
 	.input(
 		z.object({
 			page: z.number().min(1).optional().default(1),
@@ -36,7 +36,7 @@ const list = os
 		}
 	})
 
-const byId = os
+export const byId = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
 		const { id } = input
@@ -46,7 +46,7 @@ const byId = os
 		return item
 	})
 
-const deleteById = os
+export const deleteById = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
 		const { id } = input
@@ -55,9 +55,3 @@ const deleteById = os
 		await fs.rm(operationDir, { recursive: true, force: true })
 		return { success: true }
 	})
-
-export const media = {
-	list,
-	byId,
-	delete: deleteById,
-}

@@ -1,16 +1,16 @@
 import { os } from '@orpc/server'
-import { downloadComments } from './procedures/comment'
-import { download } from './procedures/download'
-import { media } from './procedures/media'
-import { render } from './procedures/render'
-import { subtitle } from './procedures/subtitle'
+import * as comment from './procedures/comment'
+import * as download from './procedures/download'
+import * as media from './procedures/media'
+import * as render from './procedures/render'
+import * as subtitle from './procedures/subtitle'
 
-export const router = os.router({
+export const appRouter = os.router({
+	comment,
 	download,
-	downloadComments,
 	media,
-	subtitle,
 	render,
+	subtitle,
 })
 
-export type AppRouter = typeof router
+export type AppRouter = typeof appRouter

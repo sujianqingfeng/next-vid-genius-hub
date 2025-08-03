@@ -1,10 +1,11 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Download } from 'lucide-react'
+import { ArrowLeft, Download, Film } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
@@ -30,14 +31,28 @@ export default function CommentsPage() {
 	)
 
 	const downloadCommentsMutation = useMutation(
-		queryOrpc.downloadComments.mutationOptions({
+		queryOrpc.comment.downloadComments.mutationOptions({
 			onSuccess: () => {
 				queryClient.invalidateQueries({
 					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
+				toast.success('Comments downloaded!')
+			},
+			onError: (error) => {
+				toast.error(`Failed to download comments: ${error.message}`)
 			},
 		}),
 	)
+
+	const renderMutation = useMutation({
+		...queryOrpc.comment.renderWithInfo.mutationOptions(),
+		onSuccess: () => {
+			toast.success('Video rendering started!')
+		},
+		onError: (error) => {
+			toast.error(`Failed to start rendering: ${error.message}`)
+		},
+	})
 
 	const comments = mediaQuery.data?.comments || []
 
@@ -76,6 +91,14 @@ export default function CommentsPage() {
 						{downloadCommentsMutation.isPending
 							? 'Downloading...'
 							: 'Download Comments'}
+					</Button>
+					<Button
+						onClick={() => renderMutation.mutate({ mediaId: id })}
+						disabled={renderMutation.isPending}
+						className="flex items-center gap-2"
+					>
+						<Film className="w-4 h-4" />
+						{renderMutation.isPending ? 'Rendering...' : 'Render Video'}
 					</Button>
 				</div>
 			</div>

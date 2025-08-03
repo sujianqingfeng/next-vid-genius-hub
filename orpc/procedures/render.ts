@@ -7,7 +7,7 @@ import { OPERATIONS_DIR } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithSubtitles } from '~/lib/media'
 
-const renderHandler = os
+export const render = os
 	.input(
 		z.object({
 			mediaId: z.string(),
@@ -48,7 +48,3 @@ const renderHandler = os
 			message: 'Rendering started',
 		}
 	})
-
-export const render = {
-	render: renderHandler,
-}

@@ -6,7 +6,7 @@ import { transcribeWithWhisper } from '~/lib/asr/whisper'
 import { WHISPER_CPP_PATH } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 
-const transcribeHandler = os
+export const transcribe = os
 	.input(
 		z.object({
 			mediaId: z.string(),
@@ -51,7 +51,7 @@ const translateInput = z.object({
 	model: z.enum(AIModelIds),
 })
 
-const translateHandler = os.input(translateInput).handler(async ({ input }) => {
+export const translate = os.input(translateInput).handler(async ({ input }) => {
 	const { mediaId, model } = input
 
 	const where = eq(schema.media.id, mediaId)
@@ -92,8 +92,3 @@ Translated:
 		translation: translatedText,
 	}
 })
-
-export const subtitle = {
-	transcribe: transcribeHandler,
-	translate: translateHandler,
-}
