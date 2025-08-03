@@ -135,6 +135,11 @@ export default function MediaDetailPage() {
 										<CardTitle className="text-xl font-semibold leading-tight">
 											{media.title}
 										</CardTitle>
+										{media.translatedTitle && (
+											<CardTitle className="text-lg font-medium leading-tight text-muted-foreground">
+												{media.translatedTitle}
+											</CardTitle>
+										)}
 										<div className="flex items-center gap-2 text-muted-foreground">
 											<User className="w-4 h-4" />
 											<span className="text-sm">{media.author}</span>

@@ -146,6 +146,11 @@ export default function SubtitlesPage() {
 							className="hover:text-foreground transition-colors"
 						>
 							{mediaQuery.data?.title || 'Video'}
+							{mediaQuery.data?.translatedTitle && (
+								<span className="text-muted-foreground ml-1">
+									({mediaQuery.data.translatedTitle})
+								</span>
+							)}
 						</Link>
 						<span>/</span>
 						<span>Subtitles</span>

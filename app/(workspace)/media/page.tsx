@@ -202,6 +202,11 @@ export default function MediaPage() {
 										<CardTitle className="text-base font-semibold line-clamp-2 leading-tight">
 											{media.title}
 										</CardTitle>
+										{media.translatedTitle && (
+											<CardTitle className="text-sm font-medium line-clamp-2 leading-tight text-muted-foreground">
+												{media.translatedTitle}
+											</CardTitle>
+										)}
 									</CardHeader>
 									<CardContent className="p-4 pt-0 space-y-2">
 										<div className="flex items-center gap-2 text-sm text-muted-foreground">
