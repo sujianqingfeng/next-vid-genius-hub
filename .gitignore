@@ -42,3 +42,6 @@ next-env.d.ts
 
 local.db
 .operations
+
+test.mp4
+output_test_video.mp4
