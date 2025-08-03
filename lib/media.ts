@@ -135,7 +135,7 @@ export async function renderVideoWithSubtitles(
 
 /**
  * Render video with info overlay and comments
- * Creates a video with gradient background, video info on top, and scrolling comments below
+ * Creates a video with white background, video info on top left, small video on top right, and scrolling comments below
  */
 export async function renderVideoWithInfoAndComments(
 	videoPath: string,
@@ -157,75 +157,185 @@ export async function renderVideoWithInfoAndComments(
 		replyCount?: number
 	}>,
 ): Promise<void> {
+	console.log('🎬 Starting video rendering with info and comments...')
+	console.log(`📁 Input video: ${videoPath}`)
+	console.log(`📁 Output path: ${outputPath}`)
+	console.log(`📊 Video info:`, {
+		title: videoInfo.title,
+		translatedTitle: videoInfo.translatedTitle,
+		viewCount: videoInfo.viewCount,
+		author: videoInfo.author,
+		hasThumbnail: !!videoInfo.thumbnail,
+	})
+	console.log(`💬 Comments count: ${comments.length}`)
+
 	// Calculate total duration based on comments
 	const totalDuration = 3 + comments.length * 4 // 3s for info + 4s per comment
-
-	// Create a complex filter that combines video with overlay
-	// Note: filterComplex is defined but not used in the current implementation
-	// const filterComplex = [
-	// 	// Input video - loop it to match the total duration
-	// 	`[0:v]loop=loop=-1:size=1,trim=duration=${totalDuration},scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black[video]`,
-
-	// 	// Create gradient background with proper duration
-	// 	`color=size=1920x1080:color=#1a1a2e:duration=${totalDuration}[bg]`,
-
-	// 	// Create gradient overlay for top section (0-400px)
-	// 	`color=size=1920x400:color=#16213e:duration=${totalDuration}[top_gradient]`,
-
-	// 	// Create gradient overlay for bottom section (400-1080px)
-	// 	`color=size=1920x680:color=#0f3460:duration=${totalDuration}[bottom_gradient]`,
-
-	// 	// Overlay gradients on background
-	// 	'[bg][top_gradient]overlay=0:0[bg_with_top]',
-	// 	'[bg_with_top][bottom_gradient]overlay=0:400[bg_with_gradients]',
-
-	// 	// Overlay video on background with transparency
-	// 	'[bg_with_gradients][video]overlay=0:0:format=auto:shortest=1[final]',
-	// ].join(';')
+	console.log(`⏱️  Total duration: ${totalDuration} seconds`)
+	console.log(
+		`📊 Performance mode: ${totalDuration > 60 || comments.length > 20 ? 'Simplified' : 'Full layout'}`,
+	)
 
 	// Create ASS subtitle file for better control over positioning and styling
+	console.log('📝 Generating ASS subtitle content...')
 	const assContent = await generateInfoAndCommentsAss(videoInfo, comments)
 	const assPath = outputPath.replace('.mp4', '_info.ass')
+	console.log(`📄 ASS file path: ${assPath}`)
+
+	console.log('💾 Writing ASS subtitle file...')
 	await fs.writeFile(assPath, assContent, 'utf8')
+	console.log('✅ ASS subtitle file written successfully')
 
 	// Ensure output directory exists
 	const outputDir = path.dirname(outputPath)
+	console.log(`📂 Creating output directory: ${outputDir}`)
 	await fs.mkdir(outputDir, { recursive: true })
+	console.log('✅ Output directory ready')
 
 	return new Promise<void>((resolve, reject) => {
-		// Use a simpler approach - just add subtitles to the video
-		ffmpeg(videoPath)
-			.videoFilters(`ass=${assPath}`)
+		console.log('🎥 Starting FFmpeg processing...')
+
+		// Create optimized filter for the new layout
+		const filterComplex = [
+			// Input video - use tpad instead of loop for better performance
+			`[0:v]tpad=stop_mode=clone:stop_duration=${totalDuration},scale=600:338:force_original_aspect_ratio=decrease,pad=600:338:(ow-iw)/2:(oh-ih)/2:white[small_video]`,
+
+			// Create white background
+			`color=size=1920x1080:color=white:duration=${totalDuration}[bg]`,
+
+			// Overlay small video on top right (position: 1200, 50)
+			`[bg][small_video]overlay=1200:50[bg_with_video]`,
+
+			// Add subtitle overlay
+			`[bg_with_video]ass=${assPath}[final]`,
+		].join(';')
+
+		console.log('🔧 FFmpeg filter complex:', filterComplex)
+
+		// Add fallback option for performance issues
+		const useSimpleFilter = totalDuration > 60 || comments.length > 20
+		let finalFilter = filterComplex
+
+		if (useSimpleFilter) {
+			console.log(
+				'⚠️  Using simplified filter due to long duration or many comments',
+			)
+			finalFilter = `[0:v]tpad=stop_mode=clone:stop_duration=${totalDuration},scale=600:338:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:white,overlay=1200:50,ass=${assPath}[final]`
+		}
+
+		const ffmpegProcess = ffmpeg(videoPath)
+			.videoFilters(finalFilter)
 			.outputOptions([
 				'-c:v',
 				'libx264',
 				'-c:a',
 				'aac',
 				'-preset',
-				'medium',
+				'fast', // Use faster preset for better performance
 				'-crf',
-				'23',
+				'28', // Slightly lower quality for faster encoding
+				'-threads',
+				'4', // Limit threads to prevent resource exhaustion
 				'-t',
 				totalDuration.toString(),
 			])
 			.save(outputPath)
+
+		console.log('🚀 FFmpeg process started, waiting for completion...')
+
+		let lastProgressTime = 0
+		let lastFrame = 0
+		let progressCount = 0
+		let lastProgressUpdate = Date.now()
+
+		// Set up timeout detection
+		const timeoutInterval = setInterval(() => {
+			const timeSinceLastProgress = Date.now() - lastProgressUpdate
+			if (timeSinceLastProgress > 30000) {
+				// 30 seconds timeout
+				console.log(
+					'⚠️  Warning: No progress for 30 seconds, FFmpeg might be stuck',
+				)
+				console.log(
+					'   Consider checking system resources or restarting the process',
+				)
+			}
+		}, 10000) // Check every 10 seconds
+
+		ffmpegProcess
+			.on('start', (commandLine) => {
+				console.log('🎯 FFmpeg command started:', commandLine)
+			})
+			.on('progress', (progress) => {
+				// Calculate percentage based on current time vs total duration
+				const currentTime = progress.timemark || '00:00:00'
+				const timeInSeconds = parseTimeToSeconds(currentTime)
+				const calculatedPercent =
+					totalDuration > 0
+						? Math.round((timeInSeconds / totalDuration) * 100)
+						: 0
+
+				const percent = progress.percent || calculatedPercent
+				const timemark = progress.timemark || 'N/A'
+				const fps = progress.currentFps || 'N/A'
+				const frame = progress.frames || 'N/A'
+
+				// Only log if there's actual progress or every 10th update
+				const hasTimeProgress = timeInSeconds > lastProgressTime
+				const hasFrameProgress = typeof frame === 'number' && frame > lastFrame
+				const shouldLog =
+					hasTimeProgress || hasFrameProgress || progressCount % 10 === 0
+
+				if (shouldLog) {
+					console.log(
+						`📊 FFmpeg progress: ${percent}% | Time: ${timemark}/${formatTime(totalDuration)} | FPS: ${fps} | Frame: ${frame}`,
+					)
+
+					// Check for potential issues
+					if (fps === 'N/A' && progressCount > 5) {
+						console.log(
+							'⚠️  Warning: FPS is N/A, processing might be slow or stuck',
+						)
+					}
+					if (timeInSeconds === lastProgressTime && progressCount > 10) {
+						console.log(
+							'⚠️  Warning: Time not progressing, processing might be stuck',
+						)
+					}
+				}
+
+				lastProgressTime = timeInSeconds
+				lastFrame = typeof frame === 'number' ? frame : lastFrame
+				progressCount++
+				lastProgressUpdate = Date.now()
+			})
 			.on('end', () => {
+				clearInterval(timeoutInterval)
+				console.log('✅ Video rendering completed successfully!')
+				console.log(`📁 Final output: ${outputPath}`)
+
 				// Clean up subtitle file
-				fs.unlink(assPath).catch(console.warn)
+				console.log('🧹 Cleaning up temporary ASS file...')
+				fs.unlink(assPath).catch((err) => {
+					console.warn('⚠️  Warning: Failed to clean up ASS file:', err.message)
+				})
+				console.log('✅ Cleanup completed')
 				resolve()
 			})
 			.on('error', (err) => {
-				console.error(
-					'Error rendering video with info and comments:',
-					err.message,
-				)
+				clearInterval(timeoutInterval)
+				console.error('❌ Error rendering video with info and comments:')
+				console.error('   Error message:', err.message)
+				console.error('   Error stack:', err.stack)
 				reject(err)
 			})
 	})
 }
 
 /**
- * Generate ASS subtitle content for video info and comments with better positioning
+ * Generate ASS subtitle content for video info and comments with new layout
+ * Top section: title and view count on left, small video on right
+ * Bottom section: comments with avatar, author, content, likes
  */
 async function generateInfoAndCommentsAss(
 	videoInfo: {
@@ -251,29 +361,38 @@ async function generateInfoAndCommentsAss(
 	// Define styles for different text elements
 	assContent += `[V4+ Styles]\n`
 	assContent += `Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n`
-	assContent += `Style: Title,Noto Sans SC,48,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,3,1,2,20,20,50,1\n`
-	assContent += `Style: Info,Noto Sans SC,32,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,2,20,20,100,1\n`
-	assContent += `Style: Comment,Noto Sans SC,28,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,8,20,20,30,1\n`
-	assContent += `Style: Likes,Noto Sans SC,24,&H00FF9999,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,1,8,20,20,60,1\n\n`
+	// Title style - large, bold, black text for white background
+	assContent += `Style: Title,Noto Sans SC,48,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,3,1,7,50,50,40,1\n`
+	// Info style - medium, black text
+	assContent += `Style: Info,Noto Sans SC,32,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,2,1,7,50,50,100,1\n`
+	// Comment author style - bold, black text
+	assContent += `Style: CommentAuthor,Noto Sans SC,28,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,2,1,1,50,50,120,1\n`
+	// Comment content style - regular, black text
+	assContent += `Style: CommentContent,Noto Sans SC,26,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,2,1,1,50,50,80,1\n`
+	// Likes style - small, red text
+	assContent += `Style: Likes,Noto Sans SC,22,&H000000FF,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,2,1,3,50,50,120,1\n`
+	// Avatar placeholder style - small circle
+	assContent += `Style: Avatar,Noto Sans SC,20,&H00000000,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,2,1,1,50,50,120,1\n\n`
 
 	assContent += `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`
 
-	let currentTime = 0
+	// Calculate total duration
+	const totalDuration = 3 + comments.length * 4 // 3s for info + 4s per comment
 
-	// Video info section (0-3 seconds)
+	// Video info section - left side, persistent throughout the video
 	const title = videoInfo.translatedTitle || videoInfo.title
 	const viewCountText = formatViewCount(videoInfo.viewCount)
 	const authorText = videoInfo.author || 'Unknown Author'
 
-	// Title (top section, centered)
-	assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 3)},Title,,0,0,0,,${title.replace(/,/g, '，')}\n`
+	// Title (左上角，MarginV=40)
+	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Title,,50,50,40,,${title.replace(/,/g, '，')}\n`
 
-	// View count and author (top section, below title)
-	assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 3)},Info,,0,0,0,,${viewCountText} views • ${authorText.replace(/,/g, '，')}\n`
+	// Info (左上角，MarginV=100)
+	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Info,,50,50,100,,${viewCountText} views • ${authorText.replace(/,/g, '，')}\n`
 
-	currentTime += 3
+	// Comments section - each comment shows for 4 seconds in bottom area
+	let currentTime = 3 // Start comments after 3 seconds
 
-	// Comments section - each comment shows for 4 seconds
 	for (const comment of comments) {
 		const commentText = comment.translatedContent || comment.content
 		const authorName = comment.author
@@ -281,15 +400,21 @@ async function generateInfoAndCommentsAss(
 
 		// Truncate long comments to fit better
 		const truncatedComment =
-			commentText.length > 80
-				? commentText.substring(0, 80) + '...'
+			commentText.length > 100
+				? commentText.substring(0, 100) + '...'
 				: commentText
 
-		// Comment author and content (bottom section, left aligned)
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Comment,,0,0,0,,${authorName.replace(/,/g, '，')}: ${truncatedComment.replace(/,/g, '，')}\n`
+		// Avatar (左下，MarginV=120)
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Avatar,,50,50,120,,👤\n`
 
-		// Likes count (bottom section, right aligned)
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Likes,,0,0,0,,❤️ ${likesText}\n`
+		// Author (左下，MarginV=120)
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentAuthor,,100,50,120,,${authorName.replace(/,/g, '，')}\n`
+
+		// Content (左下，MarginV=80)
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentContent,,100,50,80,,${truncatedComment.replace(/,/g, '，')}\n`
+
+		// Likes (右下，MarginV=120)
+		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Likes,,1700,50,120,,❤️ ${likesText}\n`
 
 		currentTime += 4
 	}
@@ -344,4 +469,27 @@ function formatLikes(count: number): string {
 		return `${(count / 1000).toFixed(1)}K`
 	}
 	return count.toString()
+}
+
+/**
+ * Parse time string (HH:MM:SS) to seconds
+ */
+function parseTimeToSeconds(timeString: string): number {
+	const parts = timeString.split(':').map(Number)
+	if (parts.length === 3) {
+		return parts[0] * 3600 + parts[1] * 60 + parts[2]
+	} else if (parts.length === 2) {
+		return parts[0] * 60 + parts[1]
+	}
+	return 0
+}
+
+/**
+ * Format seconds to time string (HH:MM:SS)
+ */
+function formatTime(seconds: number): string {
+	const hours = Math.floor(seconds / 3600)
+	const minutes = Math.floor((seconds % 3600) / 60)
+	const secs = Math.floor(seconds % 60)
+	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
