@@ -1,0 +1,101 @@
+---
+description: Drizzle ORM 使用指南 - 包含最佳实践、代码示例和项目约定
+---
+
+# Drizzle ORM 使用指南
+
+本指南提供了在项目中有效使用 Drizzle ORM 的约定和最佳实践。
+
+## 1. 核心文件
+
+- **配置文件**: [`drizzle.config.ts`](mdc:drizzle.config.ts)
+  - 定义了数据库方言、schema路径和迁移文件的输出目录。
+- **Schema 定义**: [`lib/db/schema.ts`](mdc:lib/db/schema.ts)
+  - 在此文件中定义所有的数据库表、列和关系。
+- **DB 实例**: [`lib/db/index.ts`](mdc:lib/db/index.ts)
+  - 初始化并导出 `db` 实例和 `schema` 对象，用于在应用中执行数据库操作。
+
+## 2. 如何使用
+
+### 导入 DB 实例
+
+在你的服务或 oRPC procedure 中，从 `~/lib/db` 导入 `db` 和 `schema`。
+
+```typescript
+import { db, schema } from '~/lib/db';
+import { eq } from 'drizzle-orm';
+```
+
+### 查询数据 (Querying)
+
+使用 `db.query` 方法进行查询。
+
+**查询所有媒体:**
+```typescript
+const allMedia = await db.query.media.findMany();
+```
+
+**根据 ID 查询单个媒体:**
+```typescript
+const mediaItem = await db.query.media.findFirst({
+  where: eq(schema.media.id, 'some-media-id')
+});
+```
+
+### 插入数据 (Inserting)
+
+使用 `db.insert()` 方法插入新数据。
+
+```typescript
+import { db, schema } from '~/lib/db';
+
+async function createMedia(newMedia: typeof schema.media.$inferInsert) {
+  const result = await db.insert(schema.media).values(newMedia).returning();
+  return result[0];
+}
+```
+> **注意**: 使用 `schema.media.$inferInsert` 来获取插入操作的类型推断。
+
+### 更新数据 (Updating)
+
+使用 `db.update()` 方法更新数据。
+
+```typescript
+import { db, schema } from '~/lib/db';
+import { eq } from 'drizzle-orm';
+
+async function updateMediaTitle(mediaId: string, newTitle: string) {
+  await db.update(schema.media)
+    .set({ title: newTitle })
+    .where(eq(schema.media.id, mediaId));
+}
+```
+
+## 3. 数据库迁移 (Migrations)
+
+当 `lib/db/schema.ts` 文件发生变更时，需要生成并应用数据库迁移。
+
+### 1. 生成迁移文件
+
+运行以下命令来根据 schema 的变更生成 SQL 迁移文件。
+
+```bash
+pnpm drizzle:generate
+```
+这会在 `drizzle/` 目录下创建一个新的 `.sql` 文件。
+
+### 2. 应用迁移 (开发环境)
+
+> **警告**: 在生产环境中，迁移应由数据库提供商（如 Turso）的 CLI 或 CI/CD 流程自动处理。
+
+在开发环境中，可以使用 `drizzle-kit` 推送变更。
+
+```bash
+pnpm drizzle:push
+```
+
+## 4. 最佳实践
+
+- **保持 Schema 独立**: 不要将业务逻辑放入 `lib/db/schema.ts`。
+- **使用类型推断**: 利用 `.$inferSelect` 和 `.$inferInsert` 来获取查询和插入的类型。
+- **集中管理 DB 实例**: 始终从 `~/lib/db` 导入 `db` 实例，不要在其他地方创建新的实例。

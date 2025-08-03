@@ -15,6 +15,13 @@
       "when": 1754214230177,
       "tag": "0001_useful_blackheart",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1754215925384,
+      "tag": "0002_strange_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

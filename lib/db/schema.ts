@@ -22,4 +22,5 @@ export const media = sqliteTable('media', {
 	audioFilePath: text('audio_file_path'),
 	transcription: text('transcription'),
 	translation: text('translation'),
+	renderedPath: text('rendered_path'),
 })

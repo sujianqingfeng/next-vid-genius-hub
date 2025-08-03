@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
+import { orpc } from '~/lib/orpc/client'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 type Model = 'whisper-large' | 'whisper-medium'
@@ -41,6 +42,7 @@ export default function SubtitlesPage() {
 		}
 		if (mediaQuery.data?.translation) {
 			setTranslation(mediaQuery.data.translation)
+			setActiveTab('step3')
 		}
 	}, [mediaQuery.data])
 
@@ -59,12 +61,19 @@ export default function SubtitlesPage() {
 		queryOrpc.subtitle.translate.mutationOptions({
 			onSuccess: (data) => {
 				setTranslation(data.translation)
+				setActiveTab('step3')
 				queryClient.invalidateQueries({
 					queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
 				})
 			},
 		}),
 	)
+
+	const {
+		mutate: renderMutate,
+		isPending: isRendering,
+		error: renderError,
+	} = useMutation(queryOrpc.render.render.mutationOptions())
 
 	const handleStartTranscription = () => {
 		transcribeMutation.mutate({ mediaId, model: selectedModel })
@@ -79,10 +88,13 @@ export default function SubtitlesPage() {
 	return (
 		<div className="p-8">
 			<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-				<TabsList className="grid w-full grid-cols-2">
+				<TabsList className="grid w-full grid-cols-3">
 					<TabsTrigger value="step1">Step 1: Generate Subtitles</TabsTrigger>
 					<TabsTrigger value="step2" disabled={!transcription}>
 						Step 2: Translate Subtitles
+					</TabsTrigger>
+					<TabsTrigger value="step3" disabled={!translation}>
+						Step 3: Render Video
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="step1">
@@ -168,6 +180,24 @@ export default function SubtitlesPage() {
 							<div className="text-red-500">
 								<h3 className="font-bold">Translation Error</h3>
 								<p>{translateMutation.error.message}</p>
+							</div>
+						)}
+					</div>
+				</TabsContent>
+				<TabsContent value="step3">
+					<div className="space-y-4 py-4">
+						<Button
+							onClick={() => {
+								renderMutate({ mediaId })
+							}}
+							disabled={isRendering}
+						>
+							{isRendering ? 'Rendering...' : 'Start Rendering'}
+						</Button>
+						{renderError && (
+							<div className="text-red-500">
+								<h3 className="font-bold">Rendering Error</h3>
+								<p>{renderError.message}</p>
 							</div>
 						)}
 					</div>

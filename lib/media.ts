@@ -15,3 +15,20 @@ export async function extractAudio(
 			.on('error', reject)
 	})
 }
+
+export async function renderVideoWithSubtitles(
+	videoPath: string,
+	subtitlePath: string,
+	outputPath: string,
+): Promise<void> {
+	return new Promise<void>((resolve, reject) => {
+		ffmpeg(videoPath)
+			.outputOptions('-vf', `subtitles=${subtitlePath}`)
+			.save(outputPath)
+			.on('end', resolve)
+			.on('error', (err) => {
+				console.error('Error rendering video with subtitles:', err.message)
+				reject(err)
+			})
+	})
+}
