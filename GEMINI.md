@@ -76,23 +76,28 @@ pnpm test
 
 ### oRPC + React Query Integration
 
-- **Query Usage**: Use `useQuery` for basic queries, `useInfiniteQuery` for infinite scrolling, and `useMutation` for changes.
-- **Query Keys**: Use the auto-generated keys from oRPC and invalidate them on mutation success.
+- **Query Usage**: Use `useQuery` for basic queries, `useInfiniteQuery` for infinite scrolling, and `useMutation` for making changes. Utilize the `queryOrpc` utility from `~/lib/orpc/query-client.ts`.
+- **Query Keys**: Use the auto-generated keys from the `queryOrpc` utility (e.g., `queryOrpc.media.key()`). Invalidate keys on mutation success to refetch data.
 - **File Organization**:
     ```
     lib/
       orpc/
-        client.ts          # oRPC客户端配置
-        query-utils.ts     # React Query工具函数
+        client.ts          # oRPC client configuration
+        query-client.ts    # React Query utility functions (e.g., queryOrpc)
       query/
-        client.ts          # QueryClient配置
-        hydration.tsx      # SSR hydration支持
+        client.ts          # QueryClient configuration
+        hydration.tsx      # SSR hydration support
     components/
       business/
         media/
-          media-list.tsx   # 使用查询的组件
-          media-form.tsx   # 使用变更的组件
+          media-list.tsx   # Component using queries
+          media-form.tsx   # Component using mutations
     ```
+- **Best Practices**:
+    - Set a reasonable `staleTime` to avoid unnecessary refetching.
+    - Use React Error Boundaries for handling query errors.
+    - Display skeleton components for a better loading experience.
+    - Use optimistic updates in mutations to improve UX.
 
 ### Development Conventions
 
@@ -102,6 +107,6 @@ pnpm test
     -   `orpc/procedures/media.ts`: Provides a paginated list of media items from the database.
 -   **Database:** The database schema is defined in `lib/db/schema.ts`. Drizzle is used for migrations and database access.
 -   **Video Downloading:** The `lib/youtube/download.ts` file contains the core video download logic using `yt-dlp-wrap`.
--   **Linting:** The project uses Biome for linting and formatting.
+-   **Linting and Formatting:** The project uses ESLint for linting and Biome for formatting.
 -   **Styling:** Tailwind CSS is used for styling.
 -   **Development Server:** The development server is usually started manually by the developer. Do not start it again if it is already running.

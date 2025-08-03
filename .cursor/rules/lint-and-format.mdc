@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+---
+# Linting and Formatting
+
+- Use ESLint for linting to check for code quality and potential errors.
+- Use Biome for formatting to ensure consistent code style across the project.

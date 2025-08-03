@@ -83,4 +83,3 @@ lib/                   # Utilities and shared logic
 - Prefer async/await over promises
 - Use descriptive variable and function names
 - Add JSDoc comments for complex functions
-- Follow ESLint and Biome configuration
