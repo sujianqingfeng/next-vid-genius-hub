@@ -32,7 +32,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
-import { orpc } from '~/lib/orpc/client'
+// import { orpc } from '~/lib/orpc/client'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 type Model = 'whisper-large' | 'whisper-medium'

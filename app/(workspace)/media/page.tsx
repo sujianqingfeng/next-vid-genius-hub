@@ -55,7 +55,7 @@ export default function MediaPage() {
 		onSuccess: () => {
 			toast.success('Media deleted successfully.')
 			queryClient.invalidateQueries({
-				queryKey: queryOrpc.media.list.queryKey(),
+				queryKey: queryOrpc.media.list.key(),
 			})
 		},
 		onError: (error) => {

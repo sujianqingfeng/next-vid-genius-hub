@@ -22,6 +22,7 @@ export async function downloadVideo(
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapYoutubeComment = (item: any) => {
 	// The actual comment data can be nested inside a 'comment' property
 	const comment = item.comment || item

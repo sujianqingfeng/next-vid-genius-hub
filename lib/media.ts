@@ -1,4 +1,3 @@
-// @ts-ignore
 import ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
@@ -162,26 +161,27 @@ export async function renderVideoWithInfoAndComments(
 	const totalDuration = 3 + comments.length * 4 // 3s for info + 4s per comment
 
 	// Create a complex filter that combines video with overlay
-	const filterComplex = [
-		// Input video - loop it to match the total duration
-		`[0:v]loop=loop=-1:size=1,trim=duration=${totalDuration},scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black[video]`,
+	// Note: filterComplex is defined but not used in the current implementation
+	// const filterComplex = [
+	// 	// Input video - loop it to match the total duration
+	// 	`[0:v]loop=loop=-1:size=1,trim=duration=${totalDuration},scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black[video]`,
 
-		// Create gradient background with proper duration
-		`color=size=1920x1080:color=#1a1a2e:duration=${totalDuration}[bg]`,
+	// 	// Create gradient background with proper duration
+	// 	`color=size=1920x1080:color=#1a1a2e:duration=${totalDuration}[bg]`,
 
-		// Create gradient overlay for top section (0-400px)
-		`color=size=1920x400:color=#16213e:duration=${totalDuration}[top_gradient]`,
+	// 	// Create gradient overlay for top section (0-400px)
+	// 	`color=size=1920x400:color=#16213e:duration=${totalDuration}[top_gradient]`,
 
-		// Create gradient overlay for bottom section (400-1080px)
-		`color=size=1920x680:color=#0f3460:duration=${totalDuration}[bottom_gradient]`,
+	// 	// Create gradient overlay for bottom section (400-1080px)
+	// 	`color=size=1920x680:color=#0f3460:duration=${totalDuration}[bottom_gradient]`,
 
-		// Overlay gradients on background
-		'[bg][top_gradient]overlay=0:0[bg_with_top]',
-		'[bg_with_top][bottom_gradient]overlay=0:400[bg_with_gradients]',
+	// 	// Overlay gradients on background
+	// 	'[bg][top_gradient]overlay=0:0[bg_with_top]',
+	// 	'[bg_with_top][bottom_gradient]overlay=0:400[bg_with_gradients]',
 
-		// Overlay video on background with transparency
-		'[bg_with_gradients][video]overlay=0:0:format=auto:shortest=1[final]',
-	].join(';')
+	// 	// Overlay video on background with transparency
+	// 	'[bg_with_gradients][video]overlay=0:0:format=auto:shortest=1[final]',
+	// ].join(';')
 
 	// Create ASS subtitle file for better control over positioning and styling
 	const assContent = await generateInfoAndCommentsAss(videoInfo, comments)
@@ -310,14 +310,15 @@ function formatAssTime(seconds: number): string {
 
 /**
  * Format time in SRT format (HH:MM:SS,mmm)
+ * Note: This function is currently unused but kept for potential future use
  */
-function formatTime(seconds: number): string {
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-	const ms = Math.floor((seconds % 1) * 1000)
-	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`
-}
+// function formatTime(seconds: number): string {
+// 	const hours = Math.floor(seconds / 3600)
+// 	const minutes = Math.floor((seconds % 3600) / 60)
+// 	const secs = Math.floor(seconds % 60)
+// 	const ms = Math.floor((seconds % 1) * 1000)
+// 	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`
+// }
 
 /**
  * Format view count with K, M, B suffixes

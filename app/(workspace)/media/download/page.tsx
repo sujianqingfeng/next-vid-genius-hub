@@ -27,7 +27,7 @@ export default function NewDownloadPage() {
 	const [error, setError] = useState<string | null>(null)
 
 	const downloadMutation = useMutation({
-		...queryOrpc.download.mutationOptions(),
+		...queryOrpc.download.download.mutationOptions(),
 		onSuccess: () => {
 			toast.success('Download started successfully!')
 			setError(null)
