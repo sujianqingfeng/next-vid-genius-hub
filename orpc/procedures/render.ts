@@ -14,8 +14,9 @@ const renderHandler = os
 		}),
 	)
 	.handler(async ({ input }) => {
+		const where = eq(schema.media.id, input.mediaId)
 		const media = await db.query.media.findFirst({
-			where: eq(schema.media.id, input.mediaId),
+			where,
 		})
 
 		if (!media) {
@@ -41,10 +42,7 @@ const renderHandler = os
 
 		await renderVideoWithSubtitles(originalFilePath, subtitlePath, outputPath)
 
-		await db
-			.update(schema.media)
-			.set({ renderedPath: outputPath })
-			.where(eq(schema.media.id, input.mediaId))
+		await db.update(schema.media).set({ renderedPath: outputPath }).where(where)
 
 		return {
 			message: 'Rendering started',
