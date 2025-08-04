@@ -809,7 +809,6 @@ export function renderExternalCommentCard(
 	width: number,
 	_height: number,
 ): void {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	void _height
 	// Position comment card below the header/video area
 	const headerAreaHeight = 506
@@ -1268,75 +1267,71 @@ async function renderCoverSection(
 	ctx: CanvasRenderingContext2D,
 	videoInfo: VideoInfo,
 	_comments: Comment[],
-	currentTime: number,
+	_currentTime: number,
 	_coverDuration: number,
 	width: number,
 	height: number,
 ): Promise<void> {
-	// Cover background with gradient
-	const gradient = ctx.createLinearGradient(0, 0, 0, height)
-	gradient.addColorStop(0, '#1a1a1a')
-	gradient.addColorStop(1, '#2d2d2d')
-	ctx.fillStyle = gradient
+	// Light background
+	ctx.fillStyle = '#F8F9FA'
 	ctx.fillRect(0, 0, width, height)
 
-	// Title section
-	const titleY = 100
+	// Calculate total content height for proper vertical centering
+	const centerX = width / 2
 	const title = videoInfo.translatedTitle || videoInfo.title
+	const wrappedTitle = wrapText(ctx, title, width - 240)
 	
-	// Main title with large font
-	ctx.fillStyle = '#FFFFFF'
+	// Calculate heights
+	const titleHeight = wrappedTitle.length * 80
+	const titleGap = 60
+	const authorHeight = 36
+	const authorGap = 50
+	const seriesHeight = videoInfo.series ? 28 : 0
+	const seriesGap = videoInfo.series ? 40 : 0
+	const viewHeight = 24
+	
+	// Total content height
+	const totalContentHeight = titleHeight + titleGap + authorHeight + authorGap + seriesHeight + seriesGap + viewHeight
+	
+	// Start Y position for vertical centering
+	let currentY = (height - totalContentHeight) / 2
+	
+	// Main title with enhanced styling
+	ctx.fillStyle = '#212529'
 	ctx.font = 'bold 64px "Noto Sans SC"'
 	ctx.textAlign = 'center'
 	ctx.textBaseline = 'middle'
 	
-	// Wrap title for better display
-	const wrappedTitle = wrapText(ctx, title, width - 200)
 	wrappedTitle.forEach((line, index) => {
-		ctx.fillText(line, width / 2, titleY + index * 80)
+		ctx.fillText(line, centerX, currentY + index * 80)
 	})
+	
+	currentY += titleHeight + titleGap
 
-	// Author section
-	const authorY = titleY + wrappedTitle.length * 80 + 60
+	// Author info with @ symbol
 	const authorText = videoInfo.author || 'Unknown Author'
-	ctx.fillStyle = '#FFD700'
-	ctx.font = 'bold 48px "Noto Sans SC"'
-	ctx.fillText(`来源: ${authorText}`, width / 2, authorY)
+	ctx.fillStyle = '#6C757D'
+	ctx.font = 'bold 36px "Noto Sans SC"'
+	ctx.fillText(`@${authorText}`, centerX, currentY)
+	
+	currentY += authorHeight + authorGap
 
-	// Series section
-	let seriesY = authorY + 60
+	// Series info (if available) with improved styling
 	if (videoInfo.series) {
-		ctx.fillStyle = '#CCCCCC'
-		ctx.font = '36px "Noto Sans SC"'
+		ctx.fillStyle = '#868E96'
+		ctx.font = '28px "Noto Sans SC"'
 		const seriesText = videoInfo.seriesEpisode 
 			? `${videoInfo.series} 第${videoInfo.seriesEpisode}集`
 			: videoInfo.series
-		ctx.fillText(seriesText, width / 2, seriesY)
-		seriesY += 50
+		ctx.fillText(seriesText, centerX, currentY)
+		currentY += seriesHeight + seriesGap
 	}
 
-	// View count
-	const viewY = seriesY
-	ctx.fillStyle = '#CCCCCC'
-	ctx.font = '32px "Noto Sans SC"'
-	ctx.fillText(`${formatViewCount(videoInfo.viewCount)} 次观看`, width / 2, viewY)
+	// View count with modern formatting
+	ctx.fillStyle = '#868E96'
+	ctx.font = '24px "Noto Sans SC"'
+	ctx.fillText(`${formatViewCount(videoInfo.viewCount)} 次观看`, centerX, currentY)
 
-	
-	
-	// Decorative elements
-	const time = currentTime * Math.PI * 2 // Convert to radians for animation
-	
-	// Animated circles in background
-	for (let i = 0; i < 5; i++) {
-		const circleX = width * 0.1 + i * (width * 0.8 / 4)
-		const circleY = height * 0.7 + Math.sin(time + i) * 20
-		const radius = 3 + Math.sin(time + i * 2) * 2
-		
-		ctx.fillStyle = `rgba(255, 215, 0, ${0.3 + Math.sin(time + i) * 0.2})`
-		ctx.beginPath()
-		ctx.arc(circleX, circleY, radius, 0, Math.PI * 2)
-		ctx.fill()
-	}
 }
 
 // Helper functions for modern UI elements
