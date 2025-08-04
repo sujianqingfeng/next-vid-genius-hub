@@ -139,6 +139,8 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 			viewCount: 1250000,
 			author: 'Test Creator',
 			thumbnail: 'https://example.com/thumbnail.jpg',
+			series: '技术分享系列',
+			seriesEpisode: 5,
 		}
 
 		const comment = {
@@ -672,6 +674,8 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 
 		// 13. Test cover section with series information
 		console.log('📋 Testing cover section with series information...')
+		console.log('🔍 Debug: videoInfo.series =', videoInfo.series)
+		console.log('🔍 Debug: videoInfo.seriesEpisode =', videoInfo.seriesEpisode)
 		const seriesCanvas = createCanvas(1920, 1080)
 		const seriesCtx = seriesCanvas.getContext('2d')
 

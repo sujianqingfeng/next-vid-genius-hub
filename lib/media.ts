@@ -1272,23 +1272,23 @@ async function renderCoverSection(
 	width: number,
 	height: number,
 ): Promise<void> {
-	// Light background
-	ctx.fillStyle = '#F8F9FA'
+	// Clean white background
+	ctx.fillStyle = '#FFFFFF'
 	ctx.fillRect(0, 0, width, height)
 
 	// Calculate total content height for proper vertical centering
 	const centerX = width / 2
 	const title = videoInfo.translatedTitle || videoInfo.title
-	const wrappedTitle = wrapText(ctx, title, width - 240)
+	const wrappedTitle = wrapText(ctx, title, width - 200)
 	
-	// Calculate heights
+	// Calculate heights with larger content
 	const titleHeight = wrappedTitle.length * 80
 	const titleGap = 60
-	const authorHeight = 36
-	const authorGap = 50
-	const seriesHeight = videoInfo.series ? 28 : 0
-	const seriesGap = videoInfo.series ? 40 : 0
-	const viewHeight = 24
+	const authorHeight = 42
+	const authorGap = 40
+	const seriesHeight = videoInfo.series ? 32 : 0
+	const seriesGap = videoInfo.series ? 30 : 0
+	const viewHeight = 28
 	
 	// Total content height
 	const totalContentHeight = titleHeight + titleGap + authorHeight + authorGap + seriesHeight + seriesGap + viewHeight
@@ -1296,9 +1296,9 @@ async function renderCoverSection(
 	// Start Y position for vertical centering
 	let currentY = (height - totalContentHeight) / 2
 	
-	// Main title with enhanced styling
-	ctx.fillStyle = '#212529'
-	ctx.font = 'bold 64px "Noto Sans SC"'
+	// Main title - larger and prominent
+	ctx.fillStyle = '#000000'
+	ctx.font = '600 72px "Noto Sans SC"'
 	ctx.textAlign = 'center'
 	ctx.textBaseline = 'middle'
 	
@@ -1308,18 +1308,18 @@ async function renderCoverSection(
 	
 	currentY += titleHeight + titleGap
 
-	// Author info with @ symbol
+	// Author info - larger @ symbol
 	const authorText = videoInfo.author || 'Unknown Author'
-	ctx.fillStyle = '#6C757D'
-	ctx.font = 'bold 36px "Noto Sans SC"'
+	ctx.fillStyle = '#333333'
+	ctx.font = '500 42px "Noto Sans SC"'
 	ctx.fillText(`@${authorText}`, centerX, currentY)
 	
 	currentY += authorHeight + authorGap
 
-	// Series info (if available) with improved styling
+	// Series info (if available) - larger
 	if (videoInfo.series) {
-		ctx.fillStyle = '#868E96'
-		ctx.font = '28px "Noto Sans SC"'
+		ctx.fillStyle = '#666666'
+		ctx.font = '400 32px "Noto Sans SC"'
 		const seriesText = videoInfo.seriesEpisode 
 			? `${videoInfo.series} 第${videoInfo.seriesEpisode}集`
 			: videoInfo.series
@@ -1327,9 +1327,9 @@ async function renderCoverSection(
 		currentY += seriesHeight + seriesGap
 	}
 
-	// View count with modern formatting
-	ctx.fillStyle = '#868E96'
-	ctx.font = '24px "Noto Sans SC"'
+	// View count - larger
+	ctx.fillStyle = '#666666'
+	ctx.font = '400 28px "Noto Sans SC"'
 	ctx.fillText(`${formatViewCount(videoInfo.viewCount)} 次观看`, centerX, currentY)
 
 }
