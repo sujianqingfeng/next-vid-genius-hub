@@ -199,13 +199,13 @@ export async function renderVideoWithInfoAndComments(
 		// Create optimized filter for the new layout
 		const filterComplex = [
 			// Input video - use tpad instead of loop for better performance
-			`[0:v]tpad=stop_mode=clone:stop_duration=${totalDuration},scale=600:338:force_original_aspect_ratio=decrease,pad=600:338:(ow-iw)/2:(oh-ih)/2:white[small_video]`,
+			`[0:v]tpad=stop_mode=clone:stop_duration=${totalDuration},scale=900:506:force_original_aspect_ratio=decrease,pad=900:506:(ow-iw)/2:(oh-ih)/2:white[small_video]`,
 
 			// Create white background
 			`color=size=1920x1080:color=white:duration=${totalDuration}[bg]`,
 
-			// Overlay small video on top right (position: 1200, 50)
-			`[bg][small_video]overlay=1200:50[bg_with_video]`,
+			// Overlay small video on top right (position: 950, 30) - matching canvas layout
+			`[bg][small_video]overlay=950:30[bg_with_video]`,
 
 			// Add subtitle overlay
 			`[bg_with_video]ass=${assPath}[final]`,
@@ -221,7 +221,7 @@ export async function renderVideoWithInfoAndComments(
 			console.log(
 				'⚠️  Using simplified filter due to long duration or many comments',
 			)
-			finalFilter = `[0:v]tpad=stop_mode=clone:stop_duration=${totalDuration},scale=600:338:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:white,overlay=1200:50,ass=${assPath}[final]`
+			finalFilter = `[0:v]tpad=stop_mode=clone:stop_duration=${totalDuration},scale=900:506:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:white,overlay=950:30,ass=${assPath}[final]`
 		}
 
 		const ffmpegProcess = ffmpeg(videoPath)
@@ -368,10 +368,10 @@ async function generateInfoAndCommentsAss(
 	assContent += `Style: Info,Noto Sans SC,36,&H00666666,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,7,80,80,120,1\n`
 	// Comment author style - bold, dark text
 	assContent += `Style: CommentAuthor,Noto Sans SC,32,&H00222222,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,1,1,1,80,80,140,1\n`
-	// Comment content style - regular, dark text
-	assContent += `Style: CommentContent,Noto Sans SC,28,&H00333333,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,1,80,80,100,1\n`
+	// Comment content style - regular, dark text (Chinese content)
+	assContent += `Style: CommentContent,Noto Sans SC,36,&H00333333,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,1,1,1,80,80,100,1\n`
 	// English content style - italic, lighter text
-	assContent += `Style: EnglishContent,Noto Sans SC,24,&H00666666,&H000000FF,&H00FFFFFF,&H80000000,0,1,0,0,100,100,0,0,1,1,1,1,80,80,80,1\n`
+	assContent += `Style: EnglishContent,Noto Sans SC,22,&H00666666,&H000000FF,&H00FFFFFF,&H80000000,0,1,0,0,100,100,0,0,1,1,1,1,80,80,80,1\n`
 	// Likes style - small, red text
 	assContent += `Style: Likes,Noto Sans SC,24,&H00e11d48,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,3,80,80,140,1\n`
 	// Avatar placeholder style - colored circle
@@ -644,6 +644,7 @@ export function renderCommentCard(
 	totalComments: number,
 	authorImage: CanvasImageSource | null,
 	width: number,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	_height: number
 ): void {
 	// Position comment card right below the header/video area
@@ -679,9 +680,9 @@ export function renderCommentCard(
 	let translatedHeight = 0
 	let wrappedTranslated: string[] = []
 	if (comment.translatedContent && comment.translatedContent !== comment.content) {
-		ctx.font = '24px "Noto Sans SC"' // Smaller font for translated content
+		ctx.font = 'bold 40px "Noto Sans SC"' // Larger font for Chinese content
 		wrappedTranslated = wrapText(ctx, comment.translatedContent, maxCommentWidth)
-		translatedHeight = wrappedTranslated.length * 28
+		translatedHeight = wrappedTranslated.length * 45 // Larger line height
 		totalContentHeight += translatedHeight + spacing
 	}
 
@@ -771,41 +772,25 @@ export function renderCommentCard(
 	ctx.textAlign = 'left'
 	currentY += authorHeight + spacing
 
-	// Chinese content (primary) - translated content first
+	// English content (primary) - original content first
+	ctx.fillStyle = '#666666'
+	ctx.font = '24px "Noto Sans SC"'
+	wrappedOriginal.forEach((line, index) => {
+		ctx.fillText(line, textX, currentY + index * 32)
+	})
+	currentY += wrappedOriginal.length * 32 + spacing
+
+	// Chinese content (secondary, more prominent) - translated content below
 	if (comment.translatedContent && comment.translatedContent !== comment.content) {
 		ctx.fillStyle = '#333333'
-		ctx.font = '28px "Noto Sans SC"'
+		ctx.font = 'bold 40px "Noto Sans SC"' // Larger and bold for Chinese
 		wrappedTranslated.forEach((line, index) => {
-			ctx.fillText(line, textX, currentY + index * 32)
+			ctx.fillText(line, textX, currentY + index * 45) // Larger line height
 		})
-		currentY += wrappedTranslated.length * 32 + spacing
-
-		// English content (secondary) - show below Chinese
-		ctx.fillStyle = '#666666'
-		ctx.font = 'italic 24px "Noto Sans SC"'
-		wrappedOriginal.forEach((line, index) => {
-			ctx.fillText(line, textX, currentY + index * 28)
-		})
-		currentY += wrappedOriginal.length * 28 + spacing
-	} else {
-		// No translation available - show original content as primary
-		ctx.fillStyle = '#333333'
-		ctx.font = '28px "Noto Sans SC"'
-		wrappedOriginal.forEach((line, index) => {
-			ctx.fillText(line, textX, currentY + index * 32)
-		})
-		currentY += wrappedOriginal.length * 32 + spacing
+		currentY += wrappedTranslated.length * 36 + spacing
 	}
 
-	// Comment counter
-	ctx.fillStyle = '#999999'
-	ctx.font = '20px "Noto Sans SC"'
-	ctx.textAlign = 'left'
-	ctx.fillText(
-		`${commentIndex + 1}/${totalComments}`,
-		textX,
-		currentY,
-	)
+	// Comment counter removed - no longer needed
 }
 
 /**
@@ -855,9 +840,7 @@ export function generateTestFrame(
 	// Render comment card
 	renderCommentCard(ctx, comment, commentIndex, totalComments, authorImage, width, height)
 
-	// Render progress bar
-	const progress = (commentIndex + 1) / totalComments
-	renderProgressBar(ctx, width, height, progress)
+	// Progress bar removed - no longer needed
 
 	return canvas.toBuffer('image/png')
 }
@@ -928,9 +911,7 @@ export async function renderVideoWithCanvas(
 			}
 		}
 
-		// Render progress bar
-		const progress = time / totalDuration
-		renderProgressBar(ctx, width, height, progress)
+		// Progress bar removed - no longer needed
 
 		const framePath = path.join(
 			framesDir,
@@ -1014,22 +995,47 @@ function wrapText(
 	text: string,
 	maxWidth: number,
 ): string[] {
-	const words = text.split(' ')
 	const lines: string[] = []
 	let currentLine = ''
 
-	for (let i = 0; i < words.length; i++) {
-		const testLine = currentLine + words[i] + ' '
-		const metrics = ctx.measureText(testLine)
-		const testWidth = metrics.width
+	// Check if text contains Chinese characters
+	const hasChinese = /[\u4e00-\u9fff]/.test(text)
+	
+	if (hasChinese) {
+		// For Chinese text, use character-by-character wrapping
+		for (let i = 0; i < text.length; i++) {
+			const char = text[i]
+			const testLine = currentLine + char
+			const metrics = ctx.measureText(testLine)
+			const testWidth = metrics.width
 
-		if (testWidth > maxWidth && i > 0) {
-			lines.push(currentLine.trim())
-			currentLine = words[i] + ' '
-		} else {
-			currentLine = testLine
+			if (testWidth > maxWidth && currentLine.length > 0) {
+				lines.push(currentLine)
+				currentLine = char
+			} else {
+				currentLine = testLine
+			}
+		}
+	} else {
+		// For English text, use word-based wrapping
+		const words = text.split(' ')
+		for (let i = 0; i < words.length; i++) {
+			const testLine = currentLine + words[i] + ' '
+			const metrics = ctx.measureText(testLine)
+			const testWidth = metrics.width
+
+			if (testWidth > maxWidth && i > 0) {
+				lines.push(currentLine.trim())
+				currentLine = words[i] + ' '
+			} else {
+				currentLine = testLine
+			}
 		}
 	}
-	lines.push(currentLine.trim())
+	
+	if (currentLine.trim()) {
+		lines.push(currentLine.trim())
+	}
+	
 	return lines
 }

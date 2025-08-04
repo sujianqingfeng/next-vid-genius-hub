@@ -12,7 +12,7 @@ import {
 } from '../media'
 
 describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
-	it.skip('should render video with info and comments for visual verification', async () => {
+	it('should render video with info and comments for visual verification', async () => {
 		// Test video path - using the test.mp4 in the same directory
 		const testVideoPath = path.join(__dirname, 'test.mp4')
 		const outputPath = path.join(__dirname, 'output_test_video.mp4')
@@ -284,7 +284,64 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 			'✅ Vertical centering demonstration saved to test_vertical_centering.png',
 		)
 
-		// 8. Test updated layout with comment area positioned below header area
+		// 8. Test Chinese text wrapping specifically
+		console.log('📋 Testing Chinese text wrapping functionality...')
+		const chineseCanvas = createCanvas(1920, 1080)
+		const chineseCtx = chineseCanvas.getContext('2d')
+		renderBackground(chineseCtx, 1920, 1080)
+
+		// Create a comment with very long Chinese text
+		const veryLongChineseComment = {
+			id: 'chinese_test',
+			author: '中文测试用户',
+			authorThumbnail:
+				'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+			content: 'This is a test comment for Chinese text wrapping.',
+			translatedContent:
+				'这是一个专门用来测试中文换行功能的超长评论，包含大量中文字符，用于验证中文文本是否能够正确地在画布边界内进行换行显示，确保不会出现文本溢出或者显示不完整的问题。',
+			likes: 888,
+			replyCount: 12,
+		}
+
+		// Draw boundary box for visual reference
+		chineseCtx.strokeStyle = '#FF6600'
+		chineseCtx.lineWidth = 2
+		chineseCtx.setLineDash([5, 5])
+		chineseCtx.strokeRect(40, 580, 1600, 400) // Boundary box
+		chineseCtx.setLineDash([])
+
+		// Render the comment with long Chinese text
+		renderCommentCard(
+			chineseCtx,
+			veryLongChineseComment,
+			0,
+			1,
+			null,
+			1920,
+			1080,
+		)
+
+		// Add labels
+		chineseCtx.fillStyle = '#FF6600'
+		chineseCtx.font = '16px Arial'
+		chineseCtx.textAlign = 'left'
+		chineseCtx.fillText(
+			'Chinese Text Wrapping Test - Long Chinese content should wrap within boundary',
+			50,
+			570,
+		)
+		chineseCtx.fillText('Boundary Box (1600x400px)', 50, 600)
+
+		const chineseBuffer = chineseCanvas.toBuffer('image/png')
+		fs.writeFileSync(
+			path.join(__dirname, 'test_chinese_wrapping.png'),
+			chineseBuffer,
+		)
+		console.log(
+			'✅ Chinese text wrapping test saved to test_chinese_wrapping.png',
+		)
+
+		// 9. Test updated layout with comment area positioned below header area
 		console.log('📋 Testing updated layout with comment area below header...')
 		const layoutCanvas = createCanvas(1920, 1080)
 		const layoutCtx = layoutCanvas.getContext('2d')
@@ -343,7 +400,7 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 			'✅ Updated layout demonstration saved to test_updated_layout.png',
 		)
 
-		// 9. Test bilingual comment display with dynamic height
+		// 10. Test bilingual comment display with dynamic height
 		console.log('📋 Testing bilingual comment display with dynamic height...')
 		const bilingualCanvas = createCanvas(1920, 1080)
 		const bilingualCtx = bilingualCanvas.getContext('2d')
@@ -358,7 +415,7 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 			content:
 				'This is a very long comment that contains multiple sentences and should wrap properly when rendered. It demonstrates how the system handles both original English content and its Chinese translation simultaneously with dynamic height calculation.',
 			translatedContent:
-				'这是一个很长的评论，包含多个句子，应该在渲染时正确换行。它展示了系统如何同时处理原始英文内容及其中文翻译，并进行动态高度计算。',
+				'这是一个非常非常长的中文评论，包含很多很多的中文字符，应该能够在画布上正确地进行换行显示。这个测试用例专门用来验证中文文本的换行功能是否正常工作，确保长篇中文评论能够被正确渲染而不会超出边界。',
 			likes: 1234,
 			replyCount: 42,
 		}
@@ -396,12 +453,12 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 		bilingualCtx.font = '14px Arial'
 		bilingualCtx.textAlign = 'left'
 		bilingualCtx.fillText(
-			'Comment 1: With bilingual content (Chinese + English)',
+			'Comment 1: English content first, then Chinese (larger + bold)',
 			50,
 			firstCommentBottom - 30,
 		)
 		bilingualCtx.fillText(
-			'Comment 2: Original content only',
+			'Comment 2: Original content only (English)',
 			50,
 			firstCommentBottom + 20,
 		)
@@ -436,7 +493,10 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 			'   - test_updated_layout.png: Updated layout with comment area below header',
 		)
 		console.log(
-			'   - test_bilingual_comments.png: Bilingual comment display with dynamic height',
+			'   - test_chinese_wrapping.png: Chinese text wrapping test with very long Chinese content',
+		)
+		console.log(
+			'   - test_bilingual_comments.png: Bilingual comment display (English first, Chinese below with enhanced styling)',
 		)
 
 		expect(true).toBe(true)
