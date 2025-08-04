@@ -640,8 +640,8 @@ export function renderHeader(ctx: CanvasRenderingContext2D, videoInfo: VideoInfo
 export function renderCommentCard(
 	ctx: CanvasRenderingContext2D,
 	comment: Comment,
-	commentIndex: number,
-	totalComments: number,
+	_commentIndex: number,
+	_totalComments: number,
 	authorImage: CanvasImageSource | null,
 	width: number,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -845,6 +845,9 @@ export function generateTestFrame(
 	return canvas.toBuffer('image/png')
 }
 
+// Export the new cover section function for testing
+export { renderCoverSection }
+
 export async function renderVideoWithCanvas(
 	videoPath: string,
 	outputPath: string,
@@ -857,7 +860,8 @@ export async function renderVideoWithCanvas(
 	const fps = 30
 	const commentDuration = 4
 	const introDuration = 3
-	const totalDuration = introDuration + comments.length * commentDuration
+	const coverDuration = 3 // Additional 3 seconds for cover
+	const totalDuration = coverDuration + introDuration + comments.length * commentDuration
 	const totalFrames = totalDuration * fps
 
 	const framesDir = path.join(path.dirname(outputPath), 'frames_overlay')
@@ -891,23 +895,28 @@ export async function renderVideoWithCanvas(
 		// Render background
 		renderBackground(ctx, width, height)
 
-		// Render video area
-		const videoX = 950
-		const videoY = 30
-		const videoW = 900
-		const videoH = 506
-		renderVideoArea(ctx, videoX, videoY, videoW, videoH)
+		// Render cover section (first 3 seconds) - no video area during cover
+		if (time < coverDuration) {
+			await renderCoverSection(ctx, videoInfo, comments, time, coverDuration, width, height)
+		} else {
+			// Render video area (only after cover section)
+			const videoX = 950
+			const videoY = 30
+			const videoW = 900
+			const videoH = 506
+			renderVideoArea(ctx, videoX, videoY, videoW, videoH)
 
-		// Render header
-		renderHeader(ctx, videoInfo, comments.length)
+			// Render header
+			renderHeader(ctx, videoInfo, comments.length)
 
-		// Render comment if applicable
-		if (time >= introDuration) {
-			const commentIndex = Math.floor((time - introDuration) / commentDuration)
-			if (commentIndex < comments.length) {
-				const comment = comments[commentIndex]
-				const authorImage = authorImages[commentIndex]
-				renderCommentCard(ctx, comment, commentIndex, comments.length, authorImage, width, height)
+			// Render comment if applicable
+			if (time >= coverDuration + introDuration) {
+				const commentIndex = Math.floor((time - coverDuration - introDuration) / commentDuration)
+				if (commentIndex < comments.length) {
+					const comment = comments[commentIndex]
+					const authorImage = authorImages[commentIndex]
+					renderCommentCard(ctx, comment, commentIndex, comments.length, authorImage, width, height)
+				}
 			}
 		}
 
@@ -930,16 +939,18 @@ export async function renderVideoWithCanvas(
 			.complexFilter([
 				// Scale the original video with modern border radius effect
 				`[0:v]scale=900:506,tpad=stop_mode=clone:stop_duration=${totalDuration}[scaled_video]`,
+				// Add audio delay to start after cover section (3 seconds)
+				`[0:a]adelay=${coverDuration}000|${coverDuration}000[delayed_audio]`,
 				// Take the canvas frames as the main background
 				`[1:v]format=pix_fmts=yuva420p[overlay_bg]`,
-				// Overlay the scaled video on top of the background frames
-				`[overlay_bg][scaled_video]overlay=x=950:y=30[final_video]`,
+				// Overlay the scaled video on top of the background frames starting after cover section
+				`[overlay_bg][scaled_video]overlay=x=950:y=30:enable='between(t,${coverDuration},${totalDuration})'[final_video]`,
 			])
 			.outputOptions([
 				'-map',
 				'[final_video]',
 				'-map',
-				'0:a?',
+				'[delayed_audio]?',
 				'-c:v',
 				'libx264',
 				'-c:a',
@@ -965,6 +976,121 @@ export async function renderVideoWithCanvas(
 				reject(err)
 			})
 	})
+}
+
+/**
+ * Render video cover section with author, Chinese title, and real comments
+ * This section appears for the first 3 seconds of the video
+ */
+async function renderCoverSection(
+	ctx: CanvasRenderingContext2D,
+	videoInfo: VideoInfo,
+	comments: Comment[],
+	currentTime: number,
+	coverDuration: number,
+	width: number,
+	height: number,
+): Promise<void> {
+	// Cover background with gradient
+	const gradient = ctx.createLinearGradient(0, 0, 0, height)
+	gradient.addColorStop(0, '#1a1a1a')
+	gradient.addColorStop(1, '#2d2d2d')
+	ctx.fillStyle = gradient
+	ctx.fillRect(0, 0, width, height)
+
+	// Title section
+	const titleY = 100
+	const title = videoInfo.translatedTitle || videoInfo.title
+	
+	// Main title with large font
+	ctx.fillStyle = '#FFFFFF'
+	ctx.font = 'bold 64px "Noto Sans SC"'
+	ctx.textAlign = 'center'
+	ctx.textBaseline = 'middle'
+	
+	// Wrap title for better display
+	const wrappedTitle = wrapText(ctx, title, width - 200)
+	wrappedTitle.forEach((line, index) => {
+		ctx.fillText(line, width / 2, titleY + index * 80)
+	})
+
+	// Author section
+	const authorY = titleY + wrappedTitle.length * 80 + 60
+	const authorText = videoInfo.author || 'Unknown Author'
+	ctx.fillStyle = '#FFD700'
+	ctx.font = 'bold 48px "Noto Sans SC"'
+	ctx.fillText(`创作者: ${authorText}`, width / 2, authorY)
+
+	// View count
+	const viewY = authorY + 60
+	ctx.fillStyle = '#CCCCCC'
+	ctx.font = '32px "Noto Sans SC"'
+	ctx.fillText(`${formatViewCount(videoInfo.viewCount)} 次观看`, width / 2, viewY)
+
+	// Real comments section
+	const commentsY = viewY + 80
+	ctx.fillStyle = '#FFFFFF'
+	ctx.font = 'bold 36px "Noto Sans SC"'
+	ctx.fillText('网友真实评论:', width / 2, commentsY)
+
+	// Display top 3 comments
+	const topComments = comments.slice(0, 3)
+	const commentStartY = commentsY + 60
+	
+	topComments.forEach((comment, index) => {
+		const commentY = commentStartY + index * 100
+		
+		// Comment author
+		ctx.fillStyle = '#FFD700'
+		ctx.font = 'bold 28px "Noto Sans SC"'
+		ctx.textAlign = 'left'
+		ctx.fillText(`@${comment.author}:`, 200, commentY)
+		
+		// Comment content (prefer Chinese translation if available)
+		const commentContent = comment.translatedContent || comment.content
+		ctx.fillStyle = '#FFFFFF'
+		ctx.font = '24px "Noto Sans SC"'
+		
+		// Truncate long comments
+		const truncatedContent = commentContent.length > 50 
+			? commentContent.substring(0, 50) + '...' 
+			: commentContent
+		
+		ctx.fillText(truncatedContent, 200 + ctx.measureText(`@${comment.author}: `).width + 10, commentY)
+		
+		// Likes
+		ctx.fillStyle = '#FF6B6B'
+		ctx.textAlign = 'right'
+		ctx.fillText(`❤️ ${formatLikes(comment.likes)}`, width - 200, commentY)
+	})
+
+	// Animated progress bar at bottom
+	const progress = currentTime / coverDuration
+	const progressBarY = height - 20
+	const progressBarHeight = 4
+	
+	// Progress bar background
+	ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
+	ctx.fillRect(100, progressBarY, width - 200, progressBarHeight)
+	
+	// Progress bar fill
+	ctx.fillStyle = '#FFD700'
+	ctx.fillRect(100, progressBarY, (width - 200) * progress, progressBarHeight)
+
+	// Decorative elements
+	const time = currentTime * Math.PI * 2 // Convert to radians for animation
+	
+	// Animated circles in background
+	for (let i = 0; i < 5; i++) {
+		const circleX = width * 0.1 + i * (width * 0.8 / 4)
+		const circleY = height * 0.7 + Math.sin(time + i) * 20
+		const radius = 3 + Math.sin(time + i * 2) * 2
+		
+		ctx.fillStyle = `rgba(255, 215, 0, ${0.3 + Math.sin(time + i) * 0.2})`
+		ctx.beginPath()
+		ctx.arc(circleX, circleY, radius, 0, Math.PI * 2)
+		ctx.fill()
+	}
 }
 
 // Helper functions for modern UI elements

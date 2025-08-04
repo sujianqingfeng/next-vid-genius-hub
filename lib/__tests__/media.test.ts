@@ -5,6 +5,7 @@ import {
 	generateTestFrame,
 	renderBackground,
 	renderCommentCard,
+	renderCoverSection,
 	renderHeader,
 	renderProgressBar,
 	renderVideoArea,
@@ -100,7 +101,7 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 			'   - Comments should appear below with avatars, authors, content, and likes',
 		)
 		console.log(
-			'   - Total duration should be 23 seconds (3s info + 5 comments × 4s each)',
+			'   - Total duration should be 26 seconds (3s cover + 3s info + 5 comments × 4s each)',
 		)
 
 		// Basic assertion to ensure the function completed without errors
@@ -472,6 +473,63 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 			'✅ Bilingual comment display demonstration saved to test_bilingual_comments.png',
 		)
 
+		// 11. Test cover section with author, Chinese title, and real comments
+		console.log('📋 Testing cover section with author, Chinese title, and real comments...')
+		const coverCanvas = createCanvas(1920, 1080)
+		const coverCtx = coverCanvas.getContext('2d')
+
+		// Create sample comments for the cover
+		const coverComments = [
+			{
+				id: 'cover_comment1',
+				author: 'MovieFan2023',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+				content: 'This is absolutely amazing! Best video I\'ve seen this year.',
+				translatedContent: '这太棒了！今年看过的最好的视频。',
+				likes: 2560,
+				replyCount: 45,
+			},
+			{
+				id: 'cover_comment2',
+				author: 'TechLover',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+				content: 'Great content quality and very informative. Keep it up!',
+				translatedContent: '内容质量很好，很有信息量。继续加油！',
+				likes: 1890,
+				replyCount: 23,
+			},
+			{
+				id: 'cover_comment3',
+				author: 'CreativeMind',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+				content: 'Love the creativity and effort put into this production.',
+				translatedContent: '喜欢这个作品的创意和付出的努力。',
+				likes: 3240,
+				replyCount: 67,
+			},
+		]
+
+		// Test cover section at different time points for animation
+		await renderCoverSection(coverCtx, videoInfo, coverComments, 1.5, 3, 1920, 1080)
+
+		// Add time indicator
+		coverCtx.fillStyle = '#FFD700'
+		coverCtx.font = 'bold 24px Arial'
+		coverCtx.textAlign = 'right'
+		coverCtx.fillText('Cover Section - 1.5s / 3.0s', 1900, 50)
+
+		const coverBuffer = coverCanvas.toBuffer('image/png')
+		fs.writeFileSync(
+			path.join(__dirname, 'test_cover_section.png'),
+			coverBuffer,
+		)
+		console.log(
+			'✅ Cover section demonstration saved to test_cover_section.png',
+		)
+
 		console.log('🎯 All individual test frame images generated successfully!')
 		console.log('📁 Check the following files in the test directory:')
 		console.log('   - test_renderBackground.png: White background only')
@@ -497,6 +555,9 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 		)
 		console.log(
 			'   - test_bilingual_comments.png: Bilingual comment display (English first, Chinese below with enhanced styling)',
+		)
+		console.log(
+			'   - test_cover_section.png: Video cover section with author, Chinese title, and real comments',
 		)
 
 		expect(true).toBe(true)
