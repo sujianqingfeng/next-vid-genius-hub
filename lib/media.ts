@@ -1,7 +1,7 @@
+import { createCanvas, loadImage } from 'canvas'
 import ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
-import { createCanvas, loadImage } from 'canvas'
 
 export async function extractAudio(
 	videoPath: string,
@@ -252,7 +252,8 @@ export async function renderVideoWithInfoAndComments(
 		// Set up timeout detection
 		const timeoutInterval = setInterval(() => {
 			const timeSinceLastProgress = Date.now() - lastProgressUpdate
-			if (timeSinceLastProgress > 30000) { // 30 seconds timeout
+			if (timeSinceLastProgress > 30000) {
+				// 30 seconds timeout
 				console.log(
 					'⚠️  Warning: No progress for 30 seconds, FFmpeg might be stuck',
 				)
@@ -411,12 +412,12 @@ async function generateInfoAndCommentsAss(
 		// Truncate long comments to fit better
 		const truncatedComment =
 			commentText.length > 100
-				? commentText.substring(0, 100) + '...' 
+				? commentText.substring(0, 100) + '...'
 				: commentText
 
 		const truncatedOriginal =
 			originalComment.length > 100
-				? originalComment.substring(0, 100) + '...' 
+				? originalComment.substring(0, 100) + '...'
 				: originalComment
 
 		// Comment background (subtle background for better readability) - increased height for bilingual content
@@ -520,27 +521,354 @@ function formatTime(seconds: number): string {
 	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+// Extracted rendering functions for better testability
+
+
+interface VideoInfo {
+	title: string
+	translatedTitle?: string
+	viewCount: number
+	author?: string
+	thumbnail?: string
+}
+
+interface Comment {
+	id: string
+	author: string
+	authorThumbnail?: string
+	content: string
+	translatedContent?: string
+	likes: number
+	replyCount?: number
+}
+
+/**
+ * Render simple white background
+ */
+export function renderBackground(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+	ctx.fillStyle = '#FFFFFF'
+	ctx.fillRect(0, 0, width, height)
+}
+
+/**
+ * Render video placeholder area
+ */
+export function renderVideoArea(ctx: CanvasRenderingContext2D, videoX: number, videoY: number, videoW: number, videoH: number): void {
+	// Simple video border
+	ctx.strokeStyle = '#000000'
+	ctx.lineWidth = 2
+	roundRect(ctx, videoX, videoY, videoW, videoH, 8)
+	ctx.stroke()
+
+	// Clear area for actual video content
+	ctx.clearRect(videoX + 3, videoY + 3, videoW - 6, videoH - 6)
+}
+
+/**
+ * Render header section with video info - vertically aligned with video area
+ */
+export function renderHeader(ctx: CanvasRenderingContext2D, videoInfo: VideoInfo, commentsCount: number): void {
+	// Video area position (from generateTestFrame)
+	const videoY = 30
+	const videoH = 506
+	const videoCenterY = videoY + videoH / 2
+	
+	// Header area positioned to align with video center
+	const headerX = 40
+	const headerY = videoY
+	const headerWidth = 880
+	const headerHeight = videoH
+	const centerY = videoCenterY // Use the same center Y as video
+
+	// Simple header background
+	ctx.fillStyle = '#F5F5F5'
+	roundRect(ctx, headerX, headerY, headerWidth, headerHeight, 12)
+	ctx.fill()
+
+	// Simple header border
+	ctx.strokeStyle = '#E0E0E0'
+	ctx.lineWidth = 1
+	roundRect(ctx, headerX, headerY, headerWidth, headerHeight, 12)
+	ctx.stroke()
+
+	// Calculate content layout for vertical centering (aligned with video)
+	ctx.fillStyle = '#000000'
+	ctx.font = 'bold 56px "Noto Sans SC"'
+	ctx.textAlign = 'left'
+	ctx.textBaseline = 'middle'
+	
+	const title = videoInfo.translatedTitle || videoInfo.title
+	const maxWidth = 800
+	const wrappedTitle = wrapText(ctx, title, maxWidth)
+	
+	// Calculate total content height
+	const titleHeight = wrappedTitle.length * 80
+	const metadataHeight = 40
+	const commentHeight = 35
+	const totalContentHeight = titleHeight + metadataHeight + commentHeight + 40 // spacing
+	
+	// Starting Y position for vertical centering (same as video center)
+	let currentY = centerY - totalContentHeight / 2
+	
+	// Draw title
+	wrappedTitle.forEach((line, index) => {
+		ctx.fillText(line, headerX + 20, currentY + index * 80)
+	})
+	
+	currentY += titleHeight + 20
+	
+	// Draw metadata
+	ctx.fillStyle = '#666666'
+	ctx.font = '32px "Noto Sans SC"'
+	const viewText = `${formatViewCount(videoInfo.viewCount)} views`
+	const authorText = videoInfo.author || 'Unknown Author'
+	const metadataText = `${viewText} • ${authorText}`
+	ctx.fillText(metadataText, headerX + 20, currentY)
+	
+	currentY += metadataHeight + 20
+	
+	// Draw comment count
+	ctx.fillStyle = '#666666'
+	ctx.font = '28px "Noto Sans SC"'
+	const engagementText = `${commentsCount} comments`
+	ctx.fillText(engagementText, headerX + 20, currentY)
+}
+
+/**
+ * Render comment card with avatar and content - displays both original and translated content
+ */
+export function renderCommentCard(
+	ctx: CanvasRenderingContext2D,
+	comment: Comment,
+	commentIndex: number,
+	totalComments: number,
+	authorImage: CanvasImageSource | null,
+	width: number,
+	_height: number
+): void {
+	// Position comment card right below the header/video area
+	const headerAreaHeight = 506 // Same as videoH
+	const headerAreaBottom = 30 + headerAreaHeight // videoY + videoH
+	const commentSpacing = 20 // Small spacing between sections
+	const commentY = headerAreaBottom + commentSpacing
+
+	// Calculate required comment height dynamically
+	const avatarX = 60
+	const avatarRadius = 35
+	const textX = avatarX + avatarRadius * 2 + 40
+	const maxCommentWidth = width - textX - 200
+	const padding = 20
+
+	// Set font for text measurement
+	ctx.font = '28px "Noto Sans SC"'
+	
+	// Calculate content heights
+	let totalContentHeight = 0
+	const authorHeight = 40
+	const counterHeight = 25
+	const spacing = 15
+
+	totalContentHeight += authorHeight + spacing
+
+	// Calculate original content height (always shown)
+	const wrappedOriginal = wrapText(ctx, comment.content, maxCommentWidth)
+	const originalHeight = wrappedOriginal.length * 32
+	totalContentHeight += originalHeight + spacing
+
+	// Calculate translated content height (if different from original)
+	let translatedHeight = 0
+	let wrappedTranslated: string[] = []
+	if (comment.translatedContent && comment.translatedContent !== comment.content) {
+		ctx.font = '24px "Noto Sans SC"' // Smaller font for translated content
+		wrappedTranslated = wrapText(ctx, comment.translatedContent, maxCommentWidth)
+		translatedHeight = wrappedTranslated.length * 28
+		totalContentHeight += translatedHeight + spacing
+	}
+
+	totalContentHeight += counterHeight + padding
+
+	// Calculate final comment card height
+	const commentHeight = totalContentHeight
+
+	// Comment card background
+	ctx.fillStyle = '#F9F9F9'
+	roundRect(ctx, 20, commentY, width - 40, commentHeight, 12)
+	ctx.fill()
+
+	// Comment card border
+	ctx.strokeStyle = '#E0E0E0'
+	ctx.lineWidth = 1
+	roundRect(ctx, 20, commentY, width - 40, commentHeight, 12)
+	ctx.stroke()
+
+	// Avatar
+	const avatarY = commentY + 30
+
+	if (authorImage) {
+		ctx.save()
+		ctx.beginPath()
+		ctx.arc(
+			avatarX + avatarRadius,
+			avatarY + avatarRadius,
+			avatarRadius,
+			0,
+			Math.PI * 2,
+		)
+		ctx.closePath()
+		ctx.clip()
+		ctx.drawImage(
+			authorImage,
+			avatarX,
+			avatarY,
+			avatarRadius * 2,
+			avatarRadius * 2,
+		)
+		ctx.restore()
+	} else {
+		// Fallback avatar
+		ctx.fillStyle = '#CCCCCC'
+		ctx.beginPath()
+		ctx.arc(
+			avatarX + avatarRadius,
+			avatarY + avatarRadius,
+			avatarRadius,
+			0,
+			Math.PI * 2,
+		)
+		ctx.fill()
+		
+		ctx.fillStyle = '#FFFFFF'
+		ctx.font = 'bold 32px "Noto Sans SC"'
+		ctx.textAlign = 'center'
+		ctx.textBaseline = 'middle'
+		ctx.fillText(
+			comment.author.charAt(0).toUpperCase(),
+			avatarX + avatarRadius,
+			avatarY + avatarRadius,
+		)
+	}
+
+	// Comment content
+	ctx.textAlign = 'left'
+	ctx.textBaseline = 'top'
+
+	let currentY = avatarY + 10
+
+	// Author name
+	ctx.fillStyle = '#000000'
+	ctx.font = 'bold 32px "Noto Sans SC"'
+	ctx.textAlign = 'left'
+	ctx.fillText(comment.author, textX, currentY)
+	
+	// Add likes on the right side of the comment card
+	ctx.fillStyle = '#e11d48'
+	ctx.font = '24px "Noto Sans SC"'
+	ctx.textAlign = 'right'
+	const likesX = width - 60 // Position likes on the right side
+	ctx.fillText(`❤️ ${formatLikes(comment.likes)}`, likesX, currentY)
+	
+	// Reset text alignment for content
+	ctx.textAlign = 'left'
+	currentY += authorHeight + spacing
+
+	// Chinese content (primary) - translated content first
+	if (comment.translatedContent && comment.translatedContent !== comment.content) {
+		ctx.fillStyle = '#333333'
+		ctx.font = '28px "Noto Sans SC"'
+		wrappedTranslated.forEach((line, index) => {
+			ctx.fillText(line, textX, currentY + index * 32)
+		})
+		currentY += wrappedTranslated.length * 32 + spacing
+
+		// English content (secondary) - show below Chinese
+		ctx.fillStyle = '#666666'
+		ctx.font = 'italic 24px "Noto Sans SC"'
+		wrappedOriginal.forEach((line, index) => {
+			ctx.fillText(line, textX, currentY + index * 28)
+		})
+		currentY += wrappedOriginal.length * 28 + spacing
+	} else {
+		// No translation available - show original content as primary
+		ctx.fillStyle = '#333333'
+		ctx.font = '28px "Noto Sans SC"'
+		wrappedOriginal.forEach((line, index) => {
+			ctx.fillText(line, textX, currentY + index * 32)
+		})
+		currentY += wrappedOriginal.length * 32 + spacing
+	}
+
+	// Comment counter
+	ctx.fillStyle = '#999999'
+	ctx.font = '20px "Noto Sans SC"'
+	ctx.textAlign = 'left'
+	ctx.fillText(
+		`${commentIndex + 1}/${totalComments}`,
+		textX,
+		currentY,
+	)
+}
+
+/**
+ * Render progress bar
+ */
+export function renderProgressBar(ctx: CanvasRenderingContext2D, width: number, height: number, progress: number): void {
+	const progressHeight = 3
+	const progressY = height - progressHeight - 20
+
+	// Progress bar background
+	ctx.fillStyle = '#E0E0E0'
+	ctx.fillRect(20, progressY, width - 40, progressHeight)
+
+	// Progress bar fill
+	ctx.fillStyle = '#666666'
+	ctx.fillRect(20, progressY, (width - 40) * progress, progressHeight)
+}
+
+/**
+ * Generate a single frame for testing purposes
+ */
+export function generateTestFrame(
+	videoInfo: VideoInfo,
+	comment: Comment,
+	commentIndex: number,
+	totalComments: number,
+	authorImage?: CanvasImageSource | null,
+	width: number = 1920,
+	height: number = 1080
+): Buffer {
+	const canvas = createCanvas(width, height)
+	const ctx = canvas.getContext('2d')
+
+	// Render background
+	renderBackground(ctx, width, height)
+
+	// Render video area
+	const videoX = 950
+	const videoY = 30
+	const videoW = 900
+	const videoH = 506
+	renderVideoArea(ctx, videoX, videoY, videoW, videoH)
+
+	// Render header
+	renderHeader(ctx, videoInfo, totalComments)
+
+	// Render comment card
+	renderCommentCard(ctx, comment, commentIndex, totalComments, authorImage, width, height)
+
+	// Render progress bar
+	const progress = (commentIndex + 1) / totalComments
+	renderProgressBar(ctx, width, height, progress)
+
+	return canvas.toBuffer('image/png')
+}
+
 export async function renderVideoWithCanvas(
 	videoPath: string,
 	outputPath: string,
-	videoInfo: {
-		title: string
-		translatedTitle?: string
-		viewCount: number
-		author?: string
-		thumbnail?: string
-	},
-	comments: Array<{
-		id: string
-		author: string
-		authorThumbnail?: string
-		content: string
-		translatedContent?: string
-		likes: number
-		replyCount?: number
-	}>,
+	videoInfo: VideoInfo,
+	comments: Comment[],
 ): Promise<void> {
-	console.log('🎬 Starting video rendering with Canvas...')
+	console.log('🎬 Starting modern video rendering with Canvas...')
 	const width = 1920
 	const height = 1080
 	const fps = 30
@@ -573,97 +901,36 @@ export async function renderVideoWithCanvas(
 	)
 	console.log('✅ Thumbnails pre-loaded.')
 
-	console.log('🖼️ Generating overlay frames...')
+	console.log('🖼️ Generating modern overlay frames...')
 	for (let i = 0; i < totalFrames; i++) {
 		const time = i / fps
 
-		ctx.clearRect(0, 0, width, height)
-		ctx.fillStyle = '#FFFFFF'
-		ctx.fillRect(0, 0, width, height)
-		ctx.clearRect(1200, 50, 600, 338)
+		// Render background
+		renderBackground(ctx, width, height)
 
-		ctx.fillStyle = '#333333'
-		ctx.font = 'bold 56px "Noto Sans SC"'
-		ctx.fillText(videoInfo.translatedTitle || videoInfo.title, 80, 120)
+		// Render video area
+		const videoX = 950
+		const videoY = 30
+		const videoW = 900
+		const videoH = 506
+		renderVideoArea(ctx, videoX, videoY, videoW, videoH)
 
-		ctx.fillStyle = '#666666'
-		ctx.font = '36px "Noto Sans SC"'
-		ctx.fillText(
-			`${formatViewCount(videoInfo.viewCount)} views • ${
-				videoInfo.author || 'Unknown Author'
-			}`,
-			80,
-			180,
-		)
+		// Render header
+		renderHeader(ctx, videoInfo, comments.length)
 
+		// Render comment if applicable
 		if (time >= introDuration) {
 			const commentIndex = Math.floor((time - introDuration) / commentDuration)
 			if (commentIndex < comments.length) {
 				const comment = comments[commentIndex]
 				const authorImage = authorImages[commentIndex]
-
-				ctx.fillStyle = '#F3F4F6'
-				ctx.fillRect(0, height - 200, width, 200)
-
-				// Draw avatar
-				const avatarX = 80
-				const avatarY = height - 150
-				const avatarRadius = 32
-
-				ctx.save()
-				ctx.beginPath()
-				ctx.arc(
-					avatarX + avatarRadius,
-					avatarY + avatarRadius,
-					avatarRadius,
-					0,
-					Math.PI * 2,
-					true,
-				)
-				ctx.closePath()
-				ctx.clip()
-
-				if (authorImage) {
-					ctx.drawImage(
-						authorImage,
-						avatarX,
-						avatarY,
-						avatarRadius * 2,
-						avatarRadius * 2,
-					)
-				} else {
-					// Fallback to initial
-					ctx.fillStyle = '#D1D5DB'
-					ctx.fillRect(avatarX, avatarY, avatarRadius * 2, avatarRadius * 2)
-					ctx.fillStyle = '#4B5563'
-					ctx.font = 'bold 32px "Noto Sans SC"'
-					ctx.textAlign = 'center'
-					ctx.textBaseline = 'middle'
-					ctx.fillText(
-						comment.author.charAt(0).toUpperCase(),
-						avatarX + avatarRadius,
-						avatarY + avatarRadius,
-					)
-				}
-				ctx.restore()
-
-				// Draw comment text, author, etc.
-				const textX = avatarX + avatarRadius * 2 + 20
-				ctx.textAlign = 'left'
-				ctx.textBaseline = 'top'
-				ctx.fillStyle = '#111827'
-				ctx.font = 'bold 32px "Noto Sans SC"'
-				ctx.fillText(comment.author, textX, height - 160)
-
-				ctx.fillStyle = '#374151'
-				ctx.font = '28px "Noto Sans SC"'
-				ctx.fillText(comment.translatedContent || comment.content, textX, height - 120)
-
-				ctx.fillStyle = '#EF4444'
-				ctx.font = '24px "Noto Sans SC"'
-				ctx.fillText(`❤️ ${formatLikes(comment.likes)}`, width - 200, height - 160)
+				renderCommentCard(ctx, comment, commentIndex, comments.length, authorImage, width, height)
 			}
 		}
+
+		// Render progress bar
+		const progress = time / totalDuration
+		renderProgressBar(ctx, width, height, progress)
 
 		const framePath = path.join(
 			framesDir,
@@ -672,8 +939,7 @@ export async function renderVideoWithCanvas(
 		const buffer = canvas.toBuffer('image/png')
 		await fs.writeFile(framePath, buffer)
 	}
-	console.log('✅ Overlay frames generated.')
-
+	console.log('✅ Modern overlay frames generated.')
 
 	console.log('🎥 Starting FFmpeg processing...')
 	return new Promise<void>((resolve, reject) => {
@@ -681,16 +947,18 @@ export async function renderVideoWithCanvas(
 			.input(path.join(framesDir, `frame-%06d.png`)) // Input 1: Overlay frames
 			.inputFPS(fps)
 			.complexFilter([
-				// Scale the original video and pad it to the total duration
-				`[0:v]scale=600:338,tpad=stop_mode=clone:stop_duration=${totalDuration}[scaled_video]`,
+				// Scale the original video with modern border radius effect
+				`[0:v]scale=900:506,tpad=stop_mode=clone:stop_duration=${totalDuration}[scaled_video]`,
 				// Take the canvas frames as the main background
 				`[1:v]format=pix_fmts=yuva420p[overlay_bg]`,
 				// Overlay the scaled video on top of the background frames
-				`[overlay_bg][scaled_video]overlay=x=1200:y=50[final_video]`,
+				`[overlay_bg][scaled_video]overlay=x=960:y=40[final_video]`,
 			])
 			.outputOptions([
-                '-map', '[final_video]', // Map the video from the filter
-                '-map', '0:a?', // Map the audio from the first input (videoPath)
+				'-map',
+				'[final_video]',
+				'-map',
+				'0:a?',
 				'-c:v',
 				'libx264',
 				'-c:a',
@@ -698,7 +966,7 @@ export async function renderVideoWithCanvas(
 				'-b:a',
 				'192k',
 				'-pix_fmt',
-				'yuv420p', // Standard pixel format for compatibility
+				'yuv420p',
 				'-t',
 				totalDuration.toString(),
 				'-shortest',
@@ -716,4 +984,52 @@ export async function renderVideoWithCanvas(
 				reject(err)
 			})
 	})
+}
+
+// Helper functions for modern UI elements
+
+function roundRect(
+	ctx: CanvasRenderingContext2D,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	radius: number,
+) {
+	ctx.beginPath()
+	ctx.moveTo(x + radius, y)
+	ctx.lineTo(x + width - radius, y)
+	ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
+	ctx.lineTo(x + width, y + height - radius)
+	ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
+	ctx.lineTo(x + radius, y + height)
+	ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
+	ctx.lineTo(x, y + radius)
+	ctx.quadraticCurveTo(x, y, x + radius, y)
+	ctx.closePath()
+}
+
+function wrapText(
+	ctx: CanvasRenderingContext2D,
+	text: string,
+	maxWidth: number,
+): string[] {
+	const words = text.split(' ')
+	const lines: string[] = []
+	let currentLine = ''
+
+	for (let i = 0; i < words.length; i++) {
+		const testLine = currentLine + words[i] + ' '
+		const metrics = ctx.measureText(testLine)
+		const testWidth = metrics.width
+
+		if (testWidth > maxWidth && i > 0) {
+			lines.push(currentLine.trim())
+			currentLine = words[i] + ' '
+		} else {
+			currentLine = testLine
+		}
+	}
+	lines.push(currentLine.trim())
+	return lines
 }

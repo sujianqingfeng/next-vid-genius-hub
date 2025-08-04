@@ -1,48 +1,48 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "6",
-      "when": 1754154030614,
-      "tag": "0000_boring_junta",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1754214230177,
-      "tag": "0001_useful_blackheart",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1754215925384,
-      "tag": "0002_strange_rumiko_fujikawa",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1754218518484,
-      "tag": "0003_illegal_wendigo",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1754218768547,
-      "tag": "0004_narrow_beast",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1754228575342,
-      "tag": "0005_cool_bulldozer",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "6",
+			"when": 1754154030614,
+			"tag": "0000_boring_junta",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "6",
+			"when": 1754214230177,
+			"tag": "0001_useful_blackheart",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1754215925384,
+			"tag": "0002_strange_rumiko_fujikawa",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "6",
+			"when": 1754218518484,
+			"tag": "0003_illegal_wendigo",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "6",
+			"when": 1754218768547,
+			"tag": "0004_narrow_beast",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "6",
+			"when": 1754228575342,
+			"tag": "0005_cool_bulldozer",
+			"breakpoints": true
+		}
+	]
 }

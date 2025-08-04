@@ -83,3 +83,7 @@ lib/                   # Utilities and shared logic
 - Prefer async/await over promises
 - Use descriptive variable and function names
 - Add JSDoc comments for complex functions
+
+### Testing
+- Use `pnpm dlx vitest run xxx` to run specific test files
+- Use `pnpm test` to run all tests

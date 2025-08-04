@@ -1,10 +1,6 @@
 'use client'
 
-import {
-	ChevronLeft,
-	ChevronRight,
-	Download,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
