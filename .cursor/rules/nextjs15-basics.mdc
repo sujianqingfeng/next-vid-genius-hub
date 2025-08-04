@@ -87,3 +87,7 @@ lib/                   # Utilities and shared logic
 ### Testing
 - Use `pnpm dlx vitest run xxx` to run specific test files
 - Use `pnpm test` to run all tests
+
+### Linting
+- Use `pnpm lint --file [file-path]` to lint specific files instead of the entire codebase
+- Example: `pnpm lint --file components/ui/button.tsx`

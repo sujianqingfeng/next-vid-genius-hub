@@ -128,7 +128,7 @@ orpc/
 - **Error Handling**: Use React Error Boundaries for query errors
 
 ### Linting and Formatting
-- **ESLint**: Use for code quality and error detection
+- **ESLint**: Use for code quality and error detection. Lint specific files with `pnpm lint --file [file-path]` instead of the entire codebase
 - **Biome**: Use for consistent code formatting
 - **TypeScript**: Strict mode enabled with comprehensive type checking
 
