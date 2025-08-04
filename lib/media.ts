@@ -933,7 +933,7 @@ export async function renderVideoWithCanvas(
 				// Take the canvas frames as the main background
 				`[1:v]format=pix_fmts=yuva420p[overlay_bg]`,
 				// Overlay the scaled video on top of the background frames
-				`[overlay_bg][scaled_video]overlay=x=960:y=40[final_video]`,
+				`[overlay_bg][scaled_video]overlay=x=950:y=30[final_video]`,
 			])
 			.outputOptions([
 				'-map',
