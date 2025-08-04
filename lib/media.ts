@@ -530,6 +530,8 @@ interface VideoInfo {
 	viewCount: number
 	author?: string
 	thumbnail?: string
+	series?: string
+	seriesEpisode?: number
 }
 
 interface Comment {
@@ -540,6 +542,8 @@ interface Comment {
 	translatedContent?: string
 	likes: number
 	replyCount?: number
+	source?: 'youtube' | 'tiktok' | 'twitter' | 'instagram' | 'weibo'
+	platform?: string
 }
 
 /**
@@ -794,6 +798,284 @@ export function renderCommentCard(
 }
 
 /**
+ * Render external comment card with platform-specific styling
+ */
+export function renderExternalCommentCard(
+	ctx: CanvasRenderingContext2D,
+	comment: Comment,
+	_commentIndex: number,
+	_totalComments: number,
+	authorImage: CanvasImageSource | null,
+	width: number,
+	_height: number,
+): void {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	void _height
+	// Position comment card below the header/video area
+	const headerAreaHeight = 506
+	const headerAreaBottom = 30 + headerAreaHeight
+	const commentSpacing = 20
+	const commentY = headerAreaBottom + commentSpacing
+
+	// Calculate required comment height dynamically
+	const avatarX = 60
+	const avatarRadius = 35
+	const textX = avatarX + avatarRadius * 2 + 40
+	const maxCommentWidth = width - textX - 200
+	const padding = 20
+
+	// Set font for text measurement
+	ctx.font = '28px "Noto Sans SC"'
+	
+	// Calculate content heights
+	let totalContentHeight = 0
+	const authorHeight = 40
+	const platformHeight = 25
+	const counterHeight = 25
+	const spacing = 15
+
+	totalContentHeight += authorHeight + spacing
+	totalContentHeight += platformHeight + spacing
+
+	// Calculate content height
+	const wrappedContent = wrapText(ctx, comment.content, maxCommentWidth)
+	const contentHeight = wrappedContent.length * 32
+	totalContentHeight += contentHeight + spacing
+
+	// Calculate translated content height (if different from original)
+	let translatedHeight = 0
+	let wrappedTranslated: string[] = []
+	if (comment.translatedContent && comment.translatedContent !== comment.content) {
+		ctx.font = 'bold 40px "Noto Sans SC"'
+		wrappedTranslated = wrapText(ctx, comment.translatedContent, maxCommentWidth)
+		translatedHeight = wrappedTranslated.length * 45
+		totalContentHeight += translatedHeight + spacing
+	}
+
+	totalContentHeight += counterHeight + padding
+
+	// Calculate final comment card height
+	const commentHeight = totalContentHeight
+
+	// Get platform-specific colors
+	const platformColors = getPlatformColors(comment.source || comment.platform)
+
+	// Comment card background with platform-specific styling
+	ctx.fillStyle = platformColors.backgroundColor
+	roundRect(ctx, 20, commentY, width - 40, commentHeight, 12)
+	ctx.fill()
+
+	// Comment card border with platform color
+	ctx.strokeStyle = platformColors.borderColor
+	ctx.lineWidth = 2
+	roundRect(ctx, 20, commentY, width - 40, commentHeight, 12)
+	ctx.stroke()
+
+	// Platform indicator bar
+	ctx.fillStyle = platformColors.accentColor
+	roundRect(ctx, 20, commentY, width - 40, 4, 2)
+	ctx.fill()
+
+	// Avatar
+	const avatarY = commentY + 30
+
+	if (authorImage) {
+		ctx.save()
+		ctx.beginPath()
+		ctx.arc(
+			avatarX + avatarRadius,
+			avatarY + avatarRadius,
+			avatarRadius,
+			0,
+			Math.PI * 2,
+		)
+		ctx.closePath()
+		ctx.clip()
+		ctx.drawImage(
+			authorImage,
+			avatarX,
+			avatarY,
+			avatarRadius * 2,
+			avatarRadius * 2,
+		)
+		ctx.restore()
+	} else {
+		// Fallback avatar with platform color
+		ctx.fillStyle = platformColors.accentColor
+		ctx.beginPath()
+		ctx.arc(
+			avatarX + avatarRadius,
+			avatarY + avatarRadius,
+			avatarRadius,
+			0,
+			Math.PI * 2,
+		)
+		ctx.fill()
+		
+		ctx.fillStyle = '#FFFFFF'
+		ctx.font = 'bold 32px "Noto Sans SC"'
+		ctx.textAlign = 'center'
+		ctx.textBaseline = 'middle'
+		ctx.fillText(
+			comment.author.charAt(0).toUpperCase(),
+			avatarX + avatarRadius,
+			avatarY + avatarRadius,
+		)
+	}
+
+	// Comment content
+	ctx.textAlign = 'left'
+	ctx.textBaseline = 'top'
+
+	let currentY = avatarY + 10
+
+	// Author name
+	ctx.fillStyle = platformColors.textColor
+	ctx.font = 'bold 32px "Noto Sans SC"'
+	ctx.textAlign = 'left'
+	ctx.fillText(comment.author, textX, currentY)
+	
+	// Platform indicator
+	currentY += authorHeight + spacing
+	ctx.fillStyle = platformColors.accentColor
+	ctx.font = '20px "Noto Sans SC"'
+	const platformText = getPlatformDisplayName(comment.source || comment.platform)
+	ctx.fillText(platformText, textX, currentY)
+	
+	// Reset text alignment for content
+	ctx.textAlign = 'left'
+	currentY += platformHeight + spacing
+
+	// Original content
+	ctx.fillStyle = platformColors.contentColor
+	ctx.font = '24px "Noto Sans SC"'
+	wrappedContent.forEach((line, index) => {
+		ctx.fillText(line, textX, currentY + index * 32)
+	})
+	currentY += wrappedContent.length * 32 + spacing
+
+	// Translated content (if available)
+	if (comment.translatedContent && comment.translatedContent !== comment.content) {
+		ctx.fillStyle = platformColors.textColor
+		ctx.font = 'bold 40px "Noto Sans SC"'
+		wrappedTranslated.forEach((line, index) => {
+			ctx.fillText(line, textX, currentY + index * 45)
+		})
+		currentY += wrappedTranslated.length * 36 + spacing
+	}
+
+	// Likes with platform-specific styling
+	ctx.fillStyle = platformColors.accentColor
+	ctx.font = '24px "Noto Sans SC"'
+	ctx.textAlign = 'right'
+	const likesX = width - 60
+	const likesIcon = getPlatformLikesIcon(comment.source || comment.platform)
+	ctx.fillText(`${likesIcon} ${formatLikes(comment.likes)}`, likesX, currentY)
+}
+
+/**
+ * Get platform-specific colors for external comments
+ */
+function getPlatformColors(source?: string): {
+	backgroundColor: string
+	borderColor: string
+	accentColor: string
+	textColor: string
+	contentColor: string
+} {
+	switch (source?.toLowerCase()) {
+		case 'youtube':
+			return {
+				backgroundColor: '#FFFBFB',
+				borderColor: '#FF0000',
+				accentColor: '#FF0000',
+				textColor: '#000000',
+				contentColor: '#333333'
+			}
+		case 'tiktok':
+			return {
+				backgroundColor: '#000000',
+				borderColor: '#00F2EA',
+				accentColor: '#00F2EA',
+				textColor: '#FFFFFF',
+				contentColor: '#FFFFFF'
+			}
+		case 'twitter':
+			return {
+				backgroundColor: '#F7F9FA',
+				borderColor: '#1DA1F2',
+				accentColor: '#1DA1F2',
+				textColor: '#000000',
+				contentColor: '#333333'
+			}
+		case 'instagram':
+			return {
+				backgroundColor: '#FAFAFA',
+				borderColor: '#E4405F',
+				accentColor: '#E4405F',
+				textColor: '#000000',
+				contentColor: '#333333'
+			}
+		case 'weibo':
+			return {
+				backgroundColor: '#F8F8F8',
+				borderColor: '#E6162D',
+				accentColor: '#E6162D',
+				textColor: '#000000',
+				contentColor: '#333333'
+			}
+		default:
+			return {
+				backgroundColor: '#F9F9F9',
+				borderColor: '#666666',
+				accentColor: '#666666',
+				textColor: '#000000',
+				contentColor: '#333333'
+			}
+	}
+}
+
+/**
+ * Get platform display name
+ */
+function getPlatformDisplayName(source?: string): string {
+	switch (source?.toLowerCase()) {
+		case 'youtube':
+			return 'YouTube'
+		case 'tiktok':
+			return 'TikTok'
+		case 'twitter':
+			return 'Twitter'
+		case 'instagram':
+			return 'Instagram'
+		case 'weibo':
+			return '微博'
+		default:
+			return source || 'External'
+	}
+}
+
+/**
+ * Get platform-specific likes icon
+ */
+function getPlatformLikesIcon(source?: string): string {
+	switch (source?.toLowerCase()) {
+		case 'youtube':
+			return '👍'
+		case 'tiktok':
+			return '❤️'
+		case 'twitter':
+			return '❤️'
+		case 'instagram':
+			return '❤️'
+		case 'weibo':
+			return '❤️'
+		default:
+			return '❤️'
+	}
+}
+
+/**
  * Render progress bar
  */
 export function renderProgressBar(ctx: CanvasRenderingContext2D, width: number, height: number, progress: number): void {
@@ -979,15 +1261,15 @@ export async function renderVideoWithCanvas(
 }
 
 /**
- * Render video cover section with author, Chinese title, and real comments
+ * Render video cover section with author and Chinese title
  * This section appears for the first 3 seconds of the video
  */
 async function renderCoverSection(
 	ctx: CanvasRenderingContext2D,
 	videoInfo: VideoInfo,
-	comments: Comment[],
+	_comments: Comment[],
 	currentTime: number,
-	coverDuration: number,
+	_coverDuration: number,
 	width: number,
 	height: number,
 ): Promise<void> {
@@ -1019,64 +1301,28 @@ async function renderCoverSection(
 	const authorText = videoInfo.author || 'Unknown Author'
 	ctx.fillStyle = '#FFD700'
 	ctx.font = 'bold 48px "Noto Sans SC"'
-	ctx.fillText(`创作者: ${authorText}`, width / 2, authorY)
+	ctx.fillText(`来源: ${authorText}`, width / 2, authorY)
+
+	// Series section
+	let seriesY = authorY + 60
+	if (videoInfo.series) {
+		ctx.fillStyle = '#CCCCCC'
+		ctx.font = '36px "Noto Sans SC"'
+		const seriesText = videoInfo.seriesEpisode 
+			? `${videoInfo.series} 第${videoInfo.seriesEpisode}集`
+			: videoInfo.series
+		ctx.fillText(seriesText, width / 2, seriesY)
+		seriesY += 50
+	}
 
 	// View count
-	const viewY = authorY + 60
+	const viewY = seriesY
 	ctx.fillStyle = '#CCCCCC'
 	ctx.font = '32px "Noto Sans SC"'
 	ctx.fillText(`${formatViewCount(videoInfo.viewCount)} 次观看`, width / 2, viewY)
 
-	// Real comments section
-	const commentsY = viewY + 80
-	ctx.fillStyle = '#FFFFFF'
-	ctx.font = 'bold 36px "Noto Sans SC"'
-	ctx.fillText('网友真实评论:', width / 2, commentsY)
-
-	// Display top 3 comments
-	const topComments = comments.slice(0, 3)
-	const commentStartY = commentsY + 60
 	
-	topComments.forEach((comment, index) => {
-		const commentY = commentStartY + index * 100
-		
-		// Comment author
-		ctx.fillStyle = '#FFD700'
-		ctx.font = 'bold 28px "Noto Sans SC"'
-		ctx.textAlign = 'left'
-		ctx.fillText(`@${comment.author}:`, 200, commentY)
-		
-		// Comment content (prefer Chinese translation if available)
-		const commentContent = comment.translatedContent || comment.content
-		ctx.fillStyle = '#FFFFFF'
-		ctx.font = '24px "Noto Sans SC"'
-		
-		// Truncate long comments
-		const truncatedContent = commentContent.length > 50 
-			? commentContent.substring(0, 50) + '...' 
-			: commentContent
-		
-		ctx.fillText(truncatedContent, 200 + ctx.measureText(`@${comment.author}: `).width + 10, commentY)
-		
-		// Likes
-		ctx.fillStyle = '#FF6B6B'
-		ctx.textAlign = 'right'
-		ctx.fillText(`❤️ ${formatLikes(comment.likes)}`, width - 200, commentY)
-	})
-
-	// Animated progress bar at bottom
-	const progress = currentTime / coverDuration
-	const progressBarY = height - 20
-	const progressBarHeight = 4
 	
-	// Progress bar background
-	ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
-	ctx.fillRect(100, progressBarY, width - 200, progressBarHeight)
-	
-	// Progress bar fill
-	ctx.fillStyle = '#FFD700'
-	ctx.fillRect(100, progressBarY, (width - 200) * progress, progressBarHeight)
-
 	// Decorative elements
 	const time = currentTime * Math.PI * 2 // Convert to radians for animation
 	

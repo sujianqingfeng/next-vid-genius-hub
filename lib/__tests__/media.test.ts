@@ -6,6 +6,7 @@ import {
 	renderBackground,
 	renderCommentCard,
 	renderCoverSection,
+	renderExternalCommentCard,
 	renderHeader,
 	renderProgressBar,
 	renderVideoArea,
@@ -25,6 +26,8 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 			viewCount: 1250000,
 			author: 'Test Creator',
 			thumbnail: 'https://example.com/thumbnail.jpg',
+			series: '技术分享系列',
+			seriesEpisode: 5,
 		}
 
 		// Mock comments data with various scenarios
@@ -38,6 +41,7 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 				translatedContent: '这是一个很棒的视频！真的很喜欢看。',
 				likes: 1250,
 				replyCount: 15,
+				source: 'youtube' as const,
 			},
 			{
 				id: 'comment2',
@@ -48,6 +52,7 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 				translatedContent: '感谢分享这个内容。非常有信息量！',
 				likes: 856,
 				replyCount: 8,
+				source: 'tiktok' as const,
 			},
 			{
 				id: 'comment3',
@@ -58,6 +63,7 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 				translatedContent: '做得很好！期待更多这样的视频。',
 				likes: 432,
 				replyCount: 3,
+				source: 'twitter' as const,
 			},
 			{
 				id: 'comment4',
@@ -68,6 +74,7 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 				translatedContent: '这对我帮助很大。谢谢！',
 				likes: 298,
 				replyCount: 1,
+				source: 'instagram' as const,
 			},
 			{
 				id: 'comment5',
@@ -78,6 +85,7 @@ describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
 				translatedContent: '解释得很棒。非常清晰易懂。',
 				likes: 567,
 				replyCount: 6,
+				source: 'weibo' as const,
 			},
 		]
 
@@ -473,8 +481,10 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 			'✅ Bilingual comment display demonstration saved to test_bilingual_comments.png',
 		)
 
-		// 11. Test cover section with author, Chinese title, and real comments
-		console.log('📋 Testing cover section with author, Chinese title, and real comments...')
+		// 11. Test cover section with author and Chinese title (without progress bar, comment list, or real comments)
+		console.log(
+			'📋 Testing cover section with author and Chinese title (no progress bar, no comment list, no real comments)...',
+		)
 		const coverCanvas = createCanvas(1920, 1080)
 		const coverCtx = coverCanvas.getContext('2d')
 
@@ -485,7 +495,7 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 				author: 'MovieFan2023',
 				authorThumbnail:
 					'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-				content: 'This is absolutely amazing! Best video I\'ve seen this year.',
+				content: "This is absolutely amazing! Best video I've seen this year.",
 				translatedContent: '这太棒了！今年看过的最好的视频。',
 				likes: 2560,
 				replyCount: 45,
@@ -513,7 +523,15 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 		]
 
 		// Test cover section at different time points for animation
-		await renderCoverSection(coverCtx, videoInfo, coverComments, 1.5, 3, 1920, 1080)
+		await renderCoverSection(
+			coverCtx,
+			videoInfo,
+			coverComments,
+			1.5,
+			3,
+			1920,
+			1080,
+		)
 
 		// Add time indicator
 		coverCtx.fillStyle = '#FFD700'
@@ -557,7 +575,125 @@ describe('Individual Rendering Functions - Unit Tests', () => {
 			'   - test_bilingual_comments.png: Bilingual comment display (English first, Chinese below with enhanced styling)',
 		)
 		console.log(
-			'   - test_cover_section.png: Video cover section with author, Chinese title, and real comments',
+			'   - test_cover_section.png: Video cover section with author and Chinese title (no progress bar, no comment list, no real comments)',
+		)
+		console.log(
+			'   - test_external_comments.png: External comment cards with platform-specific styling (YouTube, TikTok, Twitter)',
+		)
+		console.log(
+			'   - test_cover_series.png: Cover section with series information (来源 + 技术分享系列 第5集)',
+		)
+
+		// 12. Test external comment cards with platform-specific styling
+		console.log(
+			'📋 Testing external comment cards with platform-specific styling...',
+		)
+		const externalCanvas = createCanvas(1920, 1080)
+		const externalCtx = externalCanvas.getContext('2d')
+		renderBackground(externalCtx, 1920, 1080)
+
+		// Create external comments from different platforms
+		const externalComments = [
+			{
+				id: 'youtube_comment',
+				author: 'YouTubeFan',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+				content: 'Awesome video! Subscribed and liked!',
+				translatedContent: '很棒的视频！已订阅和点赞！',
+				likes: 15420,
+				source: 'youtube' as const,
+			},
+			{
+				id: 'tiktok_comment',
+				author: 'TikTokUser',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+				content: 'This is trending! 🔥',
+				translatedContent: '这个正在热门！🔥',
+				likes: 8930,
+				source: 'tiktok' as const,
+			},
+			{
+				id: 'twitter_comment',
+				author: 'TwitterFollower',
+				authorThumbnail:
+					'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+				content: 'Great thread! Very informative.',
+				translatedContent: '很棒的推文！很有信息量。',
+				likes: 567,
+				source: 'twitter' as const,
+			},
+		]
+
+		// Render header first
+		renderHeader(externalCtx, videoInfo, 3)
+		renderVideoArea(externalCtx, 950, 30, 900, 506)
+
+		// Render external comments
+		externalComments.forEach((comment, index) => {
+			// For testing, we'll stack them vertically with some spacing
+			if (index === 0) {
+				renderExternalCommentCard(
+					externalCtx,
+					comment,
+					index,
+					externalComments.length,
+					null,
+					1920,
+					1080,
+				)
+			}
+		})
+
+		// Add platform labels
+		externalCtx.fillStyle = '#000000'
+		externalCtx.font = '16px Arial'
+		externalCtx.textAlign = 'left'
+		externalCtx.fillText(
+			'External Comment Cards - Platform-specific styling',
+			50,
+			570,
+		)
+		externalCtx.fillText(
+			'YouTube (red theme) • TikTok (black+teal) • Twitter (blue theme)',
+			50,
+			590,
+		)
+
+		const externalBuffer = externalCanvas.toBuffer('image/png')
+		fs.writeFileSync(
+			path.join(__dirname, 'test_external_comments.png'),
+			externalBuffer,
+		)
+		console.log(
+			'✅ External comment cards demonstration saved to test_external_comments.png',
+		)
+
+		// 13. Test cover section with series information
+		console.log('📋 Testing cover section with series information...')
+		const seriesCanvas = createCanvas(1920, 1080)
+		const seriesCtx = seriesCanvas.getContext('2d')
+
+		await renderCoverSection(seriesCtx, videoInfo, [], 1.5, 3, 1920, 1080)
+
+		// Add series information indicator
+		seriesCtx.fillStyle = '#FFD700'
+		seriesCtx.font = 'bold 24px Arial'
+		seriesCtx.textAlign = 'right'
+		seriesCtx.fillText(
+			'Cover Section with Series Info - 来源 + 技术分享系列 第5集',
+			1900,
+			50,
+		)
+
+		const seriesBuffer = seriesCanvas.toBuffer('image/png')
+		fs.writeFileSync(
+			path.join(__dirname, 'test_cover_series.png'),
+			seriesBuffer,
+		)
+		console.log(
+			'✅ Cover section with series information saved to test_cover_series.png',
 		)
 
 		expect(true).toBe(true)
