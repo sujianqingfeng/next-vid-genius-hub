@@ -661,37 +661,17 @@ export async function renderCommentCard(
 	})
 
 	// Add likes on the right side of the comment card
-	ctx.textAlign = 'right'
-	const likesX = width - 60 // Position likes on the right side
-
 	// Only show likes if count is greater than 0
 	if (comment.likes > 0) {
-		// Render emoji and text separately for better spacing control
-		const emojiX = likesX - 90 // Position emoji first
-		const textX = likesX - 15 // Position text with proper spacing
+		// Position likes on the right side with proper spacing
+		const likesX = width - 60
+		const likesY = currentY + 12 // Adjust Y position for better vertical alignment
 
-		// Adjust Y position for better vertical alignment
-		const adjustedY = currentY + 12 // Move down more for better centering
-
-		// Render emoji
-		await fillTextWithEmojis(ctx, '👍', emojiX, adjustedY, {
-			font: '24px "Noto Sans SC"',
-			fillStyle: '#6b7280',
-			emojiSize: 24,
+		// Render like count with SVG icon
+		renderLikeCount(ctx, likesX - 80, likesY, comment.likes, {
+			size: 24,
+			color: '#6b7280',
 		})
-
-		// Render text
-		await fillTextWithEmojis(
-			ctx,
-			formatLikes(comment.likes),
-			textX,
-			adjustedY,
-			{
-				font: '24px "Noto Sans SC"',
-				fillStyle: '#6b7280',
-				emojiSize: 24,
-			},
-		)
 	}
 
 	// Reset text alignment for content
@@ -738,8 +718,8 @@ export async function renderCommentCard(
 	// Comment counter removed - no longer needed
 }
 
-// Export the new cover section function for testing
-export { renderCoverSection }
+// Export functions for testing
+export { renderCoverSection, renderLikeIcon, renderLikeCount }
 
 export async function renderVideoWithCanvas(
 	videoPath: string,
@@ -1060,4 +1040,136 @@ function wrapText(
 	}
 
 	return lines
+}
+
+/**
+ * SVG-based like icon rendering utilities
+ */
+interface LikeIconOptions {
+	size?: number
+	color?: string
+	strokeWidth?: number
+	filled?: boolean // Whether to render filled or outlined icon
+}
+
+/**
+ * Render a thumbs up SVG icon directly on canvas
+ */
+function renderLikeIcon(
+	ctx: CanvasContext,
+	x: number,
+	y: number,
+	options: LikeIconOptions = {},
+): void {
+	const {
+		size = 24,
+		color = '#6b7280',
+		strokeWidth = 2,
+		filled = true,
+	} = options
+
+	// Professional thumbs up icon using Carbon by IBM SVG path
+	// This provides a more modern and polished look
+	const scale = size / 32 // Scale based on 32x32 viewBox
+	const scaledStrokeWidth = strokeWidth / scale
+
+	// Draw the professional thumbs up icon
+	ctx.save()
+	ctx.translate(x, y)
+	ctx.scale(scale, scale)
+
+	// Draw the Carbon by IBM thumbs up icon using basic canvas operations
+	// This approach is compatible with all environments including tests
+	ctx.beginPath()
+
+	// Main thumb shape (simplified version of the SVG path)
+	// Base rectangle
+	ctx.moveTo(2, 16)
+	ctx.lineTo(7, 16)
+	ctx.lineTo(7, 30)
+	ctx.lineTo(2, 30)
+	ctx.closePath()
+
+	// Thumb tip with rounded corners
+	ctx.moveTo(9, 15.2)
+	ctx.lineTo(12.042, 10.637)
+	ctx.lineTo(12.887, 4.72)
+	ctx.quadraticCurveTo(13, 3.5, 14.868, 3)
+	ctx.lineTo(15, 3)
+	ctx.lineTo(18, 3)
+	ctx.lineTo(18, 9)
+	ctx.lineTo(26, 9)
+	ctx.lineTo(30, 9)
+	ctx.lineTo(30, 13)
+	ctx.lineTo(30, 20)
+	ctx.quadraticCurveTo(30, 27, 23, 30)
+	ctx.lineTo(9, 30)
+	ctx.closePath()
+
+	if (filled) {
+		// Fill the icon
+		ctx.fillStyle = color
+		ctx.fill()
+	} else {
+		// Stroke the icon outline
+		ctx.strokeStyle = color
+		ctx.lineWidth = scaledStrokeWidth
+		ctx.stroke()
+	}
+
+	ctx.restore()
+
+	// Set up canvas for icon rendering
+	ctx.save()
+	ctx.translate(x, y)
+	ctx.scale(size / 16, size / 16) // Scale to desired size (16 is base size)
+
+	if (filled) {
+		// Fill the icon
+		ctx.fillStyle = color
+		ctx.fill(path)
+	} else {
+		// Stroke the icon outline
+		ctx.strokeStyle = color
+		ctx.lineWidth = strokeWidth / (size / 16) // Scale stroke width
+		ctx.stroke(path)
+	}
+
+	ctx.restore()
+}
+
+/**
+ * Render like count with SVG icon
+ */
+function renderLikeCount(
+	ctx: CanvasContext,
+	x: number,
+	y: number,
+	count: number,
+	options: LikeIconOptions = {},
+): void {
+	const { size = 24, color = '#6b7280' } = options
+
+	// Carbon icon dimensions in the 32x32 viewBox
+	const iconHeight = 27 // From y=3 to y=30
+	const iconCenterY = 18.5 // Adjusted visual center (moved up from 16.5)
+
+	// Calculate the actual visual center of the scaled icon
+	const scale = size / 32
+	const actualIconCenterY = y + iconCenterY * scale
+
+	// Render the like icon
+	renderLikeIcon(ctx, x, y, { size, color })
+
+	// Render the count text aligned with the icon's visual center
+	const textX = x + size + 8 // 8px spacing between icon and text
+	const textY = actualIconCenterY // Align text with icon's visual center
+
+	ctx.save()
+	ctx.fillStyle = color
+	ctx.font = `${Math.floor(size * 0.75)}px "Noto Sans SC"`
+	ctx.textAlign = 'left'
+	ctx.textBaseline = 'middle'
+	ctx.fillText(formatLikes(count), textX, textY)
+	ctx.restore()
 }
