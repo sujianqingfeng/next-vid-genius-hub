@@ -7,6 +7,7 @@ import {
 	Film,
 	LanguagesIcon,
 	MoreHorizontal,
+	Trash2,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -74,7 +75,21 @@ export default function CommentsPage() {
 		}),
 	)
 
-	const renderMutation = useMutation({
+	const deleteCommentMutation = useMutation(
+	queryOrpc.comment.deleteComment.mutationOptions({
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+			})
+			toast.success('Comment deleted!')
+		},
+		onError: (error) => {
+			toast.error(`Failed to delete comment: ${error.message}`)
+		},
+	}),
+)
+
+const renderMutation = useMutation({
 		...queryOrpc.comment.renderWithInfo.mutationOptions(),
 		onSuccess: () => {
 			toast.success('Video rendering started!')
@@ -302,18 +317,29 @@ export default function CommentsPage() {
 										/>
 									</div>
 									<div className="flex-1 min-w-0">
-										<div className="flex items-center gap-2 mb-2">
-											<p className="font-semibold text-sm truncate">
-												{comment.author}
-											</p>
-											<div className="flex items-center gap-3 text-xs text-muted-foreground">
-												<span className="flex items-center gap-1">
-													👍 {comment.likes}
-												</span>
-												<span className="flex items-center gap-1">
-													💬 {comment.replyCount}
-												</span>
+										<div className="flex items-center justify-between mb-2">
+											<div className="flex items-center gap-2">
+												<p className="font-semibold text-sm truncate">
+													{comment.author}
+												</p>
+												<div className="flex items-center gap-3 text-xs text-muted-foreground">
+													<span className="flex items-center gap-1">
+														👍 {comment.likes}
+													</span>
+													<span className="flex items-center gap-1">
+														💬 {comment.replyCount}
+													</span>
+												</div>
 											</div>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() => deleteCommentMutation.mutate({ mediaId: id, commentId: comment.id })}
+												disabled={deleteCommentMutation.isPending}
+												className="opacity-0 group-hover:opacity-100 transition-opacity"
+											>
+												<Trash2 className="w-4 h-4 text-destructive" />
+											</Button>
 										</div>
 										<div className="space-y-3">
 											<p className="text-sm leading-relaxed">

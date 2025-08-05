@@ -1,5 +1,6 @@
 import type { Innertube } from 'youtubei.js'
 import YTDlpWrap from 'yt-dlp-wrap'
+import { createId } from '@paralleldrive/cuid2'
 
 export async function downloadVideo(
 	url: string,
@@ -27,7 +28,7 @@ const mapYoutubeComment = (item: any) => {
 	// The actual comment data can be nested inside a 'comment' property
 	const comment = item.comment || item
 	return {
-		id: comment.id,
+		id: comment.id || createId(),
 		content: comment.content?.text ?? '',
 		author: comment.author?.name ?? '',
 		likes: Number(comment.like_count || 0),

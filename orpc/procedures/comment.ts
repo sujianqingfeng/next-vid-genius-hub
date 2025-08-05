@@ -6,7 +6,10 @@ import { z } from 'zod'
 import { translateText } from '~/lib/ai'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
-import { renderVideoWithInfoAndComments } from '~/lib/media'
+import {
+	renderVideoWithCanvas,
+	renderVideoWithInfoAndComments,
+} from '~/lib/media'
 import {
 	downloadYoutubeComments,
 	extractVideoId,
@@ -111,6 +114,39 @@ export const translateComments = os
 		return { success: true }
 	})
 
+export const deleteComment = os
+	.input(
+		z.object({
+			mediaId: z.string(),
+			commentId: z.string(),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const { mediaId, commentId } = input
+
+		const media = await db.query.media.findFirst({
+			where: eq(schema.media.id, mediaId),
+		})
+
+		if (!media || !media.comments) {
+			throw new Error('Media or comments not found')
+		}
+
+		// Filter out the comment to delete
+		const updatedComments = media.comments.filter(
+			(comment) => comment.id !== commentId,
+		)
+
+		await db
+			.update(schema.media)
+			.set({
+				comments: updatedComments,
+			})
+			.where(eq(schema.media.id, mediaId))
+
+		return { success: true }
+	})
+
 export const renderWithInfo = os
 	.input(
 		z.object({
@@ -158,7 +194,7 @@ export const renderWithInfo = os
 
 		try {
 			// Render video with info and comments
-			await renderVideoWithInfoAndComments(
+			await renderVideoWithCanvas(
 				media.filePath,
 				outputPath,
 				videoInfo,
