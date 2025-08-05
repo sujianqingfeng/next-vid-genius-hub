@@ -180,6 +180,11 @@ async function fillTextWithEmojis(
 	ctx.font = font
 	ctx.fillStyle = fillStyle
 	
+	// Calculate text baseline for proper emoji alignment
+	const textMetrics = ctx.measureText('Ag') // Use a character with descenders and ascenders
+	const textHeight = textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent
+	const baselineOffset = textMetrics.actualBoundingBoxAscent
+	
 	const parts = splitTextAndEmojis(text)
 	let currentX = x
 	
@@ -190,7 +195,9 @@ async function fillTextWithEmojis(
 		} else if (part.type === 'emoji') {
 			const emojiImage = await getEmojiImage(part.content)
 			if (emojiImage) {
-				ctx.drawImage(emojiImage, currentX, y - emojiSize, emojiSize, emojiSize)
+				// Align emoji with text baseline
+				const emojiY = y - baselineOffset + (textHeight - emojiSize) / 2
+				ctx.drawImage(emojiImage, currentX, emojiY, emojiSize, emojiSize)
 				currentX += emojiSize
 			} else {
 				// Fallback to regular text rendering if emoji image fails to load

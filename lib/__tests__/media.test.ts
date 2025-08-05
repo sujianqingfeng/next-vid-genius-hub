@@ -129,14 +129,14 @@ describe('Video Rendering Pipeline', () => {
 			// A simple check to ensure something was drawn.
 			const pixel = ctx.getImageData(50, 50, 1, 1).data
 			expect(pixel[3]).not.toBe(0) // Check that the pixel is not fully transparent
-		})
+		}, 15000) // 15 second timeout for font loading
 
 		it('should render a comment card with bilingual content', async () => {
 			await renderCommentCard(ctx, mockComments[0], 0, 1, null, 1920, 1080)
 			// A simple check to ensure something was drawn.
 			const pixel = ctx.getImageData(100, 600, 1, 1).data
 			expect(pixel[3]).not.toBe(0)
-		})
+		}, 20000) // 20 second timeout for emoji and font loading
 
 		it('should generate and save visual snapshots of rendering stages', async () => {
 			const fs = await import('fs/promises')
@@ -225,6 +225,6 @@ describe('Video Rendering Pipeline', () => {
 
 			// This is a visual test, so we just assert it runs without errors.
 			expect(true).toBe(true)
-		}, 30000) // 30 second timeout for emoji loading
+		}, 60000) // 60 second timeout for emoji loading and file operations
 	})
 })
