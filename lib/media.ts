@@ -764,26 +764,7 @@ function getPlatformLikesIcon(source?: string): string {
 	}
 }
 
-/**
- * Render progress bar
- */
-export function renderProgressBar(
-	ctx: CanvasContext,
-	width: number,
-	height: number,
-	progress: number,
-): void {
-	const progressHeight = 3
-	const progressY = height - progressHeight - 20
 
-	// Progress bar background
-	ctx.fillStyle = '#E0E0E0'
-	ctx.fillRect(20, progressY, width - 40, progressHeight)
-
-	// Progress bar fill
-	ctx.fillStyle = '#666666'
-	ctx.fillRect(20, progressY, (width - 40) * progress, progressHeight)
-}
 
 /**
  * Generate a single frame for testing purposes
@@ -824,7 +805,6 @@ export function generateTestFrame(
 		height,
 	)
 
-	// Progress bar removed - no longer needed
 
 	return canvas.toBuffer('image/png')
 }
@@ -923,7 +903,7 @@ export async function renderVideoWithCanvas(
 			}
 		}
 
-		// Progress bar removed - no longer needed
+		
 
 		const framePath = path.join(
 			framesDir,

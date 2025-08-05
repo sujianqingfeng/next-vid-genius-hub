@@ -1,112 +1,137 @@
 # GEMINI.md
 
-## Project Overview
+This file provides guidance to Gemini when working with code in this repository.
 
-This is a Next.js project called "Next Vid Genius Hub", a video download and processing platform. It uses Turbopack for development, and the UI is built with React, shadcn/ui, and Tailwind CSS. The backend is powered by oRPC and interacts with a SQLite database via Drizzle ORM. The application allows users to download videos from YouTube and TikTok, and stores media information in the database.
+## Development Commands
 
-## Building and Running
+### Core Development
+- `pnpm dev` - Start development server with Turbopack
+- `pnpm build` - Build for production
+- `pnpm start` - Start production server
+- `pnpm lint` - Run ESLint linting
+- `pnpm test` - Run Vitest tests
 
-### Prerequisites
+### Database Management
+- `pnpm db:generate` - Generate Drizzle database migrations
+- `pnpm db:migrate` - Apply database migrations
+- `pnpm db:studio` - Open Drizzle Studio for database management
 
-- Node.js and pnpm
+## Architecture Overview
 
-### Installation
+### Tech Stack
+- **Framework**: Next.js 15 with App Router and Turbopack
+- **Styling**: Tailwind CSS v4 with shadcn/ui components
+- **Database**: SQLite with Drizzle ORM
+- **RPC**: oRPC for type-safe client-server communication
+- **State Management**: TanStack Query for server state
+- **Video Processing**: yt-dlp-wrap, fluent-ffmpeg for YouTube/media downloads
+- **AI**: Vercel AI SDK with OpenAI integration
+- **Testing**: Vitest
+- **Linting**: Biome + ESLint
 
-```bash
-pnpm install
+### Directory Structure
+```
+app/                    # Next.js App Router
+  (workspace)/          # Workspace route group with sidebar layout
+    media/              # Media library and download pages
+  api/orpc/            # oRPC API endpoints
+components/
+  ui/                  # shadcn/ui base components
+  business/            # Business logic components organized by feature
+  layout/              # Layout components (Header, Footer, etc.)
+  shared/              # Shared components used across features
+  sidebar.tsx          # Main navigation sidebar
+lib/
+  ai/                  # AI integration utilities
+  db/                  # Database schema and connection
+  orpc/               # oRPC client configuration
+  query/              # QueryClient configuration and hydration
+  youtube/            # YouTube download and processing
+  constants.ts        # Environment variables and constants
+orpc/
+  procedures/         # oRPC procedure definitions
+  router.ts          # Main oRPC router
 ```
 
-### Development
+### Key Architectural Patterns
 
-To run the development server:
+#### oRPC Integration
+- Uses oRPC for type-safe API communication between client and server
+- Router defined in `orpc/router.ts` with procedures in `orpc/procedures/`
+- Client configured in `lib/orpc/client.ts` with automatic header forwarding
+- TanStack Query integration via `lib/orpc/query-client.ts`
+- All procedures use lazy loading for better cold start performance
+- Type-safe input/output validation with Zod schemas
 
-```bash
-pnpm dev
-```
+#### Database Schema
+- Single `media` table for storing downloaded video metadata
+- Supports YouTube and TikTok sources with quality options (720p, 1080p)
+- Tracks engagement metrics (views, likes, comments)
+- Stores file paths for both video and extracted audio
+- Database operations centralized in `lib/db/index.ts`
 
-The application will be available at [http://localhost:3000](http://localhost:3000).
+#### Media Processing Pipeline
+- YouTube downloads via `yt-dlp-wrap` in `lib/youtube/download.ts`
+- Audio extraction using `fluent-ffmpeg`
+- Metadata extraction and thumbnail handling
+- Database storage of media records
 
-### Database
+#### UI Patterns
+- Workspace layout with persistent sidebar navigation
+- Paginated media library with loading/error states
+- Download form with real-time progress feedback
+- shadcn/ui components for consistent design system
+- Component organization: base UI in `components/ui/`, business logic in `components/business/`
 
-The project uses Drizzle ORM for database management.
+### Path Aliasing
+- Use `~/` prefix for absolute imports from project root
+- Configured in `tsconfig.json` with `"~/*": ["./*"]`
 
--   **Generate migrations:** `pnpm db:generate`
--   **Apply migrations:** `pnpm db:migrate`
--   **Open Drizzle Studio:** `pnpm db:studio`
+### Environment Setup
+- Database URL configured via `DATABASE_URL` environment variable
+- Local SQLite database at `./local.db` for development
+- Next.js image optimization configured for YouTube thumbnails (`i.ytimg.com`)
+
+## Code Conventions
+
+### Next.js 15 Conventions
+- **Component Structure**: Use functional components with TypeScript
+- **Server Components**: Prefer server components by default, use client components only when necessary
+- **Component Organization**:
+  - Base UI components: `components/ui/` (shadcn components)
+  - Business components: `components/business/` organized by feature
+  - Layout components: `components/layout/`
+  - Shared components: `components/shared/`
+- **Styling**: Use Tailwind CSS utility classes exclusively (no custom CSS)
+- **Icons**: Import from `lucide-react` with PascalCase naming (e.g., `HomeIcon`)
+- **Language**: All user-facing text must be in English
+
+### oRPC Conventions
+- **Procedures**: Define in `orpc/procedures/` with explicit input/output validation
+- **Lazy Loading**: Use `os.lazy()` for all procedure imports to optimize cold start
+- **Context**: Create context in `orpc/context.ts` with database connection and auth
+- **Router**: Define main router in `orpc/router.ts` with nested structure
+- **Middleware**: Apply authentication and logging middleware as needed
+
+### Drizzle ORM Conventions
+- **Schema**: Define all tables in `lib/db/schema.ts`
+- **Database Instance**: Import `db` and `schema` from `~/lib/db`
+- **Queries**: Use `db.query` for selects, `db.insert`/`db.update` for mutations
+- **Type Safety**: Use `.$inferSelect` and `.$inferInsert` for type inference
+- **Migrations**: Generate with `pnpm db:generate`, apply with `pnpm db:migrate`
+
+### TanStack Query Integration
+- **Query Client**: Configure in `lib/query/client.ts` with SSR support
+- **Query Utils**: Create utilities in `lib/orpc/query-client.ts`
+- **Query Keys**: Use oRPC auto-generated keys, avoid manual key creation
+- **Caching**: Set appropriate `staleTime` to prevent unnecessary refetches
+- **Error Handling**: Use React Error Boundaries for query errors
+
+### Linting and Formatting
+- **ESLint**: Use for code quality and error detection. Lint specific files with `pnpm lint --file [file-path]` instead of the entire codebase
+- **Biome**: Use for consistent code formatting
+- **TypeScript**: Strict mode enabled with comprehensive type checking
 
 ### Testing
-
-The project uses vitest for testing.
-
-```bash
-pnpm test
-```
-
-## Project Conventions
-
-### Next.js 15 Project Basics
-
-- **Tech Stack**
-    - **Framework**: Next.js 15 with App Router
-    - **Styling**: Tailwind CSS v4
-    - **Icons**: lucide-react
-    - **Language**: English for all user-facing text
-    - **Component Library**: shadcn/ui
-
-- **Key Conventions**
-    - **Component Structure**: Use functional components with TypeScript, prefer server components, and place components in `components/` with PascalCase naming.
-    - **Styling Guidelines**: Use Tailwind CSS utility classes exclusively, follow a mobile-first approach, and use a consistent spacing scale.
-    - **Component Library Usage**: Use shadcn/ui components as the foundation for all UI elements, and install new components using `pnpm dlx shadcn@latest add [component-name]`.
-    - **File Organization**:
-        ```
-        app/                    # App Router pages
-          (workspace)/          # Route groups for organization
-            page.tsx           # Main page components
-            layout.tsx         # Layout components
-        components/            # Reusable components
-          ui/                  # Base UI components (Button, Input, etc.)
-          business/            # Business logic components organized by feature
-          layout/              # Layout components (Header, Footer, etc.)
-          shared/              # Shared components used across features
-        lib/                   # Utilities and shared logic
-          db/                  # Database schema and queries
-          ai/                  # AI-related utilities
-        ```
-    - **Path Aliasing**: Use `~/*` for absolute imports from the project root.
-
-### oRPC + React Query Integration
-
-- **Query Usage**: Use `useQuery` for basic queries, `useInfiniteQuery` for infinite scrolling, and `useMutation` for making changes. Utilize the `queryOrpc` utility from `~/lib/orpc/query-client.ts`.
-- **Query Keys**: Use the auto-generated keys from the `queryOrpc` utility (e.g., `queryOrpc.media.key()`). Invalidate keys on mutation success to refetch data.
-- **File Organization**:
-    ```
-    lib/
-      orpc/
-        client.ts          # oRPC client configuration
-        query-client.ts    # React Query utility functions (e.g., queryOrpc)
-      query/
-        client.ts          # QueryClient configuration
-        hydration.tsx      # SSR hydration support
-    components/
-      business/
-        media/
-          media-list.tsx   # Component using queries
-          media-form.tsx   # Component using mutations
-    ```
-- **Best Practices**:
-    - Set a reasonable `staleTime` to avoid unnecessary refetching.
-    - Use React Error Boundaries for handling query errors.
-    - Display skeleton components for a better loading experience.
-    - Use optimistic updates in mutations to improve UX.
-
-### Development Conventions
-
--   **UI:** The project uses shadcn/ui components, which are located in `components/ui`. The main dashboard page is at `app/(workspace)/page.tsx`.
--   **API:** The API is built with oRPC, and procedures are defined in the `orpc/procedures` directory. The main router is in `orpc/router.ts`.
-    -   `orpc/procedures/download.ts`: Handles video downloading from YouTube, audio extraction, and database updates.
-    -   `orpc/procedures/media.ts`: Provides a paginated list of media items from the database.
--   **Database:** The database schema is defined in `lib/db/schema.ts`. Drizzle is used for migrations and database access.
--   **Video Downloading:** The `lib/youtube/download.ts` file contains the core video download logic using `yt-dlp-wrap`.
--   **Linting and Formatting:** The project uses ESLint for linting and Biome for formatting.
--   **Styling:** Tailwind CSS is used for styling.
--   **Development Server:** The development server is usually started manually by the developer. Do not start it again if it is already running.
+- Use `pnpm dlx vitest run xxx` to run specific test files
+- Use `pnpm test` to run all tests
