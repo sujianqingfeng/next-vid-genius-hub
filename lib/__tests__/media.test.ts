@@ -124,15 +124,15 @@ describe('Video Rendering Pipeline', () => {
 			expect(pixel).toEqual(new Uint8ClampedArray([255, 255, 255, 255]))
 		})
 
-		it('should render the header section with video metadata', () => {
-			renderHeader(ctx, mockVideoInfo, 5)
+		it('should render the header section with video metadata', async () => {
+			await renderHeader(ctx, mockVideoInfo, 5)
 			// A simple check to ensure something was drawn.
 			const pixel = ctx.getImageData(50, 50, 1, 1).data
 			expect(pixel[3]).not.toBe(0) // Check that the pixel is not fully transparent
 		})
 
-		it('should render a comment card with bilingual content', () => {
-			renderCommentCard(ctx, mockComments[0], 0, 1, null, 1920, 1080)
+		it('should render a comment card with bilingual content', async () => {
+			await renderCommentCard(ctx, mockComments[0], 0, 1, null, 1920, 1080)
 			// A simple check to ensure something was drawn.
 			const pixel = ctx.getImageData(100, 600, 1, 1).data
 			expect(pixel[3]).not.toBe(0)
@@ -146,7 +146,7 @@ describe('Video Rendering Pipeline', () => {
 			const headerCanvas = createCanvas(1920, 1080)
 			const headerCtx = headerCanvas.getContext('2d')
 			renderBackground(headerCtx, 1920, 1080)
-			renderHeader(headerCtx, mockVideoInfo, mockComments.length)
+			await renderHeader(headerCtx, mockVideoInfo, mockComments.length)
 			const headerBuffer = headerCanvas.toBuffer('image/png')
 			await fs.writeFile(
 				path.join(__dirname, 'test_renderHeader.png'),
@@ -158,7 +158,7 @@ describe('Video Rendering Pipeline', () => {
 			const commentCanvas = createCanvas(1920, 1080)
 			const commentCtx = commentCanvas.getContext('2d')
 			renderBackground(commentCtx, 1920, 1080)
-			renderCommentCard(
+			await renderCommentCard(
 				commentCtx,
 				mockComments[0],
 				0,
@@ -178,21 +178,21 @@ describe('Video Rendering Pipeline', () => {
 			const multiCommentCanvas = createCanvas(1920, 1080)
 			const multiCommentCtx = multiCommentCanvas.getContext('2d')
 			renderBackground(multiCommentCtx, 1920, 1080)
-			renderHeader(multiCommentCtx, mockVideoInfo, mockComments.length)
+			await renderHeader(multiCommentCtx, mockVideoInfo, mockComments.length)
 			renderVideoArea(multiCommentCtx, 950, 30, 900, 506)
 			
 			// Render multiple comment cards
-			mockComments.slice(0, 3).forEach((comment, index) => {
-				renderCommentCard(
+			for (let index = 0; index < Math.min(3, mockComments.length); index++) {
+				await renderCommentCard(
 					multiCommentCtx,
-					comment,
+					mockComments[index],
 					index,
 					mockComments.length,
 					null,
 					1920,
 					1080,
 				)
-			})
+			}
 			
 			const multiCommentBuffer = multiCommentCanvas.toBuffer('image/png')
 			await fs.writeFile(
@@ -205,9 +205,9 @@ describe('Video Rendering Pipeline', () => {
 			const combinedCanvas = createCanvas(1920, 1080)
 			const combinedCtx = combinedCanvas.getContext('2d')
 			renderBackground(combinedCtx, 1920, 1080)
-			renderHeader(combinedCtx, mockVideoInfo, mockComments.length)
+			await renderHeader(combinedCtx, mockVideoInfo, mockComments.length)
 			renderVideoArea(combinedCtx, 950, 30, 900, 506)
-			renderCommentCard(
+			await renderCommentCard(
 				combinedCtx,
 				mockComments[1],
 				1,
@@ -225,6 +225,6 @@ describe('Video Rendering Pipeline', () => {
 
 			// This is a visual test, so we just assert it runs without errors.
 			expect(true).toBe(true)
-		})
+		}, 30000) // 30 second timeout for emoji loading
 	})
 })

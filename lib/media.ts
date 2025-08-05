@@ -2,9 +2,233 @@ import { createCanvas, loadImage } from 'canvas'
 import ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
+import https from 'https'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CanvasContext = any
+
+// Emoji rendering utilities
+const EMOJI_REGEX = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}-\u{2454}]|[\u{20D0}-\u{20FF}]|[\u{FE0F}]|[\u{1F900}-\u{1F9FF}]|[\u{1F1E6}-\u{1F1FF}]|[\u{1F191}-\u{1F251}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F171}]|[\u{1F17E}-\u{1F17F}]|[\u{1F18E}]|[\u{3030}]|[\u{2B50}]|[\u{2B55}]|[\u{2934}-\u{2935}]|[\u{2194}-\u{2199}]|[\u{21A9}-\u{21AA}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23EC}]|[\u{23F0}]|[\u{23F3}]|[\u{25FD}-\u{25FE}]|[\u{2614}-\u{2615}]|[\u{2648}-\u{2653}]|[\u{267F}]|[\u{2692}-\u{2697}]|[\u{26A0}-\u{26A1}]|[\u{26AA}-\u{26AB}]|[\u{26B0}-\u{26B1}]|[\u{26BD}-\u{26BE}]|[\u{26C4}-\u{26C5}]|[\u{26CE}]|[\u{26D4}]|[\u{26EA}]|[\u{26F2}-\u{26F3}]|[\u{26F5}]|[\u{26FA}]|[\u{26FD}]|[\u{2705}]|[\u{270A}-\u{270B}]|[\u{2728}]|[\u{274C}]|[\u{274E}]|[\u{2753}-\u{2755}]|[\u{2757}]|[\u{2795}-\u{2797}]|[\u{27B0}]|[\u{27BF}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{2B50}]|[\u{2B55}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F171}]|[\u{1F17E}-\u{1F17F}]|[\u{1F18E}]|[\u{1F191}-\u{1F19A}]|[\u{1F1E6}-\u{1F1FF}]|[\u{1F201}-\u{1F202}]|[\u{1F21A}]|[\u{1F22F}]|[\u{1F232}-\u{1F23A}]|[\u{1F250}-\u{1F251}]|[\u{1F300}-\u{1F321}]|[\u{1F324}-\u{1F393}]|[\u{1F396}-\u{1F397}]|[\u{1F399}-\u{1F39B}]|[\u{1F39E}-\u{1F3F0}]|[\u{1F3F3}-\u{1F3F5}]|[\u{1F3F7}-\u{1F3FA}]|[\u{1F400}-\u{1F4FD}]|[\u{1F4FF}-\u{1F53D}]|[\u{1F549}-\u{1F54E}]|[\u{1F550}-\u{1F567}]|[\u{1F56F}-\u{1F570}]|[\u{1F573}-\u{1F57A}]|[\u{1F587}]|[\u{1F58A}-\u{1F58D}]|[\u{1F590}]|[\u{1F595}-\u{1F596}]|[\u{1F5A4}-\u{1F5A5}]|[\u{1F5A8}]|[\u{1F5B1}-\u{1F5B2}]|[\u{1F5BC}]|[\u{1F5C2}-\u{1F5C4}]|[\u{1F5D1}-\u{1F5D3}]|[\u{1F5DC}-\u{1F5DE}]|[\u{1F5E1}]|[\u{1F5E3}]|[\u{1F5E8}]|[\u{1F5EF}]|[\u{1F5F3}]|[\u{1F5FA}-\u{1F64F}]|[\u{1F680}-\u{1F6C5}]|[\u{1F6CB}-\u{1F6D2}]|[\u{1F6E0}-\u{1F6E5}]|[\u{1F6E9}]|[\u{1F6EB}-\u{1F6EC}]|[\u{1F6F0}]|[\u{1F6F3}-\u{1F6F9}]|[\u{1F910}-\u{1F93A}]|[\u{1F93C}-\u{1F93E}]|[\u{1F940}-\u{1F945}]|[\u{1F947}-\u{1F970}]|[\u{1F973}-\u{1F976}]|[\u{1F97A}]|[\u{1F97C}-\u{1F9A2}]|[\u{1F9B0}-\u{1F9B9}]|[\u{1F9C0}-\u{1F9C2}]|[\u{1F9D0}-\u{1F9FF}]/gu
+
+// Cache for downloaded emoji images
+const emojiCache = new Map<string, any>()
+
+/**
+ * Convert emoji to Twemoji codepoint
+ */
+export function emojiToCodepoint(emoji: string): string {
+	// Handle combined emojis (like ❤️ which is ❤ + U+FE0F)
+	const codePoints: number[] = []
+	
+	for (let i = 0; i < emoji.length; i++) {
+		const codePoint = emoji.codePointAt(i)!
+		codePoints.push(codePoint)
+		
+		// Skip the next character if it's a surrogate pair
+		if (codePoint > 0xFFFF) {
+			i++
+		}
+	}
+	
+	// Filter out variation selectors and other combining characters
+	const filteredCodePoints = codePoints.filter(cp => 
+		cp !== 0xFE0F && // Variation selector
+		cp !== 0x200D && // Zero width joiner
+		cp !== 0x20E3    // Combining enclosing keycap
+	)
+	
+	// Convert to hex string (lowercase for consistency with CDN)
+	return filteredCodePoints
+		.map(cp => cp.toString(16).toLowerCase().padStart(4, '0'))
+		.join('-')
+}
+
+/**
+ * Download emoji image from Twemoji CDN with timeout and better error handling
+ */
+export async function downloadEmojiImage(codepoint: string): Promise<any> {
+	// Skip empty codepoints
+	if (!codepoint || codepoint.trim() === '') {
+		return null
+	}
+
+	// Use the reliable jsDelivr CDN as primary source
+	const urls = [
+		`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${codepoint}.svg`,
+		`https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/${codepoint}.svg`,
+		`https://raw.githubusercontent.com/twitter/twemoji/master/assets/svg/${codepoint}.svg`,
+		`https://twemoji.maxcdn.com/v/latest/svg/${codepoint}.svg`
+	]
+	
+	for (const url of urls) {
+		try {
+			// Add timeout to prevent hanging requests
+			const image = await Promise.race([
+				loadImage(url),
+				new Promise((_, reject) => 
+					setTimeout(() => reject(new Error('Timeout')), 5000)
+				)
+			])
+			return image
+		} catch (error) {
+			// Continue to next URL if this one fails
+			continue
+		}
+	}
+	
+	// If all SVG URLs fail, try with PNG format as fallback
+	const pngUrls = [
+		`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${codepoint}.png`,
+		`https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/${codepoint}.png`,
+		`https://twemoji.maxcdn.com/v/latest/72x72/${codepoint}.png`
+	]
+	
+	for (const url of pngUrls) {
+		try {
+			// Add timeout to prevent hanging requests
+			const image = await Promise.race([
+				loadImage(url),
+				new Promise((_, reject) => 
+					setTimeout(() => reject(new Error('Timeout')), 5000)
+				)
+			])
+			return image
+		} catch (error) {
+			// Continue to next URL if this one fails
+			continue
+		}
+	}
+	
+	// If all URLs fail, return null
+	console.warn(`Failed to load emoji ${codepoint} from all sources`)
+	return null
+}
+
+/**
+ * Get emoji image (from cache or download)
+ */
+async function getEmojiImage(emoji: string): Promise<any> {
+	const codepoint = emojiToCodepoint(emoji)
+	
+	if (emojiCache.has(codepoint)) {
+		return emojiCache.get(codepoint)
+	}
+	
+	const image = await downloadEmojiImage(codepoint)
+	if (image) {
+		emojiCache.set(codepoint, image)
+	}
+	
+	return image
+}
+
+/**
+ * Split text into text and emoji parts
+ */
+function splitTextAndEmojis(text: string): Array<{ type: 'text' | 'emoji', content: string }> {
+	const parts: Array<{ type: 'text' | 'emoji', content: string }> = []
+	let lastIndex = 0
+	
+	for (const match of text.matchAll(EMOJI_REGEX)) {
+		const emoji = match[0]
+		const index = match.index!
+		
+		// Add text before emoji
+		if (index > lastIndex) {
+			parts.push({
+				type: 'text',
+				content: text.slice(lastIndex, index)
+			})
+		}
+		
+		// Add emoji
+		parts.push({
+			type: 'emoji',
+			content: emoji
+		})
+		
+		lastIndex = index + emoji.length
+	}
+	
+	// Add remaining text
+	if (lastIndex < text.length) {
+		parts.push({
+			type: 'text',
+			content: text.slice(lastIndex)
+		})
+	}
+	
+	return parts
+}
+
+/**
+ * Render text with colored emojis
+ */
+async function fillTextWithEmojis(
+	ctx: CanvasContext,
+	text: string,
+	x: number,
+	y: number,
+	options: {
+		font?: string
+		fillStyle?: string
+		emojiSize?: number
+	} = {}
+): Promise<void> {
+	const { font = '24px "Noto Sans SC"', fillStyle = '#000000', emojiSize = 24 } = options
+	
+	ctx.font = font
+	ctx.fillStyle = fillStyle
+	
+	const parts = splitTextAndEmojis(text)
+	let currentX = x
+	
+	for (const part of parts) {
+		if (part.type === 'text') {
+			ctx.fillText(part.content, currentX, y)
+			currentX += ctx.measureText(part.content).width
+		} else if (part.type === 'emoji') {
+			const emojiImage = await getEmojiImage(part.content)
+			if (emojiImage) {
+				ctx.drawImage(emojiImage, currentX, y - emojiSize, emojiSize, emojiSize)
+				currentX += emojiSize
+			} else {
+				// Fallback to regular text rendering if emoji image fails to load
+				ctx.fillText(part.content, currentX, y)
+				currentX += ctx.measureText(part.content).width
+			}
+		}
+	}
+}
+
+/**
+ * Measure text width including emojis
+ */
+async function measureTextWithEmojis(
+	ctx: CanvasContext,
+	text: string,
+	options: {
+		font?: string
+		emojiSize?: number
+	} = {}
+): Promise<number> {
+	const { font = '24px "Noto Sans SC"', emojiSize = 24 } = options
+	
+	ctx.font = font
+	
+	const parts = splitTextAndEmojis(text)
+	let totalWidth = 0
+	
+	for (const part of parts) {
+		if (part.type === 'text') {
+			totalWidth += ctx.measureText(part.content).width
+		} else if (part.type === 'emoji') {
+			totalWidth += emojiSize
+		}
+	}
+	
+	return totalWidth
+}
 
 export async function extractAudio(
 	videoPath: string,
@@ -234,11 +458,11 @@ export function renderVideoArea(
 /**
  * Render header section with video info - vertically aligned with video area
  */
-export function renderHeader(
+export async function renderHeader(
 	ctx: CanvasContext,
 	videoInfo: VideoInfo,
 	commentsCount: number,
-): void {
+): Promise<void> {
 	// Video area position (from generateTestFrame)
 	const videoY = 30
 	const videoH = 506
@@ -282,33 +506,41 @@ export function renderHeader(
 	let currentY = centerY - totalContentHeight / 2
 
 	// Draw title
-	wrappedTitle.forEach((line, index) => {
-		ctx.fillText(line, headerX + 20, currentY + index * 80)
-	})
+	for (let index = 0; index < wrappedTitle.length; index++) {
+		await fillTextWithEmojis(ctx, wrappedTitle[index], headerX + 20, currentY + index * 80, {
+			font: 'bold 56px "Noto Sans SC"',
+			fillStyle: '#000000',
+			emojiSize: 56
+		})
+	}
 
 	currentY += titleHeight + 20
 
 	// Draw metadata
-	ctx.fillStyle = '#666666'
-	ctx.font = '32px "Noto Sans SC"'
 	const viewText = `${formatViewCount(videoInfo.viewCount)} views`
 	const authorText = videoInfo.author || 'Unknown Author'
 	const metadataText = `${viewText} • ${authorText}`
-	ctx.fillText(metadataText, headerX + 20, currentY)
+	await fillTextWithEmojis(ctx, metadataText, headerX + 20, currentY, {
+		font: '32px "Noto Sans SC"',
+		fillStyle: '#666666',
+		emojiSize: 32
+	})
 
 	currentY += metadataHeight + 20
 
 	// Draw comment count
-	ctx.fillStyle = '#666666'
-	ctx.font = '28px "Noto Sans SC"'
 	const engagementText = `${commentsCount} comments`
-	ctx.fillText(engagementText, headerX + 20, currentY)
+	await fillTextWithEmojis(ctx, engagementText, headerX + 20, currentY, {
+		font: '28px "Noto Sans SC"',
+		fillStyle: '#666666',
+		emojiSize: 28
+	})
 }
 
 /**
  * Render comment card with avatar and content - displays both original and translated content
  */
-export function renderCommentCard(
+export async function renderCommentCard(
 	ctx: CanvasContext,
 	comment: Comment,
 	_commentIndex: number,
@@ -318,7 +550,7 @@ export function renderCommentCard(
 	width: number,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	_height: number,
-): void {
+): Promise<void> {
 	// Position comment card right below the header/video area
 	const headerAreaHeight = 506 // Same as videoH
 	const headerAreaBottom = 30 + headerAreaHeight // videoY + videoH
@@ -435,28 +667,34 @@ export function renderCommentCard(
 	let currentY = avatarY + 10
 
 	// Author name
-	ctx.fillStyle = '#000000'
-	ctx.font = 'bold 32px "Noto Sans SC"'
 	ctx.textAlign = 'left'
-	ctx.fillText(comment.author, textX, currentY)
+	await fillTextWithEmojis(ctx, comment.author, textX, currentY, {
+		font: 'bold 32px "Noto Sans SC"',
+		fillStyle: '#000000',
+		emojiSize: 32
+	})
 
 	// Add likes on the right side of the comment card
-	ctx.fillStyle = '#e11d48'
-	ctx.font = '24px "Noto Sans SC"'
 	ctx.textAlign = 'right'
 	const likesX = width - 60 // Position likes on the right side
-	ctx.fillText(`❤️ ${formatLikes(comment.likes)}`, likesX, currentY)
+	await fillTextWithEmojis(ctx, `❤️ ${formatLikes(comment.likes)}`, likesX, currentY, {
+		font: '24px "Noto Sans SC"',
+		fillStyle: '#e11d48',
+		emojiSize: 24
+	})
 
 	// Reset text alignment for content
 	ctx.textAlign = 'left'
 	currentY += authorHeight + spacing
 
 	// English content (primary) - original content first
-	ctx.fillStyle = '#666666'
-	ctx.font = '24px "Noto Sans SC"'
-	wrappedOriginal.forEach((line, index) => {
-		ctx.fillText(line, textX, currentY + index * 32)
-	})
+	for (let index = 0; index < wrappedOriginal.length; index++) {
+		await fillTextWithEmojis(ctx, wrappedOriginal[index], textX, currentY + index * 32, {
+			font: '24px "Noto Sans SC"',
+			fillStyle: '#666666',
+			emojiSize: 24
+		})
+	}
 	currentY += wrappedOriginal.length * 32 + spacing
 
 	// Chinese content (secondary, more prominent) - translated content below
@@ -464,11 +702,13 @@ export function renderCommentCard(
 		comment.translatedContent &&
 		comment.translatedContent !== comment.content
 	) {
-		ctx.fillStyle = '#333333'
-		ctx.font = 'bold 40px "Noto Sans SC"' // Larger and bold for Chinese
-		wrappedTranslated.forEach((line, index) => {
-			ctx.fillText(line, textX, currentY + index * 45) // Larger line height
-		})
+		for (let index = 0; index < wrappedTranslated.length; index++) {
+			await fillTextWithEmojis(ctx, wrappedTranslated[index], textX, currentY + index * 45, {
+				font: 'bold 40px "Noto Sans SC"',
+				fillStyle: '#333333',
+				emojiSize: 40
+			})
+		}
 		currentY += wrappedTranslated.length * 36 + spacing
 	}
 
@@ -478,7 +718,7 @@ export function renderCommentCard(
 /**
  * Render external comment card with platform-specific styling
  */
-export function renderExternalCommentCard(
+export async function renderExternalCommentCard(
 	ctx: CanvasContext,
 	comment: Comment,
 	_commentIndex: number,
@@ -486,7 +726,7 @@ export function renderExternalCommentCard(
 	authorImage: CanvasImageSource | null,
 	width: number,
 	_height: number,
-): void {
+): Promise<void> {
 	void _height
 	// Position comment card below the header/video area
 	const headerAreaHeight = 506
@@ -614,30 +854,36 @@ export function renderExternalCommentCard(
 	let currentY = avatarY + 10
 
 	// Author name
-	ctx.fillStyle = platformColors.textColor
-	ctx.font = 'bold 32px "Noto Sans SC"'
 	ctx.textAlign = 'left'
-	ctx.fillText(comment.author, textX, currentY)
+	await fillTextWithEmojis(ctx, comment.author, textX, currentY, {
+		font: 'bold 32px "Noto Sans SC"',
+		fillStyle: platformColors.textColor,
+		emojiSize: 32
+	})
 
 	// Platform indicator
 	currentY += authorHeight + spacing
-	ctx.fillStyle = platformColors.accentColor
-	ctx.font = '20px "Noto Sans SC"'
 	const platformText = getPlatformDisplayName(
 		comment.source || comment.platform,
 	)
-	ctx.fillText(platformText, textX, currentY)
+	await fillTextWithEmojis(ctx, platformText, textX, currentY, {
+		font: '20px "Noto Sans SC"',
+		fillStyle: platformColors.accentColor,
+		emojiSize: 20
+	})
 
 	// Reset text alignment for content
 	ctx.textAlign = 'left'
 	currentY += platformHeight + spacing
 
 	// Original content
-	ctx.fillStyle = platformColors.contentColor
-	ctx.font = '24px "Noto Sans SC"'
-	wrappedContent.forEach((line, index) => {
-		ctx.fillText(line, textX, currentY + index * 32)
-	})
+	for (let index = 0; index < wrappedContent.length; index++) {
+		await fillTextWithEmojis(ctx, wrappedContent[index], textX, currentY + index * 32, {
+			font: '24px "Noto Sans SC"',
+			fillStyle: platformColors.contentColor,
+			emojiSize: 24
+		})
+	}
 	currentY += wrappedContent.length * 32 + spacing
 
 	// Translated content (if available)
@@ -645,21 +891,25 @@ export function renderExternalCommentCard(
 		comment.translatedContent &&
 		comment.translatedContent !== comment.content
 	) {
-		ctx.fillStyle = platformColors.textColor
-		ctx.font = 'bold 40px "Noto Sans SC"'
-		wrappedTranslated.forEach((line, index) => {
-			ctx.fillText(line, textX, currentY + index * 45)
-		})
+		for (let index = 0; index < wrappedTranslated.length; index++) {
+			await fillTextWithEmojis(ctx, wrappedTranslated[index], textX, currentY + index * 45, {
+				font: 'bold 40px "Noto Sans SC"',
+				fillStyle: platformColors.textColor,
+				emojiSize: 40
+			})
+		}
 		currentY += wrappedTranslated.length * 36 + spacing
 	}
 
 	// Likes with platform-specific styling
-	ctx.fillStyle = platformColors.accentColor
-	ctx.font = '24px "Noto Sans SC"'
 	ctx.textAlign = 'right'
 	const likesX = width - 60
 	const likesIcon = getPlatformLikesIcon(comment.source || comment.platform)
-	ctx.fillText(`${likesIcon} ${formatLikes(comment.likes)}`, likesX, currentY)
+	await fillTextWithEmojis(ctx, `${likesIcon} ${formatLikes(comment.likes)}`, likesX, currentY, {
+		font: '24px "Noto Sans SC"',
+		fillStyle: platformColors.accentColor,
+		emojiSize: 24
+	})
 }
 
 /**
@@ -769,7 +1019,7 @@ function getPlatformLikesIcon(source?: string): string {
 /**
  * Generate a single frame for testing purposes
  */
-export function generateTestFrame(
+export async function generateTestFrame(
 	videoInfo: VideoInfo,
 	comment: Comment,
 	commentIndex: number,
@@ -777,7 +1027,7 @@ export function generateTestFrame(
 	authorImage?: CanvasImageSource | null,
 	width: number = 1920,
 	height: number = 1080,
-): Buffer {
+): Promise<Buffer> {
 	const canvas = createCanvas(width, height)
 	const ctx = canvas.getContext('2d')
 
@@ -792,10 +1042,10 @@ export function generateTestFrame(
 	renderVideoArea(ctx, videoX, videoY, videoW, videoH)
 
 	// Render header
-	renderHeader(ctx, videoInfo, totalComments)
+	await renderHeader(ctx, videoInfo, totalComments)
 
 	// Render comment card
-	renderCommentCard(
+	await renderCommentCard(
 		ctx,
 		comment,
 		commentIndex,
@@ -880,7 +1130,7 @@ export async function renderVideoWithCanvas(
 			renderVideoArea(ctx, videoX, videoY, videoW, videoH)
 
 			// Render header
-			renderHeader(ctx, videoInfo, comments.length)
+			await renderHeader(ctx, videoInfo, comments.length)
 
 			// Render comment if applicable
 			if (time >= coverDuration + introDuration) {
@@ -890,7 +1140,7 @@ export async function renderVideoWithCanvas(
 				if (commentIndex < comments.length) {
 					const comment = comments[commentIndex]
 					const authorImage = authorImages[commentIndex]
-					renderCommentCard(
+					await renderCommentCard(
 						ctx,
 						comment,
 						commentIndex,
@@ -1006,44 +1256,48 @@ async function renderCoverSection(
 	let currentY = (height - totalContentHeight) / 2
 
 	// Main title - larger and prominent
-	ctx.fillStyle = '#000000'
-	ctx.font = '600 72px "Noto Sans SC"'
 	ctx.textAlign = 'center'
 	ctx.textBaseline = 'middle'
 
-	wrappedTitle.forEach((line, index) => {
-		ctx.fillText(line, centerX, currentY + index * 80)
-	})
+	for (let index = 0; index < wrappedTitle.length; index++) {
+		await fillTextWithEmojis(ctx, wrappedTitle[index], centerX, currentY + index * 80, {
+			font: '600 72px "Noto Sans SC"',
+			fillStyle: '#000000',
+			emojiSize: 72
+		})
+	}
 
 	currentY += titleHeight + titleGap
 
 	// Author info - larger @ symbol
 	const authorText = videoInfo.author || 'Unknown Author'
-	ctx.fillStyle = '#333333'
-	ctx.font = '500 42px "Noto Sans SC"'
-	ctx.fillText(`@${authorText}`, centerX, currentY)
+	await fillTextWithEmojis(ctx, `@${authorText}`, centerX, currentY, {
+		font: '500 42px "Noto Sans SC"',
+		fillStyle: '#333333',
+		emojiSize: 42
+	})
 
 	currentY += authorHeight + authorGap
 
 	// Series info (if available) - larger
 	if (videoInfo.series) {
-		ctx.fillStyle = '#666666'
-		ctx.font = '400 32px "Noto Sans SC"'
 		const seriesText = videoInfo.seriesEpisode
 			? `${videoInfo.series} 第${videoInfo.seriesEpisode}集`
 			: videoInfo.series
-		ctx.fillText(seriesText, centerX, currentY)
+		await fillTextWithEmojis(ctx, seriesText, centerX, currentY, {
+			font: '400 32px "Noto Sans SC"',
+			fillStyle: '#666666',
+			emojiSize: 32
+		})
 		currentY += seriesHeight + seriesGap
 	}
 
 	// View count - larger
-	ctx.fillStyle = '#666666'
-	ctx.font = '400 28px "Noto Sans SC"'
-	ctx.fillText(
-		`${formatViewCount(videoInfo.viewCount)} 次观看`,
-		centerX,
-		currentY,
-	)
+	await fillTextWithEmojis(ctx, `${formatViewCount(videoInfo.viewCount)} 次观看`, centerX, currentY, {
+		font: '400 28px "Noto Sans SC"',
+		fillStyle: '#666666',
+		emojiSize: 28
+	})
 }
 
 // Helper functions for modern UI elements
@@ -1067,6 +1321,61 @@ function roundRect(
 	ctx.lineTo(x, y + radius)
 	ctx.quadraticCurveTo(x, y, x + radius, y)
 	ctx.closePath()
+}
+
+async function wrapTextWithEmojis(
+	ctx: CanvasContext,
+	text: string,
+	maxWidth: number,
+	options: {
+		font?: string
+		emojiSize?: number
+	} = {}
+): Promise<string[]> {
+	const { font = '24px "Noto Sans SC"', emojiSize = 24 } = options
+	const lines: string[] = []
+	let currentLine = ''
+
+	ctx.font = font
+
+	// Check if text contains Chinese characters
+	const hasChinese = /[\u4e00-\u9fff]/.test(text)
+
+	if (hasChinese) {
+		// For Chinese text, use character-by-character wrapping
+		for (let i = 0; i < text.length; i++) {
+			const char = text[i]
+			const testLine = currentLine + char
+			const testWidth = await measureTextWithEmojis(ctx, testLine, { font, emojiSize })
+
+			if (testWidth > maxWidth && currentLine.length > 0) {
+				lines.push(currentLine)
+				currentLine = char
+			} else {
+				currentLine = testLine
+			}
+		}
+	} else {
+		// For English text, use word-based wrapping
+		const words = text.split(' ')
+		for (let i = 0; i < words.length; i++) {
+			const testLine = currentLine + words[i] + ' '
+			const testWidth = await measureTextWithEmojis(ctx, testLine, { font, emojiSize })
+
+			if (testWidth > maxWidth && i > 0) {
+				lines.push(currentLine.trim())
+				currentLine = words[i] + ' '
+			} else {
+				currentLine = testLine
+			}
+		}
+	}
+
+	if (currentLine.trim()) {
+		lines.push(currentLine.trim())
+	}
+
+	return lines
 }
 
 function wrapText(
