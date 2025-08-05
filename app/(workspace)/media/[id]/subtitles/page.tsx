@@ -130,7 +130,16 @@ export default function SubtitlesPage() {
 	return (
 		<div className="container mx-auto max-w-6xl p-6 space-y-6">
 			{/* Header */}
-			<div className="flex items-center justify-between">
+			<div className="space-y-4">
+				{/* Back Button */}
+				<Button variant="outline" asChild className="mb-4">
+					<Link href={`/media/${mediaId}`}>
+						<ArrowLeft className="h-4 w-4 mr-2" />
+						Back to Video
+					</Link>
+				</Button>
+
+				{/* Breadcrumb and Title */}
 				<div className="space-y-1">
 					<div className="flex items-center gap-2 text-sm text-muted-foreground">
 						<Link
@@ -159,12 +168,6 @@ export default function SubtitlesPage() {
 						Create and translate subtitles for your video in three simple steps
 					</p>
 				</div>
-				<Button variant="outline" asChild>
-					<Link href={`/media/${mediaId}`}>
-						<ArrowLeft className="h-4 w-4 mr-2" />
-						Back to Video
-					</Link>
-				</Button>
 			</div>
 
 			{/* Progress Steps */}

@@ -92,25 +92,6 @@ export default function MediaPage() {
 
 			{/* Main Content */}
 			<div className="container mx-auto px-4 py-8">
-				{/* Stats Section */}
-				{mediaQuery.isSuccess && (
-					<div className="mb-8">
-						<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-							<Card className="bg-card/50">
-								<CardContent className="p-4">
-									<div className="flex items-center gap-2">
-										<Video className="h-4 w-4 text-muted-foreground" />
-										<span className="text-sm font-medium text-muted-foreground">
-											Total Videos
-										</span>
-									</div>
-									<p className="text-2xl font-bold">{total}</p>
-								</CardContent>
-							</Card>
-						</div>
-					</div>
-				)}
-
 				{/* Loading state */}
 				{mediaQuery.isLoading && (
 					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

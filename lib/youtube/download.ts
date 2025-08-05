@@ -1,6 +1,6 @@
+import { createId } from '@paralleldrive/cuid2'
 import type { Innertube } from 'youtubei.js'
 import YTDlpWrap from 'yt-dlp-wrap'
-import { createId } from '@paralleldrive/cuid2'
 
 export async function downloadVideo(
 	url: string,

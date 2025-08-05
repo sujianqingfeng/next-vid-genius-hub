@@ -49,7 +49,7 @@ describe('Video Rendering Pipeline', () => {
 			author: 'User3',
 			authorThumbnail:
 				'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
-			content: 'Wow! This is incredible! 🚀🔥💯 Can\'t wait for more! 👏',
+			content: "Wow! This is incredible! 🚀🔥💯 Can't wait for more! 👏",
 			translatedContent: '哇！这太不可思议了！🚀🔥💯 等不及看更多！👏',
 			likes: 2340,
 			replyCount: 25,
@@ -71,8 +71,10 @@ describe('Video Rendering Pipeline', () => {
 			author: 'EmojiLover',
 			authorThumbnail:
 				'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-			content: 'This video is absolutely fantastic! 🎉🎊🎈 The best content I\'ve seen! 🏆🥇💎',
-			translatedContent: '这个视频绝对太棒了！🎉🎊🎈 我见过的最好的内容！🏆🥇💎',
+			content:
+				"This video is absolutely fantastic! 🎉🎊🎈 The best content I've seen! 🏆🥇💎",
+			translatedContent:
+				'这个视频绝对太棒了！🎉🎊🎈 我见过的最好的内容！🏆🥇💎',
 			likes: 5670,
 			replyCount: 89,
 			source: 'youtube' as const,
@@ -82,10 +84,22 @@ describe('Video Rendering Pipeline', () => {
 			author: 'TechGuru',
 			authorThumbnail:
 				'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-			content: 'Incredible tutorial! 💻⚡️ Learned so much! 📚🧠 Thank you! 🙏🙌',
+			content:
+				'Incredible tutorial! 💻⚡️ Learned so much! 📚🧠 Thank you! 🙏🙌',
 			translatedContent: '令人难以置信的教程！💻⚡️ 学到了很多！📚🧠 谢谢！🙏🙌',
 			likes: 3420,
 			replyCount: 45,
+			source: 'youtube' as const,
+		},
+		{
+			id: 'comment7',
+			author: 'NewUser',
+			authorThumbnail:
+				'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+			content: 'Just posted my first comment! 👋',
+			translatedContent: '刚刚发布了我的第一条评论！👋',
+			likes: 0,
+			replyCount: 0,
 			source: 'youtube' as const,
 		},
 	]
@@ -138,6 +152,13 @@ describe('Video Rendering Pipeline', () => {
 			expect(pixel[3]).not.toBe(0)
 		}, 20000) // 20 second timeout for emoji and font loading
 
+		it('should render a comment card with zero likes without showing like icon', async () => {
+			await renderCommentCard(ctx, mockComments[6], 0, 1, null, 1920, 1080)
+			// A simple check to ensure something was drawn.
+			const pixel = ctx.getImageData(100, 600, 1, 1).data
+			expect(pixel[3]).not.toBe(0)
+		}, 20000) // 20 second timeout for emoji and font loading
+
 		it('should generate and save visual snapshots of rendering stages', async () => {
 			const fs = await import('fs/promises')
 			const path = await import('path')
@@ -172,7 +193,9 @@ describe('Video Rendering Pipeline', () => {
 				path.join(__dirname, 'test_renderCommentCard.png'),
 				commentBuffer,
 			)
-			console.log('✅ Saved comment card snapshot to test_renderCommentCard.png')
+			console.log(
+				'✅ Saved comment card snapshot to test_renderCommentCard.png',
+			)
 
 			// 3. Test multiple comment cards with emoji
 			const multiCommentCanvas = createCanvas(1920, 1080)
@@ -180,7 +203,7 @@ describe('Video Rendering Pipeline', () => {
 			renderBackground(multiCommentCtx, 1920, 1080)
 			await renderHeader(multiCommentCtx, mockVideoInfo, mockComments.length)
 			renderVideoArea(multiCommentCtx, 950, 30, 900, 506)
-			
+
 			// Render multiple comment cards
 			for (let index = 0; index < Math.min(3, mockComments.length); index++) {
 				await renderCommentCard(
@@ -193,7 +216,7 @@ describe('Video Rendering Pipeline', () => {
 					1080,
 				)
 			}
-			
+
 			const multiCommentBuffer = multiCommentCanvas.toBuffer('image/png')
 			await fs.writeFile(
 				path.join(__dirname, 'test_multi_comments.png'),
