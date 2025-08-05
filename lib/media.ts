@@ -3,6 +3,9 @@ import ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CanvasContext = any
+
 export async function extractAudio(
 	videoPath: string,
 	audioPath: string,
@@ -63,17 +66,22 @@ async function convertWebVttToAss(vttPath: string): Promise<string> {
 			let eng = ''
 			let zh = ''
 			// read following lines until blank
+			// Parse bilingual content: first line is English, second line is Chinese
+			let lineCount = 0
 			for (let j = i + 1; j < lines.length; j++) {
 				if (!lines[j].trim()) {
 					i = j
 					break
 				}
-				const line = lines[j]
-				if (line.trim().startsWith('-')) {
-					zh += (zh ? '\n' : '') + line.replace(/^\s*-\s*/, '')
-				} else {
-					eng += (eng ? '\n' : '') + line.trim()
+				const line = lines[j].trim()
+				if (lineCount === 0) {
+					// First line after timestamp is English
+					eng += (eng ? '\n' : '') + line
+				} else if (lineCount === 1) {
+					// Second line after timestamp is Chinese
+					zh += (zh ? '\n' : '') + line
 				}
+				lineCount++
 			}
 			events.push({ start, end, eng, zh })
 		}
@@ -85,8 +93,8 @@ async function convertWebVttToAss(vttPath: string): Promise<string> {
 		`[V4+ Styles]\n` +
 		'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, ' +
 		'Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n' +
-		'Style: Chinese,Noto Sans SC,60,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,30,1\n' +
-		'Style: English,Noto Sans,36,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,60,1\n\n' // Добавлен комментарий для ясности
+		'Style: Chinese,Noto Sans SC,60,&H00FFFF00,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,30,1\n' +
+		'Style: English,Noto Sans,36,&H00FFFF00,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,60,1\n\n' // Добавлен комментарий для ясности
 
 	ass += `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`
 
@@ -549,7 +557,7 @@ interface Comment {
 /**
  * Render simple white background
  */
-export function renderBackground(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+export function renderBackground(ctx: CanvasContext, width: number, height: number): void {
 	ctx.fillStyle = '#FFFFFF'
 	ctx.fillRect(0, 0, width, height)
 }
@@ -557,7 +565,7 @@ export function renderBackground(ctx: CanvasRenderingContext2D, width: number, h
 /**
  * Render video placeholder area
  */
-export function renderVideoArea(ctx: CanvasRenderingContext2D, videoX: number, videoY: number, videoW: number, videoH: number): void {
+export function renderVideoArea(ctx: CanvasContext, videoX: number, videoY: number, videoW: number, videoH: number): void {
 	// Simple video border
 	ctx.strokeStyle = '#000000'
 	ctx.lineWidth = 2
@@ -571,7 +579,7 @@ export function renderVideoArea(ctx: CanvasRenderingContext2D, videoX: number, v
 /**
  * Render header section with video info - vertically aligned with video area
  */
-export function renderHeader(ctx: CanvasRenderingContext2D, videoInfo: VideoInfo, commentsCount: number): void {
+export function renderHeader(ctx: CanvasContext, videoInfo: VideoInfo, commentsCount: number): void {
 	// Video area position (from generateTestFrame)
 	const videoY = 30
 	const videoH = 506
@@ -642,11 +650,12 @@ export function renderHeader(ctx: CanvasRenderingContext2D, videoInfo: VideoInfo
  * Render comment card with avatar and content - displays both original and translated content
  */
 export function renderCommentCard(
-	ctx: CanvasRenderingContext2D,
+	ctx: CanvasContext,
 	comment: Comment,
 	_commentIndex: number,
 	_totalComments: number,
-	authorImage: CanvasImageSource | null,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	authorImage: any,
 	width: number,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	_height: number
@@ -801,7 +810,7 @@ export function renderCommentCard(
  * Render external comment card with platform-specific styling
  */
 export function renderExternalCommentCard(
-	ctx: CanvasRenderingContext2D,
+	ctx: CanvasContext,
 	comment: Comment,
 	_commentIndex: number,
 	_totalComments: number,
@@ -1077,7 +1086,7 @@ function getPlatformLikesIcon(source?: string): string {
 /**
  * Render progress bar
  */
-export function renderProgressBar(ctx: CanvasRenderingContext2D, width: number, height: number, progress: number): void {
+export function renderProgressBar(ctx: CanvasContext, width: number, height: number, progress: number): void {
 	const progressHeight = 3
 	const progressY = height - progressHeight - 20
 
@@ -1264,7 +1273,7 @@ export async function renderVideoWithCanvas(
  * This section appears for the first 3 seconds of the video
  */
 async function renderCoverSection(
-	ctx: CanvasRenderingContext2D,
+	ctx: CanvasContext,
 	videoInfo: VideoInfo,
 	_comments: Comment[],
 	_currentTime: number,
@@ -1337,7 +1346,7 @@ async function renderCoverSection(
 // Helper functions for modern UI elements
 
 function roundRect(
-	ctx: CanvasRenderingContext2D,
+	ctx: CanvasContext,
 	x: number,
 	y: number,
 	width: number,
@@ -1358,7 +1367,7 @@ function roundRect(
 }
 
 function wrapText(
-	ctx: CanvasRenderingContext2D,
+	ctx: CanvasContext,
 	text: string,
 	maxWidth: number,
 ): string[] {

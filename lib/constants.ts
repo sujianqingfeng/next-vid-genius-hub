@@ -6,3 +6,7 @@ export const PROXY_URL = process.env.PROXY_URL
 export const OPERATIONS_DIR = `${PROJECT_DIR}/.operations`
 
 export const WHISPER_CPP_PATH = process.env.WHISPER_CPP_PATH
+
+export const SUBTITLE_FILENAME = 'translated-subtitles.vtt'
+export const RENDERED_VIDEO_FILENAME = 'video-with-subtitles.mp4'
+export const VIDEO_WITH_INFO_FILENAME = 'video-with-info-and-comments.mp4'

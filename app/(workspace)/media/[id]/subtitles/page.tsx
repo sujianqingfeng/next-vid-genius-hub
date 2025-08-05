@@ -32,7 +32,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
-// import { orpc } from '~/lib/orpc/client'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 type Model = 'whisper-large' | 'whisper-medium'
@@ -91,7 +90,7 @@ export default function SubtitlesPage() {
 		mutate: renderMutate,
 		isPending: isRendering,
 		error: renderError,
-	} = useMutation(queryOrpc.render.render.mutationOptions())
+	} = useMutation(queryOrpc.subtitle.render.mutationOptions())
 
 	const handleStartTranscription = () => {
 		transcribeMutation.mutate({ mediaId, model: selectedModel })

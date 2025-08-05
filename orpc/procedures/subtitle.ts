@@ -1,10 +1,13 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { AIModelIds, generateText } from '~/lib/ai'
 import { transcribeWithWhisper } from '~/lib/asr/whisper'
-import { WHISPER_CPP_PATH } from '~/lib/constants'
+import { OPERATIONS_DIR, WHISPER_CPP_PATH, RENDERED_VIDEO_FILENAME, SUBTITLE_FILENAME } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
+import { renderVideoWithSubtitles } from '~/lib/media'
 
 export const transcribe = os
 	.input(
@@ -69,13 +72,23 @@ You will be given the content of a VTT file.
 You need to add the Chinese translation under each English sentence.
 Do not translate timestamps or other metadata.
 For each text segment, the original English text should be on one line, and the Chinese translation should be on the following line.
+IMPORTANT: Do NOT add any dashes (-) or bullet points to the translated text. Keep the text clean without prefixes.
+
 For example:
 Original:
-- Hello, world!
+Hello, world!
 
 Translated:
-- Hello, world!
-- 你好，世界！`
+Hello, world!
+你好，世界！
+
+Another example:
+Original:
+This is a test.
+
+Translated:
+This is a test.
+这是一个测试。`
 
 	const { text: translatedText } = await generateText({
 		model,
@@ -92,3 +105,45 @@ Translated:
 		translation: translatedText,
 	}
 })
+
+export const render = os
+	.input(
+		z.object({
+			mediaId: z.string(),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const where = eq(schema.media.id, input.mediaId)
+		const media = await db.query.media.findFirst({
+			where,
+		})
+
+		if (!media) {
+			throw new Error('Media not found')
+		}
+
+		if (!media.translation) {
+			throw new Error('Translation not found')
+		}
+
+		if (!media.filePath) {
+			throw new Error('Media file path not found')
+		}
+
+		const operationDir = path.join(OPERATIONS_DIR, media.id)
+		await fs.mkdir(operationDir, { recursive: true })
+
+		const subtitlePath = path.join(operationDir, SUBTITLE_FILENAME)
+		await fs.writeFile(subtitlePath, media.translation)
+
+		const originalFilePath = media.filePath
+		const outputPath = path.join(operationDir, RENDERED_VIDEO_FILENAME)
+
+		await renderVideoWithSubtitles(originalFilePath, subtitlePath, outputPath)
+
+		await db.update(schema.media).set({ videoWithSubtitlesPath: outputPath }).where(where)
+
+		return {
+			message: 'Rendering started',
+		}
+	})

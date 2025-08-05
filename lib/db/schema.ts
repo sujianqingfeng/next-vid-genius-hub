@@ -33,6 +33,7 @@ export const media = sqliteTable('media', {
 	audioFilePath: text('audio_file_path'),
 	transcription: text('transcription'),
 	translation: text('translation'),
-	renderedPath: text('rendered_path'),
+	videoWithSubtitlesPath: text('video_with_subtitles_path'),
+	videoWithInfoPath: text('video_with_info_path'),
 	comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
 })

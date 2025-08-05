@@ -4,7 +4,11 @@ import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateText } from '~/lib/ai'
-import { OPERATIONS_DIR, PROXY_URL } from '~/lib/constants'
+import {
+	OPERATIONS_DIR,
+	PROXY_URL,
+	VIDEO_WITH_INFO_FILENAME,
+} from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 import {
 	renderVideoWithCanvas,
@@ -178,7 +182,7 @@ export const renderWithInfo = os
 		await fs.mkdir(operationDir, { recursive: true })
 
 		// Define output path
-		const outputPath = path.join(operationDir, 'rendered_with_info.mp4')
+		const outputPath = path.join(operationDir, VIDEO_WITH_INFO_FILENAME)
 
 		// Prepare video info
 		const videoInfo = {
@@ -187,31 +191,29 @@ export const renderWithInfo = os
 			viewCount: media.viewCount || 0,
 			author: media.author || undefined,
 			thumbnail: media.thumbnail || undefined,
+			series: '外网真实评论',
 		}
-
-		// Take first 10 comments for rendering (to keep video length reasonable)
-		const commentsToRender = media.comments.slice(0, 10)
 
 		try {
 			// Render video with info and comments
 			await renderVideoWithCanvas(
-				media.filePath,
+				media.videoWithSubtitlesPath || media.filePath,
 				outputPath,
 				videoInfo,
-				commentsToRender,
+				media.comments,
 			)
 
 			// Update database with rendered path
 			await db
 				.update(schema.media)
-				.set({ renderedPath: outputPath })
+				.set({ videoWithInfoPath: outputPath })
 				.where(eq(schema.media.id, mediaId))
 
 			return {
 				success: true,
 				message: 'Video rendered with info and comments successfully',
-				renderedPath: outputPath,
-				commentsCount: commentsToRender.length,
+				videoWithInfoPath: outputPath,
+				commentsCount: media.comments.length,
 			}
 		} catch (error) {
 			console.error('Error rendering video with info:', error)
