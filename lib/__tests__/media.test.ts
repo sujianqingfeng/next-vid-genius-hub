@@ -13,7 +13,7 @@ import {
 	renderVideoWithCanvas,
 } from '../media'
 
-describe('renderVideoWithInfoAndComments - Video Rendering Effect Test', () => {
+describe('renderVideoWithInfo- Video Rendering Effect Test', () => {
 	it.skip('should render video with info and comments for visual verification', async () => {
 		// Test video path - using the test.mp4 in the same directory
 		const testVideoPath = path.join(__dirname, 'test.mp4')

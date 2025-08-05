@@ -23,23 +23,14 @@ export async function extractAudio(
 }
 
 /**
- * Convert a WebVTT subtitle file (bilingual, alternating English / Chinese lines)
- * into an ASS subtitle file with separate styles so that the Chinese text can be
+ * Convert WebVTT subtitle content (bilingual, alternating English / Chinese lines)
+ * into an ASS subtitle content with separate styles so that the Chinese text can be
  * rendered with a larger font size while keeping the English text smaller.
  *
  * The conversion logic assumes each cue contains the English line first and the
  * Chinese line beginning with a dash ("- ") on the following line.
  */
-async function convertWebVttToAss(vttPath: string): Promise<string> {
-	const content = await fs.readFile(vttPath, 'utf8')
-
-	// Prepare output .ass path (same directory, same basename)
-	const assPath = path.format({
-		...path.parse(vttPath),
-		base: undefined,
-		ext: '.ass',
-	})
-
+async function convertWebVttToAss(vttContent: string): Promise<string> {
 	// Helper to convert WebVTT time (00:00:00.000) -> ASS (0:00:00.00)
 	const toAssTime = (t: string): string => {
 		const match = t.match(/(\d+):(\d+):(\d+)\.(\d{1,3})/)
@@ -49,7 +40,7 @@ async function convertWebVttToAss(vttPath: string): Promise<string> {
 		return `${parseInt(hh)}:${mm}:${ss}.${cs}`
 	}
 
-	const lines = content.split(/\r?\n/)
+	const lines = vttContent.split(/\r?\n/)
 	const events: Array<{
 		start: string
 		end: string
@@ -109,376 +100,54 @@ async function convertWebVttToAss(vttPath: string): Promise<string> {
 		}
 	}
 
-	await fs.writeFile(assPath, ass, 'utf8')
-	return assPath
+	return ass
+}
+
+/**
+ * Clean up temporary file with error handling
+ */
+async function cleanupTempFile(
+	filePath: string,
+	fileType: string,
+): Promise<void> {
+	try {
+		await fs.unlink(filePath)
+	} catch (err) {
+		console.warn(
+			`Failed to clean up temporary ${fileType} file:`,
+			(err as Error).message,
+		)
+	}
 }
 
 export async function renderVideoWithSubtitles(
 	videoPath: string,
-	subtitlePath: string,
+	subtitleContent: string,
 	outputPath: string,
 ): Promise<void> {
-	// Convert WebVTT to ASS first so we can customise styles
-	let assPath: string
-	try {
-		assPath = await convertWebVttToAss(subtitlePath)
-	} catch (err) {
-		console.warn(
-			'Failed to convert VTT to ASS, falling back to original track:',
-			(err as Error).message,
-		)
-		assPath = subtitlePath
-	}
+	// Convert VTT content to ASS format
+	const assContent = await convertWebVttToAss(subtitleContent)
+
+	// Write ASS content to temporary file for FFmpeg
+	const tempDir = path.dirname(outputPath)
+	const tempAssPath = path.join(tempDir, `temp_${Date.now()}.ass`)
+	await fs.writeFile(tempAssPath, assContent, 'utf8')
 
 	return new Promise<void>((resolve, reject) => {
 		ffmpeg(videoPath)
-			.outputOptions('-vf', `subtitles=${assPath}`)
+			.outputOptions('-vf', `subtitles=${tempAssPath}`)
 			.save(outputPath)
-			.on('end', () => resolve())
-			.on('error', (err) => {
+			.on('end', async () => {
+				await cleanupTempFile(tempAssPath, 'ASS')
+				resolve()
+			})
+			.on('error', async (err) => {
+				await cleanupTempFile(tempAssPath, 'ASS')
 				console.error('Error rendering video with subtitles:', err.message)
 				reject(err)
 			})
 	})
 }
-
-/**
- * Render video with info overlay and comments
- * Creates a video with white background, video info on top left, small video on top right, and scrolling comments below
- */
-export async function renderVideoWithInfoAndComments(
-	videoPath: string,
-	outputPath: string,
-	videoInfo: {
-		title: string
-		translatedTitle?: string
-		viewCount: number
-		author?: string
-		thumbnail?: string
-	},
-	comments: Array<{
-		id: string
-		author: string
-		authorThumbnail?: string
-		content: string
-		translatedContent?: string
-		likes: number
-		replyCount?: number
-	}>,
-): Promise<void> {
-	console.log('🎬 Starting video rendering with info and comments...')
-	console.log(`📁 Input video: ${videoPath}`)
-	console.log(`📁 Output path: ${outputPath}`)
-	console.log(`📊 Video info:`, {
-		title: videoInfo.title,
-		translatedTitle: videoInfo.translatedTitle,
-		viewCount: videoInfo.viewCount,
-		author: videoInfo.author,
-		hasThumbnail: !!videoInfo.thumbnail,
-	})
-	console.log(`💬 Comments count: ${comments.length}`)
-
-	// Calculate total duration based on comments
-	const totalDuration = 3 + comments.length * 4 // 3s for info + 4s per comment
-	console.log(`⏱️  Total duration: ${totalDuration} seconds`)
-	console.log(
-		`📊 Performance mode: ${totalDuration > 60 || comments.length > 20 ? 'Simplified' : 'Full layout'}`,
-	)
-
-	// Create ASS subtitle file for better control over positioning and styling
-	console.log('📝 Generating ASS subtitle content...')
-	const assContent = await generateInfoAndCommentsAss(videoInfo, comments)
-	const assPath = outputPath.replace('.mp4', '_info.ass')
-	console.log(`📄 ASS file path: ${assPath}`)
-
-	console.log('💾 Writing ASS subtitle file...')
-	await fs.writeFile(assPath, assContent, 'utf8')
-	console.log('✅ ASS subtitle file written successfully')
-
-	// Ensure output directory exists
-	const outputDir = path.dirname(outputPath)
-	console.log(`📂 Creating output directory: ${outputDir}`)
-	await fs.mkdir(outputDir, { recursive: true })
-	console.log('✅ Output directory ready')
-
-	return new Promise<void>((resolve, reject) => {
-		console.log('🎥 Starting FFmpeg processing...')
-
-		// Create optimized filter for the new layout
-		const filterComplex = [
-			// Input video - use tpad instead of loop for better performance
-			`[0:v]tpad=stop_mode=clone:stop_duration=${totalDuration},scale=900:506:force_original_aspect_ratio=decrease,pad=900:506:(ow-iw)/2:(oh-ih)/2:white[small_video]`,
-
-			// Create white background
-			`color=size=1920x1080:color=white:duration=${totalDuration}[bg]`,
-
-			// Overlay small video on top right (position: 950, 30) - matching canvas layout
-			`[bg][small_video]overlay=950:30[bg_with_video]`,
-
-			// Add subtitle overlay
-			`[bg_with_video]ass=${assPath}[final]`,
-		].join(';')
-
-		console.log('🔧 FFmpeg filter complex:', filterComplex)
-
-		// Add fallback option for performance issues
-		const useSimpleFilter = totalDuration > 60 || comments.length > 20
-		let finalFilter = filterComplex
-
-		if (useSimpleFilter) {
-			console.log(
-				'⚠️  Using simplified filter due to long duration or many comments',
-			)
-			finalFilter = `[0:v]tpad=stop_mode=clone:stop_duration=${totalDuration},scale=900:506:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:white,overlay=950:30,ass=${assPath}[final]`
-		}
-
-		const ffmpegProcess = ffmpeg(videoPath)
-			.videoFilters(finalFilter)
-			.outputOptions([
-				'-c:v',
-				'libx264',
-				'-c:a',
-				'aac',
-				'-preset',
-				'fast', // Use faster preset for better performance
-				'-crf',
-				'28', // Slightly lower quality for faster encoding
-				'-threads',
-				'4', // Limit threads to prevent resource exhaustion
-				'-t',
-				totalDuration.toString(),
-			])
-			.save(outputPath)
-
-		console.log('🚀 FFmpeg process started, waiting for completion...')
-
-		let lastProgressTime = 0
-		let lastFrame = 0
-		let progressCount = 0
-		let lastProgressUpdate = Date.now()
-
-		// Set up timeout detection
-		const timeoutInterval = setInterval(() => {
-			const timeSinceLastProgress = Date.now() - lastProgressUpdate
-			if (timeSinceLastProgress > 30000) {
-				// 30 seconds timeout
-				console.log(
-					'⚠️  Warning: No progress for 30 seconds, FFmpeg might be stuck',
-				)
-				console.log(
-					'   Consider checking system resources or restarting the process',
-				)
-			}
-		}, 10000) // Check every 10 seconds
-
-		ffmpegProcess
-			.on('start', (commandLine) => {
-				console.log('🎯 FFmpeg command started:', commandLine)
-			})
-			.on('progress', (progress) => {
-				// Calculate percentage based on current time vs total duration
-				const currentTime = progress.timemark || '00:00:00'
-				const timeInSeconds = parseTimeToSeconds(currentTime)
-				const calculatedPercent =
-					totalDuration > 0
-						? Math.round((timeInSeconds / totalDuration) * 100)
-						: 0
-
-				const percent = progress.percent || calculatedPercent
-				const timemark = progress.timemark || 'N/A'
-				const fps = progress.currentFps || 'N/A'
-				const frame = progress.frames || 'N/A'
-
-				// Only log if there's actual progress or every 10th update
-				const hasTimeProgress = timeInSeconds > lastProgressTime
-				const hasFrameProgress = typeof frame === 'number' && frame > lastFrame
-				const shouldLog =
-					hasTimeProgress || hasFrameProgress || progressCount % 10 === 0
-
-				if (shouldLog) {
-					console.log(
-						`📊 FFmpeg progress: ${percent}% | Time: ${timemark}/${formatTime(totalDuration)} | FPS: ${fps} | Frame: ${frame}`,
-					)
-
-					// Check for potential issues
-					if (fps === 'N/A' && progressCount > 5) {
-						console.log(
-							'⚠️  Warning: FPS is N/A, processing might be slow or stuck',
-						)
-					}
-					if (timeInSeconds === lastProgressTime && progressCount > 10) {
-						console.log(
-							'⚠️  Warning: Time not progressing, processing might be stuck',
-						)
-					}
-				}
-
-				lastProgressTime = timeInSeconds
-				lastFrame = typeof frame === 'number' ? frame : lastFrame
-				progressCount++
-				lastProgressUpdate = Date.now()
-			})
-			.on('end', () => {
-				clearInterval(timeoutInterval)
-				console.log('✅ Video rendering completed successfully!')
-				console.log(`📁 Final output: ${outputPath}`)
-
-				// Clean up subtitle file
-				console.log('🧹 Cleaning up temporary ASS file...')
-				fs.unlink(assPath).catch((err) => {
-					console.warn('⚠️  Warning: Failed to clean up ASS file:', err.message)
-				})
-				console.log('✅ Cleanup completed')
-				resolve()
-			})
-			.on('error', (err) => {
-				clearInterval(timeoutInterval)
-				console.error('❌ Error rendering video with info and comments:')
-				console.error('   Error message:', err.message)
-				console.error('   Error stack:', err.stack)
-				reject(err)
-			})
-	})
-}
-
-/**
- * Generate ASS subtitle content for video info and comments with new layout
- * Top section: title and view count on left, small video on right
- * Bottom section: comments with avatar, author, content, likes
- */
-async function generateInfoAndCommentsAss(
-	videoInfo: {
-		title: string
-		translatedTitle?: string
-		viewCount: number
-		author?: string
-		thumbnail?: string
-	},
-	comments: Array<{
-		id: string
-		author: string
-		authorThumbnail?: string
-		content: string
-		translatedContent?: string
-		likes: number
-		replyCount?: number
-	}>,
-): Promise<string> {
-	// Build ASS file header
-	let assContent = `[Script Info]\nScriptType: v4.00+\nCollisions: Normal\nPlayResX: 1920\nPlayResY: 1080\nTimer: 100.0000\n\n`
-
-	// Define styles for different text elements
-	assContent += `[V4+ Styles]\n`
-	assContent += `Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n`
-	// Title style - large, bold, dark gray text with subtle shadow
-	assContent += `Style: Title,Noto Sans SC,56,&H00222222,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,2,1,7,80,80,60,1\n`
-	// Info style - medium, gray text
-	assContent += `Style: Info,Noto Sans SC,36,&H00666666,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,7,80,80,120,1\n`
-	// Comment author style - bold, dark text
-	assContent += `Style: CommentAuthor,Noto Sans SC,32,&H00222222,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,1,1,1,80,80,140,1\n`
-	// Comment content style - regular, dark text (Chinese content)
-	assContent += `Style: CommentContent,Noto Sans SC,36,&H00333333,&H000000FF,&H00FFFFFF,&H80000000,1,0,0,0,100,100,0,0,1,1,1,1,80,80,100,1\n`
-	// English content style - italic, lighter text
-	assContent += `Style: EnglishContent,Noto Sans SC,22,&H00666666,&H000000FF,&H00FFFFFF,&H80000000,0,1,0,0,100,100,0,0,1,1,1,1,80,80,80,1\n`
-	// Likes style - small, red text
-	assContent += `Style: Likes,Noto Sans SC,24,&H00e11d48,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,3,80,80,140,1\n`
-	// Avatar placeholder style - colored circle
-	assContent += `Style: Avatar,Noto Sans SC,32,&H004f46e5,&H000000FF,&H00FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,1,1,1,80,80,140,1\n`
-	// Comment background style - subtle background
-	assContent += `Style: CommentBg,Arial,1,&H15FFFFFF,&H15FFFFFF,&H15FFFFFF,&H80000000,0,0,0,0,100,100,0,0,1,0,0,2,0,0,80,1\n`
-	// Divider line style
-	assContent += `Style: Divider,Arial,1,&H20CCCCCC,&H20CCCCCC,&H20CCCCCC,&H80000000,0,0,0,0,100,100,0,0,1,0,0,8,0,0,160,1\n\n`
-
-	assContent += `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`
-
-	// Calculate total duration
-	const totalDuration = 3 + comments.length * 4 // 3s for info + 4s per comment
-
-	// Video info section - left side, persistent throughout the video
-	const title = videoInfo.translatedTitle || videoInfo.title
-	const viewCountText = formatViewCount(videoInfo.viewCount)
-	const authorText = videoInfo.author || 'Unknown Author'
-
-	// Title (左上角，MarginV=60) - with better spacing
-	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Title,,80,80,60,,${title.replace(/,/g, '，')}\n`
-
-	// Info (左上角，MarginV=120) - with better spacing
-	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Info,,80,80,120,,${viewCountText} views • ${authorText.replace(/,/g, '，')}\n`
-
-	// Divider line (horizontal line separating content areas)
-	assContent += `Dialogue: 0,${formatAssTime(0)},${formatAssTime(totalDuration)},Divider,,0,0,160,,{\p1}m 0 0 l 1920 0{\p0}\n`
-
-	// Comments section - each comment shows for 4 seconds in bottom area
-	let currentTime = 3 // Start comments after 3 seconds
-
-	for (const comment of comments) {
-		const commentText = comment.translatedContent || comment.content
-		const originalComment = comment.content
-		const authorName = comment.author
-		const likesText = formatLikes(comment.likes)
-
-		// Truncate long comments to fit better
-		const truncatedComment =
-			commentText.length > 100
-				? commentText.substring(0, 100) + '...'
-				: commentText
-
-		const truncatedOriginal =
-			originalComment.length > 100
-				? originalComment.substring(0, 100) + '...'
-				: originalComment
-
-		// Comment background (subtle background for better readability) - increased height for bilingual content
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentBg,,0,0,80,,{\p1}m 0 0 l 1920 0 l 1920 180 l 0 180{\p0}\n`
-
-		// Avatar (左下，MarginV=160) - using colored circle
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Avatar,,80,80,160,,😊\n`
-
-		// Author (左下，MarginV=160)
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentAuthor,,130,80,160,,${authorName.replace(/,/g, '，')}\n`
-
-		// Chinese content (左下，MarginV=120) - translated content
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},CommentContent,,130,80,120,,${truncatedComment.replace(/,/g, '，')}\n`
-
-		// English content (左下，MarginV=80) - original content (only if different from translated)
-		if (
-			comment.translatedContent &&
-			comment.translatedContent !== comment.content
-		) {
-			assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},EnglishContent,,130,80,80,,${truncatedOriginal.replace(/,/g, '，')}\n`
-		}
-
-		// Likes (右下，MarginV=160) - with better positioning
-		assContent += `Dialogue: 0,${formatAssTime(currentTime)},${formatAssTime(currentTime + 4)},Likes,,1800,80,160,,❤️ ${likesText}\n`
-
-		currentTime += 4
-	}
-
-	return assContent
-}
-
-/**
- * Format time in ASS format (H:MM:SS.cc)
- */
-function formatAssTime(seconds: number): string {
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-	const cs = Math.floor((seconds % 1) * 100)
-	return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`
-}
-
-/**
- * Format time in SRT format (HH:MM:SS,mmm)
- * Note: This function is currently unused but kept for potential future use
- */
-// function formatTime(seconds: number): string {
-// 	const hours = Math.floor(seconds / 3600)
-// 	const minutes = Math.floor((seconds % 3600) / 60)
-// 	const secs = Math.floor(seconds % 60)
-// 	const ms = Math.floor((seconds % 1) * 1000)
-// 	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`
-// }
 
 /**
  * Format view count with K, M, B suffixes
@@ -506,31 +175,7 @@ function formatLikes(count: number): string {
 	return count.toString()
 }
 
-/**
- * Parse time string (HH:MM:SS) to seconds
- */
-function parseTimeToSeconds(timeString: string): number {
-	const parts = timeString.split(':').map(Number)
-	if (parts.length === 3) {
-		return parts[0] * 3600 + parts[1] * 60 + parts[2]
-	} else if (parts.length === 2) {
-		return parts[0] * 60 + parts[1]
-	}
-	return 0
-}
-
-/**
- * Format seconds to time string (HH:MM:SS)
- */
-function formatTime(seconds: number): string {
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
-
 // Extracted rendering functions for better testability
-
 
 interface VideoInfo {
 	title: string
@@ -557,7 +202,11 @@ interface Comment {
 /**
  * Render simple white background
  */
-export function renderBackground(ctx: CanvasContext, width: number, height: number): void {
+export function renderBackground(
+	ctx: CanvasContext,
+	width: number,
+	height: number,
+): void {
 	ctx.fillStyle = '#FFFFFF'
 	ctx.fillRect(0, 0, width, height)
 }
@@ -565,7 +214,13 @@ export function renderBackground(ctx: CanvasContext, width: number, height: numb
 /**
  * Render video placeholder area
  */
-export function renderVideoArea(ctx: CanvasContext, videoX: number, videoY: number, videoW: number, videoH: number): void {
+export function renderVideoArea(
+	ctx: CanvasContext,
+	videoX: number,
+	videoY: number,
+	videoW: number,
+	videoH: number,
+): void {
 	// Simple video border
 	ctx.strokeStyle = '#000000'
 	ctx.lineWidth = 2
@@ -579,12 +234,16 @@ export function renderVideoArea(ctx: CanvasContext, videoX: number, videoY: numb
 /**
  * Render header section with video info - vertically aligned with video area
  */
-export function renderHeader(ctx: CanvasContext, videoInfo: VideoInfo, commentsCount: number): void {
+export function renderHeader(
+	ctx: CanvasContext,
+	videoInfo: VideoInfo,
+	commentsCount: number,
+): void {
 	// Video area position (from generateTestFrame)
 	const videoY = 30
 	const videoH = 506
 	const videoCenterY = videoY + videoH / 2
-	
+
 	// Header area positioned to align with video center
 	const headerX = 40
 	const headerY = videoY
@@ -608,27 +267,27 @@ export function renderHeader(ctx: CanvasContext, videoInfo: VideoInfo, commentsC
 	ctx.font = 'bold 56px "Noto Sans SC"'
 	ctx.textAlign = 'left'
 	ctx.textBaseline = 'middle'
-	
+
 	const title = videoInfo.translatedTitle || videoInfo.title
 	const maxWidth = 800
 	const wrappedTitle = wrapText(ctx, title, maxWidth)
-	
+
 	// Calculate total content height
 	const titleHeight = wrappedTitle.length * 80
 	const metadataHeight = 40
 	const commentHeight = 35
 	const totalContentHeight = titleHeight + metadataHeight + commentHeight + 40 // spacing
-	
+
 	// Starting Y position for vertical centering (same as video center)
 	let currentY = centerY - totalContentHeight / 2
-	
+
 	// Draw title
 	wrappedTitle.forEach((line, index) => {
 		ctx.fillText(line, headerX + 20, currentY + index * 80)
 	})
-	
+
 	currentY += titleHeight + 20
-	
+
 	// Draw metadata
 	ctx.fillStyle = '#666666'
 	ctx.font = '32px "Noto Sans SC"'
@@ -636,9 +295,9 @@ export function renderHeader(ctx: CanvasContext, videoInfo: VideoInfo, commentsC
 	const authorText = videoInfo.author || 'Unknown Author'
 	const metadataText = `${viewText} • ${authorText}`
 	ctx.fillText(metadataText, headerX + 20, currentY)
-	
+
 	currentY += metadataHeight + 20
-	
+
 	// Draw comment count
 	ctx.fillStyle = '#666666'
 	ctx.font = '28px "Noto Sans SC"'
@@ -658,7 +317,7 @@ export function renderCommentCard(
 	authorImage: any,
 	width: number,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	_height: number
+	_height: number,
 ): void {
 	// Position comment card right below the header/video area
 	const headerAreaHeight = 506 // Same as videoH
@@ -675,7 +334,7 @@ export function renderCommentCard(
 
 	// Set font for text measurement
 	ctx.font = '28px "Noto Sans SC"'
-	
+
 	// Calculate content heights
 	let totalContentHeight = 0
 	const authorHeight = 40
@@ -692,9 +351,16 @@ export function renderCommentCard(
 	// Calculate translated content height (if different from original)
 	let translatedHeight = 0
 	let wrappedTranslated: string[] = []
-	if (comment.translatedContent && comment.translatedContent !== comment.content) {
+	if (
+		comment.translatedContent &&
+		comment.translatedContent !== comment.content
+	) {
 		ctx.font = 'bold 40px "Noto Sans SC"' // Larger font for Chinese content
-		wrappedTranslated = wrapText(ctx, comment.translatedContent, maxCommentWidth)
+		wrappedTranslated = wrapText(
+			ctx,
+			comment.translatedContent,
+			maxCommentWidth,
+		)
 		translatedHeight = wrappedTranslated.length * 45 // Larger line height
 		totalContentHeight += translatedHeight + spacing
 	}
@@ -750,7 +416,7 @@ export function renderCommentCard(
 			Math.PI * 2,
 		)
 		ctx.fill()
-		
+
 		ctx.fillStyle = '#FFFFFF'
 		ctx.font = 'bold 32px "Noto Sans SC"'
 		ctx.textAlign = 'center'
@@ -773,14 +439,14 @@ export function renderCommentCard(
 	ctx.font = 'bold 32px "Noto Sans SC"'
 	ctx.textAlign = 'left'
 	ctx.fillText(comment.author, textX, currentY)
-	
+
 	// Add likes on the right side of the comment card
 	ctx.fillStyle = '#e11d48'
 	ctx.font = '24px "Noto Sans SC"'
 	ctx.textAlign = 'right'
 	const likesX = width - 60 // Position likes on the right side
 	ctx.fillText(`❤️ ${formatLikes(comment.likes)}`, likesX, currentY)
-	
+
 	// Reset text alignment for content
 	ctx.textAlign = 'left'
 	currentY += authorHeight + spacing
@@ -794,7 +460,10 @@ export function renderCommentCard(
 	currentY += wrappedOriginal.length * 32 + spacing
 
 	// Chinese content (secondary, more prominent) - translated content below
-	if (comment.translatedContent && comment.translatedContent !== comment.content) {
+	if (
+		comment.translatedContent &&
+		comment.translatedContent !== comment.content
+	) {
 		ctx.fillStyle = '#333333'
 		ctx.font = 'bold 40px "Noto Sans SC"' // Larger and bold for Chinese
 		wrappedTranslated.forEach((line, index) => {
@@ -834,7 +503,7 @@ export function renderExternalCommentCard(
 
 	// Set font for text measurement
 	ctx.font = '28px "Noto Sans SC"'
-	
+
 	// Calculate content heights
 	let totalContentHeight = 0
 	const authorHeight = 40
@@ -853,9 +522,16 @@ export function renderExternalCommentCard(
 	// Calculate translated content height (if different from original)
 	let translatedHeight = 0
 	let wrappedTranslated: string[] = []
-	if (comment.translatedContent && comment.translatedContent !== comment.content) {
+	if (
+		comment.translatedContent &&
+		comment.translatedContent !== comment.content
+	) {
 		ctx.font = 'bold 40px "Noto Sans SC"'
-		wrappedTranslated = wrapText(ctx, comment.translatedContent, maxCommentWidth)
+		wrappedTranslated = wrapText(
+			ctx,
+			comment.translatedContent,
+			maxCommentWidth,
+		)
 		translatedHeight = wrappedTranslated.length * 45
 		totalContentHeight += translatedHeight + spacing
 	}
@@ -919,7 +595,7 @@ export function renderExternalCommentCard(
 			Math.PI * 2,
 		)
 		ctx.fill()
-		
+
 		ctx.fillStyle = '#FFFFFF'
 		ctx.font = 'bold 32px "Noto Sans SC"'
 		ctx.textAlign = 'center'
@@ -942,14 +618,16 @@ export function renderExternalCommentCard(
 	ctx.font = 'bold 32px "Noto Sans SC"'
 	ctx.textAlign = 'left'
 	ctx.fillText(comment.author, textX, currentY)
-	
+
 	// Platform indicator
 	currentY += authorHeight + spacing
 	ctx.fillStyle = platformColors.accentColor
 	ctx.font = '20px "Noto Sans SC"'
-	const platformText = getPlatformDisplayName(comment.source || comment.platform)
+	const platformText = getPlatformDisplayName(
+		comment.source || comment.platform,
+	)
 	ctx.fillText(platformText, textX, currentY)
-	
+
 	// Reset text alignment for content
 	ctx.textAlign = 'left'
 	currentY += platformHeight + spacing
@@ -963,7 +641,10 @@ export function renderExternalCommentCard(
 	currentY += wrappedContent.length * 32 + spacing
 
 	// Translated content (if available)
-	if (comment.translatedContent && comment.translatedContent !== comment.content) {
+	if (
+		comment.translatedContent &&
+		comment.translatedContent !== comment.content
+	) {
 		ctx.fillStyle = platformColors.textColor
 		ctx.font = 'bold 40px "Noto Sans SC"'
 		wrappedTranslated.forEach((line, index) => {
@@ -998,7 +679,7 @@ function getPlatformColors(source?: string): {
 				borderColor: '#FF0000',
 				accentColor: '#FF0000',
 				textColor: '#000000',
-				contentColor: '#333333'
+				contentColor: '#333333',
 			}
 		case 'tiktok':
 			return {
@@ -1006,7 +687,7 @@ function getPlatformColors(source?: string): {
 				borderColor: '#00F2EA',
 				accentColor: '#00F2EA',
 				textColor: '#FFFFFF',
-				contentColor: '#FFFFFF'
+				contentColor: '#FFFFFF',
 			}
 		case 'twitter':
 			return {
@@ -1014,7 +695,7 @@ function getPlatformColors(source?: string): {
 				borderColor: '#1DA1F2',
 				accentColor: '#1DA1F2',
 				textColor: '#000000',
-				contentColor: '#333333'
+				contentColor: '#333333',
 			}
 		case 'instagram':
 			return {
@@ -1022,7 +703,7 @@ function getPlatformColors(source?: string): {
 				borderColor: '#E4405F',
 				accentColor: '#E4405F',
 				textColor: '#000000',
-				contentColor: '#333333'
+				contentColor: '#333333',
 			}
 		case 'weibo':
 			return {
@@ -1030,7 +711,7 @@ function getPlatformColors(source?: string): {
 				borderColor: '#E6162D',
 				accentColor: '#E6162D',
 				textColor: '#000000',
-				contentColor: '#333333'
+				contentColor: '#333333',
 			}
 		default:
 			return {
@@ -1038,7 +719,7 @@ function getPlatformColors(source?: string): {
 				borderColor: '#666666',
 				accentColor: '#666666',
 				textColor: '#000000',
-				contentColor: '#333333'
+				contentColor: '#333333',
 			}
 	}
 }
@@ -1086,7 +767,12 @@ function getPlatformLikesIcon(source?: string): string {
 /**
  * Render progress bar
  */
-export function renderProgressBar(ctx: CanvasContext, width: number, height: number, progress: number): void {
+export function renderProgressBar(
+	ctx: CanvasContext,
+	width: number,
+	height: number,
+	progress: number,
+): void {
 	const progressHeight = 3
 	const progressY = height - progressHeight - 20
 
@@ -1109,7 +795,7 @@ export function generateTestFrame(
 	totalComments: number,
 	authorImage?: CanvasImageSource | null,
 	width: number = 1920,
-	height: number = 1080
+	height: number = 1080,
 ): Buffer {
 	const canvas = createCanvas(width, height)
 	const ctx = canvas.getContext('2d')
@@ -1128,7 +814,15 @@ export function generateTestFrame(
 	renderHeader(ctx, videoInfo, totalComments)
 
 	// Render comment card
-	renderCommentCard(ctx, comment, commentIndex, totalComments, authorImage, width, height)
+	renderCommentCard(
+		ctx,
+		comment,
+		commentIndex,
+		totalComments,
+		authorImage,
+		width,
+		height,
+	)
 
 	// Progress bar removed - no longer needed
 
@@ -1151,7 +845,8 @@ export async function renderVideoWithCanvas(
 	const commentDuration = 4
 	const introDuration = 3
 	const coverDuration = 3 // Additional 3 seconds for cover
-	const totalDuration = coverDuration + introDuration + comments.length * commentDuration
+	const totalDuration =
+		coverDuration + introDuration + comments.length * commentDuration
 	const totalFrames = totalDuration * fps
 
 	const framesDir = path.join(path.dirname(outputPath), 'frames_overlay')
@@ -1187,7 +882,15 @@ export async function renderVideoWithCanvas(
 
 		// Render cover section (first 3 seconds) - no video area during cover
 		if (time < coverDuration) {
-			await renderCoverSection(ctx, videoInfo, comments, time, coverDuration, width, height)
+			await renderCoverSection(
+				ctx,
+				videoInfo,
+				comments,
+				time,
+				coverDuration,
+				width,
+				height,
+			)
 		} else {
 			// Render video area (only after cover section)
 			const videoX = 950
@@ -1201,11 +904,21 @@ export async function renderVideoWithCanvas(
 
 			// Render comment if applicable
 			if (time >= coverDuration + introDuration) {
-				const commentIndex = Math.floor((time - coverDuration - introDuration) / commentDuration)
+				const commentIndex = Math.floor(
+					(time - coverDuration - introDuration) / commentDuration,
+				)
 				if (commentIndex < comments.length) {
 					const comment = comments[commentIndex]
 					const authorImage = authorImages[commentIndex]
-					renderCommentCard(ctx, comment, commentIndex, comments.length, authorImage, width, height)
+					renderCommentCard(
+						ctx,
+						comment,
+						commentIndex,
+						comments.length,
+						authorImage,
+						width,
+						height,
+					)
 				}
 			}
 		}
@@ -1289,7 +1002,7 @@ async function renderCoverSection(
 	const centerX = width / 2
 	const title = videoInfo.translatedTitle || videoInfo.title
 	const wrappedTitle = wrapText(ctx, title, width - 200)
-	
+
 	// Calculate heights with larger content
 	const titleHeight = wrappedTitle.length * 80
 	const titleGap = 60
@@ -1298,23 +1011,30 @@ async function renderCoverSection(
 	const seriesHeight = videoInfo.series ? 32 : 0
 	const seriesGap = videoInfo.series ? 30 : 0
 	const viewHeight = 28
-	
+
 	// Total content height
-	const totalContentHeight = titleHeight + titleGap + authorHeight + authorGap + seriesHeight + seriesGap + viewHeight
-	
+	const totalContentHeight =
+		titleHeight +
+		titleGap +
+		authorHeight +
+		authorGap +
+		seriesHeight +
+		seriesGap +
+		viewHeight
+
 	// Start Y position for vertical centering
 	let currentY = (height - totalContentHeight) / 2
-	
+
 	// Main title - larger and prominent
 	ctx.fillStyle = '#000000'
 	ctx.font = '600 72px "Noto Sans SC"'
 	ctx.textAlign = 'center'
 	ctx.textBaseline = 'middle'
-	
+
 	wrappedTitle.forEach((line, index) => {
 		ctx.fillText(line, centerX, currentY + index * 80)
 	})
-	
+
 	currentY += titleHeight + titleGap
 
 	// Author info - larger @ symbol
@@ -1322,14 +1042,14 @@ async function renderCoverSection(
 	ctx.fillStyle = '#333333'
 	ctx.font = '500 42px "Noto Sans SC"'
 	ctx.fillText(`@${authorText}`, centerX, currentY)
-	
+
 	currentY += authorHeight + authorGap
 
 	// Series info (if available) - larger
 	if (videoInfo.series) {
 		ctx.fillStyle = '#666666'
 		ctx.font = '400 32px "Noto Sans SC"'
-		const seriesText = videoInfo.seriesEpisode 
+		const seriesText = videoInfo.seriesEpisode
 			? `${videoInfo.series} 第${videoInfo.seriesEpisode}集`
 			: videoInfo.series
 		ctx.fillText(seriesText, centerX, currentY)
@@ -1339,8 +1059,11 @@ async function renderCoverSection(
 	// View count - larger
 	ctx.fillStyle = '#666666'
 	ctx.font = '400 28px "Noto Sans SC"'
-	ctx.fillText(`${formatViewCount(videoInfo.viewCount)} 次观看`, centerX, currentY)
-
+	ctx.fillText(
+		`${formatViewCount(videoInfo.viewCount)} 次观看`,
+		centerX,
+		currentY,
+	)
 }
 
 // Helper functions for modern UI elements
@@ -1376,7 +1099,7 @@ function wrapText(
 
 	// Check if text contains Chinese characters
 	const hasChinese = /[\u4e00-\u9fff]/.test(text)
-	
+
 	if (hasChinese) {
 		// For Chinese text, use character-by-character wrapping
 		for (let i = 0; i < text.length; i++) {
@@ -1408,10 +1131,10 @@ function wrapText(
 			}
 		}
 	}
-	
+
 	if (currentLine.trim()) {
 		lines.push(currentLine.trim())
 	}
-	
+
 	return lines
 }

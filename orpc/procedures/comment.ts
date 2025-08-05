@@ -10,10 +10,7 @@ import {
 	VIDEO_WITH_INFO_FILENAME,
 } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
-import {
-	renderVideoWithCanvas,
-	renderVideoWithInfoAndComments,
-} from '~/lib/media'
+import { renderVideoWithCanvas } from '~/lib/media'
 import {
 	downloadYoutubeComments,
 	extractVideoId,
