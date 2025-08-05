@@ -6,8 +6,10 @@ import {
 	Download,
 	Film,
 	LanguagesIcon,
-	MoreHorizontal,
 	Trash2,
+	Copy,
+	ThumbsUp,
+	MessageCircle,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -17,12 +19,6 @@ import { toast } from 'sonner'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu'
 import {
 	Select,
 	SelectContent,
@@ -40,6 +36,15 @@ export default function CommentsPage() {
 	const queryClient = useQueryClient()
 	const [pages, setPages] = useState('3')
 	const [model, setModel] = useState<string>(AIModelIds[0])
+
+	const copyToClipboard = async (text: string) => {
+		try {
+			await navigator.clipboard.writeText(text)
+			toast.success('Copied to clipboard!')
+		} catch (err) {
+			toast.error('Failed to copy to clipboard')
+		}
+	}
 
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
@@ -102,67 +107,29 @@ const renderMutation = useMutation({
 	const comments = mediaQuery.data?.comments || []
 
 	return (
-		<div className="container mx-auto py-6 px-4 max-w-7xl">
+		<div className="container mx-auto py-6 px-4 max-w-6xl">
 			{/* Header Section */}
-			<div className="mb-8">
-				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-					<Link href={`/media/${id}`}>
-						<Button variant="outline" className="flex items-center gap-2">
-							<ArrowLeft className="w-4 h-4" />
-							Back to Media
-						</Button>
-					</Link>
-
-					{/* Mobile Actions Dropdown */}
-					<div className="sm:hidden">
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button variant="outline" size="sm">
-									<MoreHorizontal className="w-4 h-4" />
-									Actions
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-48">
-								<DropdownMenuItem
-									onClick={() =>
-										downloadCommentsMutation.mutate({
-											mediaId: id,
-											pages: parseInt(pages, 10),
-										})
-									}
-									disabled={downloadCommentsMutation.isPending}
-								>
-									<Download className="w-4 h-4 mr-2" />
-									{downloadCommentsMutation.isPending
-										? 'Downloading...'
-										: 'Download Comments'}
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onClick={() =>
-										translateCommentsMutation.mutate({ mediaId: id, model })
-									}
-									disabled={translateCommentsMutation.isPending}
-								>
-									<LanguagesIcon className="w-4 h-4 mr-2" />
-									{translateCommentsMutation.isPending
-										? 'Translating...'
-										: 'Translate Comments'}
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									onClick={() => renderMutation.mutate({ mediaId: id })}
-									disabled={renderMutation.isPending}
-								>
-									<Film className="w-4 h-4 mr-2" />
-									{renderMutation.isPending ? 'Rendering...' : 'Render Video'}
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+			<div className="mb-6">
+				<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+					<div className="flex items-center gap-3">
+						<Link href={`/media/${id}`}>
+							<Button variant="outline" size="sm" className="flex items-center gap-2">
+								<ArrowLeft className="w-4 h-4" />
+								Back
+							</Button>
+						</Link>
+						<div className="h-4 w-px bg-border" />
+						{mediaQuery.data && (
+							<Badge variant="secondary" className="text-xs">
+								{comments.length} comments
+							</Badge>
+						)}
 					</div>
 
-					{/* Desktop Actions */}
-					<div className="hidden sm:flex items-center gap-3">
+					{/* Actions */}
+					<div className="flex flex-wrap items-center gap-2">
 						<Select value={pages} onValueChange={setPages}>
-							<SelectTrigger className="w-[140px]">
+							<SelectTrigger className="w-[120px] h-9">
 								<SelectValue placeholder="Pages" />
 							</SelectTrigger>
 							<SelectContent>
@@ -182,15 +149,14 @@ const renderMutation = useMutation({
 							}
 							disabled={downloadCommentsMutation.isPending}
 							size="sm"
+							className="h-9"
 						>
 							<Download className="w-4 h-4 mr-2" />
-							{downloadCommentsMutation.isPending
-								? 'Downloading...'
-								: 'Download'}
+							{downloadCommentsMutation.isPending ? 'Downloading...' : 'Download'}
 						</Button>
 						<Select value={model} onValueChange={setModel}>
-							<SelectTrigger className="w-[200px]">
-								<SelectValue placeholder="Select model" />
+							<SelectTrigger className="w-[160px] h-9">
+								<SelectValue placeholder="Model" />
 							</SelectTrigger>
 							<SelectContent>
 								{AIModelIds.map((modelId) => (
@@ -206,16 +172,16 @@ const renderMutation = useMutation({
 							}
 							disabled={translateCommentsMutation.isPending}
 							size="sm"
+							className="h-9"
 						>
 							<LanguagesIcon className="w-4 h-4 mr-2" />
-							{translateCommentsMutation.isPending
-								? 'Translating...'
-								: 'Translate'}
+							{translateCommentsMutation.isPending ? 'Translating...' : 'Translate'}
 						</Button>
 						<Button
 							onClick={() => renderMutation.mutate({ mediaId: id })}
 							disabled={renderMutation.isPending}
 							size="sm"
+							className="h-9"
 						>
 							<Film className="w-4 h-4 mr-2" />
 							{renderMutation.isPending ? 'Rendering...' : 'Render'}
@@ -224,146 +190,138 @@ const renderMutation = useMutation({
 				</div>
 
 				{/* Media Info */}
-				{mediaQuery.isLoading && (
-					<div className="space-y-2">
-						<Skeleton className="h-8 w-2/3" />
-						<Skeleton className="h-4 w-1/2" />
-					</div>
-				)}
-				{mediaQuery.data && (
-					<div className="space-y-2">
-						<h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-							{mediaQuery.data.title}
-						</h1>
-						{mediaQuery.data.translatedTitle && (
-							<p className="text-base sm:text-lg text-muted-foreground">
-								{mediaQuery.data.translatedTitle}
-							</p>
-						)}
-					</div>
-				)}
+				<div className="space-y-3">
+					{mediaQuery.isLoading ? (
+						<div className="space-y-2">
+							<Skeleton className="h-8 w-2/3" />
+							<Skeleton className="h-4 w-1/2" />
+						</div>
+					) : mediaQuery.data ? (
+						<div className="space-y-3">
+							<h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
+								{mediaQuery.data.title}
+							</h1>
+							{mediaQuery.data.translatedTitle && (
+								<div className="flex items-center gap-2">
+									<p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+										{mediaQuery.data.translatedTitle}
+									</p>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => copyToClipboard(mediaQuery.data.translatedTitle!)}
+										className="flex-shrink-0 h-6 w-6 p-0"
+									>
+										<Copy className="w-3 h-3" />
+									</Button>
+								</div>
+							)}
+						</div>
+					) : null}
+				</div>
 			</div>
 
 			{/* Comments Section */}
 			<Card className="shadow-sm">
-				<CardHeader className="pb-4">
-					<div className="flex items-center justify-between">
-						<CardTitle className="text-xl">Comments</CardTitle>
-						<Badge variant="secondary" className="text-sm">
-							{comments.length || 0} comments
-						</Badge>
-					</div>
+				<CardHeader className="pb-3">
+					<CardTitle className="text-lg">Comments</CardTitle>
 				</CardHeader>
 				<CardContent className="pt-0">
 					{mediaQuery.isLoading && (
 						<div className="space-y-4">
 							{[...Array(3)].map((_, i) => (
-								<div key={`skeleton-${i}`} className="flex items-start gap-4">
-									<Skeleton className="w-10 h-10 rounded-full" />
+								<div key={`skeleton-${i}`} className="flex items-start gap-3 p-3">
+									<Skeleton className="w-8 h-8 rounded-full" />
 									<div className="flex-1 space-y-2">
-										<Skeleton className="h-4 w-32" />
-										<Skeleton className="h-4 w-full" />
-										<Skeleton className="h-4 w-3/4" />
+										<Skeleton className="h-4 w-24" />
+										<Skeleton className="h-3 w-full" />
+										<Skeleton className="h-3 w-4/5" />
 									</div>
 								</div>
 							))}
 						</div>
 					)}
 					{mediaQuery.isError && (
-						<div className="text-center py-12">
-							<p className="text-destructive">Failed to load comments.</p>
+						<div className="text-center py-8">
+							<p className="text-destructive text-sm">Failed to load comments.</p>
 						</div>
 					)}
 					{comments.length === 0 && !mediaQuery.isLoading && (
-						<div className="text-center py-16">
-							<div className="max-w-md mx-auto">
-								<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-									<LanguagesIcon className="w-8 h-8 text-muted-foreground" />
+						<div className="text-center py-12">
+							<div className="max-w-sm mx-auto">
+								<div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+									<LanguagesIcon className="w-6 h-6 text-muted-foreground" />
 								</div>
-								<h3 className="text-lg font-semibold mb-2">No comments yet</h3>
-								<p className="text-muted-foreground mb-4">
-									Download comments from YouTube to get started with analysis
-									and translation.
+								<h3 className="text-base font-semibold mb-2">No comments yet</h3>
+								<p className="text-muted-foreground text-sm mb-4">
+									Download comments from YouTube to get started with analysis and translation.
 								</p>
-								<Button
-									onClick={() =>
-										downloadCommentsMutation.mutate({
-											mediaId: id,
-											pages: parseInt(pages, 10),
-										})
-									}
-									disabled={downloadCommentsMutation.isPending}
-									className="sm:hidden"
-								>
-									<Download className="w-4 h-4 mr-2" />
-									{downloadCommentsMutation.isPending
-										? 'Downloading...'
-										: 'Download Comments'}
-								</Button>
 							</div>
 						</div>
 					)}
-					<div className="space-y-6">
-						{comments.map((comment) => (
-							<div key={comment.id} className="group">
-								<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors">
-									<div className="flex-shrink-0">
-										<Image
-											src={comment.authorThumbnail || '/default-avatar.png'}
-											alt={comment.author}
-											width={40}
-											height={40}
-											className="w-10 h-10 rounded-full border-2 border-background shadow-sm"
-										/>
-									</div>
-									<div className="flex-1 min-w-0">
-										<div className="flex items-center justify-between mb-2">
-											<div className="flex items-center gap-2">
-												<p className="font-semibold text-sm truncate">
-													{comment.author}
-												</p>
-												<div className="flex items-center gap-3 text-xs text-muted-foreground">
-													<span className="flex items-center gap-1">
-														👍 {comment.likes}
-													</span>
-													<span className="flex items-center gap-1">
-														💬 {comment.replyCount}
-													</span>
-												</div>
-											</div>
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => deleteCommentMutation.mutate({ mediaId: id, commentId: comment.id })}
-												disabled={deleteCommentMutation.isPending}
-												className="opacity-0 group-hover:opacity-100 transition-opacity"
-											>
-												<Trash2 className="w-4 h-4 text-destructive" />
-											</Button>
+					{comments.length > 0 && (
+						<div className="space-y-4">
+							{comments.map((comment) => (
+								<div key={comment.id} className="group">
+									<div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
+										<div className="flex-shrink-0">
+											<Image
+												src={comment.authorThumbnail || '/default-avatar.png'}
+												alt={comment.author}
+												width={32}
+												height={32}
+												className="w-8 h-8 rounded-full border border-background"
+											/>
 										</div>
-										<div className="space-y-3">
-											<p className="text-sm leading-relaxed">
-												{comment.content}
-											</p>
-											{comment.translatedContent && (
-												<div
-													key={`translated-${comment.id}`}
-													className="border-l-2 border-primary/20 pl-4 py-2 bg-primary/5 rounded-r-md"
-												>
-													<p className="text-sm text-muted-foreground leading-relaxed">
-														{comment.translatedContent}
+										<div className="flex-1 min-w-0">
+											<div className="flex items-center justify-between mb-1">
+												<div className="flex items-center gap-2 min-w-0">
+													<p className="font-medium text-sm truncate">
+														{comment.author}
 													</p>
-													<Badge variant="outline" className="mt-2 text-xs">
-														Translated
-													</Badge>
+													<div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
+														<span className="flex items-center gap-1">
+															<ThumbsUp className="w-3 h-3" /> {comment.likes}
+														</span>
+														<span className="flex items-center gap-1">
+															<MessageCircle className="w-3 h-3" /> {comment.replyCount}
+														</span>
+													</div>
 												</div>
-											)}
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => deleteCommentMutation.mutate({ mediaId: id, commentId: comment.id })}
+													disabled={deleteCommentMutation.isPending}
+													className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+												>
+													<Trash2 className="w-3 h-3 text-destructive" />
+												</Button>
+											</div>
+											<div className="space-y-2">
+												<p className="text-sm leading-relaxed">
+													{comment.content}
+												</p>
+												{comment.translatedContent && (
+													<div
+														key={`translated-${comment.id}`}
+														className="border-l-2 border-primary/20 pl-3 py-1 bg-primary/5 rounded-r-md"
+													>
+														<p className="text-sm text-muted-foreground leading-relaxed">
+															{comment.translatedContent}
+														</p>
+														<Badge variant="outline" className="mt-1 text-xs">
+															Translated
+														</Badge>
+													</div>
+												)}
+											</div>
 										</div>
 									</div>
 								</div>
-							</div>
-						))}
-					</div>
+							))}
+						</div>
+					)}
 				</CardContent>
 			</Card>
 		</div>
