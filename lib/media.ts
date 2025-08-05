@@ -1,18 +1,19 @@
 import { createCanvas, loadImage } from 'canvas'
 import ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
-import https from 'https'
 import * as path from 'path'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CanvasContext = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type EmojiImage = any
 
 // Emoji rendering utilities
 const EMOJI_REGEX =
 	/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F018}-\u{1F270}]|[\u{238C}-\u{2454}]|[\u{20D0}-\u{20FF}]|[\u{FE0F}]|[\u{1F900}-\u{1F9FF}]|[\u{1F1E6}-\u{1F1FF}]|[\u{1F191}-\u{1F251}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F171}]|[\u{1F17E}-\u{1F17F}]|[\u{1F18E}]|[\u{3030}]|[\u{2B50}]|[\u{2B55}]|[\u{2934}-\u{2935}]|[\u{2194}-\u{2199}]|[\u{21A9}-\u{21AA}]|[\u{231A}-\u{231B}]|[\u{23E9}-\u{23EC}]|[\u{23F0}]|[\u{23F3}]|[\u{25FD}-\u{25FE}]|[\u{2614}-\u{2615}]|[\u{2648}-\u{2653}]|[\u{267F}]|[\u{2692}-\u{2697}]|[\u{26A0}-\u{26A1}]|[\u{26AA}-\u{26AB}]|[\u{26B0}-\u{26B1}]|[\u{26BD}-\u{26BE}]|[\u{26C4}-\u{26C5}]|[\u{26CE}]|[\u{26D4}]|[\u{26EA}]|[\u{26F2}-\u{26F3}]|[\u{26F5}]|[\u{26FA}]|[\u{26FD}]|[\u{2705}]|[\u{270A}-\u{270B}]|[\u{2728}]|[\u{274C}]|[\u{274E}]|[\u{2753}-\u{2755}]|[\u{2757}]|[\u{2795}-\u{2797}]|[\u{27B0}]|[\u{27BF}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{2B50}]|[\u{2B55}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]|[\u{1F004}]|[\u{1F0CF}]|[\u{1F170}-\u{1F171}]|[\u{1F17E}-\u{1F17F}]|[\u{1F18E}]|[\u{1F191}-\u{1F19A}]|[\u{1F1E6}-\u{1F1FF}]|[\u{1F201}-\u{1F202}]|[\u{1F21A}]|[\u{1F22F}]|[\u{1F232}-\u{1F23A}]|[\u{1F250}-\u{1F251}]|[\u{1F300}-\u{1F321}]|[\u{1F324}-\u{1F393}]|[\u{1F396}-\u{1F397}]|[\u{1F399}-\u{1F39B}]|[\u{1F39E}-\u{1F3F0}]|[\u{1F3F3}-\u{1F3F5}]|[\u{1F3F7}-\u{1F3FA}]|[\u{1F400}-\u{1F4FD}]|[\u{1F4FF}-\u{1F53D}]|[\u{1F549}-\u{1F54E}]|[\u{1F550}-\u{1F567}]|[\u{1F56F}-\u{1F570}]|[\u{1F573}-\u{1F57A}]|[\u{1F587}]|[\u{1F58A}-\u{1F58D}]|[\u{1F590}]|[\u{1F595}-\u{1F596}]|[\u{1F5A4}-\u{1F5A5}]|[\u{1F5A8}]|[\u{1F5B1}-\u{1F5B2}]|[\u{1F5BC}]|[\u{1F5C2}-\u{1F5C4}]|[\u{1F5D1}-\u{1F5D3}]|[\u{1F5DC}-\u{1F5DE}]|[\u{1F5E1}]|[\u{1F5E3}]|[\u{1F5E8}]|[\u{1F5EF}]|[\u{1F5F3}]|[\u{1F5FA}-\u{1F64F}]|[\u{1F680}-\u{1F6C5}]|[\u{1F6CB}-\u{1F6D2}]|[\u{1F6E0}-\u{1F6E5}]|[\u{1F6E9}]|[\u{1F6EB}-\u{1F6EC}]|[\u{1F6F0}]|[\u{1F6F3}-\u{1F6F9}]|[\u{1F910}-\u{1F93A}]|[\u{1F93C}-\u{1F93E}]|[\u{1F940}-\u{1F945}]|[\u{1F947}-\u{1F970}]|[\u{1F973}-\u{1F976}]|[\u{1F97A}]|[\u{1F97C}-\u{1F9A2}]|[\u{1F9B0}-\u{1F9B9}]|[\u{1F9C0}-\u{1F9C2}]|[\u{1F9D0}-\u{1F9FF}]/gu
 
 // Cache for downloaded emoji images
-const emojiCache = new Map<string, any>()
+const emojiCache = new Map<string, EmojiImage>()
 
 /**
  * Convert emoji to Twemoji codepoint
@@ -48,7 +49,9 @@ export function emojiToCodepoint(emoji: string): string {
 /**
  * Download emoji image from Twemoji CDN with timeout and better error handling
  */
-export async function downloadEmojiImage(codepoint: string): Promise<any> {
+export async function downloadEmojiImage(
+	codepoint: string,
+): Promise<EmojiImage> {
 	// Skip empty codepoints
 	if (!codepoint || codepoint.trim() === '') {
 		return null
@@ -72,7 +75,7 @@ export async function downloadEmojiImage(codepoint: string): Promise<any> {
 				),
 			])
 			return image
-		} catch (error) {
+		} catch {
 			// Continue to next URL if this one fails
 			continue
 		}
@@ -95,7 +98,7 @@ export async function downloadEmojiImage(codepoint: string): Promise<any> {
 				),
 			])
 			return image
-		} catch (error) {
+		} catch {
 			// Continue to next URL if this one fails
 			continue
 		}
@@ -109,7 +112,7 @@ export async function downloadEmojiImage(codepoint: string): Promise<any> {
 /**
  * Get emoji image (from cache or download)
  */
-async function getEmojiImage(emoji: string): Promise<any> {
+async function getEmojiImage(emoji: string): Promise<EmojiImage> {
 	const codepoint = emojiToCodepoint(emoji)
 
 	if (emojiCache.has(codepoint)) {
@@ -215,35 +218,6 @@ async function fillTextWithEmojis(
 			}
 		}
 	}
-}
-
-/**
- * Measure text width including emojis
- */
-async function measureTextWithEmojis(
-	ctx: CanvasContext,
-	text: string,
-	options: {
-		font?: string
-		emojiSize?: number
-	} = {},
-): Promise<number> {
-	const { font = '24px "Noto Sans SC"', emojiSize = 24 } = options
-
-	ctx.font = font
-
-	const parts = splitTextAndEmojis(text)
-	let totalWidth = 0
-
-	for (const part of parts) {
-		if (part.type === 'text') {
-			totalWidth += ctx.measureText(part.content).width
-		} else if (part.type === 'emoji') {
-			totalWidth += emojiSize
-		}
-	}
-
-	return totalWidth
 }
 
 export async function extractAudio(
@@ -477,19 +451,18 @@ export function renderVideoArea(
 export async function renderHeader(
 	ctx: CanvasContext,
 	videoInfo: VideoInfo,
-	commentsCount: number,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	_commentsCount: number,
 ): Promise<void> {
-	// Video area position (from generateTestFrame)
+	// Video area position
 	const videoY = 30
 	const videoH = 506
-	const videoCenterY = videoY + videoH / 2
 
 	// Header area positioned to align with video center
 	const headerX = 40
 	const headerY = videoY
 	const headerWidth = 880
 	const headerHeight = videoH
-	const centerY = videoCenterY // Use the same center Y as video
 
 	// Simple header background
 	ctx.fillStyle = '#F5F5F5'
@@ -765,385 +738,6 @@ export async function renderCommentCard(
 	// Comment counter removed - no longer needed
 }
 
-/**
- * Render external comment card with platform-specific styling
- */
-export async function renderExternalCommentCard(
-	ctx: CanvasContext,
-	comment: Comment,
-	_commentIndex: number,
-	_totalComments: number,
-	authorImage: CanvasImageSource | null,
-	width: number,
-	_height: number,
-): Promise<void> {
-	void _height
-	// Position comment card below the header/video area
-	const headerAreaHeight = 506
-	const headerAreaBottom = 30 + headerAreaHeight
-	const commentSpacing = 20
-	const commentY = headerAreaBottom + commentSpacing
-
-	// Calculate required comment height dynamically
-	const avatarX = 60
-	const avatarRadius = 35
-	const textX = avatarX + avatarRadius * 2 + 40
-	const maxCommentWidth = width - textX - 200
-	const padding = 20
-
-	// Set font for text measurement
-	ctx.font = '28px "Noto Sans SC"'
-
-	// Calculate content heights
-	let totalContentHeight = 0
-	const authorHeight = 40
-	const platformHeight = 25
-	const counterHeight = 25
-	const spacing = 15
-
-	totalContentHeight += authorHeight + spacing
-	totalContentHeight += platformHeight + spacing
-
-	// Calculate content height
-	const wrappedContent = wrapText(ctx, comment.content, maxCommentWidth)
-	const contentHeight = wrappedContent.length * 32
-	totalContentHeight += contentHeight + spacing
-
-	// Calculate translated content height (if different from original)
-	let translatedHeight = 0
-	let wrappedTranslated: string[] = []
-	if (
-		comment.translatedContent &&
-		comment.translatedContent !== comment.content
-	) {
-		ctx.font = 'bold 40px "Noto Sans SC"'
-		wrappedTranslated = wrapText(
-			ctx,
-			comment.translatedContent,
-			maxCommentWidth,
-		)
-		translatedHeight = wrappedTranslated.length * 45
-		totalContentHeight += translatedHeight + spacing
-	}
-
-	totalContentHeight += counterHeight + padding
-
-	// Calculate final comment card height
-	const commentHeight = totalContentHeight
-
-	// Get platform-specific colors
-	const platformColors = getPlatformColors(comment.source || comment.platform)
-
-	// Comment card background with platform-specific styling
-	ctx.fillStyle = platformColors.backgroundColor
-	roundRect(ctx, 20, commentY, width - 40, commentHeight, 12)
-	ctx.fill()
-
-	// Comment card border with platform color
-	ctx.strokeStyle = platformColors.borderColor
-	ctx.lineWidth = 2
-	roundRect(ctx, 20, commentY, width - 40, commentHeight, 12)
-	ctx.stroke()
-
-	// Platform indicator bar
-	ctx.fillStyle = platformColors.accentColor
-	roundRect(ctx, 20, commentY, width - 40, 4, 2)
-	ctx.fill()
-
-	// Avatar
-	const avatarY = commentY + 30
-
-	if (authorImage) {
-		ctx.save()
-		ctx.beginPath()
-		ctx.arc(
-			avatarX + avatarRadius,
-			avatarY + avatarRadius,
-			avatarRadius,
-			0,
-			Math.PI * 2,
-		)
-		ctx.closePath()
-		ctx.clip()
-		ctx.drawImage(
-			authorImage,
-			avatarX,
-			avatarY,
-			avatarRadius * 2,
-			avatarRadius * 2,
-		)
-		ctx.restore()
-	} else {
-		// Fallback avatar with platform color
-		ctx.fillStyle = platformColors.accentColor
-		ctx.beginPath()
-		ctx.arc(
-			avatarX + avatarRadius,
-			avatarY + avatarRadius,
-			avatarRadius,
-			0,
-			Math.PI * 2,
-		)
-		ctx.fill()
-
-		ctx.fillStyle = '#FFFFFF'
-		ctx.font = 'bold 32px "Noto Sans SC"'
-		ctx.textAlign = 'center'
-		ctx.textBaseline = 'middle'
-		ctx.fillText(
-			comment.author.charAt(0).toUpperCase(),
-			avatarX + avatarRadius,
-			avatarY + avatarRadius,
-		)
-	}
-
-	// Comment content
-	ctx.textAlign = 'left'
-	ctx.textBaseline = 'top'
-
-	let currentY = avatarY + 10
-
-	// Author name
-	ctx.textAlign = 'left'
-	await fillTextWithEmojis(ctx, comment.author, textX, currentY, {
-		font: 'bold 32px "Noto Sans SC"',
-		fillStyle: platformColors.textColor,
-		emojiSize: 32,
-	})
-
-	// Platform indicator
-	currentY += authorHeight + spacing
-	const platformText = getPlatformDisplayName(
-		comment.source || comment.platform,
-	)
-	await fillTextWithEmojis(ctx, platformText, textX, currentY, {
-		font: '20px "Noto Sans SC"',
-		fillStyle: platformColors.accentColor,
-		emojiSize: 20,
-	})
-
-	// Reset text alignment for content
-	ctx.textAlign = 'left'
-	currentY += platformHeight + spacing
-
-	// Original content
-	for (let index = 0; index < wrappedContent.length; index++) {
-		await fillTextWithEmojis(
-			ctx,
-			wrappedContent[index],
-			textX,
-			currentY + index * 32,
-			{
-				font: '24px "Noto Sans SC"',
-				fillStyle: platformColors.contentColor,
-				emojiSize: 24,
-			},
-		)
-	}
-	currentY += wrappedContent.length * 32 + spacing
-
-	// Translated content (if available)
-	if (
-		comment.translatedContent &&
-		comment.translatedContent !== comment.content
-	) {
-		for (let index = 0; index < wrappedTranslated.length; index++) {
-			await fillTextWithEmojis(
-				ctx,
-				wrappedTranslated[index],
-				textX,
-				currentY + index * 45,
-				{
-					font: 'bold 40px "Noto Sans SC"',
-					fillStyle: platformColors.textColor,
-					emojiSize: 40,
-				},
-			)
-		}
-		currentY += wrappedTranslated.length * 36 + spacing
-	}
-
-	// Likes with platform-specific styling
-	ctx.textAlign = 'right'
-	const likesX = width - 60
-
-	// Only show likes if count is greater than 0
-	if (comment.likes > 0) {
-		const likesIcon = getPlatformLikesIcon(comment.source || comment.platform)
-
-		// Render emoji and text separately for better spacing control
-		const emojiX = likesX - 90 // Position emoji first
-		const textX = likesX - 15 // Position text with proper spacing
-
-		// Adjust Y position for better vertical alignment
-		const adjustedY = currentY + 12 // Move down more for better centering
-
-		// Render emoji
-		await fillTextWithEmojis(ctx, likesIcon, emojiX, adjustedY, {
-			font: '24px "Noto Sans SC"',
-			fillStyle: platformColors.accentColor,
-			emojiSize: 24,
-		})
-
-		// Render text
-		await fillTextWithEmojis(
-			ctx,
-			formatLikes(comment.likes),
-			textX,
-			adjustedY,
-			{
-				font: '24px "Noto Sans SC"',
-				fillStyle: platformColors.accentColor,
-				emojiSize: 24,
-			},
-		)
-	}
-}
-
-/**
- * Get platform-specific colors for external comments
- */
-function getPlatformColors(source?: string): {
-	backgroundColor: string
-	borderColor: string
-	accentColor: string
-	textColor: string
-	contentColor: string
-} {
-	switch (source?.toLowerCase()) {
-		case 'youtube':
-			return {
-				backgroundColor: '#FFFBFB',
-				borderColor: '#FF0000',
-				accentColor: '#6b7280',
-				textColor: '#000000',
-				contentColor: '#333333',
-			}
-		case 'tiktok':
-			return {
-				backgroundColor: '#000000',
-				borderColor: '#00F2EA',
-				accentColor: '#9ca3af',
-				textColor: '#FFFFFF',
-				contentColor: '#FFFFFF',
-			}
-		case 'twitter':
-			return {
-				backgroundColor: '#F7F9FA',
-				borderColor: '#1DA1F2',
-				accentColor: '#6b7280',
-				textColor: '#000000',
-				contentColor: '#333333',
-			}
-		case 'instagram':
-			return {
-				backgroundColor: '#FAFAFA',
-				borderColor: '#E4405F',
-				accentColor: '#6b7280',
-				textColor: '#000000',
-				contentColor: '#333333',
-			}
-		case 'weibo':
-			return {
-				backgroundColor: '#F8F8F8',
-				borderColor: '#E6162D',
-				accentColor: '#6b7280',
-				textColor: '#000000',
-				contentColor: '#333333',
-			}
-		default:
-			return {
-				backgroundColor: '#F9F9F9',
-				borderColor: '#666666',
-				accentColor: '#666666',
-				textColor: '#000000',
-				contentColor: '#333333',
-			}
-	}
-}
-
-/**
- * Get platform display name
- */
-function getPlatformDisplayName(source?: string): string {
-	switch (source?.toLowerCase()) {
-		case 'youtube':
-			return 'YouTube'
-		case 'tiktok':
-			return 'TikTok'
-		case 'twitter':
-			return 'Twitter'
-		case 'instagram':
-			return 'Instagram'
-		case 'weibo':
-			return '微博'
-		default:
-			return source || 'External'
-	}
-}
-
-/**
- * Get platform-specific likes icon
- */
-function getPlatformLikesIcon(source?: string): string {
-	switch (source?.toLowerCase()) {
-		case 'youtube':
-			return '👍'
-		case 'tiktok':
-			return '👍'
-		case 'twitter':
-			return '👍'
-		case 'instagram':
-			return '👍'
-		case 'weibo':
-			return '👍'
-		default:
-			return '👍'
-	}
-}
-
-/**
- * Generate a single frame for testing purposes
- */
-export async function generateTestFrame(
-	videoInfo: VideoInfo,
-	comment: Comment,
-	commentIndex: number,
-	totalComments: number,
-	authorImage?: CanvasImageSource | null,
-	width: number = 1920,
-	height: number = 1080,
-): Promise<Buffer> {
-	const canvas = createCanvas(width, height)
-	const ctx = canvas.getContext('2d')
-
-	// Render background
-	renderBackground(ctx, width, height)
-
-	// Render video area
-	const videoX = 950
-	const videoY = 30
-	const videoW = 900
-	const videoH = 506
-	renderVideoArea(ctx, videoX, videoY, videoW, videoH)
-
-	// Render header
-	await renderHeader(ctx, videoInfo, totalComments)
-
-	// Render comment card
-	await renderCommentCard(
-		ctx,
-		comment,
-		commentIndex,
-		totalComments,
-		authorImage,
-		width,
-		height,
-	)
-
-	return canvas.toBuffer('image/png')
-}
-
 // Export the new cover section function for testing
 export { renderCoverSection }
 
@@ -1416,67 +1010,6 @@ function roundRect(
 	ctx.lineTo(x, y + radius)
 	ctx.quadraticCurveTo(x, y, x + radius, y)
 	ctx.closePath()
-}
-
-async function wrapTextWithEmojis(
-	ctx: CanvasContext,
-	text: string,
-	maxWidth: number,
-	options: {
-		font?: string
-		emojiSize?: number
-	} = {},
-): Promise<string[]> {
-	const { font = '24px "Noto Sans SC"', emojiSize = 24 } = options
-	const lines: string[] = []
-	let currentLine = ''
-
-	ctx.font = font
-
-	// Check if text contains Chinese characters
-	const hasChinese = /[\u4e00-\u9fff]/.test(text)
-
-	if (hasChinese) {
-		// For Chinese text, use character-by-character wrapping
-		for (let i = 0; i < text.length; i++) {
-			const char = text[i]
-			const testLine = currentLine + char
-			const testWidth = await measureTextWithEmojis(ctx, testLine, {
-				font,
-				emojiSize,
-			})
-
-			if (testWidth > maxWidth && currentLine.length > 0) {
-				lines.push(currentLine)
-				currentLine = char
-			} else {
-				currentLine = testLine
-			}
-		}
-	} else {
-		// For English text, use word-based wrapping
-		const words = text.split(' ')
-		for (let i = 0; i < words.length; i++) {
-			const testLine = currentLine + words[i] + ' '
-			const testWidth = await measureTextWithEmojis(ctx, testLine, {
-				font,
-				emojiSize,
-			})
-
-			if (testWidth > maxWidth && i > 0) {
-				lines.push(currentLine.trim())
-				currentLine = words[i] + ' '
-			} else {
-				currentLine = testLine
-			}
-		}
-	}
-
-	if (currentLine.trim()) {
-		lines.push(currentLine.trim())
-	}
-
-	return lines
 }
 
 function wrapText(
