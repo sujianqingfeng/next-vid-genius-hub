@@ -2,6 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query'
 import { Download, Link, Loader2, Video } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
@@ -25,12 +26,17 @@ import { queryOrpc } from '~/lib/orpc/query-client'
 
 export default function NewDownloadPage() {
 	const [error, setError] = useState<string | null>(null)
+	const router = useRouter()
 
 	const downloadMutation = useMutation({
 		...queryOrpc.download.download.mutationOptions(),
 		onSuccess: () => {
 			toast.success('Download started successfully!')
 			setError(null)
+			// 延迟一秒后返回上一页，让用户看到成功提示
+			setTimeout(() => {
+				router.back()
+			}, 1000)
 		},
 		onError: (err: Error) => {
 			console.error(err)

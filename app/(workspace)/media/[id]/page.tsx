@@ -1,20 +1,11 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import {
-	ArrowLeft,
-	Calendar,
-	Download,
-	Eye,
-	FileText,
-	Heart,
-	MessageSquare,
-	User,
-} from 'lucide-react'
-import Image from 'next/image'
+import { ArrowLeft, Download, FileText, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { Badge } from '~/components/ui/badge'
+import { useState } from 'react'
+import { MediaInfoCard, MobileDetailsCard } from '~/components/business/media'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
@@ -23,6 +14,7 @@ import { queryOrpc } from '~/lib/orpc/query-client'
 export default function MediaDetailPage() {
 	const params = useParams()
 	const id = params.id as string
+	const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
@@ -113,116 +105,23 @@ export default function MediaDetailPage() {
 
 				{/* Media Content */}
 				{media && (
-					<div className="space-y-6">
+					<div className="relative">
 						<div className="grid gap-6 lg:grid-cols-3">
-							{/* Media Info Card */}
-							<div className="lg:col-span-1">
-								<Card className="overflow-hidden shadow-lg">
-									{media.thumbnail && (
-										<div className="relative">
-											<Image
-												src={media.thumbnail}
-												alt={media.title}
-												width={400}
-												height={225}
-												className="w-full h-64 object-cover"
-												priority
-											/>
-											<div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-										</div>
-									)}
-									<CardHeader className="space-y-3">
-										<CardTitle className="text-xl font-semibold leading-tight">
-											{media.title}
-										</CardTitle>
-										{media.translatedTitle && (
-											<CardTitle className="text-lg font-medium leading-tight text-muted-foreground">
-												{media.translatedTitle}
-											</CardTitle>
-										)}
-										<div className="flex items-center gap-2 text-muted-foreground">
-											<User className="w-4 h-4" />
-											<span className="text-sm">{media.author}</span>
-										</div>
-									</CardHeader>
-									<CardContent className="space-y-4">
-										<div className="flex flex-wrap gap-2">
-											<Badge variant="secondary" className="capitalize">
-												{media.source}
-											</Badge>
-											<Badge variant="outline">{media.quality}</Badge>
-										</div>
-									</CardContent>
-								</Card>
-							</div>
+							{/* Media Info Card with Drawer */}
+							<MediaInfoCard media={media} />
 
-							{/* Details and Actions */}
+							{/* Actions */}
 							<div className="lg:col-span-2 space-y-6">
-								{/* Media Details */}
-								<Card className="shadow-sm">
-									<CardHeader>
-										<CardTitle className="flex items-center gap-2">
-											<FileText className="w-5 h-5" />
-											Media Details
-										</CardTitle>
-									</CardHeader>
-									<CardContent>
-										<div className="grid gap-4 sm:grid-cols-2">
-											<div className="space-y-1">
-												<p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-													<Eye className="w-4 h-4" />
-													Views
-												</p>
-												<p className="text-lg font-semibold">
-													{media.viewCount?.toLocaleString() || 'N/A'}
-												</p>
-											</div>
-											<div className="space-y-1">
-												<p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-													<Heart className="w-4 h-4" />
-													Likes
-												</p>
-												<p className="text-lg font-semibold">
-													{media.likeCount?.toLocaleString() || 'N/A'}
-												</p>
-											</div>
-											<div className="space-y-1">
-												<p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-													<Download className="w-4 h-4" />
-													Source
-												</p>
-												<p className="capitalize font-medium">{media.source}</p>
-											</div>
-											<div className="space-y-1">
-												<p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-													<FileText className="w-4 h-4" />
-													Quality
-												</p>
-												<p className="font-medium">{media.quality}</p>
-											</div>
-											<div className="space-y-1 sm:col-span-2">
-												<p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-													<Calendar className="w-4 h-4" />
-													Downloaded At
-												</p>
-												<p className="font-medium">
-													{new Date(media.createdAt).toLocaleDateString(
-														'en-US',
-														{
-															year: 'numeric',
-															month: 'long',
-															day: 'numeric',
-															hour: '2-digit',
-															minute: '2-digit',
-														},
-													)}
-												</p>
-											</div>
-										</div>
-									</CardContent>
-								</Card>
+								{/* Mobile Details Card */}
+								<div className="lg:hidden">
+									<MobileDetailsCard
+										media={media}
+										isOpen={isDetailsOpen}
+										onClose={() => setIsDetailsOpen(false)}
+									/>
+								</div>
 
-								{/* Actions */}
+								{/* Actions Card */}
 								<Card className="shadow-sm">
 									<CardHeader>
 										<CardTitle>Actions</CardTitle>

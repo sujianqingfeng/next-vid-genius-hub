@@ -3,13 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
 	ArrowLeft,
+	Copy,
 	Download,
 	Film,
 	LanguagesIcon,
-	Trash2,
-	Copy,
-	ThumbsUp,
 	MessageCircle,
+	ThumbsUp,
+	Trash2,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -81,20 +81,20 @@ export default function CommentsPage() {
 	)
 
 	const deleteCommentMutation = useMutation(
-	queryOrpc.comment.deleteComment.mutationOptions({
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-			})
-			toast.success('Comment deleted!')
-		},
-		onError: (error) => {
-			toast.error(`Failed to delete comment: ${error.message}`)
-		},
-	}),
-)
+		queryOrpc.comment.deleteComment.mutationOptions({
+			onSuccess: () => {
+				queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+				})
+				toast.success('Comment deleted!')
+			},
+			onError: (error) => {
+				toast.error(`Failed to delete comment: ${error.message}`)
+			},
+		}),
+	)
 
-const renderMutation = useMutation({
+	const renderMutation = useMutation({
 		...queryOrpc.comment.renderWithInfo.mutationOptions(),
 		onSuccess: () => {
 			toast.success('Video rendering started!')
@@ -113,7 +113,11 @@ const renderMutation = useMutation({
 				<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
 					<div className="flex items-center gap-3">
 						<Link href={`/media/${id}`}>
-							<Button variant="outline" size="sm" className="flex items-center gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								className="flex items-center gap-2"
+							>
 								<ArrowLeft className="w-4 h-4" />
 								Back
 							</Button>
@@ -152,7 +156,9 @@ const renderMutation = useMutation({
 							className="h-9"
 						>
 							<Download className="w-4 h-4 mr-2" />
-							{downloadCommentsMutation.isPending ? 'Downloading...' : 'Download'}
+							{downloadCommentsMutation.isPending
+								? 'Downloading...'
+								: 'Download'}
 						</Button>
 						<Select value={model} onValueChange={setModel}>
 							<SelectTrigger className="w-[160px] h-9">
@@ -175,7 +181,9 @@ const renderMutation = useMutation({
 							className="h-9"
 						>
 							<LanguagesIcon className="w-4 h-4 mr-2" />
-							{translateCommentsMutation.isPending ? 'Translating...' : 'Translate'}
+							{translateCommentsMutation.isPending
+								? 'Translating...'
+								: 'Translate'}
 						</Button>
 						<Button
 							onClick={() => renderMutation.mutate({ mediaId: id })}
@@ -209,7 +217,9 @@ const renderMutation = useMutation({
 									<Button
 										variant="ghost"
 										size="sm"
-										onClick={() => copyToClipboard(mediaQuery.data.translatedTitle!)}
+										onClick={() =>
+											copyToClipboard(mediaQuery.data.translatedTitle!)
+										}
 										className="flex-shrink-0 h-6 w-6 p-0"
 									>
 										<Copy className="w-3 h-3" />
@@ -230,7 +240,10 @@ const renderMutation = useMutation({
 					{mediaQuery.isLoading && (
 						<div className="space-y-4">
 							{[...Array(3)].map((_, i) => (
-								<div key={`skeleton-${i}`} className="flex items-start gap-3 p-3">
+								<div
+									key={`skeleton-${i}`}
+									className="flex items-start gap-3 p-3"
+								>
 									<Skeleton className="w-8 h-8 rounded-full" />
 									<div className="flex-1 space-y-2">
 										<Skeleton className="h-4 w-24" />
@@ -243,7 +256,9 @@ const renderMutation = useMutation({
 					)}
 					{mediaQuery.isError && (
 						<div className="text-center py-8">
-							<p className="text-destructive text-sm">Failed to load comments.</p>
+							<p className="text-destructive text-sm">
+								Failed to load comments.
+							</p>
 						</div>
 					)}
 					{comments.length === 0 && !mediaQuery.isLoading && (
@@ -252,9 +267,12 @@ const renderMutation = useMutation({
 								<div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
 									<LanguagesIcon className="w-6 h-6 text-muted-foreground" />
 								</div>
-								<h3 className="text-base font-semibold mb-2">No comments yet</h3>
+								<h3 className="text-base font-semibold mb-2">
+									No comments yet
+								</h3>
 								<p className="text-muted-foreground text-sm mb-4">
-									Download comments from YouTube to get started with analysis and translation.
+									Download comments from YouTube to get started with analysis
+									and translation.
 								</p>
 							</div>
 						</div>
@@ -284,14 +302,20 @@ const renderMutation = useMutation({
 															<ThumbsUp className="w-3 h-3" /> {comment.likes}
 														</span>
 														<span className="flex items-center gap-1">
-															<MessageCircle className="w-3 h-3" /> {comment.replyCount}
+															<MessageCircle className="w-3 h-3" />{' '}
+															{comment.replyCount}
 														</span>
 													</div>
 												</div>
 												<Button
 													variant="ghost"
 													size="sm"
-													onClick={() => deleteCommentMutation.mutate({ mediaId: id, commentId: comment.id })}
+													onClick={() =>
+														deleteCommentMutation.mutate({
+															mediaId: id,
+															commentId: comment.id,
+														})
+													}
 													disabled={deleteCommentMutation.isPending}
 													className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
 												>
