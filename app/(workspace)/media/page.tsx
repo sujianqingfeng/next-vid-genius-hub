@@ -1,24 +1,12 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Plus, Trash2, User, Video } from 'lucide-react'
-import Image from 'next/image'
+import { useQuery } from '@tanstack/react-query'
+import { Plus, Video } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
-import { toast } from 'sonner'
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-} from '~/components/ui/alert-dialog'
+import { MediaCard } from '~/components/business/media'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import {
 	Pagination,
 	PaginationContent,
@@ -35,7 +23,6 @@ const PAGE_SIZE = 12
 
 export default function MediaPage() {
 	const [page, setPage] = useState(1)
-	const queryClient = useQueryClient()
 
 	type PaginatedMedia = {
 		items: (typeof schema.media.$inferSelect)[]
@@ -49,19 +36,6 @@ export default function MediaPage() {
 			input: { page, limit: PAGE_SIZE },
 		}),
 	)
-
-	const deleteMediaMutation = useMutation({
-		...queryOrpc.media.deleteById.mutationOptions(),
-		onSuccess: () => {
-			toast.success('Media deleted successfully.')
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.media.list.key(),
-			})
-		},
-		onError: (error) => {
-			toast.error(`Failed to delete media: ${error.message}`)
-		},
-	})
 
 	const total = mediaQuery.data?.total ?? 0
 	const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -160,83 +134,7 @@ export default function MediaPage() {
 				{mediaQuery.isSuccess && mediaQuery.data.items.length > 0 && (
 					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 						{mediaQuery.data.items.map((media) => (
-							<Card
-								key={media.id}
-								className="group overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-border/50"
-							>
-								<Link href={`/media/${media.id}`} className="block">
-									<div className="relative aspect-video overflow-hidden bg-muted">
-										{media.thumbnail ? (
-											<Image
-												src={media.thumbnail}
-												alt={media.title}
-												fill
-												className="object-cover transition-transform duration-200 group-hover:scale-105"
-											/>
-										) : (
-											<div className="flex h-full items-center justify-center">
-												<Video className="h-12 w-12 text-muted-foreground" />
-											</div>
-										)}
-									</div>
-									<CardHeader className="p-4 pb-2">
-										<CardTitle className="text-base font-semibold line-clamp-2 leading-tight">
-											{media.title}
-										</CardTitle>
-										{media.translatedTitle && (
-											<CardTitle className="text-sm font-medium line-clamp-2 leading-tight text-muted-foreground">
-												{media.translatedTitle}
-											</CardTitle>
-										)}
-									</CardHeader>
-									<CardContent className="p-4 pt-0 space-y-2">
-										<div className="flex items-center gap-2 text-sm text-muted-foreground">
-											<User className="h-3 w-3" />
-											<span className="line-clamp-1">{media.author}</span>
-										</div>
-										<div className="flex items-center gap-2 text-sm text-muted-foreground">
-											<Eye className="h-3 w-3" />
-											<span>
-												{(media.viewCount ?? 0).toLocaleString()} views
-											</span>
-										</div>
-									</CardContent>
-								</Link>
-								<div className="p-4 pt-0">
-									<AlertDialog>
-										<AlertDialogTrigger asChild>
-											<Button
-												variant="outline"
-												size="sm"
-												className="w-full flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/5"
-											>
-												<Trash2 className="w-3 h-3" />
-												Delete
-											</Button>
-										</AlertDialogTrigger>
-										<AlertDialogContent>
-											<AlertDialogHeader>
-												<AlertDialogTitle>Delete Media</AlertDialogTitle>
-												<AlertDialogDescription>
-													This action cannot be undone. This will permanently
-													delete the media file and all associated data.
-												</AlertDialogDescription>
-											</AlertDialogHeader>
-											<AlertDialogFooter>
-												<AlertDialogCancel>Cancel</AlertDialogCancel>
-												<AlertDialogAction
-													onClick={() =>
-														deleteMediaMutation.mutate({ id: media.id })
-													}
-													className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-												>
-													Delete
-												</AlertDialogAction>
-											</AlertDialogFooter>
-										</AlertDialogContent>
-									</AlertDialog>
-								</div>
-							</Card>
+							<MediaCard key={media.id} media={media} />
 						))}
 					</div>
 				)}
