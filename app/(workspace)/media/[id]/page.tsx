@@ -1,11 +1,12 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Download, FileText, MessageSquare } from 'lucide-react'
+import { Download, FileText, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { MediaInfoCard, MobileDetailsCard } from '~/components/business/media'
+import { PageHeader } from '~/components/layout'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
@@ -28,17 +29,7 @@ export default function MediaDetailPage() {
 		<div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
 			<div className="container mx-auto px-4 py-6 max-w-7xl">
 				{/* Header */}
-				<div className="mb-8">
-					<Link href="/media">
-						<Button
-							variant="ghost"
-							className="flex items-center gap-2 hover:bg-background/80"
-						>
-							<ArrowLeft className="w-4 h-4" />
-							Back to Media
-						</Button>
-					</Link>
-				</div>
+				<PageHeader backHref="/media" backText="Back to Media" />
 
 				{/* Loading State */}
 				{isLoading && (

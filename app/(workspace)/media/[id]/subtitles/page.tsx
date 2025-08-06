@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
 	AlertCircle,
-	ArrowLeft,
 	CheckCircle,
 	FileText,
 	Languages,
@@ -15,6 +14,7 @@ import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { MediaInfoCard } from '~/components/business/media/media-info-card'
 import { MobileDetailsCard } from '~/components/business/media/mobile-details-card'
+import { PageHeader } from '~/components/layout'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import {
@@ -135,15 +135,11 @@ export default function SubtitlesPage() {
 	return (
 		<div className="container mx-auto max-w-7xl p-6 space-y-6">
 			{/* Header */}
-			<div className="flex items-center justify-between">
-				<Button variant="outline" asChild>
-					<Link href={`/media/${mediaId}`}>
-						<ArrowLeft className="h-4 w-4 mr-2" />
-						Back to Video
-					</Link>
-				</Button>
-				<h1 className="text-2xl font-semibold">Generate Subtitles</h1>
-			</div>
+			<PageHeader
+				backHref={`/media/${mediaId}`}
+				backText="Back to Video"
+				title="Generate Subtitles"
+			/>
 
 			{/* Main Layout - Grid with Media Info and Content */}
 			<div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

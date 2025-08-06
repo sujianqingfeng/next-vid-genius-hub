@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-	ArrowLeft,
 	Copy,
 	Download,
 	FileText,
@@ -10,7 +9,6 @@ import {
 	LanguagesIcon,
 	MessageCircle,
 } from 'lucide-react'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -19,6 +17,7 @@ import {
 	MediaInfoCard,
 	MobileDetailsCard,
 } from '~/components/business/media'
+import { PageHeader } from '~/components/layout'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -99,28 +98,7 @@ export default function CommentsPage() {
 	return (
 		<div className="container mx-auto py-6 px-4 max-w-7xl">
 			{/* Header Section */}
-			<div className="mb-6">
-				<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-					<div className="flex items-center gap-3">
-						<Link href={`/media/${id}`}>
-							<Button
-								variant="outline"
-								size="sm"
-								className="flex items-center gap-2"
-							>
-								<ArrowLeft className="w-4 h-4" />
-								Back
-							</Button>
-						</Link>
-						<div className="h-4 w-px bg-border" />
-						{mediaQuery.data && (
-							<Badge variant="secondary" className="text-xs">
-								{comments.length} comments
-							</Badge>
-						)}
-					</div>
-				</div>
-			</div>
+			<PageHeader backHref={`/media/${id}`} backText="Back" title="Comments" />
 
 			{/* Main Content Grid */}
 			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -274,7 +252,14 @@ export default function CommentsPage() {
 				<div className="lg:col-span-2">
 					<Card className="shadow-sm">
 						<CardHeader className="pb-3">
-							<CardTitle className="text-lg">Comments</CardTitle>
+							<div className="flex items-center justify-between">
+								<CardTitle className="text-lg">Comments</CardTitle>
+								{mediaQuery.data && (
+									<Badge variant="secondary" className="text-sm">
+										{comments.length} comment{comments.length !== 1 ? 's' : ''}
+									</Badge>
+								)}
+							</div>
 						</CardHeader>
 						<CardContent className="pt-0">
 							{mediaQuery.isLoading && (
