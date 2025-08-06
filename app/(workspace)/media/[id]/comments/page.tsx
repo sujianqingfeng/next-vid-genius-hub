@@ -5,17 +5,20 @@ import {
 	ArrowLeft,
 	Copy,
 	Download,
+	FileText,
 	Film,
 	LanguagesIcon,
 	MessageCircle,
-	ThumbsUp,
-	Trash2,
 } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import {
+	CommentCard,
+	MediaInfoCard,
+	MobileDetailsCard,
+} from '~/components/business/media'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -36,12 +39,13 @@ export default function CommentsPage() {
 	const queryClient = useQueryClient()
 	const [pages, setPages] = useState('3')
 	const [model, setModel] = useState<string>(AIModelIds[0])
+	const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false)
 
 	const copyToClipboard = async (text: string) => {
 		try {
 			await navigator.clipboard.writeText(text)
 			toast.success('Copied to clipboard!')
-		} catch (err) {
+		} catch {
 			toast.error('Failed to copy to clipboard')
 		}
 	}
@@ -80,20 +84,6 @@ export default function CommentsPage() {
 		}),
 	)
 
-	const deleteCommentMutation = useMutation(
-		queryOrpc.comment.deleteComment.mutationOptions({
-			onSuccess: () => {
-				queryClient.invalidateQueries({
-					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-				})
-				toast.success('Comment deleted!')
-			},
-			onError: (error) => {
-				toast.error(`Failed to delete comment: ${error.message}`)
-			},
-		}),
-	)
-
 	const renderMutation = useMutation({
 		...queryOrpc.comment.renderWithInfo.mutationOptions(),
 		onSuccess: () => {
@@ -107,7 +97,7 @@ export default function CommentsPage() {
 	const comments = mediaQuery.data?.comments || []
 
 	return (
-		<div className="container mx-auto py-6 px-4 max-w-6xl">
+		<div className="container mx-auto py-6 px-4 max-w-7xl">
 			{/* Header Section */}
 			<div className="mb-6">
 				<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
@@ -129,225 +119,243 @@ export default function CommentsPage() {
 							</Badge>
 						)}
 					</div>
-
-					{/* Actions */}
-					<div className="flex flex-wrap items-center gap-2">
-						<Select value={pages} onValueChange={setPages}>
-							<SelectTrigger className="w-[120px] h-9">
-								<SelectValue placeholder="Pages" />
-							</SelectTrigger>
-							<SelectContent>
-								{[...Array(10).keys()].map((i) => (
-									<SelectItem key={i + 1} value={String(i + 1)}>
-										{i + 1} page{i > 0 ? 's' : ''}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<Button
-							onClick={() =>
-								downloadCommentsMutation.mutate({
-									mediaId: id,
-									pages: parseInt(pages, 10),
-								})
-							}
-							disabled={downloadCommentsMutation.isPending}
-							size="sm"
-							className="h-9"
-						>
-							<Download className="w-4 h-4 mr-2" />
-							{downloadCommentsMutation.isPending
-								? 'Downloading...'
-								: 'Download'}
-						</Button>
-						<Select value={model} onValueChange={setModel}>
-							<SelectTrigger className="w-[160px] h-9">
-								<SelectValue placeholder="Model" />
-							</SelectTrigger>
-							<SelectContent>
-								{AIModelIds.map((modelId) => (
-									<SelectItem key={modelId} value={modelId}>
-										{modelId}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<Button
-							onClick={() =>
-								translateCommentsMutation.mutate({ mediaId: id, model })
-							}
-							disabled={translateCommentsMutation.isPending}
-							size="sm"
-							className="h-9"
-						>
-							<LanguagesIcon className="w-4 h-4 mr-2" />
-							{translateCommentsMutation.isPending
-								? 'Translating...'
-								: 'Translate'}
-						</Button>
-						<Button
-							onClick={() => renderMutation.mutate({ mediaId: id })}
-							disabled={renderMutation.isPending}
-							size="sm"
-							className="h-9"
-						>
-							<Film className="w-4 h-4 mr-2" />
-							{renderMutation.isPending ? 'Rendering...' : 'Render'}
-						</Button>
-					</div>
 				</div>
+			</div>
 
-				{/* Media Info */}
-				<div className="space-y-3">
+			{/* Main Content Grid */}
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+				{/* Left Column - Media Info & Actions */}
+				<div className="lg:col-span-1 space-y-6">
+					{/* Media Info Card */}
 					{mediaQuery.isLoading ? (
-						<div className="space-y-2">
+						<div className="space-y-4">
+							<Skeleton className="h-64 w-full rounded-lg" />
 							<Skeleton className="h-8 w-2/3" />
 							<Skeleton className="h-4 w-1/2" />
 						</div>
 					) : mediaQuery.data ? (
-						<div className="space-y-3">
-							<h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
-								{mediaQuery.data.title}
-							</h1>
-							{mediaQuery.data.translatedTitle && (
-								<div className="flex items-center gap-2">
-									<p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-										{mediaQuery.data.translatedTitle}
-									</p>
+						<>
+							{/* Desktop Media Info Card */}
+							<div className="hidden lg:block">
+								{mediaQuery.data && <MediaInfoCard media={mediaQuery.data} />}
+							</div>
+
+							{/* Mobile Details Card */}
+							<div className="lg:hidden">
+								{mediaQuery.data && (
+									<MobileDetailsCard
+										media={mediaQuery.data}
+										isOpen={isMobileDetailsOpen}
+										onClose={() => setIsMobileDetailsOpen(false)}
+									/>
+								)}
+							</div>
+
+							{/* Mobile Title Display */}
+							{mediaQuery.data && (
+								<div className="lg:hidden space-y-3">
+									<h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
+										{mediaQuery.data.title}
+									</h1>
+									{mediaQuery.data.translatedTitle && (
+										<div className="flex items-center gap-2">
+											<p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+												{mediaQuery.data.translatedTitle}
+											</p>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() =>
+													copyToClipboard(mediaQuery.data!.translatedTitle!)
+												}
+												className="flex-shrink-0 h-6 w-6 p-0"
+											>
+												<Copy className="w-3 h-3" />
+											</Button>
+										</div>
+									)}
 									<Button
-										variant="ghost"
+										variant="outline"
 										size="sm"
-										onClick={() =>
-											copyToClipboard(mediaQuery.data.translatedTitle!)
-										}
-										className="flex-shrink-0 h-6 w-6 p-0"
+										onClick={() => setIsMobileDetailsOpen(true)}
+										className="flex items-center gap-2"
 									>
-										<Copy className="w-3 h-3" />
+										<FileText className="w-4 h-4" />
+										Show Details
 									</Button>
 								</div>
 							)}
-						</div>
+						</>
 					) : null}
+
+					{/* Actions Section */}
+					{mediaQuery.data && (
+						<Card className="shadow-sm">
+							<CardHeader className="pb-3">
+								<CardTitle className="text-lg">Actions</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="space-y-3">
+									<div className="flex items-center gap-2">
+										<Select value={pages} onValueChange={setPages}>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Pages" />
+											</SelectTrigger>
+											<SelectContent>
+												{[...Array(10).keys()].map((i) => (
+													<SelectItem key={i + 1} value={String(i + 1)}>
+														{i + 1} page{i > 0 ? 's' : ''}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Button
+											onClick={() =>
+												downloadCommentsMutation.mutate({
+													mediaId: id,
+													pages: parseInt(pages, 10),
+												})
+											}
+											disabled={downloadCommentsMutation.isPending}
+											size="sm"
+											className="flex-shrink-0"
+										>
+											<Download className="w-4 h-4 mr-2" />
+											{downloadCommentsMutation.isPending
+												? 'Downloading...'
+												: 'Download'}
+										</Button>
+									</div>
+
+									<div className="space-y-2">
+										<Select value={model} onValueChange={setModel}>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Model" />
+											</SelectTrigger>
+											<SelectContent>
+												{AIModelIds.map((modelId) => (
+													<SelectItem key={modelId} value={modelId}>
+														{modelId}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Button
+											onClick={() =>
+												translateCommentsMutation.mutate({ mediaId: id, model })
+											}
+											disabled={translateCommentsMutation.isPending}
+											size="sm"
+											className="w-full"
+										>
+											<LanguagesIcon className="w-4 h-4 mr-2" />
+											{translateCommentsMutation.isPending
+												? 'Translating...'
+												: 'Translate'}
+										</Button>
+									</div>
+
+									<Button
+										onClick={() => renderMutation.mutate({ mediaId: id })}
+										disabled={renderMutation.isPending}
+										size="sm"
+										className="w-full"
+									>
+										<Film className="w-4 h-4 mr-2" />
+										{renderMutation.isPending ? 'Rendering...' : 'Render'}
+									</Button>
+								</div>
+							</CardContent>
+						</Card>
+					)}
+				</div>
+
+				{/* Right Column - Comments */}
+				<div className="lg:col-span-2">
+					<Card className="shadow-sm">
+						<CardHeader className="pb-3">
+							<CardTitle className="text-lg">Comments</CardTitle>
+						</CardHeader>
+						<CardContent className="pt-0">
+							{mediaQuery.isLoading && (
+								<div className="space-y-4">
+									{[...Array(3)].map((_, i) => (
+										<div
+											key={`skeleton-${i}`}
+											className="flex items-start gap-4 p-4"
+										>
+											<Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+											<div className="flex-1 space-y-3">
+												<div className="flex items-center gap-2">
+													<Skeleton className="h-4 w-32" />
+													<Skeleton className="h-4 w-16" />
+												</div>
+												<Skeleton className="h-4 w-full" />
+												<Skeleton className="h-4 w-3/4" />
+											</div>
+										</div>
+									))}
+								</div>
+							)}
+							{mediaQuery.isError && (
+								<div className="text-center py-12">
+									<div className="max-w-sm mx-auto">
+										<div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+											<MessageCircle className="w-8 h-8 text-destructive" />
+										</div>
+										<h3 className="text-lg font-semibold mb-2 text-destructive">
+											Failed to load comments
+										</h3>
+										<p className="text-muted-foreground text-sm">
+											Please try refreshing the page or check your connection.
+										</p>
+									</div>
+								</div>
+							)}
+							{comments.length === 0 && !mediaQuery.isLoading && (
+								<div className="text-center py-16">
+									<div className="max-w-sm mx-auto">
+										<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+											<MessageCircle className="w-8 h-8 text-muted-foreground" />
+										</div>
+										<h3 className="text-lg font-semibold mb-2">
+											No comments yet
+										</h3>
+										<p className="text-muted-foreground text-sm mb-6">
+											Download comments from YouTube to get started with
+											analysis and translation.
+										</p>
+										<Button
+											onClick={() =>
+												downloadCommentsMutation.mutate({
+													mediaId: id,
+													pages: parseInt(pages, 10),
+												})
+											}
+											disabled={downloadCommentsMutation.isPending}
+											size="sm"
+										>
+											<Download className="w-4 h-4 mr-2" />
+											Download Comments
+										</Button>
+									</div>
+								</div>
+							)}
+							{comments.length > 0 && (
+								<div className="space-y-3">
+									{comments.map((comment) => (
+										<CommentCard
+											key={comment.id}
+											comment={comment}
+											mediaId={id}
+										/>
+									))}
+								</div>
+							)}
+						</CardContent>
+					</Card>
 				</div>
 			</div>
-
-			{/* Comments Section */}
-			<Card className="shadow-sm">
-				<CardHeader className="pb-3">
-					<CardTitle className="text-lg">Comments</CardTitle>
-				</CardHeader>
-				<CardContent className="pt-0">
-					{mediaQuery.isLoading && (
-						<div className="space-y-4">
-							{[...Array(3)].map((_, i) => (
-								<div
-									key={`skeleton-${i}`}
-									className="flex items-start gap-3 p-3"
-								>
-									<Skeleton className="w-8 h-8 rounded-full" />
-									<div className="flex-1 space-y-2">
-										<Skeleton className="h-4 w-24" />
-										<Skeleton className="h-3 w-full" />
-										<Skeleton className="h-3 w-4/5" />
-									</div>
-								</div>
-							))}
-						</div>
-					)}
-					{mediaQuery.isError && (
-						<div className="text-center py-8">
-							<p className="text-destructive text-sm">
-								Failed to load comments.
-							</p>
-						</div>
-					)}
-					{comments.length === 0 && !mediaQuery.isLoading && (
-						<div className="text-center py-12">
-							<div className="max-w-sm mx-auto">
-								<div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-									<LanguagesIcon className="w-6 h-6 text-muted-foreground" />
-								</div>
-								<h3 className="text-base font-semibold mb-2">
-									No comments yet
-								</h3>
-								<p className="text-muted-foreground text-sm mb-4">
-									Download comments from YouTube to get started with analysis
-									and translation.
-								</p>
-							</div>
-						</div>
-					)}
-					{comments.length > 0 && (
-						<div className="space-y-4">
-							{comments.map((comment) => (
-								<div key={comment.id} className="group">
-									<div className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
-										<div className="flex-shrink-0">
-											<Image
-												src={comment.authorThumbnail || '/default-avatar.png'}
-												alt={comment.author}
-												width={32}
-												height={32}
-												className="w-8 h-8 rounded-full border border-background"
-											/>
-										</div>
-										<div className="flex-1 min-w-0">
-											<div className="flex items-center justify-between mb-1">
-												<div className="flex items-center gap-2 min-w-0">
-													<p className="font-medium text-sm truncate">
-														{comment.author}
-													</p>
-													<div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
-														<span className="flex items-center gap-1">
-															<ThumbsUp className="w-3 h-3" /> {comment.likes}
-														</span>
-														<span className="flex items-center gap-1">
-															<MessageCircle className="w-3 h-3" />{' '}
-															{comment.replyCount}
-														</span>
-													</div>
-												</div>
-												<Button
-													variant="ghost"
-													size="sm"
-													onClick={() =>
-														deleteCommentMutation.mutate({
-															mediaId: id,
-															commentId: comment.id,
-														})
-													}
-													disabled={deleteCommentMutation.isPending}
-													className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
-												>
-													<Trash2 className="w-3 h-3 text-destructive" />
-												</Button>
-											</div>
-											<div className="space-y-2">
-												<p className="text-sm leading-relaxed">
-													{comment.content}
-												</p>
-												{comment.translatedContent && (
-													<div
-														key={`translated-${comment.id}`}
-														className="border-l-2 border-primary/20 pl-3 py-1 bg-primary/5 rounded-r-md"
-													>
-														<p className="text-sm text-muted-foreground leading-relaxed">
-															{comment.translatedContent}
-														</p>
-														<Badge variant="outline" className="mt-1 text-xs">
-															Translated
-														</Badge>
-													</div>
-												)}
-											</div>
-										</div>
-									</div>
-								</div>
-							))}
-						</div>
-					)}
-				</CardContent>
-			</Card>
 		</div>
 	)
 }
