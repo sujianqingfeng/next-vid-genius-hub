@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { formatNumber } from '~/lib/utils'
 
 interface MobileDetailsCardProps {
 	media: {
@@ -46,7 +47,7 @@ export function MobileDetailsCard({
 							Views
 						</p>
 						<p className="text-lg font-semibold">
-							{media.viewCount?.toLocaleString() || 'N/A'}
+							{media.viewCount ? formatNumber(media.viewCount) : 'N/A'}
 						</p>
 					</div>
 					<div className="space-y-1 p-3 bg-muted/30 rounded-lg">
@@ -55,7 +56,7 @@ export function MobileDetailsCard({
 							Likes
 						</p>
 						<p className="text-lg font-semibold">
-							{media.likeCount?.toLocaleString() || 'N/A'}
+							{media.likeCount ? formatNumber(media.likeCount) : 'N/A'}
 						</p>
 					</div>
 					<div className="space-y-1 p-3 bg-muted/30 rounded-lg">

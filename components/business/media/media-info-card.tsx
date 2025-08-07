@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { formatNumber } from '~/lib/utils'
 
 interface MediaInfoCardProps {
 	media: {
@@ -112,7 +113,7 @@ export function MediaInfoCard({ media }: MediaInfoCardProps) {
 									<span className="text-sm font-medium">Views</span>
 								</div>
 								<span className="font-semibold">
-									{media.viewCount?.toLocaleString() || 'N/A'}
+									{media.viewCount ? formatNumber(media.viewCount) : 'N/A'}
 								</span>
 							</div>
 
@@ -122,7 +123,7 @@ export function MediaInfoCard({ media }: MediaInfoCardProps) {
 									<span className="text-sm font-medium">Likes</span>
 								</div>
 								<span className="font-semibold">
-									{media.likeCount?.toLocaleString() || 'N/A'}
+									{media.likeCount ? formatNumber(media.likeCount) : 'N/A'}
 								</span>
 							</div>
 

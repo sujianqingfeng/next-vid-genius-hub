@@ -15,50 +15,16 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-	AlertDialogTrigger,
-} from '~/components/ui/alert-dialog'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import { type schema } from '~/lib/db'
 import { queryOrpc } from '~/lib/orpc/query-client'
+import { formatNumber, formatTimeAgo } from '~/lib/utils'
 
 type MediaCardProps = {
 	media: typeof schema.media.$inferSelect
-}
-
-// 格式化数字显示
-function formatNumber(num: number): string {
-	if (num >= 1000000) {
-		return `${(num / 1000000).toFixed(1)}M`
-	}
-	if (num >= 1000) {
-		return `${(num / 1000).toFixed(1)}K`
-	}
-	return num.toString()
-}
-
-// 格式化时间显示
-function formatTimeAgo(date: Date): string {
-	const now = new Date()
-	const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-	if (diffInSeconds < 60) return 'Just now'
-	if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-	if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-	if (diffInSeconds < 2592000)
-		return `${Math.floor(diffInSeconds / 86400)}d ago`
-	return `${Math.floor(diffInSeconds / 2592000)}mo ago`
 }
 
 // 缩略图组件
@@ -183,37 +149,16 @@ function DeleteButton({
 }) {
 	return (
 		<div className="p-4 pt-0">
-			<AlertDialog>
-				<AlertDialogTrigger asChild>
-					<Button
-						variant="outline"
-						size="sm"
-						className="w-full flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/5 transition-colors"
-						aria-label={`Delete ${media.title}`}
-					>
-						<Trash2 className="w-3 h-3" />
-						Delete
-					</Button>
-				</AlertDialogTrigger>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Delete Media</AlertDialogTitle>
-						<AlertDialogDescription>
-							This action cannot be undone. This will permanently delete the
-							media file and all associated data.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={() => onDelete(media.id)}
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-						>
-							Delete
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			<Button
+				variant="outline"
+				size="sm"
+				className="w-full flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+				onClick={() => onDelete(media.id)}
+				aria-label={`Delete ${media.title}`}
+			>
+				<Trash2 className="w-3 h-3" />
+				Delete
+			</Button>
 		</div>
 	)
 }

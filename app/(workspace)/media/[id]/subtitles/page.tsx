@@ -4,9 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
 	AlertCircle,
 	CheckCircle,
+	Download,
 	FileText,
 	Languages,
 	Loader2,
+	Play,
 	Video,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -55,6 +57,9 @@ export default function SubtitlesPage() {
 		queryOrpc.media.byId.queryOptions({ input: { id: mediaId } }),
 	)
 
+	const media = mediaQuery.data
+	const hasRenderedVideo = !!media?.videoWithSubtitlesPath
+
 	useEffect(() => {
 		if (mediaQuery.data?.transcription) {
 			setTranscription(mediaQuery.data.transcription)
@@ -64,7 +69,23 @@ export default function SubtitlesPage() {
 			setTranslation(mediaQuery.data.translation)
 			setActiveTab('step3')
 		}
+		if (mediaQuery.data?.videoWithSubtitlesPath) {
+			setActiveTab('step4')
+		}
 	}, [mediaQuery.data])
+
+	// Poll for rendering status when on step 3
+	useEffect(() => {
+		if (activeTab === 'step3' && translation && !hasRenderedVideo) {
+			const interval = setInterval(() => {
+				queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+				})
+			}, 5000) // Poll every 5 seconds
+
+			return () => clearInterval(interval)
+		}
+	}, [activeTab, translation, hasRenderedVideo, mediaId, queryClient])
 
 	const transcribeMutation = useMutation(
 		queryOrpc.subtitle.transcribe.mutationOptions({
@@ -93,7 +114,16 @@ export default function SubtitlesPage() {
 		mutate: renderMutate,
 		isPending: isRendering,
 		error: renderError,
-	} = useMutation(queryOrpc.subtitle.render.mutationOptions())
+	} = useMutation(
+		queryOrpc.subtitle.render.mutationOptions({
+			onSuccess: () => {
+				setActiveTab('step4')
+				queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+				})
+			},
+		}),
+	)
 
 	const handleStartTranscription = () => {
 		transcribeMutation.mutate({ mediaId, model: selectedModel })
@@ -129,8 +159,6 @@ export default function SubtitlesPage() {
 			</div>
 		)
 	}
-
-	const media = mediaQuery.data
 
 	return (
 		<div className="container mx-auto max-w-7xl p-6 space-y-6">
@@ -187,7 +215,18 @@ export default function SubtitlesPage() {
 									icon: Languages,
 									completed: !!translation,
 								},
-								{ id: 'step3', label: 'Render', icon: Video, completed: false },
+								{
+									id: 'step3',
+									label: 'Render',
+									icon: Video,
+									completed: hasRenderedVideo,
+								},
+								{
+									id: 'step4',
+									label: 'Preview',
+									icon: Play,
+									completed: hasRenderedVideo,
+								},
 							].map((step, index) => (
 								<div key={step.id} className="flex items-center">
 									<div
@@ -216,7 +255,7 @@ export default function SubtitlesPage() {
 									>
 										{step.label}
 									</span>
-									{index < 2 && (
+									{index < 3 && (
 										<div
 											className={`w-8 h-0.5 mx-4 ${
 												step.completed ? 'bg-green-500' : 'bg-muted'
@@ -235,9 +274,11 @@ export default function SubtitlesPage() {
 								{activeTab === 'step1' && <FileText className="h-5 w-5" />}
 								{activeTab === 'step2' && <Languages className="h-5 w-5" />}
 								{activeTab === 'step3' && <Video className="h-5 w-5" />}
+								{activeTab === 'step4' && <Play className="h-5 w-5" />}
 								{activeTab === 'step1' && 'Step 1: Generate Subtitles'}
 								{activeTab === 'step2' && 'Step 2: Translate Subtitles'}
 								{activeTab === 'step3' && 'Step 3: Render Video'}
+								{activeTab === 'step4' && 'Step 4: Preview Video'}
 							</CardTitle>
 							<CardDescription>
 								{activeTab === 'step1' &&
@@ -246,6 +287,8 @@ export default function SubtitlesPage() {
 									'Translate subtitles to your target language'}
 								{activeTab === 'step3' &&
 									'Render the final video with embedded subtitles'}
+								{activeTab === 'step4' &&
+									'Preview and download your rendered video'}
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
@@ -254,7 +297,7 @@ export default function SubtitlesPage() {
 								onValueChange={setActiveTab}
 								className="w-full"
 							>
-								<TabsList className="grid w-full grid-cols-3 mb-6">
+								<TabsList className="grid w-full grid-cols-4 mb-6">
 									<TabsTrigger
 										value="step1"
 										className="flex items-center gap-2"
@@ -277,6 +320,14 @@ export default function SubtitlesPage() {
 									>
 										<Video className="h-4 w-4" />
 										<span className="hidden sm:inline">Render</span>
+									</TabsTrigger>
+									<TabsTrigger
+										value="step4"
+										disabled={!hasRenderedVideo}
+										className="flex items-center gap-2"
+									>
+										<Play className="h-4 w-4" />
+										<span className="hidden sm:inline">Preview</span>
 									</TabsTrigger>
 								</TabsList>
 
@@ -453,6 +504,123 @@ export default function SubtitlesPage() {
 												<p className="text-red-700 text-sm">
 													{renderError.message}
 												</p>
+											</div>
+										</div>
+									)}
+								</TabsContent>
+
+								<TabsContent value="step4" className="space-y-6">
+									{hasRenderedVideo ? (
+										<div className="space-y-6">
+											{/* Video Preview */}
+											<div className="space-y-4">
+												<h3 className="text-lg font-semibold flex items-center gap-2">
+													<Play className="h-5 w-5" />
+													Video Preview
+												</h3>
+												<div className="aspect-video bg-black rounded-lg overflow-hidden">
+													<video
+														controls
+														preload="metadata"
+														className="w-full h-full"
+														poster={media?.thumbnail || undefined}
+														crossOrigin="anonymous"
+													>
+														<source
+															src={`/api/media/${mediaId}/rendered`}
+															type="video/mp4"
+														/>
+														Your browser does not support the video tag.
+													</video>
+												</div>
+											</div>
+
+											{/* Download Section */}
+											<div className="space-y-4">
+												<h3 className="text-lg font-semibold flex items-center gap-2">
+													<Download className="h-5 w-5" />
+													Download Options
+												</h3>
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+													<Card>
+														<CardContent className="p-4">
+															<div className="flex items-center gap-3">
+																<Video className="h-8 w-8 text-primary" />
+																<div className="flex-1">
+																	<h4 className="font-semibold">
+																		Rendered Video
+																	</h4>
+																	<p className="text-sm text-muted-foreground">
+																		Video with embedded subtitles
+																	</p>
+																</div>
+																<Button asChild variant="outline" size="sm">
+																	<a
+																		href={`/api/media/${mediaId}/rendered`}
+																		download
+																	>
+																		<Download className="h-4 w-4 mr-2" />
+																		Download
+																	</a>
+																</Button>
+															</div>
+														</CardContent>
+													</Card>
+
+													<Card>
+														<CardContent className="p-4">
+															<div className="flex items-center gap-3">
+																<FileText className="h-8 w-8 text-primary" />
+																<div className="flex-1">
+																	<h4 className="font-semibold">
+																		Subtitles File
+																	</h4>
+																	<p className="text-sm text-muted-foreground">
+																		Bilingual subtitles (VTT)
+																	</p>
+																</div>
+																<Button asChild variant="outline" size="sm">
+																	<a
+																		href={`/api/media/${mediaId}/subtitles`}
+																		download
+																	>
+																		<Download className="h-4 w-4 mr-2" />
+																		Download
+																	</a>
+																</Button>
+															</div>
+														</CardContent>
+													</Card>
+												</div>
+											</div>
+
+											{/* Success Message */}
+											<div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+												<CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+												<div>
+													<h3 className="font-semibold text-green-800">
+														Rendering Complete!
+													</h3>
+													<p className="text-green-700 text-sm">
+														Your video has been successfully rendered with
+														embedded subtitles. You can now preview and download
+														the final result.
+													</p>
+												</div>
+											</div>
+										</div>
+									) : (
+										<div className="text-center space-y-4">
+											<div className="p-6 bg-muted/50 rounded-lg">
+												<Video className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+												<h3 className="text-lg font-semibold mb-2">
+													Rendering in Progress
+												</h3>
+												<p className="text-muted-foreground mb-4">
+													Please wait for the rendering process to complete.
+													This may take several minutes.
+												</p>
+												<Loader2 className="h-8 w-8 animate-spin mx-auto" />
 											</div>
 										</div>
 									)}

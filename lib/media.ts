@@ -2,6 +2,7 @@ import { createCanvas, loadImage } from 'canvas'
 import ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
+import { formatLikes, formatViewCount } from './utils/format'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CanvasContext = any
@@ -361,32 +362,6 @@ export async function renderVideoWithSubtitles(
 				reject(err)
 			})
 	})
-}
-
-/**
- * Format view count with K, M, B suffixes
- */
-function formatViewCount(count: number): string {
-	if (count >= 1000000000) {
-		return `${(count / 1000000000).toFixed(1)}B`
-	} else if (count >= 1000000) {
-		return `${(count / 1000000).toFixed(1)}M`
-	} else if (count >= 1000) {
-		return `${(count / 1000).toFixed(1)}K`
-	}
-	return count.toString()
-}
-
-/**
- * Format likes count with K, M suffixes
- */
-function formatLikes(count: number): string {
-	if (count >= 1000000) {
-		return `${(count / 1000000).toFixed(1)}M`
-	} else if (count >= 1000) {
-		return `${(count / 1000).toFixed(1)}K`
-	}
-	return count.toString()
 }
 
 // Extracted rendering functions for better testability
