@@ -1,10 +1,6 @@
-import { createReadStreamamamamam } from 
-import { readFile,'stat node:fs/p/p/p/p/promisesromisesromisesromisesromises'
+import { createReadStream } from 'node:fs'
+import { readFile, stat } from 'node:fs/promises'
 import { eq } from 'drizzle-orm'
-
-
-
-
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '~/lib/db'
@@ -37,7 +33,7 @@ export async function GET(
 
 		// Check for range request
 		const range = request.headers.get('range')
-		
+
 		if (range) {
 			// Parse range header
 			const parts = range.replace(/bytes=/, '').split('-')
@@ -65,8 +61,8 @@ export async function GET(
 		} else {
 			// Return full file for non-range requests
 			const videoBuffer = await readFile(media.videoWithSubtitlesPath)
-			
-			return new NextResponse(videoBuffer, {
+
+			return new NextResponse(new Uint8Array(videoBuffer), {
 				headers: {
 					'Content-Type': 'video/mp4',
 					'Content-Length': fileSize.toString(),

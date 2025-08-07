@@ -1,10 +1,10 @@
-import { eqrdrizzle-orm
-import { NextRequest, NextResponsextRequestnext/servernsextRequestnext/servernsextRequestnext/servernsextRequestnext/servernse } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '~/lib/db'
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: { id: string } },
 ) {
 	try {
 		const mediaId = params.id
@@ -20,7 +20,7 @@ export async function GET(
 		if (!media.translation) {
 			return NextResponse.json(
 				{ error: 'Subtitles not found' },
-				{ status: 404 }
+				{ status: 404 },
 			)
 		}
 
@@ -41,7 +41,7 @@ ${media.translation}`
 		console.error('Error serving subtitles:', error)
 		return NextResponse.json(
 			{ error: 'Internal server error' },
-			{ status: 500 }
+			{ status: 500 },
 		)
 	}
 }
