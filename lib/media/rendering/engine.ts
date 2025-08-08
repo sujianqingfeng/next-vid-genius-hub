@@ -1,6 +1,7 @@
 import { PassThrough } from 'node:stream'
 import { createCanvas, loadImage } from 'canvas'
 import ffmpeg from 'fluent-ffmpeg'
+import { preloadEmojiImagesForTexts } from '../emoji'
 import type { Comment, VideoInfo } from '../types'
 import {
 	renderCommentCard,
@@ -48,6 +49,23 @@ export async function renderVideoWithCanvas(
 		}),
 	)
 	console.log('✅ Thumbnails pre-loaded.')
+
+	// Preload emojis used across all visible texts to warm caches
+	try {
+		const textsToPreload: string[] = []
+		const title = videoInfo.translatedTitle || videoInfo.title
+		if (title) textsToPreload.push(title)
+		if (videoInfo.author) textsToPreload.push(`@${videoInfo.author}`)
+		for (const c of comments) {
+			if (c.author) textsToPreload.push(c.author)
+			if (c.content) textsToPreload.push(c.content)
+			if (c.translatedContent) textsToPreload.push(c.translatedContent)
+		}
+		await preloadEmojiImagesForTexts(textsToPreload, { concurrency: 8 })
+		console.log('✅ Emojis pre-loaded.')
+	} catch (e) {
+		console.warn('⚠️ Emoji preloading failed:', (e as Error).message)
+	}
 
 	console.log('🎥 Starting FFmpeg processing (piped frames, no temp files)...')
 	return new Promise<void>((resolve, reject) => {

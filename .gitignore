@@ -46,3 +46,4 @@ local.db
 test.mp4
 output_test_video.mp4
 frames
+.cache
