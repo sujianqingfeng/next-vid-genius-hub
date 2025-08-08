@@ -3,6 +3,7 @@ import { createCanvas, loadImage } from 'canvas'
 import ffmpeg from 'fluent-ffmpeg'
 import { preloadEmojiImagesForTexts } from '../emoji'
 import type { Comment, VideoInfo } from '../types'
+import { wrapText } from '../utils'
 import {
 	renderCommentCard,
 	renderCoverSection,
@@ -20,17 +21,57 @@ export async function renderVideoWithCanvas(
 	const width = 1920
 	const height = 1080
 	const fps = 30
-	const commentDuration = 4
 	const introDuration = 3
 	const coverDuration = 3 // Additional 3 seconds for cover
-	const totalDuration =
-		coverDuration + introDuration + comments.length * commentDuration
-	const coverFrames = coverDuration * fps
-	const introFrames = introDuration * fps
-	const commentFrames = commentDuration * fps
 
 	const canvas = createCanvas(width, height)
 	const ctx = canvas.getContext('2d')
+
+	// --- Compute dynamic per-comment durations based on wrapped line counts ---
+	// Geometry consistent with renderCommentCard
+	const avatarX = 60
+	const avatarRadius = 35
+	const textX = avatarX + avatarRadius * 2 + 40
+	const maxCommentWidth = width - textX - 200
+
+	function computeCommentDurationSeconds(comment: Comment): number {
+		// Estimate lines for original (English) content
+		ctx.font = '28px "Noto Sans SC"'
+		const originalWrapped = wrapText(ctx, comment.content, maxCommentWidth)
+		const originalLines = originalWrapped.length
+
+		// Estimate lines for translated (Chinese) content if present and distinct
+		let translatedLines = 0
+		if (
+			comment.translatedContent &&
+			comment.translatedContent !== comment.content
+		) {
+			ctx.font = 'bold 40px "Noto Sans SC"'
+			const translatedWrapped = wrapText(
+				ctx,
+				comment.translatedContent,
+				maxCommentWidth,
+			)
+			translatedLines = translatedWrapped.length
+		}
+
+		// Dynamic duration formula with clamp: 3s to 8s
+		const estimatedSeconds = 2.5 + 0.8 * originalLines + 1.0 * translatedLines
+		return Math.min(8, Math.max(3, estimatedSeconds))
+	}
+
+	const commentDurations: number[] = comments.map((c) =>
+		computeCommentDurationSeconds(c),
+	)
+	const segmentDurations: number[] = [
+		coverDuration,
+		introDuration,
+		...commentDurations,
+	]
+	const totalDuration = segmentDurations.reduce((sum, d) => sum + d, 0)
+	const coverFrames = Math.round(coverDuration * fps)
+	const introFrames = Math.round(introDuration * fps)
+	const perCommentFrames = commentDurations.map((d) => Math.round(d * fps))
 
 	// Pre-load all author thumbnails
 	console.log('🖼️ Pre-loading author thumbnails...')
@@ -77,9 +118,13 @@ export async function renderVideoWithCanvas(
 			{ length: segmentCount },
 			(_, i) => `[seg${i}]`,
 		).join('')
+		const framesPerSegment: number[] = [
+			coverFrames,
+			introFrames,
+			...perCommentFrames,
+		]
 		const perSegmentLoops = Array.from({ length: segmentCount }, (_, i) => {
-			const frames =
-				i === 0 ? coverFrames : i === 1 ? introFrames : commentFrames
+			const frames = framesPerSegment[i]
 			return `[seg${i}]select='eq(n,${i})',loop=loop=${frames}:size=1:start=0,format=pix_fmts=yuva420p[bg${i}]`
 		})
 		const concatInputs = Array.from(
