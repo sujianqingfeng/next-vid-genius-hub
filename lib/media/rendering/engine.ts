@@ -24,8 +24,9 @@ export async function renderVideoWithCanvas(
 	const coverDuration = 3 // Additional 3 seconds for cover
 	const totalDuration =
 		coverDuration + introDuration + comments.length * commentDuration
-	const totalFrames = totalDuration * fps
 	const coverFrames = coverDuration * fps
+	const introFrames = introDuration * fps
+	const commentFrames = commentDuration * fps
 
 	const canvas = createCanvas(width, height)
 	const ctx = canvas.getContext('2d')
@@ -52,27 +53,42 @@ export async function renderVideoWithCanvas(
 	return new Promise<void>((resolve, reject) => {
 		const frameStream = new PassThrough()
 
+		// Build filter graph to loop static segments (cover, intro, each comment) from single frames
+		const segmentCount = 2 + comments.length // cover + intro + N comments
+		const splitOutputs = Array.from(
+			{ length: segmentCount },
+			(_, i) => `[seg${i}]`,
+		).join('')
+		const perSegmentLoops = Array.from({ length: segmentCount }, (_, i) => {
+			const frames =
+				i === 0 ? coverFrames : i === 1 ? introFrames : commentFrames
+			return `[seg${i}]select='eq(n,${i})',loop=loop=${frames}:size=1:start=0,format=pix_fmts=yuva420p[bg${i}]`
+		})
+		const concatInputs = Array.from(
+			{ length: segmentCount },
+			(_, i) => `[bg${i}]`,
+		).join('')
+		const complexFilters = [
+			// Scale the original video and pad duration to totalDuration
+			`[0:v]scale=900:506,tpad=stop_mode=clone:stop_duration=${totalDuration}[scaled_video]`,
+			// Delay audio to start after cover section
+			`[0:a]adelay=${coverDuration}000|${coverDuration}000[delayed_audio]`,
+			// Split piped frames into segments
+			`[1:v]split=${segmentCount}${splitOutputs}`,
+			// Loop each single frame to desired duration
+			...perSegmentLoops,
+			// Concatenate segments into overlay background
+			`${concatInputs}concat=n=${segmentCount}:v=1:a=0[overlay_bg]`,
+			// Overlay scaled video after cover
+			`[overlay_bg][scaled_video]overlay=x=950:y=30:enable='between(t,${coverDuration},${totalDuration})'[final_video]`,
+		]
+
 		// Start ffmpeg with piped frames as second input
 		ffmpeg(videoPath)
 			.input(frameStream)
 			.inputFormat('image2pipe')
 			.inputFPS(fps)
-			.complexFilter([
-				// Scale the original video and pad duration
-				`[0:v]scale=900:506,tpad=stop_mode=clone:stop_duration=${totalDuration}[scaled_video]`,
-				// Add audio delay to start after cover section (3 seconds)
-				`[0:a]adelay=${coverDuration}000|${coverDuration}000[delayed_audio]`,
-				// Split piped frames into cover first-frame and dynamic remainder
-				`[1:v]split=2[cover_src][dyn_src]`,
-				// Loop the very first frame to coverDuration (coverFrames)
-				`[cover_src]select='eq(n,0)',loop=loop=${coverFrames}:size=1:start=0,format=pix_fmts=yuva420p[cover_bg]`,
-				// Take the rest frames (from n>=1) as dynamic background
-				`[dyn_src]select='gte(n,1)',setpts=PTS-STARTPTS,format=pix_fmts=yuva420p[dyn_bg]`,
-				// Concatenate cover and dynamic backgrounds in time
-				`[cover_bg][dyn_bg]concat=n=2:v=1:a=0[overlay_bg]`,
-				// Overlay the scaled video on top of the background frames starting after cover section
-				`[overlay_bg][scaled_video]overlay=x=950:y=30:enable='between(t,${coverDuration},${totalDuration})'[final_video]`,
-			])
+			.complexFilter(complexFilters)
 			.outputOptions([
 				'-map',
 				'[final_video]',
@@ -106,15 +122,14 @@ export async function renderVideoWithCanvas(
 			try {
 				console.log('🖼️ Generating and piping modern overlay frames...')
 
-				// 1) Generate ONLY the first cover frame (time = 0)
+				// 1) Cover frame (t = 0)
 				{
-					const time = 0
 					renderBackground(ctx, width, height)
 					await renderCoverSection(
 						ctx,
 						videoInfo,
 						comments,
-						time,
+						0,
 						coverDuration,
 						width,
 						height,
@@ -127,40 +142,47 @@ export async function renderVideoWithCanvas(
 					}
 				}
 
-				// 2) Generate dynamic frames starting from the end of cover
-				for (let i = coverFrames; i < totalFrames; i++) {
-					const time = i / fps
-
-					// Render background
+				// 2) Intro frame (header + video area, no comment)
+				{
 					renderBackground(ctx, width, height)
-
 					const videoX = 950
 					const videoY = 30
 					const videoW = 900
 					const videoH = 506
 					renderVideoArea(ctx, videoX, videoY, videoW, videoH)
-
 					await renderHeader(ctx, videoInfo, comments.length)
-
-					if (time >= coverDuration + introDuration) {
-						const commentIndex = Math.floor(
-							(time - coverDuration - introDuration) / commentDuration,
+					const introBuffer = canvas.toBuffer('image/png')
+					if (!frameStream.write(introBuffer)) {
+						await new Promise<void>((res) =>
+							frameStream.once('drain', () => res()),
 						)
-						if (commentIndex < comments.length) {
-							const comment = comments[commentIndex]
-							const authorImage = authorImages[commentIndex]
-							await renderCommentCard(
-								ctx,
-								comment,
-								commentIndex,
-								comments.length,
-								authorImage,
-								width,
-								height,
-							)
-						}
 					}
+				}
 
+				// 3) One frame per comment
+				for (
+					let commentIndex = 0;
+					commentIndex < comments.length;
+					commentIndex++
+				) {
+					renderBackground(ctx, width, height)
+					const videoX = 950
+					const videoY = 30
+					const videoW = 900
+					const videoH = 506
+					renderVideoArea(ctx, videoX, videoY, videoW, videoH)
+					await renderHeader(ctx, videoInfo, comments.length)
+					const comment = comments[commentIndex]
+					const authorImage = authorImages[commentIndex]
+					await renderCommentCard(
+						ctx,
+						comment,
+						commentIndex,
+						comments.length,
+						authorImage,
+						width,
+						height,
+					)
 					const buffer = canvas.toBuffer('image/png')
 					if (!frameStream.write(buffer)) {
 						await new Promise<void>((res) =>
