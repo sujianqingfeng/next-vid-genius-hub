@@ -5,9 +5,14 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { AIModelIds, generateText } from '~/lib/ai'
 import { transcribeWithWhisper } from '~/lib/asr/whisper'
-import { OPERATIONS_DIR, WHISPER_CPP_PATH, RENDERED_VIDEO_FILENAME } from '~/lib/constants'
+import {
+	OPERATIONS_DIR,
+	WHISPER_CPP_PATH,
+	RENDERED_VIDEO_FILENAME,
+} from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithSubtitles } from '~/lib/media'
+import { parseVttCues, serializeVttCues } from '~/lib/media/utils/vtt'
 
 export const transcribe = os
 	.input(
@@ -137,11 +142,54 @@ export const render = os
 		const outputPath = path.join(operationDir, RENDERED_VIDEO_FILENAME)
 
 		// Pass subtitle content directly instead of writing to file
-		await renderVideoWithSubtitles(originalFilePath, media.translation, outputPath)
+		await renderVideoWithSubtitles(
+			originalFilePath,
+			media.translation,
+			outputPath,
+		)
 
-		await db.update(schema.media).set({ videoWithSubtitlesPath: outputPath }).where(where)
+		await db
+			.update(schema.media)
+			.set({ videoWithSubtitlesPath: outputPath })
+			.where(where)
 
 		return {
 			message: 'Rendering started',
 		}
+	})
+
+export const updateTranslation = os
+	.input(
+		z.object({
+			mediaId: z.string(),
+			translation: z.string(),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const where = eq(schema.media.id, input.mediaId)
+		await db
+			.update(schema.media)
+			.set({ translation: input.translation })
+			.where(where)
+		return { success: true }
+	})
+
+export const deleteTranslationCue = os
+	.input(
+		z.object({
+			mediaId: z.string(),
+			index: z.number().min(0),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const where = eq(schema.media.id, input.mediaId)
+		const media = await db.query.media.findFirst({ where })
+		if (!media?.translation) throw new Error('Translation not found')
+		const cues = parseVttCues(media.translation)
+		if (input.index < 0 || input.index >= cues.length)
+			throw new Error('Cue index out of range')
+		cues.splice(input.index, 1)
+		const updated = serializeVttCues(cues)
+		await db.update(schema.media).set({ translation: updated }).where(where)
+		return { success: true, translation: updated }
 	})
