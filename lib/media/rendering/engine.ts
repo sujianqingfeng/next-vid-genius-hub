@@ -122,8 +122,8 @@ export async function renderVideoWithCanvas(
 			(_, i) => `[bg${i}]`,
 		).join('')
 		const complexFilters = [
-			// Scale the original video and pad duration to totalDuration
-			`[0:v]scale=900:506,tpad=stop_mode=clone:stop_duration=${totalDuration}[scaled_video]`,
+			// Normalize input video timing to CFR 30fps, scale and align PTS, then pad to totalDuration
+			`[0:v]fps=${fps},setpts=PTS-STARTPTS,scale=900:506:flags=lanczos,setsar=1,tpad=stop_mode=clone:stop_duration=${totalDuration}[scaled_video]`,
 			// Delay audio to start after cover section
 			`[0:a]adelay=${coverDuration}000|${coverDuration}000[delayed_audio]`,
 			// Split piped frames into segments
@@ -147,6 +147,11 @@ export async function renderVideoWithCanvas(
 				'[final_video]',
 				'-map',
 				'[delayed_audio]?',
+				// Force constant frame rate for smoother playback
+				'-vsync',
+				'cfr',
+				'-r',
+				fps.toString(),
 				'-c:v',
 				'libx264',
 				'-c:a',
@@ -155,6 +160,9 @@ export async function renderVideoWithCanvas(
 				'192k',
 				'-pix_fmt',
 				'yuv420p',
+				// Enable fast start for MP4 playback
+				'-movflags',
+				'+faststart',
 				'-t',
 				totalDuration.toString(),
 				'-shortest',
