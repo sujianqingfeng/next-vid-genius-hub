@@ -4,10 +4,10 @@ import { db, schema } from '~/lib/db'
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } },
+	context: { params: Promise<{ id: string }> },
 ) {
 	try {
-		const mediaId = params.id
+		const { id: mediaId } = await context.params
 
 		const media = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),
@@ -29,11 +29,16 @@ export async function GET(
 
 ${media.translation}`
 
-		// Return the VTT file with appropriate headers
+		// Return the VTT file with appropriate headers; allow inline view by default, force download with ?download=1
+		const download = request.nextUrl.searchParams.get('download') === '1'
 		return new NextResponse(vttContent, {
 			headers: {
 				'Content-Type': 'text/vtt',
-				'Content-Disposition': `attachment; filename="${media.title || 'subtitles'}.vtt"`,
+				...(download
+					? {
+							'Content-Disposition': `attachment; filename="${(media.title || 'subtitles').replace(/\s+/g, '_')}.vtt"`,
+						}
+					: {}),
 				'Cache-Control': 'public, max-age=3600',
 			},
 		})

@@ -7,10 +7,10 @@ import { db, schema } from '~/lib/db'
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { id: string } },
+	context: { params: Promise<{ id: string }> },
 ) {
 	try {
-		const mediaId = params.id
+		const { id: mediaId } = await context.params
 
 		const media = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),

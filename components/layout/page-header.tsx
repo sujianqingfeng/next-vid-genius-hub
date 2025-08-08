@@ -47,7 +47,7 @@ export function PageHeader({
 				)}
 				{(title || description) && (
 					<>
-						<div className="h-6 w-px bg-border" />
+						{showBackButton && <div className="h-6 w-px bg-border" />}
 						<div className="space-y-1">
 							{title && (
 								<h1 className="text-xl font-semibold tracking-tight">

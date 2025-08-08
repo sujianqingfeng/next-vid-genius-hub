@@ -29,7 +29,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
-import { AIModelIds } from '~/lib/ai'
+import { AIModelId, AIModelIds } from '~/lib/ai'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 export default function CommentsPage() {
@@ -37,7 +37,7 @@ export default function CommentsPage() {
 	const id = params.id as string
 	const queryClient = useQueryClient()
 	const [pages, setPages] = useState('3')
-	const [model, setModel] = useState<string>(AIModelIds[0])
+	const [model, setModel] = useState<AIModelId>(AIModelIds[0] as AIModelId)
 	const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false)
 
 	const copyToClipboard = async (text: string) => {
@@ -206,7 +206,10 @@ export default function CommentsPage() {
 									</div>
 
 									<div className="space-y-2">
-										<Select value={model} onValueChange={setModel}>
+										<Select
+											value={model}
+											onValueChange={(v) => setModel(v as AIModelId)}
+										>
 											<SelectTrigger className="w-full">
 												<SelectValue placeholder="Model" />
 											</SelectTrigger>

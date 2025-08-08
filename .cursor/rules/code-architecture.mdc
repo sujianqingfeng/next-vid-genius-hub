@@ -63,3 +63,13 @@ description: Code Architecture Guidelines - Hard metrics and design principles t
 - Provide reasonable optimization suggestions with clear benefits
 - Focus on maintainability, readability, and scalability
 - Prioritize architectural improvements over minor optimizations
+
+### Directory Exemptions
+
+The following directories are exempt from the Hard Metrics (file length and per-folder file count) because they are external, generated, or asset-only:
+
+- components/ui/** — shadcn/ui components (vendored/imported)
+- drizzle/** — database migrations and snapshots (generated)
+- public/** — static assets (images, fonts, SVGs)
+
+These metrics continue to apply to all other code in the repository.
