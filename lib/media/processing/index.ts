@@ -2,6 +2,39 @@ import ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
 
+/**
+ * Escape a filesystem path for safe use inside an ffmpeg filter argument.
+ * - Wrap in single quotes to avoid colon/space parsing
+ * - Escape single quotes within value
+ * - On Windows, double backslashes for ffmpeg parsing
+ */
+function escapeForFFmpegFilterPath(filePath: string): string {
+	let p = filePath
+	// Double backslashes for Windows-style paths so ffmpeg does not treat them as escapes
+	if (p.includes('\\')) {
+		p = p.replace(/\\/g, '\\\\')
+	}
+	// Escape single quotes inside and wrap the whole path with single quotes
+	p = p.replace(/'/g, "\\'")
+	return `'${p}'`
+}
+
+/**
+ * Sanitize text for ASS dialogue:
+ * - Normalize newlines to \N (ASS line break)
+ * - Escape ASS override block braces { }
+ * - Remove ASCII control characters
+ */
+function sanitizeAssText(text: string): string {
+	const unified = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+	const escapedBraces = unified.replace(/[{}]/g, (m) => `\\${m}`)
+	const withoutControl = escapedBraces.replace(
+		/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,
+		' ',
+	)
+	return withoutControl.replace(/\n/g, '\\N')
+}
+
 export async function extractAudio(
 	videoPath: string,
 	audioPath: string,
@@ -88,11 +121,13 @@ async function convertWebVttToAss(vttContent: string): Promise<string> {
 	for (const ev of events) {
 		const start = toAssTime(ev.start)
 		const end = toAssTime(ev.end)
-		if (ev.zh) {
-			ass += `Dialogue: 0,${start},${end},Chinese,,0,0,0,,${ev.zh.replace(/,/g, '，')}\n`
+		const zhText = ev.zh ? sanitizeAssText(ev.zh).replace(/,/g, '，') : ''
+		const enText = ev.eng ? sanitizeAssText(ev.eng) : ''
+		if (zhText) {
+			ass += `Dialogue: 0,${start},${end},Chinese,,0,0,0,,${zhText}\n`
 		}
-		if (ev.eng) {
-			ass += `Dialogue: 0,${start},${end},English,,0,0,0,,${ev.eng.replace(/,/g, ',')}\n`
+		if (enText) {
+			ass += `Dialogue: 0,${start},${end},English,,0,0,0,,${enText}\n`
 		}
 	}
 
@@ -130,8 +165,9 @@ export async function renderVideoWithSubtitles(
 	await fs.writeFile(tempAssPath, assContent, 'utf8')
 
 	return new Promise<void>((resolve, reject) => {
+		const escapedAssPath = escapeForFFmpegFilterPath(tempAssPath)
 		ffmpeg(videoPath)
-			.outputOptions('-vf', `subtitles=${tempAssPath}`)
+			.outputOptions('-vf', `subtitles=${escapedAssPath}`)
 			.save(outputPath)
 			.on('end', async () => {
 				await cleanupTempFile(tempAssPath, 'ASS')

@@ -50,6 +50,11 @@ export async function downloadEmojiImage(
 		return null
 	}
 
+	// In test environments, avoid network requests for determinism and speed
+	if (process.env.NODE_ENV === 'test' || process.env.VITEST_WORKER_ID) {
+		return null
+	}
+
 	// Use the reliable jsDelivr CDN as primary source
 	const urls = [
 		`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/${codepoint}.svg`,
