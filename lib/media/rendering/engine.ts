@@ -21,7 +21,6 @@ export async function renderVideoWithCanvas(
 	const width = 1920
 	const height = 1080
 	const fps = 30
-	const introDuration = 3
 	const coverDuration = 3 // Additional 3 seconds for cover
 
 	const canvas = createCanvas(width, height)
@@ -63,14 +62,9 @@ export async function renderVideoWithCanvas(
 	const commentDurations: number[] = comments.map((c) =>
 		computeCommentDurationSeconds(c),
 	)
-	const segmentDurations: number[] = [
-		coverDuration,
-		introDuration,
-		...commentDurations,
-	]
+	const segmentDurations: number[] = [coverDuration, ...commentDurations]
 	const totalDuration = segmentDurations.reduce((sum, d) => sum + d, 0)
 	const coverFrames = Math.round(coverDuration * fps)
-	const introFrames = Math.round(introDuration * fps)
 	const perCommentFrames = commentDurations.map((d) => Math.round(d * fps))
 
 	// Pre-load all author thumbnails
@@ -112,17 +106,13 @@ export async function renderVideoWithCanvas(
 	return new Promise<void>((resolve, reject) => {
 		const frameStream = new PassThrough()
 
-		// Build filter graph to loop static segments (cover, intro, each comment) from single frames
-		const segmentCount = 2 + comments.length // cover + intro + N comments
+		// Build filter graph to loop static segments (cover, each comment) from single frames
+		const segmentCount = 1 + comments.length // cover + N comments
 		const splitOutputs = Array.from(
 			{ length: segmentCount },
 			(_, i) => `[seg${i}]`,
 		).join('')
-		const framesPerSegment: number[] = [
-			coverFrames,
-			introFrames,
-			...perCommentFrames,
-		]
+		const framesPerSegment: number[] = [coverFrames, ...perCommentFrames]
 		const perSegmentLoops = Array.from({ length: segmentCount }, (_, i) => {
 			const frames = framesPerSegment[i]
 			return `[seg${i}]select='eq(n,${i})',loop=loop=${frames}:size=1:start=0,format=pix_fmts=yuva420p[bg${i}]`
@@ -205,24 +195,9 @@ export async function renderVideoWithCanvas(
 					}
 				}
 
-				// 2) Intro frame (header + video area, no comment)
-				{
-					renderBackground(ctx, width, height)
-					const videoX = 950
-					const videoY = 30
-					const videoW = 900
-					const videoH = 506
-					renderVideoArea(ctx, videoX, videoY, videoW, videoH)
-					await renderHeader(ctx, videoInfo, comments.length)
-					const introBuffer = canvas.toBuffer('image/png')
-					if (!frameStream.write(introBuffer)) {
-						await new Promise<void>((res) =>
-							frameStream.once('drain', () => res()),
-						)
-					}
-				}
+				// 2) No separate intro segment. Proceed directly to comment frames.
 
-				// 3) One frame per comment
+				// 2) One frame per comment
 				for (
 					let commentIndex = 0;
 					commentIndex < comments.length;
