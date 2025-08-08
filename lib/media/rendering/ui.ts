@@ -100,24 +100,6 @@ export function renderLikeIcon(
 	}
 
 	ctx.restore()
-
-	// Set up canvas for icon rendering
-	ctx.save()
-	ctx.translate(x, y)
-	ctx.scale(size / 16, size / 16) // Scale to desired size (16 is base size)
-
-	if (filled) {
-		// Fill the icon
-		ctx.fillStyle = color
-		ctx.fill()
-	} else {
-		// Stroke the icon outline
-		ctx.strokeStyle = color
-		ctx.lineWidth = strokeWidth / (size / 16) // Scale stroke width
-		ctx.stroke()
-	}
-
-	ctx.restore()
 }
 
 /**

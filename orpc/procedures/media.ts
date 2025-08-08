@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { os } from '@orpc/server'
-import { eq } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { OPERATIONS_DIR } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
@@ -17,20 +17,22 @@ export const list = os
 		const { page = 1, limit = 9 } = input
 		const offset = (page - 1) * limit
 
-		// Fetch paginated items
+		// Fetch paginated items with stable ordering
 		const items = await db
 			.select()
 			.from(schema.media)
+			.orderBy(desc(schema.media.createdAt))
 			.limit(limit)
 			.offset(offset)
 
-		// Get total count for pagination
-		const allRows = await db.query.media.findMany()
-		const total = allRows.length
+		// Get total count for pagination efficiently
+		const [{ count }] = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(schema.media)
 
 		return {
 			items,
-			total,
+			total: Number(count ?? 0),
 			page,
 			limit,
 		}

@@ -4,6 +4,7 @@ import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateText } from '~/lib/ai'
+import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import {
 	OPERATIONS_DIR,
 	PROXY_URL,
@@ -54,6 +55,7 @@ export const downloadComments = os
 			.update(schema.media)
 			.set({
 				comments,
+				commentCount: comments.length,
 			})
 			.where(eq(schema.media.id, mediaId))
 
@@ -64,7 +66,7 @@ export const translateComments = os
 	.input(
 		z.object({
 			mediaId: z.string(),
-			model: z.string().default('openai/gpt-4o-mini'),
+			model: z.enum(AIModelIds).default('openai/gpt-4o-mini' as AIModelId),
 		}),
 	)
 	.handler(async ({ input }) => {
@@ -80,7 +82,7 @@ export const translateComments = os
 		// 翻译标题
 		let translatedTitle = media.translatedTitle
 		if (media.title && !translatedTitle) {
-			translatedTitle = await translateText(media.title, modelId as any)
+			translatedTitle = await translateText(media.title, modelId)
 		}
 
 		// 翻译评论
@@ -93,10 +95,7 @@ export const translateComments = os
 				if (comment.translatedContent) {
 					return comment
 				}
-				const translatedContent = await translateText(
-					comment.content,
-					modelId as any,
-				)
+				const translatedContent = await translateText(comment.content, modelId)
 				return {
 					...comment,
 					translatedContent,
@@ -109,6 +108,7 @@ export const translateComments = os
 			.set({
 				comments: translatedComments,
 				translatedTitle,
+				commentCount: translatedComments.length,
 			})
 			.where(eq(schema.media.id, mediaId))
 
@@ -142,6 +142,7 @@ export const deleteComment = os
 			.update(schema.media)
 			.set({
 				comments: updatedComments,
+				commentCount: updatedComments.length,
 			})
 			.where(eq(schema.media.id, mediaId))
 

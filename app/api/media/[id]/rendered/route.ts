@@ -63,6 +63,7 @@ export async function GET(
 
 		// Check for range request
 		const range = request.headers.get('range')
+		const download = request.nextUrl.searchParams.get('download') === '1'
 
 		if (range) {
 			// Support standard and suffix byte-range
@@ -127,6 +128,11 @@ export async function GET(
 					...baseHeaders,
 					'Content-Range': `bytes ${start}-${end}/${fileSize}`,
 					'Content-Length': chunkSize.toString(),
+					...(download
+						? {
+								'Content-Disposition': `attachment; filename="${(media.title || 'video').replace(/\s+/g, '_')}.mp4"`,
+							}
+						: {}),
 				},
 			})
 		}
@@ -137,6 +143,11 @@ export async function GET(
 			headers: {
 				...baseHeaders,
 				'Content-Length': fileSize.toString(),
+				...(download
+					? {
+							'Content-Disposition': `attachment; filename="${(media.title || 'video').replace(/\s+/g, '_')}.mp4"`,
+						}
+					: {}),
 			},
 		})
 	} catch (error) {

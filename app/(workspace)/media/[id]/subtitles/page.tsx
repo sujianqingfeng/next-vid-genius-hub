@@ -556,8 +556,7 @@ export default function SubtitlesPage() {
 																</div>
 																<Button asChild variant="outline" size="sm">
 																	<a
-																		href={`/api/media/${mediaId}/rendered`}
-																		download
+																		href={`/api/media/${mediaId}/rendered?download=1`}
 																	>
 																		<Download className="h-4 w-4 mr-2" />
 																		Download
