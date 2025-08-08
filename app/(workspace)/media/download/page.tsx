@@ -69,7 +69,7 @@ export default function NewDownloadPage() {
 						New Download
 					</h1>
 					<p className="text-muted-foreground text-lg">
-						Download videos from YouTube with high quality
+						Download videos from YouTube and TikTok with high quality
 					</p>
 				</div>
 
@@ -89,7 +89,7 @@ export default function NewDownloadPage() {
 							{/* URL Input */}
 							<div className="space-y-2">
 								<Label htmlFor="download-url" className="text-sm font-medium">
-									YouTube URL
+									YouTube or TikTok URL
 								</Label>
 								<div className="relative">
 									<Link className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -97,7 +97,7 @@ export default function NewDownloadPage() {
 										id="download-url"
 										name="url"
 										type="url"
-										placeholder="https://www.youtube.com/watch?v=..."
+										placeholder="https://www.youtube.com/watch?v=... or https://www.tiktok.com/@user/video/..."
 										required
 										disabled={downloadMutation.isPending}
 										className="pl-10 h-12 text-base"

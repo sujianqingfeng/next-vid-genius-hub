@@ -7,7 +7,22 @@ import { z } from 'zod'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 import { extractAudio } from '~/lib/media'
+import { getTikTokInfo, pickTikTokThumbnail } from '~/lib/tiktok'
 import { downloadVideo, extractVideoId, getYouTubeClient } from '~/lib/youtube'
+
+function isTikTokUrl(url: string): boolean {
+	try {
+		const u = new URL(url)
+		const h = u.hostname.toLowerCase()
+		return (
+			h.includes('tiktok.com') ||
+			h.includes('douyin.com') ||
+			h.includes('iesdouyin.com')
+		)
+	} catch {
+		return false
+	}
+}
 
 export const download = os
 	.input(
@@ -20,11 +35,10 @@ export const download = os
 		const { url, quality } = input
 
 		// 1. Find existing download or prepare a new one
-		let downloadRecord = await db.query.media.findFirst({
+		const downloadRecord = await db.query.media.findFirst({
 			where: eq(schema.media.url, url),
 		})
 
-		const isNewDownload = !downloadRecord
 		const id = downloadRecord?.id ?? createId()
 		const operationDir = path.join(OPERATIONS_DIR, id)
 		await fs.mkdir(operationDir, { recursive: true })
@@ -40,15 +54,32 @@ export const download = os
 			.then(() => true)
 			.catch(() => false)
 
-		let info // Will be fetched if needed
+		// youtubei.js types are complex; we only read a subset of fields
+		type YtBasicInfo = {
+			basic_info: {
+				title?: string
+				author?: string
+				thumbnail?: Array<{ url?: string }>
+				view_count?: number
+				like_count?: number
+			}
+		}
+		let ytInfo: YtBasicInfo | undefined
+		let tkInfo: import('~/lib/tiktok').TikTokInfo | null | undefined
 
 		if (!videoExists) {
-			const videoId = extractVideoId(url) ?? url
-			const yt = await getYouTubeClient({
-				proxy: PROXY_URL,
-			})
-			info = await yt.getBasicInfo(videoId)
-			await downloadVideo(url, quality, videoPath)
+			if (isTikTokUrl(url)) {
+				// Fetch TikTok info via yt-dlp JSON
+				tkInfo = await getTikTokInfo(url)
+				await downloadVideo(url, quality, videoPath)
+			} else {
+				const videoId = extractVideoId(url) ?? url
+				const yt = await getYouTubeClient({
+					proxy: PROXY_URL,
+				})
+				ytInfo = await yt.getBasicInfo(videoId)
+				await downloadVideo(url, quality, videoPath)
+			}
 		}
 
 		// 3. Check for audio file and extract if missing
@@ -61,22 +92,45 @@ export const download = os
 		}
 
 		// Ensure we have video info if it's a new record
-		if (!info && !downloadRecord) {
-			const videoId = extractVideoId(url) ?? url
-			const yt = await getYouTubeClient({
-				proxy: PROXY_URL,
-			})
-			info = await yt.getBasicInfo(videoId)
+		if (!downloadRecord) {
+			if (isTikTokUrl(url)) {
+				tkInfo = tkInfo ?? (await getTikTokInfo(url))
+			} else {
+				const videoId = extractVideoId(url) ?? url
+				const yt = await getYouTubeClient({
+					proxy: PROXY_URL,
+				})
+				ytInfo = ytInfo ?? (await yt.getBasicInfo(videoId))
+			}
 		}
 
 		// 4. Upsert database record
+		const isTik = isTikTokUrl(url)
 		const data = {
-			title: info?.basic_info.title ?? downloadRecord?.title ?? 'video',
-			author: info?.basic_info.author ?? downloadRecord?.author ?? '',
+			title:
+				(isTik ? tkInfo?.title : ytInfo?.basic_info.title) ??
+				downloadRecord?.title ??
+				'video',
+			author:
+				(isTik
+					? tkInfo?.uploader || tkInfo?.uploader_id
+					: ytInfo?.basic_info.author) ??
+				downloadRecord?.author ??
+				'',
 			thumbnail:
-				info?.basic_info.thumbnail?.[0]?.url ?? downloadRecord?.thumbnail ?? '',
-			viewCount: info?.basic_info.view_count ?? downloadRecord?.viewCount ?? 0,
-			likeCount: info?.basic_info.like_count ?? downloadRecord?.likeCount ?? 0,
+				(isTik
+					? pickTikTokThumbnail(tkInfo ?? null)
+					: ytInfo?.basic_info.thumbnail?.[0]?.url) ??
+				downloadRecord?.thumbnail ??
+				'',
+			viewCount:
+				(isTik ? tkInfo?.view_count : ytInfo?.basic_info.view_count) ??
+				downloadRecord?.viewCount ??
+				0,
+			likeCount:
+				(isTik ? tkInfo?.like_count : ytInfo?.basic_info.like_count) ??
+				downloadRecord?.likeCount ??
+				0,
 			filePath: videoPath,
 			audioFilePath: audioPath,
 			quality,
@@ -87,7 +141,7 @@ export const download = os
 			.values({
 				id,
 				url,
-				source: 'youtube',
+				source: isTik ? 'tiktok' : 'youtube',
 				...data,
 			})
 			.onConflictDoUpdate({
@@ -96,7 +150,10 @@ export const download = os
 			})
 
 		// 5. Return result
-		const title = info?.basic_info?.title ?? downloadRecord?.title ?? 'video'
+		const title =
+			(isTik ? tkInfo?.title : ytInfo?.basic_info?.title) ??
+			downloadRecord?.title ??
+			'video'
 		return {
 			id,
 			videoPath,

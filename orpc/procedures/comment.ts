@@ -12,6 +12,7 @@ import {
 } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithCanvas } from '~/lib/media'
+import { downloadTikTokCommentsByUrl } from '~/lib/tiktok'
 import {
 	downloadYoutubeComments,
 	extractVideoId,
@@ -35,17 +36,29 @@ export const downloadComments = os
 		if (!media) {
 			throw new Error('Media not found')
 		}
-		const youtube = await getYouTubeClient({
-			proxy: PROXY_URL,
-			cacheEnabled: false,
-		})
 
-		const videoId = extractVideoId(media.url)
-		if (!videoId) {
-			throw new Error('Could not extract video ID from URL')
+		let comments: schema.Comment[] = []
+		if (media.source === 'tiktok') {
+			const basic = await downloadTikTokCommentsByUrl(media.url, pageCount)
+			comments = basic.map((c) => ({
+				id: c.id,
+				author: c.author,
+				authorThumbnail: c.authorThumbnail,
+				content: c.content,
+				likes: c.likes,
+				replyCount: c.replyCount,
+			}))
+		} else {
+			const youtube = await getYouTubeClient({
+				proxy: PROXY_URL,
+				cacheEnabled: false,
+			})
+			const videoId = extractVideoId(media.url)
+			if (!videoId) {
+				throw new Error('Could not extract video ID from URL')
+			}
+			comments = await downloadYoutubeComments(youtube, videoId, pageCount)
 		}
-
-		const comments = await downloadYoutubeComments(youtube, videoId, pageCount)
 
 		if (comments.length === 0) {
 			return { success: true, count: 0 }

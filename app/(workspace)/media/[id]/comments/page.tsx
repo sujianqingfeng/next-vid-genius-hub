@@ -317,8 +317,8 @@ export default function CommentsPage() {
 											No comments yet
 										</h3>
 										<p className="text-muted-foreground text-sm mb-6">
-											Download comments from YouTube to get started with
-											analysis and translation.
+											Download comments to get started with analysis and
+											translation.
 										</p>
 										<Button
 											onClick={() =>
