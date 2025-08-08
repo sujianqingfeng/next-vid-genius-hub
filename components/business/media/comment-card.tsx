@@ -42,7 +42,7 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 
 	return (
 		<div className="group">
-			<div className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/30 transition-colors border border-transparent hover:border-border/50">
+			<div className="flex items-start gap-4 p-4 hover:bg-muted/30 transition-colors">
 				<div className="flex-shrink-0">
 					<Image
 						src={comment.authorThumbnail || '/default-avatar.png'}
@@ -83,13 +83,15 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 								})
 							}
 							disabled={deleteCommentMutation.isPending}
+							aria-label="Delete comment"
+							title="Delete comment"
 							className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-destructive hover:text-destructive"
 						>
 							<Trash2 className="w-4 h-4" />
 						</Button>
 					</div>
 					<div className="space-y-3">
-						<p className="text-sm leading-relaxed text-foreground">
+						<p className="text-sm leading-relaxed text-foreground break-words whitespace-pre-wrap">
 							{comment.content}
 						</p>
 						{comment.translatedContent && (
@@ -100,7 +102,7 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 										Translated
 									</Badge>
 								</div>
-								<p className="text-sm leading-relaxed text-muted-foreground">
+								<p className="text-sm leading-relaxed text-muted-foreground break-words whitespace-pre-wrap">
 									{comment.translatedContent}
 								</p>
 							</div>

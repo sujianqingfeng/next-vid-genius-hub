@@ -36,7 +36,7 @@ export function MediaInfoCard({ media }: MediaInfoCardProps) {
 
 	return (
 		<div className="lg:col-span-1 relative group">
-			<Card className="overflow-hidden shadow-lg pt-0">
+			<Card className="overflow-hidden shadow-sm pt-0">
 				{media.thumbnail && (
 					<div className="relative">
 						<Image

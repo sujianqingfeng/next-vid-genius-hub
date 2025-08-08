@@ -98,12 +98,17 @@ export default function CommentsPage() {
 	return (
 		<div className="container mx-auto py-6 px-4 max-w-7xl">
 			{/* Header Section */}
-			<PageHeader backHref={`/media/${id}`} backText="Back" title="Comments" />
+			<PageHeader
+				backHref={`/media/${id}`}
+				backText="Back"
+				title="Comments"
+				withBackground
+			/>
 
 			{/* Main Content Grid */}
 			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				{/* Left Column - Media Info & Actions */}
-				<div className="lg:col-span-1 space-y-6">
+				<div className="lg:col-span-1 space-y-6 lg:sticky lg:top-16 self-start">
 					{/* Media Info Card */}
 					{mediaQuery.isLoading ? (
 						<div className="space-y-4">
@@ -132,23 +137,25 @@ export default function CommentsPage() {
 							{/* Mobile Title Display */}
 							{mediaQuery.data && (
 								<div className="lg:hidden space-y-3">
-									<h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight">
+									<h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight line-clamp-2">
 										{mediaQuery.data.title}
 									</h1>
 									{mediaQuery.data.translatedTitle && (
 										<div className="flex items-center gap-2">
-											<p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+											<p className="text-sm sm:text-base text-muted-foreground leading-relaxed line-clamp-2">
 												{mediaQuery.data.translatedTitle}
 											</p>
 											<Button
 												variant="ghost"
-												size="sm"
+												size="icon"
 												onClick={() =>
 													copyToClipboard(mediaQuery.data!.translatedTitle!)
 												}
-												className="flex-shrink-0 h-6 w-6 p-0"
+												aria-label="Copy translated title"
+												title="Copy translated title"
+												className="flex-shrink-0"
 											>
-												<Copy className="w-3 h-3" />
+												<Copy className="w-4 h-4" />
 											</Button>
 										</div>
 									)}
@@ -179,7 +186,7 @@ export default function CommentsPage() {
 											<SelectTrigger className="w-full">
 												<SelectValue placeholder="Pages" />
 											</SelectTrigger>
-											<SelectContent>
+											<SelectContent className="max-h-64">
 												{[...Array(10).keys()].map((i) => (
 													<SelectItem key={i + 1} value={String(i + 1)}>
 														{i + 1} page{i > 0 ? 's' : ''}
@@ -213,7 +220,7 @@ export default function CommentsPage() {
 											<SelectTrigger className="w-full">
 												<SelectValue placeholder="Model" />
 											</SelectTrigger>
-											<SelectContent>
+											<SelectContent className="max-h-64">
 												{AIModelIds.map((modelId) => (
 													<SelectItem key={modelId} value={modelId}>
 														{modelId}
@@ -330,7 +337,7 @@ export default function CommentsPage() {
 								</div>
 							)}
 							{comments.length > 0 && (
-								<div className="space-y-3">
+								<div className="divide-y divide-border">
 									{comments.map((comment) => (
 										<CommentCard
 											key={comment.id}
