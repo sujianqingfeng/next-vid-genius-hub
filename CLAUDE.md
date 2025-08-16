@@ -24,8 +24,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database**: SQLite with Drizzle ORM
 - **RPC**: oRPC for type-safe client-server communication
 - **State Management**: TanStack Query for server state
-- **Video Processing**: yt-dlp-wrap, fluent-ffmpeg for YouTube/media downloads
-- **AI**: Vercel AI SDK with OpenAI integration
+- **Video Processing**: yt-dlp-wrap, fluent-ffmpeg for YouTube/TikTok downloads
+- **Media Rendering**: Canvas-based video composition with ffmpeg integration
+- **AI**: Vercel AI SDK with OpenAI integration and DeepSeek support
+- **ASR**: Whisper integration for automatic speech recognition
 - **Testing**: Vitest
 - **Linting**: Biome + ESLint
 
@@ -34,22 +36,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 app/                    # Next.js App Router
   (workspace)/          # Workspace route group with sidebar layout
     media/              # Media library and download pages
+      [id]/             # Individual media pages
+        comments/       # Comments display and management
+        subtitles/      # Subtitle transcription, translation, and rendering
+      download/         # Media download interface
   api/orpc/            # oRPC API endpoints
+  api/media/           # Media file serving and processing endpoints
 components/
   ui/                  # shadcn/ui base components
   business/            # Business logic components organized by feature
+    media/             # Media-related components (cards, lists, etc.)
+      subtitles/       # Subtitle processing stepper components
   layout/              # Layout components (Header, Footer, etc.)
   shared/              # Shared components used across features
   sidebar.tsx          # Main navigation sidebar
 lib/
-  ai/                  # AI integration utilities
+  ai/                  # AI integration utilities (OpenAI, DeepSeek, translation)
+  asr/                 # Automatic speech recognition (Whisper integration)
   db/                  # Database schema and connection
+  media/               # Media processing, rendering, and utilities
+    rendering/         # Video composition and frame generation
+    emoji/             # Emoji handling and caching
+    processing/        # Media processing pipelines
+    types/             # Media-related type definitions
+    utils/             # Media utility functions (VTT parsing, etc.)
   orpc/               # oRPC client configuration
   query/              # QueryClient configuration and hydration
+  tiktok/             # TikTok download and processing
   youtube/            # YouTube download and processing
+  utils/              # General utility functions
   constants.ts        # Environment variables and constants
 orpc/
   procedures/         # oRPC procedure definitions
+    comment.ts        # Comment-related procedures
+    download.ts       # Download procedures
+    media.ts          # Media management procedures
+    subtitle.ts       # Subtitle processing procedures
   router.ts          # Main oRPC router
 ```
 
@@ -64,33 +86,40 @@ orpc/
 - Type-safe input/output validation with Zod schemas
 
 #### Database Schema
-- Single `media` table for storing downloaded video metadata
+- Primary `media` table for storing downloaded video metadata
 - Supports YouTube and TikTok sources with quality options (720p, 1080p)
 - Tracks engagement metrics (views, likes, comments)
-- Stores file paths for both video and extracted audio
+- Stores file paths for video, extracted audio, and subtitles
 - Database operations centralized in `lib/db/index.ts`
 
 #### Media Processing Pipeline
-- YouTube downloads via `yt-dlp-wrap` in `lib/youtube/download.ts`
-- Audio extraction using `fluent-ffmpeg`
-- Metadata extraction and thumbnail handling
-- Database storage of media records
+- **Download Support**: YouTube and TikTok via `yt-dlp-wrap`
+- **Audio Extraction**: Using `fluent-ffmpeg` for audio processing
+- **Video Rendering**: Canvas-based composition with comment overlays
+- **Subtitle Processing**: ASR transcription, AI translation, and video rendering
+- **Comment Processing**: TikTok and YouTube comment extraction and rendering
+- **Metadata Extraction**: Comprehensive video metadata and thumbnail handling
+- **Database Storage**: Centralized media record management
 
 #### UI Patterns
-- Workspace layout with persistent sidebar navigation
-- Paginated media library with loading/error states
-- Download form with real-time progress feedback
-- shadcn/ui components for consistent design system
-- Component organization: base UI in `components/ui/`, business logic in `components/business/`
+- **Workspace Layout**: Persistent sidebar navigation with route groups
+- **Media Management**: Paginated library with loading/error states
+- **Stepper Interface**: Multi-step subtitle processing workflow
+- **Download Interface**: Real-time progress feedback and form validation
+- **Comment Display**: Responsive card layouts with accessibility features
+- **Design System**: shadcn/ui components for consistent styling
+- **Component Architecture**: Organized by feature with clear separation of concerns
 
 ### Path Aliasing
 - Use `~/` prefix for absolute imports from project root
 - Configured in `tsconfig.json` with `"~/*": ["./*"]`
 
 ### Environment Setup
-- Database URL configured via `DATABASE_URL` environment variable
-- Local SQLite database at `./local.db` for development
-- Next.js image optimization configured for YouTube thumbnails (`i.ytimg.com`)
+- **Database**: URL configured via `DATABASE_URL` environment variable
+- **Local Development**: SQLite database at `./local.db`
+- **Image Optimization**: Configured for YouTube (`i.ytimg.com`) and TikTok thumbnails
+- **Native Dependencies**: Canvas and ffmpeg for video processing
+- **Rebuild Script**: `pnpm rebuild:native` for native module rebuilding
 
 ## Code Conventions
 
@@ -119,6 +148,13 @@ orpc/
 - **Queries**: Use `db.query` for selects, `db.insert`/`db.update` for mutations
 - **Type Safety**: Use `.$inferSelect` and `.$inferInsert` for type inference
 - **Migrations**: Generate with `pnpm db:generate`, apply with `pnpm db:migrate`
+
+### AI and Processing Conventions
+- **Language Models**: OpenAI and DeepSeek integration via Vercel AI SDK
+- **Translation**: AI-powered subtitle translation with context preservation
+- **ASR**: Whisper integration for speech-to-text transcription
+- **Media Rendering**: Canvas-based video composition with emoji caching
+- **Performance**: Optimized frame generation and CFR (Constant Frame Rate) processing
 
 ### TanStack Query Integration
 - **Query Client**: Configure in `lib/query/client.ts` with SSR support
