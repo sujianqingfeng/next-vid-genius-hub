@@ -11,7 +11,8 @@ import {
 	VIDEO_WITH_INFO_FILENAME,
 } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
-import { renderVideoWithCanvas } from '~/lib/media'
+import { renderVideoWithRemotion } from '~/lib/media'
+import type { RenderProgressEvent } from '~/lib/media'
 import { downloadTikTokCommentsByUrl } from '~/lib/tiktok'
 import {
 	downloadYoutubeComments,
@@ -191,6 +192,28 @@ export const renderWithInfo = os
 		// Create operation directory
 		const operationDir = path.join(OPERATIONS_DIR, media.id)
 		await fs.mkdir(operationDir, { recursive: true })
+		const progressFile = path.join(operationDir, 'render-progress.json')
+
+		const recordProgress = (event: RenderProgressEvent) => {
+			void fs
+				.writeFile(
+					progressFile,
+					JSON.stringify(
+						{
+							...event,
+							updatedAt: new Date().toISOString(),
+						},
+						null,
+						2,
+					),
+				)
+				.catch((error) => {
+					console.warn('Failed to record render progress', error)
+				})
+		}
+
+		// seed initial progress state
+		recordProgress({ stage: 'bundle', progress: 0 })
 
 		// Define output path
 		const outputPath = path.join(operationDir, VIDEO_WITH_INFO_FILENAME)
@@ -207,12 +230,13 @@ export const renderWithInfo = os
 
 		try {
 			// Render video with info and comments
-			await renderVideoWithCanvas(
-				media.videoWithSubtitlesPath || media.filePath,
+			await renderVideoWithRemotion({
+				videoPath: media.videoWithSubtitlesPath || media.filePath,
 				outputPath,
 				videoInfo,
-				media.comments,
-			)
+				comments: media.comments,
+				onProgress: recordProgress,
+			})
 
 			// Update database with rendered path
 			await db

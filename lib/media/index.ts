@@ -1,12 +1,7 @@
-// Re-export all media processing functionality
+// Re-export media processing utilities consumed by application code
 
-export * from './emoji'
 export * from './processing'
 export { extractAudio, renderVideoWithSubtitles } from './processing'
-export * from './rendering/components'
-export * from './rendering/engine'
-// Main functions for backward compatibility
-export { renderVideoWithCanvas } from './rendering/engine'
-export * from './rendering/ui'
+export { renderVideoWithRemotion } from './remotion/renderer'
+export type { RenderProgressEvent, RenderProgressStage } from './remotion/renderer'
 export * from './types'
-export * from './utils'

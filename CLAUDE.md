@@ -25,7 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **RPC**: oRPC for type-safe client-server communication
 - **State Management**: TanStack Query for server state
 - **Video Processing**: yt-dlp-wrap, fluent-ffmpeg for YouTube/TikTok downloads
-- **Media Rendering**: Canvas-based video composition with ffmpeg integration
+- **Media Rendering**: Remotion-based overlay composition with FFmpeg integration
 - **AI**: Vercel AI SDK with OpenAI integration and DeepSeek support
 - **ASR**: Whisper integration for automatic speech recognition
 - **Testing**: Vitest
@@ -54,12 +54,10 @@ lib/
   ai/                  # AI integration utilities (OpenAI, DeepSeek, translation)
   asr/                 # Automatic speech recognition (Whisper integration)
   db/                  # Database schema and connection
-  media/               # Media processing, rendering, and utilities
-    rendering/         # Video composition and frame generation
-    emoji/             # Emoji handling and caching
+  media/               # Media processing and rendering helpers
+    remotion/          # Remotion composition and renderer bindings
     processing/        # Media processing pipelines
     types/             # Media-related type definitions
-    utils/             # Media utility functions (VTT parsing, etc.)
   orpc/               # oRPC client configuration
   query/              # QueryClient configuration and hydration
   tiktok/             # TikTok download and processing
@@ -95,7 +93,7 @@ orpc/
 #### Media Processing Pipeline
 - **Download Support**: YouTube and TikTok via `yt-dlp-wrap`
 - **Audio Extraction**: Using `fluent-ffmpeg` for audio processing
-- **Video Rendering**: Canvas-based composition with comment overlays
+- **Video Rendering**: Remotion composition with comment overlays
 - **Subtitle Processing**: ASR transcription, AI translation, and video rendering
 - **Comment Processing**: TikTok and YouTube comment extraction and rendering
 - **Metadata Extraction**: Comprehensive video metadata and thumbnail handling
@@ -118,7 +116,7 @@ orpc/
 - **Database**: URL configured via `DATABASE_URL` environment variable
 - **Local Development**: SQLite database at `./local.db`
 - **Image Optimization**: Configured for YouTube (`i.ytimg.com`) and TikTok thumbnails
-- **Native Dependencies**: Canvas and ffmpeg for video processing
+- **Native Dependencies**: Remotion headless Chromium bundle and FFmpeg for video processing
 - **Rebuild Script**: `pnpm rebuild:native` for native module rebuilding
 
 ## Code Conventions
@@ -153,7 +151,7 @@ orpc/
 - **Language Models**: OpenAI and DeepSeek integration via Vercel AI SDK
 - **Translation**: AI-powered subtitle translation with context preservation
 - **ASR**: Whisper integration for speech-to-text transcription
-- **Media Rendering**: Canvas-based video composition with emoji caching
+- **Media Rendering**: Remotion-based video composition with comment overlays
 - **Performance**: Optimized frame generation and CFR (Constant Frame Rate) processing
 
 ### TanStack Query Integration

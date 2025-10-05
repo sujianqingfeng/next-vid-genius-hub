@@ -1,3 +1,4 @@
+import { ProxyAgent, fetch as undiciFetch } from 'undici'
 import { Innertube, UniversalCache } from 'youtubei.js'
 
 export type YouTubeClientConfig = {
@@ -9,17 +10,21 @@ export async function getYouTubeClient(
 	config: YouTubeClientConfig = {},
 ): Promise<Innertube> {
 	const cache = new UniversalCache(config.cacheEnabled !== false)
-	const options: { cache: UniversalCache; fetch_options?: { agent: string } } =
-		{
-			cache,
-		}
+	const agent = config.proxy ? new ProxyAgent(config.proxy) : undefined
+	const fetchWithProxy = agent
+		? ((input: RequestInfo | URL, init?: RequestInit) =>
+				undiciFetch(input, {
+					...(init ?? {}),
+					dispatcher: agent,
+				}))
+		: undefined
 
-	// 如果提供了代理配置，添加到选项中
-	if (config.proxy) {
-		options.fetch_options = {
-			agent: config.proxy,
-		}
-	}
-
-	return Innertube.create(options)
+	return Innertube.create(
+		fetchWithProxy
+			? {
+					cache,
+					fetch: fetchWithProxy,
+				}
+			: { cache },
+	)
 }

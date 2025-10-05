@@ -47,3 +47,4 @@ test.mp4
 output_test_video.mp4
 frames
 .cache
+**/__tests__/artifacts/

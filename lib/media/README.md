@@ -1,91 +1,56 @@
 # Media Processing Module
 
-This module has been refactored from a single large file (`lib/media.ts`) into a well-organized folder structure to improve maintainability and follow the single responsibility principle.
+This directory contains the media pipeline for Next Vid Genius Hub. It now prioritizes a Remotion-driven renderer instead of the legacy Node Canvas implementation.
 
 ## Structure
 
 ```
 lib/media/
-├── index.ts              # Main entry point - re-exports all functionality
-├── types/                # Type definitions
-│   └── index.ts         # VideoInfo, Comment, CanvasContext, etc.
-├── emoji/               # Emoji processing utilities
-│   └── index.ts         # Emoji download, cache, rendering
-├── processing/          # Video processing utilities
-│   └── index.ts         # Audio extraction, subtitle rendering
-├── rendering/           # Canvas rendering components
-│   ├── engine.ts        # Main video rendering engine
-│   ├── components.ts    # UI components (header, comment cards, cover)
-│   └── ui.ts           # Basic UI utilities (background, icons)
-├── utils/              # General utilities
-│   └── index.ts        # Text wrapping, rounded rectangles
-└── README.md           # This file
+├── index.ts              # Entry point re-exporting helpers
+├── processing/           # FFmpeg utilities (audio extraction, subtitle muxing)
+├── remotion/             # Remotion renderer wrapper
+├── types/                # Shared data contracts (VideoInfo, Comment, ...)
+└── README.md             # This file
 ```
 
-## Modules
+## Key Modules
 
-### Types (`types/index.ts`)
-- `VideoInfo` - Video metadata interface
-- `Comment` - Comment data interface
-- `CanvasContext` - Canvas context type
-- `LikeIconOptions` - Icon rendering options
+### `processing/`
+- `extractAudio()` – Pulls raw audio from the source video using FFmpeg.
+- `renderVideoWithSubtitles()` – Applies subtitles and outputs a muxed MP4.
+- `convertWebVttToAss()` – Converts WebVTT captions into ASS format for FFmpeg.
 
-### Emoji (`emoji/index.ts`)
-- `emojiToCodepoint()` - Convert emoji to Twemoji codepoint
-- `downloadEmojiImage()` - Download emoji from CDN
-- `getEmojiImage()` - Get emoji with caching
-- `splitTextAndEmojis()` - Split text into text and emoji parts
-- `fillTextWithEmojis()` - Render text with colored emojis
+### `remotion/`
+- `renderVideoWithRemotion()` – Bundles the Remotion composition and composites it with the source video via FFmpeg.
+- `CommentsVideo` composition – Defines the cover slide and per-comment sequences used for rendered overlays.
 
-### Processing (`processing/index.ts`)
-- `extractAudio()` - Extract audio from video
-- `renderVideoWithSubtitles()` - Render video with ASS subtitles
-- `convertWebVttToAss()` - Convert WebVTT to ASS format
-- `cleanupTempFile()` - Clean up temporary files
-
-### Rendering Engine (`rendering/engine.ts`)
-- `renderVideoWithCanvas()` - Main video rendering function
-
-### Rendering Components (`rendering/components.ts`)
-- `renderHeader()` - Render video header section
-- `renderCommentCard()` - Render comment card with avatar
-- `renderCoverSection()` - Render video cover section
-
-### Rendering UI (`rendering/ui.ts`)
-- `renderBackground()` - Render white background
-- `renderVideoArea()` - Render video placeholder area
-- `renderLikeIcon()` - Render thumbs up icon
-- `renderLikeCount()` - Render like count with icon
-
-### Utils (`utils/index.ts`)
-- `roundRect()` - Draw rounded rectangle on canvas
-- `wrapText()` - Wrap text to fit within maxWidth
+### `types/`
+- `VideoInfo` – Title, author, counts, and thumbnail metadata required by the renderer.
+- `Comment` – Structured comment payload consumed by the composition.
 
 ## Usage
 
-The module maintains backward compatibility. You can still import from the main entry point:
+The recommended import surface comes from the module index:
 
-```typescript
-import { 
-  renderVideoWithCanvas, 
-  extractAudio, 
-  renderVideoWithSubtitles 
+```ts
+import {
+  extractAudio,
+  renderVideoWithSubtitles,
+  renderVideoWithRemotion,
 } from '~/lib/media'
 ```
 
-Or import specific modules for better tree-shaking:
+Import from submodules when you only need a specific concern:
 
-```typescript
-import { renderVideoWithCanvas } from '~/lib/media/rendering/engine'
+```ts
+import { renderVideoWithRemotion } from '~/lib/media/remotion/renderer'
 import { extractAudio } from '~/lib/media/processing'
-import type { VideoInfo, Comment } from '~/lib/media/types'
+import type { Comment, VideoInfo } from '~/lib/media/types'
 ```
 
-## Benefits of Refactoring
+## Maintenance Notes
 
-1. **Single Responsibility**: Each module has a clear, focused purpose
-2. **Maintainability**: Easier to find and modify specific functionality
-3. **Testability**: Individual modules can be tested in isolation
-4. **Reusability**: Components can be imported independently
-5. **Code Organization**: Clear separation of concerns
-6. **File Size**: Each file is now under 500 lines (following project guidelines)
+1. **Remotion First** – All overlay rendering should flow through the Remotion composition; avoid reintroducing Node Canvas.
+2. **FFmpeg Availability** – Ensure `ffmpeg` is installed in local and deployment environments (see `scripts/setup.sh`).
+3. **Binary Rebuilds** – Use `pnpm rebuild:native` when Node or OS upgrades occur to recompile native pieces such as `fluent-ffmpeg` or `yt-dlp-wrap`.
+4. **Types Centralization** – Extend `lib/media/types` if additional renderer data is required so both Remotion and ORPC layers stay aligned.

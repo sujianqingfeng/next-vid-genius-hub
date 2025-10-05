@@ -1,7 +1,13 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type CanvasContext = any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type EmojiImage = any
+export interface BasicVideoInfo<T = unknown> {
+	title?: string
+	author?: string
+	thumbnail?: string
+	thumbnails?: Array<{ url?: string }>
+	viewCount?: number
+	likeCount?: number
+	source?: 'youtube' | 'tiktok'
+	raw?: T
+}
 
 export interface VideoInfo {
 	title: string
@@ -23,11 +29,4 @@ export interface Comment {
 	replyCount?: number
 	source?: 'youtube' | 'tiktok' | 'twitter' | 'instagram' | 'weibo'
 	platform?: string
-}
-
-export interface LikeIconOptions {
-	size?: number
-	color?: string
-	strokeWidth?: number
-	filled?: boolean // Whether to render filled or outlined icon
 }

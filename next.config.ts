@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next'
 
+
 const nextConfig: NextConfig = {
 	images: {
 		remotePatterns: [
@@ -66,6 +67,12 @@ const nextConfig: NextConfig = {
 			},
 		],
 	},
+	serverExternalPackages: [
+		'@remotion/bundler',
+		'@remotion/renderer',
+		'remotion',
+		'fluent-ffmpeg',
+	],
 }
 
 export default nextConfig

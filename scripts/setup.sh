@@ -18,10 +18,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         exit 1
     fi
     
-    # 安装 canvas 依赖
-    echo "📦 安装 canvas 依赖..."
-    brew install pkg-config cairo pango libpng jpeg giflib librsvg pixman
-    
     # 安装 ffmpeg
     echo "🎬 安装 ffmpeg..."
     brew install ffmpeg
@@ -35,9 +31,9 @@ fi
 echo "📦 安装 Node.js 依赖..."
 pnpm install
 
-# 重建原生模块
-echo "🔨 重建原生模块..."
-cd node_modules/canvas && npm run install && cd ../..
+# 重建原生模块（fluent-ffmpeg / yt-dlp）
+echo "🔨 重建原生模块 (fluent-ffmpeg / yt-dlp-wrap)..."
+pnpm rebuild fluent-ffmpeg yt-dlp-wrap
 
 echo "✅ 设置完成！"
 echo "🎯 现在可以运行: pnpm dev" 
