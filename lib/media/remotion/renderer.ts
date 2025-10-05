@@ -1,18 +1,47 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import ffmpeg from 'fluent-ffmpeg'
 import { bundle } from '@remotion/bundler'
 import { RenderInternals, getCompositions, renderMedia } from '@remotion/renderer'
+import { ProxyAgent } from 'undici'
 import type { Comment, VideoInfo } from '../types'
 import type { TimelineDurations } from '../../../remotion/types'
 import { layoutConstants } from '../../../remotion/CommentsVideo'
+import { PROXY_URL } from '~/lib/constants'
 
 const FPS = 30
 const COVER_DURATION_SECONDS = 3
 const MAX_COMMENT_DURATION_SECONDS = 8
 const MIN_COMMENT_DURATION_SECONDS = 3
+
+const proxyAgent = PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined
+
+function inferContentTypeFromUrl(url: string): string | undefined {
+  try {
+    const ext = path.extname(new URL(url).pathname).toLowerCase()
+    switch (ext) {
+      case '.png':
+        return 'image/png'
+      case '.webp':
+        return 'image/webp'
+      case '.gif':
+        return 'image/gif'
+      case '.bmp':
+        return 'image/bmp'
+      case '.svg':
+        return 'image/svg+xml'
+      case '.jpeg':
+      case '.jpg':
+        return 'image/jpeg'
+      default:
+        return undefined
+    }
+  } catch {
+    return undefined
+  }
+}
 
 export type RenderProgressStage = 'bundle' | 'render' | 'compose' | 'complete' | 'failed'
 
@@ -79,9 +108,57 @@ export async function renderVideoWithRemotion({
   const overlayPath = path.join(tempDir, `${randomUUID()}-overlay.mp4`)
   const entryPoint = path.join(process.cwd(), 'remotion', 'index.ts')
   const publicDir = path.join(process.cwd(), 'public')
+  const inlineCache = new Map<string, string>()
+
+  const inlineRemoteImage = async (url?: string | null): Promise<string | undefined> => {
+    if (!url) {
+      return undefined
+    }
+
+    const isRemote = /^https?:\/\//i.test(url)
+    if (!isRemote) {
+      return url
+    }
+
+    if (inlineCache.has(url)) {
+      return inlineCache.get(url)
+    }
+
+    try {
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(15_000),
+        dispatcher: proxyAgent,
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`)
+      }
+      const arrayBuffer = await response.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+      const contentType =
+        response.headers.get('content-type') || inferContentTypeFromUrl(url) || 'image/jpeg'
+      const dataUrl = `data:${contentType};base64,${buffer.toString('base64')}`
+      inlineCache.set(url, dataUrl)
+      return dataUrl
+    } catch (error) {
+      console.warn('Failed to inline remote image for Remotion render:', url, error)
+      return undefined
+    }
+  }
+
+  const preparedVideoInfo: VideoInfo = {
+    ...videoInfo,
+    thumbnail: await inlineRemoteImage(videoInfo.thumbnail),
+  }
+
+  const preparedComments: Comment[] = await Promise.all(
+    comments.map(async (comment) => ({
+      ...comment,
+      authorThumbnail: await inlineRemoteImage(comment.authorThumbnail),
+    })),
+  )
 
   const { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, totalDurationSeconds, coverDurationSeconds } =
-    buildTimeline(comments)
+    buildTimeline(preparedComments)
 
   const downloadMap = RenderInternals.makeDownloadMap()
 
@@ -98,8 +175,8 @@ export async function renderVideoWithRemotion({
     onProgress?.({ stage: 'bundle', progress: 1 })
 
     const inputProps = {
-      videoInfo,
-      comments,
+      videoInfo: preparedVideoInfo,
+      comments: preparedComments,
       coverDurationInFrames,
       commentDurationsInFrames,
       fps: FPS,

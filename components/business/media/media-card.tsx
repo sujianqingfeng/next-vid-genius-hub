@@ -40,18 +40,19 @@ function MediaThumbnail({
 		<div className="relative aspect-video overflow-hidden bg-muted rounded-t-lg">
 			{media.thumbnail && !imageError ? (
 				<>
-					<Image
-						src={media.thumbnail}
-						alt={media.title}
-						fill
-						className={`object-cover transition-all duration-300 group-hover:scale-105 ${
-							imageLoading ? 'blur-sm' : 'blur-0'
-						}`}
-						onLoad={() => setImageLoading(false)}
-						onError={() => setImageError(true)}
-						loading="lazy"
-						sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-					/>
+						<Image
+							src={media.thumbnail}
+							alt={media.title}
+							fill
+							className={`object-cover transition-all duration-300 group-hover:scale-105 ${
+								imageLoading ? 'blur-sm' : 'blur-0'
+							}`}
+							onLoad={() => setImageLoading(false)}
+							onError={() => setImageError(true)}
+							loading="lazy"
+							unoptimized
+							sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+						/>
 					{imageLoading && (
 						<div className="absolute inset-0 flex items-center justify-center">
 							<Skeleton className="h-full w-full" />

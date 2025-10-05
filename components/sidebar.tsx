@@ -1,7 +1,6 @@
 'use client'
 
 import {
-	BarChart3,
 	ChevronLeft,
 	ChevronRight,
 	Download,
@@ -9,7 +8,6 @@ import {
 	HelpCircle,
 	Home,
 	Settings,
-	Users,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -44,18 +42,6 @@ const menuItems = [
 		href: '/media/download',
 		icon: Download,
 		description: 'Download new content',
-	},
-	{
-		title: 'Analytics',
-		href: '/analytics',
-		icon: BarChart3,
-		description: 'View statistics',
-	},
-	{
-		title: 'Users',
-		href: '/users',
-		icon: Users,
-		description: 'Manage users',
 	},
 ]
 

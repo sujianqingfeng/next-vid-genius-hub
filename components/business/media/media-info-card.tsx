@@ -33,11 +33,12 @@ interface MediaInfoCardProps {
 
 export function MediaInfoCard({ media }: MediaInfoCardProps) {
 	const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+	const [thumbnailError, setThumbnailError] = useState(false)
 
 	return (
 		<div className="lg:col-span-1 relative group">
 			<Card className="overflow-hidden shadow-sm pt-0">
-				{media.thumbnail && (
+				{media.thumbnail && !thumbnailError && (
 					<div className="relative">
 						<Image
 							src={media.thumbnail}
@@ -46,6 +47,8 @@ export function MediaInfoCard({ media }: MediaInfoCardProps) {
 							height={225}
 							className="w-full h-64 object-cover"
 							priority
+							unoptimized
+							onError={() => setThumbnailError(true)}
 						/>
 						<div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
 					</div>

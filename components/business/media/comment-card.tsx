@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { LanguagesIcon, MessageCircle, ThumbsUp, Trash2 } from 'lucide-react'
 import Image from 'next/image'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -23,8 +24,34 @@ interface CommentCardProps {
 	mediaId: string
 }
 
+const FALLBACK_AVATAR_CLASSES =
+	'w-10 h-10 rounded-full border-2 border-background shadow-sm bg-muted flex items-center justify-center text-sm font-semibold text-muted-foreground uppercase'
+
+function getAuthorInitials(author?: string) {
+	if (!author) {
+		return '?'
+	}
+
+	const parts = author
+		.trim()
+		.split(/\s+/)
+		.filter(Boolean)
+	if (parts.length === 0) {
+		return '?'
+	}
+	if (parts.length === 1) {
+		return parts[0].slice(0, 2).toUpperCase()
+	}
+	const first = parts[0][0]
+	const last = parts[parts.length - 1][0]
+	return `${first}${last}`.toUpperCase()
+}
+
 export function CommentCard({ comment, mediaId }: CommentCardProps) {
 	const queryClient = useQueryClient()
+	const [avatarError, setAvatarError] = useState(false)
+	const showFallback = avatarError || !comment.authorThumbnail
+	const fallbackInitials = getAuthorInitials(comment.author)
 
 	const deleteCommentMutation = useMutation(
 		queryOrpc.comment.deleteComment.mutationOptions({
@@ -44,13 +71,22 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 		<div className="group">
 			<div className="flex items-start gap-4 p-4 hover:bg-muted/30 transition-colors">
 				<div className="flex-shrink-0">
-					<Image
-						src={comment.authorThumbnail || '/default-avatar.png'}
-						alt={comment.author}
-						width={40}
-						height={40}
-						className="w-10 h-10 rounded-full border-2 border-background shadow-sm"
-					/>
+					{showFallback ? (
+						<div className={FALLBACK_AVATAR_CLASSES} aria-hidden>
+							{fallbackInitials}
+						</div>
+					) : (
+						<Image
+							src={comment.authorThumbnail!}
+							alt={comment.author}
+							width={40}
+							height={40}
+							className="w-10 h-10 rounded-full border-2 border-background shadow-sm"
+							loading="lazy"
+							unoptimized
+							onError={() => setAvatarError(true)}
+						/>
+					)}
 				</div>
 				<div className="flex-1 min-w-0">
 					<div className="flex items-start justify-between mb-2">
