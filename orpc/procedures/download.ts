@@ -8,6 +8,7 @@ import { OPERATIONS_DIR, PROXY_URL } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 import { extractAudio } from '~/lib/media'
 import { resolveVideoProvider } from '~/lib/media/providers'
+import type { VideoProviderContext } from '~/lib/media/providers'
 import type { BasicVideoInfo } from '~/lib/media/types'
 import { downloadVideo } from '~/lib/youtube'
 
@@ -42,9 +43,9 @@ export const download = os
 			.catch(() => false)
 
 		const provider = resolveVideoProvider(url)
-		const providerContext = {
-		youtubeProxy: PROXY_URL,
-	}
+		const providerContext: VideoProviderContext = {
+			proxyUrl: PROXY_URL,
+		}
 
 		let metadata: BasicVideoInfo | null | undefined
 

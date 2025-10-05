@@ -1,11 +1,9 @@
-import type { Innertube } from 'youtubei.js'
 import type { BasicVideoInfo } from '../types'
 
 export type VideoProviderId = 'youtube' | 'tiktok' | (string & {})
 
 export interface VideoProviderContext {
-	youtubeProxy?: string
-	youtubeClient?: Innertube
+	proxyUrl?: string
 }
 
 export interface VideoProvider {
