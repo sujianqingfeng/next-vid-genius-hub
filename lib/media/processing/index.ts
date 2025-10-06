@@ -422,6 +422,9 @@ async function convertWebVttToAss(
 	const outlineColor = toAssColor(config.outlineColor, 0.9)
 	const backgroundColor = toAssColor(config.backgroundColor, config.backgroundOpacity)
 
+	// Calculate vertical margin to add some space from bottom (1x font size seems more appropriate)
+	const verticalMargin = Math.round(config.fontSize)
+
 	// Build ASS file content
 	const assContent = `[Script Info]
 Title: Generated Subtitles
@@ -429,8 +432,8 @@ ScriptType: v4.00+
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: English,Arial,${Math.round(config.fontSize * 0.65)},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,1,0,2,0,0,0,1
-Style: Chinese,Arial,${config.fontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,1,0,2,0,0,0,1
+Style: English,Arial,${Math.round(config.fontSize * 0.65)},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,1,0,2,0,0,${verticalMargin},1
+Style: Chinese,Arial,${config.fontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,1,0,2,0,0,${verticalMargin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
