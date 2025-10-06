@@ -5,8 +5,6 @@ import {
 	ChevronRight,
 	Download,
 	FileVideo,
-	HelpCircle,
-	Home,
 	Settings,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -25,12 +23,6 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const menuItems = [
-	{
-		title: 'Dashboard',
-		href: '/',
-		icon: Home,
-		description: 'Overview and analytics',
-	},
 	{
 		title: 'Media Library',
 		href: '/media',
@@ -51,12 +43,6 @@ const bottomMenuItems = [
 		href: '/settings',
 		icon: Settings,
 		description: 'App configuration',
-	},
-	{
-		title: 'Help',
-		href: '/help',
-		icon: HelpCircle,
-		description: 'Get support',
 	},
 ]
 

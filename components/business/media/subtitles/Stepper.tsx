@@ -11,6 +11,7 @@ interface StepperProps {
 	hasTranslation: boolean
 	hasRenderedVideo: boolean
 	onChange: (step: StepId) => void
+	orientation?: 'horizontal' | 'vertical'
 }
 
 export function Stepper(props: StepperProps) {
@@ -20,6 +21,7 @@ export function Stepper(props: StepperProps) {
 		hasTranslation,
 		hasRenderedVideo,
 		onChange,
+		orientation = 'horizontal',
 	} = props
 
 	const steps: Array<{
@@ -58,6 +60,77 @@ export function Stepper(props: StepperProps) {
 			enabled: hasRenderedVideo,
 		},
 	]
+
+	if (orientation === 'vertical') {
+		return (
+			<div className="w-full">
+				<div className="relative space-y-3">
+					{steps.map((step, index) => {
+						const Icon = step.icon
+						const isActive = activeTab === step.id
+						const isLastStep = index === steps.length - 1
+
+						return (
+							<div key={step.id} className="relative flex items-start">
+								{/* Connection Line */}
+								{!isLastStep && (
+									<div
+										className={cn(
+											'absolute left-4 top-6 w-0.5 h-4',
+											step.completed ? 'bg-green-500' : 'bg-muted',
+										)}
+									/>
+								)}
+
+								{/* Step Button */}
+								<button
+									type="button"
+									disabled={!step.enabled}
+									aria-current={isActive ? 'step' : undefined}
+									onClick={() => step.enabled && onChange(step.id)}
+									className={cn(
+										'relative z-10 flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-200 flex-shrink-0',
+										step.completed
+											? 'bg-green-500 border-green-500 text-white shadow-sm'
+											: isActive
+												? 'bg-primary border-primary text-primary-foreground shadow-md'
+												: 'bg-background border-muted-foreground/30 text-muted-foreground hover:border-muted-foreground/50',
+										!step.enabled &&
+											!isActive &&
+											!step.completed &&
+											'opacity-50 cursor-not-allowed',
+									)}
+								>
+									{step.completed ? (
+										<CheckCircle className="h-4 w-4" />
+									) : (
+										<Icon className="h-3 w-3" />
+									)}
+								</button>
+
+								{/* Step Label */}
+								<div className="ml-3 py-1 flex-1">
+									<p
+										className={cn(
+											'text-xs font-medium leading-tight',
+											step.completed
+												? 'text-green-700'
+												: isActive
+													? 'text-primary font-semibold'
+													: 'text-muted-foreground',
+											!step.enabled && 'opacity-50',
+										)}
+									>
+										{step.label}
+									</p>
+								</div>
+							</div>
+						)
+					})}
+				</div>
+			</div>
+		)
+	}
 
 	return (
 		<div className="w-full overflow-x-auto">

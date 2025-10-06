@@ -111,17 +111,6 @@ export function Step4Preview(props: Step4PreviewProps) {
 					</Card>
 				</div>
 			</div>
-
-			<div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-				<CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-				<div>
-					<h3 className="font-semibold text-green-800">Rendering Complete!</h3>
-					<p className="text-green-700 text-sm">
-						Your video has been successfully rendered with embedded subtitles.
-						You can now preview and download the final result.
-					</p>
-				</div>
-			</div>
 		</div>
 	)
 }
