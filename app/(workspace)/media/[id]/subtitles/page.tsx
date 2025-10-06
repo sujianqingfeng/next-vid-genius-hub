@@ -186,7 +186,7 @@ export default function SubtitlesPage() {
 	}
 
 	return (
-		<div className="container mx-auto max-w-7xl p-6 space-y-6">
+		<div className="p-6 space-y-6">
 			{/* Header */}
 			<PageHeader
 				backHref={`/media/${mediaId}`}
@@ -194,44 +194,32 @@ export default function SubtitlesPage() {
 				title="Generate Subtitles"
 			/>
 
-			{/* Main Layout - Grid with Media Info and Content */}
-			<div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-				{/* Media Info Card - Desktop Only */}
-				<aside className="lg:block hidden lg:sticky lg:top-24 self-start">
-					{media && <MediaInfoCard media={media} />}
-				</aside>
-
-				{/* Main Content Area */}
-				<div className="lg:col-span-3 space-y-6">
-					{/* Mobile Details Card - Mobile Only */}
-					<div className="lg:hidden">
-						{media && (
-							<MobileDetailsCard
-								media={media}
-								isOpen={isMobileDetailsOpen}
-								onClose={() => setIsMobileDetailsOpen(false)}
-							/>
-						)}
-						{/* Mobile Toggle Button */}
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setIsMobileDetailsOpen(!isMobileDetailsOpen)}
-							className="w-full mb-4"
-						>
-							<FileText className="h-4 w-4 mr-2" />
-							{isMobileDetailsOpen ? 'Hide' : 'Show'} Media Details
-						</Button>
-					</div>
-
-					{/* Progress Stepper */}
+			{/* Main Layout - Grid with Stepper and Content */}
+			<div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+				{/* Stepper - Desktop Only */}
+				<aside className="lg:block hidden lg:sticky lg:top-24 self-start lg:col-span-3">
 					<Stepper
 						activeTab={activeTab}
 						hasTranscription={!!transcription}
 						hasTranslation={!!translation}
 						hasRenderedVideo={hasRenderedVideo}
 						onChange={(step) => setActiveTab(step)}
+						orientation="vertical"
 					/>
+				</aside>
+
+				{/* Main Content Area */}
+				<div className="lg:col-span-9 space-y-6">
+					{/* Mobile Stepper - Mobile Only */}
+					<div className="lg:hidden">
+						<Stepper
+							activeTab={activeTab}
+							hasTranscription={!!transcription}
+							hasTranslation={!!translation}
+							hasRenderedVideo={hasRenderedVideo}
+							onChange={(step) => setActiveTab(step)}
+						/>
+					</div>
 
 					{/* Main Content */}
 					<Card>

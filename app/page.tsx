@@ -5,7 +5,7 @@ import { Button } from '~/components/ui/button'
 export default function Home() {
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-			<div className="container mx-auto px-4 py-16 sm:px-6 lg:px-8">
+			<div className="px-4 py-16 sm:px-6 lg:px-8">
 				<div className="max-w-4xl mx-auto">
 					{/* Hero Section */}
 					<div className="text-center mb-16">

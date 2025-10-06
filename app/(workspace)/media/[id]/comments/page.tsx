@@ -107,7 +107,7 @@ export default function CommentsPage() {
 	const comments = mediaQuery.data?.comments || []
 
 	return (
-		<div className="container mx-auto py-6 px-4 max-w-7xl">
+		<div className="py-6 px-4">
 			{/* Header Section */}
 			<PageHeader
 				backHref={`/media/${id}`}

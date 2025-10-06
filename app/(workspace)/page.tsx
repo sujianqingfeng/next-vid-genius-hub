@@ -6,7 +6,7 @@ export default function DashboardPage() {
 		<div className="min-h-full bg-background">
 			{/* Header Section */}
 			<div className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
-				<div className="container mx-auto px-4 py-6">
+				<div className="px-4 py-6">
 					<div className="space-y-1">
 						<h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
 						<p className="text-muted-foreground">
@@ -18,7 +18,7 @@ export default function DashboardPage() {
 			</div>
 
 			{/* Main Content */}
-			<div className="container mx-auto px-4 py-8">
+			<div className="px-4 py-8">
 				{/* Stats Grid */}
 				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
 					<Card className="border-border/50 hover:shadow-md transition-shadow">

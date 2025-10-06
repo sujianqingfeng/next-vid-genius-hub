@@ -24,7 +24,7 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
-			<div className="container mx-auto px-4 py-6 max-w-7xl">
+			<div className="px-4 py-6">
 				{/* Header */}
 				<PageHeader backHref="/media" backText="Back to Media" />
 

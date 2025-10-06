@@ -43,26 +43,24 @@ export function MediaListPage() {
 
 	return (
 		<div className="min-h-full bg-background">
-			<div className="container mx-auto px-4">
-				<PageHeader
-					backHref="/"
-					showBackButton={false}
-					title="Media Library"
-					description="Manage and organize your video content"
-					withBackground
-					rightContent={
-						<Link href="/media/download">
-							<Button className="flex items-center gap-2 shadow-sm">
-								<Plus className="w-4 h-4" />
-								Download Media
-							</Button>
-						</Link>
-					}
-				/>
-			</div>
+			<PageHeader
+				backHref="/"
+				showBackButton={false}
+				title="Media Library"
+				description="Manage and organize your video content"
+				withBackground
+				rightContent={
+					<Link href="/media/download">
+						<Button className="flex items-center gap-2 shadow-sm">
+							<Plus className="w-4 h-4" />
+							Download Media
+						</Button>
+					</Link>
+				}
+			/>
 
 			{/* Main Content */}
-			<div className="container mx-auto px-4 py-8">
+			<div className="px-4 py-8">
 				{/* Loading state */}
 				{mediaQuery.isLoading && (
 					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
