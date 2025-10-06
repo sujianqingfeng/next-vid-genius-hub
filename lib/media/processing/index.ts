@@ -12,6 +12,33 @@ async function runFfmpeg(args: string[]): Promise<void> {
 }
 
 /**
+ * Get video resolution (width and height) using FFmpeg
+ */
+async function getVideoResolution(videoPath: string): Promise<{ width: number; height: number }> {
+	try {
+		const { stdout } = await execa('ffprobe', [
+			'-v', 'quiet',
+			'-print_format', 'csv=p=0',
+			'-select_streams', 'v:0',
+			'-show_entries', 'stream=width,height',
+			videoPath
+		])
+
+		const [width, height] = stdout.split(',').map(Number)
+		if (!width || !height || Number.isNaN(width) || Number.isNaN(height)) {
+			// Fallback to 1080p if we can't detect resolution
+			return { width: 1920, height: 1080 }
+		}
+
+		return { width, height }
+	} catch (error) {
+		console.warn('Failed to get video resolution, using 1080p fallback:', error)
+		// Fallback to 1080p if detection fails
+		return { width: 1920, height: 1080 }
+	}
+}
+
+/**
  * Escape a path for use in FFmpeg filters
  */
 function escapeForFFmpegFilterPath(filePath: string): string {
@@ -27,8 +54,13 @@ export async function renderVideoWithSubtitles(
 	outputPath: string,
 	subtitleConfig: SubtitleRenderConfig = defaultSubtitleRenderConfig,
 ): Promise<void> {
+	// Get video resolution for responsive font scaling
+	const videoResolution = await getVideoResolution(videoPath)
+	const scaleFactor = videoResolution.height / 1080 // Scale based on 1080p as reference
+
+	const scaledFontSize = Math.round(subtitleConfig.fontSize * scaleFactor)
 	const normalizedConfig: SubtitleRenderConfig = {
-		fontSize: Math.min(Math.max(subtitleConfig.fontSize, 12), 72),
+		fontSize: Math.min(Math.max(scaledFontSize, 12), 72),
 		textColor: subtitleConfig.textColor || defaultSubtitleRenderConfig.textColor,
 		backgroundColor:
 			subtitleConfig.backgroundColor || defaultSubtitleRenderConfig.backgroundColor,
@@ -38,6 +70,7 @@ export async function renderVideoWithSubtitles(
 		timeSegmentEffects: subtitleConfig.timeSegmentEffects || [],
 	}
 
+	
 	const tempDir = path.dirname(outputPath)
 
 	// Convert VTT content to ASS format using requested styling

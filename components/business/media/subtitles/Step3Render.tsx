@@ -453,7 +453,8 @@ function SubtitleOverlay(props: SubtitleOverlayProps) {
 		: config.fontSize
 	const chineseFontSize = Math.max(baseFontSize, 16)
 	const englishFontSize = Math.max(baseFontSize * 0.65, 12)
-	const textShadowBlur = Math.max(chineseFontSize * 0.18, 4)
+
+		const textShadowBlur = Math.max(chineseFontSize * 0.18, 4)
 	const outlineColor = hexToRgba(config.outlineColor, 0.9)
 	const textShadow = `0 0 ${textShadowBlur}px ${outlineColor}, 0 0 ${
 		textShadowBlur * 0.75

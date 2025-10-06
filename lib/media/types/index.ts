@@ -50,7 +50,7 @@ export interface SubtitleRenderConfig {
 }
 
 export const defaultSubtitleRenderConfig: SubtitleRenderConfig = {
-	fontSize: 34,
+	fontSize: 18,
 	textColor: '#ffffff',
 	backgroundColor: '#000000',
 	backgroundOpacity: 0.65,
@@ -84,7 +84,7 @@ export const subtitleRenderPresets: readonly SubtitleRenderPreset[] = [
 		label: '高对比',
 		description: '金黄色字幕 + 80% 深色底，适合复杂背景。',
 		config: {
-			fontSize: 36,
+			fontSize: 20,
 			textColor: '#ffd54f',
 			backgroundColor: '#0f172a',
 			backgroundOpacity: 0.8,
@@ -97,7 +97,7 @@ export const subtitleRenderPresets: readonly SubtitleRenderPreset[] = [
 		label: '轻量',
 		description: '透明底 + 白色文字，适合简洁风格。',
 		config: {
-			fontSize: 34,
+			fontSize: 18,
 			textColor: '#f8fafc',
 			backgroundColor: '#0f172a',
 			backgroundOpacity: 0.2,
@@ -108,9 +108,9 @@ export const subtitleRenderPresets: readonly SubtitleRenderPreset[] = [
 	{
 		id: 'bold',
 		label: '大字幕',
-		description: '48px 字号 + 70% 底色，移动端更清晰。',
+		description: '28px 字号 + 70% 底色，移动端更清晰。',
 		config: {
-			fontSize: 48,
+			fontSize: 28,
 			textColor: '#ffffff',
 			backgroundColor: '#020617',
 			backgroundOpacity: 0.7,
