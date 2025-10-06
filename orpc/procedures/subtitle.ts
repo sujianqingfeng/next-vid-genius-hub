@@ -79,22 +79,23 @@ You need to add the Chinese translation under each English sentence.
 Do not translate timestamps or other metadata.
 For each text segment, the original English text should be on one line, and the Chinese translation should be on the following line.
 IMPORTANT: Do NOT add any dashes (-) or bullet points to the translated text. Keep the text clean without prefixes.
+IMPORTANT: Do NOT add punctuation at the end of sentences for both English and Chinese text. Remove periods, commas, exclamation marks, and question marks at the end of each line.
 
 For example:
 Original:
 Hello, world!
 
 Translated:
-Hello, world!
-你好，世界！
+Hello, world
+你好，世界
 
 Another example:
 Original:
 This is a test.
 
 Translated:
-This is a test.
-这是一个测试。`
+This is a test
+这是一个测试`
 
 	const { text: translatedText } = await generateText({
 		model,

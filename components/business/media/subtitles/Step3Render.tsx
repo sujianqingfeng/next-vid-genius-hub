@@ -18,10 +18,8 @@ import {
 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import { Switch } from '~/components/ui/switch'
 import {
 	subtitleRenderPresets,
 	type SubtitleRenderConfig,
@@ -66,7 +64,6 @@ export function Step3Render(props: Step3RenderProps) {
 		)
 		return matching?.id ?? 'custom'
 	})
-	const [isPreviewEnabled, setIsPreviewEnabled] = useState(true)
 
 	useEffect(() => {
 		const matching = subtitleRenderPresets.find((preset) =>
@@ -176,195 +173,183 @@ export function Step3Render(props: Step3RenderProps) {
 
 	return (
 		<div className="space-y-6">
-			<Card>
-				<CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="flex items-center gap-2">
-						<Video className="h-5 w-5" />
-						<CardTitle className="text-lg">Preview & Configure Subtitles</CardTitle>
+			{/* Preview Area */}
+			<div className="space-y-4">
+				<h3 className="text-lg font-semibold flex items-center gap-2">
+					<Video className="h-5 w-5" />
+					Video Preview
+				</h3>
+				<div
+					ref={containerRef}
+					className="subtitle-preview relative aspect-video overflow-hidden rounded-lg border bg-black"
+					style={previewStyle}
+				>
+					<video
+						ref={videoRef}
+						className="h-full w-full object-contain"
+						controls
+						preload="metadata"
+						crossOrigin="anonymous"
+					>
+						<source src={`/api/media/${mediaId}/source`} type="video/mp4" />
+						Your browser does not support the video tag.
+					</video>
+
+					{isRendering ? (
+						<PreviewMessage>
+							<VideoOff className="h-8 w-8" />
+							<span>Preview disabled during rendering</span>
+						</PreviewMessage>
+					) : !translationAvailable || !translation ? (
+						<PreviewMessage>
+							<VideoOff className="h-8 w-8" />
+							<span>Translation required for preview</span>
+						</PreviewMessage>
+					) : cues.length === 0 ? (
+						<PreviewMessage>
+							<VideoOff className="h-8 w-8" />
+							<span>No subtitles found</span>
+						</PreviewMessage>
+					) : (
+						<SubtitleOverlay
+							cue={activeCue}
+							config={config}
+							containerHeight={containerHeight}
+						/>
+					)}
+				</div>
+			</div>
+
+			{/* Configuration Controls */}
+			<div className="grid gap-6 md:grid-cols-2">
+				{/* Quick Presets */}
+				<div className="space-y-3">
+					<div className="flex items-center justify-between">
+						<span className="text-sm font-medium">Quick Styles</span>
+						<Badge variant="outline" className="text-xs">
+							{selectedPresetId === 'custom' ? 'Custom' : 'Preset'}
+						</Badge>
 					</div>
-						<div className="flex items-center gap-2 text-sm text-muted-foreground">
-							<Switch
-								checked={isPreviewEnabled}
-								onCheckedChange={(checked) => setIsPreviewEnabled(checked)}
-								aria-label="Toggle preview"
-							/>
-						<span>{isPreviewEnabled ? 'Preview enabled' : 'Preview disabled'}</span>
-					</div>
-				</CardHeader>
-				<CardContent>
-					<div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
-						<div className="space-y-4">
-						<div
-							ref={containerRef}
-							className="subtitle-preview relative aspect-video overflow-hidden rounded-lg border bg-black"
-							style={previewStyle}
-						>
-							<video
-								ref={videoRef}
-								className="h-full w-full object-contain"
-								controls
-								preload="metadata"
-								crossOrigin="anonymous"
-							>
-								<source src={`/api/media/${mediaId}/source`} type="video/mp4" />
-								Your browser does not support the video tag.
-							</video>
-
-							{!isPreviewEnabled ? (
-								<PreviewMessage>
-									<VideoOff className="h-8 w-8" />
-									<span>Preview disabled. Toggle on to view subtitles.</span>
-								</PreviewMessage>
-							) : !translationAvailable || !translation ? (
-								<PreviewMessage>
-									<VideoOff className="h-8 w-8" />
-									<span>Provide translated subtitles to enable preview.</span>
-								</PreviewMessage>
-							) : cues.length === 0 ? (
-								<PreviewMessage>
-									<VideoOff className="h-8 w-8" />
-									<span>No subtitle cues found.</span>
-								</PreviewMessage>
-							) : (
-								<SubtitleOverlay
-									cue={activeCue}
-									config={config}
-									containerHeight={containerHeight}
-								/>
-							)}
-						</div>
-						</div>
-						<div className="space-y-4">
-							<div className="space-y-2">
-								<div className="flex items-center justify-between text-sm font-medium text-muted-foreground">
-									<span>快速风格</span>
-									<Badge variant="outline">
-										{selectedPresetId === 'custom' ? '自定义' : '预设'}
-									</Badge>
-								</div>
-								<div className="flex flex-wrap gap-2">
-									{subtitleRenderPresets.map((preset) => (
-										<Button
-											key={preset.id}
-											type="button"
-											size="sm"
-											variant={preset.id === selectedPresetId ? 'default' : 'outline'}
-											onClick={() => handlePresetClick(preset)}
-										>
-											{preset.label}
-										</Button>
-									))}
-								</div>
-								{selectedPresetId === 'custom' ? (
-									<p className="text-xs text-muted-foreground">
-										调整滑块即可覆盖预设样式
-									</p>
-								) : (
-									selectedPreset && (
-										<p className="text-xs text-muted-foreground">
-											{selectedPreset.description}
-										</p>
-									)
-								)}
-							</div>
-
-							<div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-								<SlidersHorizontal className="h-4 w-4" />
-								<span>Subtitle appearance</span>
-							</div>
-
-							<div className="space-y-3 rounded-lg border p-4">
-								<div className="space-y-1.5">
-									<Label htmlFor="subtitle-font-size">Font size (px)</Label>
-									<Input
-										type="number"
-										min={12}
-										max={72}
-										id="subtitle-font-size"
-										value={config.fontSize}
-										onChange={handleNumericChange('fontSize')}
-									/>
-								</div>
-
-								<div className="space-y-1.5">
-									<Label htmlFor="subtitle-text-color">Text color</Label>
-									<Input
-										type="color"
-										id="subtitle-text-color"
-										value={config.textColor}
-										onChange={handleColorChange('textColor')}
-									/>
-								</div>
-
-								<div className="space-y-1.5">
-									<Label htmlFor="subtitle-background-color">Background color</Label>
-									<Input
-										type="color"
-										id="subtitle-background-color"
-										value={config.backgroundColor}
-										onChange={handleColorChange('backgroundColor')}
-									/>
-								</div>
-
-								<div className="space-y-1.5">
-									<div className="flex items-center justify-between">
-										<Label htmlFor="subtitle-background-opacity">Background opacity</Label>
-										<span className="text-sm text-muted-foreground">
-											{Math.round(config.backgroundOpacity * 100)}%
-										</span>
-									</div>
-									<input
-										type="range"
-										id="subtitle-background-opacity"
-										className="w-full"
-										min={0}
-										max={100}
-										step={1}
-										value={Math.round(config.backgroundOpacity * 100)}
-										onChange={handleOpacityChange}
-									/>
-								</div>
-
-								<div className="space-y-1.5">
-									<Label htmlFor="subtitle-outline-color">Outline glow</Label>
-									<Input
-										type="color"
-										id="subtitle-outline-color"
-										value={config.outlineColor}
-										onChange={handleColorChange('outlineColor')}
-									/>
-								</div>
-
+					<div className="grid grid-cols-2 gap-2">
+						{subtitleRenderPresets.map((preset) => (
 							<Button
+								key={preset.id}
 								type="button"
-								variant="outline"
 								size="sm"
-								onClick={() => handlePresetClick(DEFAULT_PRESET)}
+								variant={preset.id === selectedPresetId ? 'default' : 'outline'}
+								onClick={() => handlePresetClick(preset)}
+								className="text-xs"
 							>
-								Reset to defaults
+								{preset.label}
 							</Button>
+						))}
+					</div>
+					{selectedPreset && (
+						<p className="text-xs text-muted-foreground">
+							{selectedPreset.description}
+						</p>
+					)}
+				</div>
+
+				{/* Manual Controls */}
+				<div className="space-y-3">
+					<div className="flex items-center gap-2 text-sm font-medium">
+						<SlidersHorizontal className="h-4 w-4" />
+						Manual Settings
+					</div>
+
+					<div className="grid grid-cols-2 gap-3">
+						<div className="space-y-1.5">
+							<Label htmlFor="subtitle-font-size" className="text-xs">Font Size</Label>
+							<Input
+								type="number"
+								min={12}
+								max={72}
+								id="subtitle-font-size"
+								value={config.fontSize}
+								onChange={handleNumericChange('fontSize')}
+								className="h-8 text-sm"
+							/>
+						</div>
+
+						<div className="space-y-1.5">
+							<div className="flex items-center justify-between">
+								<Label htmlFor="subtitle-background-opacity" className="text-xs">Opacity</Label>
+								<span className="text-xs text-muted-foreground">
+									{Math.round(config.backgroundOpacity * 100)}%
+								</span>
 							</div>
+							<input
+								type="range"
+								id="subtitle-background-opacity"
+								className="w-full h-2"
+								min={0}
+								max={100}
+								step={1}
+								value={Math.round(config.backgroundOpacity * 100)}
+								onChange={handleOpacityChange}
+							/>
 						</div>
 					</div>
-				</CardContent>
-		</Card>
 
-			<div className="text-center space-y-4">
-				<div className="rounded-lg bg-muted/50 p-6">
-					<Video className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-					<h3 className="mb-2 text-lg font-semibold">Ready to Render</h3>
-					<p className="mb-4 text-muted-foreground">
-						Your video will be rendered with embedded subtitles. This process may take several minutes.
-					</p>
-							<Button
-								onClick={() => onStart({ ...config })}
-								disabled={isRendering || !translationAvailable}
-								size="lg"
-							>
-							{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-						{isRendering ? 'Rendering...' : 'Start Rendering'}
+					<div className="grid grid-cols-3 gap-2">
+						<div className="space-y-1">
+							<Label htmlFor="subtitle-text-color" className="text-xs">Text</Label>
+							<Input
+								type="color"
+								id="subtitle-text-color"
+								value={config.textColor}
+								onChange={handleColorChange('textColor')}
+								className="h-8 w-full p-1 cursor-pointer"
+							/>
+						</div>
+
+						<div className="space-y-1">
+							<Label htmlFor="subtitle-background-color" className="text-xs">BG</Label>
+							<Input
+								type="color"
+								id="subtitle-background-color"
+								value={config.backgroundColor}
+								onChange={handleColorChange('backgroundColor')}
+								className="h-8 w-full p-1 cursor-pointer"
+							/>
+						</div>
+
+						<div className="space-y-1">
+							<Label htmlFor="subtitle-outline-color" className="text-xs">Outline</Label>
+							<Input
+								type="color"
+								id="subtitle-outline-color"
+								value={config.outlineColor}
+								onChange={handleColorChange('outlineColor')}
+								className="h-8 w-full p-1 cursor-pointer"
+							/>
+						</div>
+					</div>
+
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => handlePresetClick(DEFAULT_PRESET)}
+						className="w-full text-xs"
+					>
+						Reset to Default
 					</Button>
 				</div>
+			</div>
+
+			{/* Render Button */}
+			<div className="text-center">
+				<Button
+					onClick={() => onStart({ ...config })}
+					disabled={isRendering || !translationAvailable}
+					size="lg"
+					className="w-full max-w-md"
+				>
+					{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+					{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
+				</Button>
 			</div>
 
 			{errorMessage && (

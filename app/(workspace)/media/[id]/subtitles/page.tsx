@@ -145,6 +145,7 @@ export default function SubtitlesPage() {
 		}),
 	)
 
+	
 	const handleStartTranscription = () => {
 		transcribeMutation.mutate({ mediaId, model: selectedModel })
 	}
@@ -186,7 +187,7 @@ export default function SubtitlesPage() {
 	}
 
 	return (
-		<div className="p-6 space-y-6">
+		<div className="p-4 space-y-4">
 			{/* Header */}
 			<PageHeader
 				backHref={`/media/${mediaId}`}
@@ -194,59 +195,28 @@ export default function SubtitlesPage() {
 				title="Generate Subtitles"
 			/>
 
-			{/* Main Layout - Grid with Stepper and Content */}
-			<div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-				{/* Stepper - Desktop Only */}
-				<aside className="lg:block hidden lg:sticky lg:top-24 self-start lg:col-span-3">
-					<Stepper
-						activeTab={activeTab}
-						hasTranscription={!!transcription}
-						hasTranslation={!!translation}
-						hasRenderedVideo={hasRenderedVideo}
-						onChange={(step) => setActiveTab(step)}
-						orientation="vertical"
-					/>
-				</aside>
+			{/* Step Navigation - Always Visible */}
+			<Stepper
+				activeTab={activeTab}
+				hasTranscription={!!transcription}
+				hasTranslation={!!translation}
+				hasRenderedVideo={hasRenderedVideo}
+				onChange={(step) => setActiveTab(step)}
+			/>
 
-				{/* Main Content Area */}
-				<div className="lg:col-span-9 space-y-6">
-					{/* Mobile Stepper - Mobile Only */}
-					<div className="lg:hidden">
-						<Stepper
-							activeTab={activeTab}
-							hasTranscription={!!transcription}
-							hasTranslation={!!translation}
-							hasRenderedVideo={hasRenderedVideo}
-							onChange={(step) => setActiveTab(step)}
-						/>
-					</div>
-
-					{/* Main Content */}
-					<Card>
-						<CardHeader>
-							<CardTitle className="flex items-center gap-2">
-								{activeTab === 'step1' && <FileText className="h-5 w-5" />}
-								{activeTab === 'step2' && <Languages className="h-5 w-5" />}
-								{activeTab === 'step3' && <Video className="h-5 w-5" />}
-								{activeTab === 'step4' && <Play className="h-5 w-5" />}
-								{activeTab === 'step1' && 'Step 1: Generate Subtitles'}
-								{activeTab === 'step2' && 'Step 2: Translate Subtitles'}
-								{activeTab === 'step3' && 'Step 3: Render Video'}
-								{activeTab === 'step4' && 'Step 4: Preview Video'}
-							</CardTitle>
-							<CardDescription>
-								{activeTab === 'step1' &&
-									'Transcribe audio to text using Whisper AI'}
-								{activeTab === 'step2' &&
-									'Translate subtitles to your target language'}
-								{activeTab === 'step3' &&
-									'Render the final video with embedded subtitles'}
-								{activeTab === 'step4' &&
-									'Preview and download your rendered video'}
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							{activeTab === 'step1' && (
+			{/* Main Content */}
+			{activeTab === 'step1' && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<FileText className="h-5 w-5" />
+									Step 1: Generate Subtitles
+								</CardTitle>
+								<CardDescription>
+									Transcribe audio to text using Whisper AI
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
 								<Step1Transcribe
 									selectedModel={selectedModel}
 									onModelChange={(m) => setSelectedModel(m)}
@@ -259,8 +229,22 @@ export default function SubtitlesPage() {
 											: undefined
 									}
 								/>
-							)}
-							{activeTab === 'step2' && (
+							</CardContent>
+						</Card>
+					)}
+
+					{activeTab === 'step2' && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<Languages className="h-5 w-5" />
+									Step 2: Translate Subtitles
+								</CardTitle>
+								<CardDescription>
+									Translate subtitles to your target language
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
 								<Step2Translate
 									selectedAIModel={selectedAIModel}
 									onModelChange={(m) => setSelectedAIModel(m)}
@@ -275,8 +259,22 @@ export default function SubtitlesPage() {
 											: undefined
 									}
 								/>
-							)}
-							{activeTab === 'step3' && (
+							</CardContent>
+						</Card>
+					)}
+
+					{activeTab === 'step3' && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<Video className="h-5 w-5" />
+									Step 3: Render Video
+								</CardTitle>
+								<CardDescription>
+									Render the final video with embedded subtitles
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
 								<Step3Render
 									isRendering={isRendering}
 									onStart={(renderConfig) =>
@@ -291,19 +289,31 @@ export default function SubtitlesPage() {
 										setSubtitleConfig({ ...nextConfig })
 									}
 								/>
-							)}
-							{activeTab === 'step4' && (
+							</CardContent>
+						</Card>
+					)}
+
+					{activeTab === 'step4' && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2">
+									<Play className="h-5 w-5" />
+									Step 4: Preview Video
+								</CardTitle>
+								<CardDescription>
+									Preview and download your rendered video
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
 								<Step4Preview
 									mediaId={mediaId}
 									hasRenderedVideo={hasRenderedVideo}
 									thumbnail={media?.thumbnail ?? undefined}
 									cacheBuster={renderCacheBuster}
 								/>
-							)}
-						</CardContent>
-					</Card>
-				</div>
-			</div>
+							</CardContent>
+						</Card>
+					)}
 		</div>
 	)
 }
