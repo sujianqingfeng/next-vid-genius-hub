@@ -4,7 +4,7 @@ import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { AIModelIds, generateText } from '~/lib/ai'
-import { transcribeWithWhisper, type TranscriptionProvider, type WhisperModel } from '~/lib/asr/whisper'
+import { transcribeWithWhisper } from '~/lib/asr/whisper'
 import { logger } from '~/lib/logger'
 import {
 	OPERATIONS_DIR,
@@ -15,8 +15,25 @@ import {
 } from '~/lib/constants'
 import { db, schema, type TranscriptionWord } from '~/lib/db'
 import { renderVideoWithSubtitles } from '~/lib/media'
-import { type SubtitleRenderConfig } from '~/lib/media/types'
-import { parseVttCues, serializeVttCues } from '~/lib/media/utils/vtt'
+import {
+	getTranslationPrompt,
+	DEFAULT_TRANSLATION_PROMPT_ID
+} from '~/lib/subtitle/config/prompts'
+import {
+	type SubtitleRenderConfig,
+	subtitleRenderConfigSchema,
+	timeSegmentEffectSchema,
+	hintTextConfigSchema
+} from '~/lib/subtitle/types'
+import {
+	parseVttCues,
+	serializeVttCues,
+	validateVttContent
+} from '~/lib/subtitle/utils/vtt'
+import {
+	type TranscriptionProvider,
+	type WhisperModel
+} from '~/lib/subtitle/config/models'
 
 export const transcribe = os
 	.input(
@@ -99,10 +116,11 @@ export const transcribe = os
 const translateInput = z.object({
 	mediaId: z.string(),
 	model: z.enum(AIModelIds),
+	promptId: z.string().default(DEFAULT_TRANSLATION_PROMPT_ID).optional(),
 })
 
 export const translate = os.input(translateInput).handler(async ({ input }) => {
-	const { mediaId, model } = input
+	const { mediaId, model, promptId } = input
 
 	const where = eq(schema.media.id, mediaId)
 
@@ -114,35 +132,17 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
 		throw new Error('Transcription not found')
 	}
 
-	const bilingualPrompt = `You are a professional translator. Your task is to translate the text content of a VTT file from English to Chinese while preserving the VTT format exactly.
+	// 使用配置化的提示词
+	const promptConfig = getTranslationPrompt(promptId || DEFAULT_TRANSLATION_PROMPT_ID)
+	if (!promptConfig) {
+		throw new Error(`Invalid translation prompt ID: ${promptId}`)
+	}
 
-You will be given the content of a VTT file.
-You MUST:
-1. Keep all timestamp lines (e.g., "00.000 --> 01.740") EXACTLY as they are
-2. Keep the WEBVTT header exactly as it is
-3. For each text segment under a timestamp, add the Chinese translation on the next line
-4. Do NOT translate timestamps or any metadata
-5. Keep the exact same structure as the original VTT
-
-IMPORTANT: Do NOT add any dashes (-) or bullet points to the translated text. Keep the text clean without prefixes.
-IMPORTANT: Do NOT add punctuation at the end of sentences for both English and Chinese text. Remove periods, commas, exclamation marks, and question marks at the end of each line.
-
-Example format:
-WEBVTT
-
-00.000 --> 02.000
-Hello, world
-你好，世界
-
-02.000 --> 04.000
-This is a test
-这是一个测试
-
-Return the complete VTT content with preserved timestamps and structure.`
+	logger.info('translation', `Using translation prompt: ${promptConfig.name} for media ${mediaId}`)
 
 	const { text: translatedText } = await generateText({
 		model,
-		system: bilingualPrompt,
+		system: promptConfig.template,
 		prompt: media.transcription,
 	})
 
@@ -156,44 +156,13 @@ Return the complete VTT content with preserved timestamps and structure.`
 	}
 })
 
-const hexColor = /^#(?:[0-9a-fA-F]{3}){1,2}$/
-
-const timeSegmentEffectSchema = z.object({
-	id: z.string(),
-	startTime: z.number().min(0),
-	endTime: z.number().min(0),
-	muteAudio: z.boolean(),
-	blackScreen: z.boolean(),
-	description: z.string().optional(),
-})
-
-const hintTextConfigSchema = z.object({
-	enabled: z.boolean(),
-	text: z.string(),
-	fontSize: z.number().min(12).max(72),
-	textColor: z.string().regex(hexColor, 'Invalid text color'),
-	backgroundColor: z.string().regex(hexColor, 'Invalid background color'),
-	backgroundOpacity: z.number().min(0).max(1),
-	outlineColor: z.string().regex(hexColor, 'Invalid outline color'),
-	position: z.enum(['center', 'top', 'bottom']),
-	animation: z.enum(['fade-in', 'slide-up', 'none']).optional(),
-})
-
-const subtitleConfigSchema: z.ZodType<SubtitleRenderConfig> = z.object({
-	fontSize: z.number().min(12).max(72),
-	textColor: z.string().regex(hexColor, 'Invalid text color'),
-	backgroundColor: z.string().regex(hexColor, 'Invalid background color'),
-	backgroundOpacity: z.number().min(0).max(1),
-	outlineColor: z.string().regex(hexColor, 'Invalid outline color'),
-	timeSegmentEffects: z.array(timeSegmentEffectSchema),
-	hintTextConfig: hintTextConfigSchema.optional(),
-})
+// 使用新架构中的Schema，移除重复定义
 
 export const render = os
 	.input(
 		z.object({
 			mediaId: z.string(),
-			subtitleConfig: subtitleConfigSchema.optional(),
+			subtitleConfig: subtitleRenderConfigSchema.optional(),
 		}),
 	)
 	.handler(async ({ input }) => {

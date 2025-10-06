@@ -11,16 +11,13 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Textarea } from '~/components/ui/textarea'
-import type { TranscriptionProvider, WhisperModel } from '~/lib/asr/whisper'
-
-// Client-side model mapping
-const getAvailableModels = (provider: TranscriptionProvider): WhisperModel[] => {
-	if (provider === 'cloudflare') {
-		return ['whisper-tiny-en', 'whisper-large-v3-turbo', 'whisper-medium']
-	} else {
-		return ['whisper-medium', 'whisper-large']
-	}
-}
+import {
+	getAvailableModels,
+	getModelLabel,
+	getModelDescription,
+	getDefaultModel
+} from '~/lib/subtitle/config/models'
+import type { TranscriptionProvider, WhisperModel } from '~/lib/subtitle/config/models'
 
 interface Step1TranscribeProps {
 	selectedModel: WhisperModel
@@ -59,35 +56,7 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 		return provider === 'cloudflare' ? 'Cloudflare API' : 'Local Whisper'
 	}
 
-	const getModelLabel = (model: WhisperModel) => {
-		switch (model) {
-			case 'whisper-tiny-en':
-				return 'Whisper Tiny (EN)'
-			case 'whisper-large-v3-turbo':
-				return 'Whisper Large v3 Turbo'
-			case 'whisper-medium':
-				return 'Whisper Medium'
-			case 'whisper-large':
-				return 'Whisper Large'
-			default:
-				return model
-		}
-	}
-
-	const getModelDescription = (model: WhisperModel) => {
-		switch (model) {
-			case 'whisper-tiny-en':
-				return 'Fast, English only'
-			case 'whisper-large-v3-turbo':
-				return 'High quality, faster'
-			case 'whisper-medium':
-				return 'Balanced quality'
-			case 'whisper-large':
-				return 'Best quality'
-			default:
-				return ''
-		}
-	}
+	// 使用配置化的模型信息，移除硬编码
 
 	return (
 		<div className="space-y-6">

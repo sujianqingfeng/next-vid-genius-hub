@@ -12,7 +12,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
-import { parseVttCues } from '~/lib/media/utils/vtt'
+import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 
 interface Step2TranslateProps {
 	selectedAIModel: AIModelId

@@ -4,14 +4,16 @@ import path from 'path'
 import { transcribeWithCloudflareWhisper } from '~/lib/ai/cloudflare'
 import { logger } from '~/lib/logger'
 import { type TranscriptionWord } from '~/lib/db/schema'
-
-export type TranscriptionProvider = 'local' | 'cloudflare'
-
-export type WhisperModel =
-	| 'whisper-large'
-	| 'whisper-medium'
-	| 'whisper-tiny-en'
-	| 'whisper-large-v3-turbo'
+import {
+	getAvailableModels,
+	getModelLabel,
+	getModelDescription,
+	getDefaultModel
+} from '~/lib/subtitle/config/models'
+import type {
+	TranscriptionProvider,
+	WhisperModel
+} from '~/lib/subtitle/config/models'
 
 export interface CloudflareConfig {
 	accountId: string
@@ -184,13 +186,5 @@ async function transcribeWithCloudflareProvider(
 	return result
 }
 
-/**
- * Get available models for each provider
- */
-export function getAvailableModels(provider: TranscriptionProvider): WhisperModel[] {
-	if (provider === 'cloudflare') {
-		return ['whisper-tiny-en', 'whisper-large-v3-turbo', 'whisper-medium']
-	} else {
-		return ['whisper-medium', 'whisper-large']
-	}
-}
+// 重新导出新配置中的函数
+export { getAvailableModels, getModelLabel, getModelDescription, getDefaultModel }
