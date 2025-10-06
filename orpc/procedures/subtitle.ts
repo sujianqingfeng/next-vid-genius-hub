@@ -4,11 +4,13 @@ import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { AIModelIds, generateText } from '~/lib/ai'
-import { transcribeWithWhisper } from '~/lib/asr/whisper'
+import { transcribeWithWhisper, type TranscriptionProvider, type WhisperModel } from '~/lib/asr/whisper'
 import {
 	OPERATIONS_DIR,
 	WHISPER_CPP_PATH,
 	RENDERED_VIDEO_FILENAME,
+	CLOUDFLARE_ACCOUNT_ID,
+	CLOUDFLARE_API_TOKEN,
 } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithSubtitles } from '~/lib/media'
@@ -19,11 +21,12 @@ export const transcribe = os
 	.input(
 		z.object({
 			mediaId: z.string(),
-			model: z.enum(['whisper-large', 'whisper-medium']),
+			model: z.enum(['whisper-large', 'whisper-medium', 'whisper-tiny-en', 'whisper-large-v3-turbo']),
+			provider: z.enum(['local', 'cloudflare']).default('local'),
 		}),
 	)
 	.handler(async ({ input }) => {
-		const { mediaId, model } = input
+		const { mediaId, model, provider } = input
 
 		const mediaRecord = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),
@@ -33,17 +36,40 @@ export const transcribe = os
 			throw new Error('Media not found or audio file path is missing.')
 		}
 
-		if (!WHISPER_CPP_PATH) {
-			throw new Error(
-				'WHISPER_CPP_PATH is not set in the environment variables.',
-			)
-		}
+		let vttContent: string
 
-		const vttContent = await transcribeWithWhisper({
-			audioPath: mediaRecord.audioFilePath,
-			model,
-			whisperProjectPath: WHISPER_CPP_PATH,
-		})
+		if (provider === 'cloudflare') {
+			// Validate Cloudflare configuration
+			if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
+				throw new Error(
+					'Cloudflare configuration is missing. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables.',
+				)
+			}
+
+			vttContent = await transcribeWithWhisper({
+				audioPath: mediaRecord.audioFilePath,
+				model,
+				provider: 'cloudflare',
+				cloudflareConfig: {
+					accountId: CLOUDFLARE_ACCOUNT_ID,
+					apiToken: CLOUDFLARE_API_TOKEN,
+				},
+			})
+		} else {
+			// Validate local Whisper configuration
+			if (!WHISPER_CPP_PATH) {
+				throw new Error(
+					'WHISPER_CPP_PATH is not set in the environment variables.',
+				)
+			}
+
+			vttContent = await transcribeWithWhisper({
+				audioPath: mediaRecord.audioFilePath,
+				model,
+				provider: 'local',
+				whisperProjectPath: WHISPER_CPP_PATH,
+			})
+		}
 
 		await db
 			.update(schema.media)

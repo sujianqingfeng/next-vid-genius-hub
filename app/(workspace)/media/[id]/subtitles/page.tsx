@@ -12,12 +12,7 @@ import {
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { MediaInfoCard } from '~/components/business/media/media-info-card'
-import { MobileDetailsCard } from '~/components/business/media/mobile-details-card'
-import {
-	Step1Transcribe,
-	type WhisperModel,
-} from '~/components/business/media/subtitles/Step1Transcribe'
+import { Step1Transcribe } from '~/components/business/media/subtitles/Step1Transcribe'
 import { Step2Translate } from '~/components/business/media/subtitles/Step2Translate'
 import { Step3Render } from '~/components/business/media/subtitles/Step3Render'
 import { Step4Preview } from '~/components/business/media/subtitles/Step4Preview'
@@ -40,19 +35,18 @@ import {
 	defaultSubtitleRenderConfig,
 	type SubtitleRenderConfig,
 } from '~/lib/media/types'
-
-type Model = WhisperModel
+import { type TranscriptionProvider, type WhisperModel } from '~/lib/asr/whisper'
 
 export default function SubtitlesPage() {
 	const queryClient = useQueryClient()
 	const [activeTab, setActiveTab] = useState<StepId>('step1')
 	const [transcription, setTranscription] = useState<string>('')
 	const [translation, setTranslation] = useState<string>('')
-	const [selectedModel, setSelectedModel] = useState<Model>('whisper-medium')
+	const [selectedModel, setSelectedModel] = useState<WhisperModel>('whisper-medium')
+	const [selectedProvider, setSelectedProvider] = useState<TranscriptionProvider>('local')
 	const [selectedAIModel, setSelectedAIModel] = useState<AIModelId>(
 		AIModelIds[0],
 	)
-	const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false)
 	const [subtitleConfig, setSubtitleConfig] = useState<SubtitleRenderConfig>(
 		() => ({ ...defaultSubtitleRenderConfig }),
 	)
@@ -147,7 +141,11 @@ export default function SubtitlesPage() {
 
 	
 	const handleStartTranscription = () => {
-		transcribeMutation.mutate({ mediaId, model: selectedModel })
+		transcribeMutation.mutate({
+			mediaId,
+			model: selectedModel,
+			provider: selectedProvider
+		})
 	}
 
 	const handleStartTranslation = () => {
@@ -219,7 +217,9 @@ export default function SubtitlesPage() {
 							<CardContent>
 								<Step1Transcribe
 									selectedModel={selectedModel}
+									selectedProvider={selectedProvider}
 									onModelChange={(m) => setSelectedModel(m)}
+									onProviderChange={(p) => setSelectedProvider(p)}
 									isPending={transcribeMutation.isPending}
 									onStart={handleStartTranscription}
 									transcription={transcription}
