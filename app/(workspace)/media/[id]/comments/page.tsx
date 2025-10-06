@@ -16,6 +16,7 @@ import {
 	CommentCard,
 	MediaInfoCard,
 	MobileDetailsCard,
+	RemotionPreviewCard,
 } from '~/components/business/media'
 import { PageHeader } from '~/components/layout'
 import { Badge } from '~/components/ui/badge'
@@ -258,8 +259,14 @@ export default function CommentsPage() {
 					)}
 				</div>
 
-				{/* Right Column - Comments */}
-				<div className="lg:col-span-2">
+				{/* Right Column - Preview & Comments */}
+				<div className="lg:col-span-2 space-y-6">
+					<RemotionPreviewCard
+						videoInfo={mediaQuery.data}
+						comments={comments}
+						isLoading={mediaQuery.isLoading}
+					/>
+
 					<Card className="shadow-sm">
 						<CardHeader className="pb-3">
 							<div className="flex items-center justify-between">

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { ThumbsUp } from 'lucide-react'
 import {
   AbsoluteFill,
   Img,
@@ -9,27 +10,27 @@ import {
 import type { CommentVideoInputProps } from './types'
 
 const layout = {
-  paddingX: 84,
-  paddingY: 72,
-  columnGap: 48,
-  rowGap: 48,
-  infoPanelWidth: 720,
+  paddingX: 64,
+  paddingY: 48,
+  columnGap: 24,
+  rowGap: 36,
+  infoPanelWidth: 600,
   cardRadius: 24,
-  cardPaddingX: 32,
-  cardPaddingY: 30,
+  cardPaddingX: 24,
+  cardPaddingY: 24,
 }
 
-const VIDEO_WIDTH = 864
-const VIDEO_HEIGHT = 486
+const VIDEO_WIDTH = 720
+const VIDEO_HEIGHT = 405
 
 const palette = {
-  background: '#0b1120',
-  surface: '#111827',
-  border: 'rgba(148, 163, 184, 0.18)',
-  textPrimary: '#f8fafc',
-  textSecondary: '#cbd5f5',
-  textMuted: '#94a3b8',
-  accent: '#38bdf8',
+  background: '#f8fafc',
+  surface: '#ffffff',
+  border: 'rgba(15, 23, 42, 0.08)',
+  textPrimary: '#0f172a',
+  textSecondary: '#334155',
+  textMuted: '#64748b',
+  accent: '#0ea5e9',
 }
 
 const baseFont = 'Inter, "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont'
@@ -47,9 +48,12 @@ const containerStyle: CSSProperties = {
 }
 
 const topSectionStyle: CSSProperties = {
-  display: 'flex',
+  display: 'grid',
+  gridTemplateColumns: 'auto auto',
   gap: layout.columnGap,
   alignItems: 'stretch',
+  justifyContent: 'center',
+  width: '100%',
 }
 
 const baseCardStyle: CSSProperties = {
@@ -57,26 +61,24 @@ const baseCardStyle: CSSProperties = {
   border: `1px solid ${palette.border}`,
   borderRadius: layout.cardRadius,
   padding: `${layout.cardPaddingY}px ${layout.cardPaddingX}px`,
-  boxShadow: '0 20px 36px rgba(8, 11, 22, 0.22)',
+  boxShadow: '0 20px 36px rgba(15, 23, 42, 0.06)',
 }
 
 const infoPanelStyle: CSSProperties = {
   ...baseCardStyle,
   width: layout.infoPanelWidth,
-  flexShrink: 0,
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
-  gap: 32,
+  gap: 24,
 }
 
 const videoPanelStyle: CSSProperties = {
   ...baseCardStyle,
   width: layout.cardPaddingX * 2 + VIDEO_WIDTH,
-  flexShrink: 0,
   display: 'flex',
-  flexDirection: 'column',
-  gap: 24,
+  justifyContent: 'center',
+  alignItems: 'center',
 }
 
 const commentPanelStyle: CSSProperties = {
@@ -85,7 +87,7 @@ const commentPanelStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 24,
-  minHeight: 480,
+  minHeight: 420,
 }
 
 const sectionLabelStyle: CSSProperties = {
@@ -116,12 +118,18 @@ const translatedStyle: CSSProperties = {
   marginTop: 18,
   padding: '16px 20px',
   borderRadius: 16,
-  backgroundColor: 'rgba(56, 189, 248, 0.1)',
+  backgroundColor: 'rgba(14, 165, 233, 0.08)',
   color: palette.textSecondary,
-  borderLeft: '4px solid rgba(56, 189, 248, 0.4)',
+  borderLeft: '4px solid rgba(14, 165, 233, 0.3)',
   whiteSpace: 'pre-wrap',
   fontSize: 24,
   lineHeight: 1.48,
+}
+
+const chineseCharRegex = /[\u4e00-\u9fff]/
+
+function isLikelyChinese(text?: string | null): boolean {
+  return Boolean(text && chineseCharRegex.test(text))
 }
 
 const VIDEO_X = layout.paddingX + layout.infoPanelWidth + layout.columnGap + layout.cardPaddingX
@@ -134,25 +142,56 @@ export const CommentsVideo: React.FC<CommentVideoInputProps> = ({
   commentDurationsInFrames,
   fps,
 }) => {
-  const sequences = comments.map((comment, index) => {
-    const startFrame =
-      coverDurationInFrames + commentDurationsInFrames.slice(0, index).reduce((sum, frames) => sum + frames, 0)
-    return { startFrame, durationInFrames: commentDurationsInFrames[index], comment, index }
-  })
+  const sequences = commentDurationsInFrames.reduce<
+    {
+      startFrame: number
+      durationInFrames: number
+      comment: CommentVideoInputProps['comments'][number]
+    }[]
+  >((acc, durationInFrames, index) => {
+    const startFrame = index === 0 ? 0 : acc[index - 1].startFrame + acc[index - 1].durationInFrames
+    const comment = comments[index]
+    if (comment) {
+      acc.push({ startFrame, durationInFrames, comment })
+    }
+    return acc
+  }, [])
 
+  const commentsTotalDuration = commentDurationsInFrames.reduce((sum, frames) => sum + frames, 0)
+  const mainDuration = Math.max(commentsTotalDuration, fps)
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: palette.background }}>
+      <Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
+        <CoverSlide videoInfo={videoInfo} commentCount={comments.length} fps={fps} />
+      </Sequence>
+      <Sequence layout="none" from={coverDurationInFrames} durationInFrames={mainDuration}>
+        <MainLayout videoInfo={videoInfo} comments={comments} sequences={sequences} fps={fps} />
+      </Sequence>
+    </AbsoluteFill>
+  )
+}
+
+const MainLayout: React.FC<{
+  videoInfo: CommentVideoInputProps['videoInfo']
+  comments: CommentVideoInputProps['comments']
+  sequences: {
+    startFrame: number
+    durationInFrames: number
+    comment: CommentVideoInputProps['comments'][number]
+  }[]
+  fps: number
+}> = ({ videoInfo, comments, sequences, fps }) => {
   return (
     <AbsoluteFill style={containerStyle}>
       <div style={topSectionStyle}>
         <InfoPanel videoInfo={videoInfo} commentCount={comments.length} />
-        <VideoPanel videoInfo={videoInfo} />
+        <VideoPanel />
       </div>
       <div style={commentPanelStyle}>
         <span style={sectionLabelStyle}>Comment Highlights</span>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
-            <CoverSlide videoInfo={videoInfo} commentCount={comments.length} fps={fps} />
-          </Sequence>
-          {sequences.map(({ startFrame, durationInFrames, comment, index }) => (
+          {sequences.map(({ startFrame, durationInFrames, comment }) => (
             <Sequence
               key={comment.id}
               layout="none"
@@ -161,8 +200,6 @@ export const CommentsVideo: React.FC<CommentVideoInputProps> = ({
             >
               <CommentSlide
                 comment={comment}
-                index={index}
-                total={comments.length}
                 durationInFrames={durationInFrames}
                 fps={fps}
               />
@@ -185,14 +222,15 @@ const InfoPanel: React.FC<{ videoInfo: CommentVideoInputProps['videoInfo']; comm
         <h1
           style={{
             margin: '16px 0 0',
-            fontSize: 48,
+            fontSize: 40,
             fontWeight: 700,
             letterSpacing: '-0.01em',
+            color: palette.textPrimary,
           }}
         >
           {videoInfo.translatedTitle ?? videoInfo.title}
         </h1>
-        <p style={{ margin: '12px 0 0', fontSize: 22, color: palette.textMuted }}>
+        <p style={{ margin: '12px 0 0', fontSize: 20, color: palette.textMuted }}>
           @{videoInfo.author ?? 'unknown'} · {commentCount} 条精选评论
         </p>
       </div>
@@ -206,33 +244,10 @@ const InfoPanel: React.FC<{ videoInfo: CommentVideoInputProps['videoInfo']; comm
   )
 }
 
-const VideoPanel: React.FC<{ videoInfo: CommentVideoInputProps['videoInfo'] }> = ({ videoInfo }) => {
+const VideoPanel: React.FC = () => {
   return (
     <div style={videoPanelStyle}>
       <VideoPlaceholder />
-      {videoInfo.thumbnail ? (
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <div
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: 20,
-              overflow: 'hidden',
-              border: `1px solid ${palette.border}`,
-              flexShrink: 0,
-            }}
-          >
-            <Img
-              src={videoInfo.thumbnail}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: 22, color: palette.textMuted }}>Original Title</p>
-            <p style={{ margin: '4px 0 0', fontSize: 28, fontWeight: 600 }}>{videoInfo.title}</p>
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -249,25 +264,37 @@ const CoverSlide: React.FC<{
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, opacity }}>
-      <p style={{ margin: 0, fontSize: 24, color: palette.textMuted }}>
-        {videoInfo.title}
-      </p>
-      <h2 style={{ margin: 0, fontSize: 36, fontWeight: 600 }}>{videoInfo.translatedTitle ?? videoInfo.title}</h2>
-      <p style={{ margin: 0, fontSize: 20, color: palette.textMuted }}>
-        来自 {videoInfo.author ?? '未知'} · {formatCount(videoInfo.viewCount)} 次观看 · {commentCount} 条评论梳理完成
-      </p>
-    </div>
+    <AbsoluteFill
+      style={{
+        background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(14, 165, 233, 0.04))',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: palette.textPrimary,
+        fontFamily: baseFont,
+        padding: '0 120px',
+        boxSizing: 'border-box',
+        opacity,
+      }}
+    >
+      <div style={{ maxWidth: 960, textAlign: 'center', display: 'grid', gap: 24 }}>
+        <p style={{ margin: 0, fontSize: 24, color: palette.textSecondary }}>{videoInfo.title}</p>
+        <h2 style={{ margin: 0, fontSize: 60, fontWeight: 700, letterSpacing: '-0.03em' }}>
+          {videoInfo.translatedTitle ?? videoInfo.title}
+        </h2>
+        <p style={{ margin: 0, fontSize: 22, color: palette.textMuted }}>
+          来自 {videoInfo.author ?? '未知'} · {formatCount(videoInfo.viewCount)} 次观看 · {commentCount} 条评论梳理完成
+        </p>
+      </div>
+    </AbsoluteFill>
   )
 }
 
 const CommentSlide: React.FC<{
   comment: CommentVideoInputProps['comments'][number]
-  index: number
-  total: number
   durationInFrames: number
   fps: number
-}> = ({ comment, index, total, durationInFrames, fps }) => {
+}> = ({ comment, durationInFrames, fps }) => {
   const frame = useCurrentFrame()
   const appear = interpolate(frame, [0, Math.max(8, fps / 3)], [0, 1], {
     extrapolateLeft: 'clamp',
@@ -279,27 +306,47 @@ const CommentSlide: React.FC<{
     extrapolateRight: 'clamp',
   })
   const opacity = Math.min(appear, disappear)
+  const isChinesePrimary = isLikelyChinese(comment.content)
+  const isChineseTranslation = isLikelyChinese(comment.translatedContent)
+  const displayCommentStyle: CSSProperties = {
+    ...commentBodyStyle,
+    fontSize: isChinesePrimary ? 36 : 26,
+    lineHeight: isChinesePrimary ? 1.68 : 1.52,
+    letterSpacing: isChinesePrimary ? '0.024em' : 'normal',
+    color: isChinesePrimary ? palette.accent : palette.textPrimary,
+  }
 
   return (
     <div style={{ opacity, display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <Avatar name={comment.author} src={comment.authorThumbnail} />
-        <div style={{ flex: 1 }}>
-          <p style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>{comment.author}</p>
-          <p style={{ margin: '6px 0 0', fontSize: 18, color: palette.textMuted }}>
-            👍 {formatCount(comment.likes)} · 回复 {formatCount(comment.replyCount ?? 0)}
-          </p>
-        </div>
-        <div style={{ fontSize: 18, color: palette.textMuted }}>
-          {index + 1} / {total}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p style={{ margin: 0, fontSize: 24, fontWeight: 600, color: palette.textPrimary }}>{comment.author}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: palette.textMuted, fontSize: 18 }}>
+            <ThumbsUp size={18} strokeWidth={2} />
+            <span>{formatCount(comment.likes)}</span>
+          </div>
         </div>
       </div>
-      <div>
-        <p style={commentBodyStyle}>{comment.content}</p>
-        {comment.translatedContent && comment.translatedContent !== comment.content ? (
-          <div style={translatedStyle}>{comment.translatedContent}</div>
-        ) : null}
-      </div>
+      <p style={displayCommentStyle}>{comment.content}</p>
+      {comment.translatedContent && comment.translatedContent !== comment.content ? (
+        <div
+          style={{
+            ...translatedStyle,
+            ...(isChineseTranslation
+              ? {
+                  backgroundColor: 'transparent',
+                  borderLeft: 'none',
+                  color: palette.accent,
+                  padding: 0,
+                  marginTop: 12,
+                }
+              : {}),
+          }}
+        >
+          {comment.translatedContent}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -327,12 +374,12 @@ const Avatar: React.FC<{ name: string; src?: string | null }> = ({ name, src }) 
         width: 72,
         height: 72,
         borderRadius: '50%',
-        backgroundColor: 'rgba(148, 163, 184, 0.15)',
+        backgroundColor: 'rgba(14, 165, 233, 0.12)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 28,
-        color: palette.textMuted,
+        color: palette.accent,
         border: `2px solid ${palette.border}`,
       }}
     >
@@ -346,10 +393,10 @@ const VideoPlaceholder: React.FC = () => {
     <div
       style={{
         width: VIDEO_WIDTH,
-        alignSelf: 'flex-start',
+        alignSelf: 'center',
         borderRadius: 20,
         border: `1px solid ${palette.border}`,
-        backgroundColor: '#0f172a',
+        backgroundColor: '#e0f2fe',
         overflow: 'hidden',
       }}
     >
@@ -358,15 +405,11 @@ const VideoPlaceholder: React.FC = () => {
           position: 'relative',
           width: '100%',
           paddingTop: `${(VIDEO_HEIGHT / VIDEO_WIDTH) * 100}%`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: palette.textMuted,
-          fontSize: 22,
+          backgroundImage: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(14, 165, 233, 0.06))',
+          borderTop: `1px solid ${palette.border}`,
+          borderBottom: `1px solid ${palette.border}`,
         }}
-      >
-        Source Video
-      </div>
+      />
     </div>
   )
 }
@@ -374,7 +417,9 @@ const VideoPlaceholder: React.FC = () => {
 const MetaItem: React.FC<{ label: string; value: string }> = ({ label, value }) => {
   return (
     <div>
-      <span style={{ display: 'block', fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+      <span
+        style={{ display: 'block', fontSize: 14, letterSpacing: '0.08em', textTransform: 'uppercase', color: palette.textMuted }}
+      >
         {label}
       </span>
       <span style={{ display: 'block', fontSize: 20, color: palette.textPrimary }}>{value}</span>
