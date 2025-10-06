@@ -3,6 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { transcribeWithCloudflareWhisper } from '~/lib/ai/cloudflare'
 import { logger } from '~/lib/logger'
+import { type TranscriptionWord } from '~/lib/db/schema'
 
 export type TranscriptionProvider = 'local' | 'cloudflare'
 
@@ -27,7 +28,7 @@ interface TranscribeWithWhisperOptions {
 
 export interface TranscriptionResult {
 	vtt: string
-	words?: Array<{ word: string; start: number; end: number }>
+	words?: TranscriptionWord[]
 }
 
 /**
@@ -104,7 +105,7 @@ async function transcribeWithLocalWhisper(
 	// await fs.unlink(vttPath) // Temporarily keep VTT file for inspection
 
 	// Local runs lack per-word timing, so surface an empty list and let callers clear prior data
-	const words: Array<{ word: string; start: number; end: number }> = []
+	const words: TranscriptionWord[] = []
 
 	// Clean up VTT file
 	await fs.unlink(vttPath)

@@ -14,3 +14,4 @@ const client = createClient({
 const db = drizzle(client, { schema })
 
 export { schema, db }
+export type { TranscriptionWord } from './schema'

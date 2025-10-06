@@ -1,3 +1,5 @@
+import { type TranscriptionWord } from '~/lib/db/schema'
+
 export interface CloudflareWhisperConfig {
 	accountId: string
 	apiToken: string
@@ -7,11 +9,7 @@ export interface CloudflareWhisperConfig {
 export interface CloudflareTranscriptionData {
 	text: string
 	word_count?: number
-	words?: Array<{
-		word: string
-		start: number
-		end: number
-	}>
+	words?: TranscriptionWord[]
 	vtt?: string
 }
 
@@ -42,7 +40,7 @@ export type CloudflareApiResponse = CloudflareTranscriptionResponse | Cloudflare
 export async function transcribeWithCloudflareWhisper(
 	audioBuffer: ArrayBuffer,
 	config: CloudflareWhisperConfig,
-): Promise<{ vtt: string; words?: Array<{ word: string; start: number; end: number }> }> {
+): Promise<{ vtt: string; words?: TranscriptionWord[] }> {
 	const { accountId, apiToken, model } = config
 
 	try {

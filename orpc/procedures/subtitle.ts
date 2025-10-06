@@ -13,7 +13,7 @@ import {
 	CLOUDFLARE_ACCOUNT_ID,
 	CLOUDFLARE_API_TOKEN,
 } from '~/lib/constants'
-import { db, schema } from '~/lib/db'
+import { db, schema, type TranscriptionWord } from '~/lib/db'
 import { renderVideoWithSubtitles } from '~/lib/media'
 import { type SubtitleRenderConfig } from '~/lib/media/types'
 import { parseVttCues, serializeVttCues } from '~/lib/media/utils/vtt'
@@ -41,7 +41,7 @@ export const transcribe = os
 		}
 
 		let vttContent: string
-		let transcriptionWords: Array<{ word: string; start: number; end: number }> | undefined
+		let transcriptionWords: TranscriptionWord[] | undefined
 
 		if (provider === 'cloudflare') {
 			// Validate Cloudflare configuration
