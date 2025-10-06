@@ -16,7 +16,7 @@ import type { TranscriptionProvider, WhisperModel } from '~/lib/asr/whisper'
 // Client-side model mapping
 const getAvailableModels = (provider: TranscriptionProvider): WhisperModel[] => {
 	if (provider === 'cloudflare') {
-		return ['whisper-tiny-en', 'whisper-large-v3-turbo']
+		return ['whisper-tiny-en', 'whisper-large-v3-turbo', 'whisper-medium']
 	} else {
 		return ['whisper-medium', 'whisper-large']
 	}

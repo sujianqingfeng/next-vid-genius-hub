@@ -11,6 +11,12 @@ export interface Comment {
 	replyCount?: number
 }
 
+export interface TranscriptionWord {
+	word: string
+	start: number
+	end: number
+}
+
 export const media = sqliteTable('media', {
 	id: text('id')
 		.unique()
@@ -32,6 +38,7 @@ export const media = sqliteTable('media', {
 	filePath: text('file_path'),
 	audioFilePath: text('audio_file_path'),
 	transcription: text('transcription'),
+	transcriptionWords: text('transcription_words', { mode: 'json' }).$type<TranscriptionWord[]>(),
 	translation: text('translation'),
 	videoWithSubtitlesPath: text('video_with_subtitles_path'),
 	videoWithInfoPath: text('video_with_info_path'),

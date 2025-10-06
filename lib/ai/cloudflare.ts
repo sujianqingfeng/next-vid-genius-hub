@@ -1,7 +1,7 @@
 export interface CloudflareWhisperConfig {
 	accountId: string
 	apiToken: string
-	model: '@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo'
+	model: '@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo' | '@cf/openai/whisper'
 }
 
 export interface CloudflareTranscriptionData {
@@ -37,12 +37,12 @@ export type CloudflareApiResponse = CloudflareTranscriptionResponse | Cloudflare
  *
  * @param audioBuffer - Audio data as ArrayBuffer
  * @param config - Cloudflare configuration
- * @returns Transcribed text in VTT format
+ * @returns Transcribed data with VTT format and words array
  */
 export async function transcribeWithCloudflareWhisper(
 	audioBuffer: ArrayBuffer,
 	config: CloudflareWhisperConfig,
-): Promise<string> {
+): Promise<{ vtt: string; words?: Array<{ word: string; start: number; end: number }> }> {
 	const { accountId, apiToken, model } = config
 
 	try {
@@ -84,15 +84,21 @@ export async function transcribeWithCloudflareWhisper(
 
 		// Check for successful response with text in result object
 		if ('result' in result && result.result && result.result.text) {
-			// If API already provides VTT format, use it; otherwise convert from text
-			return result.result.vtt || convertToVTT(result.result.text)
+			const transcriptionData = result.result
+			return {
+				vtt: transcriptionData.vtt || convertToVTT(transcriptionData.text),
+				words: transcriptionData.words
+			}
 		}
 
 		// Also handle direct response format (without result wrapper)
 		if ('text' in result && result.text) {
 			// Type assertion for direct format
 			const directResult = result as CloudflareTranscriptionData
-			return directResult.vtt || convertToVTT(directResult.text)
+			return {
+				vtt: directResult.vtt || convertToVTT(directResult.text),
+				words: directResult.words
+			}
 		}
 
 		console.error('Unexpected response format:', result)

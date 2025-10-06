@@ -30,6 +30,7 @@ import {
 	CardTitle,
 } from '~/components/ui/card'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
+import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import {
 	defaultSubtitleRenderConfig,
@@ -93,9 +94,13 @@ export default function SubtitlesPage() {
 		queryOrpc.subtitle.transcribe.mutationOptions({
 			onSuccess: (data) => {
 				if (data.transcription) {
+					logger.info('transcription', 'Transcription completed successfully on client')
 					setTranscription(data.transcription)
 					setActiveTab('step2')
 				}
+			},
+			onError: (error) => {
+				logger.error('transcription', `Transcription failed: ${error.message}`)
 			},
 		}),
 	)
@@ -141,6 +146,7 @@ export default function SubtitlesPage() {
 
 	
 	const handleStartTranscription = () => {
+		logger.info('transcription', `User started transcription: ${selectedProvider}/${selectedModel} for media ${mediaId}`)
 		transcribeMutation.mutate({
 			mediaId,
 			model: selectedModel,

@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { AIModelIds, generateText } from '~/lib/ai'
 import { transcribeWithWhisper, type TranscriptionProvider, type WhisperModel } from '~/lib/asr/whisper'
+import { logger } from '~/lib/logger'
 import {
 	OPERATIONS_DIR,
 	WHISPER_CPP_PATH,
@@ -28,25 +29,31 @@ export const transcribe = os
 	.handler(async ({ input }) => {
 		const { mediaId, model, provider } = input
 
+		logger.info('transcription', `Starting transcription for media ${mediaId} with ${provider}/${model}`)
+
 		const mediaRecord = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),
 		})
 
 		if (!mediaRecord || !mediaRecord.audioFilePath) {
+			logger.error('transcription', 'Media not found or audio file path is missing')
 			throw new Error('Media not found or audio file path is missing.')
 		}
 
 		let vttContent: string
+		let transcriptionWords: Array<{ word: string; start: number; end: number }> | undefined
 
 		if (provider === 'cloudflare') {
 			// Validate Cloudflare configuration
 			if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
+				logger.error('transcription', 'Cloudflare configuration is missing')
 				throw new Error(
 					'Cloudflare configuration is missing. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables.',
 				)
 			}
 
-			vttContent = await transcribeWithWhisper({
+			logger.info('transcription', `Using Cloudflare provider with model ${model}`)
+			const transcriptionResult = await transcribeWithWhisper({
 				audioPath: mediaRecord.audioFilePath,
 				model,
 				provider: 'cloudflare',
@@ -55,29 +62,37 @@ export const transcribe = os
 					apiToken: CLOUDFLARE_API_TOKEN,
 				},
 			})
+			vttContent = transcriptionResult.vtt
+			transcriptionWords = transcriptionResult.words
 		} else {
 			// Validate local Whisper configuration
 			if (!WHISPER_CPP_PATH) {
+				logger.error('transcription', 'Whisper.cpp path is not configured')
 				throw new Error(
 					'WHISPER_CPP_PATH is not set in the environment variables.',
 				)
 			}
 
-			vttContent = await transcribeWithWhisper({
+			logger.info('transcription', `Using local Whisper provider with model ${model}`)
+			const transcriptionResult = await transcribeWithWhisper({
 				audioPath: mediaRecord.audioFilePath,
 				model,
 				provider: 'local',
 				whisperProjectPath: WHISPER_CPP_PATH,
 			})
+			vttContent = transcriptionResult.vtt
+			transcriptionWords = transcriptionResult.words
 		}
 
 		await db
 			.update(schema.media)
 			.set({
 				transcription: vttContent,
+				transcriptionWords: transcriptionWords,
 			})
 			.where(eq(schema.media.id, mediaId))
 
+		logger.info('transcription', `Transcription completed successfully for media ${mediaId}`)
 		return { success: true, transcription: vttContent }
 	})
 
