@@ -31,9 +31,9 @@ fi
 echo "📦 安装 Node.js 依赖..."
 pnpm install
 
-# 重建原生模块（fluent-ffmpeg / yt-dlp）
-echo "🔨 重建原生模块 (fluent-ffmpeg / yt-dlp-wrap)..."
-pnpm rebuild fluent-ffmpeg yt-dlp-wrap
+# 重建 yt-dlp-wrap 原生模块
+echo "🔨 重建 yt-dlp-wrap 原生模块..."
+pnpm rebuild yt-dlp-wrap
 
 echo "✅ 设置完成！"
 echo "🎯 现在可以运行: pnpm dev" 

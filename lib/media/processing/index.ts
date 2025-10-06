@@ -1,6 +1,10 @@
-import ffmpeg from 'fluent-ffmpeg'
+import { execa } from 'execa'
 import { promises as fs } from 'fs'
 import * as path from 'path'
+
+async function runFfmpeg(args: string[]): Promise<void> {
+	await execa('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args])
+}
 
 /**
  * Escape a filesystem path for safe use inside an ffmpeg filter argument.
@@ -39,16 +43,18 @@ export async function extractAudio(
 	videoPath: string,
 	audioPath: string,
 ): Promise<void> {
-	return new Promise<void>((resolve, reject) => {
-		ffmpeg(videoPath)
-			.noVideo()
-			.audioCodec('libmp3lame')
-			.audioBitrate('128k')
-			.audioFrequency(16000)
-			.save(audioPath)
-			.on('end', () => resolve())
-			.on('error', reject)
-	})
+	await runFfmpeg([
+		'-i',
+		videoPath,
+		'-vn',
+		'-acodec',
+		'libmp3lame',
+		'-b:a',
+		'128k',
+		'-ar',
+		'16000',
+		audioPath,
+	])
 }
 
 /**
@@ -164,19 +170,19 @@ export async function renderVideoWithSubtitles(
 	const tempAssPath = path.join(tempDir, `temp_${Date.now()}.ass`)
 	await fs.writeFile(tempAssPath, assContent, 'utf8')
 
-	return new Promise<void>((resolve, reject) => {
-		const escapedAssPath = escapeForFFmpegFilterPath(tempAssPath)
-		ffmpeg(videoPath)
-			.outputOptions('-vf', `subtitles=${escapedAssPath}`)
-			.save(outputPath)
-			.on('end', async () => {
-				await cleanupTempFile(tempAssPath, 'ASS')
-				resolve()
-			})
-			.on('error', async (err) => {
-				await cleanupTempFile(tempAssPath, 'ASS')
-				console.error('Error rendering video with subtitles:', err.message)
-				reject(err)
-			})
-	})
+	const escapedAssPath = escapeForFFmpegFilterPath(tempAssPath)
+	try {
+		await runFfmpeg([
+			'-i',
+			videoPath,
+			'-vf',
+			`subtitles=${escapedAssPath}`,
+			outputPath,
+		])
+	} catch (error) {
+		console.error('Error rendering video with subtitles:', (error as Error).message)
+		throw error
+	} finally {
+		await cleanupTempFile(tempAssPath, 'ASS')
+	}
 }

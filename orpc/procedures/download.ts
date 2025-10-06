@@ -69,7 +69,7 @@ export const download = os
 		}
 
 		// 4. Upsert database record
-		const source = metadata?.source ?? provider.id
+		const source: 'youtube' | 'tiktok' = metadata?.source ?? (provider.id === 'tiktok' ? 'tiktok' : 'youtube')
 		const data = {
 			title:
 				metadata?.title ??

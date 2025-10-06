@@ -20,6 +20,9 @@ export const tiktokProvider: VideoProvider = {
 	matches: isTikTokUrl,
 	async fetchMetadata(url, _context: VideoProviderContext) {
 		const info = await getTikTokInfo(url)
+		if (!info) {
+			throw new Error('Unable to retrieve TikTok metadata')
+		}
 		const metadata: BasicVideoInfo<typeof info> = {
 			title: info.title,
 			author: info.uploader ?? info.uploader_id,

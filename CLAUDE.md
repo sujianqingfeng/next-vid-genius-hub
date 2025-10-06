@@ -24,7 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database**: SQLite with Drizzle ORM
 - **RPC**: oRPC for type-safe client-server communication
 - **State Management**: TanStack Query for server state
-- **Video Processing**: yt-dlp-wrap, fluent-ffmpeg for YouTube/TikTok downloads
+- **Video Processing**: yt-dlp-wrap with the system `ffmpeg` CLI for YouTube/TikTok downloads
 - **Media Rendering**: Remotion-based overlay composition with FFmpeg integration
 - **AI**: Vercel AI SDK with OpenAI integration and DeepSeek support
 - **ASR**: Whisper integration for automatic speech recognition
@@ -92,7 +92,7 @@ orpc/
 
 #### Media Processing Pipeline
 - **Download Support**: YouTube and TikTok via `yt-dlp-wrap`
-- **Audio Extraction**: Using `fluent-ffmpeg` for audio processing
+- **Audio Extraction**: Using the `ffmpeg` CLI (invoked via `execa`) for audio processing
 - **Video Rendering**: Remotion composition with comment overlays
 - **Subtitle Processing**: ASR transcription, AI translation, and video rendering
 - **Comment Processing**: TikTok and YouTube comment extraction and rendering

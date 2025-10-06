@@ -84,6 +84,16 @@ export default function CommentsPage() {
 		}),
 	)
 
+	const previewVideoInfo = mediaQuery.data
+		? {
+				title: mediaQuery.data.title ?? undefined,
+				translatedTitle: mediaQuery.data.translatedTitle ?? undefined,
+				viewCount: mediaQuery.data.viewCount ?? undefined,
+				author: mediaQuery.data.author ?? undefined,
+				thumbnail: mediaQuery.data.thumbnail ?? undefined,
+		  }
+		: null
+
 	const renderMutation = useMutation({
 		...queryOrpc.comment.renderWithInfo.mutationOptions(),
 		onSuccess: () => {
@@ -262,7 +272,7 @@ export default function CommentsPage() {
 				{/* Right Column - Preview & Comments */}
 				<div className="lg:col-span-2 space-y-6">
 					<RemotionPreviewCard
-						videoInfo={mediaQuery.data}
+						videoInfo={previewVideoInfo}
 						comments={comments}
 						isLoading={mediaQuery.isLoading}
 					/>

@@ -12,7 +12,7 @@
 - `pnpm lint` runs the Next.js ESLint suite; fix or annotate any warnings.
 - `pnpm test` executes Vitest; use `--watch` for local loops and `--coverage` on persistence-heavy changes.
 - `pnpm db:generate`, `pnpm db:migrate`, and `pnpm db:studio` manage Drizzle schema changes.
-- `pnpm rebuild:native` rebuilds native deps (`fluent-ffmpeg`, `yt-dlp-wrap`) after Node or OS upgrades.
+- `pnpm rebuild:native` rebuilds native deps (`yt-dlp-wrap`) after Node or OS upgrades.
 
 ## Coding Style & Naming Conventions
 - Default to TypeScript and server components; mark files with `'use client'` only when interactivity is required.

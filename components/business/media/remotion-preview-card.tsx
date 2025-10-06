@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useMemo } from 'react'
 import { AlertCircle, Loader2, Play } from 'lucide-react'
+import type { PlayerPropsWithoutZod } from '@remotion/player'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
@@ -11,14 +12,17 @@ import { Badge } from '~/components/ui/badge'
 import type { CommentVideoInputProps, TimelineDurations } from '~/remotion/types'
 import { CommentsVideo } from '~/remotion/CommentsVideo'
 
-const Player = dynamic(() => import('@remotion/player').then((mod) => mod.Player), {
+const Player = dynamic<PlayerPropsWithoutZod<CommentVideoInputProps>>(
+	() => import('@remotion/player').then((mod) => mod.Player),
+{
 	ssr: false,
 	loading: () => (
 		<div className="flex items-center justify-center h-[240px] w-full bg-muted/40 rounded-lg">
 			<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
 		</div>
 	),
-})
+},
+)
 
 const FPS = 30
 const COVER_DURATION_SECONDS = 3
@@ -26,7 +30,7 @@ const MIN_COMMENT_DURATION_SECONDS = 3
 const MAX_COMMENT_DURATION_SECONDS = 8
 
 interface RemotionPreviewCardProps {
-	videoInfo?: Partial<VideoInfo> | null
+	videoInfo?: (Partial<VideoInfo> & { translatedTitle?: string | null }) | null
 	comments: Comment[]
 	isLoading: boolean
 	onRender?: () => void
@@ -66,7 +70,9 @@ function buildTimeline(comments: Comment[]): TimelineDurations {
 	}
 }
 
-function mapVideoInfo(input?: Partial<VideoInfo> | null): VideoInfo | undefined {
+function mapVideoInfo(
+	input?: (Partial<VideoInfo> & { translatedTitle?: string | null }) | null,
+): VideoInfo | undefined {
 	if (!input || !input.title) {
 		return undefined
 	}

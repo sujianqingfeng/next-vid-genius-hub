@@ -52,5 +52,5 @@ import type { Comment, VideoInfo } from '~/lib/media/types'
 
 1. **Remotion First** – All overlay rendering should flow through the Remotion composition; avoid reintroducing Node Canvas.
 2. **FFmpeg Availability** – Ensure `ffmpeg` is installed in local and deployment environments (see `scripts/setup.sh`).
-3. **Binary Rebuilds** – Use `pnpm rebuild:native` when Node or OS upgrades occur to recompile native pieces such as `fluent-ffmpeg` or `yt-dlp-wrap`.
+3. **Binary Rebuilds** – Use `pnpm rebuild:native` when Node or OS upgrades occur to rebuild native pieces such as `yt-dlp-wrap`. Ensure a system `ffmpeg` binary is available on PATH.
 4. **Types Centralization** – Extend `lib/media/types` if additional renderer data is required so both Remotion and ORPC layers stay aligned.

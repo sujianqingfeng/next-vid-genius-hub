@@ -24,7 +24,7 @@ This file provides guidance to Gemini when working with code in this repository.
 - **Database**: SQLite with Drizzle ORM
 - **RPC**: oRPC for type-safe client-server communication
 - **State Management**: TanStack Query for server state
-- **Video Processing**: yt-dlp-wrap, fluent-ffmpeg for YouTube/media downloads
+- **Video Processing**: yt-dlp-wrap with the system `ffmpeg` CLI for YouTube/media downloads
 - **AI**: Vercel AI SDK with OpenAI integration
 - **Testing**: Vitest
 - **Linting**: Biome + ESLint
@@ -72,7 +72,7 @@ orpc/
 
 #### Media Processing Pipeline
 - YouTube downloads via `yt-dlp-wrap` in `lib/youtube/download.ts`
-- Audio extraction using `fluent-ffmpeg`
+- Audio extraction using the `ffmpeg` CLI (invoked via `execa`)
 - Metadata extraction and thumbnail handling
 - Database storage of media records
 

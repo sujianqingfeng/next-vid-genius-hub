@@ -71,7 +71,6 @@ const nextConfig: NextConfig = {
 		'@remotion/bundler',
 		'@remotion/renderer',
 		'remotion',
-		'fluent-ffmpeg',
 	],
 }
 

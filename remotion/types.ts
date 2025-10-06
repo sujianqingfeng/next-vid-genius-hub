@@ -1,6 +1,6 @@
 import type { Comment, VideoInfo } from '../lib/media/types'
 
-export interface CommentVideoInputProps {
+export interface CommentVideoInputProps extends Record<string, unknown> {
   videoInfo: VideoInfo
   comments: Comment[]
   /** Frames for the opening cover sequence */

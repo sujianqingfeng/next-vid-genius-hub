@@ -39,8 +39,7 @@ export const youtubeProvider: VideoProvider = {
 		const youtube = await resolveYouTubeClient(resolvedContext)
 		const info = await youtube.getBasicInfo(videoId)
 		const primaryThumbnail = info.basic_info?.thumbnail?.find(
-			(thumb): thumb is { url: string } =>
-				typeof thumb?.url === 'string' && thumb.url.length > 0,
+			(thumb) => typeof thumb?.url === 'string' && thumb.url.length > 0,
 		)?.url
 		const metadata: BasicVideoInfo<typeof info> = {
 			title: info.basic_info?.title,

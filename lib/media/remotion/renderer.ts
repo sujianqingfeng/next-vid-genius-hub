@@ -2,10 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import ffmpeg from 'fluent-ffmpeg'
 import { bundle } from '@remotion/bundler'
-import { RenderInternals, getCompositions, renderMedia } from '@remotion/renderer'
-import { ProxyAgent } from 'undici'
+import { getCompositions, renderMedia } from '@remotion/renderer'
+import { ProxyAgent, fetch as undiciFetch } from 'undici'
+import { execa } from 'execa'
 import type { Comment, VideoInfo } from '../types'
 import type { TimelineDurations } from '../../../remotion/types'
 import { layoutConstants } from '../../../remotion/CommentsVideo'
@@ -50,8 +50,6 @@ export interface RenderProgressEvent {
 	progress?: number
 	meta?: Record<string, unknown>
 }
-
-type DownloadMap = ReturnType<typeof RenderInternals.makeDownloadMap>
 
 function estimateCommentDurationSeconds(comment: Comment): number {
   const baseSeconds = 2.8
@@ -125,7 +123,7 @@ export async function renderVideoWithRemotion({
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await undiciFetch(url, {
         signal: AbortSignal.timeout(15_000),
         dispatcher: proxyAgent,
       })
@@ -160,16 +158,12 @@ export async function renderVideoWithRemotion({
   const { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, totalDurationSeconds, coverDurationSeconds } =
     buildTimeline(preparedComments)
 
-  const downloadMap = RenderInternals.makeDownloadMap()
-
   try {
     onProgress?.({ stage: 'bundle', progress: 0 })
     const serveUrl = await bundle({
       entryPoint,
       outDir: bundleOutDir,
       publicDir,
-      cacheEnabled: true,
-      minify: false,
       enableCaching: true,
     })
     onProgress?.({ stage: 'bundle', progress: 1 })
@@ -184,7 +178,6 @@ export async function renderVideoWithRemotion({
 
     const compositions = await getCompositions(serveUrl, {
       inputProps,
-      downloadMap,
     })
 
     const composition = compositions.find((c) => c.id === 'CommentsVideo')
@@ -204,7 +197,6 @@ export async function renderVideoWithRemotion({
       audioCodec: 'aac',
       outputLocation: overlayPath,
       inputProps,
-      downloadMap,
       chromiumOptions: {
         ignoreCertificateErrors: true,
         gl: 'angle',
@@ -212,13 +204,13 @@ export async function renderVideoWithRemotion({
       envVariables: {
         REMOTION_DISABLE_CHROMIUM_PROVIDED_HEADLESS_WARNING: 'true',
       },
-      onProgress: ({ progress, framesEncoded, totalFrames }) => {
+      onProgress: ({ progress, renderedFrames, encodedFrames }) => {
         onProgress?.({
           stage: 'render',
           progress,
           meta: {
-            framesEncoded,
-            totalFrames,
+            renderedFrames,
+            encodedFrames,
           },
         })
       },
@@ -244,7 +236,6 @@ export async function renderVideoWithRemotion({
     })
     throw error
   } finally {
-    cleanupDownloadMap(downloadMap)
     await rm(tempDir, { recursive: true, force: true })
   }
 }
@@ -266,68 +257,96 @@ async function composeWithSourceVideo({
 }): Promise<void> {
   const video = layoutConstants.video
   onProgress?.({ stage: 'compose', progress: 0 })
-  const overlay = ffmpeg()
-    .input(overlayPath)
-    .input(sourceVideoPath)
-    .complexFilter([
-      `[1:v]fps=${FPS},setpts=PTS-STARTPTS,scale=${video.width}:${video.height}:flags=lanczos,setsar=1[scaled_video]`,
-      `[0:v][scaled_video]overlay=${video.x}:${video.y}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
-      `[1:a]adelay=${Math.round(coverDurationSeconds * 1000)}|${Math.round(
-        coverDurationSeconds * 1000,
-      )},apad[delayed_audio]`,
-    ])
-    .outputOptions([
-      '-map',
-      '[composited]',
-      '-map',
-      '[delayed_audio]?',
-      '-vsync',
-      'cfr',
-      '-r',
-      String(FPS),
-      '-c:v',
-      'libx264',
-      '-c:a',
-      'aac',
-      '-b:a',
-      '192k',
-      '-pix_fmt',
-      'yuv420p',
-      '-movflags',
-      '+faststart',
-      '-shortest',
-    ])
-    .output(outputPath)
 
-  overlay.on('progress', (info) => {
-    const ratio = info.percent ? Math.min(Math.max(info.percent / 100, 0), 1) : undefined
-    onProgress?.({
-      stage: 'compose',
-      progress: ratio,
-      meta: {
-        timemark: info.timemark,
-      },
+  const delayMs = Math.round(coverDurationSeconds * 1000)
+  const filterGraph = [
+    `[1:v]fps=${FPS},setpts=PTS-STARTPTS,scale=${video.width}:${video.height}:flags=lanczos,setsar=1[scaled_video]`,
+    `[0:v][scaled_video]overlay=${video.x}:${video.y}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
+    `[1:a]adelay=${delayMs}|${delayMs},apad[delayed_audio]`,
+  ].join(';')
+
+  const ffmpegArgs = [
+    '-y',
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-progress',
+    'pipe:2',
+    '-i',
+    overlayPath,
+    '-i',
+    sourceVideoPath,
+    '-filter_complex',
+    filterGraph,
+    '-map',
+    '[composited]',
+    '-map',
+    '[delayed_audio]?',
+    '-vsync',
+    'cfr',
+    '-r',
+    String(FPS),
+    '-c:v',
+    'libx264',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '192k',
+    '-pix_fmt',
+    'yuv420p',
+    '-movflags',
+    '+faststart',
+    '-shortest',
+    outputPath,
+  ]
+
+  const totalMicroseconds = totalDurationSeconds * 1_000_000
+  const child = execa('ffmpeg', ffmpegArgs, {
+    stdout: 'ignore',
+    stderr: 'pipe',
+  })
+
+  if (child.stderr) {
+    let buffer = ''
+    child.stderr.on('data', (chunk) => {
+      buffer += chunk.toString()
+      let newlineIndex = buffer.indexOf('\n')
+      while (newlineIndex !== -1) {
+        const line = buffer.slice(0, newlineIndex).trim()
+        buffer = buffer.slice(newlineIndex + 1)
+        if (line.startsWith('out_time_us=')) {
+          const microseconds = Number(line.split('=')[1])
+          if (!Number.isNaN(microseconds) && totalMicroseconds > 0) {
+            const ratio = Math.min(
+              Math.max(microseconds / totalMicroseconds, 0),
+              1,
+            )
+            onProgress?.({
+              stage: 'compose',
+              progress: ratio,
+              meta: {
+                outTimeUs: microseconds,
+              },
+            })
+          }
+        }
+        if (line.startsWith('out_time=')) {
+          onProgress?.({
+            stage: 'compose',
+            meta: {
+              timemark: line.split('=')[1],
+            },
+          })
+        }
+        newlineIndex = buffer.indexOf('\n')
+      }
     })
-  })
-
-  await new Promise<void>((resolve, reject) => {
-    overlay
-      .on('end', () => resolve())
-      .on('error', (error) => reject(error))
-      .run()
-  })
-
-  onProgress?.({ stage: 'compose', progress: 1 })
-}
-
-function cleanupDownloadMap(downloadMap: DownloadMap): void {
-  if (downloadMap.isPreventedFromCleanup()) {
-    return
   }
 
-  RenderInternals.deleteDirectory(downloadMap.downloadDir)
-  RenderInternals.deleteDirectory(downloadMap.complexFilter)
-  RenderInternals.deleteDirectory(downloadMap.compositingDir)
-  downloadMap.inlineAudioMixing.cleanup()
-  RenderInternals.deleteDirectory(downloadMap.assetDir)
+  try {
+    await child
+    onProgress?.({ stage: 'compose', progress: 1 })
+  } catch (error) {
+    throw error
+  }
 }
