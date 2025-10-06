@@ -31,12 +31,22 @@ export interface Comment {
 	platform?: string
 }
 
+export interface TimeSegmentEffect {
+	id: string
+	startTime: number // 开始时间（秒）
+	endTime: number   // 结束时间（秒）
+	muteAudio: boolean    // 是否消音
+	blackScreen: boolean  // 是否黑屏
+	description?: string  // 可选描述
+}
+
 export interface SubtitleRenderConfig {
 	fontSize: number
 	textColor: string
 	backgroundColor: string
 	backgroundOpacity: number
 	outlineColor: string
+	timeSegmentEffects: TimeSegmentEffect[] // 时间段效果配置
 }
 
 export const defaultSubtitleRenderConfig: SubtitleRenderConfig = {
@@ -45,6 +55,7 @@ export const defaultSubtitleRenderConfig: SubtitleRenderConfig = {
 	backgroundColor: '#000000',
 	backgroundOpacity: 0.65,
 	outlineColor: '#000000',
+	timeSegmentEffects: [],
 }
 
 export interface SubtitleRenderPreset {
@@ -59,7 +70,14 @@ export const subtitleRenderPresets: readonly SubtitleRenderPreset[] = [
 		id: 'default',
 		label: '标准',
 		description: '白色字幕，65% 黑底，通用场景。',
-		config: { ...defaultSubtitleRenderConfig },
+		config: {
+			fontSize: defaultSubtitleRenderConfig.fontSize,
+			textColor: defaultSubtitleRenderConfig.textColor,
+			backgroundColor: defaultSubtitleRenderConfig.backgroundColor,
+			backgroundOpacity: defaultSubtitleRenderConfig.backgroundOpacity,
+			outlineColor: defaultSubtitleRenderConfig.outlineColor,
+			timeSegmentEffects: [],
+		},
 	},
 	{
 		id: 'contrast',
@@ -71,6 +89,7 @@ export const subtitleRenderPresets: readonly SubtitleRenderPreset[] = [
 			backgroundColor: '#0f172a',
 			backgroundOpacity: 0.8,
 			outlineColor: '#000000',
+			timeSegmentEffects: [],
 		},
 	},
 	{
@@ -83,6 +102,7 @@ export const subtitleRenderPresets: readonly SubtitleRenderPreset[] = [
 			backgroundColor: '#0f172a',
 			backgroundOpacity: 0.2,
 			outlineColor: '#111827',
+			timeSegmentEffects: [],
 		},
 	},
 	{
@@ -95,6 +115,7 @@ export const subtitleRenderPresets: readonly SubtitleRenderPreset[] = [
 			backgroundColor: '#020617',
 			backgroundOpacity: 0.7,
 			outlineColor: '#020617',
+			timeSegmentEffects: [],
 		},
 	},
 ] as const

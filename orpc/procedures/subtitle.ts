@@ -115,12 +115,22 @@ This is a test
 
 const hexColor = /^#(?:[0-9a-fA-F]{3}){1,2}$/
 
+const timeSegmentEffectSchema = z.object({
+	id: z.string(),
+	startTime: z.number().min(0),
+	endTime: z.number().min(0),
+	muteAudio: z.boolean(),
+	blackScreen: z.boolean(),
+	description: z.string().optional(),
+})
+
 const subtitleConfigSchema: z.ZodType<SubtitleRenderConfig> = z.object({
 	fontSize: z.number().min(12).max(72),
 	textColor: z.string().regex(hexColor, 'Invalid text color'),
 	backgroundColor: z.string().regex(hexColor, 'Invalid background color'),
 	backgroundOpacity: z.number().min(0).max(1),
 	outlineColor: z.string().regex(hexColor, 'Invalid outline color'),
+	timeSegmentEffects: z.array(timeSegmentEffectSchema),
 })
 
 export const render = os

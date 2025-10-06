@@ -4,6 +4,7 @@ import * as path from 'path'
 import {
 	defaultSubtitleRenderConfig,
 	type SubtitleRenderConfig,
+	type TimeSegmentEffect,
 } from '../types'
 
 async function runFfmpeg(args: string[]): Promise<void> {
@@ -11,85 +12,232 @@ async function runFfmpeg(args: string[]): Promise<void> {
 }
 
 /**
- * Escape a filesystem path for safe use inside an ffmpeg filter argument.
- * - Wrap in single quotes to avoid colon/space parsing
- * - Escape single quotes within value
- * - On Windows, double backslashes for ffmpeg parsing
+ * Escape a path for use in FFmpeg filters
  */
 function escapeForFFmpegFilterPath(filePath: string): string {
-	let p = filePath
-	// Double backslashes for Windows-style paths so ffmpeg does not treat them as escapes
-	if (p.includes('\\')) {
-		p = p.replace(/\\/g, '\\\\')
-	}
-	// Escape single quotes inside and wrap the whole path with single quotes
-	p = p.replace(/'/g, "\\'")
-	return `'${p}'`
+	// For Windows, we need to escape backslashes and convert to forward slashes
+	const normalizedPath = filePath.replace(/\\/g, '/')
+	// For FFmpeg filter syntax, we need to escape colons and backslashes
+	return normalizedPath.replace(/:/g, '\\:').replace(/\\/g, '\\\\')
 }
 
-/**
- * Sanitize text for ASS dialogue:
- * - Normalize newlines to \N (ASS line break)
- * - Escape ASS override block braces { }
- * - Remove ASCII control characters
- */
-function sanitizeAssText(text: string): string {
-	const unified = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-	const escapedBraces = unified.replace(/[{}]/g, (m) => `\\${m}`)
-	const withoutControl = escapedBraces.replace(
-		/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,
-		' ',
-	)
-	return withoutControl.replace(/\n/g, '\\N')
-}
-
-function clamp(value: number, min: number, max: number): number {
-	return Math.min(Math.max(value, min), max)
-}
-
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-	let normalized = hex.trim().replace('#', '')
-	if (normalized.length === 3) {
-		normalized = normalized
-			.split('')
-			.map((char) => char + char)
-			.join('')
-	}
-	const int = Number.parseInt(normalized, 16)
-	return {
-		r: (int >> 16) & 255,
-		g: (int >> 8) & 255,
-		b: int & 255,
-	}
-}
-
-function toAssColor(hex: string, opacity: number): string {
-	const { r, g, b } = hexToRgb(hex)
-	const transparent = clamp(1 - opacity, 0, 1)
-	const alpha = Math.round(transparent * 255)
-	const aa = alpha.toString(16).padStart(2, '0').toUpperCase()
-	const bb = b.toString(16).padStart(2, '0').toUpperCase()
-	const gg = g.toString(16).padStart(2, '0').toUpperCase()
-	const rr = r.toString(16).padStart(2, '0').toUpperCase()
-	return `&H${aa}${bb}${gg}${rr}`
-}
-
-export async function extractAudio(
+export async function renderVideoWithSubtitles(
 	videoPath: string,
-	audioPath: string,
+	subtitleContent: string,
+	outputPath: string,
+	subtitleConfig: SubtitleRenderConfig = defaultSubtitleRenderConfig,
 ): Promise<void> {
+	const normalizedConfig: SubtitleRenderConfig = {
+		fontSize: Math.min(Math.max(subtitleConfig.fontSize, 12), 72),
+		textColor: subtitleConfig.textColor || defaultSubtitleRenderConfig.textColor,
+		backgroundColor:
+			subtitleConfig.backgroundColor || defaultSubtitleRenderConfig.backgroundColor,
+		backgroundOpacity: Math.min(Math.max(subtitleConfig.backgroundOpacity, 0), 1),
+		outlineColor:
+			subtitleConfig.outlineColor || defaultSubtitleRenderConfig.outlineColor,
+		timeSegmentEffects: subtitleConfig.timeSegmentEffects || [],
+	}
+
+	const tempDir = path.dirname(outputPath)
+
+	// Convert VTT content to ASS format using requested styling
+	const assContent = await convertWebVttToAss(subtitleContent, normalizedConfig)
+
+	// Write ASS content to temporary file for FFmpeg
+	const tempAssPath = path.join(tempDir, `temp_${Date.now()}.ass`)
+	await fs.writeFile(tempAssPath, assContent, 'utf8')
+
+	const escapedAssPath = escapeForFFmpegFilterPath(tempAssPath)
+
+	try {
+		const timeSegmentEffects = normalizedConfig.timeSegmentEffects
+
+		if (!timeSegmentEffects || timeSegmentEffects.length === 0) {
+			// Simple case: no time segment effects, just render subtitles
+			await runFfmpeg([
+				'-i',
+				videoPath,
+				'-vf',
+				`subtitles=${escapedAssPath}`,
+				outputPath,
+			])
+		} else {
+			// Process with time segment effects
+			await renderVideoWithEffects(videoPath, escapedAssPath, timeSegmentEffects, outputPath)
+		}
+	} catch (error) {
+		console.error('Error rendering video with subtitles:', (error as Error).message)
+		throw error
+	} finally {
+		// Clean up temporary file
+		try {
+			await fs.unlink(tempAssPath)
+		} catch (cleanupError) {
+			console.warn('Failed to cleanup temporary ASS file:', cleanupError)
+		}
+	}
+}
+
+async function renderVideoWithEffects(
+	videoPath: string,
+	assPath: string,
+	timeSegmentEffects: TimeSegmentEffect[],
+	outputPath: string
+): Promise<void> {
+	const hasBlackScreen = timeSegmentEffects.some(effect => effect.blackScreen)
+	const hasMuteAudio = timeSegmentEffects.some(effect => effect.muteAudio)
+
+	if (!hasBlackScreen && !hasMuteAudio) {
+		// Just render subtitles
+		await runFfmpeg([
+			'-i', videoPath,
+			'-vf', `subtitles=${assPath}`,
+			'-c:v', 'libx264', '-c:a', 'aac',
+			'-y', outputPath
+		])
+		return
+	}
+
+	// Use two-pass approach to avoid complex filter issues
+	const tempVideoPath = outputPath.replace(/(\.[^.]+)$/, '_temp_video$1')
+	const tempAudioPath = outputPath.replace(/(\.[^.]+)$/, '_temp_audio$1')
+
+	try {
+		// Step 1: Render video with subtitles and black screen effects
+		if (hasBlackScreen) {
+			await renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects, tempVideoPath)
+		} else {
+			// Just subtitles
+			await runFfmpeg([
+				'-i', videoPath,
+				'-vf', `subtitles=${assPath}`,
+				'-c:v', 'libx264',
+				'-an', // No audio
+				'-y', tempVideoPath
+			])
+		}
+
+		// Step 2: Process audio with mute effects
+		if (hasMuteAudio) {
+			await processAudioWithMute(videoPath, timeSegmentEffects, tempAudioPath)
+		} else {
+			// Copy original audio
+			await runFfmpeg([
+				'-i', videoPath,
+				'-vn', // No video
+				'-c:a', 'aac',
+				'-y', tempAudioPath
+			])
+		}
+
+		// Step 3: Combine video and audio
+		await runFfmpeg([
+			'-i', tempVideoPath,
+			'-i', tempAudioPath,
+			'-c:v', 'copy',
+			'-c:a', 'aac',
+			'-y', outputPath
+		])
+
+	} finally {
+		// Clean up temporary files
+		try {
+			await fs.unlink(tempVideoPath)
+		} catch (e) {
+			// Ignore cleanup errors
+		}
+		try {
+			await fs.unlink(tempAudioPath)
+		} catch (e) {
+			// Ignore cleanup errors
+		}
+	}
+}
+
+async function renderVideoWithBlackScreen(
+	videoPath: string,
+	assPath: string,
+	timeSegmentEffects: TimeSegmentEffect[],
+	outputPath: string
+): Promise<void> {
+	const blackScreenSegments = timeSegmentEffects.filter(effect => effect.blackScreen)
+
+	if (blackScreenSegments.length === 0) {
+		// Just render subtitles
+		await runFfmpeg([
+			'-i', videoPath,
+			'-vf', `subtitles=${assPath}`,
+			'-c:v', 'libx264',
+			'-an',
+			'-y', outputPath
+		])
+		return
+	}
+
+	// Simple black screen effect using color overlay
+	const startTime = blackScreenSegments[0].startTime
+	const endTime = blackScreenSegments[0].endTime
+
+	// Use a simpler approach with the 'color' filter and overlay
+	const blackDuration = endTime - startTime
+
 	await runFfmpeg([
-		'-i',
-		videoPath,
-		'-vn',
-		'-acodec',
-		'libmp3lame',
-		'-b:a',
-		'128k',
-		'-ar',
-		'16000',
-		audioPath,
+		'-i', videoPath,
+		'-filter_complex', [
+			`[0:v]subtitles=${assPath}[subtitled]`,
+			`[subtitled]colorchannelmixer=rr=0:gg=0:bb=0:enable='between(t,${startTime},${endTime})'[output]`
+		].join(';'),
+		'-map', '[output]',
+		'-c:v', 'libx264',
+		'-an',
+		'-y', outputPath
 	])
+}
+
+async function processAudioWithMute(
+	videoPath: string,
+	timeSegmentEffects: TimeSegmentEffect[],
+	outputPath: string
+): Promise<void> {
+	const muteSegments = timeSegmentEffects.filter(effect => effect.muteAudio)
+
+	if (muteSegments.length === 0) {
+		// Copy original audio
+		await runFfmpeg([
+			'-i', videoPath,
+			'-vn',
+			'-c:a', 'aac',
+			'-y', outputPath
+		])
+		return
+	}
+
+	if (muteSegments.length === 1) {
+		// Single mute segment
+		const segment = muteSegments[0]
+		console.log(`Applying mute from ${segment.startTime} to ${segment.endTime}`)
+		await runFfmpeg([
+			'-i', videoPath,
+			'-af', `volume=enable='between(t,${segment.startTime},${segment.endTime})':volume=0`,
+			'-vn',
+			'-c:a', 'aac',
+			'-y', outputPath
+		])
+	} else {
+		// Multiple mute segments - use a different approach
+		console.log(`Applying ${muteSegments.length} mute segments`)
+		const muteExpressions = muteSegments
+			.map(segment => `between(t,${segment.startTime},${segment.endTime})`)
+			.join('+')
+
+		await runFfmpeg([
+			'-i', videoPath,
+			'-af', `volume=enable='${muteExpressions}':volume=0`,
+			'-vn',
+			'-c:a', 'aac',
+			'-y', outputPath
+		])
+	}
 }
 
 /**
@@ -123,134 +271,84 @@ async function convertWebVttToAss(
 
 	for (let i = 0; i < lines.length; i++) {
 		const timeMatch = lines[i].match(
-			/^(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/, // Добавлен комментарий для ясности
+			/^(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/,
 		)
 		if (timeMatch) {
 			const [, start, end] = timeMatch
-			let eng = ''
-			let zh = ''
-			// read following lines until blank
-			// Parse bilingual content: first line is English, second line is Chinese
-			let lineCount = 0
-			for (let j = i + 1; j < lines.length; j++) {
-				if (!lines[j].trim()) {
-					i = j
-					break
-				}
-				const line = lines[j].trim()
-				if (lineCount === 0) {
-					// First line after timestamp is English
-					eng += (eng ? '\n' : '') + line
-				} else if (lineCount === 1) {
-					// Second line after timestamp is Chinese
-					zh += (zh ? '\n' : '') + line
-				}
-				lineCount++
+			const engLine = lines[i + 1]?.trim() || ''
+			const zhLine = lines[i + 2]?.trim().replace(/^- /, '') || ''
+
+			if (engLine && zhLine) {
+				events.push({ start: toAssTime(start), end: toAssTime(end), eng: engLine, zh: zhLine })
+			} else if (engLine) {
+				events.push({ start: toAssTime(start), end: toAssTime(end), eng: engLine, zh: '' })
 			}
-			events.push({ start, end, eng, zh })
+
+			i += 2
 		}
 	}
 
-	// Build ASS file
-	const mergedConfig: SubtitleRenderConfig = {
-		fontSize: clamp(config.fontSize, 12, 72),
-		textColor: config.textColor,
-		backgroundColor: config.backgroundColor,
-		backgroundOpacity: clamp(config.backgroundOpacity, 0, 1),
-		outlineColor: config.outlineColor,
-	}
-
-	const primaryColor = toAssColor(mergedConfig.textColor, 1)
+	const primaryColor = toAssColor(config.textColor, 1)
 	const secondaryColor = primaryColor
-	const outlineColor = toAssColor(mergedConfig.outlineColor, 1)
-	const backgroundColor = toAssColor(
-		mergedConfig.backgroundColor,
-		mergedConfig.backgroundOpacity,
+	const outlineColor = toAssColor(config.outlineColor, 0.9)
+	const backgroundColor = toAssColor(config.backgroundColor, config.backgroundOpacity)
+
+	// Build ASS file content
+	const assContent = `[Script Info]
+Title: Generated Subtitles
+ScriptType: v4.00+
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: English,Arial,${Math.round(config.fontSize * 0.65)},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,1,0,2,0,0,0,1
+Style: Chinese,Arial,${config.fontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,1,0,2,0,0,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+${events
+	.map(
+		(event) =>
+			`Dialogue: 0,${event.start},${event.end},Chinese,,0,0,0,,${event.zh}\n` +
+			`Dialogue: 0,${event.start},${event.end},English,,0,0,0,,${event.eng}`
 	)
+	.join('\n')}`
 
-	const chineseFontSize = Math.round(mergedConfig.fontSize)
-	const englishFontSize = Math.max(Math.round(mergedConfig.fontSize * 0.65), 12)
+	return assContent
+}
 
-	let ass = `[Script Info]\nScriptType: v4.00+\nCollisions: Normal\nPlayResX: 1920\nPlayResY: 1080\nTimer: 100.0000\n\n`
-	ass +=
-		`[V4+ Styles]\n` +
-		'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, ' +
-		'Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n' +
-		`Style: Chinese,Noto Sans SC,${chineseFontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,2,0,2,10,10,30,1\n` +
-		`Style: English,Noto Sans,${englishFontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,2,0,2,10,10,60,1\n\n`
-
-	ass += `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`
-
-	for (const ev of events) {
-		const start = toAssTime(ev.start)
-		const end = toAssTime(ev.end)
-		const zhText = ev.zh ? sanitizeAssText(ev.zh).replace(/,/g, '，') : ''
-		const enText = ev.eng ? sanitizeAssText(ev.eng) : ''
-		if (zhText) {
-			ass += `Dialogue: 0,${start},${end},Chinese,,0,0,0,,${zhText}\n`
-		}
-		if (enText) {
-			ass += `Dialogue: 0,${start},${end},English,,0,0,0,,${enText}\n`
-		}
+function toAssColor(hex: string, opacity: number) {
+	let normalized = hex.trim().replace('#', '')
+	if (normalized.length === 3) {
+		normalized = normalized
+			.split('')
+			.map((char) => char + char)
+			.join('')
 	}
-
-	return ass
+	const int = Number.parseInt(normalized, 16)
+	const r = (int >> 16) & 255
+	const g = (int >> 8) & 255
+	const b = int & 255
+	const alpha = Number.isFinite(opacity) ? Math.min(Math.max(opacity, 0), 1) : 1
+	return `&H${((1 - alpha) * 255).toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}`
 }
 
 /**
- * Clean up temporary file with error handling
+ * Extract audio from video file and save as MP3
  */
-async function cleanupTempFile(
-	filePath: string,
-	fileType: string,
-): Promise<void> {
-	try {
-		await fs.unlink(filePath)
-	} catch (err) {
-		console.warn(
-			`Failed to clean up temporary ${fileType} file:`,
-			(err as Error).message,
-		)
-	}
-}
-
-export async function renderVideoWithSubtitles(
+export async function extractAudio(
 	videoPath: string,
-	subtitleContent: string,
-	outputPath: string,
-	subtitleConfig: SubtitleRenderConfig = defaultSubtitleRenderConfig,
+	audioPath: string,
 ): Promise<void> {
-	const normalizedConfig: SubtitleRenderConfig = {
-		fontSize: clamp(subtitleConfig.fontSize, 12, 72),
-		textColor: subtitleConfig.textColor || defaultSubtitleRenderConfig.textColor,
-		backgroundColor:
-			subtitleConfig.backgroundColor || defaultSubtitleRenderConfig.backgroundColor,
-		backgroundOpacity: clamp(subtitleConfig.backgroundOpacity, 0, 1),
-		outlineColor:
-			subtitleConfig.outlineColor || defaultSubtitleRenderConfig.outlineColor,
-	}
-
-	// Convert VTT content to ASS format using requested styling
-	const assContent = await convertWebVttToAss(subtitleContent, normalizedConfig)
-
-	// Write ASS content to temporary file for FFmpeg
-	const tempDir = path.dirname(outputPath)
-	const tempAssPath = path.join(tempDir, `temp_${Date.now()}.ass`)
-	await fs.writeFile(tempAssPath, assContent, 'utf8')
-
-	const escapedAssPath = escapeForFFmpegFilterPath(tempAssPath)
-	try {
-		await runFfmpeg([
-			'-i',
-			videoPath,
-			'-vf',
-			`subtitles=${escapedAssPath}`,
-			outputPath,
-		])
-	} catch (error) {
-		console.error('Error rendering video with subtitles:', (error as Error).message)
-		throw error
-	} finally {
-		await cleanupTempFile(tempAssPath, 'ASS')
-	}
+	await runFfmpeg([
+		'-i',
+		videoPath,
+		'-vn',
+		'-acodec',
+		'libmp3lame',
+		'-b:a',
+		'128k',
+		'-ar',
+		'16000',
+		audioPath,
+	])
 }

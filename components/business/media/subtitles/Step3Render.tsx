@@ -26,6 +26,7 @@ import {
 	type SubtitleRenderPreset,
 } from '~/lib/media/types'
 import { parseVttCues, type VttCue } from '~/lib/media/utils/vtt'
+import { TimeSegmentManager } from './TimeSegmentManager'
 
 const DEFAULT_PRESET_ID: SubtitleRenderPreset['id'] = 'default'
 const DEFAULT_PRESET = (
@@ -87,6 +88,7 @@ export function Step3Render(props: Step3RenderProps) {
 	const containerRef = useRef<HTMLDivElement>(null)
 	const [containerHeight, setContainerHeight] = useState(0)
 	const [currentTime, setCurrentTime] = useState(0)
+	const [mediaDuration, setMediaDuration] = useState(0)
 
 	useEffect(() => {
 		const video = videoRef.current
@@ -96,14 +98,19 @@ export function Step3Render(props: Step3RenderProps) {
 			setCurrentTime(video.currentTime)
 		}
 
+		const handleLoadedMetadata = () => {
+			setCurrentTime(video.currentTime)
+			setMediaDuration(video.duration)
+		}
+
 		video.addEventListener('timeupdate', handleTimeUpdate)
 		video.addEventListener('seeked', handleTimeUpdate)
-		video.addEventListener('loadedmetadata', handleTimeUpdate)
+		video.addEventListener('loadedmetadata', handleLoadedMetadata)
 
 		return () => {
 			video.removeEventListener('timeupdate', handleTimeUpdate)
 			video.removeEventListener('seeked', handleTimeUpdate)
-			video.removeEventListener('loadedmetadata', handleTimeUpdate)
+			video.removeEventListener('loadedmetadata', handleLoadedMetadata)
 		}
 	}, [cues])
 
@@ -137,6 +144,26 @@ export function Step3Render(props: Step3RenderProps) {
 		}
 		return null
 	}, [cues, currentTime])
+
+	const currentTimeEffect = useMemo(() => {
+		if (!config.timeSegmentEffects?.length) return null
+		const time = currentTime
+		return config.timeSegmentEffects.find(effect =>
+			time >= effect.startTime && time <= effect.endTime
+		)
+	}, [currentTime, config.timeSegmentEffects])
+
+	// Apply real-time effects
+	useEffect(() => {
+		const video = videoRef.current
+		if (!video) return
+
+		if (currentTimeEffect?.muteAudio) {
+			video.muted = true
+		} else {
+			video.muted = false
+		}
+	}, [currentTimeEffect])
 
 	const previewStyle = useMemo(() => {
 		return {
@@ -211,25 +238,32 @@ export function Step3Render(props: Step3RenderProps) {
 							<span>No subtitles found</span>
 						</PreviewMessage>
 					) : (
-						<SubtitleOverlay
-							cue={activeCue}
-							config={config}
-							containerHeight={containerHeight}
-						/>
+						<>
+							{currentTimeEffect?.blackScreen && (
+								<div className="absolute inset-0 z-10 bg-black" />
+							)}
+							<SubtitleOverlay
+								cue={activeCue}
+								config={config}
+								containerHeight={containerHeight}
+							/>
+						</>
 					)}
 				</div>
 			</div>
 
 			{/* Configuration Controls */}
-			<div className="grid gap-6 md:grid-cols-2">
-				{/* Quick Presets */}
-				<div className="space-y-3">
-					<div className="flex items-center justify-between">
-						<span className="text-sm font-medium">Quick Styles</span>
-						<Badge variant="outline" className="text-xs">
-							{selectedPresetId === 'custom' ? 'Custom' : 'Preset'}
-						</Badge>
-					</div>
+			<div className="space-y-6">
+				{/* Quick Presets & Manual Settings */}
+				<div className="grid gap-6 md:grid-cols-2">
+					{/* Quick Presets */}
+					<div className="space-y-3">
+						<div className="flex items-center justify-between">
+							<span className="text-sm font-medium">Quick Styles</span>
+							<Badge variant="outline" className="text-xs">
+								{selectedPresetId === 'custom' ? 'Custom' : 'Preset'}
+							</Badge>
+						</div>
 					<div className="grid grid-cols-2 gap-2">
 						{subtitleRenderPresets.map((preset) => (
 							<Button
@@ -251,8 +285,8 @@ export function Step3Render(props: Step3RenderProps) {
 					)}
 				</div>
 
-				{/* Manual Controls */}
-				<div className="space-y-3">
+					{/* Manual Controls */}
+					<div className="space-y-3">
 					<div className="flex items-center gap-2 text-sm font-medium">
 						<SlidersHorizontal className="h-4 w-4" />
 						Manual Settings
@@ -337,7 +371,16 @@ export function Step3Render(props: Step3RenderProps) {
 						Reset to Default
 					</Button>
 				</div>
+				</div>
 			</div>
+
+			{/* Time Segment Effects */}
+			<TimeSegmentManager
+				effects={config.timeSegmentEffects}
+				onChange={(effects) => onConfigChange({ ...config, timeSegmentEffects: effects })}
+				mediaDuration={mediaDuration}
+				videoRef={videoRef}
+			/>
 
 			{/* Render Button */}
 			<div className="text-center">
