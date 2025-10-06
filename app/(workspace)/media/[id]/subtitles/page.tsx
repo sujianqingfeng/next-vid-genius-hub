@@ -36,6 +36,10 @@ import {
 } from '~/components/ui/card'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { queryOrpc } from '~/lib/orpc/query-client'
+import {
+	defaultSubtitleRenderConfig,
+	type SubtitleRenderConfig,
+} from '~/lib/media/types'
 
 type Model = WhisperModel
 
@@ -49,6 +53,10 @@ export default function SubtitlesPage() {
 		AIModelIds[0],
 	)
 	const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false)
+	const [subtitleConfig, setSubtitleConfig] = useState<SubtitleRenderConfig>(
+		() => ({ ...defaultSubtitleRenderConfig }),
+	)
+	const [renderCacheBuster, setRenderCacheBuster] = useState<number>(0)
 	const params = useParams()
 	const mediaId = params.id as string
 
@@ -70,6 +78,7 @@ export default function SubtitlesPage() {
 		}
 		if (mediaQuery.data?.videoWithSubtitlesPath) {
 			setActiveTab('step4')
+			setRenderCacheBuster(Date.now())
 		}
 	}, [mediaQuery.data])
 
@@ -128,6 +137,7 @@ export default function SubtitlesPage() {
 		queryOrpc.subtitle.render.mutationOptions({
 			onSuccess: () => {
 				setActiveTab('step4')
+				setRenderCacheBuster(Date.now())
 				queryClient.invalidateQueries({
 					queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
 				})
@@ -281,8 +291,17 @@ export default function SubtitlesPage() {
 							{activeTab === 'step3' && (
 								<Step3Render
 									isRendering={isRendering}
-									onStart={() => renderMutate({ mediaId })}
+									onStart={(renderConfig) =>
+										renderMutate({ mediaId, subtitleConfig: renderConfig })
+									}
 									errorMessage={renderError?.message}
+									mediaId={mediaId}
+									translationAvailable={!!translation}
+									translation={translation}
+									config={subtitleConfig}
+									onConfigChange={(nextConfig) =>
+										setSubtitleConfig({ ...nextConfig })
+									}
 								/>
 							)}
 							{activeTab === 'step4' && (
@@ -290,6 +309,7 @@ export default function SubtitlesPage() {
 									mediaId={mediaId}
 									hasRenderedVideo={hasRenderedVideo}
 									thumbnail={media?.thumbnail ?? undefined}
+									cacheBuster={renderCacheBuster}
 								/>
 							)}
 						</CardContent>

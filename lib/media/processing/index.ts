@@ -1,6 +1,10 @@
 import { execa } from 'execa'
 import { promises as fs } from 'fs'
 import * as path from 'path'
+import {
+	defaultSubtitleRenderConfig,
+	type SubtitleRenderConfig,
+} from '../types'
 
 async function runFfmpeg(args: string[]): Promise<void> {
 	await execa('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args])
@@ -39,6 +43,37 @@ function sanitizeAssText(text: string): string {
 	return withoutControl.replace(/\n/g, '\\N')
 }
 
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(Math.max(value, min), max)
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+	let normalized = hex.trim().replace('#', '')
+	if (normalized.length === 3) {
+		normalized = normalized
+			.split('')
+			.map((char) => char + char)
+			.join('')
+	}
+	const int = Number.parseInt(normalized, 16)
+	return {
+		r: (int >> 16) & 255,
+		g: (int >> 8) & 255,
+		b: int & 255,
+	}
+}
+
+function toAssColor(hex: string, opacity: number): string {
+	const { r, g, b } = hexToRgb(hex)
+	const transparent = clamp(1 - opacity, 0, 1)
+	const alpha = Math.round(transparent * 255)
+	const aa = alpha.toString(16).padStart(2, '0').toUpperCase()
+	const bb = b.toString(16).padStart(2, '0').toUpperCase()
+	const gg = g.toString(16).padStart(2, '0').toUpperCase()
+	const rr = r.toString(16).padStart(2, '0').toUpperCase()
+	return `&H${aa}${bb}${gg}${rr}`
+}
+
 export async function extractAudio(
 	videoPath: string,
 	audioPath: string,
@@ -65,7 +100,10 @@ export async function extractAudio(
  * The conversion logic assumes each cue contains the English line first and the
  * Chinese line beginning with a dash ("- ") on the following line.
  */
-async function convertWebVttToAss(vttContent: string): Promise<string> {
+async function convertWebVttToAss(
+	vttContent: string,
+	config: SubtitleRenderConfig,
+): Promise<string> {
 	// Helper to convert WebVTT time (00:00:00.000) -> ASS (0:00:00.00)
 	const toAssTime = (t: string): string => {
 		const match = t.match(/(\d+):(\d+):(\d+)\.(\d{1,3})/)
@@ -114,13 +152,32 @@ async function convertWebVttToAss(vttContent: string): Promise<string> {
 	}
 
 	// Build ASS file
+	const mergedConfig: SubtitleRenderConfig = {
+		fontSize: clamp(config.fontSize, 12, 72),
+		textColor: config.textColor,
+		backgroundColor: config.backgroundColor,
+		backgroundOpacity: clamp(config.backgroundOpacity, 0, 1),
+		outlineColor: config.outlineColor,
+	}
+
+	const primaryColor = toAssColor(mergedConfig.textColor, 1)
+	const secondaryColor = primaryColor
+	const outlineColor = toAssColor(mergedConfig.outlineColor, 1)
+	const backgroundColor = toAssColor(
+		mergedConfig.backgroundColor,
+		mergedConfig.backgroundOpacity,
+	)
+
+	const chineseFontSize = Math.round(mergedConfig.fontSize)
+	const englishFontSize = Math.max(Math.round(mergedConfig.fontSize * 0.65), 12)
+
 	let ass = `[Script Info]\nScriptType: v4.00+\nCollisions: Normal\nPlayResX: 1920\nPlayResY: 1080\nTimer: 100.0000\n\n`
 	ass +=
 		`[V4+ Styles]\n` +
 		'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, ' +
 		'Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n' +
-		'Style: Chinese,Noto Sans SC,72,&H0000FFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,30,1\n' +
-		'Style: English,Noto Sans,36,&H0000FFFF,&H000000FF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,60,1\n\n' // Добавлен комментарий для ясности
+		`Style: Chinese,Noto Sans SC,${chineseFontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,2,0,2,10,10,30,1\n` +
+		`Style: English,Noto Sans,${englishFontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,2,0,2,10,10,60,1\n\n`
 
 	ass += `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`
 
@@ -161,9 +218,20 @@ export async function renderVideoWithSubtitles(
 	videoPath: string,
 	subtitleContent: string,
 	outputPath: string,
+	subtitleConfig: SubtitleRenderConfig = defaultSubtitleRenderConfig,
 ): Promise<void> {
-	// Convert VTT content to ASS format
-	const assContent = await convertWebVttToAss(subtitleContent)
+	const normalizedConfig: SubtitleRenderConfig = {
+		fontSize: clamp(subtitleConfig.fontSize, 12, 72),
+		textColor: subtitleConfig.textColor || defaultSubtitleRenderConfig.textColor,
+		backgroundColor:
+			subtitleConfig.backgroundColor || defaultSubtitleRenderConfig.backgroundColor,
+		backgroundOpacity: clamp(subtitleConfig.backgroundOpacity, 0, 1),
+		outlineColor:
+			subtitleConfig.outlineColor || defaultSubtitleRenderConfig.outlineColor,
+	}
+
+	// Convert VTT content to ASS format using requested styling
+	const assContent = await convertWebVttToAss(subtitleContent, normalizedConfig)
 
 	// Write ASS content to temporary file for FFmpeg
 	const tempDir = path.dirname(outputPath)

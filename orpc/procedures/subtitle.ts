@@ -12,6 +12,7 @@ import {
 } from '~/lib/constants'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithSubtitles } from '~/lib/media'
+import { type SubtitleRenderConfig } from '~/lib/media/types'
 import { parseVttCues, serializeVttCues } from '~/lib/media/utils/vtt'
 
 export const transcribe = os
@@ -111,10 +112,21 @@ This is a test.
 	}
 })
 
+const hexColor = /^#(?:[0-9a-fA-F]{3}){1,2}$/
+
+const subtitleConfigSchema: z.ZodType<SubtitleRenderConfig> = z.object({
+	fontSize: z.number().min(12).max(72),
+	textColor: z.string().regex(hexColor, 'Invalid text color'),
+	backgroundColor: z.string().regex(hexColor, 'Invalid background color'),
+	backgroundOpacity: z.number().min(0).max(1),
+	outlineColor: z.string().regex(hexColor, 'Invalid outline color'),
+})
+
 export const render = os
 	.input(
 		z.object({
 			mediaId: z.string(),
+			subtitleConfig: subtitleConfigSchema.optional(),
 		}),
 	)
 	.handler(async ({ input }) => {
@@ -146,6 +158,7 @@ export const render = os
 			originalFilePath,
 			media.translation,
 			outputPath,
+			input.subtitleConfig,
 		)
 
 		await db

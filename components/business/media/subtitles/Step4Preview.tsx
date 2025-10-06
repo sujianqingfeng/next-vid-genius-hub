@@ -8,10 +8,23 @@ interface Step4PreviewProps {
 	mediaId: string
 	hasRenderedVideo: boolean
 	thumbnail?: string
+	cacheBuster?: number
 }
 
 export function Step4Preview(props: Step4PreviewProps) {
-	const { mediaId, hasRenderedVideo, thumbnail } = props
+	const { mediaId, hasRenderedVideo, thumbnail, cacheBuster } = props
+
+	const baseRenderedUrl = `/api/media/${mediaId}/rendered`
+	const baseSubtitlesUrl = `/api/media/${mediaId}/subtitles`
+	const videoSrc = cacheBuster
+		? `${baseRenderedUrl}?v=${cacheBuster}`
+		: baseRenderedUrl
+	const downloadVideoUrl = cacheBuster
+		? `${baseRenderedUrl}?download=1&v=${cacheBuster}`
+		: `${baseRenderedUrl}?download=1`
+	const subtitlesDownloadUrl = cacheBuster
+		? `${baseSubtitlesUrl}?v=${cacheBuster}`
+		: baseSubtitlesUrl
 
 	if (!hasRenderedVideo) {
 		return (
@@ -38,13 +51,14 @@ export function Step4Preview(props: Step4PreviewProps) {
 				</h3>
 				<div className="aspect-video bg-black rounded-lg overflow-hidden">
 					<video
+						key={cacheBuster ?? 0}
 						controls
 						preload="metadata"
 						className="w-full h-full"
 						poster={thumbnail || undefined}
 						crossOrigin="anonymous"
 					>
-						<source src={`/api/media/${mediaId}/rendered`} type="video/mp4" />
+						<source src={videoSrc} type="video/mp4" />
 						Your browser does not support the video tag.
 					</video>
 				</div>
@@ -67,7 +81,7 @@ export function Step4Preview(props: Step4PreviewProps) {
 									</p>
 								</div>
 								<Button asChild variant="outline" size="sm">
-									<a href={`/api/media/${mediaId}/rendered?download=1`}>
+									<a href={downloadVideoUrl}>
 										<Download className="h-4 w-4 mr-2" />
 										Download
 									</a>
@@ -87,7 +101,7 @@ export function Step4Preview(props: Step4PreviewProps) {
 									</p>
 								</div>
 								<Button asChild variant="outline" size="sm">
-									<a href={`/api/media/${mediaId}/subtitles`} download>
+									<a href={subtitlesDownloadUrl} download>
 										<Download className="h-4 w-4 mr-2" />
 										Download
 									</a>
