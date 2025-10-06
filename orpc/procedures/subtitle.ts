@@ -99,29 +99,31 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
 		throw new Error('Transcription not found')
 	}
 
-	const bilingualPrompt = `You are a professional translator. Your task is to translate the text content of a VTT file from English to Chinese.
+	const bilingualPrompt = `You are a professional translator. Your task is to translate the text content of a VTT file from English to Chinese while preserving the VTT format exactly.
+
 You will be given the content of a VTT file.
-You need to add the Chinese translation under each English sentence.
-Do not translate timestamps or other metadata.
-For each text segment, the original English text should be on one line, and the Chinese translation should be on the following line.
+You MUST:
+1. Keep all timestamp lines (e.g., "00.000 --> 01.740") EXACTLY as they are
+2. Keep the WEBVTT header exactly as it is
+3. For each text segment under a timestamp, add the Chinese translation on the next line
+4. Do NOT translate timestamps or any metadata
+5. Keep the exact same structure as the original VTT
+
 IMPORTANT: Do NOT add any dashes (-) or bullet points to the translated text. Keep the text clean without prefixes.
 IMPORTANT: Do NOT add punctuation at the end of sentences for both English and Chinese text. Remove periods, commas, exclamation marks, and question marks at the end of each line.
 
-For example:
-Original:
-Hello, world!
+Example format:
+WEBVTT
 
-Translated:
+00.000 --> 02.000
 Hello, world
 你好，世界
 
-Another example:
-Original:
-This is a test.
-
-Translated:
+02.000 --> 04.000
 This is a test
-这是一个测试`
+这是一个测试
+
+Return the complete VTT content with preserved timestamps and structure.`
 
 	const { text: translatedText } = await generateText({
 		model,

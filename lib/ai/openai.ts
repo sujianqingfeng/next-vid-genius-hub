@@ -5,6 +5,9 @@ const BASE_URL = 'https://api.chatanywhere.tech/v1'
 export const openaiModels = [
 	{ id: 'openai/gpt-4.1-mini', modelName: 'gpt-4.1-mini' },
 	{ id: 'openai/gpt-4.1', modelName: 'gpt-4.1' },
+	{ id: 'openai/gpt-5', modelName: 'gpt-5' },
+	{ id: 'openai/gpt-5-mini', modelName: 'gpt-5-mini' },
+	{ id: 'openai/gpt-5-nano', modelName: 'gpt-5-nano' },
 ] as const
 
 export const openaiProvider = createOpenAICompatible({
