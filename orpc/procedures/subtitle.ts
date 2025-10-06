@@ -124,6 +124,18 @@ const timeSegmentEffectSchema = z.object({
 	description: z.string().optional(),
 })
 
+const hintTextConfigSchema = z.object({
+	enabled: z.boolean(),
+	text: z.string(),
+	fontSize: z.number().min(12).max(72),
+	textColor: z.string().regex(hexColor, 'Invalid text color'),
+	backgroundColor: z.string().regex(hexColor, 'Invalid background color'),
+	backgroundOpacity: z.number().min(0).max(1),
+	outlineColor: z.string().regex(hexColor, 'Invalid outline color'),
+	position: z.enum(['center', 'top', 'bottom']),
+	animation: z.enum(['fade-in', 'slide-up', 'none']).optional(),
+})
+
 const subtitleConfigSchema: z.ZodType<SubtitleRenderConfig> = z.object({
 	fontSize: z.number().min(12).max(72),
 	textColor: z.string().regex(hexColor, 'Invalid text color'),
@@ -131,6 +143,7 @@ const subtitleConfigSchema: z.ZodType<SubtitleRenderConfig> = z.object({
 	backgroundOpacity: z.number().min(0).max(1),
 	outlineColor: z.string().regex(hexColor, 'Invalid outline color'),
 	timeSegmentEffects: z.array(timeSegmentEffectSchema),
+	hintTextConfig: hintTextConfigSchema.optional(),
 })
 
 export const render = os

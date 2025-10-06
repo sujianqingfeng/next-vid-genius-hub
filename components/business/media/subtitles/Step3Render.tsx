@@ -20,10 +20,14 @@ import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { Switch } from '~/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
+import { Textarea } from '~/components/ui/textarea'
 import {
 	subtitleRenderPresets,
 	type SubtitleRenderConfig,
 	type SubtitleRenderPreset,
+	type HintTextConfig,
 } from '~/lib/media/types'
 import { parseVttCues, type VttCue } from '~/lib/media/utils/vtt'
 import { TimeSegmentManager } from './TimeSegmentManager'
@@ -198,6 +202,35 @@ export function Step3Render(props: Step3RenderProps) {
 			onConfigChange({ ...config, [field]: event.target.value })
 		}
 
+	const handleHintTextChange = (field: keyof HintTextConfig, value: string | number | boolean) => {
+		const currentConfig = config.hintTextConfig || {
+			enabled: false,
+			text: '',
+			fontSize: 24,
+			textColor: '#ffffff',
+			backgroundColor: '#000000',
+			backgroundOpacity: 0.8,
+			outlineColor: '#000000',
+			position: 'center' as const,
+			animation: 'fade-in' as const,
+		}
+
+		let hintTextConfig: HintTextConfig
+		if (field === 'position') {
+			hintTextConfig = { ...currentConfig, [field]: value as 'center' | 'top' | 'bottom' }
+		} else if (field === 'animation') {
+			hintTextConfig = { ...currentConfig, [field]: value as 'fade-in' | 'slide-up' | 'none' | undefined }
+		} else if (field === 'enabled') {
+			hintTextConfig = { ...currentConfig, [field]: value as boolean }
+		} else if (field === 'fontSize' || field === 'backgroundOpacity') {
+			hintTextConfig = { ...currentConfig, [field]: value as number }
+		} else {
+			hintTextConfig = { ...currentConfig, [field]: value as string }
+		}
+
+		onConfigChange({ ...config, hintTextConfig })
+	}
+
 	return (
 		<div className="space-y-6">
 			{/* Preview Area */}
@@ -241,6 +274,12 @@ export function Step3Render(props: Step3RenderProps) {
 						<>
 							{currentTimeEffect?.blackScreen && (
 								<div className="absolute inset-0 z-10 bg-black" />
+							)}
+							{currentTimeEffect?.blackScreen && config.hintTextConfig?.enabled && (
+								<HintTextOverlay
+									config={config.hintTextConfig}
+									containerHeight={containerHeight}
+								/>
 							)}
 							<SubtitleOverlay
 								cue={activeCue}
@@ -374,6 +413,174 @@ export function Step3Render(props: Step3RenderProps) {
 				</div>
 			</div>
 
+			{/* Hint Text Configuration */}
+			<div className="space-y-4">
+				<div className="flex items-center justify-between">
+					<h3 className="text-lg font-semibold flex items-center gap-2">
+						<Video className="h-5 w-5" />
+						Black Screen Hint Text
+					</h3>
+					<div className="flex items-center space-x-2">
+						<Switch
+							id="hint-text-enabled"
+							checked={config.hintTextConfig?.enabled ?? false}
+							onCheckedChange={(checked) =>
+								handleHintTextChange('enabled', checked === true)
+							}
+						/>
+						<Label htmlFor="hint-text-enabled" className="text-sm">
+							Enable hint text
+						</Label>
+					</div>
+				</div>
+
+				{config.hintTextConfig?.enabled && (
+					<div className="space-y-4 p-4 border rounded-lg">
+						{/* Text Content */}
+						<div className="space-y-2">
+							<Label htmlFor="hint-text-content" className="text-sm font-medium">
+								Hint Text Content
+							</Label>
+							<Textarea
+								id="hint-text-content"
+								placeholder="Enter hint text to display during black screen..."
+								value={config.hintTextConfig.text}
+								onChange={(e) => handleHintTextChange('text', e.target.value)}
+								className="min-h-[60px] text-sm"
+								maxLength={200}
+							/>
+						</div>
+
+						<div className="grid gap-4 md:grid-cols-2">
+							{/* Font Size */}
+							<div className="space-y-2">
+								<Label htmlFor="hint-font-size" className="text-sm font-medium">
+									Font Size
+								</Label>
+								<Input
+									type="number"
+									min={12}
+									max={72}
+									id="hint-font-size"
+									value={config.hintTextConfig.fontSize}
+									onChange={(e) => {
+										const value = Number(e.target.value)
+										if (!Number.isNaN(value)) {
+											const clamped = Math.min(Math.max(value, 12), 72)
+											handleHintTextChange('fontSize', clamped)
+										}
+									}}
+									className="h-8 text-sm"
+								/>
+							</div>
+
+							{/* Position */}
+							<div className="space-y-2">
+								<Label className="text-sm font-medium">Position</Label>
+								<Select
+									value={config.hintTextConfig.position}
+									onValueChange={(value: 'center' | 'top' | 'bottom') =>
+										handleHintTextChange('position', value)
+									}
+								>
+									<SelectTrigger className="h-8 text-sm">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="center">Center</SelectItem>
+										<SelectItem value="top">Top</SelectItem>
+										<SelectItem value="bottom">Bottom</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							{/* Animation */}
+							<div className="space-y-2">
+								<Label className="text-sm font-medium">Animation</Label>
+								<Select
+									value={config.hintTextConfig.animation || 'none'}
+									onValueChange={(value: 'fade-in' | 'slide-up' | 'none') =>
+										handleHintTextChange('animation', value)
+									}
+								>
+									<SelectTrigger className="h-8 text-sm">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="none">None</SelectItem>
+										<SelectItem value="fade-in">Fade In</SelectItem>
+										<SelectItem value="slide-up">Slide Up</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							{/* Opacity */}
+							<div className="space-y-2">
+								<div className="flex items-center justify-between">
+									<Label htmlFor="hint-background-opacity" className="text-sm font-medium">
+										Background Opacity
+									</Label>
+									<span className="text-xs text-muted-foreground">
+										{Math.round((config.hintTextConfig.backgroundOpacity ?? 0.8) * 100)}%
+									</span>
+								</div>
+								<input
+									type="range"
+									id="hint-background-opacity"
+									className="w-full h-2"
+									min={0}
+									max={100}
+									step={1}
+									value={Math.round((config.hintTextConfig.backgroundOpacity ?? 0.8) * 100)}
+									onChange={(e) => {
+										const value = Number(e.target.value) / 100
+										if (!Number.isNaN(value)) {
+											handleHintTextChange('backgroundOpacity', Math.min(Math.max(value, 0), 1))
+										}
+									}}
+								/>
+							</div>
+						</div>
+
+						{/* Color Controls */}
+						<div className="grid grid-cols-3 gap-2">
+							<div className="space-y-1">
+								<Label htmlFor="hint-text-color" className="text-xs">Text</Label>
+								<Input
+									type="color"
+									id="hint-text-color"
+									value={config.hintTextConfig.textColor}
+									onChange={(e) => handleHintTextChange('textColor', e.target.value)}
+									className="h-8 w-full p-1 cursor-pointer"
+								/>
+							</div>
+
+							<div className="space-y-1">
+								<Label htmlFor="hint-background-color" className="text-xs">BG</Label>
+								<Input
+									type="color"
+									id="hint-background-color"
+									value={config.hintTextConfig.backgroundColor}
+									onChange={(e) => handleHintTextChange('backgroundColor', e.target.value)}
+									className="h-8 w-full p-1 cursor-pointer"
+								/>
+							</div>
+
+							<div className="space-y-1">
+								<Label htmlFor="hint-outline-color" className="text-xs">Outline</Label>
+								<Input
+									type="color"
+									id="hint-outline-color"
+									value={config.hintTextConfig.outlineColor}
+									onChange={(e) => handleHintTextChange('outlineColor', e.target.value)}
+									className="h-8 w-full p-1 cursor-pointer"
+								/>
+							</div>
+						</div>
+					</div>
+				)}
+			</div>
+
 			{/* Time Segment Effects */}
 			<TimeSegmentManager
 				effects={config.timeSegmentEffects}
@@ -425,12 +632,27 @@ export function Step3Render(props: Step3RenderProps) {
 }
 
 function areConfigsEqual(a: SubtitleRenderConfig, b: SubtitleRenderConfig) {
+	const hintConfigsEqual =
+		(!a.hintTextConfig && !b.hintTextConfig) ||
+		(!!a.hintTextConfig && !!b.hintTextConfig &&
+			a.hintTextConfig.enabled === b.hintTextConfig.enabled &&
+			a.hintTextConfig.text === b.hintTextConfig.text &&
+			a.hintTextConfig.fontSize === b.hintTextConfig.fontSize &&
+			normalizeHex(a.hintTextConfig.textColor) === normalizeHex(b.hintTextConfig.textColor) &&
+			normalizeHex(a.hintTextConfig.backgroundColor) === normalizeHex(b.hintTextConfig.backgroundColor) &&
+			Math.abs((a.hintTextConfig.backgroundOpacity ?? 0.8) - (b.hintTextConfig.backgroundOpacity ?? 0.8)) < 0.001 &&
+			normalizeHex(a.hintTextConfig.outlineColor) === normalizeHex(b.hintTextConfig.outlineColor) &&
+			a.hintTextConfig.position === b.hintTextConfig.position &&
+			a.hintTextConfig.animation === b.hintTextConfig.animation
+		)
+
 	return (
 		a.fontSize === b.fontSize &&
 		Math.abs(a.backgroundOpacity - b.backgroundOpacity) < 0.001 &&
 		normalizeHex(a.textColor) === normalizeHex(b.textColor) &&
 		normalizeHex(a.backgroundColor) === normalizeHex(b.backgroundColor) &&
-		normalizeHex(a.outlineColor) === normalizeHex(b.outlineColor)
+		normalizeHex(a.outlineColor) === normalizeHex(b.outlineColor) &&
+		hintConfigsEqual
 	)
 }
 
@@ -442,6 +664,61 @@ interface SubtitleOverlayProps {
 	cue: VttCue | null
 	config: SubtitleRenderConfig
 	containerHeight: number
+}
+
+interface HintTextOverlayProps {
+	config: HintTextConfig
+	containerHeight: number
+}
+
+function HintTextOverlay(props: HintTextOverlayProps) {
+	const { config, containerHeight } = props
+	if (!config.enabled || !config.text.trim()) return null
+
+	const baseFontSize = containerHeight
+		? (config.fontSize / 1080) * containerHeight
+		: config.fontSize
+	const fontSize = Math.max(baseFontSize, 16)
+
+	const backgroundColor = hexToRgba(
+		config.backgroundColor,
+		config.backgroundOpacity,
+	)
+	const textShadowBlur = Math.max(fontSize * 0.18, 4)
+	const outlineColor = hexToRgba(config.outlineColor, 0.9)
+	const textShadow = `0 0 ${textShadowBlur}px ${outlineColor}, 0 0 ${
+		textShadowBlur * 0.75
+	}px ${outlineColor}`
+
+	let animationClass = ''
+	if (config.animation === 'fade-in') {
+		animationClass = 'animate-in fade-in duration-500'
+	} else if (config.animation === 'slide-up') {
+		animationClass = 'animate-in slide-in-from-bottom duration-500'
+	}
+
+	const positionClasses = {
+		center: 'items-center justify-center',
+		top: 'items-start justify-center pt-[10%]',
+		bottom: 'items-end justify-center pb-[15%]',
+	}
+
+	return (
+		<div className={`pointer-events-none absolute inset-0 z-20 flex ${positionClasses[config.position]} ${animationClass}`}>
+			<div
+				className="max-w-[80%] rounded-lg px-8 py-4 text-center"
+				style={{
+					backgroundColor,
+					color: config.textColor,
+					textShadow,
+					fontSize: `${fontSize}px`,
+					lineHeight: 1.4,
+				}}
+			>
+				{config.text}
+			</div>
+		</div>
+	)
 }
 
 function SubtitleOverlay(props: SubtitleOverlayProps) {

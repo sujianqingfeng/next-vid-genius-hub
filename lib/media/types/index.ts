@@ -40,6 +40,18 @@ export interface TimeSegmentEffect {
 	description?: string  // 可选描述
 }
 
+export interface HintTextConfig {
+	enabled: boolean
+	text: string
+	fontSize: number
+	textColor: string
+	backgroundColor: string
+	backgroundOpacity: number
+	outlineColor: string
+	position: 'center' | 'top' | 'bottom'
+	animation?: 'fade-in' | 'slide-up' | 'none'
+}
+
 export interface SubtitleRenderConfig {
 	fontSize: number
 	textColor: string
@@ -47,6 +59,7 @@ export interface SubtitleRenderConfig {
 	backgroundOpacity: number
 	outlineColor: string
 	timeSegmentEffects: TimeSegmentEffect[] // 时间段效果配置
+	hintTextConfig?: HintTextConfig // 黑屏提示文本配置
 }
 
 export const defaultSubtitleRenderConfig: SubtitleRenderConfig = {
@@ -56,6 +69,17 @@ export const defaultSubtitleRenderConfig: SubtitleRenderConfig = {
 	backgroundOpacity: 0.65,
 	outlineColor: '#000000',
 	timeSegmentEffects: [],
+	hintTextConfig: {
+		enabled: false,
+		text: 'Please wait...',
+		fontSize: 24,
+		textColor: '#ffffff',
+		backgroundColor: '#000000',
+		backgroundOpacity: 0.8,
+		outlineColor: '#000000',
+		position: 'center',
+		animation: 'fade-in',
+	},
 }
 
 export interface SubtitleRenderPreset {

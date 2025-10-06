@@ -5,6 +5,7 @@ import {
 	defaultSubtitleRenderConfig,
 	type SubtitleRenderConfig,
 	type TimeSegmentEffect,
+	type HintTextConfig,
 } from '../types'
 
 async function runFfmpeg(args: string[]): Promise<void> {
@@ -68,6 +69,7 @@ export async function renderVideoWithSubtitles(
 		outlineColor:
 			subtitleConfig.outlineColor || defaultSubtitleRenderConfig.outlineColor,
 		timeSegmentEffects: subtitleConfig.timeSegmentEffects || [],
+		hintTextConfig: subtitleConfig.hintTextConfig || defaultSubtitleRenderConfig.hintTextConfig,
 	}
 
 	
@@ -96,7 +98,7 @@ export async function renderVideoWithSubtitles(
 			])
 		} else {
 			// Process with time segment effects
-			await renderVideoWithEffects(videoPath, escapedAssPath, timeSegmentEffects, outputPath)
+			await renderVideoWithEffects(videoPath, escapedAssPath, timeSegmentEffects, outputPath, subtitleConfig.hintTextConfig)
 		}
 	} catch (error) {
 		console.error('Error rendering video with subtitles:', (error as Error).message)
@@ -115,7 +117,8 @@ async function renderVideoWithEffects(
 	videoPath: string,
 	assPath: string,
 	timeSegmentEffects: TimeSegmentEffect[],
-	outputPath: string
+	outputPath: string,
+	hintTextConfig?: HintTextConfig
 ): Promise<void> {
 	const hasBlackScreen = timeSegmentEffects.some(effect => effect.blackScreen)
 	const hasMuteAudio = timeSegmentEffects.some(effect => effect.muteAudio)
@@ -138,7 +141,7 @@ async function renderVideoWithEffects(
 	try {
 		// Step 1: Render video with subtitles and black screen effects
 		if (hasBlackScreen) {
-			await renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects, tempVideoPath)
+			await renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects, tempVideoPath, hintTextConfig)
 		} else {
 			// Just subtitles
 			await runFfmpeg([
@@ -176,12 +179,12 @@ async function renderVideoWithEffects(
 		// Clean up temporary files
 		try {
 			await fs.unlink(tempVideoPath)
-		} catch (e) {
+		} catch {
 			// Ignore cleanup errors
 		}
 		try {
 			await fs.unlink(tempAudioPath)
-		} catch (e) {
+		} catch {
 			// Ignore cleanup errors
 		}
 	}
@@ -191,7 +194,8 @@ async function renderVideoWithBlackScreen(
 	videoPath: string,
 	assPath: string,
 	timeSegmentEffects: TimeSegmentEffect[],
-	outputPath: string
+	outputPath: string,
+	hintTextConfig?: HintTextConfig
 ): Promise<void> {
 	const blackScreenSegments = timeSegmentEffects.filter(effect => effect.blackScreen)
 
@@ -207,12 +211,24 @@ async function renderVideoWithBlackScreen(
 		return
 	}
 
-	// Simple black screen effect using color overlay
+	if (!hintTextConfig?.enabled || !hintTextConfig.text.trim()) {
+		// Render black screen without hint text
+		await renderBlackScreenOnly(videoPath, assPath, blackScreenSegments, outputPath)
+		return
+	}
+
+	// Render black screen with hint text
+	await renderBlackScreenWithHintText(videoPath, assPath, blackScreenSegments, outputPath, hintTextConfig)
+}
+
+async function renderBlackScreenOnly(
+	videoPath: string,
+	assPath: string,
+	blackScreenSegments: TimeSegmentEffect[],
+	outputPath: string
+): Promise<void> {
 	const startTime = blackScreenSegments[0].startTime
 	const endTime = blackScreenSegments[0].endTime
-
-	// Use a simpler approach with the 'color' filter and overlay
-	const blackDuration = endTime - startTime
 
 	await runFfmpeg([
 		'-i', videoPath,
@@ -225,6 +241,86 @@ async function renderVideoWithBlackScreen(
 		'-an',
 		'-y', outputPath
 	])
+}
+
+async function renderBlackScreenWithHintText(
+	videoPath: string,
+	assPath: string,
+	blackScreenSegments: TimeSegmentEffect[],
+	outputPath: string,
+	hintTextConfig: HintTextConfig
+): Promise<void> {
+	const startTime = blackScreenSegments[0].startTime
+	const endTime = blackScreenSegments[0].endTime
+
+	// Get video resolution for text scaling
+	const videoResolution = await getVideoResolution(videoPath)
+	const scaleFactor = videoResolution.height / 1080
+	const scaledFontSize = Math.round(hintTextConfig.fontSize * scaleFactor)
+
+	// Create hint text drawtext filter
+	const textPosition = getTextPosition(hintTextConfig.position)
+	const textColor = convertHexToFfmpegColor(hintTextConfig.textColor)
+
+	const drawtextFilter = `drawtext=text='${hintTextConfig.text.replace(/'/g, "\\'")}':` +
+		`fontsize=${scaledFontSize}:` +
+		`fontcolor=${textColor}:` +
+		`x=${textPosition.x}:` +
+		`y=${textPosition.y}:` +
+		`enable='between(t,${startTime},${endTime})'`
+
+	await runFfmpeg([
+		'-i', videoPath,
+		'-filter_complex', [
+			`[0:v]subtitles=${assPath}[subtitled]`,
+			`[subtitled]colorchannelmixer=rr=0:gg=0:bb=0:enable='between(t,${startTime},${endTime})'[blackscreen]`,
+			`[blackscreen]${drawtextFilter}[output]`
+		].join(';'),
+		'-map', '[output]',
+		'-c:v', 'libx264',
+		'-an',
+		'-y', outputPath
+	])
+}
+
+function getTextPosition(position: 'center' | 'top' | 'bottom'): { x: string, y: string } {
+	switch (position) {
+		case 'center':
+			return {
+				x: `(w-text_w)/2`,
+				y: `(h-text_h)/2`
+			}
+		case 'top':
+			return {
+				x: `(w-text_w)/2`,
+				y: `h*0.1`
+			}
+		case 'bottom':
+			return {
+				x: `(w-text_w)/2`,
+				y: `h*0.85`
+			}
+		default:
+			return {
+				x: `(w-text_w)/2`,
+				y: `(h-text_h)/2`
+			}
+	}
+}
+
+function convertHexToFfmpegColor(hex: string): string {
+	let normalized = hex.trim().replace('#', '')
+	if (normalized.length === 3) {
+		normalized = normalized
+			.split('')
+			.map((char) => char + char)
+			.join('')
+	}
+	const int = Number.parseInt(normalized, 16)
+	const r = (int >> 16) & 255
+	const g = (int >> 8) & 255
+	const b = int & 255
+	return `0x${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
 }
 
 async function processAudioWithMute(
