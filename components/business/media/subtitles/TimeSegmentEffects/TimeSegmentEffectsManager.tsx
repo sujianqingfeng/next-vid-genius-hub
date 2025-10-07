@@ -17,12 +17,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
 import { Textarea } from '~/components/ui/textarea'
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from '~/components/ui/dialog'
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import type { TimeSegmentEffect } from '~/lib/subtitle/types'
 import { formatTimeForDisplay, isValidTimeRange } from '~/lib/subtitle/utils/time'
 
@@ -43,7 +38,7 @@ export function TimeSegmentEffectsManager({
 	mediaDuration = 0,
 	currentTime = 0,
 }: TimeSegmentEffectsManagerProps) {
-	const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+	const [isAddMode, setIsAddMode] = useState(false)
 	const [editingEffect, setEditingEffect] = useState<TimeSegmentEffect | null>(null)
 
 	// 添加或更新效果
@@ -68,7 +63,7 @@ export function TimeSegmentEffectsManager({
 		// 按开始时间排序
 		newEffects.sort((a, b) => a.startTime - b.startTime)
 		onChange(newEffects)
-		setIsAddDialogOpen(false)
+		setIsAddMode(false)
 		setEditingEffect(null)
 	}
 
@@ -80,7 +75,7 @@ export function TimeSegmentEffectsManager({
 	// 开始编辑效果
 	const handleEditEffect = (effect: TimeSegmentEffect) => {
 		setEditingEffect({ ...effect })
-		setIsAddDialogOpen(true)
+		setIsAddMode(true)
 	}
 
 	// 添加新效果
@@ -94,12 +89,12 @@ export function TimeSegmentEffectsManager({
 			description: '',
 		}
 		setEditingEffect(newEffect)
-		setIsAddDialogOpen(true)
+		setIsAddMode(true)
 	}
 
-	// 关闭对话框
-	const handleCloseDialog = () => {
-		setIsAddDialogOpen(false)
+	// 取消编辑
+	const handleCancelEdit = () => {
+		setIsAddMode(false)
 		setEditingEffect(null)
 	}
 
@@ -114,18 +109,20 @@ export function TimeSegmentEffectsManager({
 					<Badge variant="outline" className="text-xs">
 						{effects.length} effects
 					</Badge>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleAddNewEffect}
-					>
-						<Plus className="h-4 w-4 mr-1" />
-						Add Effect
-					</Button>
+					{!isAddMode && (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleAddNewEffect}
+						>
+							<Plus className="h-4 w-4 mr-1" />
+							Add Effect
+						</Button>
+					)}
 				</div>
 			</div>
 
-			{effects.length === 0 ? (
+			{effects.length === 0 && !isAddMode ? (
 				<div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
 					<Scissors className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
 					<p className="text-muted-foreground">No time segment effects configured</p>
@@ -143,78 +140,93 @@ export function TimeSegmentEffectsManager({
 					</Button>
 				</div>
 			) : (
-				<div className="space-y-2">
-					{effects.map((effect, index) => (
-						<div
-							key={effect.id}
-							className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-						>
-							<div className="flex-1">
-								<div className="flex items-center gap-2 mb-1">
-									<span className="font-medium text-sm">
-										{formatTimeForDisplay(effect.startTime)} - {formatTimeForDisplay(effect.endTime)}
-									</span>
-									{effect.muteAudio && (
-										<Badge variant="secondary" className="text-xs">
-											<VolumeX className="h-3 w-3 mr-1" />
-											Muted
-										</Badge>
-									)}
-									{effect.blackScreen && (
-										<Badge variant="secondary" className="text-xs">
-											<Video className="h-3 w-3 mr-1" />
-											Black Screen
-										</Badge>
-									)}
+				<div className="space-y-4">
+					{/* 现有效果列表 */}
+					{effects.length > 0 && (
+						<div className="space-y-2">
+							{effects.map((effect, index) => (
+								<div
+									key={effect.id}
+									className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+								>
+									<div className="flex-1">
+										<div className="flex items-center gap-2 mb-1">
+											<span className="font-medium text-sm">
+												{formatTimeForDisplay(effect.startTime)} - {formatTimeForDisplay(effect.endTime)}
+											</span>
+											{effect.muteAudio && (
+												<Badge variant="secondary" className="text-xs">
+													<VolumeX className="h-3 w-3 mr-1" />
+													Muted
+												</Badge>
+											)}
+											{effect.blackScreen && (
+												<Badge variant="secondary" className="text-xs">
+													<Video className="h-3 w-3 mr-1" />
+													Black Screen
+												</Badge>
+											)}
+										</div>
+										{effect.description && (
+											<p className="text-xs text-muted-foreground">{effect.description}</p>
+										)}
+									</div>
+									<div className="flex items-center gap-1">
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={() => handleEditEffect(effect)}
+											className="h-8 w-8"
+											disabled={isAddMode}
+										>
+											<Edit className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={() => handleDeleteEffect(effect.id)}
+											className="h-8 w-8 text-destructive hover:text-destructive"
+											disabled={isAddMode}
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
+									</div>
 								</div>
-								{effect.description && (
-									<p className="text-xs text-muted-foreground">{effect.description}</p>
-								)}
-							</div>
-							<div className="flex items-center gap-1">
-								<Button
-									variant="ghost"
-									size="icon"
-									onClick={() => handleEditEffect(effect)}
-									className="h-8 w-8"
-								>
-									<Edit className="h-4 w-4" />
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									onClick={() => handleDeleteEffect(effect.id)}
-									className="h-8 w-8 text-destructive hover:text-destructive"
-								>
-									<Trash2 className="h-4 w-4" />
-								</Button>
-							</div>
+							))}
 						</div>
-					))}
+					)}
+
+					{/* 添加/编辑效果表单 */}
+					{isAddMode && editingEffect && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="text-base flex items-center gap-2">
+									{editingEffect.id && effects.some(e => e.id === editingEffect.id) ? (
+										<>
+											<Edit className="h-4 w-4" />
+											Edit Time Segment Effect
+										</>
+									) : (
+										<>
+											<Plus className="h-4 w-4" />
+											Add Time Segment Effect
+										</>
+									)}
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<EffectEditForm
+									effect={editingEffect}
+									existingEffects={effects}
+									mediaDuration={mediaDuration}
+									onSave={handleSaveEffect}
+									onCancel={handleCancelEdit}
+								/>
+							</CardContent>
+						</Card>
+					)}
 				</div>
 			)}
-
-			{/* 添加/编辑效果对话框 */}
-			<Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-				<DialogContent className="sm:max-w-md">
-					<DialogHeader>
-						<DialogTitle>
-							{editingEffect?.id && effects.some(e => e.id === editingEffect.id)
-								? 'Edit Time Segment Effect'
-								: 'Add Time Segment Effect'}
-						</DialogTitle>
-					</DialogHeader>
-					{editingEffect && (
-						<EffectEditForm
-							effect={editingEffect}
-							existingEffects={effects}
-							mediaDuration={mediaDuration}
-							onSave={handleSaveEffect}
-							onCancel={handleCloseDialog}
-						/>
-					)}
-				</DialogContent>
-			</Dialog>
 		</div>
 	)
 }
