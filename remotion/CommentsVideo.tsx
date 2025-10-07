@@ -30,7 +30,7 @@ const palette = {
   textPrimary: '#0f172a',
   textSecondary: '#334155',
   textMuted: '#64748b',
-  accent: '#0ea5e9',
+  accent: '#ef4444',
 }
 
 const baseFont = 'Inter, "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont'
@@ -111,16 +111,16 @@ const commentBodyStyle: CSSProperties = {
   color: palette.textPrimary,
   whiteSpace: 'pre-wrap',
   margin: 0,
-  maxWidth: '70ch',
+  width: '100%',
 }
 
 const translatedStyle: CSSProperties = {
   marginTop: 18,
   padding: '16px 20px',
   borderRadius: 16,
-  backgroundColor: 'rgba(14, 165, 233, 0.08)',
+  backgroundColor: 'rgba(239, 68, 68, 0.08)',
   color: palette.textSecondary,
-  borderLeft: '4px solid rgba(14, 165, 233, 0.3)',
+  borderLeft: '4px solid rgba(239, 68, 68, 0.3)',
   whiteSpace: 'pre-wrap',
   fontSize: 24,
   lineHeight: 1.48,
@@ -236,8 +236,6 @@ const InfoPanel: React.FC<{ videoInfo: CommentVideoInputProps['videoInfo']; comm
       </div>
       <div style={metaListStyle}>
         <MetaItem label="Views" value={formatCount(videoInfo.viewCount)} />
-        <MetaItem label="Series" value={videoInfo.series ?? '未分组'} />
-        <MetaItem label="Episode" value={videoInfo.seriesEpisode ? `#${videoInfo.seriesEpisode}` : 'N/A'} />
         <MetaItem label="Comments" value={String(commentCount)} />
       </div>
     </div>
@@ -266,7 +264,7 @@ const CoverSlide: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(14, 165, 233, 0.04))',
+        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.04))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -310,8 +308,8 @@ const CommentSlide: React.FC<{
   const isChineseTranslation = isLikelyChinese(comment.translatedContent)
   const displayCommentStyle: CSSProperties = {
     ...commentBodyStyle,
-    fontSize: isChinesePrimary ? 36 : 26,
-    lineHeight: isChinesePrimary ? 1.68 : 1.52,
+    fontSize: isChinesePrimary ? 52 : 26,
+    lineHeight: isChinesePrimary ? 1.4 : 1.52,
     letterSpacing: isChinesePrimary ? '0.024em' : 'normal',
     color: isChinesePrimary ? palette.accent : palette.textPrimary,
   }
@@ -340,6 +338,9 @@ const CommentSlide: React.FC<{
                   color: palette.accent,
                   padding: 0,
                   marginTop: 12,
+                  fontSize: 52,
+                  lineHeight: 1.4,
+                  letterSpacing: '0.024em',
                 }
               : {}),
           }}
@@ -374,7 +375,7 @@ const Avatar: React.FC<{ name: string; src?: string | null }> = ({ name, src }) 
         width: 72,
         height: 72,
         borderRadius: '50%',
-        backgroundColor: 'rgba(14, 165, 233, 0.12)',
+        backgroundColor: 'rgba(239, 68, 68, 0.12)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -405,7 +406,7 @@ const VideoPlaceholder: React.FC = () => {
           position: 'relative',
           width: '100%',
           paddingTop: `${(VIDEO_HEIGHT / VIDEO_WIDTH) * 100}%`,
-          backgroundImage: 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(14, 165, 233, 0.06))',
+          backgroundImage: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.06))',
           borderTop: `1px solid ${palette.border}`,
           borderBottom: `1px solid ${palette.border}`,
         }}
