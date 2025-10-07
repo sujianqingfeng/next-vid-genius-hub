@@ -156,74 +156,78 @@ export function Step3Render(props: Step3RenderProps) {
 	}
 
 	return (
-		<div className="space-y-6">
-			{/* 视频预览区域 */}
-			<VideoPreview
-				mediaId={mediaId}
-				translation={translation}
-				config={config}
-				isRendering={isRendering}
-				onTimeUpdate={handleTimeUpdate}
-				onDurationChange={handleDurationChange}
-				onVideoRef={handleVideoRef}
-			/>
-
-			{/* 配置控制区域 */}
-			<div className="space-y-6">
-				{/* 快速预设和手动设置 */}
-				<div className="grid gap-6 md:grid-cols-2">
-					{/* 快速预设 */}
-					<SubtitleConfigControls
-						presets={SUBTITLE_RENDER_PRESETS}
-						selectedPresetId={selectedPresetId}
-						selectedPreset={selectedPreset}
-						onPresetClick={handlePresetClick}
+		<div className="space-y-4">
+			{/* 主布局：左右分栏 */}
+			<div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+				{/* 左侧：视频预览区域 */}
+				<div className="flex-1 lg:max-w-2xl">
+					<VideoPreview
+						mediaId={mediaId}
+						translation={translation}
 						config={config}
-						onNumericChange={handleNumericChange}
-						onOpacityChange={handleOpacityChange}
-						onColorChange={handleColorChange}
-					/>
-
-					{/* 提示文本配置 */}
-					<HintTextConfigControls
-						config={config.hintTextConfig}
-						onChange={handleHintTextChange}
+						isRendering={isRendering}
+						onTimeUpdate={handleTimeUpdate}
+						onDurationChange={handleDurationChange}
+						onVideoRef={handleVideoRef}
 					/>
 				</div>
 
-				{/* 时间段效果管理 */}
-				<TimeSegmentEffectsManager
-					effects={config.timeSegmentEffects}
-					onChange={handleTimeSegmentEffectsChange}
-					mediaDuration={duration}
-					currentTime={currentTime}
-					onPlayPreview={handlePlayPreview}
-				/>
+				{/* 右侧：配置控制区域 */}
+				<div className="flex-1 lg:max-w-xl">
+					<div className="space-y-4">
+						{/* 快速预设和手动设置 - 标签页模式 */}
+						<SubtitleConfigControls
+							presets={SUBTITLE_RENDER_PRESETS}
+							selectedPresetId={selectedPresetId}
+							selectedPreset={selectedPreset}
+							onPresetClick={handlePresetClick}
+							config={config}
+							onNumericChange={handleNumericChange}
+							onOpacityChange={handleOpacityChange}
+							onColorChange={handleColorChange}
+						/>
 
-				{/* 渲染按钮 */}
-				<div className="text-center">
-					<Button
-						onClick={() => onStart({ ...config })}
-						disabled={isRendering || !translationAvailable}
-						size="lg"
-						className="w-full max-w-md"
-					>
-						{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-						{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
-					</Button>
-				</div>
+						{/* 提示文本配置 */}
+						<HintTextConfigControls
+							config={config.hintTextConfig}
+							onChange={handleHintTextChange}
+						/>
 
-				{/* 错误信息 */}
-				{errorMessage && (
-					<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
-						<AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
-						<div>
-							<h3 className="font-semibold text-red-800">Rendering Error</h3>
-							<p className="text-sm text-red-700">{errorMessage}</p>
+						{/* 时间段效果管理 - 折叠式 */}
+						<TimeSegmentEffectsManager
+							effects={config.timeSegmentEffects}
+							onChange={handleTimeSegmentEffectsChange}
+							mediaDuration={duration}
+							currentTime={currentTime}
+							onPlayPreview={handlePlayPreview}
+						/>
+
+						{/* 渲染按钮 - 配置区域底部 */}
+						<div className="border-t pt-4">
+							<Button
+								onClick={() => onStart({ ...config })}
+								disabled={isRendering || !translationAvailable}
+								size="lg"
+								className="w-full"
+							>
+								{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+								{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
+							</Button>
 						</div>
 					</div>
-				)}
+				</div>
 			</div>
+
+			{/* 错误信息 */}
+			{errorMessage && (
+				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+					<AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
+					<div>
+						<h3 className="font-semibold text-red-800">Rendering Error</h3>
+						<p className="text-sm text-red-700">{errorMessage}</p>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

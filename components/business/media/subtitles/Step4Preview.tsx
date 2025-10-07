@@ -27,48 +27,70 @@ export function Step4Preview(props: Step4PreviewProps) {
 
 	if (!hasRenderedVideo) {
 		return (
-			<div className="text-center py-8">
-				<Video className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-				<h3 className="text-lg font-semibold mb-2">Rendering in Progress</h3>
-				<p className="text-muted-foreground mb-4">
-					Please wait while we process your video...
+			<div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+				<Video className="h-16 w-16 mb-4 text-muted-foreground" />
+				<h3 className="text-xl font-semibold mb-2">Rendering in Progress</h3>
+				<p className="text-muted-foreground mb-6 max-w-md">
+					Please wait while we process your video with subtitles...
 				</p>
-				<div className="mx-auto h-6 w-6 border-2 border-muted-foreground/30 border-t-muted-foreground/70 rounded-full animate-spin" />
+				<div className="h-8 w-8 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
 			</div>
 		)
 	}
 
 	return (
-		<div className="space-y-6">
-			{/* Video Preview */}
-			<div className="aspect-video bg-black rounded-lg overflow-hidden">
-				<video
-					key={cacheBuster ?? 0}
-					controls
-					preload="metadata"
-					className="w-full h-full"
-					poster={thumbnail || undefined}
-					crossOrigin="anonymous"
-				>
-					<source src={videoSrc} type="video/mp4" />
-					Your browser does not support the video tag.
-				</video>
+		<div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+			{/* 左侧：视频预览区域 */}
+			<div className="flex-1 lg:max-w-2xl">
+				<div className="space-y-3">
+					<h3 className="text-lg font-semibold flex items-center gap-2">
+						<Play className="h-5 w-5" />
+						Preview Video
+					</h3>
+					<div className="w-full bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px', maxHeight: '80vh' }}>
+						<video
+							key={cacheBuster ?? 0}
+							controls
+							preload="metadata"
+							className="w-full h-full object-contain"
+							poster={thumbnail || undefined}
+							crossOrigin="anonymous"
+						>
+							<source src={videoSrc} type="video/mp4" />
+							Your browser does not support the video tag.
+						</video>
+					</div>
+				</div>
 			</div>
 
-			{/* Download Buttons */}
-			<div className="flex flex-col sm:flex-row gap-3">
-				<Button asChild className="flex-1">
-					<a href={downloadVideoUrl}>
-						<Video className="h-4 w-4 mr-2" />
-						Download Video
-					</a>
-				</Button>
-				<Button asChild variant="outline" className="flex-1">
-					<a href={subtitlesDownloadUrl} download>
-						<FileText className="h-4 w-4 mr-2" />
-						Download Subtitles
-					</a>
-				</Button>
+			{/* 右侧：下载区域 */}
+			<div className="flex-1 lg:max-w-xl">
+				<div className="space-y-4">
+					{/* 下载标题 */}
+					<h3 className="text-lg font-semibold flex items-center gap-2">
+						<Download className="h-5 w-5" />
+						Download Files
+					</h3>
+
+					{/* 下载按钮 */}
+					<div className="space-y-3">
+						{/* 主要下载按钮 */}
+						<Button asChild className="w-full" size="lg">
+							<a href={downloadVideoUrl}>
+								<Video className="h-4 w-4 mr-2" />
+								Download Video
+							</a>
+						</Button>
+
+						{/* 次要下载按钮 */}
+						<Button asChild variant="outline" className="w-full">
+							<a href={subtitlesDownloadUrl} download>
+								<FileText className="h-4 w-4 mr-2" />
+								Download Subtitles
+							</a>
+						</Button>
+					</div>
+				</div>
 			</div>
 		</div>
 	)

@@ -115,8 +115,13 @@ export function VideoPreview({
 
 			<div
 				ref={containerRef}
-				className="subtitle-preview relative aspect-video overflow-hidden rounded-lg border bg-black"
-				style={previewStyle}
+				className="subtitle-preview relative w-full overflow-hidden rounded-lg border bg-black"
+				style={{
+					...previewStyle,
+					height: 'auto',
+					minHeight: '300px',
+					maxHeight: '80vh'
+				}}
 			>
 				<video
 					ref={videoRef}

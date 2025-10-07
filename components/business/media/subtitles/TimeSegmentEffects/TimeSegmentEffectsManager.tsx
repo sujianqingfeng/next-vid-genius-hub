@@ -10,6 +10,8 @@ import {
 	Edit,
 	X,
 	Check,
+	ChevronDown,
+	ChevronUp,
 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
@@ -42,6 +44,7 @@ export function TimeSegmentEffectsManager({
 }: TimeSegmentEffectsManagerProps) {
 	const [isAddMode, setIsAddMode] = useState(false)
 	const [editingEffect, setEditingEffect] = useState<TimeSegmentEffect | null>(null)
+	const [isExpanded, setIsExpanded] = useState(false)
 
 	// 添加或更新效果
 	const handleSaveEffect = (effect: TimeSegmentEffect) => {
@@ -101,132 +104,154 @@ export function TimeSegmentEffectsManager({
 	}
 
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center justify-between">
-				<h3 className="text-lg font-semibold flex items-center gap-2">
-					<Scissors className="h-5 w-5" />
-					Time Segment Effects
-				</h3>
+		<div className="space-y-3">
+			{/* 标题栏 - 可点击展开/折叠 */}
+			<div
+				className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+				onClick={() => setIsExpanded(!isExpanded)}
+			>
+				<div className="flex items-center gap-2">
+					{isExpanded ? (
+						<ChevronUp className="h-4 w-4" />
+					) : (
+						<ChevronDown className="h-4 w-4" />
+					)}
+					<Scissors className="h-4 w-4" />
+					<h3 className="text-sm font-medium">Time Segment Effects</h3>
+				</div>
 				<div className="flex items-center gap-2">
 					<Badge variant="outline" className="text-xs">
 						{effects.length} effects
 					</Badge>
-					{!isAddMode && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={handleAddNewEffect}
-						>
-							<Plus className="h-4 w-4 mr-1" />
-							Add Effect
-						</Button>
-					)}
 				</div>
 			</div>
 
-			{effects.length === 0 && !isAddMode ? (
-				<div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
-					<Scissors className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-					<p className="text-muted-foreground">No time segment effects configured</p>
-					<p className="text-sm text-muted-foreground mt-2">
-						Add effects to create black screens or mute audio during specific time ranges
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						className="mt-4"
-						onClick={handleAddNewEffect}
-					>
-						<Plus className="h-4 w-4 mr-1" />
-						Add Your First Effect
-					</Button>
-				</div>
-			) : (
-				<div className="space-y-4">
-					{/* 现有效果列表 */}
-					{effects.length > 0 && (
-						<div className="space-y-2">
-							{effects.map((effect) => (
-								<div
-									key={effect.id}
-									className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-								>
-									<div className="flex-1">
-										<div className="flex items-center gap-2 mb-1">
-											<span className="font-medium text-sm">
-												{formatTimeForDisplay(effect.startTime)} - {formatTimeForDisplay(effect.endTime)}
-											</span>
-											{effect.muteAudio && (
-												<Badge variant="secondary" className="text-xs">
-													<VolumeX className="h-3 w-3 mr-1" />
-													Muted
-												</Badge>
-											)}
-											{effect.blackScreen && (
-												<Badge variant="secondary" className="text-xs">
-													<Video className="h-3 w-3 mr-1" />
-													Black Screen
-												</Badge>
-											)}
-										</div>
-										{effect.description && (
-											<p className="text-xs text-muted-foreground">{effect.description}</p>
-										)}
-									</div>
-									<div className="flex items-center gap-1">
-										<Button
-											variant="ghost"
-											size="icon"
-											onClick={() => handleEditEffect(effect)}
-											className="h-8 w-8"
-											disabled={isAddMode}
-										>
-											<Edit className="h-4 w-4" />
-										</Button>
-										<Button
-											variant="ghost"
-											size="icon"
-											onClick={() => handleDeleteEffect(effect.id)}
-											className="h-8 w-8 text-destructive hover:text-destructive"
-											disabled={isAddMode}
-										>
-											<Trash2 className="h-4 w-4" />
-										</Button>
-									</div>
-								</div>
-							))}
+			{/* 折叠内容 */}
+			{isExpanded && (
+				<div className="space-y-3 pl-4">
+					{effects.length === 0 && !isAddMode ? (
+						<div className="text-center py-6 border-2 border-dashed border-muted rounded-lg">
+							<Scissors className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+							<p className="text-sm text-muted-foreground mb-2">No time segment effects configured</p>
+							<p className="text-xs text-muted-foreground mb-3">
+								Add effects to create black screens or mute audio during specific time ranges
+							</p>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleAddNewEffect}
+							>
+								<Plus className="h-4 w-4 mr-1" />
+								Add Your First Effect
+							</Button>
 						</div>
-					)}
+					) : (
+						<div className="space-y-3">
+							{/* 现有效果列表 */}
+							{effects.length > 0 && (
+								<div className="space-y-2">
+									{effects.map((effect) => (
+										<div
+											key={effect.id}
+											className="flex items-center justify-between p-2 border rounded hover:bg-muted/50 transition-colors"
+										>
+											<div className="flex-1 min-w-0">
+												<div className="flex items-center gap-1 mb-1">
+													<span className="font-medium text-xs truncate">
+														{formatTimeForDisplay(effect.startTime)} - {formatTimeForDisplay(effect.endTime)}
+													</span>
+													{effect.muteAudio && (
+														<Badge variant="secondary" className="text-xs">
+															<VolumeX className="h-2 w-2 mr-1" />
+															Muted
+														</Badge>
+													)}
+													{effect.blackScreen && (
+														<Badge variant="secondary" className="text-xs">
+															<Video className="h-2 w-2 mr-1" />
+															Black Screen
+														</Badge>
+													)}
+												</div>
+												{effect.description && (
+													<p className="text-xs text-muted-foreground truncate">{effect.description}</p>
+												)}
+											</div>
+											<div className="flex items-center gap-1 ml-2">
+												<Button
+													variant="ghost"
+													size="icon"
+													onClick={(e) => {
+														e.stopPropagation()
+														handleEditEffect(effect)
+													}}
+													className="h-6 w-6"
+													disabled={isAddMode}
+												>
+													<Edit className="h-3 w-3" />
+												</Button>
+												<Button
+													variant="ghost"
+													size="icon"
+													onClick={(e) => {
+														e.stopPropagation()
+														handleDeleteEffect(effect.id)
+													}}
+													className="h-6 w-6 text-destructive hover:text-destructive"
+													disabled={isAddMode}
+												>
+													<Trash2 className="h-3 w-3" />
+												</Button>
+											</div>
+										</div>
+									))}
+								</div>
+							)}
 
-					{/* 添加/编辑效果表单 */}
-					{isAddMode && editingEffect && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="text-base flex items-center gap-2">
-									{editingEffect.id && effects.some(e => e.id === editingEffect.id) ? (
-										<>
-											<Edit className="h-4 w-4" />
-											Edit Time Segment Effect
-										</>
-									) : (
-										<>
-											<Plus className="h-4 w-4" />
-											Add Time Segment Effect
-										</>
-									)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<EffectEditForm
-									effect={editingEffect}
-									existingEffects={effects}
-									mediaDuration={mediaDuration}
-									onSave={handleSaveEffect}
-									onCancel={handleCancelEdit}
-									onPlayPreview={onPlayPreview}
-								/>
-							</CardContent>
-						</Card>
+							{/* 添加效果按钮 */}
+							{!isAddMode && effects.length > 0 && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={handleAddNewEffect}
+									className="w-full"
+								>
+									<Plus className="h-4 w-4 mr-1" />
+									Add Effect
+								</Button>
+							)}
+
+							{/* 添加/编辑效果表单 */}
+							{isAddMode && editingEffect && (
+								<Card className="mt-3">
+									<CardHeader className="pb-3">
+										<CardTitle className="text-sm flex items-center gap-2">
+											{editingEffect.id && effects.some(e => e.id === editingEffect.id) ? (
+												<>
+													<Edit className="h-4 w-4" />
+													Edit Time Segment Effect
+												</>
+											) : (
+												<>
+													<Plus className="h-4 w-4" />
+													Add Time Segment Effect
+												</>
+											)}
+										</CardTitle>
+									</CardHeader>
+									<CardContent className="pt-0">
+										<EffectEditForm
+											effect={editingEffect}
+											existingEffects={effects}
+											mediaDuration={mediaDuration}
+											onSave={handleSaveEffect}
+											onCancel={handleCancelEdit}
+											onPlayPreview={onPlayPreview}
+										/>
+									</CardContent>
+								</Card>
+							)}
+						</div>
 					)}
 				</div>
 			)}
