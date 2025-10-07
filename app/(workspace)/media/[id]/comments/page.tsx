@@ -24,7 +24,7 @@ import {
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
 import { AIModelId, AIModelIds } from '~/lib/ai'
-import { extractVideoId } from '~/lib/youtube/utils'
+import { extractVideoId } from '~/lib/providers/youtube'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { formatNumber } from '~/lib/utils'
 

@@ -1,3 +1,5 @@
+'use server'
+
 import YTDlpWrap from 'yt-dlp-wrap'
 
 export async function downloadTikTokVideo(
@@ -79,7 +81,7 @@ export async function getTikTokVideoFormats(url: string): Promise<Array<{
 	}
 }
 
-export async function getTikTokVideoInfo(url: string): Promise<any> {
+export async function getTikTokVideoInfo(url: string): Promise<unknown> {
 	const ytdlp = new YTDlpWrap()
 
 	try {

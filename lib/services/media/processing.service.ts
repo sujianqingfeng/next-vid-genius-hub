@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { execa } from 'execa'
-import type { MediaItem } from '~/lib/types/media.types'
 import { fileExistsServer } from '~/lib/utils/file'
 
 export class MediaProcessingService {

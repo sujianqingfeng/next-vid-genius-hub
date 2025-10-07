@@ -11,9 +11,10 @@ import { Card, CardContent } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { formatNumber, formatTimeAgo } from '~/lib/utils'
+import type { MediaItem } from '~/lib/types/media.types'
 
 // Clean media thumbnail component
-function MediaThumbnail({ media }: { media: any }) {
+function MediaThumbnail({ media }: { media: MediaItem }) {
 	const [thumbnailError, setThumbnailError] = useState(false)
 
 	return (
@@ -46,7 +47,7 @@ function MediaThumbnail({ media }: { media: any }) {
 }
 
 // Media metadata component
-function MediaMetadata({ media }: { media: any }) {
+function MediaMetadata({ media }: { media: MediaItem }) {
 	return (
 		<div className="space-y-6">
 			{/* Title Section */}

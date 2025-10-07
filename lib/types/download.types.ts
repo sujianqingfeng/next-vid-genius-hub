@@ -1,4 +1,5 @@
 import type { BasicVideoInfo, MediaSource } from './provider.types'
+import type { MediaItem } from './media.types'
 
 export interface DownloadRequest {
 	url: string
@@ -44,7 +45,7 @@ export interface DownloadService {
 	checkExistingFiles(context: DownloadContext): Promise<{
 		videoExists: boolean
 		audioExists: boolean
-		downloadRecord?: any
+		downloadRecord?: MediaItem
 	}>
 
 	fetchMetadata(url: string, context: DownloadContext): Promise<BasicVideoInfo | null>

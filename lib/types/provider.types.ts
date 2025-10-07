@@ -1,6 +1,12 @@
 export type MediaSource = 'youtube' | 'tiktok' | 'unknown'
 
-export interface BasicVideoInfo<T = any> {
+export type ThumbnailQuality =
+	| 'default'
+	| 'medium'
+	| 'high'
+	| 'maxres'
+
+export interface BasicVideoInfo<T = unknown> {
 	title?: string
 	author?: string
 	thumbnail?: string
@@ -21,7 +27,7 @@ export interface VideoProvider {
 	getVideoId?(url: string): string | Promise<string | null>
 	getVideoUrl?(videoId: string): string | Promise<string | null>
 	getEmbedUrl?(videoId: string): string | Promise<string | null>
-	getThumbnailUrl?(videoId: string, quality?: any): string | Promise<string | null>
+	getThumbnailUrl?(videoId: string, quality?: ThumbnailQuality): string | Promise<string | null>
 	fetchMetadata(url: string, context: VideoProviderContext): Promise<BasicVideoInfo>
 	cleanup?(): void
 

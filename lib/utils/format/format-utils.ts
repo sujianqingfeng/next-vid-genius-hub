@@ -202,7 +202,7 @@ export function formatColor(color: string): string {
 /**
  * Safe JSON stringify with circular reference handling
  */
-export function safeJsonStringify(obj: any, indent?: number): string {
+export function safeJsonStringify(obj: unknown, indent?: number): string {
 	const cache = new Set()
 	return JSON.stringify(obj, (key, value) => {
 		if (typeof value === 'object' && value !== null) {

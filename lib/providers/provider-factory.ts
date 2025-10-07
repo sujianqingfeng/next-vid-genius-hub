@@ -1,4 +1,4 @@
-import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.types'
+import type { VideoProvider, VideoProviderContext, ThumbnailQuality } from '~/lib/types/provider.types'
 import { youtubeProvider } from './youtube/provider'
 import { tiktokProvider } from './tiktok/provider'
 
@@ -205,7 +205,7 @@ export class ProviderFactory {
 		quality?: string
 	): Promise<string | null> {
 		const provider = providerRegistry.getProvider(providerId)
-		return provider?.getThumbnailUrl ? provider.getThumbnailUrl(videoId, quality as any) : null
+		return provider?.getThumbnailUrl ? provider.getThumbnailUrl(videoId, quality as ThumbnailQuality) : null
 	}
 
 	/**

@@ -211,7 +211,7 @@ export class TranslationService {
 	async validateTranslation(
 		originalText: string,
 		translatedText: string,
-		targetLanguage: string
+		_targetLanguage: string
 	): Promise<{
 		isValid: boolean
 		confidence: number

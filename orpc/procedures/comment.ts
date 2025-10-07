@@ -13,12 +13,12 @@ import {
 import { db, schema } from '~/lib/db'
 import { renderVideoWithRemotion } from '~/lib/media'
 import type { RenderProgressEvent } from '~/lib/media'
-import { downloadTikTokCommentsByUrl } from '~/lib/tiktok'
+import { downloadTikTokCommentsByUrl } from '~/lib/providers/tiktok'
 import {
 	downloadYoutubeComments,
 	extractVideoId,
 	getYouTubeClient,
-} from '~/lib/youtube'
+} from '~/lib/providers/youtube'
 
 export const downloadComments = os
 	.input(

@@ -1,6 +1,6 @@
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
-import type { VideoProviderContext } from '~/lib/media/providers'
-import { resolveVideoProvider } from '~/lib/media/providers'
+import type { VideoProviderContext } from '~/lib/types/provider.types'
+import { resolveVideoProvider } from '~/lib/providers/provider-factory'
 
 export class MetadataService {
 	/**

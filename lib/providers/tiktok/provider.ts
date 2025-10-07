@@ -1,37 +1,7 @@
 import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.types'
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchTikTokMetadata, pickTikTokThumbnail } from './metadata'
-
-function isTikTokUrl(url: string): boolean {
-	const tiktokPatterns = [
-		/tiktok\.com\/@[\w.-]+\/video\/[\d]+/,
-		/tiktok\.com\/t\/[\w]+/,
-		/vm\.tiktok\.com\/[\w]+/,
-		/douyin\.com\/video\/[\d]+/,
-		/iesdouyin\.com\/share\/video\/[\d]+/,
-	]
-
-	return tiktokPatterns.some(pattern => pattern.test(url))
-}
-
-function extractVideoId(url: string): string | null {
-	// TikTok video ID extraction patterns
-	const patterns = [
-		/tiktok\.com\/@[\w.-]+\/video\/(\d+)/,
-		/tiktok\.com\/t\/(\w+)/,
-		/vm\.tiktok\.com\/(\w+)/,
-		/douyin\.com\/video\/(\d+)/,
-	]
-
-	for (const pattern of patterns) {
-		const match = url.match(pattern)
-		if (match && match[1]) {
-			return match[1]
-		}
-	}
-
-	return null
-}
+import { isTikTokUrl, extractTikTokVideoId } from './utils'
 
 export const tiktokProvider: VideoProvider = {
 	id: 'tiktok',
@@ -39,7 +9,7 @@ export const tiktokProvider: VideoProvider = {
 	domains: ['tiktok.com', 'vm.tiktok.com', 'douyin.com', 'iesdouyin.com'],
 	matches: isTikTokUrl,
 
-	async fetchMetadata(url: string, context: VideoProviderContext): Promise<BasicVideoInfo> {
+	async fetchMetadata(url: string, _context: VideoProviderContext): Promise<BasicVideoInfo> {
 		try {
 			const tiktokInfo = await fetchTikTokMetadata(url)
 
@@ -70,7 +40,7 @@ export const tiktokProvider: VideoProvider = {
 	},
 
 	async getVideoId(url: string): Promise<string | null> {
-		return extractVideoId(url)
+		return extractTikTokVideoId(url)
 	},
 
 	async getVideoUrl(videoId: string): Promise<string> {
@@ -84,14 +54,14 @@ export const tiktokProvider: VideoProvider = {
 		return `https://www.tiktok.com/embed/v2/${videoId}`
 	},
 
-	async getThumbnailUrl(videoId: string, quality: 'default' | 'medium' | 'high' = 'default'): Promise<string> {
+	async getThumbnailUrl(videoId: string, _quality: 'default' | 'medium' | 'high' = 'default'): Promise<string> {
 		// TikTok thumbnails are not easily predictable from video ID
 		// This is a placeholder implementation
 		return `https://p16-sign-va.tiktokcdn.com/obj/tos-maliva-p-0068/o${videoId}.jpeg`
 	},
 
 	// TikTok-specific methods
-	async getTrendingVideos(maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
+	async getTrendingVideos(_maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
 		try {
 			// Implementation would require TikTok API or web scraping
 			// This is a placeholder for future enhancement
@@ -103,7 +73,7 @@ export const tiktokProvider: VideoProvider = {
 		}
 	},
 
-	async getUserVideos(username: string, maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
+	async getUserVideos(username: string, _maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
 		try {
 			// Implementation would require TikTok API or web scraping
 			// This is a placeholder for future enhancement
@@ -115,7 +85,7 @@ export const tiktokProvider: VideoProvider = {
 		}
 	},
 
-	async searchVideos(query: string, maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
+	async searchVideos(query: string, _maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
 		try {
 			// Implementation would require TikTok API or web scraping
 			// This is a placeholder for future enhancement

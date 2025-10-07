@@ -1,6 +1,9 @@
+'use server'
+
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
-import type { VideoProviderContext } from '~/lib/media/providers'
+import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { getYouTubeClient } from './client'
+import { extractVideoId } from './utils'
 
 export async function fetchYouTubeMetadata(
 	url: string,
@@ -35,20 +38,3 @@ export async function fetchYouTubeMetadata(
 	}
 }
 
-export function extractVideoId(url: string): string | null {
-	// YouTube URL patterns
-	const patterns = [
-		/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-		/youtu\.be\/([a-zA-Z0-9_-]{11})/,
-		/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-	]
-
-	for (const pattern of patterns) {
-		const match = url.match(pattern)
-		if (match && match[1]) {
-			return match[1]
-		}
-	}
-
-	return null
-}

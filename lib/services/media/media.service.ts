@@ -1,7 +1,5 @@
 import fs from 'node:fs/promises'
-import path from 'node:path'
 import { desc, eq } from 'drizzle-orm'
-import type { MediaItem } from '~/lib/types/media.types'
 import { db, schema } from '~/lib/db'
 import { fileExists as fileExists } from '~/lib/utils/file'
 

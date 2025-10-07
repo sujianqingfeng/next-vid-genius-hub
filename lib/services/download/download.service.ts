@@ -13,8 +13,8 @@ import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { db, schema, createMediaUpdateData } from '~/lib/db'
 import { extractAudio } from '~/lib/media'
-import { resolveVideoProvider, providerToSource } from '~/lib/media/providers'
-import type { VideoProviderContext } from '~/lib/media/providers'
+import { resolveVideoProvider, providerToSource } from '~/lib/providers/provider-factory'
+import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { fileExists as fileExists } from '~/lib/utils/file'
 import { downloadVideo } from '~/lib/providers/youtube/downloader'
 
@@ -33,16 +33,16 @@ export class DownloadService implements IDownloadService {
 			})
 
 			const id = downloadRecord?.id ?? createId()
-			const context = this.createDownloadContext(id, downloadRecord)
+			const _context = this.createDownloadContext(id, downloadRecord)
 
 			// 2. 检查文件存在性
 			downloadProgress = { stage: 'checking', progress: 10 }
-			const videoExists = await fileExists(context.videoPath)
-			const audioExists = await fileExists(context.audioPath)
+			const videoExists = await fileExists(_context.videoPath)
+			const audioExists = await fileExists(_context.audioPath)
 
 			// 3. 获取平台提供者和元数据
 			const provider = resolveVideoProvider(url)
-			const providerContext: VideoProviderContext = {
+			const _providerContext: VideoProviderContext = {
 				proxyUrl: this.proxyUrl,
 			}
 

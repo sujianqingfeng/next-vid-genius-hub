@@ -1,5 +1,8 @@
 // TikTok provider barrel export
 export * from './provider'
-export * from './downloader'
-export * from './metadata'
-export * from './comments'
+
+// Server-only exports
+export { downloadTikTokVideo } from './downloader'
+export { fetchTikTokMetadata, pickTikTokThumbnail } from './metadata'
+export { downloadTikTokCommentsByUrl } from './comments'
+export * from './legacy-compat'

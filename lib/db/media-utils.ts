@@ -1,5 +1,4 @@
 import type { BasicVideoInfo } from '~/lib/media/types'
-import type { MediaSource } from '~/lib/media/providers/types'
 
 export interface MediaUpdateData {
 	title: string

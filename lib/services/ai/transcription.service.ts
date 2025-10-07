@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import type { AIModelId } from '~/lib/ai/models'
 
 export interface TranscriptionRequest {
 	audioPath: string
@@ -43,9 +42,9 @@ export class TranscriptionService {
 		try {
 			const {
 				audioPath,
-				language = 'auto',
-				model = this.defaultModel,
-				outputFormat = 'json'
+				language: _language = 'auto',
+				model: _model = this.defaultModel,
+				outputFormat: _outputFormat = 'json'
 			} = request
 
 			// 验证输入
@@ -116,8 +115,6 @@ export class TranscriptionService {
 		} = options
 
 		try {
-			let subtitles: SubtitleEntry[]
-
 			// 优化分段
 			const optimizedSegments = this.optimizeSegments(
 				transcriptionResult.segments,
@@ -125,7 +122,7 @@ export class TranscriptionService {
 			)
 
 			// 转换为字幕条目
-			subtitles = optimizedSegments.map((segment, index) => ({
+			const subtitles = optimizedSegments.map((segment, index) => ({
 				index: index + 1,
 				startTime: this.formatTimestamp(segment.start),
 				endTime: this.formatTimestamp(segment.end),

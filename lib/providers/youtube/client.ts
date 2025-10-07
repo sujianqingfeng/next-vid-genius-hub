@@ -1,3 +1,5 @@
+'use server'
+
 import { ProxyAgent, fetch as undiciFetch } from 'undici'
 import { Innertube, UniversalCache } from 'youtubei.js'
 import type { SessionOptions } from 'youtubei.js'

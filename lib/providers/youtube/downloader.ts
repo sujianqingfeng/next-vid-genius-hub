@@ -1,6 +1,9 @@
+'use server'
+
 import { createId } from '@paralleldrive/cuid2'
 import type { Innertube } from 'youtubei.js'
 import YTDlpWrap from 'yt-dlp-wrap'
+import { sleep } from '~/lib/utils/time'
 
 export async function downloadVideo(
 	url: string,
@@ -20,8 +23,6 @@ export async function downloadVideo(
 		outputPath,
 	])
 }
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mapYoutubeComment = (item: any) => {

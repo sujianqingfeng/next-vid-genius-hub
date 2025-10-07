@@ -45,19 +45,7 @@ export {
 	colorNameToHex,
 	isValidColor,
 	getComplementaryColor,
-	getTriadicColors,
-	parseVTT,
-	vttToTimestamps,
-	parseVTTTime,
-	secondsToVTTTime,
-	generateVTT,
-	mergeVTTTimestamps,
-	splitVTTTimestamps,
-	shiftVTTTimestamps,
-	scaleVTTTimestamps,
-	validateVTT,
-	srtToVTT,
-	vttToSRT
+	getTriadicColors
 } from './format'
 export * from './validation'
 

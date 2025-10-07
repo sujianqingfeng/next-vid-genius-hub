@@ -1,7 +1,8 @@
 import type { Innertube } from 'youtubei.js'
 import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.types'
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
-import { fetchYouTubeMetadata, extractVideoId } from './metadata'
+import { fetchYouTubeMetadata } from './metadata'
+import { extractVideoId } from './utils'
 import { getYouTubeClient } from './client'
 
 const clientCache = new Map<string, Promise<Innertube>>()
@@ -73,9 +74,8 @@ export const youtubeProvider: VideoProvider = {
 	},
 
 	// Additional YouTube-specific methods
-	async getChannelVideos(channelId: string, maxResults: number = 50): Promise<Array<{ id: string; title: string; url: string }>> {
+	async getChannelVideos(channelId: string, _maxResults: number = 50): Promise<Array<{ id: string; title: string; url: string }>> {
 		try {
-			const youtube = await resolveYouTubeClient({})
 			// Implementation would require YouTube API client
 			// This is a placeholder for future enhancement
 			console.log('Channel videos fetching not yet implemented')
@@ -86,9 +86,8 @@ export const youtubeProvider: VideoProvider = {
 		}
 	},
 
-	async searchVideos(query: string, maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
+	async searchVideos(query: string, _maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
 		try {
-			const youtube = await resolveYouTubeClient({})
 			// Implementation would require YouTube API client
 			// This is a placeholder for future enhancement
 			console.log('Video search not yet implemented')
