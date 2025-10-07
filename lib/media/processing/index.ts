@@ -106,7 +106,7 @@ export async function renderVideoWithSubtitles(
 		// Clean up temporary file
 		try {
 			await fs.unlink(tempAssPath)
-		} catch (cleanupError) {
+		} catch {
 			// Ignore cleanup errors
 		}
 	}

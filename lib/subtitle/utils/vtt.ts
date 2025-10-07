@@ -129,7 +129,7 @@ export function filterCuesByTimeRange(
 			// 检查字幕是否与时间范围有重叠
 			return cue.startTime < endTime && cue.endTime > startTime
 		})
-		.map(({ startTime, endTime, duration, ...cue }) => cue)
+		.map(({ ...cue }) => cue)
 }
 
 /**
@@ -140,7 +140,7 @@ export function findActiveCue(cues: VttCue[], currentTime: number): VttCue | nul
 
 	for (const cue of enrichedCues) {
 		if (currentTime >= cue.startTime && currentTime <= cue.endTime) {
-			const { startTime, endTime, duration, ...originalCue } = cue
+			const { ...originalCue } = cue
 			return originalCue
 		}
 	}
@@ -240,18 +240,16 @@ export function mergeOverlappingCues(cues: VttCue[]): VttCue[] {
 			}
 		} else {
 			// 添加当前片段并开始新的片段
-			const { startTime, endTime, duration, ...originalCue } = currentCue
 			mergedCues.push(currentCue)
 			currentCue = nextCue
 		}
 	}
 
 	// 添加最后一个片段
-	const { startTime, endTime, duration, ...originalCue } = currentCue
 	mergedCues.push(currentCue)
 
 	// 转换回原始格式
-	return mergedCues.map(({ startTime, endTime, duration, ...cue }) => cue)
+	return mergedCues.map(({ ...cue }) => cue)
 }
 
 /**

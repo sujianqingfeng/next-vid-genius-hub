@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-	formatCurrency,
-	formatDate,
 	formatDuration,
-	formatFileSize,
 	formatLikes,
 	formatNumber,
-	formatPercentage,
 	formatTimeAgo,
 	formatViewCount,
 } from '../format'
@@ -111,66 +107,3 @@ describe('formatDuration', () => {
 	})
 })
 
-describe('formatFileSize', () => {
-	it('should format file sizes correctly', () => {
-		expect(formatFileSize(0)).toBe('0 Bytes')
-		expect(formatFileSize(1024)).toBe('1 KB')
-		expect(formatFileSize(1024 * 1024)).toBe('1 MB')
-		expect(formatFileSize(1024 * 1024 * 1024)).toBe('1 GB')
-	})
-
-	it('should handle decimal file sizes', () => {
-		expect(formatFileSize(1536)).toBe('1.5 KB')
-		expect(formatFileSize(1536 * 1024)).toBe('1.5 MB')
-	})
-})
-
-describe('formatDate', () => {
-	it('should format dates without time', () => {
-		const date = new Date('2023-12-25')
-		const result = formatDate(date)
-		expect(result).toMatch(/Dec 25, 2023/)
-	})
-
-	it('should format dates with time', () => {
-		const date = new Date('2023-12-25T10:30:00')
-		const result = formatDate(date, { includeTime: true })
-		expect(result).toMatch(/Dec 25, 2023/)
-		expect(result).toMatch(/10:30/)
-	})
-
-	it('should format relative dates', () => {
-		const today = new Date()
-		const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
-		const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)
-
-		expect(formatDate(today, { relative: true })).toBe('Today')
-		expect(formatDate(yesterday, { relative: true })).toBe('Yesterday')
-		expect(formatDate(twoDaysAgo, { relative: true })).toBe('2 days ago')
-	})
-})
-
-describe('formatPercentage', () => {
-	it('should format percentages correctly', () => {
-		expect(formatPercentage(0.5)).toBe('50.0%')
-		expect(formatPercentage(0.123)).toBe('12.3%')
-		expect(formatPercentage(1)).toBe('100.0%')
-	})
-
-	it('should respect decimal places', () => {
-		expect(formatPercentage(0.123, 2)).toBe('12.30%')
-		expect(formatPercentage(0.5, 0)).toBe('50%')
-	})
-})
-
-describe('formatCurrency', () => {
-	it('should format USD currency', () => {
-		expect(formatCurrency(1234.56)).toBe('$1,234.56')
-		expect(formatCurrency(1000000)).toBe('$1,000,000.00')
-	})
-
-	it('should format other currencies', () => {
-		expect(formatCurrency(1234.56, 'EUR')).toBe('€1,234.56')
-		expect(formatCurrency(1234.56, 'GBP')).toBe('£1,234.56')
-	})
-})

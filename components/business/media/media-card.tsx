@@ -5,7 +5,6 @@ import {
 	Calendar,
 	Eye,
 	MessageCircle,
-	Play,
 	ThumbsUp,
 	Trash2,
 	User,

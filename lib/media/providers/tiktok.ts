@@ -1,7 +1,7 @@
 import { getTikTokInfo, pickTikTokThumbnail } from '~/lib/tiktok'
 
 import type { BasicVideoInfo } from '../types'
-import type { VideoProvider, VideoProviderContext } from './types'
+import type { VideoProvider } from './types'
 
 const TIKTOK_HOSTNAMES = ['tiktok.com', 'douyin.com', 'iesdouyin.com']
 
@@ -18,7 +18,7 @@ function isTikTokUrl(url: string): boolean {
 export const tiktokProvider: VideoProvider = {
 	id: 'tiktok',
 	matches: isTikTokUrl,
-	async fetchMetadata(url, _context: VideoProviderContext) {
+	async fetchMetadata(url) {
 		const info = await getTikTokInfo(url)
 		if (!info) {
 			throw new Error('Unable to retrieve TikTok metadata')

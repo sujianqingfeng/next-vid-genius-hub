@@ -7,7 +7,6 @@ import { Badge } from '~/components/ui/badge'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs'
-import { DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import type { SubtitleRenderConfig, SubtitleRenderPreset } from '~/lib/subtitle/types'
 
 interface SubtitleConfigControlsProps {

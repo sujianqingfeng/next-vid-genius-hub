@@ -123,15 +123,6 @@ async function transcribeWithLocalWhisper(
 /**
  * Transcribe using Cloudflare Workers AI
  */
-/**
- * Parse time string in MM:SS.mmm format to seconds
- */
-function parseTimeToSeconds(timeStr: string): number {
-	const [minutes, secondsWithMs] = timeStr.split(':')
-	const [seconds, milliseconds] = secondsWithMs.split('.')
-	return parseInt(minutes) * 60 + parseInt(seconds) + parseInt(milliseconds) / 1000
-}
-
 async function transcribeWithCloudflareProvider(
 	audioPath: string,
 	model: WhisperModel,

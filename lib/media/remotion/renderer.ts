@@ -53,8 +53,6 @@ export interface RenderProgressEvent {
 
 function estimateCommentHeight(comment: Comment): number {
   // Calculate estimated text height in pixels
-  const CONTAINER_HEIGHT = 320 // Fixed height from CommentsVideo.tsx
-
   const isChinesePrimary = comment.content && /[\u4e00-\u9fff]/.test(comment.content)
   const isChineseTranslation = comment.translatedContent && /[\u4e00-\u9fff]/.test(comment.translatedContent)
 

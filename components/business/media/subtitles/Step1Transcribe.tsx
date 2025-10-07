@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, Cloud, FileText, Loader2, Server } from 'lucide-react'
+import { AlertCircle, Cloud, Loader2, Server } from 'lucide-react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import {
@@ -14,8 +14,6 @@ import { Textarea } from '~/components/ui/textarea'
 import {
 	getAvailableModels,
 	getModelLabel,
-	getModelDescription,
-	getDefaultModel
 } from '~/lib/subtitle/config/models'
 import type { TranscriptionProvider, WhisperModel } from '~/lib/subtitle/config/models'
 

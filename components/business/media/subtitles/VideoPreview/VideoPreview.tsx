@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, type ReactNode } from 'react'
-import { Video, VideoOff, Loader2 } from 'lucide-react'
+import { Video, VideoOff } from 'lucide-react'
 import { useVideoPreview } from '~/lib/subtitle/hooks'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 import { hexToRgba } from '~/lib/subtitle/utils/color'
-import { UI_CONSTANTS } from '~/lib/subtitle/config/constants'
-import type { SubtitleRenderConfig, VttCue } from '~/lib/subtitle/types'
+import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { SubtitleOverlay } from '../SubtitleOverlay'
 import { HintTextOverlay } from '../HintTextOverlay'
 
@@ -57,13 +56,8 @@ export function VideoPreview({
 		currentTime,
 		activeCue,
 		containerHeight,
-		togglePlayPause,
-		seekTo,
 		formatTime,
-		calculateRelativeFontSize,
-		isPlaying,
 		duration,
-		progress,
 	} = useVideoPreview({
 		mediaId,
 		cues,
