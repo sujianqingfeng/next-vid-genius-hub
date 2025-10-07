@@ -4,26 +4,22 @@ import {
 	type ChangeEvent,
 	useState,
 	useEffect,
+	useRef,
 } from 'react'
 import {
 	AlertCircle,
 	Loader2,
-	SlidersHorizontal,
 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { Badge } from '~/components/ui/badge'
-import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
 import { SUBTITLE_RENDER_PRESETS, DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
-import { useVideoPreview } from '~/lib/subtitle/hooks'
 import type {
 	SubtitleRenderConfig,
 	SubtitleRenderPreset,
 	HintTextConfig,
 	TimeSegmentEffect,
 } from '~/lib/subtitle/types'
-import { VideoPreview } from './VideoPreview'
+import { VideoPreview } from './VideoPreview/VideoPreview'
 import { SubtitleConfigControls } from './SubtitleConfig/SubtitleConfigControls'
 import { HintTextConfigControls } from './HintTextConfig/HintTextConfigControls'
 import { TimeSegmentEffectsManager } from './TimeSegmentEffects/TimeSegmentEffectsManager'
@@ -76,12 +72,10 @@ export function Step3Render(props: Step3RenderProps) {
 
 	const selectedPreset = SUBTITLE_RENDER_PRESETS.find((preset) => preset.id === selectedPresetId)
 
-	// 视频预览管理
-	const { currentTime, duration } = useVideoPreview({
-		mediaId,
-		cues: translation ? [] : [], // cues will be parsed inside VideoPreview
-		isDisabled: isRendering,
-	})
+	// 视频状态管理
+	const [currentTime, setCurrentTime] = useState(0)
+	const [duration, setDuration] = useState(0)
+	const videoRef = useRef<HTMLVideoElement>(null)
 
 	// 预设点击处理
 	const handlePresetClick = (preset: SubtitleRenderPreset) => {
@@ -139,6 +133,28 @@ export function Step3Render(props: Step3RenderProps) {
 		onConfigChange({ ...config, timeSegmentEffects: effects })
 	}
 
+	// 预览时间点播放
+	const handlePlayPreview = (time: number) => {
+		if (videoRef.current) {
+			videoRef.current.currentTime = time
+		}
+	}
+
+	// 处理视频时长变化
+	const handleDurationChange = (newDuration: number) => {
+		setDuration(newDuration)
+	}
+
+	// 处理视频时间更新
+	const handleTimeUpdate = (newTime: number) => {
+		setCurrentTime(newTime)
+	}
+
+	// 处理视频元素引用
+	const handleVideoRef = (ref: HTMLVideoElement | null) => {
+		videoRef.current = ref
+	}
+
 	return (
 		<div className="space-y-6">
 			{/* 视频预览区域 */}
@@ -147,6 +163,9 @@ export function Step3Render(props: Step3RenderProps) {
 				translation={translation}
 				config={config}
 				isRendering={isRendering}
+				onTimeUpdate={handleTimeUpdate}
+				onDurationChange={handleDurationChange}
+				onVideoRef={handleVideoRef}
 			/>
 
 			{/* 配置控制区域 */}
@@ -178,6 +197,7 @@ export function Step3Render(props: Step3RenderProps) {
 					onChange={handleTimeSegmentEffectsChange}
 					mediaDuration={duration}
 					currentTime={currentTime}
+					onPlayPreview={handlePlayPreview}
 				/>
 
 				{/* 渲染按钮 */}

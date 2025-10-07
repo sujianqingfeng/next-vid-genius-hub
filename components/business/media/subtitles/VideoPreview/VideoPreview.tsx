@@ -17,6 +17,8 @@ interface VideoPreviewProps {
 	isRendering?: boolean
 	isDisabled?: boolean
 	onTimeUpdate?: (currentTime: number) => void
+	onDurationChange?: (duration: number) => void
+	onVideoRef?: (ref: HTMLVideoElement | null) => void
 }
 
 interface PreviewMessageProps {
@@ -43,7 +45,9 @@ export function VideoPreview({
 	config,
 	isRendering = false,
 	isDisabled = false,
-	onTimeUpdate
+	onTimeUpdate,
+	onDurationChange,
+	onVideoRef
 }: VideoPreviewProps) {
 	const cues = translation ? parseVttCues(translation) : []
 
@@ -66,6 +70,18 @@ export function VideoPreview({
 		isDisabled: isRendering,
 		onTimeUpdate,
 	})
+
+	// 通知父组件视频时长变化
+	useEffect(() => {
+		if (duration > 0) {
+			onDurationChange?.(duration)
+		}
+	}, [duration, onDurationChange])
+
+	// 通知父组件视频元素引用
+	useEffect(() => {
+		onVideoRef?.(videoRef.current)
+	}, [onVideoRef])
 
 	// 计算当前时间的效果
 	const currentTimeEffect = config.timeSegmentEffects?.find(effect =>

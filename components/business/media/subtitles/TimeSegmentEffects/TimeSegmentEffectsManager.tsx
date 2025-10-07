@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
 	Scissors,
 	VolumeX,
@@ -13,11 +13,11 @@ import {
 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
-import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
 import { Textarea } from '~/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { TimelineSelector } from './TimelineSelector'
 import type { TimeSegmentEffect } from '~/lib/subtitle/types'
 import { formatTimeForDisplay, isValidTimeRange } from '~/lib/subtitle/utils/time'
 
@@ -26,6 +26,7 @@ interface TimeSegmentEffectsManagerProps {
 	onChange: (effects: TimeSegmentEffect[]) => void
 	mediaDuration?: number
 	currentTime?: number
+	onPlayPreview?: (time: number) => void
 }
 
 /**
@@ -37,6 +38,7 @@ export function TimeSegmentEffectsManager({
 	onChange,
 	mediaDuration = 0,
 	currentTime = 0,
+	onPlayPreview,
 }: TimeSegmentEffectsManagerProps) {
 	const [isAddMode, setIsAddMode] = useState(false)
 	const [editingEffect, setEditingEffect] = useState<TimeSegmentEffect | null>(null)
@@ -144,7 +146,7 @@ export function TimeSegmentEffectsManager({
 					{/* 现有效果列表 */}
 					{effects.length > 0 && (
 						<div className="space-y-2">
-							{effects.map((effect, index) => (
+							{effects.map((effect) => (
 								<div
 									key={effect.id}
 									className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -221,6 +223,7 @@ export function TimeSegmentEffectsManager({
 									mediaDuration={mediaDuration}
 									onSave={handleSaveEffect}
 									onCancel={handleCancelEdit}
+									onPlayPreview={onPlayPreview}
 								/>
 							</CardContent>
 						</Card>
@@ -237,16 +240,26 @@ interface EffectEditFormProps {
 	mediaDuration: number
 	onSave: (effect: TimeSegmentEffect) => void
 	onCancel: () => void
+	onPlayPreview?: (time: number) => void
 }
 
 /**
  * 效果编辑表单组件
  */
-function EffectEditForm({ effect, existingEffects, mediaDuration, onSave, onCancel }: EffectEditFormProps) {
+function EffectEditForm({ effect, existingEffects, mediaDuration, onSave, onCancel, onPlayPreview }: EffectEditFormProps) {
 	const [formData, setFormData] = useState<TimeSegmentEffect>(effect)
 
-	const handleChange = (field: keyof TimeSegmentEffect, value: any) => {
+	// 同步外部传入的 effect 变化
+	useEffect(() => {
+		setFormData(effect)
+	}, [effect])
+
+	const handleChange = (field: keyof TimeSegmentEffect, value: string | number | boolean) => {
 		setFormData(prev => ({ ...prev, [field]: value }))
+	}
+
+	const handleTimeChange = (startTime: number, endTime: number) => {
+		setFormData(prev => ({ ...prev, startTime, endTime }))
 	}
 
 	const handleSubmit = () => {
@@ -255,33 +268,18 @@ function EffectEditForm({ effect, existingEffects, mediaDuration, onSave, onCanc
 
 	return (
 		<div className="space-y-4">
-			{/* 时间范围 */}
-			<div className="grid grid-cols-2 gap-4">
-				<div className="space-y-2">
-					<Label htmlFor="start-time">Start Time (seconds)</Label>
-					<Input
-						id="start-time"
-						type="number"
-						min={0}
-						max={mediaDuration}
-						step={0.1}
-						value={formData.startTime}
-						onChange={(e) => handleChange('startTime', Number(e.target.value))}
-					/>
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="end-time">End Time (seconds)</Label>
-					<Input
-						id="end-time"
-						type="number"
-						min={0}
-						max={mediaDuration}
-						step={0.1}
-						value={formData.endTime}
-						onChange={(e) => handleChange('endTime', Number(e.target.value))}
-					/>
-				</div>
-			</div>
+			{/* 时间轴选择器 */}
+			<TimelineSelector
+				startTime={formData.startTime}
+				endTime={formData.endTime}
+				duration={mediaDuration}
+				existingSegments={existingEffects
+					.filter(e => e.id !== effect.id)
+					.map(e => ({ startTime: e.startTime, endTime: e.endTime, id: e.id }))
+				}
+				onChange={handleTimeChange}
+				onPlayPreview={onPlayPreview}
+			/>
 
 			{/* 效果选项 */}
 			<div className="space-y-3">
