@@ -253,3 +253,68 @@ export function mergeOverlappingCues(cues: VttCue[]): VttCue[] {
 	// 转换回原始格式
 	return mergedCues.map(({ startTime, endTime, duration, ...cue }) => cue)
 }
+
+/**
+ * 标准化VTT时间戳格式
+ * 处理Cloudflare等服务的非标准格式（如 "00.000" 转换为 "00:00.000"）
+ */
+export function normalizeVttTimestamp(timestamp: string): string {
+	// 检查是否已经是标准格式（包含冒号）
+	if (timestamp.includes(':')) {
+		return timestamp
+	}
+
+	// 处理 Cloudflare 格式: "00.000" -> "00:00.000"
+	const match = timestamp.match(/^(\d+)\.(\d{3})$/)
+	if (match) {
+		const [, seconds, milliseconds] = match
+		const totalSeconds = parseInt(seconds, 10)
+		const minutes = Math.floor(totalSeconds / 60)
+		const remainingSeconds = totalSeconds % 60
+		return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}.${milliseconds}`
+	}
+
+	// 如果无法识别格式，返回原值
+	return timestamp
+}
+
+/**
+ * 标准化VTT内容格式
+ * 自动检测并转换非标准的时间戳格式
+ */
+export function normalizeVttContent(vttContent: string): string {
+	if (!vttContent || typeof vttContent !== 'string') {
+		return vttContent
+	}
+
+	const lines = vttContent.split(/\r?\n/)
+	const normalizedLines = lines.map(line => {
+		const trimmedLine = line.trim()
+
+		// 首先检查是否包含Cloudflare格式的时间戳（简单格式，缺少冒号）
+		const cloudflareTimeMatch = trimmedLine.match(/^(\d+)\.(\d{3})\s*-->\s*(\d+)\.(\d{3})$/)
+		if (cloudflareTimeMatch) {
+			const [, startSec, startMs, endSec, endMs] = cloudflareTimeMatch
+			const normalizedStart = normalizeVttTimestamp(`${startSec}.${startMs}`)
+			const normalizedEnd = normalizeVttTimestamp(`${endSec}.${endMs}`)
+			return `${normalizedStart} --> ${normalizedEnd}`
+		}
+
+		// 检查是否是标准时间戳行
+		const timeMatch = trimmedLine.match(TIME_CONSTANTS.VTT_TIMESTAMP_FORMAT)
+		if (timeMatch) {
+			const [, start, end] = timeMatch
+			const normalizedStart = normalizeVttTimestamp(start)
+			const normalizedEnd = normalizeVttTimestamp(end)
+
+			// 替换原始行中的时间戳
+			return line
+				.replace(start, normalizedStart)
+				.replace(end, normalizedEnd)
+		}
+
+		return line
+	})
+
+	return normalizedLines.join('\n')
+}

@@ -7,21 +7,38 @@ import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
 
 /**
  * 解析VTT时间戳为秒数
- * 支持格式: "00:00.000" 或 "00:00:00.000"
+ * 支持格式: "MM:SS.mmm" 或 "HH:MM:SS.mmm"
  */
 export function parseVttTimestamp(timestamp: string): number {
-	const match = timestamp.match(TIME_CONSTANTS.FULL_TIMESTAMP_FORMAT)
-	if (!match) return 0
+	// 首先尝试完整格式 HH:MM:SS.mmm
+	let match = timestamp.match(TIME_CONSTANTS.FULL_TIMESTAMP_FORMAT)
+	if (match) {
+		const [, hours, minutes, seconds, milliseconds] = match
+		const ms = milliseconds.padEnd(3, '0')
 
-	const [, hours, minutes, seconds, milliseconds] = match
-	const ms = milliseconds.padEnd(3, '0')
+		return (
+			parseInt(hours, 10) * 3600 +
+			parseInt(minutes, 10) * 60 +
+			parseInt(seconds, 10) +
+			parseInt(ms, 10) / 1000
+		)
+	}
 
-	return (
-		parseInt(hours, 10) * 3600 +
-		parseInt(minutes, 10) * 60 +
-		parseInt(seconds, 10) +
-		parseInt(ms, 10) / 1000
-	)
+	// 尝试简短格式 MM:SS.mmm
+	const shortMatch = timestamp.match(/^(\d+):(\d+)\.(\d{1,3})$/)
+	if (shortMatch) {
+		const [, minutes, seconds, milliseconds] = shortMatch
+		const ms = milliseconds.padEnd(3, '0')
+
+		return (
+			parseInt(minutes, 10) * 60 +
+			parseInt(seconds, 10) +
+			parseInt(ms, 10) / 1000
+		)
+	}
+
+	// 如果都无法匹配，返回0
+	return 0
 }
 
 /**

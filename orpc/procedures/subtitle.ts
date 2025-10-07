@@ -28,7 +28,8 @@ import {
 import {
 	parseVttCues,
 	serializeVttCues,
-	validateVttContent
+	validateVttContent,
+	normalizeVttContent
 } from '~/lib/subtitle/utils/vtt'
 import {
 	type TranscriptionProvider,
@@ -99,6 +100,24 @@ export const transcribe = os
 			})
 			vttContent = transcriptionResult.vtt
 			transcriptionWords = transcriptionResult.words
+		}
+
+		// 验证并标准化VTT格式
+		const validation = validateVttContent(vttContent)
+		if (!validation.isValid) {
+			logger.warn('transcription', `VTT format validation failed for ${provider}: ${validation.errors.join(', ')}`)
+
+			// 尝试标准化格式
+			vttContent = normalizeVttContent(vttContent)
+
+			// 重新验证
+			const revalidation = validateVttContent(vttContent)
+			if (revalidation.isValid) {
+				logger.info('transcription', `Successfully normalized VTT format for ${provider}`)
+			} else {
+				logger.error('transcription', `Failed to normalize VTT format for ${provider}: ${revalidation.errors.join(', ')}`)
+				throw new Error(`Invalid VTT format from ${provider} transcription: ${revalidation.errors.join(', ')}`)
+			}
 		}
 
 		await db

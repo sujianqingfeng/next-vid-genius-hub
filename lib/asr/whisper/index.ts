@@ -168,21 +168,6 @@ async function transcribeWithCloudflareProvider(
 
 	logger.info('transcription', `Cloudflare transcription completed: ${result.vtt.length} characters${result.words ? `, ${result.words.length} words` : ''}`)
 
-	// Print Cloudflare transcription results for debugging
-	console.log('\n=== Cloudflare Transcription Results ===')
-	console.log('VTT Content:')
-	console.log(result.vtt)
-	console.log('\nWords Array:')
-	if (result.words && result.words.length > 0) {
-		console.log(`Total words: ${result.words.length}`)
-		result.words.forEach((word, index) => {
-			console.log(`${index + 1}. "${word.word}" (${word.start.toFixed(2)}s - ${word.end.toFixed(2)}s)`)
-		})
-	} else {
-		console.log('No word timing data available')
-	}
-	console.log('=== End Cloudflare Transcription Results ===\n')
-
 	return result
 }
 
