@@ -26,8 +26,8 @@ const Player = dynamic<PlayerPropsWithoutZod<CommentVideoInputProps>>(
 
 const FPS = 30
 const COVER_DURATION_SECONDS = 3
-const MIN_COMMENT_DURATION_SECONDS = 3
-const MAX_COMMENT_DURATION_SECONDS = 8
+const MIN_COMMENT_DURATION_SECONDS = 4
+const MAX_COMMENT_DURATION_SECONDS = 15
 
 interface RemotionPreviewCardProps {
 	videoInfo?: (Partial<VideoInfo> & { translatedTitle?: string | null }) | null
@@ -39,11 +39,11 @@ interface RemotionPreviewCardProps {
 }
 
 function estimateCommentDurationSeconds(comment: Comment): number {
-	const baseSeconds = 2.8
+	const baseSeconds = 3.5
 	const englishLength = comment.content?.length ?? 0
 	const translatedLength = comment.translatedContent?.length ?? 0
-	const weightedChars = englishLength + translatedLength * 1.2
-	const additionalSeconds = weightedChars / 90
+	const weightedChars = englishLength + translatedLength * 1.5
+	const additionalSeconds = weightedChars / 15
 	const estimated = baseSeconds + additionalSeconds
 	return Math.min(
 		MAX_COMMENT_DURATION_SECONDS,
