@@ -8,11 +8,13 @@ import { transcribeWithWhisper } from '~/lib/asr/whisper'
 import { logger } from '~/lib/logger'
 import {
 	OPERATIONS_DIR,
+} from '~/lib/config/app.config'
+import {
 	WHISPER_CPP_PATH,
 	RENDERED_VIDEO_FILENAME,
 	CLOUDFLARE_ACCOUNT_ID,
 	CLOUDFLARE_API_TOKEN,
-} from '~/lib/constants'
+} from '~/lib/constants/app.constants'
 import { db, schema, type TranscriptionWord } from '~/lib/db'
 import { renderVideoWithSubtitles } from '~/lib/media'
 import {

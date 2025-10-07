@@ -245,16 +245,3 @@ export class ProviderFactory {
 	}
 }
 
-// Legacy compatibility exports
-export const resolveVideoProvider = ProviderFactory.resolveProvider
-export const getVideoProviders = ProviderFactory.getAllProviders
-export const providerToSource = (providerId: string): 'youtube' | 'tiktok' | 'unknown' => {
-	switch (providerId) {
-		case 'youtube':
-			return 'youtube'
-		case 'tiktok':
-			return 'tiktok'
-		default:
-			return 'unknown'
-	}
-}

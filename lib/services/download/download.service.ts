@@ -13,7 +13,7 @@ import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { db, schema, createMediaUpdateData } from '~/lib/db'
 import { extractAudio } from '~/lib/media'
-import { resolveVideoProvider, providerToSource } from '~/lib/providers/provider-factory'
+import { ProviderFactory } from '~/lib/providers/provider-factory'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { fileExists as fileExists } from '~/lib/utils/file'
 import { downloadVideo } from '~/lib/providers/youtube/downloader'
@@ -41,7 +41,7 @@ export class DownloadService implements IDownloadService {
 			const audioExists = await fileExists(_context.audioPath)
 
 			// 3. 获取平台提供者和元数据
-			const provider = resolveVideoProvider(url)
+			const provider = ProviderFactory.resolveProvider(url)
 			const _providerContext: VideoProviderContext = {
 				proxyUrl: this.proxyUrl,
 			}
@@ -51,36 +51,36 @@ export class DownloadService implements IDownloadService {
 			// 4. 下载视频（如果不存在）
 			if (!videoExists) {
 				downloadProgress = { stage: 'downloading', progress: 30 }
-				metadata = await this.fetchMetadata(url, context)
-				await this.downloadVideo(url, quality, context.videoPath)
+				metadata = await this.fetchMetadata(url, _context)
+				await this.downloadVideo(url, quality, _context.videoPath)
 			}
 
 			// 5. 提取音频（如果不存在）
 			if (!audioExists) {
 				downloadProgress = { stage: 'extracting_audio', progress: 60 }
-				await this.extractAudioFromVideo(context.videoPath, context.audioPath)
+				await this.extractAudioFromVideo(_context.videoPath, _context.audioPath)
 			}
 
 			// 6. 确保我们有视频信息
 			if (!downloadRecord && !metadata) {
 				downloadProgress = { stage: 'processing_metadata', progress: 80 }
-				metadata = await this.fetchMetadata(url, context)
+				metadata = await this.fetchMetadata(url, _context)
 			}
 
 			// 7. 更新数据库记录
 			downloadProgress = { stage: 'processing_metadata', progress: 90 }
-			await this.updateDatabaseRecord(id, url, metadata, downloadRecord, context, quality)
+			await this.updateDatabaseRecord(id, url, metadata, downloadRecord, _context, quality)
 
 			downloadProgress = { stage: 'completed', progress: 100 }
 
 			// 8. 返回结果
 			const title = metadata?.title ?? downloadRecord?.title ?? 'video'
-			const source = metadata?.source ?? providerToSource(provider.id)
+			const source = metadata?.source ?? this.getProviderSource(provider.id)
 
 			return {
 				id,
-				videoPath: context.videoPath,
-				audioPath: context.audioPath,
+				videoPath: _context.videoPath,
+				audioPath: _context.audioPath,
 				title,
 				source,
 			}
@@ -111,7 +111,7 @@ export class DownloadService implements IDownloadService {
 	}
 
 	async fetchMetadata(url: string, context: DownloadContext): Promise<BasicVideoInfo | null> {
-		const provider = resolveVideoProvider(url)
+		const provider = ProviderFactory.resolveProvider(url)
 		const providerContext: VideoProviderContext = {
 			proxyUrl: this.proxyUrl,
 		}
@@ -172,6 +172,17 @@ export class DownloadService implements IDownloadService {
 
 	private async extractAudioFromVideo(videoPath: string, audioPath: string): Promise<void> {
 		await extractAudio(videoPath, audioPath)
+	}
+
+	private getProviderSource(providerId: string): 'youtube' | 'tiktok' | 'unknown' {
+		switch (providerId) {
+			case 'youtube':
+				return 'youtube'
+			case 'tiktok':
+				return 'tiktok'
+			default:
+				return 'unknown'
+		}
 	}
 
 	private async updateDatabaseRecord(

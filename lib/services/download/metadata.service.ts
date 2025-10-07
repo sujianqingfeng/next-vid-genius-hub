@@ -1,6 +1,6 @@
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
-import { resolveVideoProvider } from '~/lib/providers/provider-factory'
+import { ProviderFactory } from '~/lib/providers/provider-factory'
 
 export class MetadataService {
 	/**
@@ -8,7 +8,7 @@ export class MetadataService {
 	 */
 	async fetchVideoMetadata(url: string, context?: VideoProviderContext): Promise<BasicVideoInfo | null> {
 		try {
-			const provider = resolveVideoProvider(url)
+			const provider = ProviderFactory.resolveProvider(url)
 			return await provider.fetchMetadata(url, context || {})
 		} catch (error) {
 			console.error('Failed to fetch video metadata:', error)

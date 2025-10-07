@@ -8,8 +8,10 @@ import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import {
 	OPERATIONS_DIR,
 	PROXY_URL,
+} from '~/lib/config/app.config'
+import {
 	VIDEO_WITH_INFO_FILENAME,
-} from '~/lib/constants'
+} from '~/lib/constants/app.constants'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithRemotion } from '~/lib/media'
 import type { RenderProgressEvent } from '~/lib/media'

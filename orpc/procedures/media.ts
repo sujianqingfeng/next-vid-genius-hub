@@ -3,7 +3,7 @@ import path from 'node:path'
 import { os } from '@orpc/server'
 import { desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { OPERATIONS_DIR } from '~/lib/constants'
+import { OPERATIONS_DIR } from '~/lib/config/app.config'
 import { db, schema } from '~/lib/db'
 
 export const list = os
