@@ -43,4 +43,5 @@ export const media = sqliteTable('media', {
 	videoWithSubtitlesPath: text('video_with_subtitles_path'),
 	videoWithInfoPath: text('video_with_info_path'),
 	comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
+	commentsDownloadedAt: integer('comments_downloaded_at', { mode: 'timestamp' }),
 })

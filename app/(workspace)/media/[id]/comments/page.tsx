@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Calendar, Download, Eye, FileText, Film, Heart, LanguagesIcon, MessageCircle, User } from 'lucide-react'
+import { ArrowLeft, Calendar, Copy, Download, Eye, FileText, Film, Heart, LanguagesIcon, MessageCircle, User } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -24,6 +24,7 @@ import {
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
 import { AIModelId, AIModelIds } from '~/lib/ai'
+import { extractVideoId } from '~/lib/youtube/utils'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { formatNumber } from '~/lib/utils'
 
@@ -91,6 +92,18 @@ export default function CommentsPage() {
 	})
 
 	const comments = mediaQuery.data?.comments || []
+
+	// Extract video source ID from URL
+	const getVideoSourceId = () => {
+		if (!mediaQuery.data?.url) return id
+
+		if (mediaQuery.data.source === 'youtube') {
+			return extractVideoId(mediaQuery.data.url)
+		}
+
+		// For TikTok or other sources, return the URL or a processed identifier
+		return mediaQuery.data.url
+	}
 
 	return (
 		<div className="min-h-screen bg-background">
@@ -345,6 +358,50 @@ export default function CommentsPage() {
 									>
 										{renderMutation.isPending ? 'Rendering...' : 'Start Render'}
 									</Button>
+								</div>
+
+								{/* Disclaimer */}
+								<div className="pt-4 border-t">
+									<div className="space-y-2">
+										<p className="text-xs text-muted-foreground leading-relaxed">
+											本视频仅用于娱乐目的，相关评论内容不代表本平台观点。请理性观看。
+										</p>
+										<div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+											<span>来源: <code className="bg-muted px-1 rounded text-xs">{getVideoSourceId()}</code></span>
+											{mediaQuery.data.comments && mediaQuery.data.comments.length > 0 && mediaQuery.data.commentsDownloadedAt && (
+												<span>采集: {new Date(mediaQuery.data.commentsDownloadedAt).toLocaleDateString('zh-CN')}</span>
+											)}
+										</div>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => {
+												const disclaimerText = `内容声明
+
+本视频仅用于娱乐目的，相关评论内容不代表本平台观点。
+请理性观看，请勿过度解读或传播不实信息。
+
+来源视频: ${getVideoSourceId()}
+${mediaQuery.data.comments && mediaQuery.data.comments.length > 0 && mediaQuery.data.commentsDownloadedAt
+	? `评论采集时间: ${new Date(mediaQuery.data.commentsDownloadedAt).toLocaleString('zh-CN', {
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+	})}`
+	: ''
+}`;
+
+												navigator.clipboard.writeText(disclaimerText);
+												toast.success('声明已复制到剪贴板');
+											}}
+											className="h-7 px-2 text-xs"
+										>
+											<Copy className="w-3 h-3 mr-1" />
+											复制声明
+										</Button>
+									</div>
 								</div>
 							</CardContent>
 						</Card>

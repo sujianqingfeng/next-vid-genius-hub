@@ -1,0 +1,1 @@
+ALTER TABLE `media` ADD `comments_downloaded_at` integer;

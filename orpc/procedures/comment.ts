@@ -70,6 +70,7 @@ export const downloadComments = os
 			.set({
 				comments,
 				commentCount: comments.length,
+				commentsDownloadedAt: new Date(),
 			})
 			.where(eq(schema.media.id, mediaId))
 
