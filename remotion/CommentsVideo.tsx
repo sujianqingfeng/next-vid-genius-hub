@@ -186,7 +186,10 @@ const MainLayout: React.FC<{
   fps: number
 }> = ({ videoInfo, comments, sequences, fps }) => {
   return (
-    <AbsoluteFill style={containerStyle}>
+    <AbsoluteFill style={{
+      ...containerStyle,
+      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.04))',
+    }}>
       <div style={topSectionStyle}>
         <InfoPanel videoInfo={videoInfo} commentCount={comments.length} />
         <VideoPanel />
@@ -285,25 +288,89 @@ const CoverSlide: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.04))',
+        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.03))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         color: palette.textPrimary,
         fontFamily: baseFont,
-        padding: '0 120px',
+        padding: '0 80px',
         boxSizing: 'border-box',
         opacity,
       }}
     >
-      <div style={{ maxWidth: 960, textAlign: 'center', display: 'grid', gap: 24 }}>
-        <p style={{ margin: 0, fontSize: 24, color: palette.textSecondary }}>{videoInfo.title}</p>
-        <h2 style={{ margin: 0, fontSize: 60, fontWeight: 700, letterSpacing: '-0.03em' }}>
+      <div style={{
+        maxWidth: 1000,
+        width: '100%',
+        textAlign: 'center',
+      }}>
+        {/* Main Title */}
+        <h1
+          style={{
+            margin: '0 0 32px 0',
+            fontSize: 68,
+            fontWeight: 600,
+            letterSpacing: '-0.025em',
+            lineHeight: 1.15,
+            color: palette.textPrimary,
+          }}
+        >
           {videoInfo.translatedTitle ?? videoInfo.title}
-        </h2>
-        <p style={{ margin: 0, fontSize: 22, color: palette.textMuted }}>
-          来自 {videoInfo.author ?? '未知'} · {formatCount(videoInfo.viewCount)} 次观看 · 外网真实评论
-        </p>
+        </h1>
+
+        {/* Original Title (if translated) */}
+        {videoInfo.translatedTitle && videoInfo.translatedTitle !== videoInfo.title && (
+          <p style={{
+            margin: '0 0 48px 0',
+            fontSize: 28,
+            color: palette.textSecondary,
+            fontWeight: 400,
+            lineHeight: 1.4,
+          }}>
+            {videoInfo.title}
+          </p>
+        )}
+
+        {/* Simple divider */}
+        <div style={{
+          width: '80px',
+          height: '2px',
+          backgroundColor: palette.accent,
+          margin: '0 auto 48px',
+          opacity: 0.6,
+        }} />
+
+        {/* Meta Information */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 32,
+          fontSize: 20,
+          color: palette.textMuted,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 500 }}>{formatCount(videoInfo.viewCount)}</span>
+            <span>观看</span>
+          </div>
+          <span>·</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 500 }}>{commentCount}</span>
+            <span>评论</span>
+          </div>
+          <span>·</span>
+          <span>@{videoInfo.author ?? '未知'}</span>
+        </div>
+
+        {/* Source indicator */}
+        <div style={{
+          marginTop: 16,
+          fontSize: 18,
+          color: palette.textMuted,
+          opacity: 0.7,
+        }}>
+          外网真实评论 · TubeTweet
+        </div>
       </div>
     </AbsoluteFill>
   )
