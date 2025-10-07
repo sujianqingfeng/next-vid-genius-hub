@@ -9,8 +9,6 @@ interface PageHeaderProps {
 	backText?: string
 	/** 页面标题 */
 	title?: string
-	/** 页面描述 */
-	description?: string
 	/** 右侧内容 */
 	rightContent?: React.ReactNode
 	/** 是否显示返回按钮 */
@@ -27,7 +25,6 @@ export function PageHeader({
 	backHref,
 	backText = 'Back',
 	title,
-	description,
 	rightContent,
 	showBackButton = true,
 	buttonVariant = 'outline',
@@ -45,19 +42,12 @@ export function PageHeader({
 						</Link>
 					</Button>
 				)}
-				{(title || description) && (
+				{title && (
 					<>
 						{showBackButton && <div className="h-6 w-px bg-border" />}
-						<div className="space-y-1">
-							{title && (
-								<h1 className="text-xl font-semibold tracking-tight">
-									{title}
-								</h1>
-							)}
-							{description && (
-								<p className="text-muted-foreground">{description}</p>
-							)}
-						</div>
+						<h1 className="text-xl font-semibold tracking-tight">
+							{title}
+						</h1>
 					</>
 				)}
 			</div>
@@ -69,11 +59,11 @@ export function PageHeader({
 
 	if (withBackground) {
 		return (
-			<div className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 mb-6">
-				<div className="py-6">{headerContent}</div>
+			<div className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 mb-4">
+				<div className="py-3 px-4">{headerContent}</div>
 			</div>
 		)
 	}
 
-	return <div className="mb-8">{headerContent}</div>
+	return <div className="mb-6 px-4">{headerContent}</div>
 }

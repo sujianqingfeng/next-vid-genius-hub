@@ -44,7 +44,7 @@ function MediaThumbnail({
 							src={media.thumbnail}
 							alt={media.title}
 							fill
-							className={`object-cover transition-all duration-300 group-hover:scale-105 ${
+							className={`object-cover ${
 								imageLoading ? 'blur-sm' : 'blur-0'
 							}`}
 							onLoad={() => setImageLoading(false)}
@@ -58,13 +58,7 @@ function MediaThumbnail({
 							<Skeleton className="h-full w-full" />
 						</div>
 					)}
-					{/* 播放按钮覆盖层 */}
-					<div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-						<div className="bg-black/50 rounded-full p-3">
-							<Play className="h-6 w-6 text-white fill-white" />
-						</div>
-					</div>
-				</>
+					</>
 			) : (
 				<div className="flex h-full items-center justify-center">
 					<Video className="h-12 w-12 text-muted-foreground" />
@@ -88,7 +82,7 @@ function MediaInfo({ media }: { media: typeof schema.media.$inferSelect }) {
 	return (
 		<CardHeader className="p-4 pb-2">
 			<div className="space-y-2">
-				<CardTitle className="text-base font-semibold line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+				<CardTitle className="text-base font-semibold line-clamp-2 leading-tight">
 					{media.title}
 				</CardTitle>
 				{media.translatedTitle && (
@@ -185,7 +179,7 @@ export function MediaCard({ media }: MediaCardProps) {
 	}
 
 	return (
-		<Card className="group overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] border-border/50 bg-card/50 backdrop-blur-sm pt-0">
+		<Card className="overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm pt-0">
 			<Link
 				href={`/media/${media.id}`}
 				className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"

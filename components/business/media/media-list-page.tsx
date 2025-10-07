@@ -47,7 +47,6 @@ export function MediaListPage() {
 				backHref="/"
 				showBackButton={false}
 				title="Media Library"
-				description="Manage and organize your video content"
 				withBackground
 				rightContent={
 					<Link href="/media/download">
