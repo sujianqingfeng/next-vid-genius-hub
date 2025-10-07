@@ -191,7 +191,13 @@ const MainLayout: React.FC<{
         <InfoPanel videoInfo={videoInfo} commentCount={comments.length} />
         <VideoPanel />
       </div>
-      <div style={commentPanelStyle}>
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 24,
+        minHeight: 420,
+      }}>
         <span style={sectionLabelStyle}>Comment Highlights</span>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {sequences.map(({ startFrame, durationInFrames, comment }) => (
@@ -219,7 +225,13 @@ const InfoPanel: React.FC<{ videoInfo: CommentVideoInputProps['videoInfo']; comm
   commentCount,
 }) => {
   return (
-    <div style={infoPanelStyle}>
+    <div style={{
+      width: layout.infoPanelWidth,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      gap: 24,
+    }}>
       <div>
         <div style={{ ...sectionLabelStyle, color: palette.accent }}>Creator Digest</div>
         <h1
@@ -248,7 +260,12 @@ const InfoPanel: React.FC<{ videoInfo: CommentVideoInputProps['videoInfo']; comm
 
 const VideoPanel: React.FC = () => {
   return (
-    <div style={videoPanelStyle}>
+    <div style={{
+      width: layout.cardPaddingX * 2 + VIDEO_WIDTH,
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}>
       <VideoPlaceholder />
     </div>
   )
