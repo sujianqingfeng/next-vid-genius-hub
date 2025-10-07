@@ -7,7 +7,7 @@ import { getCompositions, renderMedia } from '@remotion/renderer'
 import { ProxyAgent, fetch as undiciFetch } from 'undici'
 import { execa } from 'execa'
 import type { Comment, VideoInfo } from '../types'
-import { layoutConstants } from '../../../remotion/CommentsVideo'
+import { layoutConstants } from '../../../remotion/layout-constants'
 import { buildCommentTimeline, REMOTION_FPS } from './durations'
 import { PROXY_URL } from '~/lib/constants'
 
@@ -220,6 +220,12 @@ async function composeWithSourceVideo({
   onProgress?: (event: RenderProgressEvent) => void
 }): Promise<void> {
   const video = layoutConstants.video
+
+  // Defensive check to ensure video properties exist
+  if (!video || video.width === undefined || video.height === undefined || video.x === undefined || video.y === undefined) {
+    throw new Error('Video layout constants are not properly defined. Missing width, height, x, or y properties.')
+  }
+
   onProgress?.({ stage: 'compose', progress: 0 })
 
   const delayMs = Math.round(coverDurationSeconds * 1000)

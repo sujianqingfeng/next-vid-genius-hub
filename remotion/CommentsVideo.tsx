@@ -11,6 +11,7 @@ import {
   useCurrentFrame,
 } from 'remotion'
 import type { CommentVideoInputProps } from './types'
+import { layoutConstants, VIDEO_WIDTH, VIDEO_HEIGHT } from './layout-constants'
 
 const layout = {
   paddingX: 64,
@@ -22,9 +23,6 @@ const layout = {
   cardPaddingX: 24,
   cardPaddingY: 24,
 }
-
-const VIDEO_WIDTH = 720
-const VIDEO_HEIGHT = 405
 
 const palette = {
   background: '#f8fafc',
@@ -135,8 +133,6 @@ function isLikelyChinese(text?: string | null): boolean {
   return Boolean(text && chineseCharRegex.test(text))
 }
 
-const VIDEO_X = layout.paddingX + layout.infoPanelWidth + layout.columnGap + layout.cardPaddingX
-const VIDEO_Y = layout.paddingY + layout.cardPaddingY
 
 export const CommentsVideo: React.FC<CommentVideoInputProps> = ({
   videoInfo,
@@ -718,11 +714,3 @@ function formatCount(value?: number): string {
   return new Intl.NumberFormat('en-US').format(value)
 }
 
-export const layoutConstants = {
-  video: {
-    width: VIDEO_WIDTH,
-    height: VIDEO_HEIGHT,
-    x: VIDEO_X,
-    y: VIDEO_Y,
-  },
-}
