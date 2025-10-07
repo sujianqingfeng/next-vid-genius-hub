@@ -462,7 +462,7 @@ const ScrollingCommentWithTranslation: React.FC<{
         {
           extrapolateLeft: 'clamp',
           extrapolateRight: 'clamp',
-          easing: Easing.inOutCubic,
+          easing: Easing.ease,
         }
       )
     : 0
