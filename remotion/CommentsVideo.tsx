@@ -1,4 +1,6 @@
-import type { CSSProperties } from 'react'
+"use client"
+
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { ThumbsUp } from 'lucide-react'
 import {
   AbsoluteFill,
@@ -299,30 +301,30 @@ const ScrollingCommentWithTranslation: React.FC<{
 }> = ({ comment, displayCommentStyle, durationInFrames, fps }) => {
   const frame = useCurrentFrame()
 
-  // Reduce fade times to give more time for scrolling
-  const fadeTime = Math.min(fps * 0.8, 12) // 0.8 seconds or 12 frames, whichever is smaller
-  const scrollStart = fadeTime // Start scrolling immediately after fade-in
-  const scrollEnd = durationInFrames - fadeTime // Stop scrolling just before fade-out
-  const effectiveScrollDuration = scrollEnd - scrollStart
+  // Fade timings and a short dwell so we reach the bottom before switch
+  const fadeTime = Math.min(fps * 0.8, 12) // ~0.4s at 30fps, capped at 12
+  const dwellFrames = Math.round(0.3 * fps) // 0.3s pause at end
+  const scrollStart = fadeTime
+  const scrollEnd = Math.max(durationInFrames - fadeTime - dwellFrames, scrollStart + 1)
+  const effectiveScrollDuration = Math.max(1, scrollEnd - scrollStart)
 
   const isChinesePrimary = isLikelyChinese(comment.content)
   const isChineseTranslation = isLikelyChinese(comment.translatedContent)
 
-  // Calculate combined text height
+  // Estimated height (fallback) based on font metrics and rough line count
   const fontSize = displayCommentStyle.fontSize as number
   const lineHeight = displayCommentStyle.lineHeight as number
   const lineHeightPx = fontSize * lineHeight
+  const mainTextLines = Math.ceil(comment.content.length / 50)
+  let estimatedTotalHeight = mainTextLines * lineHeightPx
 
-  const mainTextLines = Math.ceil(comment.content.length / 50) // Rough estimation
-  let totalHeight = mainTextLines * lineHeightPx
-
-  let translationStyle = null
+  let translationStyle: CSSProperties | null = null
   if (comment.translatedContent && comment.translatedContent !== comment.content) {
     const translationFontSize = isChineseTranslation ? 52 : 24
     const translationLineHeight = isChineseTranslation ? 1.4 : 1.48
     const translationLineHeightPx = translationFontSize * translationLineHeight
     const translationLines = Math.ceil(comment.translatedContent.length / 50)
-    totalHeight += 20 + translationLines * translationLineHeightPx // 20px gap + translation height
+    estimatedTotalHeight += 20 + translationLines * translationLineHeightPx
 
     translationStyle = {
       marginTop: 20,
@@ -337,46 +339,72 @@ const ScrollingCommentWithTranslation: React.FC<{
     }
   }
 
-  // Fixed container height - use most of the available space in the comment panel
-  const CONTAINER_HEIGHT = 320 // Fixed height for scrolling content
-  const needsScroll = totalHeight > CONTAINER_HEIGHT
+  // Measure real content height to avoid under-estimation for large Chinese text
+  const CONTAINER_HEIGHT = 320
+  const containerRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [measured, setMeasured] = useState<{ content: number; container: number }>({ content: 0, container: CONTAINER_HEIGHT })
 
-  let transform = 'translateY(0px)'
-  if (needsScroll && frame >= scrollStart && frame < scrollEnd) {
-    // Dynamic scroll speed based on content length and available time
-    const scrollProgress = (frame - scrollStart) / effectiveScrollDuration
-    const maxScroll = totalHeight - CONTAINER_HEIGHT
+  useLayoutEffect(() => {
+    const measure = () => {
+      const containerH = containerRef.current?.clientHeight ?? CONTAINER_HEIGHT
+      const contentH = contentRef.current?.scrollHeight ?? 0
+      setMeasured((prev) => (prev.content === contentH && prev.container === containerH ? prev : { content: contentH, container: containerH }))
+    }
+    measure()
+    const raf = requestAnimationFrame(measure)
+    // Observe size changes of either container or content
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : undefined
+    if (containerRef.current) ro?.observe(containerRef.current)
+    if (contentRef.current) ro?.observe(contentRef.current)
+    return () => {
+      cancelAnimationFrame(raf)
+      ro?.disconnect()
+    }
+    // Re-measure when content or language style changes
+  }, [comment.content, comment.translatedContent, isChineseTranslation])
 
-    // Ensure we complete the scroll even if time is tight
-    const currentScroll = Math.min(scrollProgress * maxScroll, maxScroll)
-    transform = `translateY(-${currentScroll}px)`
+  const containerH = measured.container || CONTAINER_HEIGHT
+  const effectiveContentH = measured.content || estimatedTotalHeight
+  const maxScroll = Math.max(0, effectiveContentH - containerH)
+
+  let currentScroll = 0
+  if (maxScroll > 0) {
+    if (frame >= scrollEnd) {
+      currentScroll = maxScroll
+    } else if (frame >= scrollStart) {
+      const t = (frame - scrollStart) / effectiveScrollDuration
+      currentScroll = Math.min(maxScroll, t * maxScroll)
+    }
   }
 
   return (
-    <div style={{
-      height: CONTAINER_HEIGHT,
-      position: 'relative',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 0
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        height: CONTAINER_HEIGHT,
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0,
+      }}
+    >
       <div
+        ref={contentRef}
         style={{
-          transform,
-          transition: 'transform 0.05s linear', // Faster transition for smoother scrolling
+          transform: `translateY(-${currentScroll}px)`,
+          // No CSS transition: frame-driven for exact positioning
           display: 'flex',
           flexDirection: 'column',
-          gap: 0
+          gap: 0,
         }}
       >
         <div style={{ ...displayCommentStyle, whiteSpace: 'pre-wrap', marginBottom: 0 }}>
           {comment.content}
         </div>
         {comment.translatedContent && comment.translatedContent !== comment.content ? (
-          <div style={translationStyle}>
-            {comment.translatedContent}
-          </div>
+          <div style={translationStyle ?? undefined}>{comment.translatedContent}</div>
         ) : null}
       </div>
     </div>

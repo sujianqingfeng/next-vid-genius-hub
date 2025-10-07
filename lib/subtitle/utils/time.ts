@@ -11,7 +11,7 @@ import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
  */
 export function parseVttTimestamp(timestamp: string): number {
 	// 首先尝试完整格式 HH:MM:SS.mmm
-	let match = timestamp.match(TIME_CONSTANTS.FULL_TIMESTAMP_FORMAT)
+	const match = timestamp.match(TIME_CONSTANTS.FULL_TIMESTAMP_FORMAT)
 	if (match) {
 		const [, hours, minutes, seconds, milliseconds] = match
 		const ms = milliseconds.padEnd(3, '0')

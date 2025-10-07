@@ -27,7 +27,7 @@ const Player = dynamic<PlayerPropsWithoutZod<CommentVideoInputProps>>(
 const FPS = 30
 const COVER_DURATION_SECONDS = 3
 const MIN_COMMENT_DURATION_SECONDS = 4
-const MAX_COMMENT_DURATION_SECONDS = 15
+const MAX_COMMENT_DURATION_SECONDS = 20
 
 interface RemotionPreviewCardProps {
 	videoInfo?: (Partial<VideoInfo> & { translatedTitle?: string | null }) | null
@@ -38,12 +38,22 @@ interface RemotionPreviewCardProps {
 	isRenderPending?: boolean
 }
 
+const chineseCharRegex = /[\u4e00-\u9fff]/
+
+function weightByLanguage(text?: string | null, baseWeight = 1): number {
+	if (!text) return 0
+	const hasChinese = chineseCharRegex.test(text)
+	// 中文字号更大、每行容纳字符更少，权重更高
+	return text.length * baseWeight * (hasChinese ? 2.2 : 1.0)
+}
+
 function estimateCommentDurationSeconds(comment: Comment): number {
 	const baseSeconds = 3.5
-	const englishLength = comment.content?.length ?? 0
-	const translatedLength = comment.translatedContent?.length ?? 0
-	const weightedChars = englishLength + translatedLength * 1.5
-	const additionalSeconds = weightedChars / 15
+	const mainWeight = weightByLanguage(comment.content, 1.0)
+	const transWeight = weightByLanguage(comment.translatedContent, 1.2)
+	const weightedChars = mainWeight + transWeight
+	// 较温和的时间增长系数，避免爆炸增长
+	const additionalSeconds = weightedChars / 18
 	const estimated = baseSeconds + additionalSeconds
 	return Math.min(
 		MAX_COMMENT_DURATION_SECONDS,
