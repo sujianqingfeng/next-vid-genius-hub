@@ -1,6 +1,5 @@
 import { Composition } from 'remotion'
 import { CommentsVideo } from './CommentsVideo'
-import { DebugLayout } from './debug-layout'
 import type { CommentVideoInputProps } from './types'
 
 const fps = 30
@@ -32,14 +31,6 @@ export const RemotionRoot: React.FC = () => {
         width={width}
         height={height}
         defaultProps={defaultProps}
-      />
-      <Composition
-        id="DebugLayout"
-        component={DebugLayout}
-        durationInFrames={fps * 5}
-        fps={fps}
-        width={width}
-        height={height}
       />
     </>
   )
