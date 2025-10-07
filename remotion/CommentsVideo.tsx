@@ -116,8 +116,6 @@ const commentBodyStyle: CSSProperties = {
   width: '100%',
 }
 
-const SCROLL_SPEED = 20 // pixels per second
-
 const translatedStyle: CSSProperties = {
   marginTop: 18,
   padding: '16px 20px',
@@ -306,9 +304,7 @@ const ScrollingCommentWithTranslation: React.FC<{
   const dwellFrames = Math.round(0.3 * fps) // 0.3s pause at end
   const scrollStart = fadeTime
   const scrollEnd = Math.max(durationInFrames - fadeTime - dwellFrames, scrollStart + 1)
-  const effectiveScrollDuration = Math.max(1, scrollEnd - scrollStart)
 
-  const isChinesePrimary = isLikelyChinese(comment.content)
   const isChineseTranslation = isLikelyChinese(comment.translatedContent)
 
   // Estimated height (fallback) based on font metrics and rough line count
@@ -368,15 +364,18 @@ const ScrollingCommentWithTranslation: React.FC<{
   const effectiveContentH = measured.content || estimatedTotalHeight
   const maxScroll = Math.max(0, effectiveContentH - containerH)
 
-  let currentScroll = 0
-  if (maxScroll > 0) {
-    if (frame >= scrollEnd) {
-      currentScroll = maxScroll
-    } else if (frame >= scrollStart) {
-      const t = (frame - scrollStart) / effectiveScrollDuration
-      currentScroll = Math.min(maxScroll, t * maxScroll)
-    }
-  }
+  // Use Remotion's interpolate for smoother animation
+  const currentScroll = maxScroll > 0 
+    ? interpolate(
+        frame,
+        [scrollStart, scrollEnd],
+        [0, maxScroll],
+        {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+        }
+      )
+    : 0
 
   return (
     <div
