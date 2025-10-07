@@ -61,7 +61,7 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 	// 切换活动步骤
 	const setActiveStep = useCallback((stepId: SubtitleStepId) => {
 		if (!stepStates[stepId].isEnabled) {
-			logger.warn('workflow', `Attempted to switch to disabled step: ${stepId}`)
+			logger.warn('media', `Attempted to switch to disabled step: ${stepId}`)
 			return
 		}
 

@@ -34,9 +34,9 @@ import { getDefaultModel } from '~/lib/subtitle/config/models'
 import { useSubtitleWorkflow } from '~/lib/subtitle/hooks'
 import type {
 	TranscriptionProvider,
-	WhisperModel,
-	SubtitleRenderConfig
-} from '~/lib/subtitle/types'
+	WhisperModel
+} from '~/lib/subtitle/config/models'
+import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 
 export default function SubtitlesPage() {
 	const params = useParams()
@@ -59,7 +59,7 @@ export default function SubtitlesPage() {
 	} = useSubtitleWorkflow({
 		mediaId,
 		onStepChange: (step) => {
-			logger.info('workflow', `Step changed to: ${step}`)
+			logger.info('media', `Step changed to: ${step}`)
 		}
 	})
 

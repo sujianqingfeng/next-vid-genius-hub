@@ -382,7 +382,7 @@ export default function CommentsPage() {
 请理性观看，请勿过度解读或传播不实信息。
 
 来源视频: ${getVideoSourceId()}
-${mediaQuery.data.comments && mediaQuery.data.comments.length > 0 && mediaQuery.data.commentsDownloadedAt
+${mediaQuery.data?.comments && mediaQuery.data.comments.length > 0 && mediaQuery.data.commentsDownloadedAt
 	? `评论采集时间: ${new Date(mediaQuery.data.commentsDownloadedAt).toLocaleString('zh-CN', {
 		year: 'numeric',
 		month: '2-digit',

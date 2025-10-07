@@ -120,10 +120,9 @@ export function VideoPreview({
 				<video
 					ref={videoRef}
 					className="h-full w-full object-contain"
-					controls
+					controls={isDisabled ? false : true}
 					preload="metadata"
 					crossOrigin="anonymous"
-					disabled={isDisabled}
 				>
 					<source src={`/api/media/${mediaId}/source`} type="video/mp4" />
 					Your browser does not support the video tag.

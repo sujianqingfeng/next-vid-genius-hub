@@ -13,10 +13,16 @@ function getModel(modelId: AIModelId) {
 		throw new Error(`Model ${modelId} not found`)
 	}
 
-	if (modelInfo.id.startsWith('deepseek/')) {
-		return deepseekProvider(modelInfo.modelName)
+	// Check if model has modelName property (chat/text models)
+	if ('modelName' in modelInfo) {
+		if (modelInfo.id.startsWith('deepseek/')) {
+			return deepseekProvider(modelInfo.modelName)
+		}
+		return openaiProvider(modelInfo.modelName)
 	}
-	return openaiProvider(modelInfo.modelName)
+
+	// Handle Whisper models differently - they don't need modelName for transcription
+	throw new Error(`Model ${modelId} is a transcription model and cannot be used for chat`)
 }
 
 export async function generateText(options: {
