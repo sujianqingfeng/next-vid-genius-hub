@@ -13,6 +13,23 @@ import { PROXY_URL } from '~/lib/constants'
 
 const proxyAgent = PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined
 
+async function getVideoResolution(videoPath: string): Promise<{ width: number; height: number }> {
+  try {
+    const { stdout } = await execa('ffprobe', [
+      '-v', 'quiet',
+      '-print_format', 'csv=p=0',
+      '-select_streams', 'v:0',
+      '-show_entries', 'stream=width,height',
+      videoPath
+    ])
+    const [width, height] = stdout.split(',').map(Number)
+    return { width, height }
+  } catch (error) {
+    console.warn('Failed to get video resolution, assuming 1920x1080:', error)
+    return { width: 1920, height: 1080 }
+  }
+}
+
 function inferContentTypeFromUrl(url: string): string | undefined {
   try {
     const ext = path.extname(new URL(url).pathname).toLowerCase()
@@ -228,12 +245,42 @@ async function composeWithSourceVideo({
 
   onProgress?.({ stage: 'compose', progress: 0 })
 
+  // 获取原始视频分辨率用于调试
+  const sourceResolution = await getVideoResolution(sourceVideoPath)
+
+  // Remotion 输出固定为 1920x1080，这里直接使用布局常量对齐占位区域
+  const remotionBaseWidth = 1920
+  const remotionBaseHeight = 1080
+
+  const actualX = Math.round(video.x)
+  const actualY = Math.round(video.y)
+  const actualWidth = Math.round(video.width)
+  const actualHeight = Math.round(video.height)
+
+  // 添加调试信息
+  console.log('Video composition debug info:')
+  console.log('- Source video resolution:', sourceResolution.width, 'x', sourceResolution.height)
+  console.log('- Remotion base resolution:', remotionBaseWidth, 'x', remotionBaseHeight)
+  console.log('- Original layout size:', video.width, 'x', video.height)
+  console.log('- Original layout position:', video.x, ',', video.y)
+  console.log('- Applied layout size:', actualWidth, 'x', actualHeight)
+  console.log('- Applied layout position:', actualX, ',', actualY)
+  console.log('- Cover duration:', coverDurationSeconds, 'seconds')
+  console.log('- Total duration:', totalDurationSeconds, 'seconds')
+
   const delayMs = Math.round(coverDurationSeconds * 1000)
   const filterGraph = [
-    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${video.width}:${video.height}:flags=lanczos,setsar=1[scaled_video]`,
-    `[0:v][scaled_video]overlay=${video.x}:${video.y}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
+    // 将 Remotion 输出的 1920x1080 视频缩放到适配原始视频分辨率的尺寸
+    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_video]`,
+    // 将缩放后的视频叠加到原始视频的正确位置
+    `[0:v][scaled_video]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
+    // 处理音频同步
     `[1:a]adelay=${delayMs}|${delayMs},apad[delayed_audio]`,
   ].join(';')
+
+  // 输出 FFmpeg 滤镜链用于调试
+  console.log('FFmpeg filter graph:')
+  console.log(filterGraph)
 
   const ffmpegArgs = [
     '-y',

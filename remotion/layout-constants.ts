@@ -12,8 +12,26 @@ const layout = {
   cardPaddingY: 24,
 }
 
-const VIDEO_X = layout.paddingX + layout.infoPanelWidth + layout.columnGap + layout.cardPaddingX
-const VIDEO_Y = layout.paddingY + layout.cardPaddingY
+// Remotion 画布尺寸
+const REMOTION_CANVAS_WIDTH = 1920
+
+// 容器内容区域尺寸（减去 padding）
+const containerContentWidth = REMOTION_CANVAS_WIDTH - (layout.paddingX * 2)
+
+// Grid 内容总宽度
+const videoPanelWidth = layout.cardPaddingX * 2 + VIDEO_WIDTH
+const gridContentWidth = layout.infoPanelWidth + layout.columnGap + videoPanelWidth
+
+// 由于 justifyContent: 'center'，计算居中偏移
+const centerOffset = Math.max(0, (containerContentWidth - gridContentWidth) / 2)
+
+// VideoPanel 在 grid 中的位置（考虑居中偏移）
+const videoPanelX = layout.paddingX + centerOffset + layout.infoPanelWidth + layout.columnGap
+const videoPanelY = layout.paddingY
+
+// 视频在 VideoPanel 内的实际位置（基于实际渲染测量）
+const VIDEO_X = videoPanelX + layout.cardPaddingX
+const VIDEO_Y = videoPanelY
 
 export const layoutConstants = {
   video: {

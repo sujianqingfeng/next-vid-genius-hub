@@ -660,8 +660,11 @@ const Avatar: React.FC<{ name: string; src?: string | null }> = ({ name, src }) 
 }
 
 const VideoPlaceholder: React.FC = () => {
+  const ref = useRef<HTMLDivElement>(null)
+
   return (
     <div
+      ref={ref}
       style={{
         width: VIDEO_WIDTH,
         alignSelf: 'center',
