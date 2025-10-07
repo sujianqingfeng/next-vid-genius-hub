@@ -114,6 +114,8 @@ const commentBodyStyle: CSSProperties = {
   width: '100%',
 }
 
+const SCROLL_SPEED = 20 // pixels per second
+
 const translatedStyle: CSSProperties = {
   marginTop: 18,
   padding: '16px 20px',
@@ -190,7 +192,7 @@ const MainLayout: React.FC<{
       </div>
       <div style={commentPanelStyle}>
         <span style={sectionLabelStyle}>Comment Highlights</span>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {sequences.map(({ startFrame, durationInFrames, comment }) => (
             <Sequence
               key={comment.id}
@@ -288,35 +290,174 @@ const CoverSlide: React.FC<{
   )
 }
 
+
+const ScrollingCommentWithTranslation: React.FC<{
+  comment: CommentVideoInputProps['comments'][number]
+  displayCommentStyle: CSSProperties
+  durationInFrames: number
+  fps: number
+}> = ({ comment, displayCommentStyle, durationInFrames, fps }) => {
+  const frame = useCurrentFrame()
+
+  // Reduce fade times to give more time for scrolling
+  const fadeTime = Math.min(fps * 0.8, 12) // 0.8 seconds or 12 frames, whichever is smaller
+  const scrollStart = fadeTime // Start scrolling immediately after fade-in
+  const scrollEnd = durationInFrames - fadeTime // Stop scrolling just before fade-out
+  const effectiveScrollDuration = scrollEnd - scrollStart
+
+  const isChinesePrimary = isLikelyChinese(comment.content)
+  const isChineseTranslation = isLikelyChinese(comment.translatedContent)
+
+  // Calculate combined text height
+  const fontSize = displayCommentStyle.fontSize as number
+  const lineHeight = displayCommentStyle.lineHeight as number
+  const lineHeightPx = fontSize * lineHeight
+
+  const mainTextLines = Math.ceil(comment.content.length / 50) // Rough estimation
+  let totalHeight = mainTextLines * lineHeightPx
+
+  let translationStyle = null
+  if (comment.translatedContent && comment.translatedContent !== comment.content) {
+    const translationFontSize = isChineseTranslation ? 52 : 24
+    const translationLineHeight = isChineseTranslation ? 1.4 : 1.48
+    const translationLineHeightPx = translationFontSize * translationLineHeight
+    const translationLines = Math.ceil(comment.translatedContent.length / 50)
+    totalHeight += 20 + translationLines * translationLineHeightPx // 20px gap + translation height
+
+    translationStyle = {
+      marginTop: 20,
+      padding: '16px 20px',
+      borderRadius: 16,
+      backgroundColor: isChineseTranslation ? 'transparent' : 'rgba(239, 68, 68, 0.08)',
+      color: isChineseTranslation ? palette.accent : palette.textSecondary,
+      borderLeft: isChineseTranslation ? 'none' : '4px solid rgba(239, 68, 68, 0.3)',
+      fontSize: translationFontSize,
+      lineHeight: translationLineHeight,
+      letterSpacing: isChineseTranslation ? '0.024em' : 'normal',
+    }
+  }
+
+  // Fixed container height - use most of the available space in the comment panel
+  const CONTAINER_HEIGHT = 320 // Fixed height for scrolling content
+  const needsScroll = totalHeight > CONTAINER_HEIGHT
+
+  let transform = 'translateY(0px)'
+  if (needsScroll && frame >= scrollStart && frame < scrollEnd) {
+    // Dynamic scroll speed based on content length and available time
+    const scrollProgress = (frame - scrollStart) / effectiveScrollDuration
+    const maxScroll = totalHeight - CONTAINER_HEIGHT
+
+    // Ensure we complete the scroll even if time is tight
+    const currentScroll = Math.min(scrollProgress * maxScroll, maxScroll)
+    transform = `translateY(-${currentScroll}px)`
+  }
+
+  return (
+    <div style={{
+      height: CONTAINER_HEIGHT,
+      position: 'relative',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 0
+    }}>
+      <div
+        style={{
+          transform,
+          transition: 'transform 0.05s linear', // Faster transition for smoother scrolling
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0
+        }}
+      >
+        <div style={{ ...displayCommentStyle, whiteSpace: 'pre-wrap', marginBottom: 0 }}>
+          {comment.content}
+        </div>
+        {comment.translatedContent && comment.translatedContent !== comment.content ? (
+          <div style={translationStyle}>
+            {comment.translatedContent}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+
 const CommentSlide: React.FC<{
   comment: CommentVideoInputProps['comments'][number]
   durationInFrames: number
   fps: number
 }> = ({ comment, durationInFrames, fps }) => {
   const frame = useCurrentFrame()
-  const appear = interpolate(frame, [0, Math.max(8, fps / 3)], [0, 1], {
+
+  // Use shorter fade times to match scrolling component
+  const fadeTime = Math.min(fps * 0.8, 12)
+  const appear = interpolate(frame, [0, fadeTime], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
-  const exitStart = Math.max(durationInFrames - fps, 0)
+  const exitStart = Math.max(durationInFrames - fadeTime, 0)
   const disappear = interpolate(frame, [exitStart, durationInFrames], [1, 0], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
   const opacity = Math.min(appear, disappear)
+
+  // Calculate countdown timer
+  const remainingFrames = Math.max(0, durationInFrames - frame)
+  const remainingSeconds = Math.ceil(remainingFrames / fps)
+  const countdownOpacity = interpolate(frame, [durationInFrames - fps * 3, durationInFrames - fps * 2], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  })
+
   const isChinesePrimary = isLikelyChinese(comment.content)
   const isChineseTranslation = isLikelyChinese(comment.translatedContent)
   const displayCommentStyle: CSSProperties = {
-    ...commentBodyStyle,
     fontSize: isChinesePrimary ? 52 : 26,
     lineHeight: isChinesePrimary ? 1.4 : 1.52,
     letterSpacing: isChinesePrimary ? '0.024em' : 'normal',
     color: isChinesePrimary ? palette.accent : palette.textPrimary,
   }
 
+  const commentText = comment.content
+  const totalTextLength = commentText.length + (comment.translatedContent?.length || 0)
+  const needsScroll = totalTextLength > 100 // Consider both main and translation content
+
   return (
-    <div style={{ opacity, display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+    <div style={{ opacity, display: 'flex', flexDirection: 'column', gap: 20, height: '100%', position: 'relative' }}>
+      {/* Countdown Timer */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          opacity: countdownOpacity,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 16,
+          color: palette.textMuted,
+          backgroundColor: 'rgba(15, 23, 42, 0.05)',
+          padding: '6px 10px',
+          borderRadius: 8,
+          border: `1px solid ${palette.border}`,
+        }}
+      >
+        <div
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            backgroundColor: remainingSeconds <= 2 ? palette.accent : palette.textMuted,
+            transition: 'background-color 0.3s ease',
+          }}
+        />
+        <span>{remainingSeconds}s</span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
         <Avatar name={comment.author} src={comment.authorThumbnail} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <p style={{ margin: 0, fontSize: 24, fontWeight: 600, color: palette.textPrimary }}>{comment.author}</p>
@@ -326,28 +467,40 @@ const CommentSlide: React.FC<{
           </div>
         </div>
       </div>
-      <p style={displayCommentStyle}>{comment.content}</p>
-      {comment.translatedContent && comment.translatedContent !== comment.content ? (
-        <div
-          style={{
-            ...translatedStyle,
-            ...(isChineseTranslation
-              ? {
-                  backgroundColor: 'transparent',
-                  borderLeft: 'none',
-                  color: palette.accent,
-                  padding: 0,
-                  marginTop: 12,
-                  fontSize: 52,
-                  lineHeight: 1.4,
-                  letterSpacing: '0.024em',
-                }
-              : {}),
-          }}
-        >
-          {comment.translatedContent}
+
+      {needsScroll ? (
+        <ScrollingCommentWithTranslation
+          comment={comment}
+          displayCommentStyle={displayCommentStyle}
+          durationInFrames={durationInFrames}
+          fps={fps}
+        />
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <p style={{ ...commentBodyStyle, ...displayCommentStyle }}>{comment.content}</p>
+          {comment.translatedContent && comment.translatedContent !== comment.content ? (
+            <div
+              style={{
+                ...translatedStyle,
+                ...(isChineseTranslation
+                  ? {
+                      backgroundColor: 'transparent',
+                      borderLeft: 'none',
+                      color: palette.accent,
+                      padding: 0,
+                      marginTop: 12,
+                      fontSize: 52,
+                      lineHeight: 1.4,
+                      letterSpacing: '0.024em',
+                    }
+                  : {}),
+              }}
+            >
+              {comment.translatedContent}
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      )}
     </div>
   )
 }
