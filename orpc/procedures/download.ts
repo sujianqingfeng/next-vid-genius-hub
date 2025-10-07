@@ -5,12 +5,13 @@ import { createId } from '@paralleldrive/cuid2'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/constants'
-import { db, schema } from '~/lib/db'
+import { db, schema, createMediaUpdateData } from '~/lib/db'
 import { extractAudio } from '~/lib/media'
-import { resolveVideoProvider } from '~/lib/media/providers'
+import { resolveVideoProvider, providerToSource } from '~/lib/media/providers'
 import type { VideoProviderContext } from '~/lib/media/providers'
-import type { BasicVideoInfo } from '~/lib/media/types'
+import type { BasicVideoInfo, MediaSource } from '~/lib/media/providers/types'
 import { downloadVideo } from '~/lib/youtube'
+import { fileExists } from '~/lib/utils/file-utils'
 
 export const download = os
 	.input(
@@ -37,10 +38,7 @@ export const download = os
 			downloadRecord?.audioFilePath ?? path.join(operationDir, `${id}.mp3`)
 
 		// 2. Check for video file and download if missing
-		const videoExists = await fs
-			.access(videoPath)
-			.then(() => true)
-			.catch(() => false)
+		const videoExists = await fileExists(videoPath)
 
 		const provider = resolveVideoProvider(url)
 		const providerContext: VideoProviderContext = {
@@ -55,10 +53,7 @@ export const download = os
 		}
 
 		// 3. Check for audio file and extract if missing
-		const audioExists = await fs
-			.access(audioPath)
-			.then(() => true)
-			.catch(() => false)
+		const audioExists = await fileExists(audioPath)
 		if (!audioExists) {
 			await extractAudio(videoPath, audioPath)
 		}
@@ -69,32 +64,14 @@ export const download = os
 		}
 
 		// 4. Upsert database record
-		const source: 'youtube' | 'tiktok' = metadata?.source ?? (provider.id === 'tiktok' ? 'tiktok' : 'youtube')
-		const data = {
-			title:
-				metadata?.title ??
-				downloadRecord?.title ??
-				'video',
-			author:
-				metadata?.author ??
-				downloadRecord?.author ??
-				'',
-			thumbnail:
-				metadata?.thumbnail ??
-				downloadRecord?.thumbnail ??
-				'',
-			viewCount:
-				metadata?.viewCount ??
-				downloadRecord?.viewCount ??
-				0,
-			likeCount:
-				metadata?.likeCount ??
-				downloadRecord?.likeCount ??
-				0,
-			filePath: videoPath,
-			audioFilePath: audioPath,
+		const source: MediaSource = metadata?.source ?? providerToSource(provider.id)
+		const data = createMediaUpdateData({
+			metadata,
+			downloadRecord,
+			videoPath,
+			audioPath,
 			quality,
-		}
+		})
 
 		await db
 			.insert(schema.media)
