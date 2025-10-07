@@ -1,18 +1,9 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-	Calendar,
-	Download,
-	Eye,
-	FileText,
-	Film,
-	Heart,
-	LanguagesIcon,
-	MessageCircle,
-	User,
-} from 'lucide-react'
+import { ArrowLeft, Calendar, Download, Eye, FileText, Film, Heart, LanguagesIcon, MessageCircle, User } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -21,7 +12,6 @@ import {
 	MobileDetailsCard,
 	RemotionPreviewCard,
 } from '~/components/business/media'
-import { PageHeader } from '~/components/layout'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -103,14 +93,20 @@ export default function CommentsPage() {
 	const comments = mediaQuery.data?.comments || []
 
 	return (
-		<div className="py-6 px-4 space-y-6">
-			{/* Header Section */}
-			<PageHeader
-				backHref={`/media/${id}`}
-				backText="Back"
-				title="Comments"
-				withBackground
-			/>
+		<div className="min-h-screen bg-background">
+			{/* Back navigation - matching main media page style */}
+			<div className="px-4 py-6">
+				<Link
+					href={`/media/${id}`}
+					className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<ArrowLeft className="w-4 h-4" />
+					Back to Media
+				</Link>
+			</div>
+
+			{/* Main Content */}
+			<div className="px-4 pb-8 space-y-6">
 
 			{/* Media Info Section - Full Width Top */}
 			{mediaQuery.isLoading ? (
@@ -245,9 +241,9 @@ export default function CommentsPage() {
 			) : null}
 
 			{/* Main Content Grid - Preview & Actions on Left, Comments on Right */}
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-				{/* Left Column - Preview + Actions (Wider) */}
-				<div className="lg:col-span-2 space-y-4">
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				{/* Left Column - Preview + Actions */}
+				<div className="lg:col-span-1 space-y-4">
 					{/* Preview Card */}
 					<RemotionPreviewCard
 						videoInfo={previewVideoInfo}
@@ -355,7 +351,7 @@ export default function CommentsPage() {
 					)}
 				</div>
 
-				{/* Right Column - Comments List (Narrower) */}
+				{/* Right Column - Comments List */}
 				<div className="lg:col-span-1">
 
 					<Card className="shadow-sm">
@@ -449,6 +445,7 @@ export default function CommentsPage() {
 						</CardContent>
 					</Card>
 				</div>
+			</div>
 			</div>
 		</div>
 	)
