@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { ThumbsUp } from 'lucide-react'
 import {
   AbsoluteFill,
+  Easing,
   Img,
   Sequence,
   interpolate,
@@ -299,11 +300,10 @@ const ScrollingCommentWithTranslation: React.FC<{
 }> = ({ comment, displayCommentStyle, durationInFrames, fps }) => {
   const frame = useCurrentFrame()
 
-  // Fade timings and a short dwell so we reach the bottom before switch
-  const fadeTime = Math.min(fps * 0.8, 12) // ~0.4s at 30fps, capped at 12
-  const dwellFrames = Math.round(0.3 * fps) // 0.3s pause at end
+  // Fade timings and scroll pacing to maintain smoothness on long comments
+  const fadeTime = Math.min(fps * 0.8, 12)
+  const minDwellFrames = Math.round(0.2 * fps)
   const scrollStart = fadeTime
-  const scrollEnd = Math.max(durationInFrames - fadeTime - dwellFrames, scrollStart + 1)
 
   const isChineseTranslation = isLikelyChinese(comment.translatedContent)
 
@@ -364,8 +364,16 @@ const ScrollingCommentWithTranslation: React.FC<{
   const effectiveContentH = measured.content || estimatedTotalHeight
   const maxScroll = Math.max(0, effectiveContentH - containerH)
 
-  // Use Remotion's interpolate for smoother animation
-  const currentScroll = maxScroll > 0 
+  const availableForScroll = Math.max(durationInFrames - fadeTime - minDwellFrames, 0)
+  const minScrollFrames = Math.round(fps * 0.6)
+  const pixelsPerSecond = 100
+  const desiredScrollFrames = maxScroll > 0 ? Math.ceil((maxScroll / pixelsPerSecond) * fps) : 0
+  const scrollDurationFrames = maxScroll > 0
+    ? Math.min(availableForScroll, Math.max(minScrollFrames, desiredScrollFrames))
+    : 0
+  const scrollEnd = scrollStart + scrollDurationFrames
+
+  const currentScroll = maxScroll > 0 && scrollDurationFrames > 0
     ? interpolate(
         frame,
         [scrollStart, scrollEnd],
@@ -373,6 +381,7 @@ const ScrollingCommentWithTranslation: React.FC<{
         {
           extrapolateLeft: 'clamp',
           extrapolateRight: 'clamp',
+          easing: Easing.inOutCubic,
         }
       )
     : 0
