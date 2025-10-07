@@ -2,19 +2,22 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-	Copy,
+	Calendar,
 	Download,
+	Eye,
 	FileText,
 	Film,
+	Heart,
 	LanguagesIcon,
 	MessageCircle,
+	User,
 } from 'lucide-react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import {
 	CommentCard,
-	MediaInfoCard,
 	MobileDetailsCard,
 	RemotionPreviewCard,
 } from '~/components/business/media'
@@ -32,6 +35,7 @@ import {
 import { Skeleton } from '~/components/ui/skeleton'
 import { AIModelId, AIModelIds } from '~/lib/ai'
 import { queryOrpc } from '~/lib/orpc/query-client'
+import { formatNumber } from '~/lib/utils'
 
 export default function CommentsPage() {
 	const params = useParams()
@@ -40,15 +44,7 @@ export default function CommentsPage() {
 	const [pages, setPages] = useState('3')
 	const [model, setModel] = useState<AIModelId>(AIModelIds[0] as AIModelId)
 	const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false)
-
-	const copyToClipboard = async (text: string) => {
-		try {
-			await navigator.clipboard.writeText(text)
-			toast.success('Copied to clipboard!')
-		} catch {
-			toast.error('Failed to copy to clipboard')
-		}
-	}
+	const [thumbnailError, setThumbnailError] = useState(false)
 
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
@@ -107,7 +103,7 @@ export default function CommentsPage() {
 	const comments = mediaQuery.data?.comments || []
 
 	return (
-		<div className="py-6 px-4">
+		<div className="py-6 px-4 space-y-6">
 			{/* Header Section */}
 			<PageHeader
 				backHref={`/media/${id}`}
@@ -116,88 +112,170 @@ export default function CommentsPage() {
 				withBackground
 			/>
 
-			{/* Main Content Grid */}
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-				{/* Left Column - Media Info & Actions */}
-				<div className="lg:col-span-1 space-y-6 lg:sticky lg:top-16 self-start">
-					{/* Media Info Card */}
-					{mediaQuery.isLoading ? (
-						<div className="space-y-4">
-							<Skeleton className="h-64 w-full rounded-lg" />
-							<Skeleton className="h-8 w-2/3" />
-							<Skeleton className="h-4 w-1/2" />
+			{/* Media Info Section - Full Width Top */}
+			{mediaQuery.isLoading ? (
+				<div className="flex gap-6">
+					<Skeleton className="w-80 h-48 rounded-lg flex-shrink-0" />
+					<div className="flex-1 space-y-4">
+						<Skeleton className="h-8 w-3/4" />
+						<Skeleton className="h-6 w-1/2" />
+						<Skeleton className="h-4 w-1/3" />
+						<div className="flex gap-2">
+							<Skeleton className="h-6 w-20" />
+							<Skeleton className="h-6 w-20" />
 						</div>
-					) : mediaQuery.data ? (
-						<>
-							{/* Desktop Media Info Card */}
-							<div className="hidden lg:block">
-								{mediaQuery.data && <MediaInfoCard media={mediaQuery.data} />}
-							</div>
-
-							{/* Mobile Details Card */}
-							<div className="lg:hidden">
-								{mediaQuery.data && (
-									<MobileDetailsCard
-										media={mediaQuery.data}
-										isOpen={isMobileDetailsOpen}
-										onClose={() => setIsMobileDetailsOpen(false)}
+					</div>
+				</div>
+			) : mediaQuery.data ? (
+				<>
+					{/* Desktop Media Info */}
+					<div className="hidden lg:block">
+						<div className="flex gap-6">
+							{/* Thumbnail */}
+							{mediaQuery.data.thumbnail && !thumbnailError ? (
+								<div className="relative w-80 h-48 flex-shrink-0 rounded-lg overflow-hidden bg-muted shadow-md">
+									<Image
+										src={mediaQuery.data.thumbnail}
+										alt={mediaQuery.data.title}
+										fill
+										className="object-cover"
+										priority
+										unoptimized
+										onError={() => setThumbnailError(true)}
 									/>
-								)}
-							</div>
+								</div>
+							) : (
+								<div className="w-80 h-48 flex-shrink-0 rounded-lg bg-muted flex items-center justify-center shadow-md">
+									<FileText className="w-12 h-12 text-muted-foreground" />
+								</div>
+							)}
 
-							{/* Mobile Title Display */}
-							{mediaQuery.data && (
-								<div className="lg:hidden space-y-3">
-									<h1 className="text-xl sm:text-2xl font-bold text-foreground leading-tight line-clamp-2">
+							{/* Info */}
+							<div className="flex-1 space-y-4">
+								{/* Title */}
+								<div className="space-y-2">
+									<h1 className="text-2xl font-bold leading-tight line-clamp-2">
 										{mediaQuery.data.title}
 									</h1>
 									{mediaQuery.data.translatedTitle && (
-										<div className="flex items-center gap-2">
-											<p className="text-sm sm:text-base text-muted-foreground leading-relaxed line-clamp-2">
-												{mediaQuery.data.translatedTitle}
-											</p>
-											<Button
-												variant="ghost"
-												size="icon"
-												onClick={() =>
-													copyToClipboard(mediaQuery.data!.translatedTitle!)
-												}
-												aria-label="Copy translated title"
-												title="Copy translated title"
-												className="flex-shrink-0"
-											>
-												<Copy className="w-4 h-4" />
-											</Button>
-										</div>
+										<p className="text-lg text-muted-foreground leading-tight line-clamp-2">
+											{mediaQuery.data.translatedTitle}
+										</p>
 									)}
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => setIsMobileDetailsOpen(true)}
-										className="flex items-center gap-2"
-									>
-										<FileText className="w-4 h-4" />
-										Show Details
-									</Button>
 								</div>
-							)}
-						</>
-					) : null}
+
+								{/* Author */}
+								{mediaQuery.data.author && (
+									<div className="flex items-center gap-2 text-muted-foreground">
+										<User className="w-4 h-4" />
+										<span className="text-sm font-medium">
+											{mediaQuery.data.author}
+										</span>
+									</div>
+								)}
+
+								{/* Stats & Meta */}
+								<div className="flex flex-wrap items-center gap-4">
+									{mediaQuery.data.viewCount !== null &&
+										mediaQuery.data.viewCount !== undefined && (
+											<div className="flex items-center gap-2 text-sm">
+												<Eye className="w-4 h-4 text-muted-foreground" />
+												<span className="font-medium">
+													{formatNumber(mediaQuery.data.viewCount)} views
+												</span>
+											</div>
+										)}
+									{mediaQuery.data.likeCount !== null &&
+										mediaQuery.data.likeCount !== undefined && (
+											<div className="flex items-center gap-2 text-sm">
+												<Heart className="w-4 h-4 text-muted-foreground" />
+												<span className="font-medium">
+													{formatNumber(mediaQuery.data.likeCount)} likes
+												</span>
+											</div>
+										)}
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<Calendar className="w-4 h-4" />
+										<span>
+											{new Date(mediaQuery.data.createdAt).toLocaleDateString(
+												'en-US',
+												{
+													year: 'numeric',
+													month: 'short',
+													day: 'numeric',
+												},
+											)}
+										</span>
+									</div>
+								</div>
+
+								{/* Badges */}
+								<div className="flex flex-wrap gap-2">
+									<Badge variant="secondary" className="capitalize">
+										{mediaQuery.data.source}
+									</Badge>
+									<Badge variant="outline">{mediaQuery.data.quality}</Badge>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* Mobile Details Card */}
+					<div className="lg:hidden">
+						{mediaQuery.data && (
+							<>
+								<MobileDetailsCard
+									media={mediaQuery.data}
+									isOpen={isMobileDetailsOpen}
+									onClose={() => setIsMobileDetailsOpen(false)}
+								/>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => setIsMobileDetailsOpen(true)}
+									className="w-full flex items-center justify-center gap-2"
+								>
+									<FileText className="w-4 h-4" />
+									View Media Details
+								</Button>
+							</>
+						)}
+					</div>
+				</>
+			) : null}
+
+			{/* Main Content Grid - Preview & Actions on Left, Comments on Right */}
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+				{/* Left Column - Preview + Actions (Wider) */}
+				<div className="lg:col-span-2 space-y-4">
+					{/* Preview Card */}
+					<RemotionPreviewCard
+						videoInfo={previewVideoInfo}
+						comments={comments}
+						isLoading={mediaQuery.isLoading}
+					/>
 
 					{/* Actions Section */}
 					{mediaQuery.data && (
 						<Card className="shadow-sm">
-							<CardHeader className="pb-3">
-								<CardTitle className="text-lg">Actions</CardTitle>
+							<CardHeader className="pb-4">
+								<CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+									Actions
+								</CardTitle>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<div className="space-y-3">
-									<div className="flex items-center gap-2">
+								{/* Download Comments */}
+								<div className="space-y-2">
+									<div className="flex items-center gap-2 mb-2">
+										<Download className="w-3.5 h-3.5 text-muted-foreground" />
+										<span className="text-sm font-medium">Download Comments</span>
+									</div>
+									<div className="flex gap-2">
 										<Select value={pages} onValueChange={setPages}>
-											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Pages" />
+											<SelectTrigger className="h-9 flex-1">
+												<SelectValue />
 											</SelectTrigger>
-											<SelectContent className="max-h-64">
+											<SelectContent>
 												{[...Array(10).keys()].map((i) => (
 													<SelectItem key={i + 1} value={String(i + 1)}>
 														{i + 1} page{i > 0 ? 's' : ''}
@@ -214,54 +292,62 @@ export default function CommentsPage() {
 											}
 											disabled={downloadCommentsMutation.isPending}
 											size="sm"
-											className="flex-shrink-0"
+											className="h-9 px-4"
 										>
-											<Download className="w-4 h-4 mr-2" />
-											{downloadCommentsMutation.isPending
-												? 'Downloading...'
-												: 'Download'}
+											{downloadCommentsMutation.isPending ? 'Loading...' : 'Go'}
 										</Button>
 									</div>
+								</div>
 
-									<div className="space-y-2">
-										<Select
-											value={model}
-											onValueChange={(v) => setModel(v as AIModelId)}
-										>
-											<SelectTrigger className="w-full">
-												<SelectValue placeholder="Model" />
-											</SelectTrigger>
-											<SelectContent className="max-h-64">
-												{AIModelIds.map((modelId) => (
-													<SelectItem key={modelId} value={modelId}>
-														{modelId}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Button
-											onClick={() =>
-												translateCommentsMutation.mutate({ mediaId: id, model })
-											}
-											disabled={translateCommentsMutation.isPending}
-											size="sm"
-											className="w-full"
-										>
-											<LanguagesIcon className="w-4 h-4 mr-2" />
-											{translateCommentsMutation.isPending
-												? 'Translating...'
-												: 'Translate'}
-										</Button>
+								{/* Translate Comments */}
+								<div className="space-y-2">
+									<div className="flex items-center gap-2 mb-2">
+										<LanguagesIcon className="w-3.5 h-3.5 text-muted-foreground" />
+										<span className="text-sm font-medium">Translate Comments</span>
 									</div>
+									<Select
+										value={model}
+										onValueChange={(v) => setModel(v as AIModelId)}
+									>
+										<SelectTrigger className="h-9">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											{AIModelIds.map((modelId) => (
+												<SelectItem key={modelId} value={modelId}>
+													{modelId}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<Button
+										onClick={() =>
+											translateCommentsMutation.mutate({ mediaId: id, model })
+										}
+										disabled={translateCommentsMutation.isPending}
+										size="sm"
+										className="w-full h-9"
+									>
+										{translateCommentsMutation.isPending
+											? 'Translating...'
+											: 'Translate'}
+									</Button>
+								</div>
 
+								{/* Render Video */}
+								<div className="space-y-2">
+									<div className="flex items-center gap-2 mb-2">
+										<Film className="w-3.5 h-3.5 text-muted-foreground" />
+										<span className="text-sm font-medium">Render Video</span>
+									</div>
 									<Button
 										onClick={() => renderMutation.mutate({ mediaId: id })}
 										disabled={renderMutation.isPending}
 										size="sm"
-										className="w-full"
+										variant="default"
+										className="w-full h-9"
 									>
-										<Film className="w-4 h-4 mr-2" />
-										{renderMutation.isPending ? 'Rendering...' : 'Render'}
+										{renderMutation.isPending ? 'Rendering...' : 'Start Render'}
 									</Button>
 								</div>
 							</CardContent>
@@ -269,71 +355,66 @@ export default function CommentsPage() {
 					)}
 				</div>
 
-				{/* Right Column - Preview & Comments */}
-				<div className="lg:col-span-2 space-y-6">
-					<RemotionPreviewCard
-						videoInfo={previewVideoInfo}
-						comments={comments}
-						isLoading={mediaQuery.isLoading}
-					/>
+				{/* Right Column - Comments List (Narrower) */}
+				<div className="lg:col-span-1">
 
 					<Card className="shadow-sm">
-						<CardHeader className="pb-3">
+						<CardHeader className="pb-3 border-b">
 							<div className="flex items-center justify-between">
-								<CardTitle className="text-lg">Comments</CardTitle>
+								<CardTitle className="text-lg font-semibold">Comments</CardTitle>
 								{mediaQuery.data && (
-									<Badge variant="secondary" className="text-sm">
+									<Badge variant="secondary" className="text-sm font-medium">
 										{comments.length} comment{comments.length !== 1 ? 's' : ''}
 									</Badge>
 								)}
 							</div>
 						</CardHeader>
-						<CardContent className="pt-0">
+						<CardContent className="pt-0 px-0">
 							{mediaQuery.isLoading && (
-								<div className="space-y-4">
+								<div className="space-y-1 px-4 py-3">
 									{[...Array(3)].map((_, i) => (
 										<div
 											key={`skeleton-${i}`}
-											className="flex items-start gap-4 p-4"
+											className="flex items-start gap-3 p-3 rounded-lg"
 										>
-											<Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
-											<div className="flex-1 space-y-3">
+											<Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+											<div className="flex-1 space-y-2">
 												<div className="flex items-center gap-2">
-													<Skeleton className="h-4 w-32" />
-													<Skeleton className="h-4 w-16" />
+													<Skeleton className="h-3 w-24" />
+													<Skeleton className="h-3 w-12" />
 												</div>
-												<Skeleton className="h-4 w-full" />
-												<Skeleton className="h-4 w-3/4" />
+												<Skeleton className="h-3 w-full" />
+												<Skeleton className="h-3 w-3/4" />
 											</div>
 										</div>
 									))}
 								</div>
 							)}
 							{mediaQuery.isError && (
-								<div className="text-center py-12">
-									<div className="max-w-sm mx-auto">
-										<div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+								<div className="text-center py-16 px-6">
+									<div className="max-w-md mx-auto">
+										<div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
 											<MessageCircle className="w-8 h-8 text-destructive" />
 										</div>
 										<h3 className="text-lg font-semibold mb-2 text-destructive">
 											Failed to load comments
 										</h3>
-										<p className="text-muted-foreground text-sm">
+										<p className="text-muted-foreground text-sm leading-relaxed">
 											Please try refreshing the page or check your connection.
 										</p>
 									</div>
 								</div>
 							)}
 							{comments.length === 0 && !mediaQuery.isLoading && (
-								<div className="text-center py-16">
-									<div className="max-w-sm mx-auto">
-										<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-											<MessageCircle className="w-8 h-8 text-muted-foreground" />
+								<div className="text-center py-20 px-6">
+									<div className="max-w-md mx-auto">
+										<div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-primary/10">
+											<MessageCircle className="w-8 h-8 text-primary/70" />
 										</div>
 										<h3 className="text-lg font-semibold mb-2">
 											No comments yet
 										</h3>
-										<p className="text-muted-foreground text-sm mb-6">
+										<p className="text-muted-foreground text-sm mb-6 leading-relaxed">
 											Download comments to get started with analysis and
 											translation.
 										</p>
@@ -354,13 +435,14 @@ export default function CommentsPage() {
 								</div>
 							)}
 							{comments.length > 0 && (
-								<div className="divide-y divide-border">
-									{comments.map((comment) => (
-										<CommentCard
-											key={comment.id}
-											comment={comment}
-											mediaId={id}
-										/>
+								<div>
+									{comments.map((comment, index) => (
+										<div key={comment.id}>
+											<CommentCard comment={comment} mediaId={id} />
+											{index < comments.length - 1 && (
+												<div className="border-b mx-4" />
+											)}
+										</div>
 									))}
 								</div>
 							)}

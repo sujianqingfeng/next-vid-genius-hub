@@ -24,8 +24,7 @@ interface CommentCardProps {
 	mediaId: string
 }
 
-const FALLBACK_AVATAR_CLASSES =
-	'w-10 h-10 rounded-full border-2 border-background shadow-sm bg-muted flex items-center justify-center text-sm font-semibold text-muted-foreground uppercase'
+
 
 function getAuthorInitials(author?: string) {
 	if (!author) {
@@ -69,19 +68,19 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 
 	return (
 		<div className="group">
-			<div className="flex items-start gap-4 p-4 hover:bg-muted/30 transition-colors">
+			<div className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-all duration-200">
 				<div className="flex-shrink-0">
 					{showFallback ? (
-						<div className={FALLBACK_AVATAR_CLASSES} aria-hidden>
+						<div className="w-8 h-8 rounded-full border border-background shadow-sm bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground uppercase" aria-hidden>
 							{fallbackInitials}
 						</div>
 					) : (
 						<Image
 							src={comment.authorThumbnail!}
 							alt={comment.author}
-							width={40}
-							height={40}
-							className="w-10 h-10 rounded-full border-2 border-background shadow-sm"
+							width={32}
+							height={32}
+							className="w-8 h-8 rounded-full border border-background shadow-sm"
 							loading="lazy"
 							unoptimized
 							onError={() => setAvatarError(true)}
@@ -89,21 +88,21 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 					)}
 				</div>
 				<div className="flex-1 min-w-0">
-					<div className="flex items-start justify-between mb-2">
+					<div className="flex items-start justify-between mb-1.5">
 						<div className="flex-1 min-w-0">
-							<div className="flex items-center gap-2 mb-1">
-								<p className="font-semibold text-sm truncate">
+							<div className="flex items-center gap-2 mb-0.5">
+								<p className="font-semibold text-xs truncate">
 									{comment.author}
 								</p>
-								<div className="flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
-									<span className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full">
+								<div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
+									<span className="flex items-center gap-1">
 										<ThumbsUp className="w-3 h-3" />
-										{comment.likes}
+										<span className="text-[11px]">{comment.likes}</span>
 									</span>
 									{(comment.replyCount || 0) > 0 && (
-										<span className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full">
+										<span className="flex items-center gap-1">
 											<MessageCircle className="w-3 h-3" />
-											{comment.replyCount || 0}
+											<span className="text-[11px]">{comment.replyCount || 0}</span>
 										</span>
 									)}
 								</div>
@@ -121,24 +120,24 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 							disabled={deleteCommentMutation.isPending}
 							aria-label="Delete comment"
 							title="Delete comment"
-							className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-destructive hover:text-destructive"
+							className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-destructive hover:text-destructive"
 						>
-							<Trash2 className="w-4 h-4" />
+							<Trash2 className="w-3.5 h-3.5" />
 						</Button>
 					</div>
-					<div className="space-y-3">
-						<p className="text-sm leading-relaxed text-foreground break-words whitespace-pre-wrap">
+					<div className="space-y-2">
+						<p className="text-xs leading-snug text-foreground break-words whitespace-pre-wrap">
 							{comment.content}
 						</p>
 						{comment.translatedContent && (
-							<div className="bg-gradient-to-r from-primary/5 to-primary/10 border-l-4 border-primary/30 pl-4 py-3 rounded-r-lg">
-								<div className="flex items-center gap-2 mb-2">
-									<LanguagesIcon className="w-4 h-4 text-primary" />
-									<Badge variant="secondary" className="text-xs">
+							<div className="bg-gradient-to-r from-primary/5 to-primary/10 border-l-2 border-primary/30 pl-2.5 py-2 rounded-r">
+								<div className="flex items-center gap-1.5 mb-1">
+									<LanguagesIcon className="w-3 h-3 text-primary" />
+									<Badge variant="secondary" className="text-[10px] h-4 px-1.5">
 										Translated
 									</Badge>
 								</div>
-								<p className="text-sm leading-relaxed text-muted-foreground break-words whitespace-pre-wrap">
+								<p className="text-xs leading-snug text-muted-foreground break-words whitespace-pre-wrap">
 									{comment.translatedContent}
 								</p>
 							</div>
