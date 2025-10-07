@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from '~/components/ui/skeleton'
 import type { Comment, VideoInfo } from '~/lib/media/types'
 import { Badge } from '~/components/ui/badge'
-import type { CommentVideoInputProps, TimelineDurations } from '~/remotion/types'
+import { buildCommentTimeline, REMOTION_FPS } from '~/lib/media/remotion/durations'
+import type { CommentVideoInputProps } from '~/remotion/types'
 import { CommentsVideo } from '~/remotion/CommentsVideo'
 
 const Player = dynamic<PlayerPropsWithoutZod<CommentVideoInputProps>>(
@@ -24,11 +25,6 @@ const Player = dynamic<PlayerPropsWithoutZod<CommentVideoInputProps>>(
 },
 )
 
-const FPS = 30
-const COVER_DURATION_SECONDS = 3
-const MIN_COMMENT_DURATION_SECONDS = 4
-const MAX_COMMENT_DURATION_SECONDS = 20
-
 interface RemotionPreviewCardProps {
 	videoInfo?: (Partial<VideoInfo> & { translatedTitle?: string | null }) | null
 	comments: Comment[]
@@ -36,48 +32,6 @@ interface RemotionPreviewCardProps {
 	onRender?: () => void
 	onRenderLabel?: string
 	isRenderPending?: boolean
-}
-
-const chineseCharRegex = /[\u4e00-\u9fff]/
-
-function weightByLanguage(text?: string | null, baseWeight = 1): number {
-	if (!text) return 0
-	const hasChinese = chineseCharRegex.test(text)
-	// 中文字号更大、每行容纳字符更少，权重更高
-	return text.length * baseWeight * (hasChinese ? 2.2 : 1.0)
-}
-
-function estimateCommentDurationSeconds(comment: Comment): number {
-	const baseSeconds = 3.5
-	const mainWeight = weightByLanguage(comment.content, 1.0)
-	const transWeight = weightByLanguage(comment.translatedContent, 1.2)
-	const weightedChars = mainWeight + transWeight
-	// 较温和的时间增长系数，避免爆炸增长
-	const additionalSeconds = weightedChars / 18
-	const estimated = baseSeconds + additionalSeconds
-	return Math.min(
-		MAX_COMMENT_DURATION_SECONDS,
-		Math.max(MIN_COMMENT_DURATION_SECONDS, estimated),
-	)
-}
-
-function buildTimeline(comments: Comment[]): TimelineDurations {
-	const coverDurationInFrames = Math.round(COVER_DURATION_SECONDS * FPS)
-	const commentDurationsInFrames = comments.map((comment) => {
-		const seconds = estimateCommentDurationSeconds(comment)
-		return Math.round(seconds * FPS)
-	})
-	const totalDurationInFrames =
-		coverDurationInFrames +
-		commentDurationsInFrames.reduce((sum, frames) => sum + frames, 0)
-	const totalDurationSeconds = totalDurationInFrames / FPS
-	return {
-		coverDurationInFrames,
-		commentDurationsInFrames,
-		totalDurationInFrames,
-		totalDurationSeconds,
-		coverDurationSeconds: COVER_DURATION_SECONDS,
-	}
 }
 
 function mapVideoInfo(
@@ -107,7 +61,10 @@ export function RemotionPreviewCard({
 	isRenderPending,
 }: RemotionPreviewCardProps) {
 	const mediaInfo = useMemo(() => mapVideoInfo(videoInfo), [videoInfo])
-	const timeline = useMemo(() => buildTimeline(comments), [comments])
+	const timeline = useMemo(
+		() => buildCommentTimeline(comments, REMOTION_FPS),
+		[comments],
+	)
 
 	const inputProps: CommentVideoInputProps | undefined = useMemo(() => {
 		if (!mediaInfo || comments.length === 0) {
@@ -119,7 +76,7 @@ export function RemotionPreviewCard({
 			comments,
 			coverDurationInFrames: timeline.coverDurationInFrames,
 			commentDurationsInFrames: timeline.commentDurationsInFrames,
-			fps: FPS,
+			fps: REMOTION_FPS,
 		}
 	}, [comments, mediaInfo, timeline])
 
@@ -156,9 +113,9 @@ export function RemotionPreviewCard({
 								component={CommentsVideo}
 								inputProps={inputProps}
 								durationInFrames={timeline.totalDurationInFrames}
-								compositionWidth={1920}
-								compositionHeight={1080}
-								fps={FPS}
+							compositionWidth={1920}
+							compositionHeight={1080}
+							fps={REMOTION_FPS}
 								controls
 								loop
 								style={{ width: '100%', height: '100%', backgroundColor: '#0b1120' }}

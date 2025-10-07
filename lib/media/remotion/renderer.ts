@@ -7,14 +7,9 @@ import { getCompositions, renderMedia } from '@remotion/renderer'
 import { ProxyAgent, fetch as undiciFetch } from 'undici'
 import { execa } from 'execa'
 import type { Comment, VideoInfo } from '../types'
-import type { TimelineDurations } from '../../../remotion/types'
 import { layoutConstants } from '../../../remotion/CommentsVideo'
+import { buildCommentTimeline, REMOTION_FPS } from './durations'
 import { PROXY_URL } from '~/lib/constants'
-
-const FPS = 30
-const COVER_DURATION_SECONDS = 3
-const MAX_COMMENT_DURATION_SECONDS = 8
-const MIN_COMMENT_DURATION_SECONDS = 3
 
 const proxyAgent = PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined
 
@@ -49,92 +44,6 @@ export interface RenderProgressEvent {
 	stage: RenderProgressStage
 	progress?: number
 	meta?: Record<string, unknown>
-}
-
-function estimateCommentHeight(comment: Comment): number {
-  // Calculate estimated text height in pixels
-  const isChinesePrimary = comment.content && /[\u4e00-\u9fff]/.test(comment.content)
-  const isChineseTranslation = comment.translatedContent && /[\u4e00-\u9fff]/.test(comment.translatedContent)
-
-  // Font sizes from CommentsVideo.tsx
-  const mainFontSize = isChinesePrimary ? 52 : 26
-  const mainLineHeight = isChinesePrimary ? 1.4 : 1.52
-  const mainLineHeightPx = mainFontSize * mainLineHeight
-
-  // Count actual lines including empty lines
-  const mainLines = (comment.content?.split('\n').length ?? 0)
-  const mainHeight = mainLines * mainLineHeightPx
-
-  let totalHeight = mainHeight
-
-  if (comment.translatedContent && comment.translatedContent !== comment.content) {
-    const translationFontSize = isChineseTranslation ? 52 : 24
-    const translationLineHeight = isChineseTranslation ? 1.4 : 1.48
-    const translationLineHeightPx = translationFontSize * translationLineHeight
-    const translationLines = comment.translatedContent.split('\n').length
-    const translationHeight = translationLines * translationLineHeightPx
-
-    // Calculate accurate spacing: marginTop (20px) + paddingTop (16px) = 36px
-    const spacingBetween = 20 + 16
-    totalHeight += spacingBetween + translationHeight
-  }
-
-  return totalHeight
-}
-
-function calculateScrollingDuration(contentHeight: number): number {
-  const CONTAINER_HEIGHT = 320
-  const SCROLL_SPEED = 30 // pixels per second - adjusted for better reading speed
-  const MIN_SCROLL_TIME = 1.5 // minimum seconds for scrolling
-
-  if (contentHeight <= CONTAINER_HEIGHT) {
-    return 0 // No scrolling needed
-  }
-
-  const scrollDistance = contentHeight - CONTAINER_HEIGHT
-  const scrollTimeNeeded = scrollDistance / SCROLL_SPEED
-  return Math.max(MIN_SCROLL_TIME, scrollTimeNeeded)
-}
-
-function estimateCommentDurationSeconds(comment: Comment): number {
-  const baseSeconds = 2.8
-  const englishLength = comment.content?.length ?? 0
-  const translatedLength = comment.translatedContent?.length ?? 0
-  const weightedChars = englishLength + translatedLength * 1.2
-  const additionalSeconds = weightedChars / 90
-
-  // Calculate content height and scrolling requirements
-  const contentHeight = estimateCommentHeight(comment)
-  const scrollingDuration = calculateScrollingDuration(contentHeight)
-
-  // Base time plus scrolling time
-  const estimated = baseSeconds + additionalSeconds + scrollingDuration
-
-  // Add buffer time for appear/disappear animations (0.8s each)
-  const withAnimationBuffer = estimated + 1.6
-
-  return Math.min(
-    MAX_COMMENT_DURATION_SECONDS,
-    Math.max(MIN_COMMENT_DURATION_SECONDS, withAnimationBuffer),
-  )
-}
-
-function buildTimeline(comments: Comment[]): TimelineDurations {
-  const coverDurationInFrames = Math.round(COVER_DURATION_SECONDS * FPS)
-  const commentDurationsInFrames = comments.map((comment) => {
-    const seconds = estimateCommentDurationSeconds(comment)
-    return Math.round(seconds * FPS)
-  })
-  const totalDurationInFrames =
-    coverDurationInFrames + commentDurationsInFrames.reduce((sum, frames) => sum + frames, 0)
-  const totalDurationSeconds = totalDurationInFrames / FPS
-  return {
-    coverDurationInFrames,
-    commentDurationsInFrames,
-    totalDurationInFrames,
-    totalDurationSeconds,
-    coverDurationSeconds: COVER_DURATION_SECONDS,
-  }
 }
 
 export interface RenderWithRemotionOptions {
@@ -211,7 +120,7 @@ export async function renderVideoWithRemotion({
   )
 
   const { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, totalDurationSeconds, coverDurationSeconds } =
-    buildTimeline(preparedComments)
+    buildCommentTimeline(preparedComments, REMOTION_FPS)
 
   try {
     onProgress?.({ stage: 'bundle', progress: 0 })
@@ -228,7 +137,7 @@ export async function renderVideoWithRemotion({
       comments: preparedComments,
       coverDurationInFrames,
       commentDurationsInFrames,
-      fps: FPS,
+      fps: REMOTION_FPS,
     }
 
     const compositions = await getCompositions(serveUrl, {
@@ -245,7 +154,7 @@ export async function renderVideoWithRemotion({
       composition: {
         ...composition,
         durationInFrames: totalDurationInFrames,
-        fps: FPS,
+        fps: REMOTION_FPS,
       },
       serveUrl,
       codec: 'h264',
@@ -315,7 +224,7 @@ async function composeWithSourceVideo({
 
   const delayMs = Math.round(coverDurationSeconds * 1000)
   const filterGraph = [
-    `[1:v]fps=${FPS},setpts=PTS-STARTPTS,scale=${video.width}:${video.height}:flags=lanczos,setsar=1[scaled_video]`,
+    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${video.width}:${video.height}:flags=lanczos,setsar=1[scaled_video]`,
     `[0:v][scaled_video]overlay=${video.x}:${video.y}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
     `[1:a]adelay=${delayMs}|${delayMs},apad[delayed_audio]`,
   ].join(';')
@@ -340,7 +249,7 @@ async function composeWithSourceVideo({
     '-vsync',
     'cfr',
     '-r',
-    String(FPS),
+    String(REMOTION_FPS),
     '-c:v',
     'libx264',
     '-c:a',
