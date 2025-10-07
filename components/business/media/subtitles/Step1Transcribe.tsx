@@ -60,146 +60,91 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 
 	return (
 		<div className="space-y-6">
-			{/* Provider and Model Selection */}
-			<div className="space-y-4">
-				<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-					{/* Provider Selection */}
-					<div className="flex flex-col space-y-2">
-						<label className="text-sm font-medium text-gray-700">
-							Transcription Provider
-						</label>
-						<Select
-							value={selectedProvider}
-							onValueChange={(value) => {
-								const newProvider = value as TranscriptionProvider
-								onProviderChange(newProvider)
-								// Auto-select first available model for new provider
-								const newModels = getAvailableModels(newProvider)
-								if (newModels.length > 0 && !newModels.includes(selectedModel)) {
-									onModelChange(newModels[0])
-								}
-							}}
-							disabled={isPending}
-						>
-							<SelectTrigger className="w-full sm:w-[180px]">
-								<SelectValue placeholder="Select provider">
-									<div className="flex items-center gap-2">
-										{getProviderIcon(selectedProvider)}
-										{getProviderLabel(selectedProvider)}
-									</div>
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="local">
-									<div className="flex items-center gap-2">
-										<Server className="h-4 w-4" />
-										Local Whisper
-									</div>
-								</SelectItem>
-								<SelectItem value="cloudflare">
-									<div className="flex items-center gap-2">
-										<Cloud className="h-4 w-4" />
-										Cloudflare API
-									</div>
-								</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-
-					{/* Model Selection */}
-					<div className="flex flex-col space-y-2">
-						<label className="text-sm font-medium text-gray-700">
-							Model
-						</label>
-						<Select
-							value={selectedModel}
-							onValueChange={(value) => onModelChange(value as WhisperModel)}
-							disabled={isPending}
-						>
-							<SelectTrigger className="w-full sm:w-[200px]">
-								<SelectValue placeholder="Select model" />
-							</SelectTrigger>
-							<SelectContent>
-								{availableModels.map((model) => (
-									<SelectItem key={model} value={model}>
-										<div className="flex flex-col items-start">
-											<span className="font-medium">
-												{getModelLabel(model)}
-											</span>
-											<span className="text-xs text-gray-500">
-												{getModelDescription(model)}
-											</span>
-										</div>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-
-					{/* Start Button */}
-					<div className="flex flex-col justify-end">
-						<Button
-							onClick={onStart}
-							disabled={isPending}
-							className="w-full sm:w-auto mt-6 sm:mt-0"
-						>
-							{isPending && (
-								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-							)}
-							{isPending ? 'Generating...' : 'Start Transcription'}
-						</Button>
-					</div>
+			{/* Configuration Section */}
+			<div className="flex flex-col sm:flex-row gap-3 items-end">
+				<div className="min-w-[140px]">
+					<label className="text-sm font-medium mb-2 block">Provider</label>
+					<Select
+						value={selectedProvider}
+						onValueChange={(value) => {
+							const newProvider = value as TranscriptionProvider
+							onProviderChange(newProvider)
+							const newModels = getAvailableModels(newProvider)
+							if (newModels.length > 0 && !newModels.includes(selectedModel)) {
+								onModelChange(newModels[0])
+							}
+						}}
+						disabled={isPending}
+					>
+						<SelectTrigger>
+							<SelectValue>
+								<div className="flex items-center gap-2">
+									{getProviderIcon(selectedProvider)}
+									{getProviderLabel(selectedProvider)}
+								</div>
+							</SelectValue>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="local">
+								<div className="flex items-center gap-2">
+									<Server className="h-4 w-4" />
+									Local
+								</div>
+							</SelectItem>
+							<SelectItem value="cloudflare">
+								<div className="flex items-center gap-2">
+									<Cloud className="h-4 w-4" />
+									Cloudflare
+								</div>
+							</SelectItem>
+						</SelectContent>
+					</Select>
 				</div>
 
-				{/* Provider Info */}
-				<div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-					{selectedProvider === 'cloudflare' ? (
-						<div className="flex items-start gap-2">
-							<Cloud className="h-4 w-4 mt-0.5 flex-shrink-0 text-blue-500" />
-							<div>
-								<p className="font-medium text-blue-700">
-									Cloudflare Workers AI
-								</p>
-								<p className="text-blue-600">
-									Fast, cloud-based transcription with pay-per-minute pricing.
-									Requires Cloudflare API configuration.
-								</p>
-							</div>
-						</div>
-					) : (
-						<div className="flex items-start gap-2">
-							<Server className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-500" />
-							<div>
-								<p className="font-medium text-green-700">
-									Local Whisper
-								</p>
-								<p className="text-green-600">
-									Offline transcription using local Whisper.cpp installation.
-									No additional costs but requires local setup.
-								</p>
-							</div>
-						</div>
-					)}
+				<div className="min-w-[140px]">
+					<label className="text-sm font-medium mb-2 block">Model</label>
+					<Select
+						value={selectedModel}
+						onValueChange={(value) => onModelChange(value as WhisperModel)}
+						disabled={isPending}
+					>
+						<SelectTrigger>
+							<SelectValue placeholder="Select model" />
+						</SelectTrigger>
+						<SelectContent>
+							{availableModels.map((model) => (
+								<SelectItem key={model} value={model}>
+									{getModelLabel(model)}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</div>
+
+				<Button
+					onClick={onStart}
+					disabled={isPending}
+					className="min-w-[140px]"
+				>
+					{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+					{isPending ? 'Processing...' : 'Generate'}
+				</Button>
 			</div>
 
-			{/* Transcription Result */}
+			
+			{/* Results Section */}
 			{transcription && (
 				<div className="space-y-3">
 					<div className="flex items-center gap-2">
-						<FileText className="h-5 w-5 text-green-600" />
-						<h3 className="text-lg font-semibold">Transcription Result</h3>
+						<h3 className="font-semibold text-gray-900">Result</h3>
 						<Badge variant="secondary" className="text-xs">
 							{transcription.split(' ').length} words
-						</Badge>
-						<Badge variant="outline" className="text-xs">
-							{getProviderLabel(selectedProvider)}
 						</Badge>
 					</div>
 					<Textarea
 						value={transcription}
 						readOnly
-						rows={12}
+						rows={8}
 						className="font-mono text-sm"
 					/>
 				</div>
@@ -207,12 +152,9 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 
 			{/* Error Message */}
 			{errorMessage && (
-				<div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-					<AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-					<div>
-						<h3 className="font-semibold text-red-800">Transcription Error</h3>
-						<p className="text-red-700 text-sm">{errorMessage}</p>
-					</div>
+				<div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+					<AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
+					<p className="text-sm text-red-700">{errorMessage}</p>
 				</div>
 			)}
 		</div>
