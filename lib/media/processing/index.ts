@@ -72,7 +72,6 @@ export async function renderVideoWithSubtitles(
 		hintTextConfig: subtitleConfig.hintTextConfig || defaultSubtitleRenderConfig.hintTextConfig,
 	}
 
-	
 	const tempDir = path.dirname(outputPath)
 
 	// Convert VTT content to ASS format using requested styling
@@ -108,7 +107,7 @@ export async function renderVideoWithSubtitles(
 		try {
 			await fs.unlink(tempAssPath)
 		} catch (cleanupError) {
-			console.warn('Failed to cleanup temporary ASS file:', cleanupError)
+			// Ignore cleanup errors
 		}
 	}
 }
@@ -381,13 +380,25 @@ async function convertWebVttToAss(
 	vttContent: string,
 	config: SubtitleRenderConfig,
 ): Promise<string> {
-	// Helper to convert WebVTT time (00:00:00.000) -> ASS (0:00:00.00)
+	// Helper to convert WebVTT time (00:00:00.000 or 00:00.000) -> ASS (0:00:00.00)
 	const toAssTime = (t: string): string => {
-		const match = t.match(/(\d+):(\d+):(\d+)\.(\d{1,3})/)
-		if (!match) return '0:00:00.00'
-		const [, hh, mm, ss, ms] = match
-		const cs = String(Math.round(parseInt(ms) / 10)).padStart(2, '0')
-		return `${parseInt(hh)}:${mm}:${ss}.${cs}`
+		// Try HH:MM:SS.mmm format first
+		let match = t.match(/(\d+):(\d+):(\d+)\.(\d{1,3})/)
+		if (match) {
+			const [, hh, mm, ss, ms] = match
+			const cs = String(Math.round(parseInt(ms) / 10)).padStart(2, '0')
+			return `${parseInt(hh)}:${mm}:${ss}.${cs}`
+		}
+
+		// Try MM:SS.mmm format (no hours)
+		match = t.match(/(\d+):(\d+)\.(\d{1,3})/)
+		if (match) {
+			const [, mm, ss, ms] = match
+			const cs = String(Math.round(parseInt(ms) / 10)).padStart(2, '0')
+			return `0:${mm}:${ss}.${cs}`
+		}
+
+		return '0:00:00.00'
 	}
 
 	const lines = vttContent.split(/\r?\n/)
@@ -399,8 +410,9 @@ async function convertWebVttToAss(
 	}> = []
 
 	for (let i = 0; i < lines.length; i++) {
+		// Match both HH:MM:SS.mmm and MM:SS.mmm formats
 		const timeMatch = lines[i].match(
-			/^(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/,
+			/^(\d{1,2}:\d{2}(?::\d{2})?\.\d{3}) --> (\d{1,2}:\d{2}(?::\d{2})?\.\d{3})/,
 		)
 		if (timeMatch) {
 			const [, start, end] = timeMatch
