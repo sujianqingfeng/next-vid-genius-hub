@@ -234,12 +234,13 @@ const InfoPanel: React.FC<{ videoInfo: CommentVideoInputProps['videoInfo']; comm
           {videoInfo.translatedTitle ?? videoInfo.title}
         </h1>
         <p style={{ margin: '12px 0 0', fontSize: 20, color: palette.textMuted }}>
-          @{videoInfo.author ?? 'unknown'} · {commentCount} 条精选评论
+          @{videoInfo.author ?? 'unknown'} · 外网真实评论
         </p>
       </div>
       <div style={metaListStyle}>
-        <MetaItem label="Views" value={formatCount(videoInfo.viewCount)} />
-        <MetaItem label="Comments" value={String(commentCount)} />
+        <MetaItem label="观看量" value={formatCount(videoInfo.viewCount)} />
+        <MetaItem label="评论数" value={String(commentCount)} />
+        <MetaItem label="视频制作者" value="真实评论-TubeTweet" />
       </div>
     </div>
   )
@@ -284,7 +285,7 @@ const CoverSlide: React.FC<{
           {videoInfo.translatedTitle ?? videoInfo.title}
         </h2>
         <p style={{ margin: 0, fontSize: 22, color: palette.textMuted }}>
-          来自 {videoInfo.author ?? '未知'} · {formatCount(videoInfo.viewCount)} 次观看 · {commentCount} 条评论梳理完成
+          来自 {videoInfo.author ?? '未知'} · {formatCount(videoInfo.viewCount)} 次观看 · 外网真实评论
         </p>
       </div>
     </AbsoluteFill>
