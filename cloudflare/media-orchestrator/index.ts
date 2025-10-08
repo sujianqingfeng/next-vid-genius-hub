@@ -162,7 +162,8 @@ async function handleStart(env: Env, req: Request) {
   const bucketName = env.S3_BUCKET_NAME || 'vidgen-render'
   const inputVideoKey = `inputs/videos/${body.mediaId}.mp4`
   const inputVttKey = `inputs/subtitles/${body.mediaId}.vtt`
-  const outputKey = `outputs/${jobId}/video.mp4`
+  // 输出路径包含 mediaId 便于归属检索
+  const outputKey = `outputs/by-media/${body.mediaId}/${jobId}/video.mp4`
 
   let inputVideoUrl: string
   let inputVttUrl: string
@@ -187,7 +188,9 @@ async function handleStart(env: Env, req: Request) {
     inputVideoUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/video`
     inputVttUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/subtitles`
   }
-  const outputPutUrl = await presignS3(env, 'PUT', bucketName, outputKey, 600, 'video/mp4')
+  // 预签名 PUT 有效期（秒），可通过环境变量区分环境
+  const putTtl = Number(env.PUT_EXPIRES || 600)
+  const outputPutUrl = await presignS3(env, 'PUT', bucketName, outputKey, putTtl, 'video/mp4')
 
   const payload = {
     jobId,
@@ -197,6 +200,8 @@ async function handleStart(env: Env, req: Request) {
     inputVideoUrl,
     inputVttUrl,
     outputPutUrl,
+    // 进度回传（容器→Worker DO）
+    callbackUrl: `${new URL(req.url).origin}/callbacks/container`,
     // 仅使用 S3 直连，容器无需访问 Next/Worker
     engineOptions: body.options || {},
   }
@@ -261,9 +266,27 @@ async function handleContainerCallback(env: Env, req: Request) {
 }
 
 async function handleUpload(env: Env, req: Request, jobId: string) {
+  // 依据 DO/KV 中的 outputKey 决定最终存储路径（包含 mediaId）
+  let outputKey = `outputs/${jobId}/video.mp4`
+  try {
+    const stub = jobStub(env, jobId)
+    if (stub) {
+      const r = await stub.fetch('https://do/')
+      if (r.ok) {
+        const doc = (await r.json()) as any
+        if (doc?.outputKey) outputKey = doc.outputKey
+      }
+    } else {
+      const raw = await env.JOBS.get(jobId)
+      if (raw) {
+        const doc = JSON.parse(raw) as any
+        if (doc?.outputKey) outputKey = doc.outputKey
+      }
+    }
+  } catch {}
+
   // Persist artifact into R2
-  const key = `outputs/${jobId}/video.mp4`
-  await env.RENDER_BUCKET.put(key, req.body as ReadableStream, {
+  await env.RENDER_BUCKET.put(outputKey, req.body as ReadableStream, {
     httpMetadata: { contentType: 'video/mp4' },
   })
   // Update KV with outputKey
@@ -274,18 +297,89 @@ async function handleUpload(env: Env, req: Request, jobId: string) {
     status: prior?.status || 'uploading',
     phase: 'uploading',
     progress: 1,
-    outputKey: key,
+    outputKey,
     ts: Date.now(),
   }
   await env.JOBS.put(jobId, JSON.stringify({ ...doc, mediaId: prior?.mediaId }), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
-  return json({ ok: true, outputKey: key, outputUrl: `/artifacts/${jobId}` })
+  return json({ ok: true, outputKey, outputUrl: `/artifacts/${jobId}` })
 }
 
-async function handleArtifactGet(env: Env, jobId: string) {
-  const key = `outputs/${jobId}/video.mp4`
-  const obj = await env.RENDER_BUCKET.get(key)
+async function handleArtifactGet(env: Env, req: Request, jobId: string) {
+  // 优先从 DO/KV 获取 outputKey（包含 mediaId 的归属路径）
+  let key = `outputs/${jobId}/video.mp4`
+  try {
+    const stub = jobStub(env, jobId)
+    if (stub) {
+      const r = await stub.fetch('https://do/')
+      if (r.ok) {
+        const doc = (await r.json()) as any
+        if (doc?.outputKey) key = doc.outputKey
+      }
+    } else {
+      const raw = await env.JOBS.get(jobId)
+      if (raw) {
+        const doc = JSON.parse(raw) as any
+        if (doc?.outputKey) key = doc.outputKey
+      }
+    }
+  } catch {}
+  const range = req.headers.get('range')
+
+  // 首选：若配置了 S3_ENDPOINT（R2 S3 或 MinIO），通过 S3 预签名直读，适配开发场景
+  if (env.S3_ENDPOINT && env.S3_BUCKET_NAME) {
+    const url = await presignS3(env, 'GET', env.S3_BUCKET_NAME, key, 600)
+    const headers: Record<string, string> = {}
+    if (range) headers['range'] = range
+    const r = await fetch(url, { headers })
+    const respHeaders = new Headers()
+    const copy = ['content-type','accept-ranges','content-length','content-range','cache-control','etag','last-modified']
+    for (const h of copy) {
+      const v = r.headers.get(h)
+      if (v) respHeaders.set(h, v)
+    }
+    if (!respHeaders.has('cache-control')) respHeaders.set('cache-control','private, max-age=60')
+    return new Response(r.body, { status: r.status, headers: respHeaders })
+  }
+
+  // 其次：R2 绑定直读（生产常见路径）
+  if (range) {
+    const m = range.match(/bytes=(\d*)-(\d*)/)
+    if (!m) return json({ error: 'invalid range' }, { status: 400 })
+    const startStr = m[1]
+    const endStr = m[2]
+    const head = await env.RENDER_BUCKET!.head(key)
+    if (!head) return new Response('not found', { status: 404 })
+    const size = head.size
+    let start: number
+    let end: number
+    if (startStr === '' && endStr) {
+      const suffix = parseInt(endStr, 10)
+      start = Math.max(size - suffix, 0)
+      end = size - 1
+    } else {
+      start = parseInt(startStr, 10)
+      end = endStr ? parseInt(endStr, 10) : size - 1
+    }
+    if (Number.isNaN(start) || Number.isNaN(end) || start < 0 || end < start) {
+      return json({ error: 'invalid range' }, { status: 416 })
+    }
+    if (end >= size) end = size - 1
+    const len = end - start + 1
+    const part = await env.RENDER_BUCKET!.get(key, { range: { offset: start, length: len } })
+    if (!part) return new Response('not found', { status: 404 })
+    const h = new Headers()
+    h.set('content-type', part.httpMetadata?.contentType || 'video/mp4')
+    h.set('accept-ranges', 'bytes')
+    h.set('content-length', String(len))
+    h.set('content-range', `bytes ${start}-${end}/${size}`)
+    return new Response(part.body, { status: 206, headers: h })
+  }
+  const obj = await env.RENDER_BUCKET!.get(key)
   if (!obj) return new Response('not found', { status: 404 })
-  return new Response(obj.body, { headers: { 'content-type': obj.httpMetadata?.contentType || 'application/octet-stream' } })
+  const h = new Headers()
+  h.set('content-type', obj.httpMetadata?.contentType || 'video/mp4')
+  h.set('accept-ranges', 'bytes')
+  return new Response(obj.body, { headers: h })
 }
 
 async function hmacHex(secret: string, data: string): Promise<string> {
@@ -398,7 +492,7 @@ export default {
     }
     if (req.method === 'GET' && pathname.startsWith('/artifacts/')) {
       const jobId = pathname.split('/').pop()!
-      return handleArtifactGet(env, jobId)
+      return handleArtifactGet(env, req, jobId)
     }
     return json({ error: 'not found' }, { status: 404 })
   },

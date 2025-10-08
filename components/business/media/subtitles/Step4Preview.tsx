@@ -48,13 +48,12 @@ export function Step4Preview(props: Step4PreviewProps) {
 						Preview Video
 					</h3>
 					<div className="w-full bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px', maxHeight: '80vh' }}>
-						<video
-							key={cacheBuster ?? 0}
-							controls
-							preload="metadata"
-							className="w-full h-full object-contain"
-							poster={thumbnail || undefined}
-							crossOrigin="anonymous"
+            <video
+                controls
+                preload="metadata"
+                className="w-full h-full object-contain"
+                poster={thumbnail || undefined}
+                crossOrigin="anonymous"
 						>
 							<source src={videoSrc} type="video/mp4" />
 							Your browser does not support the video tag.

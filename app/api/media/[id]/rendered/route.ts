@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '~/lib/db'
+import { CF_ORCHESTRATOR_URL } from '~/lib/constants'
 
 export async function GET(
 	request: NextRequest,
@@ -20,18 +21,41 @@ export async function GET(
 			return NextResponse.json({ error: 'Media not found' }, { status: 404 })
 		}
 
-		if (!media.videoWithSubtitlesPath) {
-			return NextResponse.json(
-				{ error: 'Rendered video not found' },
-				{ status: 404 },
-			)
-		}
+        if (!media.videoWithSubtitlesPath) {
+            return NextResponse.json(
+                { error: 'Rendered video not found' },
+                { status: 404 },
+            )
+        }
 
-		// Get file stats
-		const stats = await stat(media.videoWithSubtitlesPath)
-		const fileSize = stats.size
-		const lastModified = stats.mtime.toUTCString()
-		const etag = `W/"${fileSize}-${Math.floor(stats.mtimeMs)}"`
+        // 远端（Worker/R2）路径：remote:orchestrator:<jobId>
+        if (media.videoWithSubtitlesPath.startsWith('remote:orchestrator:')) {
+            const jobId = media.videoWithSubtitlesPath.split(':').pop()!
+            const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
+            if (!base) {
+                return NextResponse.json({ error: 'Orchestrator URL not configured' }, { status: 500 })
+            }
+            const target = `${base}/artifacts/${encodeURIComponent(jobId)}`
+            const range = request.headers.get('range')
+            const headers: Record<string, string> = {}
+            if (range) headers['range'] = range
+            const r = await fetch(target, { headers })
+            const respHeaders = new Headers()
+            // 透传关键头
+            const copy = ['content-type','accept-ranges','content-length','content-range','cache-control','etag','last-modified']
+            for (const h of copy) {
+                const v = r.headers.get(h)
+                if (v) respHeaders.set(h, v)
+            }
+            if (!respHeaders.has('cache-control')) respHeaders.set('cache-control','private, max-age=60')
+            return new NextResponse(r.body as unknown as ReadableStream, { status: r.status, headers: respHeaders })
+        }
+
+        // 本地文件路径
+        const stats = await stat(media.videoWithSubtitlesPath)
+        const fileSize = stats.size
+        const lastModified = stats.mtime.toUTCString()
+        const etag = `W/"${fileSize}-${Math.floor(stats.mtimeMs)}"`
 
 		// Handle conditional GET
 		const ifNoneMatch = request.headers.get('if-none-match')

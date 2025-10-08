@@ -13,7 +13,7 @@
 - R2：
   - inputs/videos/{mediaId}.mp4
   - inputs/subtitles/{mediaId}.vtt
-  - outputs/{jobId}/video.mp4
+  - outputs/by-media/{mediaId}/{jobId}/video.mp4
 - 容器（containers/burner-ffmpeg）：
   - /render：接受 R2 预签名 URL（生产）或 fallback URL（开发），执行 ffmpeg 烧录后写回产物。
 
@@ -143,7 +143,7 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 1) 上传 10–30 秒小样视频，手动触发 Step 3（Cloud）。
 2) Worker 日志：`start job ...` → 无错误；容器日志：`inputs ready` → `ffmpeg done`。
 3) 轮询 /jobs/:id：status 从 `queued`→`running`（或 `preparing`）→ 检测到 R2 `outputs/...` → `completed`。
-4) Next 日志出现 `[cf-callback] saved to ...video-with-subtitles.mp4`，页面自动跳到 Step 4 可播放。
+4) Next 日志出现 `[cf-callback] recorded remote artifact for job <jobId>`，页面自动跳到 Step 4 可播放（Next 代理 Worker `/artifacts/:jobId`，支持 Range）。
 
 ## 常见问题
 
@@ -151,4 +151,3 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 - 字体不一致/缺字：容器镜像已安装 Noto CJK + fontconfig，并在 ASS 中固定 `Noto Sans CJK SC`。
 - 颜色/兼容性差异：两端编码参数统一为 `-c:v libx264 -pix_fmt yuv420p -crf 18 -preset medium -c:a aac -b:a 160k -movflags +faststart`。
 - 400 `jobId required`：仅在生成 jobId 后再开始轮询；前端已修复。
-

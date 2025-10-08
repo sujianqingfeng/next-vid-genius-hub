@@ -26,9 +26,18 @@ export const COLOR_CONSTANTS = {
 /**
  * 时间相关常量
  */
+// 环境感知的轮询配置
+function resolveInterval(devMs: number, prodMs: number) {
+    // 在浏览器端可用的 env: process.env.NODE_ENV 由 Next 编译期注入
+    const env = process.env.NODE_ENV || 'development'
+    return env === 'development' ? devMs : prodMs
+}
+
 export const TIME_CONSTANTS = {
-	// 轮询间隔（毫秒）
-	RENDERING_POLL_INTERVAL: 5000,
+    // 渲染状态轮询间隔（毫秒）
+    RENDERING_POLL_INTERVAL: resolveInterval(1500, 4000),
+    // 媒体详情刷新间隔（毫秒）
+    MEDIA_REFRESH_POLL_INTERVAL: resolveInterval(4000, 8000),
 
 	// 时间戳格式 - 支持两种格式: HH:MM:SS.mmm 和 MM:SS.mmm
 	VTT_TIMESTAMP_FORMAT: /((?:\d{2}:)?\d{2}:\d{2}\.\d{3})\s*-->\s*((?:\d{2}:)?\d{2}:\d{2}\.\d{3})/,

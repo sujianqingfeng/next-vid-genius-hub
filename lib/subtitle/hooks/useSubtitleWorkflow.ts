@@ -12,10 +12,9 @@ import type {
 	SubtitleWorkflowState,
 	StepState
 } from '~/lib/subtitle/types'
-import {
-	DEFAULT_SUBTITLE_RENDER_CONFIG,
-	findMatchingPreset
-} from '~/lib/subtitle/config/presets'
+import { DEFAULT_SUBTITLE_RENDER_CONFIG, findMatchingPreset } from '~/lib/subtitle/config/presets'
+import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
+import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
 
 interface UseSubtitleWorkflowOptions {
 	mediaId: string
@@ -43,9 +42,10 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 	})
 
 	// 媒体数据查询
-	const mediaQuery = useQuery(
-		queryOrpc.media.byId.queryOptions({ input: { id: mediaId } })
-	)
+    const mediaQuery = useQuery(
+        queryOrpc.media.byId.queryOptions({ input: { id: mediaId } })
+    )
+    const isVisible = usePageVisibility()
 
 	// 更新步骤状态
 	const updateStepState = useCallback((
@@ -115,21 +115,21 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 	}, [mediaQuery.data, workflowState, updateWorkflowState, updateStepState, setActiveStep])
 
 	// 轮询渲染状态
-	useEffect(() => {
-		if (
-			workflowState.activeStep === 'step3' &&
-			workflowState.translation &&
-			!workflowState.renderedVideoPath
-		) {
-			const interval = setInterval(() => {
-				queryClient.invalidateQueries({
-					queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-				})
-			}, 5000) // 每5秒轮询一次
-
-			return () => clearInterval(interval)
-		}
-	}, [workflowState.activeStep, workflowState.translation, workflowState.renderedVideoPath, mediaId, queryClient])
+    useEffect(() => {
+        if (
+            workflowState.activeStep === 'step3' &&
+            workflowState.translation &&
+            !workflowState.renderedVideoPath &&
+            isVisible
+        ) {
+            const interval = setInterval(() => {
+                queryClient.invalidateQueries({
+                    queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+                })
+            }, TIME_CONSTANTS.MEDIA_REFRESH_POLL_INTERVAL)
+            return () => clearInterval(interval)
+        }
+    }, [workflowState.activeStep, workflowState.translation, workflowState.renderedVideoPath, mediaId, queryClient, isVisible])
 
 	// 重置工作流
 	const resetWorkflow = useCallback(() => {

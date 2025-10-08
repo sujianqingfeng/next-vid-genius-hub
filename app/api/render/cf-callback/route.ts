@@ -39,22 +39,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (payload.status === 'completed') {
-      // Optional: download artifact locally so existing preview route works unchanged
-      if (payload.outputUrl) {
-        const opDir = path.join(OPERATIONS_DIR, media.id)
-        await fs.mkdir(opDir, { recursive: true })
-        const outPath = path.join(opDir, RENDERED_VIDEO_FILENAME)
-        const res = await fetch(payload.outputUrl)
-        if (!res.ok) {
-          console.error('[cf-callback] fetch artifact failed', res.status)
-          return NextResponse.json({ error: 'failed to fetch outputUrl' }, { status: 502 })
-        }
-        const buf = Buffer.from(await res.arrayBuffer())
-        await fs.writeFile(outPath, buf)
-
-        await db.update(schema.media).set({ videoWithSubtitlesPath: outPath }).where(eq(schema.media.id, media.id))
-        console.log('[cf-callback] saved to', outPath)
-      }
+      // 快速落地：不再将产物下载到 Next 本地，改为记录远端对象标识
+      // 使用“remote:orchestrator:<jobId>”作为路径占位符，由 /api/media/[id]/rendered 代理 Worker 读取
+      await db
+        .update(schema.media)
+        .set({ videoWithSubtitlesPath: `remote:orchestrator:${payload.jobId}` })
+        .where(eq(schema.media.id, media.id))
+      console.log('[cf-callback] recorded remote artifact for job', payload.jobId)
     }
 
     // In all cases, acknowledge

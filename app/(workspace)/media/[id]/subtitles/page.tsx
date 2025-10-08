@@ -38,6 +38,8 @@ import type {
 	WhisperModel
 } from '~/lib/subtitle/config/models'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
+import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
+import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
 
 export default function SubtitlesPage() {
 	const params = useParams()
@@ -74,7 +76,23 @@ export default function SubtitlesPage() {
 		'cloud',
 	)
 	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
+	const [previewVersion, setPreviewVersion] = useState<number | undefined>(undefined)
 	const queryClient = useQueryClient()
+  const isVisible = usePageVisibility()
+
+  // 恢复/持久化 cloudJobId（按媒体维度）
+  useEffect(() => {
+    const key = `subtitleCloudJob:${mediaId}`
+    // 恢复
+    if (!cloudJobId) {
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
+      if (saved) setCloudJobId(saved)
+    }
+    // 持久化
+    if (cloudJobId) {
+      window.localStorage.setItem(key, cloudJobId)
+    }
+  }, [mediaId, cloudJobId])
 
 	// 转录mutation
 	const transcribeMutation = useMutation(
@@ -142,12 +160,12 @@ export default function SubtitlesPage() {
 	const cloudStatusQuery = useQuery(
 		queryOrpc.subtitle.getRenderStatus.queryOptions({
 			input: cloudJobId ? { jobId: cloudJobId } : (undefined as any),
-			enabled: !!cloudJobId,
+			enabled: !!cloudJobId && isVisible && activeStep === 'step3',
 			refetchInterval: (q) => {
 				const s = (q.state.data as any)?.status
 				return s && ['completed', 'failed', 'canceled'].includes(s)
 					? false
-					: 2000
+					: TIME_CONSTANTS.RENDERING_POLL_INTERVAL
 			},
 		}),
 	)
@@ -161,6 +179,11 @@ export default function SubtitlesPage() {
 			if (activeStep === 'step3') {
 				setActiveStep('step4')
 			}
+			// 生成一次性的预览版本号，避免无限刷新
+			setPreviewVersion((v) => v ?? Date.now())
+			// 完成后清理并停止后续状态查询
+			try { window.localStorage.removeItem(`subtitleCloudJob:${mediaId}`) } catch {}
+			setCloudJobId(null)
 		}
 	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, activeStep, mediaId, queryClient, setActiveStep])
 
@@ -384,7 +407,7 @@ export default function SubtitlesPage() {
 							mediaId={mediaId}
 							hasRenderedVideo={hasRenderedVideo}
 							thumbnail={media?.thumbnail ?? undefined}
-							cacheBuster={Date.now()}
+							cacheBuster={previewVersion}
 						/>
 					</CardContent>
 				</Card>

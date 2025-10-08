@@ -55,13 +55,13 @@ pnpm dev:host   # 监听 0.0.0.0:3000（供 Worker 拉取源素材）
    - `start job` → `mirror inputs to S3` → `trigger container`。
 3) 容器日志：
    - `preparing` → `inputs ready` → `ffmpeg done` → `uploading artifact` → `completed`。
-4) 轮询 /jobs/:id：Worker 检测到 S3 出现 `outputs/<job>/video.mp4`，标记完成并回调 Next。
-5) Next 终端出现 `[cf-callback] saved to .../.operations/<mediaId>/video-with-subtitles.mp4`。
-6) 页面自动跳至 Step 4 可播放。
+4) 轮询 /jobs/:id：Worker 检测到 S3 出现 `outputs/by-media/<mediaId>/<jobId>/video.mp4`，标记完成并回调 Next。
+5) Next 终端出现 `[cf-callback] recorded remote artifact for job <jobId>`。
+6) 页面自动跳至 Step 4，可经 `/api/media/:id/rendered` 代理 Worker `/artifacts/:jobId` 播放（支持 Range）。
 
 ## 注意事项
 
 - 若 MinIO 与 Worker 不在同一网络（wrangler dev 在宿主机），将 `S3_ENDPOINT` 设置为 `http://127.0.0.1:9000`。
 - 若使用 compose 内网络，则把 `S3_ENDPOINT` 设为 `http://minio:9000` 并在容器中运行 wrangler。
 - 不建议在本地模式下再使用 `/upload` 或容器回调；S3 直连路径更稳、更贴近生产。
-
+ - 新逻辑将 jobId 持久化在浏览器（`subtitleCloudJob:<mediaId>`），刷新后自动恢复轮询；页面失焦会暂停轮询、聚焦恢复。

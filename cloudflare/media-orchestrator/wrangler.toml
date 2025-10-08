@@ -18,6 +18,8 @@ JOB_TTL_SECONDS = 86400
 CONTAINER_BASE_URL = "http://localhost:8080"
 NEXT_BASE_URL = "http://localhost:3000"
 JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
+# 预签名 PUT 有效期（秒）：开发 600，生产可提升（如 1800）
+PUT_EXPIRES = 600
 
 # S3-compatible storage for both prod (R2 S3 endpoint) and dev (MinIO)
 # For production with R2, set:
