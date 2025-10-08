@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
       jobId: string
       mediaId: string
       status: 'completed' | 'failed' | 'canceled'
+      engine?: 'burner-ffmpeg' | 'renderer-remotion'
       outputUrl?: string
       outputKey?: string
       durationMs?: number
@@ -39,13 +40,20 @@ export async function POST(req: NextRequest) {
     }
 
     if (payload.status === 'completed') {
-      // 快速落地：不再将产物下载到 Next 本地，改为记录远端对象标识
-      // 使用“remote:orchestrator:<jobId>”作为路径占位符，由 /api/media/[id]/rendered 代理 Worker 读取
-      await db
-        .update(schema.media)
-        .set({ videoWithSubtitlesPath: `remote:orchestrator:${payload.jobId}` })
-        .where(eq(schema.media.id, media.id))
-      console.log('[cf-callback] recorded remote artifact for job', payload.jobId)
+      // 根据引擎类型更新不同产物字段
+      if (payload.engine === 'renderer-remotion') {
+        await db
+          .update(schema.media)
+          .set({ videoWithInfoPath: `remote:orchestrator:${payload.jobId}` })
+          .where(eq(schema.media.id, media.id))
+        console.log('[cf-callback] recorded remote info artifact for job', payload.jobId)
+      } else {
+        await db
+          .update(schema.media)
+          .set({ videoWithSubtitlesPath: `remote:orchestrator:${payload.jobId}` })
+          .where(eq(schema.media.id, media.id))
+        console.log('[cf-callback] recorded remote subtitles artifact for job', payload.jobId)
+      }
     }
 
     // In all cases, acknowledge

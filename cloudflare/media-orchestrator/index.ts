@@ -3,6 +3,7 @@ export interface Env {
   RENDER_BUCKET?: R2Bucket
   JOB_TTL_SECONDS?: string
   CONTAINER_BASE_URL?: string
+  CONTAINER_BASE_URL_REMOTION?: string
   NEXT_BASE_URL?: string
   JOB_CALLBACK_HMAC_SECRET?: string
   // Generic S3-compatible config (R2/MinIO)
@@ -150,7 +151,13 @@ async function handleStart(env: Env, req: Request) {
   const jobId = uid()
   const now = Date.now()
   const baseNext = (env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
-  const containerBase = (env.CONTAINER_BASE_URL || 'http://localhost:8080').replace(/\/$/, '')
+  // Choose container base by engine
+  const containerBase = (
+    body.engine === 'renderer-remotion'
+      ? (env as any).CONTAINER_BASE_URL_REMOTION || env.CONTAINER_BASE_URL
+      : env.CONTAINER_BASE_URL
+    || 'http://localhost:8080'
+  ).replace(/\/$/, '')
   const baseSelfForContainer = (env.ORCHESTRATOR_BASE_URL_CONTAINER || new URL(req.url).origin).replace(/\/$/, '')
 
   const doc: StatusDoc = { jobId, status: 'queued', ts: now } as StatusDoc & { mediaId?: string }
@@ -162,11 +169,13 @@ async function handleStart(env: Env, req: Request) {
   const bucketName = env.S3_BUCKET_NAME || 'vidgen-render'
   const inputVideoKey = `inputs/videos/${body.mediaId}.mp4`
   const inputVttKey = `inputs/subtitles/${body.mediaId}.vtt`
+  const inputDataKey = `inputs/comments/${body.mediaId}.json`
   // 输出路径包含 mediaId 便于归属检索
   const outputKey = `outputs/by-media/${body.mediaId}/${jobId}/video.mp4`
 
   let inputVideoUrl: string
   let inputVttUrl: string
+  let inputDataUrl: string | undefined
   const mirrorInputs = (env.MIRROR_INPUTS || 'true').toLowerCase() !== 'false'
   if (mirrorInputs) {
     const videoExists = await s3Head(env, bucketName, inputVideoKey)
@@ -175,30 +184,49 @@ async function handleStart(env: Env, req: Request) {
       if (!src.ok || !src.body) return json({ error: 'fetch source failed' }, { status: 502 })
       await s3Put(env, bucketName, inputVideoKey, 'video/mp4', src.body as ReadableStream)
     }
-    const vttExists = await s3Head(env, bucketName, inputVttKey)
-    if (!vttExists) {
-      const sub = await fetch(`${baseNext}/api/media/${body.mediaId}/subtitles`)
-      if (!sub.ok) return json({ error: 'fetch subtitles failed' }, { status: 502 })
-      const text = await sub.text()
-      await s3Put(env, bucketName, inputVttKey, 'text/vtt', text)
+    if (body.engine === 'burner-ffmpeg') {
+      const vttExists = await s3Head(env, bucketName, inputVttKey)
+      if (!vttExists) {
+        const sub = await fetch(`${baseNext}/api/media/${body.mediaId}/subtitles`)
+        if (!sub.ok) return json({ error: 'fetch subtitles failed' }, { status: 502 })
+        const text = await sub.text()
+        await s3Put(env, bucketName, inputVttKey, 'text/vtt', text)
+      }
+    } else if (body.engine === 'renderer-remotion') {
+      const dataExists = await s3Head(env, bucketName, inputDataKey)
+      if (!dataExists) {
+        const r = await fetch(`${baseNext}/api/media/${body.mediaId}/comments-data`)
+        if (!r.ok) return json({ error: 'fetch comments-data failed' }, { status: 502 })
+        const txt = await r.text()
+        await s3Put(env, bucketName, inputDataKey, 'application/json', txt)
+      }
     }
     inputVideoUrl = await presignS3(env, 'GET', bucketName, inputVideoKey, 600)
-    inputVttUrl = await presignS3(env, 'GET', bucketName, inputVttKey, 600)
+    if (body.engine === 'burner-ffmpeg') {
+      inputVttUrl = await presignS3(env, 'GET', bucketName, inputVttKey, 600)
+    } else if (body.engine === 'renderer-remotion') {
+      inputDataUrl = await presignS3(env, 'GET', bucketName, inputDataKey, 600)
+    }
   } else {
     inputVideoUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/video`
-    inputVttUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/subtitles`
+    if (body.engine === 'burner-ffmpeg') {
+      inputVttUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/subtitles`
+    } else if (body.engine === 'renderer-remotion') {
+      inputDataUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/comments`
+    }
   }
   // 预签名 PUT 有效期（秒），可通过环境变量区分环境
   const putTtl = Number(env.PUT_EXPIRES || 600)
   const outputPutUrl = await presignS3(env, 'PUT', bucketName, outputKey, putTtl, 'video/mp4')
 
-  const payload = {
+  const payload: any = {
     jobId,
     mediaId: body.mediaId,
     engine: body.engine,
     // R2 presigned URLs (container无需访问Next/Worker)
     inputVideoUrl,
-    inputVttUrl,
+    ...(body.engine === 'burner-ffmpeg' ? { inputVttUrl } : {}),
+    ...(body.engine === 'renderer-remotion' ? { inputDataUrl } : {}),
     outputPutUrl,
     // 进度回传（容器→Worker DO）
     callbackUrl: `${new URL(req.url).origin}/callbacks/container`,
@@ -220,10 +248,10 @@ async function handleStart(env: Env, req: Request) {
   // Initialize Durable Object
   const stub = jobStub(env, jobId)
   if (stub) {
-    await stub.fetch('https://do/init', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId, mediaId: body.mediaId, status: 'running', outputKey }) })
+    await stub.fetch('https://do/init', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId, mediaId: body.mediaId, engine: body.engine, status: 'running', outputKey }) })
   } else {
     // fallback to KV (should not happen in prod)
-    await env.JOBS.put(jobId, JSON.stringify({ ...doc, status: 'running', outputKey, mediaId: body.mediaId }), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
+    await env.JOBS.put(jobId, JSON.stringify({ ...doc, status: 'running', outputKey, mediaId: body.mediaId, engine: body.engine }), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
   }
   return json({ jobId })
 }
@@ -464,7 +492,12 @@ export default {
       const nextBase = (env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
       const target = kind === 'video'
         ? `${nextBase}/api/media/${encodeURIComponent(mediaId)}/source`
-        : `${nextBase}/api/media/${encodeURIComponent(mediaId)}/subtitles`
+        : kind === 'subtitles'
+          ? `${nextBase}/api/media/${encodeURIComponent(mediaId)}/subtitles`
+          : kind === 'comments'
+            ? `${nextBase}/api/media/${encodeURIComponent(mediaId)}/comments-data`
+            : ''
+      if (!target) return json({ error: 'bad request' }, { status: 400 })
       const headers: Record<string,string> = {}
       const range = req.headers.get('range')
       if (range) headers['range'] = range
@@ -515,6 +548,7 @@ export class RenderJobDO {
       const doc = {
         jobId: body.jobId,
         mediaId: body.mediaId,
+        engine: body.engine,
         status: body.status || 'queued',
         outputKey: body.outputKey,
         ts: Date.now(),
@@ -568,7 +602,7 @@ export class RenderJobDO {
     const nextBase = (this.env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
     const cbUrl = `${nextBase}/api/render/cf-callback`
     const outputUrl = await presignS3(this.env, 'GET', this.env.S3_BUCKET_NAME || 'vidgen-render', doc.outputKey, 600)
-    const payload = { jobId: doc.jobId, mediaId: doc.mediaId || 'unknown', status: 'completed', outputUrl }
+    const payload = { jobId: doc.jobId, mediaId: doc.mediaId || 'unknown', engine: doc.engine, status: 'completed', outputUrl }
     const secret = this.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
     const signature = await hmacHex(secret, JSON.stringify(payload))
     await fetch(cbUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': signature }, body: JSON.stringify(payload) }).catch(() => {})

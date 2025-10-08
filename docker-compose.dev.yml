@@ -24,3 +24,15 @@ services:
     depends_on:
       - minio
 
+  renderer-remotion:
+    build:
+      context: .
+      dockerfile: containers/renderer-remotion/Dockerfile
+    container_name: renderer-remotion
+    environment:
+      - NODE_ENV=development
+      - JOB_CALLBACK_HMAC_SECRET=dev-secret
+    ports:
+      - "8090:8090"
+    depends_on:
+      - minio

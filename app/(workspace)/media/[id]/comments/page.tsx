@@ -5,7 +5,7 @@ import { ArrowLeft, Calendar, Copy, Download, Eye, FileText, Film, Heart, Langua
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
 	CommentCard,
@@ -90,6 +90,50 @@ export default function CommentsPage() {
 			toast.error(`Failed to start rendering: ${error.message}`)
 		},
 	})
+
+	// Cloud rendering (Remotion) — start
+	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>('cloud')
+	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
+
+	useEffect(() => {
+		const key = `commentsCloudJob:${id}`
+		if (!cloudJobId) {
+			const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
+			if (saved) setCloudJobId(saved)
+		}
+		if (cloudJobId) {
+			window.localStorage.setItem(key, cloudJobId)
+		}
+	}, [id, cloudJobId])
+
+	const startCloudRenderMutation = useMutation(
+		queryOrpc.comment.startCloudRender.mutationOptions({
+			onSuccess: (data) => {
+				setCloudJobId(data.jobId)
+				toast.success('Cloud render queued')
+			},
+			onError: (e) => toast.error(e.message),
+		}),
+	)
+
+	const cloudStatusQuery = useQuery(
+		queryOrpc.comment.getRenderStatus.queryOptions({
+			input: cloudJobId ? { jobId: cloudJobId } : (undefined as any),
+			enabled: !!cloudJobId,
+			refetchInterval: (q) => {
+				const s = (q.state.data as any)?.status
+				return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
+			},
+		}),
+	)
+
+	useEffect(() => {
+		if (renderBackend === 'cloud' && cloudJobId && cloudStatusQuery.data?.status === 'completed') {
+			queryClient.invalidateQueries({ queryKey: queryOrpc.media.byId.queryKey({ input: { id } }) })
+			try { window.localStorage.removeItem(`commentsCloudJob:${id}`) } catch {}
+			setCloudJobId(null)
+		}
+	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, id, queryClient])
 
 	const comments = mediaQuery.data?.comments || []
 
@@ -343,22 +387,45 @@ export default function CommentsPage() {
 									</Button>
 								</div>
 
-								{/* Render Video */}
-								<div className="space-y-2">
-									<div className="flex items-center gap-2 mb-2">
-										<Film className="w-3.5 h-3.5 text-muted-foreground" />
-										<span className="text-sm font-medium">Render Video</span>
-									</div>
-									<Button
-										onClick={() => renderMutation.mutate({ mediaId: id })}
-										disabled={renderMutation.isPending}
-										size="sm"
-										variant="default"
-										className="w-full h-9"
-									>
-										{renderMutation.isPending ? 'Rendering...' : 'Start Render'}
-									</Button>
+					{/* Render Video */}
+						<div className="space-y-2">
+							<div className="flex items-center gap-2 mb-2">
+								<Film className="w-3.5 h-3.5 text-muted-foreground" />
+								<span className="text-sm font-medium">Render Video</span>
+							</div>
+							{/* Backend toggle */}
+							<div className="flex items-center gap-2 mb-2">
+								<span className="text-xs text-muted-foreground">Backend:</span>
+								<div className="inline-flex gap-2">
+									<Button variant={renderBackend === 'cloud' ? 'default' : 'outline'} size="sm" onClick={() => setRenderBackend('cloud')}>Cloud</Button>
+									<Button variant={renderBackend === 'local' ? 'default' : 'outline'} size="sm" onClick={() => setRenderBackend('local')}>Local</Button>
 								</div>
+							</div>
+							<Button
+								onClick={() => {
+									if (renderBackend === 'cloud') {
+										startCloudRenderMutation.mutate({ mediaId: id })
+									} else {
+										renderMutation.mutate({ mediaId: id })
+									}
+								}}
+								disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
+								size="sm"
+								variant="default"
+								className="w-full h-9"
+							>
+								{renderBackend === 'cloud'
+									? (startCloudRenderMutation.isPending ? 'Queuing...' : 'Start Cloud Render')
+									: (renderMutation.isPending ? 'Rendering...' : 'Start Local Render')}
+							</Button>
+
+							{/* Cloud progress */}
+							{renderBackend === 'cloud' && cloudJobId && (
+								<div className="mt-2 text-xs text-muted-foreground">
+									Job: {cloudJobId} — Status: {cloudStatusQuery.data?.status ?? 'starting'} {typeof cloudStatusQuery.data?.progress === 'number' ? `(${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''}
+								</div>
+							)}
+						</div>
 
 								{/* Disclaimer */}
 								<div className="pt-4 border-t">
@@ -503,6 +570,22 @@ ${mediaQuery.data?.comments && mediaQuery.data.comments.length > 0 && mediaQuery
 					</Card>
 				</div>
 			</div>
+
+			{/* Rendered Info Video Preview */}
+			{mediaQuery.data?.videoWithInfoPath && (
+				<div className="mt-4">
+					<Card className="shadow-sm">
+						<CardHeader className="pb-3">
+							<div className="flex items-center justify-between">
+								<CardTitle className="text-lg font-semibold">Rendered Video (Comments)</CardTitle>
+							</div>
+						</CardHeader>
+						<CardContent>
+							<video controls className="w-full rounded-md" src={`/api/media/${id}/rendered-info`} />
+						</CardContent>
+					</Card>
+				</div>
+			)}
 			</div>
 		</div>
 	)

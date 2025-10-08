@@ -14,6 +14,7 @@ import {
 } from '~/lib/constants/app.constants'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithRemotion } from '~/lib/media'
+import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import type { RenderProgressEvent } from '~/lib/media'
 import { downloadTikTokCommentsByUrl } from '~/lib/providers/tiktok'
 import {
@@ -257,4 +258,36 @@ export const renderWithInfo = os
 			console.error('Error rendering video with info:', error)
 			throw new Error(`Failed to render video: ${(error as Error).message}`)
 		}
+	})
+
+// Cloud rendering: start job explicitly (Remotion renderer)
+export const startCloudRender = os
+	.input(
+		z.object({
+			mediaId: z.string(),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const where = eq(schema.media.id, input.mediaId)
+		const media = await db.query.media.findFirst({ where })
+		if (!media) throw new Error('Media not found')
+		if (!media.filePath) throw new Error('Media file path not found')
+		if (!media.comments || media.comments.length === 0) {
+			throw new Error('No comments found for this media')
+		}
+
+		const job = await startCloudJob({
+			mediaId: media.id,
+			engine: 'renderer-remotion',
+			options: {},
+		})
+		return { jobId: job.jobId }
+	})
+
+// Cloud rendering: get status
+export const getRenderStatus = os
+	.input(z.object({ jobId: z.string().min(1) }))
+	.handler(async ({ input }) => {
+		const status = await getJobStatus(input.jobId)
+		return status
 	})
