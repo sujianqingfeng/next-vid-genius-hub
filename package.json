@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:host": "next dev --turbopack --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -12,7 +13,11 @@
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "rebuild:native": "pnpm rebuild yt-dlp-wrap",
-    "remotion:ensure": "pnpm exec remotion browser ensure --log=info"
+    "remotion:ensure": "pnpm exec remotion browser ensure --log=info",
+    "cf:dev": "cd cloudflare/media-orchestrator && wrangler dev",
+    "cf:deploy": "cd cloudflare/media-orchestrator && wrangler deploy",
+    "ctr:build": "docker build -t burner-ffmpeg:dev containers/burner-ffmpeg",
+    "ctr:run": "docker run --rm -e JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret -p 8080:8080 burner-ffmpeg:dev"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",
@@ -68,6 +73,7 @@
     "tw-animate-css": "^1.4.0",
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.42.1"
   }
 }

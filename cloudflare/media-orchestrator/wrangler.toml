@@ -1,0 +1,28 @@
+name = "media-orchestrator"
+main = "index.ts"
+compatibility_date = "2024-05-01"
+
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "JOBS"
+id = "local-jobs-namespace"
+preview_id = "local-jobs-namespace"
+
+[[r2_buckets]]
+binding = "RENDER_BUCKET"
+bucket_name = "vidgen-render"
+
+[vars]
+JOB_TTL_SECONDS = 86400
+CONTAINER_BASE_URL = "http://localhost:8080"
+NEXT_BASE_URL = "http://localhost:3000"
+NEXT_BASE_URL_CONTAINER = "http://host.docker.internal:3000"
+ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
+ORCHESTRATOR_BASE_URL_NEXT = "http://127.0.0.1:8787"
+JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
+# Optional: Enable direct R2 presigned URLs (production)
+R2_S3_ENDPOINT = "" # e.g. "<accountid>.r2.cloudflarestorage.com"
+R2_ACCESS_KEY_ID = ""
+R2_SECRET_ACCESS_KEY = ""
+R2_BUCKET_NAME = "vidgen-render"

@@ -1,6 +1,7 @@
 'use client'
 
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
 import {
 	AlertCircle,
 	FileText,
@@ -68,6 +69,13 @@ export default function SubtitlesPage() {
 	const selectedProvider = workflowState.selectedProvider as TranscriptionProvider || 'local'
 	const selectedAIModel = workflowState.selectedAIModel as AIModelId || AIModelIds[0]
 
+	// 渲染后端选择（local | cloud）
+	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>(
+		'cloud',
+	)
+	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
+	const queryClient = useQueryClient()
+
 	// 转录mutation
 	const transcribeMutation = useMutation(
 		queryOrpc.subtitle.transcribe.mutationOptions({
@@ -112,14 +120,49 @@ export default function SubtitlesPage() {
 		}),
 	)
 
-	// 渲染mutation
+	// 本地渲染mutation
 	const renderMutation = useMutation(
 		queryOrpc.subtitle.render.mutationOptions({
 			onSuccess: () => {
-				// 渲染成功，Hook会自动更新状态
+				// 本地渲染：Hook会自动更新状态
 			},
 		}),
 	)
+
+	// 云端渲染：启动
+	const startCloudRenderMutation = useMutation(
+		queryOrpc.subtitle.startCloudRender.mutationOptions({
+			onSuccess: (data) => {
+				setCloudJobId(data.jobId)
+			},
+		}),
+	)
+
+	// 云端渲染：轮询状态
+	const cloudStatusQuery = useQuery(
+		queryOrpc.subtitle.getRenderStatus.queryOptions({
+			input: cloudJobId ? { jobId: cloudJobId } : (undefined as any),
+			enabled: !!cloudJobId,
+			refetchInterval: (q) => {
+				const s = (q.state.data as any)?.status
+				return s && ['completed', 'failed', 'canceled'].includes(s)
+					? false
+					: 2000
+			},
+		}),
+	)
+
+	// 云端渲染完成后，刷新媒体数据并跳到预览（用 effect 避免在渲染期间触发副作用）
+	useEffect(() => {
+		if (renderBackend === 'cloud' && cloudJobId && cloudStatusQuery.data?.status === 'completed') {
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+			})
+			if (activeStep === 'step3') {
+				setActiveStep('step4')
+			}
+		}
+	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, activeStep, mediaId, queryClient, setActiveStep])
 
 	// 事件处理器
 	const handleStartTranscription = () => {
@@ -151,7 +194,11 @@ export default function SubtitlesPage() {
 
 	const handleRenderStart = (config: SubtitleRenderConfig) => {
 		updateWorkflowState({ subtitleConfig: config })
-		renderMutation.mutate({ mediaId, subtitleConfig: config })
+		if (renderBackend === 'cloud') {
+			startCloudRenderMutation.mutate({ mediaId, subtitleConfig: config })
+		} else {
+			renderMutation.mutate({ mediaId, subtitleConfig: config, backend: 'local' })
+		}
 	}
 
 	const handleConfigChange = (config: SubtitleRenderConfig) => {
@@ -276,16 +323,47 @@ export default function SubtitlesPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
+						{/* 渲染方式切换 */}
+						<div className="flex items-center gap-2 mb-3">
+							<span className="text-sm text-muted-foreground">Backend:</span>
+							<div className="inline-flex gap-2">
+								<Button
+									variant={renderBackend === 'cloud' ? 'default' : 'outline'}
+									size="sm"
+									onClick={() => setRenderBackend('cloud')}
+								>
+									Cloud
+								</Button>
+								<Button
+									variant={renderBackend === 'local' ? 'default' : 'outline'}
+									size="sm"
+									onClick={() => setRenderBackend('local')}
+								>
+									Local
+								</Button>
+							</div>
+						</div>
 						<Step3Render
-							isRendering={renderMutation.isPending}
+							isRendering={
+								renderBackend === 'cloud'
+									? startCloudRenderMutation.isPending || (cloudStatusQuery.data && ['queued','preparing','running','uploading'].includes((cloudStatusQuery.data as any).status))
+								: renderMutation.isPending
+							}
 							onStart={handleRenderStart}
-							errorMessage={renderMutation.error?.message}
+							errorMessage={(renderBackend === 'cloud' ? startCloudRenderMutation.error?.message : renderMutation.error?.message)}
 							mediaId={mediaId}
 							translationAvailable={!!workflowState.translation}
 							translation={workflowState.translation}
 							config={subtitleConfig}
 							onConfigChange={handleConfigChange}
 						/>
+
+						{/* 云端渲染进度显示（简单版） */}
+						{renderBackend === 'cloud' && cloudJobId && (
+							<div className="mt-3 text-sm text-muted-foreground">
+								Job: {cloudJobId} — Status: {cloudStatusQuery.data?.status ?? 'starting'} {typeof cloudStatusQuery.data?.progress === 'number' ? `(${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''}
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			)}

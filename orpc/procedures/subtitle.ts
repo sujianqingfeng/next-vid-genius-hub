@@ -22,11 +22,12 @@ import {
 	DEFAULT_TRANSLATION_PROMPT_ID
 } from '~/lib/subtitle/config/prompts'
 import {
-	type SubtitleRenderConfig,
-	subtitleRenderConfigSchema,
-	timeSegmentEffectSchema,
-	hintTextConfigSchema
+    type SubtitleRenderConfig,
+    subtitleRenderConfigSchema,
+    timeSegmentEffectSchema,
+    hintTextConfigSchema
 } from '~/lib/subtitle/types'
+import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import {
 	parseVttCues,
 	serializeVttCues,
@@ -180,17 +181,18 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
 // 使用新架构中的Schema，移除重复定义
 
 export const render = os
-	.input(
-		z.object({
-			mediaId: z.string(),
-			subtitleConfig: subtitleRenderConfigSchema.optional(),
-		}),
-	)
-	.handler(async ({ input }) => {
-		const where = eq(schema.media.id, input.mediaId)
-		const media = await db.query.media.findFirst({
-			where,
-		})
+    .input(
+        z.object({
+            mediaId: z.string(),
+            subtitleConfig: subtitleRenderConfigSchema.optional(),
+            backend: z.enum(['local', 'cloud']).optional().default('local'),
+        }),
+    )
+    .handler(async ({ input }) => {
+        const where = eq(schema.media.id, input.mediaId)
+        const media = await db.query.media.findFirst({
+            where,
+        })
 
 		if (!media) {
 			throw new Error('Media not found')
@@ -204,29 +206,38 @@ export const render = os
 			throw new Error('Media file path not found')
 		}
 
-		const operationDir = path.join(OPERATIONS_DIR, media.id)
-		await fs.mkdir(operationDir, { recursive: true })
+        if (input.backend === 'cloud') {
+            const job = await startCloudJob({
+                mediaId: media.id,
+                engine: 'burner-ffmpeg',
+                options: { subtitleConfig: input.subtitleConfig },
+            })
+            return { message: 'Cloud render queued', jobId: job.jobId }
+        }
 
-		const originalFilePath = media.filePath
-		const outputPath = path.join(operationDir, RENDERED_VIDEO_FILENAME)
+        const operationDir = path.join(OPERATIONS_DIR, media.id)
+        await fs.mkdir(operationDir, { recursive: true })
 
-		// Pass subtitle content directly instead of writing to file
-		await renderVideoWithSubtitles(
-			originalFilePath,
-			media.translation,
-			outputPath,
-			input.subtitleConfig,
-		)
+        const originalFilePath = media.filePath
+        const outputPath = path.join(operationDir, RENDERED_VIDEO_FILENAME)
 
-		await db
-			.update(schema.media)
-			.set({ videoWithSubtitlesPath: outputPath })
-			.where(where)
+        // Pass subtitle content directly instead of writing to file
+        await renderVideoWithSubtitles(
+            originalFilePath,
+            media.translation,
+            outputPath,
+            input.subtitleConfig,
+        )
 
-		return {
-			message: 'Rendering started',
-		}
-	})
+        await db
+            .update(schema.media)
+            .set({ videoWithSubtitlesPath: outputPath })
+            .where(where)
+
+        return {
+            message: 'Rendering started',
+        }
+    })
 
 export const updateTranslation = os
 	.input(
@@ -259,7 +270,37 @@ export const deleteTranslationCue = os
 		if (input.index < 0 || input.index >= cues.length)
 			throw new Error('Cue index out of range')
 		cues.splice(input.index, 1)
-		const updated = serializeVttCues(cues)
-		await db.update(schema.media).set({ translation: updated }).where(where)
-		return { success: true, translation: updated }
-	})
+    const updated = serializeVttCues(cues)
+    await db.update(schema.media).set({ translation: updated }).where(where)
+    return { success: true, translation: updated }
+})
+
+// Cloud rendering: start job explicitly
+export const startCloudRender = os
+    .input(
+        z.object({
+            mediaId: z.string(),
+            subtitleConfig: subtitleRenderConfigSchema.optional(),
+        }),
+    )
+    .handler(async ({ input }) => {
+        const where = eq(schema.media.id, input.mediaId)
+        const media = await db.query.media.findFirst({ where })
+        if (!media) throw new Error('Media not found')
+        if (!media.translation) throw new Error('Translation not found')
+
+        const job = await startCloudJob({
+            mediaId: media.id,
+            engine: 'burner-ffmpeg',
+            options: { subtitleConfig: input.subtitleConfig },
+        })
+        return { jobId: job.jobId }
+    })
+
+// Cloud rendering: get status
+export const getRenderStatus = os
+    .input(z.object({ jobId: z.string().min(1) }))
+    .handler(async ({ input }) => {
+        const status = await getJobStatus(input.jobId)
+        return status
+    })

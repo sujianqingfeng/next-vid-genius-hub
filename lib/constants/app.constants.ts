@@ -12,6 +12,12 @@ export const WHISPER_CPP_PATH = process.env.WHISPER_CPP_PATH
 export const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
 export const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN
 
+// Cloud rendering orchestrator (Workers) endpoint and shared secrets
+export const CF_ORCHESTRATOR_URL = process.env.CF_ORCHESTRATOR_URL
+export const JOB_CALLBACK_HMAC_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET
+// Optional public base URL for R2 objects (if using public bucket or CDN)
+export const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL
+
 // 文件名常量
 export const RENDERED_VIDEO_FILENAME = 'video-with-subtitles.mp4'
 export const VIDEO_WITH_INFO_FILENAME = 'video-with-info-and-comments.mp4'
