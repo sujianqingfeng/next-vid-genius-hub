@@ -35,6 +35,54 @@ async function execFFmpeg(args) {
   })
 }
 
+async function execFFmpegWithProgress(args, totalDurationSeconds) {
+  return new Promise((resolve, reject) => {
+    const p = spawn('ffmpeg', args)
+    const totalUs = Math.max(1, Math.floor((totalDurationSeconds || 0) * 1_000_000))
+    let lastPct = -1
+    let err = ''
+    let buf = ''
+    let lastTick = Date.now()
+    const watchdogMs = 120000 // 2 minutes inactivity watchdog
+    const timer = setInterval(() => {
+      if (Date.now() - lastTick > watchdogMs) {
+        console.error('[remotion] ffmpeg no-progress watchdog fired, killing process')
+        try { p.kill('SIGKILL') } catch {}
+      }
+    }, 10000)
+
+    p.stderr.on('data', (d) => {
+      const s = d.toString()
+      err += s
+      buf += s
+      let idx
+      while ((idx = buf.indexOf('\n')) !== -1) {
+        const line = buf.slice(0, idx).trim()
+        buf = buf.slice(idx + 1)
+        // Parse -progress key=value output
+        if (line.startsWith('out_time_us=')) {
+          const us = parseInt(line.split('=')[1] || '0', 10)
+          const ratio = Math.max(0, Math.min(1, us / totalUs))
+          const pct = Math.round(ratio * 1000) / 10
+          if (pct !== lastPct) {
+            lastPct = pct
+            lastTick = Date.now()
+            console.log(`[ffmpeg] compose progress=${pct}%`) // coarse-grained compose progress
+          }
+        }
+        if (line === 'progress=end') {
+          lastTick = Date.now()
+        }
+      }
+    })
+    p.on('close', (code) => {
+      clearInterval(timer)
+      if (code === 0) return resolve(0)
+      reject(new Error(err || `ffmpeg exit ${code}`))
+    })
+  })
+}
+
 async function execFFprobe(args) {
   return new Promise((resolve, reject) => {
     const p = spawn('ffprobe', args)
@@ -141,11 +189,11 @@ function getOverlayFilter({ coverDurationSeconds, totalDurationSeconds }) {
   const actualY = Math.round(VIDEO_Y)
   const actualWidth = Math.round(VIDEO_WIDTH)
   const actualHeight = Math.round(VIDEO_HEIGHT)
-  const delayMs = Math.round(coverDurationSeconds * 1000)
   const filterGraph = [
-    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_video]`,
-    `[0:v][scaled_video]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
-    `[1:a]adelay=${delayMs}|${delayMs},apad[delayed_audio]`,
+    // Input 1 (overlayOut) is second input in our args; scale overlay to target size
+    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_overlay]`,
+    // Overlay onto Input 0 (source video) only between cover..total
+    `[0:v][scaled_overlay]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
   ].join(';')
   return { filterGraph, actualX, actualY, actualWidth, actualHeight }
 }
@@ -274,18 +322,21 @@ async function handleRender(req, res) {
     const ffArgs = [
       '-y','-hide_banner','-loglevel','error',
       '-progress','pipe:2',
-      '-i', overlayOut,
+      // Input 0: source video, Input 1: overlay
       '-i', inFile,
+      '-i', overlayOut,
       '-filter_complex', filterGraph,
       '-map','[composited]',
-      '-map','[delayed_audio]?',
+      // Map source audio as-is (avoid indefinite apad)
+      '-map','0:a?',
       '-vsync','cfr','-r', String(REMOTION_FPS),
       '-c:v','libx264','-c:a','aac','-b:a','192k',
       '-preset','veryfast',
       '-pix_fmt','yuv420p','-movflags','+faststart','-shortest',
       outFile,
     ]
-    await execFFmpeg(ffArgs)
+    await execFFmpegWithProgress(ffArgs, totalDurationSeconds)
+    console.log('[remotion] ffmpeg compose done')
     try { rmSync(tmpOut, { recursive: true, force: true }) } catch {}
 
     await progress('uploading', 0.95)
