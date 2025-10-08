@@ -57,12 +57,14 @@ test.mp4
 output_test_video.mp4
 frames
 .cache
+.dev
 **/__tests__/artifacts/
 
 # Worker/Cloudflare local artifacts
 cloudflare/media-orchestrator/.wrangler
 cloudflare/media-orchestrator/.mf
 cloudflare/media-orchestrator/.dev.vars
+cloudflare/media-orchestrator/orchestrator.log
 
 # Container dev artifacts
 containers/**/node_modules

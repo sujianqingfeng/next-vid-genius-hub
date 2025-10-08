@@ -226,7 +226,7 @@ async function handleRender(req, res) {
   sendJson(res, 202, { jobId })
 
   // Simulate progress and final callback
-  const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {} } = payload
+  const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {}, callbackUrl } = payload
   if (!inputVideoUrl || !inputVttUrl || !outputPutUrl) {
     throw new Error('missing S3 presigned URLs (inputVideoUrl/inputVttUrl/outputPutUrl)')
   }
@@ -274,8 +274,21 @@ async function handleRender(req, res) {
     await progress('uploading', 0.95)
     // Upload artifact to Worker
     const buf = readFileSync(outFile)
-    const up = await fetch(outputPutUrl, { method: 'PUT', headers: { 'content-type': 'video/mp4' }, body: buf })
-    if (!up.ok) throw new Error(`upload failed: ${up.status}`)
+    console.log(`[render] ${jobId} uploading to: ${outputPutUrl}`)
+    console.log(`[render] ${jobId} file size: ${buf.length} bytes`)
+    // 设置正确的headers以匹配签名
+    const headers = {
+      'content-type': 'video/mp4',
+      'x-amz-content-sha256': 'UNSIGNED-PAYLOAD'
+    }
+    console.log(`[render] ${jobId} upload headers:`, headers)
+    const up = await fetch(outputPutUrl, { method: 'PUT', headers, body: buf })
+    console.log(`[render] ${jobId} upload response status: ${up.status}`)
+    if (!up.ok) {
+      const errorText = await up.text()
+      console.error(`[render] ${jobId} upload error response: ${errorText}`)
+      throw new Error(`upload failed: ${up.status}`)
+    }
     jobs.set(jobId, { status: 'completed', progress: 1 })
     console.log(`[render] ${jobId} completed`)
     // no callback in S3-only mode; Worker detects completion by HEAD on S3 output

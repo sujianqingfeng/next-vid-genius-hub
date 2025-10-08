@@ -17,7 +17,9 @@
     "cf:dev": "cd cloudflare/media-orchestrator && wrangler dev",
     "cf:deploy": "cd cloudflare/media-orchestrator && wrangler deploy",
     "ctr:build": "docker build -t burner-ffmpeg:dev containers/burner-ffmpeg",
-    "ctr:run": "docker run --rm -e JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret -p 8080:8080 burner-ffmpeg:dev"
+    "ctr:run": "docker run --rm -e JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret -p 8080:8080 burner-ffmpeg:dev",
+    "dev:stack": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:stack:down": "docker compose -f docker-compose.dev.yml down -v"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",
@@ -77,5 +79,3 @@
     "wrangler": "^4.42.1"
   }
 }
-    "dev:stack": "docker compose -f docker-compose.dev.yml up -d",
-    "dev:stack:down": "docker compose -f docker-compose.dev.yml down -v",
