@@ -189,11 +189,14 @@ function getOverlayFilter({ coverDurationSeconds, totalDurationSeconds }) {
   const actualY = Math.round(VIDEO_Y)
   const actualWidth = Math.round(VIDEO_WIDTH)
   const actualHeight = Math.round(VIDEO_HEIGHT)
+  const delayMs = Math.round(coverDurationSeconds * 1000)
   const filterGraph = [
-    // Input 1 (overlayOut) is second input in our args; scale overlay to target size
-    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_overlay]`,
-    // Overlay onto Input 0 (source video) only between cover..total
-    `[0:v][scaled_overlay]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
+    // Scale source (Input 1) to the slot size
+    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_src]`,
+    // Composite source on top of overlay canvas (Input 0) within the time window
+    `[0:v][scaled_src]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
+    // Delay source audio by cover duration, then trim to total duration to avoid hang
+    `[1:a]adelay=${delayMs}|${delayMs},atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS[delayed_audio]`,
   ].join(';')
   return { filterGraph, actualX, actualY, actualWidth, actualHeight }
 }
@@ -322,13 +325,13 @@ async function handleRender(req, res) {
     const ffArgs = [
       '-y','-hide_banner','-loglevel','error',
       '-progress','pipe:2',
-      // Input 0: source video, Input 1: overlay
-      '-i', inFile,
+      // Input 0: overlay canvas, Input 1: source video (match local render)
       '-i', overlayOut,
+      '-i', inFile,
       '-filter_complex', filterGraph,
       '-map','[composited]',
-      // Map source audio as-is (avoid indefinite apad)
-      '-map','0:a?',
+      // Map delayed & trimmed source audio
+      '-map','[delayed_audio]?',
       '-vsync','cfr','-r', String(REMOTION_FPS),
       '-c:v','libx264','-c:a','aac','-b:a','192k',
       '-preset','veryfast',
