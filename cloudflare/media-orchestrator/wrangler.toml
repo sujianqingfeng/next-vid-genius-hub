@@ -17,12 +17,18 @@ bucket_name = "vidgen-render"
 JOB_TTL_SECONDS = 86400
 CONTAINER_BASE_URL = "http://localhost:8080"
 NEXT_BASE_URL = "http://localhost:3000"
-NEXT_BASE_URL_CONTAINER = "http://host.docker.internal:3000"
-ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
-ORCHESTRATOR_BASE_URL_NEXT = "http://127.0.0.1:8787"
 JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
-# Optional: Enable direct R2 presigned URLs (production)
-R2_S3_ENDPOINT = "" # e.g. "<accountid>.r2.cloudflarestorage.com"
-R2_ACCESS_KEY_ID = ""
-R2_SECRET_ACCESS_KEY = ""
-R2_BUCKET_NAME = "vidgen-render"
+
+# S3-compatible storage for both prod (R2 S3 endpoint) and dev (MinIO)
+# For production with R2, set:
+#   S3_ENDPOINT = "https://<accountid>.r2.cloudflarestorage.com"
+#   S3_STYLE = "vhost"  # virtual host style
+# For dev with MinIO, set:
+#   S3_ENDPOINT = "http://minio:9000"  (in docker network) or http://127.0.0.1:9000
+#   S3_STYLE = "path"   # path style
+S3_ENDPOINT = ""
+S3_ACCESS_KEY_ID = ""
+S3_SECRET_ACCESS_KEY = ""
+S3_BUCKET_NAME = "vidgen-render"
+S3_STYLE = "vhost"
+S3_REGION = "auto"

@@ -226,7 +226,10 @@ async function handleRender(req, res) {
   sendJson(res, 202, { jobId })
 
   // Simulate progress and final callback
-  const { callbackUrl, uploadUrl, sourceUrl, subtitlesUrl, inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {} } = payload
+  const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {} } = payload
+  if (!inputVideoUrl || !inputVttUrl || !outputPutUrl) {
+    throw new Error('missing S3 presigned URLs (inputVideoUrl/inputVttUrl/outputPutUrl)')
+  }
   const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
 
   // send progress helper
@@ -247,13 +250,13 @@ async function handleRender(req, res) {
     const subAss = join(tmpdir(), `${jobId}.ass`)
     const outFile = join(tmpdir(), `${jobId}_out.mp4`)
     {
-      const r = await fetch(inputVideoUrl || sourceUrl)
+      const r = await fetch(inputVideoUrl)
       if (!r.ok) throw new Error(`download source failed: ${r.status}`)
       const buf = Buffer.from(await r.arrayBuffer())
       writeFileSync(inFile, buf)
     }
     {
-      const r = await fetch(inputVttUrl || subtitlesUrl)
+      const r = await fetch(inputVttUrl)
       if (!r.ok) throw new Error(`download subtitles failed: ${r.status}`)
       const text = await r.text()
       writeFileSync(subVtt, text)
@@ -270,29 +273,16 @@ async function handleRender(req, res) {
     console.log(`[render] ${jobId} ffmpeg done, uploading artifact`)
     await progress('uploading', 0.95)
     // Upload artifact to Worker
-    if (outputPutUrl) {
-      const buf = readFileSync(outFile)
-      const up = await fetch(outputPutUrl, { method: 'PUT', headers: { 'content-type': 'video/mp4' }, body: buf })
-      if (!up.ok) throw new Error(`upload failed: ${up.status}`)
-    } else if (uploadUrl) {
-      const buf = readFileSync(outFile)
-      await fetch(uploadUrl, { method: 'POST', headers: { 'content-type': 'video/mp4' }, body: buf })
-    }
+    const buf = readFileSync(outFile)
+    const up = await fetch(outputPutUrl, { method: 'PUT', headers: { 'content-type': 'video/mp4' }, body: buf })
+    if (!up.ok) throw new Error(`upload failed: ${up.status}`)
     jobs.set(jobId, { status: 'completed', progress: 1 })
     console.log(`[render] ${jobId} completed`)
-    if (callbackUrl) {
-      const body = { jobId, status: 'completed', ts: Date.now(), nonce: randomNonce() }
-      const sig = hmacHex(secret, JSON.stringify(body))
-      await fetch(callbackUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(body) }).catch(() => {})
-    }
+    // no callback in S3-only mode; Worker detects completion by HEAD on S3 output
   } catch (e) {
     jobs.set(jobId, { status: 'failed', progress: 1 })
     console.error(`[render] ${jobId} failed:`, e)
-    if (callbackUrl) {
-      const body = { jobId, status: 'failed', error: String(e?.message || e), ts: Date.now(), nonce: randomNonce() }
-      const sig = hmacHex(secret, JSON.stringify(body))
-      await fetch(callbackUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(body) }).catch(() => {})
-    }
+    // on failure, rely on worker polling/job timeout
   }
 }
 

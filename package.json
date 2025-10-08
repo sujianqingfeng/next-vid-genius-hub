@@ -77,3 +77,5 @@
     "wrangler": "^4.42.1"
   }
 }
+    "dev:stack": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:stack:down": "docker compose -f docker-compose.dev.yml down -v",
