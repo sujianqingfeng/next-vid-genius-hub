@@ -2,17 +2,7 @@
 
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-	Link, 
-	Plus, 
-	Trash2, 
-	TestTube, 
-	RefreshCw, 
-	Check, 
-	X, 
-	Clock,
-	MoreHorizontal,
-} from 'lucide-react'
+import { Link, Trash2, RefreshCw, MoreHorizontal } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
@@ -73,18 +63,6 @@ export function SSRSubscriptionsList() {
 		},
 	})
 
-	const testAllProxiesMutation = useMutation({
-		...queryOrpc.proxy.testAllProxiesInSubscription.mutationOptions(),
-		onSuccess: (data) => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
-			})
-			toast.success(`Testing complete: ${data.count} proxies tested`)
-		},
-		onError: (error) => {
-			toast.error(`Failed to test proxies: ${error.message}`)
-		},
-	})
 
 	const handleToggleActive = (subscriptionId: string, isActive: boolean) => {
 		updateSubscriptionMutation.mutate({ id: subscriptionId, isActive })
@@ -100,9 +78,7 @@ export function SSRSubscriptionsList() {
 		importFromSubscriptionMutation.mutate({ subscriptionId })
 	}
 
-	const handleTestAllProxies = (subscriptionId: string) => {
-		testAllProxiesMutation.mutate({ subscriptionId })
-	}
+	// testing logic removed
 
 	if (isLoading) {
 		return (
@@ -172,11 +148,7 @@ export function SSRSubscriptionsList() {
 										<RefreshCw className="h-4 w-4 mr-2" />
 										Import Proxies
 									</DropdownMenuItem>
-									<DropdownMenuItem onClick={() => handleTestAllProxies(subscription.id)}>
-										<TestTube className="h-4 w-4 mr-2" />
-										Test All Proxies
-									</DropdownMenuItem>
-	
+
 									<DropdownMenuSeparator />
 									<DropdownMenuItem 
 										onClick={() => handleDeleteSubscription(subscription.id)}
@@ -207,10 +179,6 @@ export function SSRSubscriptionsList() {
 								<span>
 									{subscription.proxies?.filter(p => p.isActive).length || 0} active
 								</span>
-								<span>•</span>
-								<span>
-									{subscription.proxies?.filter(p => p.testStatus === 'success').length || 0} tested
-								</span>
 							</div>
 
 							{/* Recent Proxies */}
@@ -232,18 +200,6 @@ export function SSRSubscriptionsList() {
 													)}
 												</div>
 												<div className="flex items-center gap-2">
-													{proxy.testStatus === 'success' && (
-														<div className="flex items-center gap-1 text-green-600">
-															<Check className="h-3 w-3" />
-															<span className="text-xs">{proxy.responseTime}ms</span>
-														</div>
-													)}
-													{proxy.testStatus === 'failed' && (
-														<X className="h-3 w-3 text-red-600" />
-													)}
-													{proxy.testStatus === 'pending' && (
-														<Clock className="h-3 w-3 text-yellow-600" />
-													)}
 													<Badge variant="outline" className="text-xs">
 														{proxy.protocol}
 													</Badge>
@@ -264,15 +220,6 @@ export function SSRSubscriptionsList() {
 								>
 									<RefreshCw className="h-4 w-4 mr-2" />
 									{importFromSubscriptionMutation.isPending ? 'Importing...' : 'Import Proxies'}
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => handleTestAllProxies(subscription.id)}
-									disabled={testAllProxiesMutation.isPending}
-								>
-									<TestTube className="h-4 w-4 mr-2" />
-									{testAllProxiesMutation.isPending ? 'Testing...' : 'Test All'}
 								</Button>
 							</div>
 						</div>

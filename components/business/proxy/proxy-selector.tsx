@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Globe, Shield, ShieldCheck, AlertCircle } from 'lucide-react'
+import { Globe, Shield } from 'lucide-react'
 import {
 	Select,
 	SelectContent,
@@ -22,21 +22,12 @@ export function ProxySelector({ value, onValueChange, disabled }: ProxySelectorP
 		...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	})
 
-	const renderProxyIcon = (proxy: any) => {
-		if (proxy.id === 'none') {
-			return <Globe className="w-4 h-4 text-muted-foreground" />
-		}
-
-		if (proxy.testStatus === 'success') {
-			return <ShieldCheck className="w-4 h-4 text-green-500" />
-		}
-
-		if (proxy.testStatus === 'failed') {
-			return <AlertCircle className="w-4 h-4 text-destructive" />
-		}
-
-		return <Shield className="w-4 h-4 text-muted-foreground" />
-	}
+    const renderProxyIcon = (proxy: any) => {
+        if (proxy.id === 'none') {
+            return <Globe className="w-4 h-4 text-muted-foreground" />
+        }
+        return <Shield className="w-4 h-4 text-muted-foreground" />
+    }
 
 	const renderProxyLabel = (proxy: any) => {
 		if (proxy.id === 'none') {
@@ -45,24 +36,7 @@ export function ProxySelector({ value, onValueChange, disabled }: ProxySelectorP
 
 		let label = proxy.name || `${proxy.protocol}://${proxy.server}:${proxy.port}`
 		
-		if (proxy.responseTime && proxy.responseTime > 0) {
-			label += ` (${proxy.responseTime}ms)`
-		}
-
 		return label
-	}
-
-	const getProxyStatusText = (proxy: any) => {
-		if (proxy.id === 'none') {
-			return ''
-		}
-		if (proxy.testStatus === 'success') {
-			return '✓ Working'
-		}
-		if (proxy.testStatus === 'failed') {
-			return '✗ Failed'
-		}
-		return '⏳ Pending'
 	}
 
 	if (error) {
@@ -91,11 +65,7 @@ export function ProxySelector({ value, onValueChange, disabled }: ProxySelectorP
 									<span className="truncate text-sm font-medium">
 										{renderProxyLabel(proxy)}
 									</span>
-									{proxy.id !== 'none' && (
-										<span className="text-xs text-muted-foreground">
-											{getProxyStatusText(proxy)}
-										</span>
-									)}
+									{/* status text removed */}
 								</div>
 							</div>
 						</SelectItem>

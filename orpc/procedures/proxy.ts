@@ -1,10 +1,9 @@
 import { z } from 'zod'
 import { os } from '@orpc/server'
-import { eq, desc, inArray } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { logger } from '~/lib/logger'
 import { db, schema } from '~/lib/db'
 import { parseSSRSubscription } from '~/lib/proxy/parser'
-import { testProxy as testProxyUtil, testMultipleProxies as testMultipleProxiesUtil } from '~/lib/proxy/tester'
 
 // Schemas
 const CreateSSRSubscriptionSchema = z.object({
@@ -40,92 +39,35 @@ const UpdateProxySchema = z.object({
 	password: z.string().max(255).optional(),
 	isActive: z.boolean().optional(),
 })
-
-
-
-const TestProxySchema = z.object({
-	id: z.string(),
-})
-
-const TestMultipleProxiesSchema = z.object({
-	ids: z.array(z.string()),
-})
+// testing schemas removed per request
 
 // Get active proxies for download selection
 export const getActiveProxiesForDownload = os
 	.input(z.void())
 	.handler(async () => {
 		try {
-			// Get proxies that have been tested successfully, even if not marked as active
-			const workingProxies = await db.query.proxies.findMany({
-				where: eq(schema.proxies.testStatus, 'success'),
+			// Return a simple list: "No Proxy" + all stored proxies (no test status)
+			const proxyList = await db.query.proxies.findMany({
 				columns: {
 					id: true,
 					name: true,
 					server: true,
 					port: true,
 					protocol: true,
-					testStatus: true,
-					responseTime: true,
+					isActive: true,
 				},
-				orderBy: [
-					desc(schema.proxies.responseTime),
-					desc(schema.proxies.createdAt),
-				],
+				orderBy: [desc(schema.proxies.createdAt)],
 			})
 
-			// Also get some active proxies if available
-			const activeProxies = await db.query.proxies.findMany({
-				where: eq(schema.proxies.isActive, true),
-				columns: {
-					id: true,
-					name: true,
-					server: true,
-					port: true,
-					protocol: true,
-					testStatus: true,
-					responseTime: true,
-				},
-			})
-
-			// Merge unique proxies (avoid duplicates)
-			const uniqueProxies = new Map()
-			workingProxies.forEach(proxy => uniqueProxies.set(proxy.id, proxy))
-			activeProxies.forEach(proxy => uniqueProxies.set(proxy.id, proxy))
-
-			const proxyList = Array.from(uniqueProxies.values())
-
-			// Also include a "No Proxy" option
-			return { 
+			return {
 				proxies: [
-					{
-						id: 'none',
-						name: 'No Proxy',
-						server: '',
-						port: 0,
-						protocol: 'http' as const,
-						testStatus: 'success' as const,
-						responseTime: 0,
-					},
+					{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const, isActive: false },
 					...proxyList,
-				]
+				],
 			}
 		} catch (error) {
 			logger.error('proxy', `Error in getActiveProxiesForDownload: ${error}`)
-			// Return only "No Proxy" option on error
-			return { 
-				proxies: [
-					{
-						id: 'none',
-						name: 'No Proxy',
-						server: '',
-						port: 0,
-						protocol: 'http' as const,
-						testStatus: 'success' as const,
-						responseTime: 0,
-					}
-				]
-			}
+			return { proxies: [{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const, isActive: false }] }
 		}
 	})
 
@@ -144,16 +86,14 @@ export const getSSRSubscriptions = os
 				subscriptions.map(async (subscription) => {
 					const proxyList = await db.query.proxies.findMany({
 						where: eq(schema.proxies.subscriptionId, subscription.id),
-						columns: {
-							id: true,
-							name: true,
-							server: true,
-							port: true,
-							protocol: true,
-							isActive: true,
-							testStatus: true,
-							responseTime: true,
-						},
+                    columns: {
+                        id: true,
+                        name: true,
+                        server: true,
+                        port: true,
+                        protocol: true,
+                        isActive: true,
+                    },
 					})
 					
 					return {
@@ -409,14 +349,20 @@ export const importSSRFromSubscription = os
 				.delete(schema.proxies)
 				.where(eq(schema.proxies.subscriptionId, input.subscriptionId))
 
-			// Insert new proxies
+			// Insert new proxies (preserve original SSR URL so we can identify SSR nodes later)
 			const insertedProxies = await db
 				.insert(schema.proxies)
 				.values(
 					parsedProxies.map(proxy => ({
-						...proxy,
+						id: proxy.id,
+						name: proxy.name,
+						server: proxy.server,
+						port: proxy.port,
+						protocol: proxy.protocol,
+						username: proxy.username,
+						password: proxy.password,
 						subscriptionId: input.subscriptionId,
-						ssrUrl: '', // Will be filled with individual SSR URLs if needed
+						ssrUrl: proxy.ssrUrl ?? '',
 					}))
 				)
 				.returning()
@@ -440,119 +386,4 @@ export const importSSRFromSubscription = os
 
 
 // Proxy Testing Operations
-export const testProxy = os
-	.input(TestProxySchema)
-	.handler(async ({ input }) => {
-		const proxy = await db.query.proxies.findFirst({
-			where: eq(schema.proxies.id, input.id),
-		})
-
-		if (!proxy) {
-			throw new Error('Proxy not found')
-		}
-
-		// Update test status to pending
-		await db
-			.update(schema.proxies)
-			.set({ 
-				testStatus: 'pending',
-				lastTestedAt: new Date(),
-			})
-			.where(eq(schema.proxies.id, input.id))
-
-		// Test the proxy
-		const testResult = await testProxyUtil(proxy)
-
-		// Update proxy with test results
-		await db
-			.update(schema.proxies)
-			.set({
-				testStatus: testResult.status,
-				responseTime: testResult.responseTime,
-				lastTestedAt: new Date(),
-			})
-			.where(eq(schema.proxies.id, input.id))
-
-		return { result: testResult }
-	})
-
-export const testMultipleProxies = os
-	.input(TestMultipleProxiesSchema)
-	.handler(async ({ input }) => {
-		// Get proxies to test - fix: use inArray for multiple IDs
-		const proxyList = await db.query.proxies.findMany({
-			where: inArray(schema.proxies.id, input.ids),
-		})
-
-		if (proxyList.length === 0) {
-			logger.error('proxy', 'No proxies found to test')
-			throw new Error('No proxies found to test')
-		}
-
-		// Update test status to pending for all proxies
-		await db
-			.update(schema.proxies)
-			.set({ 
-				testStatus: 'pending',
-				lastTestedAt: new Date(),
-			})
-			.where(inArray(schema.proxies.id, input.ids))
-
-		// Test proxies
-		const testResults = await testMultipleProxiesUtil(proxyList)
-
-		// Update each proxy with test results
-		for (const result of testResults) {
-			const where = eq(schema.proxies.id, result.id)
-			await db
-				.update(schema.proxies)
-				.set({
-					testStatus: result.status,
-					responseTime: result.responseTime,
-					lastTestedAt: new Date(),
-				})
-				.where(where)
-		}
-
-		return { results: testResults }
-	})
-
-export const testAllProxiesInSubscription = os
-	.input(z.object({ subscriptionId: z.string() }))
-	.handler(async ({ input }) => {
-		const whereSubscription = eq(schema.proxies.subscriptionId, input.subscriptionId)
-		const proxyList = await db.query.proxies.findMany({
-			where: whereSubscription,
-		})
-
-		if (proxyList.length === 0) {
-			return { results: [], count: 0 }
-		}
-
-		// Update test status to pending for all proxies
-		await db
-			.update(schema.proxies)
-			.set({ 
-				testStatus: 'pending',
-				lastTestedAt: new Date(),
-			})
-			.where(whereSubscription)
-
-		// Test all proxies
-		const testResults = await testMultipleProxiesUtil(proxyList)
-
-		// Update each proxy with test results
-		for (const result of testResults) {
-			const whereProxy = eq(schema.proxies.id, result.id)
-			await db
-				.update(schema.proxies)
-				.set({
-					testStatus: result.status,
-					responseTime: result.responseTime,
-					lastTestedAt: new Date(),
-				})
-				.where(whereProxy)
-		}
-
-		return { results: testResults, count: testResults.length }
-	})
+// All explicit testing procedures removed per request

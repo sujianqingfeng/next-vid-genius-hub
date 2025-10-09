@@ -2,30 +2,12 @@
 
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-	Settings, 
-	TestTube, 
-	Edit, 
-	Trash2, 
-	Check, 
-	X, 
-	Clock,
-	ChevronLeft,
-	ChevronRight,
-	MoreHorizontal,
-} from 'lucide-react'
+import { Settings, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
-import { Badge } from '~/components/ui/badge'
 import { Switch } from '~/components/ui/switch'
 import { Input } from '~/components/ui/input'
-import { 
-	DropdownMenu, 
-	DropdownMenuContent, 
-	DropdownMenuItem, 
-	DropdownMenuSeparator, 
-	DropdownMenuTrigger 
-} from '~/components/ui/dropdown-menu'
+// dropdown menu imports removed (no longer used)
 import { toast } from 'sonner'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
@@ -64,33 +46,6 @@ export function ProxyList() {
 		},
 	})
 
-	const testProxyMutation = useMutation({
-		...queryOrpc.proxy.testProxy.mutationOptions(),
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.proxy.getProxies.key(),
-			})
-			toast.success('Proxy test completed')
-		},
-		onError: (error) => {
-			toast.error(`Failed to test proxy: ${error.message}`)
-		},
-	})
-
-	const testMultipleProxiesMutation = useMutation({
-		...queryOrpc.proxy.testMultipleProxies.mutationOptions(),
-		onSuccess: (data) => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.proxy.getProxies.key(),
-			})
-			const successCount = data.results.filter(r => r.status === 'success').length
-			const failedCount = data.results.filter(r => r.status === 'failed').length
-			toast.success(`Test completed: ${successCount} success, ${failedCount} failed`)
-		},
-		onError: (error) => {
-			toast.error(`Failed to test proxies: ${error.message}`)
-		},
-	})
 
 	const handleToggleActive = (proxyId: string, isActive: boolean) => {
 		updateProxyMutation.mutate({ id: proxyId, isActive })
@@ -100,10 +55,6 @@ export function ProxyList() {
 		if (confirm('Are you sure you want to delete this proxy?')) {
 			deleteProxyMutation.mutate(proxyId)
 		}
-	}
-
-	const handleTestProxy = (proxyId: string) => {
-		testProxyMutation.mutate({ id: proxyId })
 	}
 
 	const filteredProxies = proxiesData?.proxies?.filter(proxy => 
@@ -147,20 +98,6 @@ export function ProxyList() {
 					onChange={(e) => setSearchTerm(e.target.value)}
 					className="max-w-sm"
 				/>
-				<Button 
-					variant="outline"
-					onClick={() => {
-						const proxyIds = filteredProxies.map(p => p.id)
-						if (proxyIds.length > 0) {
-							// Use batch testing for better performance
-							testMultipleProxiesMutation.mutate({ ids: proxyIds })
-						}
-					}}
-					disabled={testMultipleProxiesMutation.isPending}
-				>
-					<TestTube className="h-4 w-4 mr-2" />
-					{testMultipleProxiesMutation.isPending ? 'Testing...' : 'Test All'}
-				</Button>
 			</div>
 
 			{/* Proxy List */}
@@ -189,23 +126,6 @@ export function ProxyList() {
 						</div>
 
 						<div className="flex items-center gap-2">
-							{proxy.testStatus === 'success' && (
-								<Check className="h-4 w-4 text-green-600" />
-							)}
-							{proxy.testStatus === 'failed' && (
-								<X className="h-4 w-4 text-red-600" />
-							)}
-							{proxy.testStatus === 'pending' && (
-								<Clock className="h-4 w-4 text-yellow-600" />
-							)}
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => handleTestProxy(proxy.id)}
-								disabled={testProxyMutation.isPending}
-							>
-								<TestTube className="h-4 w-4" />
-							</Button>
 							<Button
 								variant="ghost"
 								size="sm"

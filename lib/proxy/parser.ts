@@ -10,6 +10,9 @@ export interface ParsedProxy {
 	protocol: 'http' | 'https' | 'socks4' | 'socks5'
 	username?: string
 	password?: string
+	// Keep the original SSR URL when available so downstream logic can
+	// identify SSR-derived entries and avoid treating them as standard proxies.
+	ssrUrl?: string
 }
 
 // SSR URL scheme: ssr://server:port:protocol:method:obfs:base64(password)/?remarks=base64(remarks)&protoparam=...
@@ -46,6 +49,7 @@ export async function parseSSRUrl(ssrUrl: string): Promise<ParsedProxy[]> {
 			port: parseInt(port, 10),
 			protocol: proxyProtocol,
 			password,
+			ssrUrl, // preserve for identification/testing logic
 		}]
 	} catch (error) {
 		logger.error('proxy', `Error parsing SSR URL: ${error}`)
