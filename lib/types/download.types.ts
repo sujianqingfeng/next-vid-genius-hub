@@ -4,6 +4,7 @@ import type { MediaItem } from './media.types'
 export interface DownloadRequest {
 	url: string
 	quality: '1080p' | '720p'
+	proxyId?: string
 }
 
 export interface DownloadResult {

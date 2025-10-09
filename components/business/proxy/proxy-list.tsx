@@ -1,0 +1,297 @@
+'use client'
+
+import * as React from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { 
+	Settings, 
+	TestTube, 
+	Edit, 
+	Trash2, 
+	Check, 
+	X, 
+	Clock,
+	ChevronLeft,
+	ChevronRight,
+	MoreHorizontal,
+} from 'lucide-react'
+import { Button } from '~/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { Badge } from '~/components/ui/badge'
+import { Switch } from '~/components/ui/switch'
+import { Input } from '~/components/ui/input'
+import { 
+	DropdownMenu, 
+	DropdownMenuContent, 
+	DropdownMenuItem, 
+	DropdownMenuSeparator, 
+	DropdownMenuTrigger 
+} from '~/components/ui/dropdown-menu'
+import { toast } from 'sonner'
+import { queryOrpc } from '~/lib/orpc/query-client'
+
+export function ProxyList() {
+	const [page, setPage] = React.useState(1)
+	const [searchTerm, setSearchTerm] = React.useState('')
+	const queryClient = useQueryClient()
+
+	const { data: proxiesData, isLoading } = useQuery(
+		queryOrpc.proxy.getProxies.queryOptions({ input: { page } }),
+	)
+
+	const updateProxyMutation = useMutation({
+		...queryOrpc.proxy.updateProxy.mutationOptions(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.proxy.getProxies.key(),
+			})
+			toast.success('Proxy updated successfully')
+		},
+		onError: (error) => {
+			toast.error(`Failed to update proxy: ${error.message}`)
+		},
+	})
+
+	const deleteProxyMutation = useMutation({
+		...queryOrpc.proxy.deleteProxy.mutationOptions(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.proxy.getProxies.key(),
+			})
+			toast.success('Proxy deleted successfully')
+		},
+		onError: (error) => {
+			toast.error(`Failed to delete proxy: ${error.message}`)
+		},
+	})
+
+	const testProxyMutation = useMutation({
+		...queryOrpc.proxy.testProxy.mutationOptions(),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.proxy.getProxies.key(),
+			})
+			toast.success('Proxy test completed')
+		},
+		onError: (error) => {
+			toast.error(`Failed to test proxy: ${error.message}`)
+		},
+	})
+
+	const testMultipleProxiesMutation = useMutation({
+		...queryOrpc.proxy.testMultipleProxies.mutationOptions(),
+		onSuccess: (data) => {
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.proxy.getProxies.key(),
+			})
+			const successCount = data.results.filter(r => r.status === 'success').length
+			const failedCount = data.results.filter(r => r.status === 'failed').length
+			toast.success(`Test completed: ${successCount} success, ${failedCount} failed`)
+		},
+		onError: (error) => {
+			toast.error(`Failed to test proxies: ${error.message}`)
+		},
+	})
+
+	const handleToggleActive = (proxyId: string, isActive: boolean) => {
+		updateProxyMutation.mutate({ id: proxyId, isActive })
+	}
+
+	const handleDeleteProxy = (proxyId: string) => {
+		if (confirm('Are you sure you want to delete this proxy?')) {
+			deleteProxyMutation.mutate(proxyId)
+		}
+	}
+
+	const handleTestProxy = (proxyId: string) => {
+		testProxyMutation.mutate({ id: proxyId })
+	}
+
+	const filteredProxies = proxiesData?.proxies?.filter(proxy => 
+		proxy.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+		proxy.server.toLowerCase().includes(searchTerm.toLowerCase()) ||
+		proxy.protocol.toLowerCase().includes(searchTerm.toLowerCase())
+	) || []
+
+	if (isLoading) {
+		return (
+			<div className="space-y-4">
+				{[1, 2, 3, 4, 5].map((i) => (
+					<Card key={i} className="animate-pulse">
+						<CardContent className="p-4">
+							<div className="h-20 bg-muted rounded"></div>
+						</CardContent>
+					</Card>
+				))}
+			</div>
+		)
+	}
+
+	if (!filteredProxies.length) {
+		return (
+			<Card>
+				<CardHeader className="text-center">
+					<Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+					<CardTitle>No proxies found</CardTitle>
+				</CardHeader>
+			</Card>
+		)
+	}
+
+	return (
+		<div className="space-y-4">
+			{/* Search Bar */}
+			<div className="flex items-center gap-4">
+				<Input
+					placeholder="Search proxies..."
+					value={searchTerm}
+					onChange={(e) => setSearchTerm(e.target.value)}
+					className="max-w-sm"
+				/>
+				<Button 
+					variant="outline"
+					onClick={() => {
+						const proxyIds = filteredProxies.map(p => p.id)
+						if (proxyIds.length > 0) {
+							// Use batch testing for better performance
+							testMultipleProxiesMutation.mutate({ ids: proxyIds })
+						}
+					}}
+					disabled={testMultipleProxiesMutation.isPending}
+				>
+					<TestTube className="h-4 w-4 mr-2" />
+					{testMultipleProxiesMutation.isPending ? 'Testing...' : 'Test All'}
+				</Button>
+			</div>
+
+			{/* Proxy List */}
+			<div className="space-y-2">
+				{filteredProxies.map((proxy) => (
+					<Card key={proxy.id} className={proxy.isActive ? 'ring-2 ring-primary' : ''}>
+						<CardContent className="p-4">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-4">
+									{/* Status and Active Toggle */}
+									<div className="flex items-center gap-2">
+										<Switch
+											checked={proxy.isActive}
+											onCheckedChange={(checked) => handleToggleActive(proxy.id, checked)}
+											disabled={updateProxyMutation.isPending}
+										/>
+										{proxy.testStatus === 'success' && (
+											<Check className="h-4 w-4 text-green-600" />
+										)}
+										{proxy.testStatus === 'failed' && (
+											<X className="h-4 w-4 text-red-600" />
+										)}
+										{proxy.testStatus === 'pending' && (
+											<Clock className="h-4 w-4 text-yellow-600" />
+										)}
+									</div>
+
+									{/* Proxy Info */}
+									<div className="space-y-1">
+										<div className="flex items-center gap-2">
+											<span className="font-medium">
+												{proxy.name || `${proxy.server}:${proxy.port}`}
+											</span>
+											{proxy.isActive && (
+												<Badge variant="default" className="text-xs">
+													Active
+												</Badge>
+											)}
+											<Badge variant="outline" className="text-xs">
+												{proxy.protocol.toUpperCase()}
+											</Badge>
+										</div>
+										<div className="text-sm text-muted-foreground">
+											{proxy.server}:{proxy.port}
+											{proxy.username && ` (${proxy.username})`}
+										</div>
+										{proxy.responseTime && (
+											<div className="text-xs text-muted-foreground">
+												Response time: {proxy.responseTime}ms
+											</div>
+										)}
+									</div>
+								</div>
+
+								{/* Actions */}
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => handleTestProxy(proxy.id)}
+										disabled={testProxyMutation.isPending}
+									>
+										<TestTube className="h-4 w-4" />
+									</Button>
+									
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button variant="ghost" size="icon">
+												<MoreHorizontal className="h-4 w-4" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem>
+												<Edit className="h-4 w-4 mr-2" />
+												Edit Proxy
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => handleTestProxy(proxy.id)}
+												disabled={testProxyMutation.isPending}
+											>
+												<TestTube className="h-4 w-4 mr-2" />
+												Test Connection
+											</DropdownMenuItem>
+											<DropdownMenuSeparator />
+											<DropdownMenuItem 
+												onClick={() => handleDeleteProxy(proxy.id)}
+												className="text-destructive"
+											>
+												<Trash2 className="h-4 w-4 mr-2" />
+												Delete Proxy
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				))}
+			</div>
+
+			{/* Pagination */}
+			{proxiesData && proxiesData.totalPages > 1 && (
+				<div className="flex items-center justify-between">
+					<p className="text-sm text-muted-foreground">
+						Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, proxiesData.total)} of {proxiesData.total} proxies
+					</p>
+					<div className="flex items-center gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setPage(page - 1)}
+							disabled={page === 1}
+						>
+							<ChevronLeft className="h-4 w-4" />
+							Previous
+						</Button>
+						<span className="text-sm">
+							Page {page} of {proxiesData.totalPages}
+						</span>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setPage(page + 1)}
+							disabled={page === proxiesData.totalPages}
+						>
+							Next
+							<ChevronRight className="h-4 w-4" />
+						</Button>
+					</div>
+				</div>
+			)}
+		</div>
+	)
+}

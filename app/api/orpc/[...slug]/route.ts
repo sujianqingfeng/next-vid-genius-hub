@@ -8,6 +8,14 @@ const handler = new RPCHandler(appRouter, {
 			console.error(error)
 		}),
 	],
+	// Add more detailed error handling
+	errorHandler: (error) => {
+		console.error('[ORPC] Handler error:', error)
+		return {
+			status: 500,
+			body: { error: 'Internal server error' },
+		}
+	},
 })
 
 async function handle(request: Request) {
@@ -15,9 +23,11 @@ async function handle(request: Request) {
 		prefix: '/api/orpc',
 		context: {},
 	})
+	
 	if (matched) {
 		return response
 	}
+	
 	return new Response('Not Found', { status: 404 })
 }
 

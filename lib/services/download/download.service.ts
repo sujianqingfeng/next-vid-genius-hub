@@ -23,57 +23,60 @@ export class DownloadService implements IDownloadService {
 	private readonly proxyUrl?: string = PROXY_URL
 
 	async download(request: DownloadRequest): Promise<DownloadResult> {
-		const { url, quality } = request
+		const { url, quality, proxyId } = request
 		let downloadProgress: DownloadProgress = { stage: 'checking', progress: 0 }
 
 		try {
-			// 1. 查找现有下载记录或准备新的下载
+			// 1. 获取代理配置
+			const proxyUrl = await this.getProxyUrl(proxyId)
+
+			// 2. 查找现有下载记录或准备新的下载
 			const downloadRecord = await db.query.media.findFirst({
 				where: eq(schema.media.url, url),
 			})
 
 			const id = downloadRecord?.id ?? createId()
-			const _context = this.createDownloadContext(id, downloadRecord)
+			const _context = this.createDownloadContext(id, downloadRecord, proxyUrl)
 
-			// 2. 检查文件存在性
+			// 3. 检查文件存在性
 			downloadProgress = { stage: 'checking', progress: 10 }
 			const videoExists = await fileExists(_context.videoPath)
 			const audioExists = await fileExists(_context.audioPath)
 
-			// 3. 获取平台提供者和元数据
+			// 4. 获取平台提供者和元数据
 			const provider = ProviderFactory.resolveProvider(url)
 			const _providerContext: VideoProviderContext = {
-				proxyUrl: this.proxyUrl,
+				proxyUrl,
 			}
 
 			let metadata: BasicVideoInfo | null | undefined
 
-			// 4. 下载视频（如果不存在）
+			// 5. 下载视频（如果不存在）
 			if (!videoExists) {
 				downloadProgress = { stage: 'downloading', progress: 30 }
 				metadata = await this.fetchMetadata(url, _context)
 				await this.downloadVideo(url, quality, _context.videoPath)
 			}
 
-			// 5. 提取音频（如果不存在）
+			// 6. 提取音频（如果不存在）
 			if (!audioExists) {
 				downloadProgress = { stage: 'extracting_audio', progress: 60 }
 				await this.extractAudioFromVideo(_context.videoPath, _context.audioPath)
 			}
 
-			// 6. 确保我们有视频信息
+			// 7. 确保我们有视频信息
 			if (!downloadRecord && !metadata) {
 				downloadProgress = { stage: 'processing_metadata', progress: 80 }
 				metadata = await this.fetchMetadata(url, _context)
 			}
 
-			// 7. 更新数据库记录
+			// 8. 更新数据库记录
 			downloadProgress = { stage: 'processing_metadata', progress: 90 }
 			await this.updateDatabaseRecord(id, url, metadata, downloadRecord, _context, quality)
 
 			downloadProgress = { stage: 'completed', progress: 100 }
 
-			// 8. 返回结果
+			// 9. 返回结果
 			const title = metadata?.title ?? downloadRecord?.title ?? 'video'
 			const source = metadata?.source ?? this.getProviderSource(provider.id)
 
@@ -155,14 +158,49 @@ export class DownloadService implements IDownloadService {
 		}
 	}
 
-	private createDownloadContext(id: string, downloadRecord?: any): DownloadContext {
+	private async getProxyUrl(proxyId?: string): Promise<string | undefined> {
+		if (!proxyId || proxyId === 'none') {
+			return this.proxyUrl
+		}
+
+		try {
+			const proxy = await db.query.proxies.findFirst({
+				where: eq(schema.proxies.id, proxyId),
+				columns: {
+					server: true,
+					port: true,
+					protocol: true,
+					username: true,
+					password: true,
+					isActive: true,
+				},
+			})
+
+			if (!proxy || !proxy.isActive) {
+				return this.proxyUrl
+			}
+
+			// Construct proxy URL
+			let auth = ''
+			if (proxy.username && proxy.password) {
+				auth = `${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@`
+			}
+
+			return `${proxy.protocol}://${auth}${proxy.server}:${proxy.port}`
+		} catch (error) {
+			console.error('Failed to get proxy configuration:', error)
+			return this.proxyUrl
+		}
+	}
+
+	private createDownloadContext(id: string, downloadRecord?: any, proxyUrl?: string): DownloadContext {
 		const operationDir = path.join(this.operationDir, id)
 
 		return {
 			operationDir,
 			videoPath: downloadRecord?.filePath ?? path.join(operationDir, `${id}.mp4`),
 			audioPath: downloadRecord?.audioFilePath ?? path.join(operationDir, `${id}.mp3`),
-			proxyUrl: this.proxyUrl,
+			proxyUrl,
 		}
 	}
 

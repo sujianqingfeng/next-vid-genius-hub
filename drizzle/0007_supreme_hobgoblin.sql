@@ -1,1 +1,0 @@
-ALTER TABLE `media` ADD `transcription_words` text;

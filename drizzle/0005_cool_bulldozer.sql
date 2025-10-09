@@ -1,1 +1,0 @@
-ALTER TABLE `media` ADD `translated_title` text;

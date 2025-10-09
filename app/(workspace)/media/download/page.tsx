@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
+import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 import {
 	Select,
 	SelectContent,
@@ -18,6 +19,7 @@ import { queryOrpc } from '~/lib/orpc/query-client'
 
 export default function NewDownloadPage() {
 	const [error, setError] = useState<string | null>(null)
+	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
 	const router = useRouter()
 
 	const downloadMutation = useMutation({
@@ -45,7 +47,11 @@ export default function NewDownloadPage() {
 		}
 
 		setError(null)
-		downloadMutation.mutate({ url, quality })
+		downloadMutation.mutate({ 
+			url, 
+			quality, 
+			proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId 
+		})
 	}
 
 	return (
@@ -102,6 +108,13 @@ export default function NewDownloadPage() {
 							</SelectContent>
 						</Select>
 					</div>
+
+					{/* Proxy Selection */}
+					<ProxySelector
+						value={selectedProxyId}
+						onValueChange={setSelectedProxyId}
+						disabled={downloadMutation.isPending}
+					/>
 
 					{/* Error */}
 					{error && (

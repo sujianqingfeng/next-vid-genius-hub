@@ -7,14 +7,15 @@ export const download = os
 		z.object({
 			url: z.string().url(),
 			quality: z.enum(['1080p', '720p']).optional().default('1080p'),
+			proxyId: z.string().optional(),
 		}),
 	)
 	.handler(async ({ input }) => {
-		const { url, quality } = input
+		const { url, quality, proxyId } = input
 
 		try {
 			// 使用新的下载服务
-			const result = await downloadService.download({ url, quality })
+			const result = await downloadService.download({ url, quality, proxyId })
 
 			return {
 				id: result.id,

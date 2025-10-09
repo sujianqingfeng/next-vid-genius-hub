@@ -1,1 +1,0 @@
-ALTER TABLE `media` ADD `rendered_path` text;

@@ -6,6 +6,7 @@ import {
 	Download,
 	FileVideo,
 	Settings,
+	Globe,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -34,6 +35,12 @@ const menuItems = [
 		href: '/media/download',
 		icon: Download,
 		description: 'Download new content',
+	},
+	{
+		title: 'Proxy Manager',
+		href: '/proxy',
+		icon: Globe,
+		description: 'Manage proxy servers',
 	},
 ]
 
