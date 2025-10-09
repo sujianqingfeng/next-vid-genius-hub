@@ -164,100 +164,57 @@ export function ProxyList() {
 			</div>
 
 			{/* Proxy List */}
-			<div className="space-y-2">
+			<div className="space-y-1">
 				{filteredProxies.map((proxy) => (
-					<Card key={proxy.id} className={proxy.isActive ? 'ring-2 ring-primary' : ''}>
-						<CardContent className="p-4">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-4">
-									{/* Status and Active Toggle */}
-									<div className="flex items-center gap-2">
-										<Switch
-											checked={proxy.isActive}
-											onCheckedChange={(checked) => handleToggleActive(proxy.id, checked)}
-											disabled={updateProxyMutation.isPending}
-										/>
-										{proxy.testStatus === 'success' && (
-											<Check className="h-4 w-4 text-green-600" />
-										)}
-										{proxy.testStatus === 'failed' && (
-											<X className="h-4 w-4 text-red-600" />
-										)}
-										{proxy.testStatus === 'pending' && (
-											<Clock className="h-4 w-4 text-yellow-600" />
-										)}
-									</div>
-
-									{/* Proxy Info */}
-									<div className="space-y-1">
-										<div className="flex items-center gap-2">
-											<span className="font-medium">
-												{proxy.name || `${proxy.server}:${proxy.port}`}
-											</span>
-											{proxy.isActive && (
-												<Badge variant="default" className="text-xs">
-													Active
-												</Badge>
-											)}
-											<Badge variant="outline" className="text-xs">
-												{proxy.protocol.toUpperCase()}
-											</Badge>
-										</div>
-										<div className="text-sm text-muted-foreground">
-											{proxy.server}:{proxy.port}
-											{proxy.username && ` (${proxy.username})`}
-										</div>
-										{proxy.responseTime && (
-											<div className="text-xs text-muted-foreground">
-												Response time: {proxy.responseTime}ms
-											</div>
-										)}
-									</div>
-								</div>
-
-								{/* Actions */}
+					<div key={proxy.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+						<div className="flex items-center gap-3">
+							<Switch
+								checked={proxy.isActive}
+								onCheckedChange={(checked) => handleToggleActive(proxy.id, checked)}
+								disabled={updateProxyMutation.isPending}
+							/>
+							<div>
 								<div className="flex items-center gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => handleTestProxy(proxy.id)}
-										disabled={testProxyMutation.isPending}
-									>
-										<TestTube className="h-4 w-4" />
-									</Button>
-									
-									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button variant="ghost" size="icon">
-												<MoreHorizontal className="h-4 w-4" />
-											</Button>
-										</DropdownMenuTrigger>
-										<DropdownMenuContent align="end">
-											<DropdownMenuItem>
-												<Edit className="h-4 w-4 mr-2" />
-												Edit Proxy
-											</DropdownMenuItem>
-											<DropdownMenuItem
-												onClick={() => handleTestProxy(proxy.id)}
-												disabled={testProxyMutation.isPending}
-											>
-												<TestTube className="h-4 w-4 mr-2" />
-												Test Connection
-											</DropdownMenuItem>
-											<DropdownMenuSeparator />
-											<DropdownMenuItem 
-												onClick={() => handleDeleteProxy(proxy.id)}
-												className="text-destructive"
-											>
-												<Trash2 className="h-4 w-4 mr-2" />
-												Delete Proxy
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
+									<span className="font-medium">
+										{proxy.name || `${proxy.server}:${proxy.port}`}
+									</span>
+									<span className="text-xs text-muted-foreground">
+										{proxy.protocol.toUpperCase()}
+									</span>
+								</div>
+								<div className="text-sm text-muted-foreground">
+									{proxy.server}:{proxy.port}
 								</div>
 							</div>
-						</CardContent>
-					</Card>
+						</div>
+
+						<div className="flex items-center gap-2">
+							{proxy.testStatus === 'success' && (
+								<Check className="h-4 w-4 text-green-600" />
+							)}
+							{proxy.testStatus === 'failed' && (
+								<X className="h-4 w-4 text-red-600" />
+							)}
+							{proxy.testStatus === 'pending' && (
+								<Clock className="h-4 w-4 text-yellow-600" />
+							)}
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => handleTestProxy(proxy.id)}
+								disabled={testProxyMutation.isPending}
+							>
+								<TestTube className="h-4 w-4" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => handleDeleteProxy(proxy.id)}
+							>
+								<Trash2 className="h-4 w-4" />
+							</Button>
+						</div>
+					</div>
 				))}
 			</div>
 
