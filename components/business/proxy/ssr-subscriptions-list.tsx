@@ -6,7 +6,6 @@ import { Link, Trash2, RefreshCw, MoreHorizontal } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
-import { Switch } from '~/components/ui/switch'
 import { 
 	DropdownMenu, 
 	DropdownMenuContent, 
@@ -23,19 +22,6 @@ export function SSRSubscriptionsList() {
 	const { data: subscriptionsData, isLoading } = useQuery(
 		queryOrpc.proxy.getSSRSubscriptions.queryOptions(),
 	)
-
-	const updateSubscriptionMutation = useMutation({
-		...queryOrpc.proxy.updateSSRSubscription.mutationOptions(),
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
-			})
-			toast.success('SSR subscription updated successfully')
-		},
-		onError: (error) => {
-			toast.error(`Failed to update SSR subscription: ${error.message}`)
-		},
-	})
 
 	const deleteSubscriptionMutation = useMutation({
 		...queryOrpc.proxy.deleteSSRSubscription.mutationOptions(),
@@ -64,13 +50,9 @@ export function SSRSubscriptionsList() {
 	})
 
 
-	const handleToggleActive = (subscriptionId: string, isActive: boolean) => {
-		updateSubscriptionMutation.mutate({ id: subscriptionId, isActive })
-	}
-
 	const handleDeleteSubscription = (subscriptionId: string) => {
 		if (confirm('Are you sure you want to delete this SSR subscription? This will also delete all associated proxies.')) {
-			deleteSubscriptionMutation.mutate(subscriptionId)
+			deleteSubscriptionMutation.mutate({ id: subscriptionId })
 		}
 	}
 
@@ -115,25 +97,13 @@ export function SSRSubscriptionsList() {
 	return (
 		<div className="space-y-4">
 			{subscriptionsData.subscriptions.map((subscription) => (
-				<Card key={subscription.id} className={subscription.isActive ? 'ring-2 ring-primary' : ''}>
+				<Card key={subscription.id}>
 					<CardHeader>
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-3">
 								<div className="flex items-center gap-2">
 									<Link className="h-5 w-5" />
 									<CardTitle>{subscription.name}</CardTitle>
-									{subscription.isActive && (
-										<Badge variant="default" className="text-xs">
-											Active
-										</Badge>
-									)}
-								</div>
-								<div className="flex items-center gap-2">
-									<Switch
-										checked={subscription.isActive}
-										onCheckedChange={(checked) => handleToggleActive(subscription.id, checked)}
-										disabled={updateSubscriptionMutation.isPending}
-									/>
 								</div>
 							</div>
 							
@@ -175,10 +145,6 @@ export function SSRSubscriptionsList() {
 							{/* Stats */}
 							<div className="flex items-center gap-4 text-sm text-muted-foreground">
 								<span>{subscription.proxies?.length || 0} proxies</span>
-								<span>•</span>
-								<span>
-									{subscription.proxies?.filter(p => p.isActive).length || 0} active
-								</span>
 							</div>
 
 							{/* Recent Proxies */}
@@ -193,11 +159,6 @@ export function SSRSubscriptionsList() {
 											>
 												<div className="flex items-center gap-2">
 													<span className="font-medium">{proxy.name || `${proxy.server}:${proxy.port}`}</span>
-													{proxy.isActive && (
-														<Badge variant="default" className="text-xs px-1 py-0">
-															Active
-														</Badge>
-													)}
 												</div>
 												<div className="flex items-center gap-2">
 													<Badge variant="outline" className="text-xs">

@@ -9,6 +9,7 @@ export interface MediaUpdateData {
 	filePath: string
 	audioFilePath: string
 	quality: '720p' | '1080p'
+	rawMetadataPath?: string
 }
 
 /**
@@ -37,6 +38,7 @@ export function createMediaUpdateData({
 	videoPath,
 	audioPath,
 	quality,
+	metadataPath,
 }: {
 	metadata?: BasicVideoInfo | null
 	downloadRecord?: {
@@ -49,6 +51,7 @@ export function createMediaUpdateData({
 	videoPath: string
 	audioPath: string
 	quality: '720p' | '1080p'
+	metadataPath?: string
 }): MediaUpdateData {
 	return {
 		title: metadata?.title ?? downloadRecord?.title ?? DEFAULT_MEDIA_VALUES.title!,
@@ -59,5 +62,6 @@ export function createMediaUpdateData({
 		filePath: videoPath,
 		audioFilePath: audioPath,
 		quality,
+		rawMetadataPath: metadataPath ?? undefined,
 	}
 }

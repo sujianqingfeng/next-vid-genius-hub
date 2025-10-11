@@ -1,9 +1,9 @@
 'use client'
 
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Download, Link, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -16,10 +16,15 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { queryOrpc } from '~/lib/orpc/query-client'
+import { orpc } from '~/lib/orpc/client'
 
 export default function NewDownloadPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
+	const [backend, setBackend] = useState<'local' | 'cloud'>('cloud')
+	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
+	const [cloudMediaId, setCloudMediaId] = useState<string | null>(null)
+	const [lastCloudStatus, setLastCloudStatus] = useState<string | null>(null)
 	const router = useRouter()
 
 	const downloadMutation = useMutation({
@@ -37,6 +42,63 @@ export default function NewDownloadPage() {
 		},
 	})
 
+	const cloudDownloadMutation = useMutation(
+		queryOrpc.download.startCloudDownload.mutationOptions({
+			onSuccess: (data) => {
+				setError(null)
+				setCloudJobId(data.jobId)
+				setCloudMediaId(data.mediaId)
+				setLastCloudStatus(null)
+				toast.success('Cloud download queued!')
+			},
+			onError: (err: Error) => {
+				console.error(err)
+				setError(err.message || 'Failed to queue cloud download')
+			},
+		}),
+	)
+
+	const cloudStatusQuery = useQuery({
+		queryKey: ['download.getCloudDownloadStatus', cloudJobId],
+		queryFn: async () => {
+			if (!cloudJobId) throw new Error('jobId not set')
+			return await orpc.download.getCloudDownloadStatus({ jobId: cloudJobId })
+		},
+		enabled: backend === 'cloud' && !!cloudJobId,
+		refetchInterval: (data) => {
+			if (!data) return 5000
+			return ['completed', 'failed', 'canceled'].includes(data.status) ? false : 5000
+		},
+	})
+
+	const statusLabelMap: Record<string, string> = {
+		queued: 'Queued',
+		fetching_metadata: 'Fetching metadata',
+		preparing: 'Preparing',
+		running: 'Running',
+		uploading: 'Uploading',
+		completed: 'Completed',
+		failed: 'Failed',
+		canceled: 'Canceled',
+	}
+
+	const phaseLabelMap: Record<string, string> = {
+		fetching_metadata: 'Fetching metadata',
+		preparing: 'Preparing',
+		running: 'Processing',
+		uploading: 'Uploading artifacts',
+	}
+
+	const statusLabel = cloudStatusQuery.data?.status
+		? statusLabelMap[cloudStatusQuery.data.status] ?? cloudStatusQuery.data.status
+		: null
+	const phaseLabel = cloudStatusQuery.data?.phase
+		? phaseLabelMap[cloudStatusQuery.data.phase] ?? cloudStatusQuery.data.phase
+		: null
+	const outputs = cloudStatusQuery.data?.outputs
+
+	const isSubmitting = downloadMutation.isPending || cloudDownloadMutation.isPending
+
 	const formAction = async (formData: FormData) => {
 		const url = formData.get('url') as string
 		const quality = formData.get('quality') as '1080p' | '720p'
@@ -47,12 +109,37 @@ export default function NewDownloadPage() {
 		}
 
 		setError(null)
-		downloadMutation.mutate({ 
-			url, 
-			quality, 
-			proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId 
-		})
+		if (backend === 'cloud') {
+			cloudDownloadMutation.mutate({
+				url,
+				quality,
+				proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
+			})
+		} else {
+			downloadMutation.mutate({
+				url,
+				quality,
+				proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
+			})
+		}
 	}
+
+	useEffect(() => {
+		if (!cloudStatusQuery.data?.status || !cloudJobId) return
+		if (cloudStatusQuery.data.status === lastCloudStatus) return
+		setLastCloudStatus(cloudStatusQuery.data.status)
+
+		if (cloudStatusQuery.data.status === 'completed') {
+			toast.success('Cloud download completed!')
+		}
+		if (cloudStatusQuery.data.status === 'failed') {
+			toast.error(cloudStatusQuery.data.message || 'Cloud download failed.')
+			setError(cloudStatusQuery.data.message || 'Cloud download failed.')
+		}
+		if (cloudStatusQuery.data.status === 'canceled') {
+			toast.warning('Cloud download was canceled.')
+		}
+	}, [cloudStatusQuery.data?.status, cloudStatusQuery.data?.message, cloudJobId, lastCloudStatus])
 
 	return (
 		<div className="flex items-center justify-center min-h-screen bg-background p-4">
@@ -66,6 +153,31 @@ export default function NewDownloadPage() {
 					<p className="text-sm text-muted-foreground">
 						YouTube and TikTok videos
 					</p>
+				</div>
+
+				{/* Backend Selection */}
+				<div className="flex items-center justify-center gap-3">
+					<span className="text-sm text-muted-foreground">Backend:</span>
+					<div className="inline-flex rounded-md border bg-muted p-1">
+						<Button
+							type="button"
+							variant={backend === 'cloud' ? 'default' : 'ghost'}
+							size="sm"
+							onClick={() => setBackend('cloud')}
+							className="px-4"
+						>
+							Cloud
+						</Button>
+						<Button
+							type="button"
+							variant={backend === 'local' ? 'default' : 'ghost'}
+							size="sm"
+							onClick={() => setBackend('local')}
+							className="px-4"
+						>
+							Local
+						</Button>
+					</div>
 				</div>
 
 				{/* Form */}
@@ -83,7 +195,7 @@ export default function NewDownloadPage() {
 								type="url"
 								placeholder="https://youtube.com/watch?v=..."
 								required
-								disabled={downloadMutation.isPending}
+								disabled={isSubmitting}
 								className="pl-10"
 							/>
 						</div>
@@ -97,7 +209,7 @@ export default function NewDownloadPage() {
 						<Select
 							name="quality"
 							defaultValue="1080p"
-							disabled={downloadMutation.isPending}
+							disabled={isSubmitting}
 						>
 							<SelectTrigger>
 								<SelectValue />
@@ -113,7 +225,7 @@ export default function NewDownloadPage() {
 					<ProxySelector
 						value={selectedProxyId}
 						onValueChange={setSelectedProxyId}
-						disabled={downloadMutation.isPending}
+						disabled={isSubmitting}
 					/>
 
 					{/* Error */}
@@ -126,22 +238,66 @@ export default function NewDownloadPage() {
 					{/* Submit Button */}
 					<Button
 						type="submit"
-						disabled={downloadMutation.isPending}
+						disabled={isSubmitting}
 						className="w-full"
 					>
-						{downloadMutation.isPending ? (
+						{isSubmitting ? (
 							<>
 								<Loader2 className="w-4 h-4 mr-2 animate-spin" />
-								Downloading...
+								{backend === 'cloud' ? 'Queueing...' : 'Downloading...'}
 							</>
 						) : (
 							<>
 								<Download className="w-4 h-4 mr-2" />
-								Download
+								{backend === 'cloud' ? 'Start Cloud Download' : 'Download'}
 							</>
 						)}
 					</Button>
 				</form>
+
+				{/* Cloud status */}
+				{backend === 'cloud' && cloudJobId && (
+					<div className="rounded-md border border-border/40 bg-muted/40 p-4 text-sm text-muted-foreground space-y-1">
+					<div className="font-medium text-foreground">Cloud job in progress</div>
+					<div>Job ID: {cloudJobId}</div>
+					{cloudMediaId && <div>Media ID: {cloudMediaId}</div>}
+					<div>
+						Status:{' '}
+						{cloudStatusQuery.isLoading
+							? 'Loading...'
+							: statusLabel ?? cloudStatusQuery.data?.status ?? 'queued'}
+						{typeof cloudStatusQuery.data?.progress === 'number'
+							? ` (${Math.round(cloudStatusQuery.data.progress * 100)}%)`
+							: ''}
+					</div>
+					{phaseLabel && <div>Phase: {phaseLabel}</div>}
+					{outputs?.video?.key && (
+						<div>
+							Video key: <code className="break-all text-xs">{outputs.video.key}</code>
+						</div>
+					)}
+					{outputs?.audio?.key && (
+						<div>
+							Audio key: <code className="break-all text-xs">{outputs.audio.key}</code>
+						</div>
+					)}
+					{outputs?.metadata?.key && (
+						<div>
+							Metadata key: <code className="break-all text-xs">{outputs.metadata.key}</code>
+						</div>
+					)}
+					{outputs?.metadata?.key && (
+						<div className="text-xs text-emerald-600">
+							Raw metadata has been uploaded via the cloud proxy and is ready for downstream steps.
+						</div>
+					)}
+					{cloudStatusQuery.data?.message && (
+						<div className="text-destructive">
+							{cloudStatusQuery.data.message}
+						</div>
+					)}
+					</div>
+				)}
 
 				{/* Help Text */}
 				<p className="text-xs text-muted-foreground text-center">

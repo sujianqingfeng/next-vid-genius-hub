@@ -28,6 +28,7 @@ export interface DownloadContext {
 	operationDir: string
 	videoPath: string
 	audioPath: string
+	metadataPath: string
 	proxyUrl?: string
 }
 

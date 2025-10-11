@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Settings, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
-import { Switch } from '~/components/ui/switch'
 import { Input } from '~/components/ui/input'
 // dropdown menu imports removed (no longer used)
 import { toast } from 'sonner'
@@ -20,19 +19,6 @@ export function ProxyList() {
 		queryOrpc.proxy.getProxies.queryOptions({ input: { page } }),
 	)
 
-	const updateProxyMutation = useMutation({
-		...queryOrpc.proxy.updateProxy.mutationOptions(),
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.proxy.getProxies.key(),
-			})
-			toast.success('Proxy updated successfully')
-		},
-		onError: (error) => {
-			toast.error(`Failed to update proxy: ${error.message}`)
-		},
-	})
-
 	const deleteProxyMutation = useMutation({
 		...queryOrpc.proxy.deleteProxy.mutationOptions(),
 		onSuccess: () => {
@@ -46,10 +32,6 @@ export function ProxyList() {
 		},
 	})
 
-
-	const handleToggleActive = (proxyId: string, isActive: boolean) => {
-		updateProxyMutation.mutate({ id: proxyId, isActive })
-	}
 
 	const handleDeleteProxy = (proxyId: string) => {
 		if (confirm('Are you sure you want to delete this proxy?')) {
@@ -104,24 +86,17 @@ export function ProxyList() {
 			<div className="space-y-1">
 				{filteredProxies.map((proxy) => (
 					<div key={proxy.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
-						<div className="flex items-center gap-3">
-							<Switch
-								checked={proxy.isActive}
-								onCheckedChange={(checked) => handleToggleActive(proxy.id, checked)}
-								disabled={updateProxyMutation.isPending}
-							/>
-							<div>
-								<div className="flex items-center gap-2">
-									<span className="font-medium">
-										{proxy.name || `${proxy.server}:${proxy.port}`}
-									</span>
-									<span className="text-xs text-muted-foreground">
-										{proxy.protocol.toUpperCase()}
-									</span>
-								</div>
-								<div className="text-sm text-muted-foreground">
-									{proxy.server}:{proxy.port}
-								</div>
+						<div>
+							<div className="flex items-center gap-2">
+								<span className="font-medium">
+									{proxy.name || `${proxy.server}:${proxy.port}`}
+								</span>
+								<span className="text-xs text-muted-foreground">
+									{proxy.protocol.toUpperCase()}
+								</span>
+							</div>
+							<div className="text-sm text-muted-foreground">
+								{proxy.server}:{proxy.port}
 							</div>
 						</div>
 

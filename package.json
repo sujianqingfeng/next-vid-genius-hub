@@ -16,10 +16,12 @@
     "remotion:ensure": "pnpm exec remotion browser ensure --log=info",
     "cf:dev": "cd cloudflare/media-orchestrator && wrangler dev",
     "cf:deploy": "cd cloudflare/media-orchestrator && wrangler deploy",
-    "ctr:build": "docker build -t burner-ffmpeg:dev containers/burner-ffmpeg",
-    "ctr:run": "docker run --rm -e JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret -p 8080:8080 burner-ffmpeg:dev",
     "dev:stack": "docker compose -f docker-compose.dev.yml up -d",
-    "dev:stack:down": "docker compose -f docker-compose.dev.yml down -v"
+    "dev:stack:down": "docker compose -f docker-compose.dev.yml down -v",
+    "dev:stack:rebuild-media-downloader": "docker compose -f docker-compose.dev.yml build media-downloader",
+    "dev:stack:restart-media-downloader": "pnpm dev:stack:rebuild-media-downloader && docker compose -f docker-compose.dev.yml up -d media-downloader",
+    "dev:stack:rebuild-downloader": "pnpm dev:stack:rebuild-media-downloader",
+    "dev:stack:restart-downloader": "pnpm dev:stack:restart-media-downloader"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",

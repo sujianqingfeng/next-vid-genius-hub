@@ -14,6 +14,11 @@
   - inputs/videos/{mediaId}.mp4
   - inputs/subtitles/{mediaId}.vtt
   - outputs/by-media/{mediaId}/{jobId}/video.mp4
+  - downloads/{mediaId}/{jobId}/video.mp4
+  - downloads/{mediaId}/{jobId}/audio.mp3
+  - downloads/{mediaId}/{jobId}/metadata.json
+- 容器（containers/media-downloader）：
+  - /render：调用 `yt-dlp` 下载源视频与原始元数据、`ffmpeg` 提取音轨，将产物上传至 R2。
 - 容器（containers/burner-ffmpeg）：
   - /render：接受 R2 预签名 URL（生产）或 fallback URL（开发），执行 ffmpeg 烧录后写回产物。
 
@@ -47,7 +52,9 @@ bucket_name = "vidgen-render"  # 与实际桶名一致
 
 [vars]
 JOB_TTL_SECONDS = 86400
-CONTAINER_BASE_URL = "https://<your-container-endpoint>"  # 渲染容器对外地址
+CONTAINER_BASE_URL = "https://<subtitle-container-endpoint>"
+CONTAINER_BASE_URL_REMOTION = "https://<remotion-container-endpoint>"
+CONTAINER_BASE_URL_DOWNLOADER = "https://<media-downloader-endpoint>"
 NEXT_BASE_URL = "https://<your-next-app-domain>"         # 供 Worker 回调 Next 使用
 ORCHESTRATOR_BASE_URL_NEXT = "https://<your-worker-domain>" # 供 Next 拉取 artifacts（兜底）
 
@@ -77,6 +84,32 @@ routes = [
 ```bash
 pnpm cf:deploy
 ```
+
+## 容器（media-downloader）生产配置
+
+镜像：`containers/media-downloader/`
+
+1) 构建与推送
+
+```bash
+docker build -t <registry>/<project>/media-downloader:<tag> containers/media-downloader
+docker push <registry>/<project>/media-downloader:<tag>
+```
+
+2) 运行参数
+
+- 环境变量：
+  - `JOB_CALLBACK_HMAC_SECRET`
+  - `CLASH_SUBSCRIPTION_URL`（可选）或 `CLASH_RAW_CONFIG`，用于统一订阅/自定义 Clash 配置。
+  - `CLASH_MODE`（默认 `Rule`）、`MIHOMO_PORT`（默认 `7890`）等可按需覆盖。
+- 出网：允许访问源站（YouTube / TikTok 等）、R2 对象存储域名。
+- 资源建议：2 vCPU / 2GB RAM；镜像自带 `yt-dlp` 与 `ffmpeg`。
+
+3) 服务端点
+
+- 对外暴露 `/render`（POST），Worker 使用 `CONTAINER_BASE_URL_DOWNLOADER` 调用。
+
+> **代理提示**：生产环境建议通过数据库 Proxy 表（带 `nodeUrl`、HTTP / SOCKS 节点）或 `CLASH_SUBSCRIPTION_URL` 提供可达的出口。容器会在每个任务开始时自动生成 Clash 配置并启动 mihomo，默认监听 `http://127.0.0.1:7890`，无需依赖宿主机的 Clash。
 
 ## 容器（burner-ffmpeg）生产配置
 
@@ -144,6 +177,7 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 2) Worker 日志：`start job ...` → 无错误；容器日志：`inputs ready` → `ffmpeg done`。
 3) 轮询 /jobs/:id：status 从 `queued`→`running`（或 `preparing`）→ 检测到 R2 `outputs/...` → `completed`。
 4) Next 日志出现 `[cf-callback] recorded remote artifact for job <jobId>`，页面自动跳到 Step 4 可播放（Next 代理 Worker `/artifacts/:jobId`，支持 Range）。
+5) 针对云端下载：在下载页选择 Cloud，确认 Worker /jobs/:id 状态从 `queued` → `running` → `completed`，Next 日志输出“Cloud download completed”并在 `operations/<mediaId>` 下生成 mp4/mp3/metadata.json。
 
 ## 常见问题
 

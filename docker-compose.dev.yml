@@ -36,3 +36,18 @@ services:
       - "8090:8090"
     depends_on:
       - minio
+
+  media-downloader:
+    build:
+      context: ./containers/media-downloader
+    container_name: media-downloader
+    environment:
+      - NODE_ENV=development
+      - JOB_CALLBACK_HMAC_SECRET=dev-secret
+      - CLASH_SUBSCRIPTION_URL=${CLASH_SUBSCRIPTION_URL:-}
+      - CLASH_MODE=${CLASH_MODE:-Rule}
+      - MIHOMO_PORT=${MIHOMO_PORT:-7890}
+    ports:
+      - "8100:8080"
+    depends_on:
+      - minio

@@ -18,6 +18,8 @@ import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { fileExists as fileExists } from '~/lib/utils/file'
 import { downloadVideo } from '~/lib/providers/youtube/downloader'
 
+const FORWARD_PROXY_PROTOCOLS = new Set(['http', 'https', 'socks4', 'socks5'])
+
 export class DownloadService implements IDownloadService {
 	private readonly operationDir: string = OPERATIONS_DIR
 	private readonly proxyUrl?: string = PROXY_URL
@@ -37,11 +39,15 @@ export class DownloadService implements IDownloadService {
 
 			const id = downloadRecord?.id ?? createId()
 			const _context = this.createDownloadContext(id, downloadRecord, proxyUrl)
+			await fs.mkdir(_context.operationDir, { recursive: true })
 
 			// 3. 检查文件存在性
 			downloadProgress = { stage: 'checking', progress: 10 }
-			const videoExists = await fileExists(_context.videoPath)
-			const audioExists = await fileExists(_context.audioPath)
+			const [videoExists, audioExists, metadataExists] = await Promise.all([
+				fileExists(_context.videoPath),
+				fileExists(_context.audioPath),
+				fileExists(_context.metadataPath),
+			])
 
 			// 4. 获取平台提供者和元数据
 			const provider = ProviderFactory.resolveProvider(url)
@@ -50,11 +56,32 @@ export class DownloadService implements IDownloadService {
 			}
 
 			let metadata: BasicVideoInfo | null | undefined
+			let metadataPersisted = metadataExists
+			let metadataDownloadedAt: Date | null =
+				downloadRecord?.rawMetadataDownloadedAt ?? (metadataExists ? new Date() : null)
+
+			const ensureMetadata = async (stage: DownloadProgress['stage'], progress: number) => {
+				if (metadataPersisted) return
+				downloadProgress = { stage, progress }
+				const latest = await this.fetchMetadata(url, _context)
+				if (latest) metadata = latest
+				if (await this.persistRawMetadata(latest, _context)) {
+					metadataPersisted = true
+					metadataDownloadedAt = new Date()
+				}
+			}
+
+			// 如果缺少原始数据，优先抓取
+			if (!metadataExists) {
+				await ensureMetadata('processing_metadata', 20)
+			}
 
 			// 5. 下载视频（如果不存在）
 			if (!videoExists) {
-				downloadProgress = { stage: 'downloading', progress: 30 }
-				metadata = await this.fetchMetadata(url, _context)
+				if (!metadataPersisted) {
+					await ensureMetadata('processing_metadata', 30)
+				}
+				downloadProgress = { stage: 'downloading', progress: 40 }
 				await this.downloadVideo(url, quality, _context.videoPath)
 			}
 
@@ -65,14 +92,34 @@ export class DownloadService implements IDownloadService {
 			}
 
 			// 7. 确保我们有视频信息
-			if (!downloadRecord && !metadata) {
+			if (!metadata && (!downloadRecord || !metadataPersisted)) {
 				downloadProgress = { stage: 'processing_metadata', progress: 80 }
-				metadata = await this.fetchMetadata(url, _context)
+				const latest = await this.fetchMetadata(url, _context)
+				if (latest) metadata = latest
+				if (await this.persistRawMetadata(latest, _context)) {
+					metadataPersisted = true
+					metadataDownloadedAt = new Date()
+				}
 			}
+
+			const metadataPathForDb = metadataPersisted
+				? _context.metadataPath
+				: downloadRecord?.rawMetadataPath ?? null
 
 			// 8. 更新数据库记录
 			downloadProgress = { stage: 'processing_metadata', progress: 90 }
-			await this.updateDatabaseRecord(id, url, metadata, downloadRecord, _context, quality)
+			await this.updateDatabaseRecord(
+				id,
+				url,
+				metadata,
+				downloadRecord,
+				_context,
+				quality,
+				{
+					metadataPath: metadataPathForDb ?? undefined,
+					metadataDownloadedAt,
+				},
+			)
 
 			downloadProgress = { stage: 'completed', progress: 100 }
 
@@ -172,11 +219,18 @@ export class DownloadService implements IDownloadService {
 					protocol: true,
 					username: true,
 					password: true,
-					isActive: true,
 				},
 			})
 
-			if (!proxy || !proxy.isActive) {
+			if (!proxy) {
+				return this.proxyUrl
+			}
+
+			if (!FORWARD_PROXY_PROTOCOLS.has(proxy.protocol)) {
+				console.warn(
+					'DownloadService',
+					`Proxy protocol "${proxy.protocol}" is not supported for direct forwarding; falling back to default proxy.`,
+				)
 				return this.proxyUrl
 			}
 
@@ -200,6 +254,7 @@ export class DownloadService implements IDownloadService {
 			operationDir,
 			videoPath: downloadRecord?.filePath ?? path.join(operationDir, `${id}.mp4`),
 			audioPath: downloadRecord?.audioFilePath ?? path.join(operationDir, `${id}.mp3`),
+			metadataPath: downloadRecord?.rawMetadataPath ?? path.join(operationDir, 'metadata.json'),
 			proxyUrl,
 		}
 	}
@@ -210,6 +265,22 @@ export class DownloadService implements IDownloadService {
 
 	private async extractAudioFromVideo(videoPath: string, audioPath: string): Promise<void> {
 		await extractAudio(videoPath, audioPath)
+	}
+
+	private async persistRawMetadata(metadata: BasicVideoInfo | null | undefined, context: DownloadContext): Promise<boolean> {
+		const payload = metadata?.raw ?? metadata
+		if (!payload) {
+			return false
+		}
+
+		try {
+			await fs.mkdir(context.operationDir, { recursive: true })
+			await fs.writeFile(context.metadataPath, JSON.stringify(payload, null, 2), 'utf8')
+			return true
+		} catch (error) {
+			console.error('Failed to persist raw metadata:', error)
+			return false
+		}
 	}
 
 	private getProviderSource(providerId: string): 'youtube' | 'tiktok' | 'unknown' {
@@ -229,16 +300,45 @@ export class DownloadService implements IDownloadService {
 		metadata: BasicVideoInfo | null | undefined,
 		downloadRecord: any,
 		context: DownloadContext,
-		quality: '1080p' | '720p'
+		quality: '1080p' | '720p',
+		metadataDetails?: {
+			metadataPath?: string
+			metadataDownloadedAt?: Date | null
+		},
 	): Promise<void> {
 		const source = metadata?.source ?? 'youtube'
+		const resolvedMetadataPath =
+			metadataDetails?.metadataPath ??
+			downloadRecord?.rawMetadataPath ??
+			(null as string | null)
+		const resolvedMetadataDownloadedAt =
+			metadataDetails?.metadataDownloadedAt ?? downloadRecord?.rawMetadataDownloadedAt ?? null
+
 		const data = createMediaUpdateData({
 			metadata: metadata as any,
 			downloadRecord,
 			videoPath: context.videoPath,
 			audioPath: context.audioPath,
 			quality,
+			metadataPath: resolvedMetadataPath ?? undefined,
 		})
+
+		const now = new Date()
+		const downloadMeta = {
+			downloadBackend: 'local' as const,
+			downloadStatus: 'completed' as const,
+			downloadError: null as string | null,
+			downloadQueuedAt: downloadRecord?.downloadQueuedAt ?? now,
+			downloadCompletedAt: now,
+			remoteVideoKey: null as string | null,
+			remoteAudioKey: null as string | null,
+			remoteMetadataKey: null as string | null,
+			downloadJobId: null as string | null,
+			rawMetadataPath: resolvedMetadataPath,
+			rawMetadataDownloadedAt:
+				resolvedMetadataDownloadedAt ??
+				(resolvedMetadataPath ? now : null),
+		}
 
 		await db
 			.insert(schema.media)
@@ -247,10 +347,14 @@ export class DownloadService implements IDownloadService {
 				url,
 				source: source as 'youtube' | 'tiktok',
 				...data,
+				...downloadMeta,
 			} as any)
 			.onConflictDoUpdate({
 				target: schema.media.url,
-				set: data as any,
+				set: {
+					...data,
+					...downloadMeta,
+				} as any,
 			})
 	}
 }

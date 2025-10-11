@@ -1,14 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
-import { JOB_CALLBACK_HMAC_SECRET, RENDERED_VIDEO_FILENAME } from '~/lib/constants'
+import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/constants'
 import { OPERATIONS_DIR } from '~/lib/config/app.config'
 import { verifyHmacSHA256 } from '~/lib/security/hmac'
-import { promises as fs } from 'node:fs'
+import { promises as fs, createWriteStream } from 'node:fs'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
 
+type CallbackPayload = {
+  jobId: string
+  mediaId: string
+  status: 'completed' | 'failed' | 'canceled'
+  engine?: 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader'
+  outputUrl?: string
+  outputKey?: string
+  durationMs?: number
+  attempts?: number
+  error?: string
+  outputs?: {
+    video?: { url?: string; key?: string }
+    audio?: { url?: string; key?: string }
+    metadata?: { url?: string; key?: string }
+  }
+  metadata?: {
+    title?: string
+    author?: string
+    thumbnail?: string
+    viewCount?: number
+    likeCount?: number
+    source?: 'youtube' | 'tiktok'
+    quality?: '720p' | '1080p'
+  }
+}
+
+type MediaRecord = typeof schema.media.$inferSelect
+
 // Container/Worker → Next: final callback to persist status and output
-// Expected body: { jobId, mediaId, status, outputUrl?, outputKey?, durationMs?, attempts?, error? }
+// Expected body expands per engine type (renderers keep remote references, downloader hydrates local files)
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,22 +51,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
     }
 
-    const payload = JSON.parse(bodyText) as {
-      jobId: string
-      mediaId: string
-      status: 'completed' | 'failed' | 'canceled'
-      engine?: 'burner-ffmpeg' | 'renderer-remotion'
-      outputUrl?: string
-      outputKey?: string
-      durationMs?: number
-      attempts?: number
-      error?: string
-    }
+    const payload = JSON.parse(bodyText) as CallbackPayload
 
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, payload.mediaId) })
     if (!media) {
       console.error('[cf-callback] media not found', payload.mediaId)
       return NextResponse.json({ error: 'media not found' }, { status: 404 })
+    }
+
+    if (payload.engine === 'media-downloader') {
+      await handleCloudDownloadCallback(media, payload)
+      return NextResponse.json({ ok: true })
     }
 
     if (payload.status === 'completed') {
@@ -56,10 +81,210 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // In all cases, acknowledge
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[cf-callback] error', e)
     return NextResponse.json({ error: 'internal error' }, { status: 500 })
+  }
+}
+
+async function handleCloudDownloadCallback(
+  media: MediaRecord,
+  payload: CallbackPayload & { engine: 'media-downloader' },
+) {
+  const where = eq(schema.media.id, payload.mediaId)
+
+  if (payload.status !== 'completed') {
+    await db
+      .update(schema.media)
+      .set({
+        downloadBackend: 'cloud',
+        downloadStatus: payload.status,
+        downloadError: payload.error ?? 'Cloud download failed',
+        downloadJobId: payload.jobId,
+      })
+      .where(where)
+    return
+  }
+
+  const videoUrl = payload.outputs?.video?.url
+  if (!videoUrl) {
+    await db
+      .update(schema.media)
+      .set({
+        downloadBackend: 'cloud',
+        downloadStatus: 'failed',
+        downloadError: 'Missing video output from cloud download',
+        downloadJobId: payload.jobId,
+      })
+      .where(where)
+    return
+  }
+
+  const operationDir = path.join(OPERATIONS_DIR, payload.mediaId)
+  await fs.mkdir(operationDir, { recursive: true })
+
+  const videoPath = path.join(operationDir, `${payload.mediaId}.mp4`)
+  const audioUrl = payload.outputs?.audio?.url
+  const audioPath = audioUrl ? path.join(operationDir, `${payload.mediaId}.mp3`) : null
+  const metadataUrl = payload.outputs?.metadata?.url
+  const metadataKey = payload.outputs?.metadata?.key ?? null
+  const metadataPath = path.join(operationDir, 'metadata.json')
+  let metadataDownloaded = false
+
+  try {
+    await downloadArtifact(videoUrl, videoPath)
+    if (audioUrl && audioPath) {
+      await downloadArtifact(audioUrl, audioPath)
+    }
+    if (metadataUrl) {
+      await downloadArtifact(metadataUrl, metadataPath)
+      metadataDownloaded = true
+    }
+  } catch (error) {
+    console.error('[cf-callback] failed to persist cloud download', error)
+    await db
+      .update(schema.media)
+      .set({
+        downloadBackend: 'cloud',
+        downloadStatus: 'failed',
+        downloadError: error instanceof Error ? error.message : 'Failed to persist cloud artifacts',
+        downloadJobId: payload.jobId,
+      })
+      .where(where)
+    return
+  }
+
+  const updates: Record<string, unknown> = {
+    downloadBackend: 'cloud',
+    downloadStatus: 'completed',
+    downloadError: null,
+    downloadJobId: payload.jobId,
+    downloadCompletedAt: new Date(),
+    remoteVideoKey: payload.outputs?.video?.key ?? null,
+    remoteAudioKey: payload.outputs?.audio?.key ?? null,
+    remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
+    filePath: videoPath,
+    audioFilePath: audioPath ?? null,
+    rawMetadataPath: metadataDownloaded ? metadataPath : media.rawMetadataPath ?? null,
+    rawMetadataDownloadedAt: metadataDownloaded
+      ? new Date()
+      : media.rawMetadataDownloadedAt ?? null,
+  }
+
+  const metadataFromPayload = payload.metadata
+  const metadataFromFile = metadataDownloaded ? await readMetadataSummary(metadataPath) : null
+
+  const title = metadataFromPayload?.title ?? metadataFromFile?.title
+  const author = metadataFromPayload?.author ?? metadataFromFile?.author
+  const thumbnail = metadataFromPayload?.thumbnail ?? metadataFromFile?.thumbnail
+  const viewCount =
+    metadataFromPayload?.viewCount ??
+    (metadataFromFile?.viewCount ?? undefined)
+  const likeCount =
+    metadataFromPayload?.likeCount ??
+    (metadataFromFile?.likeCount ?? undefined)
+
+  if (title) updates.title = title
+  if (author) updates.author = author
+  if (thumbnail) updates.thumbnail = thumbnail
+  if (viewCount !== undefined) updates.viewCount = viewCount
+  if (likeCount !== undefined) updates.likeCount = likeCount
+  if (metadataFromPayload?.quality) updates.quality = metadataFromPayload.quality
+  if (metadataFromPayload?.source) updates.source = metadataFromPayload.source
+
+  await db.update(schema.media).set(updates).where(where)
+}
+
+async function downloadArtifact(url: string, filePath: string) {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to download artifact: ${response.status} ${response.statusText}`)
+  }
+  const body = response.body
+  if (!body) {
+    throw new Error('Failed to download artifact: response body is empty')
+  }
+
+  const fileStream = createWriteStream(filePath)
+  try {
+    // Stream directly to disk to avoid buffering large artifacts in memory
+    await pipeline(Readable.fromWeb(body as ReadableStream<Uint8Array>), fileStream)
+  } catch (error) {
+    fileStream.destroy()
+    await fs.rm(filePath, { force: true }).catch(() => {})
+    if (error instanceof Error) throw error
+    throw new Error('Failed to stream artifact to disk')
+  }
+}
+
+type MetadataSummary = {
+  title?: string
+  author?: string
+  thumbnail?: string
+  viewCount?: number
+  likeCount?: number
+}
+
+async function readMetadataSummary(metadataPath: string): Promise<MetadataSummary | null> {
+  try {
+    const raw = await fs.readFile(metadataPath, 'utf8')
+    if (!raw.trim()) return null
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    return summariseMetadata(parsed)
+  } catch (error) {
+    console.error('[cf-callback] failed to read metadata summary', error)
+    return null
+  }
+}
+
+function summariseMetadata(raw: Record<string, unknown> | null | undefined): MetadataSummary {
+  if (!raw) return {}
+
+  const asString = (value: unknown): string | undefined => {
+    if (typeof value === 'string' && value.trim()) return value
+    return undefined
+  }
+
+  const asNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number.parseInt(value, 10)
+      if (!Number.isNaN(parsed)) return parsed
+    }
+    return undefined
+  }
+
+  let thumbnail = asString(raw.thumbnail)
+  if (!thumbnail && Array.isArray(raw.thumbnails)) {
+    const thumbnails = raw.thumbnails as unknown[]
+    for (let i = thumbnails.length - 1; i >= 0; i--) {
+      const candidate = thumbnails[i]
+      if (
+        candidate &&
+        typeof candidate === 'object' &&
+        candidate !== null &&
+        typeof (candidate as { url?: unknown }).url === 'string' &&
+        (candidate as { url: string }).url.trim()
+      ) {
+        thumbnail = (candidate as { url: string }).url
+        break
+      }
+    }
+  }
+
+  const author =
+    asString(raw.uploader) ??
+    asString(raw.channel) ??
+    asString(raw.artist) ??
+    asString(raw.owner) ??
+    undefined
+
+  return {
+    title: asString(raw.title),
+    author,
+    thumbnail,
+    viewCount: asNumber(raw['view_count'] ?? raw['viewCount']),
+    likeCount: asNumber(raw['like_count'] ?? raw['likeCount']),
   }
 }

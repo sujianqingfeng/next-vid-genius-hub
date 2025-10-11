@@ -31,6 +31,17 @@ export class DownloadRepository {
 		quality?: string
 		status?: string
 		errorMessage?: string
+		downloadBackend?: 'local' | 'cloud'
+		downloadStatus?: string
+		downloadJobId?: string
+		remoteVideoKey?: string
+		remoteAudioKey?: string
+		remoteMetadataKey?: string
+		rawMetadataPath?: string | null
+		rawMetadataDownloadedAt?: Date | null
+		downloadError?: string | null
+		downloadQueuedAt?: Date | null
+		downloadCompletedAt?: Date | null
 	}): Promise<void> {
 		// Type cast to handle quality field constraint
 		const updateData: any = status
@@ -61,6 +72,17 @@ export class DownloadRepository {
 		audioFilePath?: string
 		thumbnailPath?: string
 		quality?: string
+		downloadBackend?: 'local' | 'cloud'
+		downloadStatus?: string
+		downloadJobId?: string
+		remoteVideoKey?: string
+		remoteAudioKey?: string
+		remoteMetadataKey?: string
+		rawMetadataPath?: string | null
+		rawMetadataDownloadedAt?: Date | null
+		downloadError?: string | null
+		downloadQueuedAt?: Date | null
+		downloadCompletedAt?: Date | null
 	}): Promise<void> {
 		// Ensure required fields have proper types
 		const insertData: any = {
@@ -68,6 +90,7 @@ export class DownloadRepository {
 			title: data.title || 'Unknown Title',
 			source: data.source as 'youtube' | 'tiktok',
 			quality: (data.quality && ['720p', '1080p'].includes(data.quality)) ? data.quality : '720p',
+			downloadBackend: data.downloadBackend ?? 'local',
 		}
 
 		await db

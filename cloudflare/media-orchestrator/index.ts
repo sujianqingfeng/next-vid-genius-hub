@@ -4,10 +4,12 @@ export interface Env {
   JOB_TTL_SECONDS?: string
   CONTAINER_BASE_URL?: string
   CONTAINER_BASE_URL_REMOTION?: string
+  CONTAINER_BASE_URL_DOWNLOADER?: string
   NEXT_BASE_URL?: string
   JOB_CALLBACK_HMAC_SECRET?: string
   // Generic S3-compatible config (R2/MinIO)
   S3_ENDPOINT?: string
+  S3_INTERNAL_ENDPOINT?: string
   S3_ACCESS_KEY_ID?: string
   S3_SECRET_ACCESS_KEY?: string
   S3_BUCKET_NAME?: string
@@ -16,16 +18,19 @@ export interface Env {
   RENDER_JOB_DO?: DurableObjectNamespace
 }
 
-type EngineId = 'burner-ffmpeg' | 'renderer-remotion'
+type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader'
 
 type JobStatus =
   | 'queued'
+  | 'fetching_metadata'
   | 'preparing'
   | 'running'
   | 'uploading'
   | 'completed'
   | 'failed'
   | 'canceled'
+
+const TERMINAL_STATUSES: JobStatus[] = ['completed', 'failed', 'canceled']
 
 interface StartBody {
   mediaId: string
@@ -36,9 +41,10 @@ interface StartBody {
 interface StatusDoc {
   jobId: string
   status: JobStatus
-  phase?: 'preparing' | 'running' | 'uploading'
+  phase?: 'fetching_metadata' | 'preparing' | 'running' | 'uploading'
   progress?: number
   outputKey?: string
+  outputMetadataKey?: string
   error?: string
   ts: number
 }
@@ -61,13 +67,38 @@ function jobStub(env: Env, jobId: string) {
   return env.RENDER_JOB_DO.get(id)
 }
 
+function containerS3Endpoint(endpoint?: string, override?: string): string | undefined {
+  const base = override || endpoint
+  if (!base) return undefined
+  try {
+    const url = new URL(base)
+    const host = url.hostname.toLowerCase()
+    if (host === '127.0.0.1' || host === 'localhost') {
+      url.hostname = 'minio'
+      return url.toString()
+    }
+    return base
+  } catch {
+    return base
+  }
+}
+
 // ========= R2 S3 Pre-sign (SigV4) =========
-async function presignS3(env: Env, method: 'GET'|'PUT'|'HEAD', bucket: string, key: string, expiresSec: number, contentType?: string): Promise<string> {
-  if (!env.S3_ENDPOINT || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY) {
+async function presignS3(
+  env: Env,
+  method: 'GET' | 'PUT' | 'HEAD',
+  bucket: string,
+  key: string | undefined,
+  expiresSec: number,
+  contentType?: string,
+  endpointOverride?: string,
+): Promise<string> {
+  const endpoint = endpointOverride || env.S3_ENDPOINT
+  if (!endpoint || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY) {
     throw new Error('S3 credentials not configured')
   }
-  const endpointHost = env.S3_ENDPOINT.replace(/^https?:\/\//, '')
-  const style = (env.S3_STYLE || 'vhost') as 'vhost'|'path'
+  const endpointHost = endpoint.replace(/^https?:\/\//, '')
+  const style = (env.S3_STYLE || 'vhost') as 'vhost' | 'path'
   const region = env.S3_REGION || 'auto'
   const host = style === 'vhost' ? `${bucket}.${endpointHost}` : endpointHost
   const now = new Date()
@@ -83,8 +114,15 @@ async function presignS3(env: Env, method: 'GET'|'PUT'|'HEAD', bucket: string, k
   }
   headerEntries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
   const signedHeaders = headerEntries.map(([name]) => name).join(';') || 'host'
-  const keyPart = `/${encodeURIComponent(key).replace(/%2F/g, '/')}`
-  const canonicalUri = style === 'vhost' ? keyPart : `/${bucket}${keyPart}`
+  const encodeKey = (value: string) => encodeURIComponent(value).replace(/%2F/g, '/').replace(/%7E/g, '~')
+  const canonicalUri = (() => {
+    if (style === 'vhost') {
+      if (!key) return '/'
+      return `/${encodeKey(key)}`
+    }
+    if (!key) return `/${bucket}`
+    return `/${bucket}/${encodeKey(key)}`
+  })()
   const enc = (s: string) => encodeURIComponent(s).replace(/[!*'()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
   const qpObj: Record<string, string> = {
     'X-Amz-Algorithm': algorithm,
@@ -105,7 +143,7 @@ async function presignS3(env: Env, method: 'GET'|'PUT'|'HEAD', bucket: string, k
 
   const signingKey = await getSigningKey(env.S3_SECRET_ACCESS_KEY!, date, region, service)
   const signature = await hmacHexRaw(signingKey, stringToSign)
-  const scheme = env.S3_ENDPOINT.startsWith('http://') ? 'http' : 'https'
+  const scheme = endpoint.startsWith('http://') ? 'http' : 'https'
   const url = `${scheme}://${host}${canonicalUri}?${canonicalQuery}&X-Amz-Signature=${signature}`
   return url
 }
@@ -152,86 +190,125 @@ async function handleStart(env: Env, req: Request) {
   const now = Date.now()
   const baseNext = (env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
   // Choose container base by engine
-  const containerBase = (
-    body.engine === 'renderer-remotion'
-      ? (env as any).CONTAINER_BASE_URL_REMOTION || env.CONTAINER_BASE_URL
-      : env.CONTAINER_BASE_URL
-    || 'http://localhost:8080'
-  ).replace(/\/$/, '')
+  let containerBase: string
+  if (body.engine === 'renderer-remotion') {
+    containerBase =
+      (env as any).CONTAINER_BASE_URL_REMOTION ||
+      env.CONTAINER_BASE_URL ||
+      'http://localhost:8080'
+  } else if (body.engine === 'media-downloader') {
+    containerBase =
+      env.CONTAINER_BASE_URL_DOWNLOADER ||
+      env.CONTAINER_BASE_URL ||
+      'http://localhost:8080'
+  } else {
+    containerBase = env.CONTAINER_BASE_URL || 'http://localhost:8080'
+  }
+  containerBase = containerBase.replace(/\/$/, '')
   const baseSelfForContainer = (env.ORCHESTRATOR_BASE_URL_CONTAINER || new URL(req.url).origin).replace(/\/$/, '')
-
-  const doc: StatusDoc = { jobId, status: 'queued', ts: now } as StatusDoc & { mediaId?: string }
-  ;(doc as any).mediaId = body.mediaId
-  await env.JOBS.put(jobId, JSON.stringify(doc), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
 
   // Prepare payload for container
   // Ensure inputs exist in R2 (Worker fetches from Next, container不会访问Next)
   const bucketName = env.S3_BUCKET_NAME || 'vidgen-render'
+  const isDownloader = body.engine === 'media-downloader'
+  const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
   const inputVideoKey = `inputs/videos/${body.mediaId}.mp4`
   const inputVttKey = `inputs/subtitles/${body.mediaId}.vtt`
   const inputDataKey = `inputs/comments/${body.mediaId}.json`
-  // 输出路径包含 mediaId 便于归属检索
-  const outputKey = `outputs/by-media/${body.mediaId}/${jobId}/video.mp4`
+  const outputVideoKey = isDownloader
+    ? `downloads/${body.mediaId}/${jobId}/video.mp4`
+    : `outputs/by-media/${body.mediaId}/${jobId}/video.mp4`
+  const outputAudioKey = isDownloader ? `downloads/${body.mediaId}/${jobId}/audio.mp3` : undefined
+  const outputMetadataKey = isDownloader ? `downloads/${body.mediaId}/${jobId}/metadata.json` : undefined
 
-  let inputVideoUrl: string
-  let inputVttUrl: string
+  let inputVideoUrl: string | undefined
+  let inputVttUrl: string | undefined
   let inputDataUrl: string | undefined
-  const mirrorInputs = (env.MIRROR_INPUTS || 'true').toLowerCase() !== 'false'
-  if (mirrorInputs) {
-    const videoExists = await s3Head(env, bucketName, inputVideoKey)
-    if (!videoExists) {
-      const src = await fetch(`${baseNext}/api/media/${body.mediaId}/source`)
-      if (!src.ok || !src.body) return json({ error: 'fetch source failed' }, { status: 502 })
-      await s3Put(env, bucketName, inputVideoKey, 'video/mp4', src.body as ReadableStream)
-    }
-    if (body.engine === 'burner-ffmpeg') {
-      const vttExists = await s3Head(env, bucketName, inputVttKey)
-      if (!vttExists) {
-        const sub = await fetch(`${baseNext}/api/media/${body.mediaId}/subtitles`)
-        if (!sub.ok) return json({ error: 'fetch subtitles failed' }, { status: 502 })
-        const text = await sub.text()
-        await s3Put(env, bucketName, inputVttKey, 'text/vtt', text)
+  if (!isDownloader) {
+    const mirrorInputs = (env.MIRROR_INPUTS || 'true').toLowerCase() !== 'false'
+    if (mirrorInputs) {
+      const videoExists = await s3Head(env, bucketName, inputVideoKey)
+      if (!videoExists) {
+        const src = await fetch(`${baseNext}/api/media/${body.mediaId}/source`)
+        if (!src.ok || !src.body) return json({ error: 'fetch source failed' }, { status: 502 })
+        await s3Put(env, bucketName, inputVideoKey, 'video/mp4', src.body as ReadableStream)
       }
-    } else if (body.engine === 'renderer-remotion') {
-      const dataExists = await s3Head(env, bucketName, inputDataKey)
-      if (!dataExists) {
-        const r = await fetch(`${baseNext}/api/media/${body.mediaId}/comments-data`)
-        if (!r.ok) return json({ error: 'fetch comments-data failed' }, { status: 502 })
-        const txt = await r.text()
-        await s3Put(env, bucketName, inputDataKey, 'application/json', txt)
+      if (body.engine === 'burner-ffmpeg') {
+        const vttExists = await s3Head(env, bucketName, inputVttKey)
+        if (!vttExists) {
+          const sub = await fetch(`${baseNext}/api/media/${body.mediaId}/subtitles`)
+          if (!sub.ok) return json({ error: 'fetch subtitles failed' }, { status: 502 })
+          const text = await sub.text()
+          await s3Put(env, bucketName, inputVttKey, 'text/vtt', text)
+        }
+      } else if (body.engine === 'renderer-remotion') {
+        const dataExists = await s3Head(env, bucketName, inputDataKey)
+        if (!dataExists) {
+          const r = await fetch(`${baseNext}/api/media/${body.mediaId}/comments-data`)
+          if (!r.ok) return json({ error: 'fetch comments-data failed' }, { status: 502 })
+          const txt = await r.text()
+          await s3Put(env, bucketName, inputDataKey, 'application/json', txt)
+        }
       }
-    }
-    inputVideoUrl = await presignS3(env, 'GET', bucketName, inputVideoKey, 600)
-    if (body.engine === 'burner-ffmpeg') {
-      inputVttUrl = await presignS3(env, 'GET', bucketName, inputVttKey, 600)
-    } else if (body.engine === 'renderer-remotion') {
-      inputDataUrl = await presignS3(env, 'GET', bucketName, inputDataKey, 600)
-    }
-  } else {
-    inputVideoUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/video`
-    if (body.engine === 'burner-ffmpeg') {
-      inputVttUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/subtitles`
-    } else if (body.engine === 'renderer-remotion') {
-      inputDataUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/comments`
+      inputVideoUrl = await presignS3(env, 'GET', bucketName, inputVideoKey, 600, undefined, jobS3Endpoint)
+      if (body.engine === 'burner-ffmpeg') {
+        inputVttUrl = await presignS3(env, 'GET', bucketName, inputVttKey, 600, undefined, jobS3Endpoint)
+      } else if (body.engine === 'renderer-remotion') {
+        inputDataUrl = await presignS3(env, 'GET', bucketName, inputDataKey, 600, undefined, jobS3Endpoint)
+      }
+    } else {
+      inputVideoUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/video`
+      if (body.engine === 'burner-ffmpeg') {
+        inputVttUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/subtitles`
+      } else if (body.engine === 'renderer-remotion') {
+        inputDataUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/comments`
+      }
     }
   }
-  // 预签名 PUT 有效期（秒），可通过环境变量区分环境
+
   const putTtl = Number(env.PUT_EXPIRES || 600)
-  const outputPutUrl = await presignS3(env, 'PUT', bucketName, outputKey, putTtl, 'video/mp4')
+  const outputVideoPutUrl = await presignS3(env, 'PUT', bucketName, outputVideoKey, putTtl, 'video/mp4', jobS3Endpoint)
+  const outputAudioPutUrl = outputAudioKey
+    ? await presignS3(env, 'PUT', bucketName, outputAudioKey, putTtl, 'audio/mpeg', jobS3Endpoint)
+    : undefined
+  const outputMetadataPutUrl = outputMetadataKey
+    ? await presignS3(env, 'PUT', bucketName, outputMetadataKey, putTtl, 'application/json', jobS3Endpoint)
+    : undefined
+
+  const doc: StatusDoc = { jobId, status: 'queued', ts: now } as StatusDoc & {
+    mediaId?: string
+    outputAudioKey?: string
+    outputMetadataKey?: string
+  }
+  ;(doc as any).mediaId = body.mediaId
+  ;(doc as any).outputKey = outputVideoKey
+  if (outputAudioKey) (doc as any).outputAudioKey = outputAudioKey
+  if (outputMetadataKey) (doc as any).outputMetadataKey = outputMetadataKey
+  await env.JOBS.put(jobId, JSON.stringify(doc), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
 
   const payload: any = {
     jobId,
     mediaId: body.mediaId,
     engine: body.engine,
-    // R2 presigned URLs (container无需访问Next/Worker)
-    inputVideoUrl,
-    ...(body.engine === 'burner-ffmpeg' ? { inputVttUrl } : {}),
-    ...(body.engine === 'renderer-remotion' ? { inputDataUrl } : {}),
-    outputPutUrl,
-    // 进度回传（容器→Worker DO）
     callbackUrl: `${new URL(req.url).origin}/callbacks/container`,
-    // 仅使用 S3 直连，容器无需访问 Next/Worker
     engineOptions: body.options || {},
+  }
+
+  if (isDownloader) {
+    payload.outputVideoPutUrl = outputVideoPutUrl
+    if (outputAudioPutUrl) payload.outputAudioPutUrl = outputAudioPutUrl
+    payload.outputVideoKey = outputVideoKey
+    if (outputAudioKey) payload.outputAudioKey = outputAudioKey
+    if (outputMetadataPutUrl) payload.outputMetadataPutUrl = outputMetadataPutUrl
+    if (outputMetadataKey) payload.outputMetadataKey = outputMetadataKey
+  } else {
+    payload.inputVideoUrl = inputVideoUrl
+    if (body.engine === 'burner-ffmpeg') {
+      payload.inputVttUrl = inputVttUrl
+    } else if (body.engine === 'renderer-remotion') {
+      payload.inputDataUrl = inputDataUrl
+    }
+    payload.outputPutUrl = outputVideoPutUrl
   }
 
   // Fire-and-forget container call (no await required, but keep for error surfacing)
@@ -248,10 +325,35 @@ async function handleStart(env: Env, req: Request) {
   // Initialize Durable Object
   const stub = jobStub(env, jobId)
   if (stub) {
-    await stub.fetch('https://do/init', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jobId, mediaId: body.mediaId, engine: body.engine, status: 'running', outputKey }) })
+    const initPayload: Record<string, unknown> = {
+      jobId,
+      mediaId: body.mediaId,
+      engine: body.engine,
+      status: 'running',
+      outputKey: outputVideoKey,
+    }
+    if (outputAudioKey) initPayload.outputAudioKey = outputAudioKey
+    if (outputMetadataKey) initPayload.outputMetadataKey = outputMetadataKey
+    await stub.fetch('https://do/init', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(initPayload),
+    })
   } else {
     // fallback to KV (should not happen in prod)
-    await env.JOBS.put(jobId, JSON.stringify({ ...doc, status: 'running', outputKey, mediaId: body.mediaId, engine: body.engine }), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
+    await env.JOBS.put(
+      jobId,
+      JSON.stringify({
+        ...doc,
+        status: 'running',
+        outputKey: outputVideoKey,
+        outputAudioKey,
+        outputMetadataKey,
+        mediaId: body.mediaId,
+        engine: body.engine,
+      }),
+      { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) },
+    )
   }
   return json({ jobId })
 }
@@ -275,7 +377,15 @@ async function handleContainerCallback(env: Env, req: Request) {
   if (!(await verifyHmac(env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret', raw, sig))) {
     return json({ error: 'unauthorized' }, { status: 401 })
   }
-  const body = JSON.parse(raw) as (Partial<StatusDoc> & { mediaId?: string; nonce?: string; ts?: number })
+  const body = JSON.parse(raw) as (Partial<StatusDoc> & {
+    mediaId?: string
+    nonce?: string
+    ts?: number
+    outputs?: {
+      video?: { key?: string }
+      audio?: { key?: string }
+    }
+  })
   // Basic replay guard on nonce
   if (body.nonce) {
     const nonceKey = `nonce:${body.nonce}`
@@ -551,6 +661,8 @@ export class RenderJobDO {
         engine: body.engine,
         status: body.status || 'queued',
         outputKey: body.outputKey,
+        outputAudioKey: body.outputAudioKey,
+        outputMetadataKey: body.outputMetadataKey,
         ts: Date.now(),
       }
       await this.state.storage.put('job', doc)
@@ -566,10 +678,19 @@ export class RenderJobDO {
         phase: body.phase ?? doc.phase,
         progress: body.progress ?? doc.progress,
         error: body.error ?? doc.error,
+        outputKey: body.outputKey ?? doc.outputKey,
+        outputAudioKey: body.outputAudioKey ?? doc.outputAudioKey,
+        outputMetadataKey: body.outputMetadataKey ?? doc.outputMetadataKey,
+        outputs: body.outputs ?? doc.outputs,
+        metadata: body.metadata ?? doc.metadata,
         ts: Date.now(),
       }
       await this.state.storage.put('job', next)
-      if (next.status === 'completed' && !next.nextNotified && next.outputKey) {
+      const shouldNotify =
+        TERMINAL_STATUSES.includes(next.status) &&
+        !next.nextNotified &&
+        (next.status !== 'completed' || Boolean(next.outputKey))
+      if (shouldNotify) {
         await this.notifyNext(next)
         next.nextNotified = true
         await this.state.storage.put('job', next)
@@ -601,8 +722,47 @@ export class RenderJobDO {
   private async notifyNext(doc: any) {
     const nextBase = (this.env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
     const cbUrl = `${nextBase}/api/render/cf-callback`
-    const outputUrl = await presignS3(this.env, 'GET', this.env.S3_BUCKET_NAME || 'vidgen-render', doc.outputKey, 600)
-    const payload = { jobId: doc.jobId, mediaId: doc.mediaId || 'unknown', engine: doc.engine, status: 'completed', outputUrl }
+    const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
+    const payload: Record<string, unknown> = {
+      jobId: doc.jobId,
+      mediaId: doc.mediaId || 'unknown',
+      engine: doc.engine,
+      status: doc.status || 'completed',
+    }
+
+    if (doc.error) {
+      payload.error = doc.error
+    }
+
+    if (doc.engine === 'media-downloader') {
+      const outputs: Record<string, unknown> = {}
+      if (doc.outputKey) {
+        outputs.video = {
+          key: doc.outputKey,
+          url: await presignS3(this.env, 'GET', bucket, doc.outputKey, 600),
+        }
+      }
+      const audioKey = doc.outputAudioKey || doc.outputs?.audio?.key
+      if (audioKey) {
+        outputs.audio = {
+          key: audioKey,
+          url: await presignS3(this.env, 'GET', bucket, audioKey, 600),
+        }
+      }
+      const metadataKey = doc.outputMetadataKey || doc.outputs?.metadata?.key
+      if (metadataKey) {
+        outputs.metadata = {
+          key: metadataKey,
+          url: await presignS3(this.env, 'GET', bucket, metadataKey, 600),
+        }
+      }
+      payload.outputs = outputs
+      if (doc.metadata) payload.metadata = doc.metadata
+    } else if (doc.outputKey) {
+      payload.outputKey = doc.outputKey
+      payload.outputUrl = await presignS3(this.env, 'GET', bucket, doc.outputKey, 600)
+    }
+
     const secret = this.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
     const signature = await hmacHex(secret, JSON.stringify(payload))
     await fetch(cbUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': signature }, body: JSON.stringify(payload) }).catch(() => {})

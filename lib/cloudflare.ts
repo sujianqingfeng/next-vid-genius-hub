@@ -1,7 +1,7 @@
 import { CF_ORCHESTRATOR_URL, JOB_CALLBACK_HMAC_SECRET } from '~/lib/constants'
 import { buildSignedBody } from '~/lib/security/hmac'
 
-type EngineId = 'burner-ffmpeg' | 'renderer-remotion'
+type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader'
 
 export interface StartJobInput {
   mediaId: string
@@ -13,11 +13,19 @@ export interface StartJobResponse { jobId: string }
 
 export interface JobStatusResponse {
   jobId: string
-  status: 'queued' | 'preparing' | 'running' | 'uploading' | 'completed' | 'failed' | 'canceled'
-  phase?: 'preparing' | 'running' | 'uploading'
+  status: 'queued' | 'fetching_metadata' | 'preparing' | 'running' | 'uploading' | 'completed' | 'failed' | 'canceled'
+  phase?: 'fetching_metadata' | 'preparing' | 'running' | 'uploading'
   progress?: number
   outputKey?: string
+  outputAudioKey?: string
+  outputMetadataKey?: string
   message?: string
+  outputs?: {
+    video?: { key?: string; url?: string }
+    audio?: { key?: string; url?: string }
+    metadata?: { key?: string; url?: string }
+  }
+  metadata?: Record<string, unknown>
 }
 
 function requireOrchestratorUrl(): string {
@@ -51,4 +59,3 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
   if (!res.ok) throw new Error(`getJobStatus failed: ${res.status} ${await res.text()}`)
   return (await res.json()) as JobStatusResponse
 }
-

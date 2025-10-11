@@ -1,0 +1,10 @@
+{
+	"name": "media-downloader-container",
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Media downloader worker powered by yt-dlp + ffmpeg",
+	"license": "MIT",
+  "dependencies": {
+    "yaml": "^2.6.0"
+  }
+}

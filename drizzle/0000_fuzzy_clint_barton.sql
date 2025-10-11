@@ -19,7 +19,15 @@ CREATE TABLE `media` (
 	`video_with_subtitles_path` text,
 	`video_with_info_path` text,
 	`comments` text,
-	`comments_downloaded_at` integer
+	`comments_downloaded_at` integer,
+	`download_backend` text DEFAULT 'local' NOT NULL,
+	`download_job_id` text,
+	`download_status` text,
+	`download_error` text,
+	`remote_video_key` text,
+	`remote_audio_key` text,
+	`download_queued_at` integer,
+	`download_completed_at` integer
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `media_id_unique` ON `media` (`id`);--> statement-breakpoint
@@ -34,12 +42,10 @@ CREATE TABLE `proxies` (
 	`username` text,
 	`password` text,
 	`ssr_url` text NOT NULL,
-	`is_active` integer DEFAULT false,
 	`last_tested_at` integer,
 	`test_status` text DEFAULT 'pending',
 	`response_time` integer,
-	`created_at` integer NOT NULL,
-	FOREIGN KEY (`subscription_id`) REFERENCES `ssr_subscriptions`(`id`) ON UPDATE no action ON DELETE cascade
+	`created_at` integer NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `proxies_id_unique` ON `proxies` (`id`);--> statement-breakpoint
@@ -47,7 +53,6 @@ CREATE TABLE `ssr_subscriptions` (
 	`id` text NOT NULL,
 	`name` text NOT NULL,
 	`url` text NOT NULL,
-	`is_active` integer DEFAULT false,
 	`last_updated` integer,
 	`created_at` integer NOT NULL
 );

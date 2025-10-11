@@ -3,7 +3,7 @@ import { os } from '@orpc/server'
 import { eq, desc } from 'drizzle-orm'
 import { logger } from '~/lib/logger'
 import { db, schema } from '~/lib/db'
-import { parseSSRSubscription } from '~/lib/proxy/parser'
+import { ProxyNodeUrlSchema, ProxyProtocolEnum, parseSSRSubscription } from '~/lib/proxy/parser'
 
 // Schemas
 const CreateSSRSubscriptionSchema = z.object({
@@ -15,7 +15,6 @@ const UpdateSSRSubscriptionSchema = z.object({
 	id: z.string(),
 	name: z.string().min(1).max(100).optional(),
 	url: z.string().url().optional(),
-	isActive: z.boolean().optional(),
 })
 
 const CreateProxySchema = z.object({
@@ -23,10 +22,10 @@ const CreateProxySchema = z.object({
 	name: z.string().max(100).optional(),
 	server: z.string().min(1).max(255),
 	port: z.number().min(1).max(65535),
-	protocol: z.enum(['http', 'https', 'socks4', 'socks5']),
+	protocol: ProxyProtocolEnum,
 	username: z.string().max(100).optional(),
 	password: z.string().max(255).optional(),
-	ssrUrl: z.string().url().startsWith('ssr://'),
+	nodeUrl: ProxyNodeUrlSchema,
 })
 
 const UpdateProxySchema = z.object({
@@ -34,10 +33,9 @@ const UpdateProxySchema = z.object({
 	name: z.string().max(100).optional(),
 	server: z.string().min(1).max(255).optional(),
 	port: z.number().min(1).max(65535).optional(),
-	protocol: z.enum(['http', 'https', 'socks4', 'socks5']).optional(),
+	protocol: ProxyProtocolEnum.optional(),
 	username: z.string().max(100).optional(),
 	password: z.string().max(255).optional(),
-	isActive: z.boolean().optional(),
 })
 // testing schemas removed per request
 
@@ -54,20 +52,19 @@ export const getActiveProxiesForDownload = os
 					server: true,
 					port: true,
 					protocol: true,
-					isActive: true,
 				},
 				orderBy: [desc(schema.proxies.createdAt)],
 			})
 
 			return {
 				proxies: [
-					{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const, isActive: false },
+					{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const },
 					...proxyList,
 				],
 			}
 		} catch (error) {
 			logger.error('proxy', `Error in getActiveProxiesForDownload: ${error}`)
-			return { proxies: [{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const, isActive: false }] }
+			return { proxies: [{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const }] }
 		}
 	})
 
@@ -92,7 +89,6 @@ export const getSSRSubscriptions = os
                         server: true,
                         port: true,
                         protocol: true,
-                        isActive: true,
                     },
 					})
 					
@@ -150,18 +146,9 @@ export const updateSSRSubscription = os
 		const updateData: Record<string, unknown> = {}
 
 		if (input.name !== undefined) updateData.name = input.name
-		if (input.url !== undefined) updateData.url = input.url
-		if (input.isActive !== undefined) {
-			updateData.isActive = input.isActive
+		if (input.url !== undefined) {
+			updateData.url = input.url
 			updateData.lastUpdated = new Date()
-		}
-
-		// If setting this subscription as active, deactivate all others
-		if (input.isActive) {
-			await db
-				.update(schema.ssrSubscriptions)
-				.set({ isActive: false })
-				.where(where)
 		}
 
 		const [subscription] = await db
@@ -275,22 +262,13 @@ export const updateProxy = os
 		if (input.name !== undefined) updateData.name = input.name
 		if (input.server !== undefined) updateData.server = input.server
 		if (input.port !== undefined) updateData.port = input.port
-		if (input.protocol !== undefined) updateData.protocol = input.protocol
-		if (input.username !== undefined) updateData.username = input.username
-		if (input.password !== undefined) updateData.password = input.password
-		if (input.isActive !== undefined) updateData.isActive = input.isActive
+	if (input.protocol !== undefined) updateData.protocol = input.protocol
+	if (input.username !== undefined) updateData.username = input.username
+	if (input.password !== undefined) updateData.password = input.password
 
-		// If setting this proxy as active, deactivate all other proxies
-		if (input.isActive) {
-			await db
-				.update(schema.proxies)
-				.set({ isActive: false })
-				.where(where)
-		}
-
-		const [proxy] = await db
-			.update(schema.proxies)
-			.set(updateData)
+	const [proxy] = await db
+		.update(schema.proxies)
+		.set(updateData)
 			.where(where)
 			.returning()
 
@@ -362,7 +340,7 @@ export const importSSRFromSubscription = os
 						username: proxy.username,
 						password: proxy.password,
 						subscriptionId: input.subscriptionId,
-						ssrUrl: proxy.ssrUrl ?? '',
+						nodeUrl: proxy.nodeUrl ?? '',
 					}))
 				)
 				.returning()
