@@ -27,6 +27,7 @@ import { AIModelId, AIModelIds } from '~/lib/ai'
 import { extractVideoId } from '~/lib/providers/youtube'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { formatNumber } from '~/lib/utils'
+import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 
 export default function CommentsPage() {
 	const params = useParams()
@@ -36,6 +37,23 @@ export default function CommentsPage() {
 	const [model, setModel] = useState<AIModelId>(AIModelIds[0] as AIModelId)
 	const [isMobileDetailsOpen, setIsMobileDetailsOpen] = useState(false)
 	const [thumbnailError, setThumbnailError] = useState(false)
+
+	// Download comments backend toggle (local/cloud)
+	const [commentsBackend, setCommentsBackend] = useState<'local' | 'cloud'>('cloud')
+	const [commentsCloudJobId, setCommentsCloudJobId] = useState<string | null>(null)
+	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
+
+	// Persist comments cloud job id across reloads
+	useEffect(() => {
+		const key = `commentsDownloadCloudJob:${id}`
+		if (!commentsCloudJobId) {
+			const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
+			if (saved) setCommentsCloudJobId(saved)
+		}
+		if (commentsCloudJobId) {
+			try { window.localStorage.setItem(key, commentsCloudJobId) } catch {}
+		}
+	}, [id, commentsCloudJobId])
 
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
@@ -56,6 +74,45 @@ export default function CommentsPage() {
 			},
 		}),
 	)
+
+	const startCloudCommentsMutation = useMutation(
+		queryOrpc.comment.startCloudCommentsDownload.mutationOptions({
+			onSuccess: (data) => {
+				setCommentsCloudJobId(data.jobId)
+				toast.success('Cloud comments download queued')
+			},
+			onError: (e) => toast.error(e.message),
+		}),
+	)
+
+	const cloudCommentsStatusQuery = useQuery(
+		queryOrpc.comment.getCloudCommentsStatus.queryOptions({
+			input: commentsCloudJobId ? { jobId: commentsCloudJobId } : (undefined as any),
+			enabled: !!commentsCloudJobId,
+			refetchInterval: (q) => {
+				const s = (q.state.data as any)?.status
+				return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
+			},
+		}),
+	)
+
+	const finalizeCloudCommentsMutation = useMutation(
+		queryOrpc.comment.finalizeCloudCommentsDownload.mutationOptions({
+			onSuccess: () => {
+				queryClient.invalidateQueries({ queryKey: queryOrpc.media.byId.queryKey({ input: { id } }) })
+				try { window.localStorage.removeItem(`commentsDownloadCloudJob:${id}`) } catch {}
+				setCommentsCloudJobId(null)
+				toast.success('Comments downloaded!')
+			},
+			onError: (e) => toast.error(e.message),
+		}),
+	)
+
+	useEffect(() => {
+		if (commentsBackend === 'cloud' && commentsCloudJobId && cloudCommentsStatusQuery.data?.status === 'completed') {
+			finalizeCloudCommentsMutation.mutate({ mediaId: id, jobId: commentsCloudJobId })
+		}
+	}, [commentsBackend, commentsCloudJobId, cloudCommentsStatusQuery.data?.status, finalizeCloudCommentsMutation, id])
 
 	const translateCommentsMutation = useMutation(
 		queryOrpc.comment.translateComments.mutationOptions({
@@ -317,40 +374,7 @@ export default function CommentsPage() {
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								{/* Download Comments */}
-								<div className="space-y-2">
-									<div className="flex items-center gap-2 mb-2">
-										<Download className="w-3.5 h-3.5 text-muted-foreground" />
-										<span className="text-sm font-medium">Download Comments</span>
-									</div>
-									<div className="flex gap-2">
-										<Select value={pages} onValueChange={setPages}>
-											<SelectTrigger className="h-9 flex-1">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												{[...Array(10).keys()].map((i) => (
-													<SelectItem key={i + 1} value={String(i + 1)}>
-														{i + 1} page{i > 0 ? 's' : ''}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Button
-											onClick={() =>
-												downloadCommentsMutation.mutate({
-													mediaId: id,
-													pages: parseInt(pages, 10),
-												})
-											}
-											disabled={downloadCommentsMutation.isPending}
-											size="sm"
-											className="h-9 px-4"
-										>
-											{downloadCommentsMutation.isPending ? 'Loading...' : 'Go'}
-										</Button>
-									</div>
-								</div>
+                            
 
 								{/* Translate Comments */}
 								<div className="space-y-2">
@@ -399,8 +423,8 @@ export default function CommentsPage() {
 								<div className="inline-flex gap-2">
 									<Button variant={renderBackend === 'cloud' ? 'default' : 'outline'} size="sm" onClick={() => setRenderBackend('cloud')}>Cloud</Button>
 									<Button variant={renderBackend === 'local' ? 'default' : 'outline'} size="sm" onClick={() => setRenderBackend('local')}>Local</Button>
-								</div>
-							</div>
+                                        </div>
+                                    </div>
 							<Button
 								onClick={() => {
 									if (renderBackend === 'cloud') {
@@ -467,8 +491,8 @@ ${mediaQuery.data?.comments && mediaQuery.data.comments.length > 0 && mediaQuery
 										>
 											<Copy className="w-3 h-3 mr-1" />
 											复制声明
-										</Button>
-									</div>
+                                        </Button>
+                                    </div>
 								</div>
 							</CardContent>
 						</Card>
@@ -489,7 +513,64 @@ ${mediaQuery.data?.comments && mediaQuery.data.comments.length > 0 && mediaQuery
 								)}
 							</div>
 						</CardHeader>
-						<CardContent className="pt-0 px-0">
+                        <CardContent className="pt-0 px-0">
+                            {/* Download Comments toolbar near comments list */}
+                            <div className="px-4 py-3 border-b space-y-2">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                                        <span className="text-sm font-medium">Download Comments</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">Backend:</span>
+                                        <div className="inline-flex gap-2">
+                                            <Button variant={commentsBackend === 'cloud' ? 'default' : 'outline'} size="sm" onClick={() => setCommentsBackend('cloud')}>Cloud</Button>
+                                            <Button variant={commentsBackend === 'local' ? 'default' : 'outline'} size="sm" onClick={() => setCommentsBackend('local')}>Local</Button>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Select value={pages} onValueChange={setPages}>
+                                            <SelectTrigger className="h-9 w-28">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[...Array(10).keys()].map((i) => (
+                                                    <SelectItem key={i + 1} value={String(i + 1)}>
+                                                        {i + 1} page{i > 0 ? 's' : ''}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button
+                                            onClick={() => {
+                                                const p = parseInt(pages, 10)
+                                                if (commentsBackend === 'cloud') {
+                                                    startCloudCommentsMutation.mutate({ mediaId: id, pages: p, proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId })
+                                                } else {
+                                                    downloadCommentsMutation.mutate({ mediaId: id, pages: p })
+                                                }
+                                            }}
+                                            disabled={downloadCommentsMutation.isPending || startCloudCommentsMutation.isPending}
+                                            size="sm"
+                                            className="h-9 px-4"
+                                        >
+                                            {commentsBackend === 'cloud'
+                                                ? (startCloudCommentsMutation.isPending ? 'Queuing...' : 'Go')
+                                                : (downloadCommentsMutation.isPending ? 'Loading...' : 'Go')}
+                                        </Button>
+                                    </div>
+                                </div>
+                                {/* Proxy selector under toolbar */}
+                                <div>
+                                    <ProxySelector value={selectedProxyId} onValueChange={setSelectedProxyId} disabled={startCloudCommentsMutation.isPending || downloadCommentsMutation.isPending} />
+                                </div>
+                                {/* Cloud job status */}
+                                {commentsBackend === 'cloud' && commentsCloudJobId && (
+                                    <div className="text-xs text-muted-foreground">
+                                        Job: {commentsCloudJobId} — Status: {cloudCommentsStatusQuery.data?.status ?? 'starting'} {typeof cloudCommentsStatusQuery.data?.progress === 'number' ? `(${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%)` : ''}
+                                    </div>
+                                )}
+                            </div>
 							{mediaQuery.isLoading && (
 								<div className="space-y-1 px-4 py-3">
 									{[...Array(3)].map((_, i) => (
@@ -538,18 +619,20 @@ ${mediaQuery.data?.comments && mediaQuery.data.comments.length > 0 && mediaQuery
 											Download comments to get started with analysis and
 											translation.
 										</p>
-										<Button
-											onClick={() =>
-												downloadCommentsMutation.mutate({
-													mediaId: id,
-													pages: parseInt(pages, 10),
-												})
-											}
-											disabled={downloadCommentsMutation.isPending}
-											size="sm"
-										>
-											<Download className="w-4 h-4 mr-2" />
-											Download Comments
+											<Button
+												onClick={() => {
+													const p = parseInt(pages, 10)
+                                        if (commentsBackend === 'cloud') {
+                                            startCloudCommentsMutation.mutate({ mediaId: id, pages: p, proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId })
+                                        } else {
+                                            downloadCommentsMutation.mutate({ mediaId: id, pages: p })
+                                        }
+												}}
+												disabled={downloadCommentsMutation.isPending || startCloudCommentsMutation.isPending}
+												size="sm"
+											>
+                                        <Download className="w-4 h-4 mr-2" />
+                                        {commentsBackend === 'cloud' ? 'Start Cloud Download' : 'Download Comments'}
 										</Button>
 									</div>
 								</div>

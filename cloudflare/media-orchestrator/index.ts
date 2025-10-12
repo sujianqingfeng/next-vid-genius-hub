@@ -290,7 +290,8 @@ async function handleStart(env: Env, req: Request) {
     jobId,
     mediaId: body.mediaId,
     engine: body.engine,
-    callbackUrl: `${new URL(req.url).origin}/callbacks/container`,
+    // Use container-visible base URL so the callback reaches the Worker in dev/prod
+    callbackUrl: `${baseSelfForContainer}/callbacks/container`,
     engineOptions: body.options || {},
   }
 
@@ -700,14 +701,52 @@ export class RenderJobDO {
     if (req.method === 'GET') {
       let doc = (await this.state.storage.get('job')) as any
       if (!doc) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } })
-      // auto-complete if output exists in S3
-      if (doc.status !== 'completed' && doc.outputKey) {
-        const exists = await s3Head(this.env, this.env.S3_BUCKET_NAME || 'vidgen-render', doc.outputKey)
-        if (exists) {
+      // Auto-complete if expected outputs exist in S3
+      if (doc.status !== 'completed') {
+        const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
+        let shouldComplete = false
+
+        // 1) Standard video output
+        if (doc.outputKey) {
+          const exists = await s3Head(this.env, bucket, doc.outputKey)
+          if (exists) shouldComplete = true
+        }
+
+        // 2) Comments-only (media-downloader) metadata output
+        if (!shouldComplete && doc.engine === 'media-downloader' && doc.outputMetadataKey) {
+          const metaExists = await s3Head(this.env, bucket, doc.outputMetadataKey)
+          if (metaExists) {
+            shouldComplete = true
+            // Populate outputs with presigned URLs so clients can finalize without waiting for callbacks
+            doc.outputs = doc.outputs || {}
+            doc.outputs.metadata = {
+              key: doc.outputMetadataKey,
+              url: await presignS3(this.env, 'GET', bucket, doc.outputMetadataKey, 600),
+            }
+            if (doc.outputAudioKey) {
+              const audioExists = await s3Head(this.env, bucket, doc.outputAudioKey)
+              if (audioExists) {
+                doc.outputs.audio = {
+                  key: doc.outputAudioKey,
+                  url: await presignS3(this.env, 'GET', bucket, doc.outputAudioKey, 600),
+                }
+              }
+            }
+          }
+        }
+
+        if (shouldComplete) {
           doc.status = 'completed'
           doc.ts = Date.now()
           await this.state.storage.put('job', doc)
-          if (!doc.nextNotified) {
+
+          // Mirror progress handler gating: only notify Next on completed when a video output exists
+          const shouldNotify =
+            TERMINAL_STATUSES.includes(doc.status) &&
+            !doc.nextNotified &&
+            (doc.status !== 'completed' || Boolean(doc.outputKey))
+
+          if (shouldNotify) {
             await this.notifyNext(doc)
             doc.nextNotified = true
             await this.state.storage.put('job', doc)

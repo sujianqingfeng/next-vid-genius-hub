@@ -59,3 +59,15 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
   if (!res.ok) throw new Error(`getJobStatus failed: ${res.status} ${await res.text()}`)
   return (await res.json()) as JobStatusResponse
 }
+
+// Presign a GET URL for an arbitrary bucket key via orchestrator helper
+// Note: relies on orchestrator's debug presign endpoint; suitable for fallback flows
+export async function presignGetByKey(key: string): Promise<string> {
+  const base = requireOrchestratorUrl()
+  const url = `${base.replace(/\/$/, '')}/debug/presign?key=${encodeURIComponent(key)}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`presignGetByKey failed: ${res.status} ${await res.text()}`)
+  const body = (await res.json()) as { getUrl?: string }
+  if (!body?.getUrl) throw new Error('presignGetByKey: missing getUrl in response')
+  return body.getUrl
+}

@@ -14,7 +14,7 @@ import {
 } from '~/lib/constants/app.constants'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithRemotion } from '~/lib/media'
-import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
+import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
 import type { RenderProgressEvent } from '~/lib/media'
 import { downloadTikTokCommentsByUrl } from '~/lib/providers/tiktok'
 import {
@@ -290,4 +290,107 @@ export const getRenderStatus = os
 	.handler(async ({ input }) => {
 		const status = await getJobStatus(input.jobId)
 		return status
+	})
+
+// ============ Cloud Comments Download ============
+export const startCloudCommentsDownload = os
+	.input(
+		z.object({
+			mediaId: z.string(),
+			pages: z.number().min(1).max(50).default(3),
+			proxyId: z.string().optional(),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const { mediaId, pages, proxyId } = input
+		const where = eq(schema.media.id, mediaId)
+		const media = await db.query.media.findFirst({ where })
+		if (!media) throw new Error('Media not found')
+		if (!media.url) throw new Error('Media URL missing')
+
+		let proxyPayload: any = undefined
+		if (proxyId) {
+			const proxy = await db.query.proxies.findFirst({ where: eq(schema.proxies.id, proxyId) })
+			if (proxy && proxy.server && proxy.port && proxy.protocol) {
+				proxyPayload = {
+					id: proxy.id,
+					server: proxy.server,
+					port: proxy.port,
+					protocol: proxy.protocol,
+					username: proxy.username,
+					password: proxy.password,
+					nodeUrl: proxy.nodeUrl,
+				}
+			}
+		}
+
+		const job = await startCloudJob({
+			mediaId,
+			engine: 'media-downloader',
+			options: {
+				url: media.url,
+				source: media.source,
+				task: 'comments',
+				commentsPages: pages,
+				defaultProxyUrl: PROXY_URL,
+				proxy: proxyPayload,
+			},
+		})
+
+		return { jobId: job.jobId }
+	})
+
+export const getCloudCommentsStatus = os
+	.input(z.object({ jobId: z.string().min(1) }))
+	.handler(async ({ input }) => {
+		return getJobStatus(input.jobId)
+	})
+
+export const finalizeCloudCommentsDownload = os
+	.input(z.object({ mediaId: z.string(), jobId: z.string().min(1) }))
+	.handler(async ({ input }) => {
+		const { mediaId, jobId } = input
+		const status = await getJobStatus(jobId)
+		if (status.status !== 'completed') {
+			throw new Error(`Job not completed: ${status.status}`)
+		}
+
+		// Prefer presigned URL from status; otherwise fall back to metadata key and presign via orchestrator
+		const urlFromStatus = status.outputs?.metadata?.url
+		const keyFromStatus = status.outputs?.metadata?.key ?? status.outputMetadataKey
+
+		let metadataUrl = urlFromStatus
+		if (!metadataUrl && keyFromStatus) {
+			try {
+				metadataUrl = await presignGetByKey(keyFromStatus)
+			} catch (e) {
+				console.warn('Failed to presign metadata URL via orchestrator', e)
+			}
+		}
+
+		if (!metadataUrl) throw new Error('No comments metadata location (url or key) from job')
+		const r = await fetch(metadataUrl)
+		if (!r.ok) throw new Error(`Fetch comments failed: ${r.status}`)
+		const data = (await r.json()) as any
+    const list = Array.isArray(data?.comments) ? (data.comments as any[]) : []
+    const comments: schema.Comment[] = list.map((c: any) => ({
+        id: String(c?.id || ''),
+        author: String(c?.author || ''),
+        authorThumbnail: c?.authorThumbnail || undefined,
+        content: String(c?.content || ''),
+        translatedContent: typeof c?.translatedContent === 'string' ? c.translatedContent : '',
+        likes: Number(c?.likes ?? 0) || 0,
+        replyCount: Number(c?.replyCount ?? 0) || 0,
+    }))
+
+		await db
+			.update(schema.media)
+			.set({
+				comments,
+				commentCount: comments.length,
+				commentsDownloadedAt: new Date(),
+			})
+			.where(eq(schema.media.id, mediaId))
+
+		return { success: true, count: comments.length }
 	})
