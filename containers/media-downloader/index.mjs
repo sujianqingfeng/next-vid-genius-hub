@@ -22,7 +22,6 @@ const CLASH_MODE = process.env.CLASH_MODE || 'Rule'
 const CLASH_SUBSCRIPTION_URL = process.env.CLASH_SUBSCRIPTION_URL?.trim()
 const CLASH_RAW_CONFIG = process.env.CLASH_RAW_CONFIG
 
-const jobs = new Map()
 const FORWARD_PROXY_PROTOCOLS = new Set(['http', 'https', 'socks4', 'socks5'])
 
 function parseBooleanFlag(value) {
@@ -883,7 +882,6 @@ async function handleRender(req, res) {
 	}
 	console.log('[media-downloader] received render request', { jobId, engineOptions: safeEngineOptions })
 
-	jobs.set(jobId, { status: 'running', progress: 0 })
 	sendJson(res, 202, { jobId })
 
   const url = engineOptions.url
@@ -899,7 +897,6 @@ async function handleRender(req, res) {
       ts: Date.now(),
       nonce: randomNonce(),
     })
-    jobs.set(jobId, { status: 'failed', progress: 1 })
     return
   }
 
@@ -921,7 +918,6 @@ async function handleRender(req, res) {
   const commentsDir = join(tmpDir, `${jobId}-comments`)
 
 	const progress = async (phase, pct) => {
-		jobs.set(jobId, { status: phase === 'uploading' ? 'uploading' : 'running', progress: pct })
 		await postUpdate(callbackUrl, {
 			jobId,
 			status: phase === 'uploading' ? 'uploading' : 'running',
@@ -957,7 +953,6 @@ async function handleRender(req, res) {
       await uploadArtifact(outputMetadataPutUrl, metadataBuffer, 'application/json')
       await progress('uploading', 0.95)
 
-      jobs.set(jobId, { status: 'completed', progress: 1 })
       const outputs = {}
       if (outputMetadataKey) outputs.metadata = { key: outputMetadataKey }
       await postUpdate(callbackUrl, {
@@ -999,8 +994,6 @@ async function handleRender(req, res) {
         await uploadArtifact(outputAudioPutUrl, audioBuffer, 'audio/mpeg')
       }
 
-      jobs.set(jobId, { status: 'completed', progress: 1 })
-
       const finalMetadata = mapMetadata(metadata, { quality })
       const outputs = {
         video: { key: outputVideoKey },
@@ -1027,7 +1020,6 @@ async function handleRender(req, res) {
     }
   } catch (error) {
 		console.error('[media-downloader] job failed', jobId, error)
-		jobs.set(jobId, { status: 'failed', progress: 1 })
 		await postUpdate(callbackUrl, {
 			jobId,
 			status: 'failed',
@@ -1054,16 +1046,9 @@ async function handleRender(req, res) {
   }
 }
 
-function handleStatus(req, res, jobId) {
-	const info = jobs.get(jobId)
-	if (!info) return sendJson(res, 404, { error: 'not found' })
-	sendJson(res, 200, { jobId, ...info })
-}
-
 const server = http.createServer(async (req, res) => {
 	const url = new URL(req.url, `http://localhost:${PORT}`)
 	if (req.method === 'POST' && url.pathname === '/render') return handleRender(req, res)
-	if (req.method === 'GET' && url.pathname.startsWith('/status/')) return handleStatus(req, res, url.pathname.split('/').pop())
 	sendJson(res, 404, { error: 'not found' })
 })
 

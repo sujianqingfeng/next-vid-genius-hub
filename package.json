@@ -20,8 +20,13 @@
     "dev:stack:down": "docker compose -f docker-compose.dev.yml down -v",
     "dev:stack:rebuild-media-downloader": "docker compose -f docker-compose.dev.yml build media-downloader",
     "dev:stack:restart-media-downloader": "pnpm dev:stack:rebuild-media-downloader && docker compose -f docker-compose.dev.yml up -d media-downloader",
+    "dev:stack:rebuild-burner": "docker compose -f docker-compose.dev.yml build burner-ffmpeg",
+    "dev:stack:restart-burner": "pnpm dev:stack:rebuild-burner && docker compose -f docker-compose.dev.yml up -d burner-ffmpeg",
+    "dev:stack:rebuild-remotion": "docker compose -f docker-compose.dev.yml build renderer-remotion",
+    "dev:stack:restart-remotion": "pnpm dev:stack:rebuild-remotion && docker compose -f docker-compose.dev.yml up -d renderer-remotion",
     "dev:stack:rebuild-downloader": "pnpm dev:stack:rebuild-media-downloader",
-    "dev:stack:restart-downloader": "pnpm dev:stack:restart-media-downloader"
+    "dev:stack:restart-downloader": "pnpm dev:stack:restart-media-downloader",
+    "dev:stack:restart-all": "docker compose -f docker-compose.dev.yml build burner-ffmpeg renderer-remotion media-downloader && docker compose -f docker-compose.dev.yml up -d burner-ffmpeg renderer-remotion media-downloader"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",

@@ -1,13 +1,11 @@
 import http from 'node:http'
-import { setTimeout as delay } from 'node:timers/promises'
-import { createWriteStream, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
 import crypto from 'node:crypto'
 
 const PORT = process.env.PORT || 8080
-const jobs = new Map()
 
 function sendJson(res, code, data) {
   res.writeHead(code, { 'content-type': 'application/json' })
@@ -222,7 +220,6 @@ async function handleRender(req, res) {
   const payload = JSON.parse(body)
   const jobId = payload?.jobId || `job_${Math.random().toString(36).slice(2, 10)}`
   console.log(`[render] job=${jobId} engineOptions=${JSON.stringify(payload.engineOptions||{})}`)
-  jobs.set(jobId, { status: 'running', progress: 0 })
   sendJson(res, 202, { jobId })
 
   // Simulate progress and final callback
@@ -234,7 +231,6 @@ async function handleRender(req, res) {
 
   // send progress helper
   async function progress(phase, pct) {
-    jobs.set(jobId, { status: phase === 'uploading' ? 'uploading' : 'running', progress: pct })
     if (!callbackUrl) return
     const body = { jobId, status: phase === 'uploading' ? 'uploading' : 'running', phase, progress: pct, ts: Date.now(), nonce: randomNonce() }
     const sig = hmacHex(secret, JSON.stringify(body))
@@ -289,26 +285,17 @@ async function handleRender(req, res) {
       console.error(`[render] ${jobId} upload error response: ${errorText}`)
       throw new Error(`upload failed: ${up.status}`)
     }
-    jobs.set(jobId, { status: 'completed', progress: 1 })
     console.log(`[render] ${jobId} completed`)
     // no callback in S3-only mode; Worker detects completion by HEAD on S3 output
   } catch (e) {
-    jobs.set(jobId, { status: 'failed', progress: 1 })
     console.error(`[render] ${jobId} failed:`, e)
     // on failure, rely on worker polling/job timeout
   }
 }
 
-function handleStatus(req, res, jobId) {
-  const s = jobs.get(jobId)
-  if (!s) return sendJson(res, 404, { error: 'not found' })
-  sendJson(res, 200, { jobId, ...s })
-}
-
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`)
   if (req.method === 'POST' && url.pathname === '/render') return handleRender(req, res)
-  if (req.method === 'GET' && url.pathname.startsWith('/status/')) return handleStatus(req, res, url.pathname.split('/').pop())
   sendJson(res, 404, { error: 'not found' })
 })
 

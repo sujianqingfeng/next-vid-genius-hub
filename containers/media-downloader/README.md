@@ -16,7 +16,8 @@ This container powers the cloud download workflow. It accepts jobs from the Clou
 ## Endpoints
 
 - `POST /render` – start a download job. Payload is provided by the orchestrator and includes the source URL, quality, proxy settings, and output upload URLs.
-- `GET /status/:jobId` – lightweight status for smoke testing.
+
+Job progress is surfaced via signed callbacks to the Cloudflare orchestrator; this container no longer maintains an in-memory `/status` endpoint.
 
 ## Proxy resolution order
 
