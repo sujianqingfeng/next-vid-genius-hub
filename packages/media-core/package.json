@@ -1,0 +1,23 @@
+{
+  "name": "@app/media-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared media pipeline primitives (downloader, ffmpeg helpers, minimal pipeline).",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "comments.js"
+  ],
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "dependencies": {
+    "undici": "^7.16.0",
+    "youtubei.js": "^15.1.1"
+  }
+}

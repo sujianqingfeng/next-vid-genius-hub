@@ -13,6 +13,7 @@ import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { db, schema, createMediaUpdateData } from '~/lib/db'
 import { extractAudio } from '~/lib/media'
+import { runDownloadPipeline, downloadVideo as coreDownloadVideo, extractAudio as coreExtractAudio } from '@app/media-core'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { fileExists as fileExists } from '~/lib/utils/file'
@@ -24,123 +25,143 @@ export class DownloadService implements IDownloadService {
 	private readonly operationDir: string = OPERATIONS_DIR
 	private readonly proxyUrl?: string = PROXY_URL
 
+	// Optional artifact store for syncing/copying uploads in local mode
+	private artifactStore?: {
+		uploadVideo?: (videoPath: string, context: DownloadContext) => Promise<{ key?: string } | void>
+		uploadAudio?: (audioPath: string, context: DownloadContext) => Promise<{ key?: string } | void>
+		uploadMetadata?: (metadata: unknown, context: DownloadContext) => Promise<{ key?: string } | void>
+	}
+
+	withArtifactStore(store: DownloadService['artifactStore']): this {
+		this.artifactStore = store || undefined
+		return this
+	}
+
 	async download(request: DownloadRequest): Promise<DownloadResult> {
 		const { url, quality, proxyId } = request
 		let downloadProgress: DownloadProgress = { stage: 'checking', progress: 0 }
 
 		try {
-			// 1. 获取代理配置
+			// 1) 代理与记录
 			const proxyUrl = await this.getProxyUrl(proxyId)
-
-			// 2. 查找现有下载记录或准备新的下载
-			const downloadRecord = await db.query.media.findFirst({
-				where: eq(schema.media.url, url),
-			})
-
+			const downloadRecord = await db.query.media.findFirst({ where: eq(schema.media.url, url) })
 			const id = downloadRecord?.id ?? createId()
 			const _context = this.createDownloadContext(id, downloadRecord, proxyUrl)
 			await fs.mkdir(_context.operationDir, { recursive: true })
 
-			// 3. 检查文件存在性
+			// 2) 现有文件检查
 			downloadProgress = { stage: 'checking', progress: 10 }
-			const [videoExists, audioExists, metadataExists] = await Promise.all([
+			let [videoExists, audioExists, metadataExists] = await Promise.all([
 				fileExists(_context.videoPath),
 				fileExists(_context.audioPath),
 				fileExists(_context.metadataPath),
 			])
 
-			// 4. 获取平台提供者和元数据
+			// 3) 使用共享流水线（按需跳过已存在文件）
 			const provider = ProviderFactory.resolveProvider(url)
-			const _providerContext: VideoProviderContext = {
-				proxyUrl,
-			}
+			let rawMetadata: unknown | undefined
 
-			let metadata: BasicVideoInfo | null | undefined
-			let metadataPersisted = metadataExists
-			let metadataDownloadedAt: Date | null =
-				downloadRecord?.rawMetadataDownloadedAt ?? (metadataExists ? new Date() : null)
+			let remoteVideoKey: string | null = null
+			let remoteAudioKey: string | null = null
+			let remoteMetadataKey: string | null = null
 
-			const ensureMetadata = async (stage: DownloadProgress['stage'], progress: number) => {
-				if (metadataPersisted) return
-				downloadProgress = { stage, progress }
-				const latest = await this.fetchMetadata(url, _context)
-				if (latest) metadata = latest
-				if (await this.persistRawMetadata(latest, _context)) {
-					metadataPersisted = true
-					metadataDownloadedAt = new Date()
-				}
-			}
+			await runDownloadPipeline(
+				{ url, quality },
+				{
+					ensureDir: async (dir) => {
+						await fs.mkdir(dir, { recursive: true })
+					},
+					resolvePaths: async () => ({
+						videoPath: _context.videoPath,
+						audioPath: _context.audioPath,
+						metadataPath: _context.metadataPath,
+					}),
+					downloader: async (u, q, out) => {
+						if (videoExists) return { rawMetadata: undefined }
+						const res = await coreDownloadVideo(u, q, out, { proxy: proxyUrl, captureJson: true })
+						rawMetadata = res?.rawMetadata
+						return res
+					},
+					audioExtractor: async (v, a) => {
+						if (audioExists) return
+						await coreExtractAudio(v, a)
+					},
+					persistRawMetadata: async (data) => {
+						if (metadataExists) return
+						try {
+							await fs.writeFile(_context.metadataPath, JSON.stringify(data, null, 2), 'utf8')
+							metadataExists = true
+							rawMetadata = data
+						} catch (e) {
+							console.error('Failed to persist raw metadata:', e)
+						}
+					},
+					artifactStore: this.artifactStore
+						? {
+							uploadMetadata: async (data) => {
+								try {
+									const res = await this.artifactStore!.uploadMetadata?.(data, _context)
+									if (res && res.key) remoteMetadataKey = res.key
+								} catch (err) {
+									console.warn('Local artifactStore.uploadMetadata failed', err)
+								}
+							},
+							uploadVideo: async (path) => {
+								try {
+									const res = await this.artifactStore!.uploadVideo?.(path, _context)
+									if (res && res.key) remoteVideoKey = res.key
+								} catch (err) {
+									console.warn('Local artifactStore.uploadVideo failed', err)
+								}
+							},
+							uploadAudio: async (path) => {
+								try {
+									const res = await this.artifactStore!.uploadAudio?.(path, _context)
+									if (res && res.key) remoteAudioKey = res.key
+								} catch (err) {
+									console.warn('Local artifactStore.uploadAudio failed', err)
+								}
+							},
+						}
+					: undefined,
+				},
+				(e) => {
+					downloadProgress = { stage: e.stage as DownloadProgress['stage'], progress: e.progress ?? 0 }
+				},
+			)
 
-			// 如果缺少原始数据，优先抓取
-			if (!metadataExists) {
-				await ensureMetadata('processing_metadata', 20)
-			}
+			// 更新最终存在性状态
+			;[videoExists, audioExists, metadataExists] = await Promise.all([
+				fileExists(_context.videoPath),
+				fileExists(_context.audioPath),
+				fileExists(_context.metadataPath),
+			])
 
-			// 5. 下载视频（如果不存在）
-			if (!videoExists) {
-				if (!metadataPersisted) {
-					await ensureMetadata('processing_metadata', 30)
-				}
-				downloadProgress = { stage: 'downloading', progress: 40 }
-				await this.downloadVideo(url, quality, _context.videoPath)
-			}
+			// 4) 写库
+			const metadataForDb: BasicVideoInfo | null | undefined = undefined
+			const metadataPathForDb = metadataExists ? _context.metadataPath : downloadRecord?.rawMetadataPath ?? null
+			const metadataDownloadedAt = metadataExists
+				? new Date()
+				: downloadRecord?.rawMetadataDownloadedAt ?? null
 
-			// 6. 提取音频（如果不存在）
-			if (!audioExists) {
-				downloadProgress = { stage: 'extracting_audio', progress: 60 }
-				await this.extractAudioFromVideo(_context.videoPath, _context.audioPath)
-			}
-
-			// 7. 确保我们有视频信息
-			if (!metadata && (!downloadRecord || !metadataPersisted)) {
-				downloadProgress = { stage: 'processing_metadata', progress: 80 }
-				const latest = await this.fetchMetadata(url, _context)
-				if (latest) metadata = latest
-				if (await this.persistRawMetadata(latest, _context)) {
-					metadataPersisted = true
-					metadataDownloadedAt = new Date()
-				}
-			}
-
-			const metadataPathForDb = metadataPersisted
-				? _context.metadataPath
-				: downloadRecord?.rawMetadataPath ?? null
-
-			// 8. 更新数据库记录
-			downloadProgress = { stage: 'processing_metadata', progress: 90 }
 			await this.updateDatabaseRecord(
 				id,
 				url,
-				metadata,
+				metadataForDb,
 				downloadRecord,
 				_context,
 				quality,
-				{
-					metadataPath: metadataPathForDb ?? undefined,
-					metadataDownloadedAt,
-				},
+				{ metadataPath: metadataPathForDb ?? undefined, metadataDownloadedAt, remoteVideoKey, remoteAudioKey, remoteMetadataKey },
 			)
 
 			downloadProgress = { stage: 'completed', progress: 100 }
 
-			// 9. 返回结果
-			const title = metadata?.title ?? downloadRecord?.title ?? 'video'
-			const source = metadata?.source ?? this.getProviderSource(provider.id)
-
-			return {
-				id,
-				videoPath: _context.videoPath,
-				audioPath: _context.audioPath,
-				title,
-				source,
-			}
-
+			// 5) 返回结果（标题优先数据库/默认）
+			const title = downloadRecord?.title ?? 'video'
+			const source = this.getProviderSource(provider.id)
+			return { id, videoPath: _context.videoPath, audioPath: _context.audioPath, title, source }
 		} catch (error) {
-			downloadProgress = {
-				stage: 'checking',
-				progress: 0,
-				error: error instanceof Error ? error.message : 'Unknown error'
-			}
+			downloadProgress = { stage: 'checking', progress: 0, error: error instanceof Error ? error.message : 'Unknown error' }
 			throw error
 		}
 	}
@@ -304,6 +325,9 @@ export class DownloadService implements IDownloadService {
 		metadataDetails?: {
 			metadataPath?: string
 			metadataDownloadedAt?: Date | null
+			remoteVideoKey?: string | null
+			remoteAudioKey?: string | null
+			remoteMetadataKey?: string | null
 		},
 	): Promise<void> {
 		const source = metadata?.source ?? 'youtube'
@@ -330,9 +354,9 @@ export class DownloadService implements IDownloadService {
 			downloadError: null as string | null,
 			downloadQueuedAt: downloadRecord?.downloadQueuedAt ?? now,
 			downloadCompletedAt: now,
-			remoteVideoKey: null as string | null,
-			remoteAudioKey: null as string | null,
-			remoteMetadataKey: null as string | null,
+			remoteVideoKey: metadataDetails?.remoteVideoKey ?? null,
+			remoteAudioKey: metadataDetails?.remoteAudioKey ?? null,
+			remoteMetadataKey: metadataDetails?.remoteMetadataKey ?? null,
 			downloadJobId: null as string | null,
 			rawMetadataPath: resolvedMetadataPath,
 			rawMetadataDownloadedAt:

@@ -14,6 +14,9 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^1.0.19
         version: 1.0.19(zod@4.1.11)
+      '@app/media-core':
+        specifier: file:packages/media-core
+        version: file:packages/media-core
       '@libsql/client':
         specifier: ^0.15.15
         version: 0.15.15
@@ -205,6 +208,9 @@ packages:
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
+
+  '@app/media-core@file:packages/media-core':
+    resolution: {directory: packages/media-core, type: directory}
 
   '@babel/helper-string-parser@7.27.1':
     resolution: {integrity: sha512-qMlSxKbpRlAridDExk92nSobyDdpPijUq2DW6oDnUqd0iOGxmQjyqhMIihI9+zv4LPyZdRje2cavWPbCbWm3eA==}
@@ -4798,6 +4804,11 @@ snapshots:
       json-schema: 0.4.0
 
   '@alloc/quick-lru@5.2.0': {}
+
+  '@app/media-core@file:packages/media-core':
+    dependencies:
+      undici: 7.16.0
+      youtubei.js: 15.1.1
 
   '@babel/helper-string-parser@7.27.1': {}
 

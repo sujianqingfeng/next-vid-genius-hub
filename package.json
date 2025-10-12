@@ -64,6 +64,7 @@
     "tailwind-merge": "^3.3.1",
     "undici": "^7.16.0",
     "youtubei.js": "^15.1.1",
+    "@app/media-core": "file:packages/media-core",
     "yt-dlp-wrap": "^2.3.12",
     "zod": "^4.1.11"
   },
@@ -83,5 +84,12 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4",
     "wrangler": "^4.42.1"
+  }
+  ,
+  "dependenciesOverrides": {},
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": []
+    }
   }
 }

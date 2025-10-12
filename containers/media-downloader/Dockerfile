@@ -27,9 +27,12 @@ RUN curl -fL -o /tmp/mihomo.gz "https://github.com/MetaCubeX/mihomo/releases/dow
   && chmod +x /usr/local/bin/mihomo
 
 WORKDIR /app
-COPY package.json ./
+# Install with monorepo local package dependency
+# Expect build context at repo root so these COPY paths are valid
+COPY containers/media-downloader/package.json ./package.json
+COPY packages/media-core ./packages/media-core
 RUN npm install --omit=dev
-COPY index.mjs ./
+COPY containers/media-downloader/index.mjs ./index.mjs
 
 RUN mkdir -p /app/clash /app/clash/providers
 

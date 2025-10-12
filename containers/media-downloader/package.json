@@ -5,8 +5,7 @@
 	"description": "Media downloader worker powered by yt-dlp + ffmpeg",
 	"license": "MIT",
   "dependencies": {
-    "yaml": "^2.6.0",
-    "undici": "^6.19.8",
-    "youtubei.js": "^9.1.0"
+    "@app/media-core": "file:./packages/media-core",
+    "yaml": "^2.6.0"
   }
 }

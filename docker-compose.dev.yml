@@ -39,7 +39,8 @@ services:
 
   media-downloader:
     build:
-      context: ./containers/media-downloader
+      context: .
+      dockerfile: containers/media-downloader/Dockerfile
     container_name: media-downloader
     environment:
       - NODE_ENV=development

@@ -16,12 +16,7 @@ import { db, schema } from '~/lib/db'
 import { renderVideoWithRemotion } from '~/lib/media'
 import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
 import type { RenderProgressEvent } from '~/lib/media'
-import { downloadTikTokCommentsByUrl } from '~/lib/providers/tiktok'
-import {
-	downloadYoutubeComments,
-	extractVideoId,
-	getYouTubeClient,
-} from '~/lib/providers/youtube'
+import { downloadYoutubeComments as coreDownloadYoutubeComments, downloadTikTokCommentsByUrl as coreDownloadTikTokComments } from '@app/media-core'
 
 export const downloadComments = os
 	.input(
@@ -41,28 +36,28 @@ export const downloadComments = os
 			throw new Error('Media not found')
 		}
 
-		let comments: schema.Comment[] = []
-		if (media.source === 'tiktok') {
-			const basic = await downloadTikTokCommentsByUrl(media.url, pageCount)
-			comments = basic.map((c) => ({
-				id: c.id,
-				author: c.author,
-				authorThumbnail: c.authorThumbnail,
-				content: c.content,
-				likes: c.likes,
-				replyCount: c.replyCount,
-			}))
-		} else {
-			const youtube = await getYouTubeClient({
-				proxy: PROXY_URL,
-				cacheEnabled: false,
-			})
-			const videoId = extractVideoId(media.url)
-			if (!videoId) {
-				throw new Error('Could not extract video ID from URL')
-			}
-			comments = await downloadYoutubeComments(youtube, videoId, pageCount)
-		}
+        let comments: schema.Comment[] = []
+        if (media.source === 'tiktok') {
+            const basic = await coreDownloadTikTokComments({ url: media.url, pages: pageCount, proxy: PROXY_URL })
+            comments = basic.map((c) => ({
+                id: c.id,
+                author: c.author,
+                authorThumbnail: c.authorThumbnail,
+                content: c.content,
+                likes: c.likes,
+                replyCount: c.replyCount,
+            }))
+        } else {
+            const basic = await coreDownloadYoutubeComments({ url: media.url, pages: pageCount, proxy: PROXY_URL })
+            comments = basic.map((c) => ({
+                id: c.id,
+                author: c.author,
+                authorThumbnail: c.authorThumbnail,
+                content: c.content,
+                likes: c.likes,
+                replyCount: c.replyCount,
+            }))
+        }
 
 		if (comments.length === 0) {
 			return { success: true, count: 0 }
