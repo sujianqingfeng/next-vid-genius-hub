@@ -218,6 +218,39 @@ export default function CommentsPage() {
 							</Badge>
 						)}
 					</div>
+					
+					{/* Media Title */}
+					{mediaQuery.data && (
+						<div className="mt-4 space-y-2">
+							{mediaQuery.data.title && (
+								<div className="flex items-start gap-2">
+									<p className="text-sm text-muted-foreground flex-1">
+										{mediaQuery.data.title}
+									</p>
+								</div>
+							)}
+							{mediaQuery.data.translatedTitle && (
+								<div className="flex items-start gap-2">
+									<p className="text-sm font-medium flex-1">
+										{mediaQuery.data.translatedTitle}
+									</p>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-auto py-1 px-2 -mt-1"
+										onClick={() => {
+											if (mediaQuery.data?.translatedTitle) {
+												navigator.clipboard.writeText(mediaQuery.data.translatedTitle)
+												toast.success('标题已复制到剪贴板')
+											}
+										}}
+									>
+										<Copy className="w-3.5 h-3.5" />
+									</Button>
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 			</div>
 
