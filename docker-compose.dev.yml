@@ -15,7 +15,8 @@ services:
 
   burner-ffmpeg:
     build:
-      context: ./containers/burner-ffmpeg
+      context: .
+      dockerfile: containers/burner-ffmpeg/Dockerfile
     container_name: burner-ffmpeg
     environment:
       - NODE_ENV=development

@@ -20,6 +20,43 @@
   - `downloadYoutubeComments({ url, pages?, proxy? })`
   - `downloadTikTokCommentsByUrl({ url, pages?, proxy? })`
   - `extractVideoId(url)`
+  
+### 字幕渲染复用（新）
+
+为消除“本地与容器”两套字幕渲染实现（VTT→ASS + FFmpeg + 黑屏/静音段），新增共享包：
+
+- `@app/media-subtitles`
+  - `renderVideoWithSubtitles(videoPath, vtt, outputPath, config?)`
+  - `convertWebVttToAss(vtt, config)`、`escapeForFFmpegFilterPath(path)`、`getVideoResolution(path)`
+  - 不依赖 Next/React，容器与应用可复用同一实现，保证视觉与参数一致。
+
+容器集成步骤（示例：burner-ffmpeg）：
+
+1) package.json（容器目录）引入本地包：
+```
+{
+  "dependencies": {
+    "@app/media-subtitles": "file:./packages/media-subtitles"
+  }
+}
+```
+
+2) Dockerfile 在仓库根构建并复制包后安装：
+```
+WORKDIR /app
+COPY containers/burner-ffmpeg/package.json ./package.json
+COPY packages/media-subtitles ./packages/media-subtitles
+RUN npm install --omit=dev
+COPY containers/burner-ffmpeg/index.mjs ./index.mjs
+```
+
+3) 代码使用共享包渲染：
+```js
+import { renderVideoWithSubtitles } from '@app/media-subtitles'
+await renderVideoWithSubtitles(inFile, vttText, outFile, engineOptions.subtitleConfig)
+```
+
+迁移完成后，可删除容器内自实现的 `convertWebVttToAss`、FFmpeg 拼接与颜色/路径工具，降低分叉维护成本。
 - 容器装配：
   - 解析请求 → 准备临时路径
   - 将 node/provider 适配器注入 `@app/media-core` 流水线

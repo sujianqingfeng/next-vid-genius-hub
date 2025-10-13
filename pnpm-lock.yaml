@@ -23,6 +23,9 @@ importers:
       '@app/media-providers':
         specifier: workspace:*
         version: link:packages/media-providers
+      '@app/media-subtitles':
+        specifier: workspace:*
+        version: link:packages/media-subtitles
       '@libsql/client':
         specifier: ^0.15.15
         version: 0.15.15
@@ -197,6 +200,12 @@ importers:
       youtubei.js:
         specifier: ^15.1.1
         version: 15.1.1
+
+  packages/media-subtitles:
+    dependencies:
+      execa:
+        specifier: ^9.5.2
+        version: 9.6.0
 
 packages:
 
