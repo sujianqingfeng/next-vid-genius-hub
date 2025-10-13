@@ -3,13 +3,13 @@ import path from 'node:path'
 import { createId } from '@paralleldrive/cuid2'
 import { eq } from 'drizzle-orm'
 import type {
-	DownloadRequest,
-	DownloadResult,
-	DownloadContext,
-	DownloadProgress,
-	DownloadService as IDownloadService
+    DownloadRequest,
+    DownloadResult,
+    DownloadContext,
+    DownloadProgress,
+    DownloadService as IDownloadService
 } from '~/lib/types/download.types'
-import type { BasicVideoInfo } from '~/lib/types/provider.types'
+import type { BasicVideoInfo } from '~/lib/media/types'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { db, schema, createMediaUpdateData } from '~/lib/db'
 import { extractAudio } from '~/lib/media'
@@ -40,7 +40,7 @@ export class DownloadService implements IDownloadService {
 
 	async download(request: DownloadRequest): Promise<DownloadResult> {
 		const { url, quality, proxyId } = request
-		let downloadProgress: DownloadProgress = { stage: 'checking', progress: 0 }
+        let downloadProgress: DownloadProgress = { stage: 'checking', progress: 0 }
 
 		try {
 			// 1) 代理与记录
@@ -60,7 +60,7 @@ export class DownloadService implements IDownloadService {
 
 			// 3) 使用共享流水线（按需跳过已存在文件）
 			const provider = ProviderFactory.resolveProvider(url)
-			let rawMetadata: unknown | undefined
+            // rawMetadata is not read anywhere; drop local accumulation to avoid unused warnings
 
 			let remoteVideoKey: string | null = null
 			let remoteAudioKey: string | null = null
@@ -78,24 +78,22 @@ export class DownloadService implements IDownloadService {
 						metadataPath: _context.metadataPath,
 					}),
 					downloader: async (u, q, out) => {
-						if (videoExists) return { rawMetadata: undefined }
-						const res = await coreDownloadVideo(u, q, out, { proxy: proxyUrl, captureJson: true })
-						rawMetadata = res?.rawMetadata
-						return res
+                        if (videoExists) return { rawMetadata: undefined }
+                        const res = await coreDownloadVideo(u, q, out, { proxy: proxyUrl, captureJson: true })
+                        return res
 					},
 					audioExtractor: async (v, a) => {
 						if (audioExists) return
 						await coreExtractAudio(v, a)
 					},
 					persistRawMetadata: async (data) => {
-						if (metadataExists) return
-						try {
-							await fs.writeFile(_context.metadataPath, JSON.stringify(data, null, 2), 'utf8')
-							metadataExists = true
-							rawMetadata = data
-						} catch (e) {
-							console.error('Failed to persist raw metadata:', e)
-						}
+                        if (metadataExists) return
+                        try {
+                            await fs.writeFile(_context.metadataPath, JSON.stringify(data, null, 2), 'utf8')
+                            metadataExists = true
+                        } catch (e) {
+                            console.error('Failed to persist raw metadata:', e)
+                        }
 					},
 					artifactStore: this.artifactStore
 						? {
@@ -145,33 +143,35 @@ export class DownloadService implements IDownloadService {
 				? new Date()
 				: downloadRecord?.rawMetadataDownloadedAt ?? null
 
-			await this.updateDatabaseRecord(
-				id,
-				url,
-				metadataForDb,
-				downloadRecord,
-				_context,
-				quality,
-				{ metadataPath: metadataPathForDb ?? undefined, metadataDownloadedAt, remoteVideoKey, remoteAudioKey, remoteMetadataKey },
-			)
+            await this.updateDatabaseRecord(
+                id,
+                url,
+                metadataForDb,
+                downloadRecord,
+                _context,
+                quality,
+                { metadataPath: metadataPathForDb ?? undefined, metadataDownloadedAt, remoteVideoKey, remoteAudioKey, remoteMetadataKey },
+            )
 
-			downloadProgress = { stage: 'completed', progress: 100 }
+            downloadProgress = { stage: 'completed', progress: 100 }
+            // Mark as used to satisfy lint when not otherwise emitted
+            void downloadProgress
 
 			// 5) 返回结果（标题优先数据库/默认）
 			const title = downloadRecord?.title ?? 'video'
 			const source = this.getProviderSource(provider.id)
 			return { id, videoPath: _context.videoPath, audioPath: _context.audioPath, title, source }
-		} catch (error) {
-			downloadProgress = { stage: 'checking', progress: 0, error: error instanceof Error ? error.message : 'Unknown error' }
-			throw error
-		}
-	}
+        } catch (error) {
+            downloadProgress = { stage: 'checking', progress: 0, error: error instanceof Error ? error.message : 'Unknown error' }
+            throw error
+        }
+    }
 
-	async checkExistingFiles(context: DownloadContext): Promise<{
-		videoExists: boolean
-		audioExists: boolean
-		downloadRecord?: any
-	}> {
+    async checkExistingFiles(context: DownloadContext): Promise<{
+        videoExists: boolean
+        audioExists: boolean
+        downloadRecord?: typeof schema.media.$inferSelect
+    }> {
 		const videoExists = await fileExists(context.videoPath)
 		const audioExists = await fileExists(context.audioPath)
 
@@ -182,18 +182,19 @@ export class DownloadService implements IDownloadService {
 		return { videoExists, audioExists, downloadRecord }
 	}
 
-	async fetchMetadata(url: string, context: DownloadContext): Promise<BasicVideoInfo | null> {
-		const provider = ProviderFactory.resolveProvider(url)
-		const providerContext: VideoProviderContext = {
-			proxyUrl: this.proxyUrl,
-		}
+    async fetchMetadata(url: string, context: DownloadContext): Promise<BasicVideoInfo | null> {
+        const provider = ProviderFactory.resolveProvider(url)
+        const providerContext: VideoProviderContext = {
+            proxyUrl: this.proxyUrl,
+        }
 
-		try {
-			return await provider.fetchMetadata(url, providerContext)
-		} catch (error) {
-			console.error('Failed to fetch metadata:', error)
-			return null
-		}
+        try {
+            void context
+            return await provider.fetchMetadata(url, providerContext)
+        } catch (error) {
+            console.error('Failed to fetch metadata:', error)
+            return null
+        }
 	}
 
 	async handleError(error: Error, context: DownloadContext): Promise<void> {
@@ -269,7 +270,7 @@ export class DownloadService implements IDownloadService {
 		}
 	}
 
-	private createDownloadContext(id: string, downloadRecord?: any, proxyUrl?: string): DownloadContext {
+    private createDownloadContext(id: string, downloadRecord?: typeof schema.media.$inferSelect | null, proxyUrl?: string): DownloadContext {
 		const operationDir = path.join(this.operationDir, id)
 
 		return {
@@ -316,14 +317,14 @@ export class DownloadService implements IDownloadService {
 		}
 	}
 
-	private async updateDatabaseRecord(
-		id: string,
-		url: string,
-		metadata: BasicVideoInfo | null | undefined,
-		downloadRecord: any,
-		context: DownloadContext,
-		quality: '1080p' | '720p',
-		metadataDetails?: {
+    private async updateDatabaseRecord(
+        id: string,
+        url: string,
+        metadata: BasicVideoInfo | null | undefined,
+        downloadRecord: typeof schema.media.$inferSelect | null | undefined,
+        context: DownloadContext,
+        quality: '1080p' | '720p',
+        metadataDetails?: {
 			metadataPath?: string
 			metadataDownloadedAt?: Date | null
 			remoteVideoKey?: string | null
@@ -339,14 +340,14 @@ export class DownloadService implements IDownloadService {
 		const resolvedMetadataDownloadedAt =
 			metadataDetails?.metadataDownloadedAt ?? downloadRecord?.rawMetadataDownloadedAt ?? null
 
-		const data = createMediaUpdateData({
-			metadata: metadata as any,
-			downloadRecord,
-			videoPath: context.videoPath,
-			audioPath: context.audioPath,
-			quality,
-			metadataPath: resolvedMetadataPath ?? undefined,
-		})
+        const data = createMediaUpdateData({
+            metadata: metadata ?? null,
+            downloadRecord,
+            videoPath: context.videoPath,
+            audioPath: context.audioPath,
+            quality,
+            metadataPath: resolvedMetadataPath ?? undefined,
+        })
 
 		const now = new Date()
 		const downloadMeta = {
@@ -365,22 +366,22 @@ export class DownloadService implements IDownloadService {
 				(resolvedMetadataPath ? now : null),
 		}
 
-		await db
-			.insert(schema.media)
-			.values({
-				id,
-				url,
-				source: source as 'youtube' | 'tiktok',
-				...data,
-				...downloadMeta,
-			} as any)
-			.onConflictDoUpdate({
-				target: schema.media.url,
-				set: {
-					...data,
-					...downloadMeta,
-				} as any,
-			})
+        await db
+            .insert(schema.media)
+            .values({
+                id,
+                url,
+                source: source as 'youtube' | 'tiktok',
+                ...(data as Partial<typeof schema.media.$inferInsert>),
+                ...(downloadMeta as Partial<typeof schema.media.$inferInsert>),
+            })
+            .onConflictDoUpdate({
+                target: schema.media.url,
+                set: {
+                    ...(data as Partial<typeof schema.media.$inferInsert>),
+                    ...(downloadMeta as Partial<typeof schema.media.$inferInsert>),
+                },
+            })
 	}
 }
 

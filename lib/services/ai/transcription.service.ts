@@ -32,20 +32,14 @@ export interface SubtitleEntry {
 }
 
 export class TranscriptionService {
-	private readonly defaultModel = 'whisper-1'
-	private readonly supportedFormats = ['json', 'text', 'srt', 'vtt'] as const
+    private readonly supportedFormats = ['json', 'text', 'srt', 'vtt'] as const
 
 	/**
 	 * 转录音频文件
 	 */
 	async transcribe(request: TranscriptionRequest): Promise<TranscriptionResult> {
 		try {
-			const {
-				audioPath,
-				language: _language = 'auto',
-				model: _model = this.defaultModel,
-				outputFormat: _outputFormat = 'json'
-			} = request
+            const { audioPath } = request
 
 			// 验证输入
 			await this.validateTranscriptionRequest(request)
@@ -260,10 +254,11 @@ export class TranscriptionService {
 			throw new Error(`Audio file not found: ${audioPath}`)
 		}
 
-		// 检查输出格式
-		if (outputFormat && !this.supportedFormats.includes(outputFormat as any)) {
-			throw new Error(`Unsupported output format: ${outputFormat}`)
-		}
+        // 检查输出格式
+        const formats: readonly string[] = this.supportedFormats
+        if (outputFormat && !formats.includes(outputFormat)) {
+            throw new Error(`Unsupported output format: ${outputFormat}`)
+        }
 
 		// 检查文件扩展名
 		const ext = path.extname(audioPath).toLowerCase().slice(1)
@@ -273,71 +268,7 @@ export class TranscriptionService {
 		}
 	}
 
-	private parseJsonTranscription(data: any, model: string): TranscriptionResult {
-		// Whisper API 返回的数据格式可能因版本而异
-		// 这里处理常见的格式
-
-		if (data.segments && Array.isArray(data.segments)) {
-			// 标准格式
-			return {
-				text: data.text || '',
-				segments: data.segments.map((segment: any) => ({
-					start: segment.start || 0,
-					end: segment.end || 0,
-					text: segment.text || '',
-					confidence: segment.confidence
-				})),
-				language: data.language || 'unknown',
-				duration: data.duration || 0,
-				wordCount: this.countWords(data.text || ''),
-				model
-			}
-		} else if (data.text) {
-			// 简化格式，只有文本
-			return {
-				text: data.text,
-				segments: [{
-					start: 0,
-					end: data.duration || 0,
-					text: data.text
-				}],
-				language: data.language || 'unknown',
-				duration: data.duration || 0,
-				wordCount: this.countWords(data.text),
-				model
-			}
-		} else {
-			// 文本格式
-			const text = typeof data === 'string' ? data : JSON.stringify(data)
-			return {
-				text,
-				segments: [{
-					start: 0,
-					end: 0,
-					text
-				}],
-				language: 'unknown',
-				duration: 0,
-				wordCount: this.countWords(text),
-				model
-			}
-		}
-	}
-
-	private parseTextTranscription(text: string, model: string): TranscriptionResult {
-		return {
-			text,
-			segments: [{
-				start: 0,
-				end: 0,
-				text
-			}],
-			language: 'unknown',
-			duration: 0,
-			wordCount: this.countWords(text),
-			model
-		}
-	}
+    // removed unused parsing helpers (kept logic inline in future implementations)
 
 	private optimizeSegments(
 		segments: TranscriptionSegment[],
@@ -352,7 +283,7 @@ export class TranscriptionService {
 
 		for (let i = 0; i < segments.length; i++) {
 			const segment = segments[i]
-			let currentSegment = { ...segment }
+            const currentSegment = { ...segment }
 
 			// 检查是否需要与下一个分段合并
 			while (
@@ -442,9 +373,7 @@ export class TranscriptionService {
 		return vtt
 	}
 
-	private countWords(text: string): number {
-		return text.trim().split(/\s+/).filter(word => word.length > 0).length
-	}
+        // removed unused helper countWords to reduce dead code
 }
 
 // 单例实例

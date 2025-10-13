@@ -22,10 +22,7 @@ import {
 	DEFAULT_TRANSLATION_PROMPT_ID
 } from '~/lib/subtitle/config/prompts'
 import {
-    type SubtitleRenderConfig,
     subtitleRenderConfigSchema,
-    timeSegmentEffectSchema,
-    hintTextConfigSchema
 } from '~/lib/subtitle/types'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import {
@@ -34,10 +31,7 @@ import {
 	validateVttContent,
 	normalizeVttContent
 } from '~/lib/subtitle/utils/vtt'
-import {
-	type TranscriptionProvider,
-	type WhisperModel
-} from '~/lib/subtitle/config/models'
+// removed unused types from models
 
 export const transcribe = os
 	.input(

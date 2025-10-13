@@ -26,22 +26,25 @@ export class MediaRepository {
 	/**
 	 * 创建媒体记录
 	 */
-	async create(data: Omit<MediaItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<MediaItem> {
-		const [result] = await db.insert(schema.media).values(data as any).returning()
-		return result as unknown as MediaItem
-	}
+    async create(data: Omit<MediaItem, 'id' | 'createdAt'>): Promise<MediaItem> {
+        const [result] = await db
+            .insert(schema.media)
+            .values(data as unknown as typeof schema.media.$inferInsert)
+            .returning()
+        return result as unknown as MediaItem
+    }
 
 	/**
 	 * 更新媒体记录
 	 */
-	async update(id: string, data: Partial<Omit<MediaItem, 'id' | 'createdAt'>>): Promise<MediaItem | null> {
-		const [result] = await db
-			.update(schema.media)
-			.set(data as any)
-			.where(eq(schema.media.id, id))
-			.returning()
-		return result ? result as unknown as MediaItem : null
-	}
+    async update(id: string, data: Partial<Omit<MediaItem, 'id' | 'createdAt'>>): Promise<MediaItem | null> {
+        const [result] = await db
+            .update(schema.media)
+            .set(data as unknown as Partial<typeof schema.media.$inferInsert>)
+            .where(eq(schema.media.id, id))
+            .returning()
+        return result ? result as unknown as MediaItem : null
+    }
 
 	/**
 	 * 删除媒体记录
@@ -54,13 +57,13 @@ export class MediaRepository {
 	/**
 	 * 获取媒体列表（分页）
 	 */
-	async findMany(options: {
-		limit?: number
-		offset?: number
-		where?: any
-		orderBy?: any
-	}): Promise<MediaItem[]> {
-		const { limit = 20, offset = 0, where, orderBy = desc(schema.media.createdAt) } = options
+    async findMany(options: {
+        limit?: number
+        offset?: number
+        where?: unknown
+        orderBy?: unknown
+    }): Promise<MediaItem[]> {
+        const { limit = 20, offset = 0, where, orderBy = desc(schema.media.createdAt) } = options
 
 		return await db
 			.select()
@@ -74,13 +77,13 @@ export class MediaRepository {
 	/**
 	 * 获取媒体总数
 	 */
-	async count(where?: any): Promise<number> {
-		const [result] = await db
-			.select({ count: sql<number>`count(*)` })
-			.from(schema.media)
-			.where(where)
-		return result.count
-	}
+    async count(where?: unknown): Promise<number> {
+        const [result] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(schema.media)
+            .where(where)
+        return result.count
+    }
 
 	/**
 	 * 搜索媒体
@@ -111,20 +114,20 @@ export class MediaRepository {
 	/**
 	 * 根据来源获取媒体
 	 */
-	async findBySource(source: string, options: {
-		limit?: number
-		offset?: number
-	} = {}): Promise<MediaItem[]> {
-		const { limit = 20, offset = 0 } = options
+    async findBySource(source: string, options: {
+        limit?: number
+        offset?: number
+    } = {}): Promise<MediaItem[]> {
+        const { limit = 20, offset = 0 } = options
 
-		return await db
-			.select()
-			.from(schema.media)
-			.where(eq(schema.media.source, source as any))
-			.orderBy(desc(schema.media.createdAt))
-			.limit(limit)
-			.offset(offset) as unknown as MediaItem[]
-	}
+        return await db
+            .select()
+            .from(schema.media)
+            .where(eq(schema.media.source, source as 'youtube' | 'tiktok'))
+            .orderBy(desc(schema.media.createdAt))
+            .limit(limit)
+            .offset(offset) as unknown as MediaItem[]
+    }
 
 	/**
 	 * 获取最近的媒体

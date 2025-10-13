@@ -18,26 +18,33 @@ interface ProxySelectorProps {
 }
 
 export function ProxySelector({ value, onValueChange, disabled }: ProxySelectorProps) {
-	const { data: proxyData, isLoading, error } = useQuery({
-		...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
-	})
+    const { data: proxyData, isLoading, error } = useQuery({
+        ...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
+    })
 
-    const renderProxyIcon = (proxy: any) => {
+    type SimpleProxy = {
+        id: string
+        name?: string | null
+        server?: string | null
+        port?: number | null
+        protocol?: string | null
+    }
+
+    const renderProxyIcon = (proxy: SimpleProxy) => {
         if (proxy.id === 'none') {
             return <Globe className="w-4 h-4 text-muted-foreground" />
         }
         return <Shield className="w-4 h-4 text-muted-foreground" />
     }
 
-	const renderProxyLabel = (proxy: any) => {
-		if (proxy.id === 'none') {
-			return 'No Proxy (Direct Connection)'
-		}
+    const renderProxyLabel = (proxy: SimpleProxy) => {
+        if (proxy.id === 'none') {
+            return 'No Proxy (Direct Connection)'
+        }
 
-		let label = proxy.name || `${proxy.protocol}://${proxy.server}:${proxy.port}`
-		
-		return label
-	}
+        const label = proxy.name || `${proxy.protocol}://${proxy.server}:${proxy.port}`
+        return label
+    }
 
 	if (error) {
 		console.error('Failed to load proxies:', error)

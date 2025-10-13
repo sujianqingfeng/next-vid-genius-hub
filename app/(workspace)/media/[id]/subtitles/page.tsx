@@ -157,18 +157,18 @@ export default function SubtitlesPage() {
 	)
 
 	// 云端渲染：轮询状态
-	const cloudStatusQuery = useQuery(
-		queryOrpc.subtitle.getRenderStatus.queryOptions({
-			input: cloudJobId ? { jobId: cloudJobId } : (undefined as any),
-			enabled: !!cloudJobId && isVisible && activeStep === 'step3',
-			refetchInterval: (q) => {
-				const s = (q.state.data as any)?.status
-				return s && ['completed', 'failed', 'canceled'].includes(s)
-					? false
-					: TIME_CONSTANTS.RENDERING_POLL_INTERVAL
-			},
-		}),
-	)
+    const cloudStatusQuery = useQuery(
+        queryOrpc.subtitle.getRenderStatus.queryOptions({
+            input: { jobId: cloudJobId ?? '' },
+            enabled: !!cloudJobId && isVisible && activeStep === 'step3',
+            refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+                const s = q.state.data?.status
+                return s && ['completed', 'failed', 'canceled'].includes(s)
+                    ? false
+                    : TIME_CONSTANTS.RENDERING_POLL_INTERVAL
+            },
+        }),
+    )
 
 	// 云端渲染完成后，刷新媒体数据并跳到预览（用 effect 避免在渲染期间触发副作用）
 	useEffect(() => {
@@ -367,11 +367,11 @@ export default function SubtitlesPage() {
 							</div>
 						</div>
 						<Step3Render
-							isRendering={
-								renderBackend === 'cloud'
-									? startCloudRenderMutation.isPending || (cloudStatusQuery.data && ['queued','preparing','running','uploading'].includes((cloudStatusQuery.data as any).status))
-								: renderMutation.isPending
-							}
+                        isRendering={
+                            renderBackend === 'cloud'
+                                ? startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
+                                : renderMutation.isPending
+                        }
 							onStart={handleRenderStart}
 							errorMessage={(renderBackend === 'cloud' ? startCloudRenderMutation.error?.message : renderMutation.error?.message)}
 							mediaId={mediaId}

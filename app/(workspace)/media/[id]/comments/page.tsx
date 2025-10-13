@@ -85,16 +85,16 @@ export default function CommentsPage() {
 		}),
 	)
 
-	const cloudCommentsStatusQuery = useQuery(
-		queryOrpc.comment.getCloudCommentsStatus.queryOptions({
-			input: commentsCloudJobId ? { jobId: commentsCloudJobId } : (undefined as any),
-			enabled: !!commentsCloudJobId,
-			refetchInterval: (q) => {
-				const s = (q.state.data as any)?.status
-				return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
-			},
-		}),
-	)
+    const cloudCommentsStatusQuery = useQuery(
+        queryOrpc.comment.getCloudCommentsStatus.queryOptions({
+            input: { jobId: commentsCloudJobId ?? '' },
+            enabled: !!commentsCloudJobId,
+            refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+                const s = q.state.data?.status
+                return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
+            },
+        }),
+    )
 
 	const finalizeCloudCommentsMutation = useMutation(
 		queryOrpc.comment.finalizeCloudCommentsDownload.mutationOptions({
@@ -173,16 +173,16 @@ export default function CommentsPage() {
 		}),
 	)
 
-	const cloudStatusQuery = useQuery(
-		queryOrpc.comment.getRenderStatus.queryOptions({
-			input: cloudJobId ? { jobId: cloudJobId } : (undefined as any),
-			enabled: !!cloudJobId,
-			refetchInterval: (q) => {
-				const s = (q.state.data as any)?.status
-				return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
-			},
-		}),
-	)
+    const cloudStatusQuery = useQuery(
+        queryOrpc.comment.getRenderStatus.queryOptions({
+            input: { jobId: cloudJobId ?? '' },
+            enabled: !!cloudJobId,
+            refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+                const s = q.state.data?.status
+                return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
+            },
+        }),
+    )
 
 	useEffect(() => {
 		if (renderBackend === 'cloud' && cloudJobId && cloudStatusQuery.data?.status === 'completed') {

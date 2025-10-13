@@ -3,24 +3,12 @@ import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.t
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchYouTubeMetadata } from './metadata'
 import { extractVideoId } from './utils'
-import { getYouTubeClient } from './client'
+// import { getYouTubeClient } from './client'
 
 const clientCache = new Map<string, Promise<Innertube>>()
 
-async function resolveYouTubeClient(context: VideoProviderContext): Promise<Innertube> {
-	const cacheKey = context.proxyUrl ?? 'default'
-	const existing = clientCache.get(cacheKey)
-	if (existing) {
-		return existing
-	}
-
-	const clientPromise = getYouTubeClient({ proxy: context.proxyUrl }).catch((error) => {
-		clientCache.delete(cacheKey)
-		throw error
-	})
-	clientCache.set(cacheKey, clientPromise)
-	return clientPromise
-}
+// Note: Client cache + factory kept for future use. The inline
+// resolveYouTubeClient helper was unused – removing to keep file clean.
 
 function isYouTubeUrl(url: string): boolean {
 	const id = extractVideoId(url)
@@ -74,29 +62,31 @@ export const youtubeProvider: VideoProvider = {
 	},
 
 	// Additional YouTube-specific methods
-	async getChannelVideos(channelId: string, _maxResults: number = 50): Promise<Array<{ id: string; title: string; url: string }>> {
-		try {
-			// Implementation would require YouTube API client
-			// This is a placeholder for future enhancement
-			console.log('Channel videos fetching not yet implemented')
-			return []
-		} catch (error) {
-			console.error('Failed to fetch channel videos:', error)
-			return []
-		}
-	},
+    async getChannelVideos(channelId: string, _maxResults: number = 50): Promise<Array<{ id: string; title: string; url: string }>> {
+        try {
+            void channelId; void _maxResults;
+            // Implementation would require YouTube API client
+            // This is a placeholder for future enhancement
+            console.log('Channel videos fetching not yet implemented')
+            return []
+        } catch (error) {
+            console.error('Failed to fetch channel videos:', error)
+            return []
+        }
+    },
 
-	async searchVideos(query: string, _maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
-		try {
-			// Implementation would require YouTube API client
-			// This is a placeholder for future enhancement
-			console.log('Video search not yet implemented')
-			return []
-		} catch (error) {
-			console.error('Failed to search videos:', error)
-			return []
-		}
-	},
+    async searchVideos(query: string, _maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
+        try {
+            void query; void _maxResults;
+            // Implementation would require YouTube API client
+            // This is a placeholder for future enhancement
+            console.log('Video search not yet implemented')
+            return []
+        } catch (error) {
+            console.error('Failed to search videos:', error)
+            return []
+        }
+    },
 
 	// Cleanup method
 	cleanup(): void {

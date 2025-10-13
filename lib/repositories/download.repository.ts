@@ -24,12 +24,12 @@ export class DownloadRepository {
 	/**
 	 * 更新下载状态
 	 */
-	async updateDownloadStatus(id: string, status: {
-		filePath?: string
-		audioFilePath?: string
-		thumbnailPath?: string
-		quality?: string
-		status?: string
+    async updateDownloadStatus(id: string, status: {
+        filePath?: string
+        audioFilePath?: string
+        thumbnailPath?: string
+        quality?: string
+        status?: string
 		errorMessage?: string
 		downloadBackend?: 'local' | 'cloud'
 		downloadStatus?: string
@@ -42,26 +42,26 @@ export class DownloadRepository {
 		downloadError?: string | null
 		downloadQueuedAt?: Date | null
 		downloadCompletedAt?: Date | null
-	}): Promise<void> {
-		// Type cast to handle quality field constraint
-		const updateData: any = status
-		if (status.quality && !['720p', '1080p'].includes(status.quality)) {
-			updateData.quality = '720p' // Default fallback
-		}
+    }): Promise<void> {
+        // Type cast to handle quality field constraint without using 'any'
+        const updateData: Record<string, unknown> = { ...status }
+        if (status.quality && !['720p', '1080p'].includes(status.quality)) {
+            updateData.quality = '720p' // Default fallback
+        }
 
-		await db
-			.update(schema.media)
-			.set(updateData)
-			.where(eq(schema.media.id, id))
-	}
+        await db
+            .update(schema.media)
+            .set(updateData as Partial<typeof schema.media.$inferInsert>)
+            .where(eq(schema.media.id, id))
+    }
 
 	/**
 	 * 创建或更新媒体记录
 	 */
-	async upsert(data: {
-		id: string
-		url: string
-		source: string
+    async upsert(data: {
+        id: string
+        url: string
+        source: string
 		title?: string
 		author?: string
 		thumbnail?: string
@@ -83,24 +83,24 @@ export class DownloadRepository {
 		downloadError?: string | null
 		downloadQueuedAt?: Date | null
 		downloadCompletedAt?: Date | null
-	}): Promise<void> {
-		// Ensure required fields have proper types
-		const insertData: any = {
-			...data,
-			title: data.title || 'Unknown Title',
-			source: data.source as 'youtube' | 'tiktok',
-			quality: (data.quality && ['720p', '1080p'].includes(data.quality)) ? data.quality : '720p',
-			downloadBackend: data.downloadBackend ?? 'local',
-		}
+    }): Promise<void> {
+        // Ensure required fields have proper types
+        const insertData: Record<string, unknown> = {
+            ...data,
+            title: data.title || 'Unknown Title',
+            source: data.source as 'youtube' | 'tiktok',
+            quality: (data.quality && ['720p', '1080p'].includes(data.quality)) ? data.quality : '720p',
+            downloadBackend: data.downloadBackend ?? 'local',
+        }
 
-		await db
-			.insert(schema.media)
-			.values(insertData)
-			.onConflictDoUpdate({
-				target: schema.media.url,
-				set: insertData
-			})
-	}
+        await db
+            .insert(schema.media)
+            .values(insertData as unknown as typeof schema.media.$inferInsert)
+            .onConflictDoUpdate({
+                target: schema.media.url,
+                set: insertData as unknown as Partial<typeof schema.media.$inferInsert>
+            })
+    }
 
 	/**
 	 * 获取下载统计

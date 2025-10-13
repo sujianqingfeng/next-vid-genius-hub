@@ -40,6 +40,6 @@ export interface VideoProvider {
 }
 
 export interface VideoProviderContext {
-	proxyUrl?: string
-	[key: string]: any
+    proxyUrl?: string
+    [key: string]: unknown
 }

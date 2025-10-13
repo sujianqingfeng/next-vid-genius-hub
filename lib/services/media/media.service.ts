@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
+import type { MediaItem } from '~/lib/types/media.types'
 import { fileExists as fileExists } from '~/lib/utils/file'
 
 export class MediaService {
@@ -32,9 +33,9 @@ export class MediaService {
 
 		// 构建查询条件
 		const whereConditions = []
-		if (source) {
-			whereConditions.push(eq(schema.media.source, source as any))
-		}
+        if (source) {
+            whereConditions.push(eq(schema.media.source, source as 'youtube' | 'tiktok'))
+        }
 
 		// 构建排序条件
 		let orderBy
@@ -121,12 +122,12 @@ export class MediaService {
 	/**
 	 * 更新媒体信息
 	 */
-	async updateMedia(id: string, updates: Partial<MediaItem>): Promise<boolean> {
-		try {
-			await db
-				.update(schema.media)
-				.set(updates as any)
-				.where(eq(schema.media.id, id))
+    async updateMedia(id: string, updates: Partial<typeof schema.media.$inferInsert>): Promise<boolean> {
+        try {
+            await db
+                .update(schema.media)
+                .set(updates)
+                .where(eq(schema.media.id, id))
 
 			return true
 		} catch (error) {

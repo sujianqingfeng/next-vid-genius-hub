@@ -56,11 +56,14 @@ export class MediaProcessingService {
 				videoPath
 			])
 
-			const probeData = JSON.parse(stdout)
+        const probeData = JSON.parse(stdout) as {
+          streams?: Array<{ codec_type?: string; width?: number; height?: number; codec_name?: string }>
+          format?: { duration?: string; size?: string; format_name?: string }
+        }
 
-			// 查找视频流
-			const videoStream = probeData.streams.find((stream: any) => stream.codec_type === 'video')
-			const format = probeData.format
+        // 查找视频流
+        const videoStream = probeData.streams?.find((stream) => stream.codec_type === 'video')
+        const format = probeData.format
 
 			if (!videoStream || !format) {
 				return null
@@ -103,11 +106,14 @@ export class MediaProcessingService {
 				audioPath
 			])
 
-			const probeData = JSON.parse(stdout)
+        const probeData = JSON.parse(stdout) as {
+          streams?: Array<{ codec_type?: string; codec_name?: string }>
+          format?: { duration?: string; size?: string; bit_rate?: string; format_name?: string }
+        }
 
-			// 查找音频流
-			const audioStream = probeData.streams.find((stream: any) => stream.codec_type === 'audio')
-			const format = probeData.format
+        // 查找音频流
+        const audioStream = probeData.streams?.find((stream) => stream.codec_type === 'audio')
+        const format = probeData.format
 
 			if (!audioStream || !format) {
 				return null
@@ -269,11 +275,11 @@ export class MediaProcessingService {
 	/**
 	 * 验证媒体文件完整性
 	 */
-	async validateMediaFile(filePath: string): Promise<{
-		isValid: boolean
-		error?: string
-		info?: any
-	}> {
+    async validateMediaFile(filePath: string): Promise<{
+        isValid: boolean
+        error?: string
+        info?: { duration: number; size: number; format: string }
+    }> {
 		try {
 			if (!await fileExistsServer(filePath)) {
 				return { isValid: false, error: 'File does not exist' }
@@ -292,7 +298,7 @@ export class MediaProcessingService {
 				filePath
 			])
 
-			const probeData = JSON.parse(stdout)
+            const probeData = JSON.parse(stdout) as { format?: { duration?: string; format_name?: string } }
 
 			if (!probeData.format) {
 				return { isValid: false, error: 'Invalid media file format' }
@@ -317,15 +323,15 @@ export class MediaProcessingService {
 	/**
 	 * 批量处理媒体文件
 	 */
-	async batchProcess(
-		items: Array<{
-			inputPath: string
-			outputPath: string
-			operation: 'extractAudio' | 'convert' | 'compress' | 'thumbnail'
-			options?: any
-		}>,
-		onProgress?: (current: number, total: number) => void
-	): Promise<Array<{ success: boolean; error?: string }>> {
+    async batchProcess(
+        items: Array<{
+            inputPath: string
+            outputPath: string
+            operation: 'extractAudio' | 'convert' | 'compress' | 'thumbnail'
+            options?: Record<string, unknown>
+        }>,
+        onProgress?: (current: number, total: number) => void
+    ): Promise<Array<{ success: boolean; error?: string }>> {
 		const results = []
 
 		for (let i = 0; i < items.length; i++) {

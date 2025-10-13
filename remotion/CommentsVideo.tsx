@@ -11,7 +11,7 @@ import {
   useCurrentFrame,
 } from 'remotion'
 import type { CommentVideoInputProps } from './types'
-import { layoutConstants, VIDEO_WIDTH, VIDEO_HEIGHT } from './layout-constants'
+import { VIDEO_WIDTH, VIDEO_HEIGHT } from './layout-constants'
 
 const layout = {
   paddingX: 64,
@@ -57,39 +57,9 @@ const topSectionStyle: CSSProperties = {
   width: '100%',
 }
 
-const baseCardStyle: CSSProperties = {
-  backgroundColor: palette.surface,
-  border: `1px solid ${palette.border}`,
-  borderRadius: layout.cardRadius,
-  padding: `${layout.cardPaddingY}px ${layout.cardPaddingX}px`,
-  boxShadow: '0 20px 36px rgba(15, 23, 42, 0.06)',
-}
+// base card style was only used by removed styles
 
-const infoPanelStyle: CSSProperties = {
-  ...baseCardStyle,
-  width: layout.infoPanelWidth,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-  gap: 24,
-}
-
-const videoPanelStyle: CSSProperties = {
-  ...baseCardStyle,
-  width: layout.cardPaddingX * 2 + VIDEO_WIDTH,
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-}
-
-const commentPanelStyle: CSSProperties = {
-  ...baseCardStyle,
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 24,
-  minHeight: 420,
-}
+// removed unused local style objects to reduce dead code
 
 const sectionLabelStyle: CSSProperties = {
   fontSize: 18,
@@ -716,4 +686,3 @@ function formatCount(value?: number): string {
 
   return new Intl.NumberFormat('en-US').format(value)
 }
-

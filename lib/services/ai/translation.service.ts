@@ -208,18 +208,19 @@ export class TranslationService {
 	/**
 	 * 验证翻译质量
 	 */
-	async validateTranslation(
-		originalText: string,
-		translatedText: string,
-		_targetLanguage: string
-	): Promise<{
+    async validateTranslation(
+        originalText: string,
+        translatedText: string,
+        _targetLanguage: string
+    ): Promise<{
 		isValid: boolean
 		confidence: number
 		issues: string[]
 	}> {
-		try {
-			const issues: string[] = []
-			let confidence = 1.0
+        try {
+            void _targetLanguage
+            const issues: string[] = []
+            let confidence = 1.0
 
 			// 基本验证
 			if (!translatedText || !translatedText.trim()) {

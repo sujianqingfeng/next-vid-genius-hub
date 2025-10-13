@@ -203,16 +203,17 @@ export function formatColor(color: string): string {
  * Safe JSON stringify with circular reference handling
  */
 export function safeJsonStringify(obj: unknown, indent?: number): string {
-	const cache = new Set()
-	return JSON.stringify(obj, (key, value) => {
-		if (typeof value === 'object' && value !== null) {
-			if (cache.has(value)) {
-				return '[Circular]'
-			}
-			cache.add(value)
-		}
-		return value
-	}, indent)
+    const cache = new Set()
+    return JSON.stringify(obj, (key, value) => {
+        void key
+        if (typeof value === 'object' && value !== null) {
+            if (cache.has(value)) {
+                return '[Circular]'
+            }
+            cache.add(value)
+        }
+        return value
+    }, indent)
 }
 
 /**
