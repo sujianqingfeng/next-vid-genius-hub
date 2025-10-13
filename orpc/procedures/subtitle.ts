@@ -31,6 +31,7 @@ import {
 	validateVttContent,
 	normalizeVttContent
 } from '~/lib/subtitle/utils/vtt'
+import { buildCandidateBreaks, buildSegmentsByAI, segmentsToVtt, applyOrphanGuard, applyPhraseGuard } from '~/lib/subtitle/utils/segment'
 // removed unused types from models
 
 export const transcribe = os
@@ -144,9 +145,9 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
 		where,
 	})
 
-	if (!media?.transcription) {
-		throw new Error('Transcription not found')
-	}
+    if (!media?.transcription && !media?.optimizedTranscription) {
+        throw new Error('Transcription not found')
+    }
 
 	// 使用配置化的提示词
 	const promptConfig = getTranslationPrompt(promptId || DEFAULT_TRANSLATION_PROMPT_ID)
@@ -156,11 +157,12 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
 
 	logger.info('translation', `Using translation prompt: ${promptConfig.name} for media ${mediaId}`)
 
-	const { text: translatedText } = await generateText({
-		model,
-		system: promptConfig.template,
-		prompt: media.transcription,
-	})
+    const sourceVtt = media.optimizedTranscription || media.transcription!
+    const { text: translatedText } = await generateText({
+        model,
+        system: promptConfig.template,
+        prompt: sourceVtt,
+    })
 
 	await db
 		.update(schema.media)
@@ -297,4 +299,92 @@ export const getRenderStatus = os
     .handler(async ({ input }) => {
         const status = await getJobStatus(input.jobId)
         return status
+    })
+
+// Optimize transcription using per-word timings + AI segmentation
+export const optimizeTranscription = os
+    .input(
+        z.object({
+            mediaId: z.string(),
+            model: z.enum(AIModelIds),
+            pauseThresholdMs: z.number().min(0).max(5000).default(480),
+            maxSentenceMs: z.number().min(1000).max(30000).default(8000),
+            maxChars: z.number().min(10).max(160).default(68),
+            lightCleanup: z.boolean().optional().default(false),
+            textCorrect: z.boolean().optional().default(false),
+        }),
+    )
+    .handler(async ({ input }) => {
+        const { mediaId, model, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect } = input
+        const where = eq(schema.media.id, mediaId)
+        const media = await db.query.media.findFirst({ where })
+
+        if (!media) throw new Error('Media not found')
+        if (!media.transcription) throw new Error('Transcription not found')
+        const words = media.transcriptionWords
+        if (!words || words.length === 0) {
+            throw new Error('Optimization unavailable: no per‑word timings. Use Cloudflare transcription.')
+        }
+
+        // Build candidate breaks using heuristics
+        const candidates = buildCandidateBreaks(words, {
+            pauseThresholdMs,
+            maxSentenceMs,
+            maxChars,
+        })
+
+        // Ask AI to finalize segmentation based on words + candidates
+        let segments = await buildSegmentsByAI({ words, candidates, model, maxChars, maxSentenceMs })
+
+        // Orphan-guard pass: merge very short leading fragments when the gap is tiny
+        segments = applyOrphanGuard(segments, words, { maxOrphanWords: 2, maxGapMs: 300 })
+        segments = applyPhraseGuard(segments, words, { maxLeadingWords: 1, maxGapMs: 450 })
+
+        // Compose VTT
+        let optimizedVtt = segmentsToVtt(words, segments)
+
+        // Optional text-only correction while preserving VTT structure exactly
+        if (textCorrect) {
+            const system = `You are an English proofreader. You will receive the content of a WebVTT file.
+Your task: fix minor spelling/grammar errors ONLY.
+Strict constraints:
+- Preserve the VTT structure EXACTLY (timestamps, order, line breaks, number of lines per cue)
+- Do NOT add or remove cues or timestamps
+- Do NOT merge or split lines
+- Do NOT change punctuation spacing except to fix actual typos
+- Keep all non-English tokens unchanged.
+Return the corrected VTT content as-is.`
+            try {
+                const { text } = await import('~/lib/ai').then(m => m.generateText({
+                    model,
+                    system,
+                    prompt: optimizedVtt,
+                }))
+                const v = text.trim()
+                const check = validateVttContent(v)
+                if (check.isValid) {
+                    optimizedVtt = v
+                }
+            } catch (err) {
+                logger.warn('transcription', `Text correction skipped: ${err instanceof Error ? err.message : String(err)}`)
+            }
+        }
+
+        // Validate VTT before persisting
+        const validation = validateVttContent(optimizedVtt)
+        if (!validation.isValid) {
+            throw new Error(`Optimized VTT validation failed: ${validation.errors.join(', ')}`)
+        }
+
+        await db.update(schema.media).set({ optimizedTranscription: optimizedVtt }).where(where)
+        return { optimizedTranscription: optimizedVtt }
+    })
+
+// Restore transcription from original backup if available
+export const clearOptimizedTranscription = os
+    .input(z.object({ mediaId: z.string() }))
+    .handler(async ({ input }) => {
+        const where = eq(schema.media.id, input.mediaId)
+        await db.update(schema.media).set({ optimizedTranscription: null }).where(where)
+        return { success: true }
     })

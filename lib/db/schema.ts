@@ -39,6 +39,7 @@ export const media = sqliteTable('media', {
 	audioFilePath: text('audio_file_path'),
 	rawMetadataPath: text('raw_metadata_path'),
 	transcription: text('transcription'),
+	optimizedTranscription: text('optimized_transcription'),
 	transcriptionWords: text('transcription_words', { mode: 'json' }).$type<TranscriptionWord[]>(),
 	translation: text('translation'),
 	videoWithSubtitlesPath: text('video_with_subtitles_path'),

@@ -14,6 +14,7 @@ export interface MediaItem {
     audioFilePath?: string | null
     rawMetadataPath?: string | null
     transcription?: string | null
+    optimizedTranscription?: string | null
     transcriptionWords?: Array<{ word: string; start: number; end: number }> | null
     translation?: string | null
     videoWithSubtitlesPath?: string | null

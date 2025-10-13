@@ -105,6 +105,10 @@ export default function SubtitlesPage() {
 						selectedModel,
 						selectedProvider
 					})
+					// 确保媒体详情刷新，带回 transcriptionWords
+					queryClient.invalidateQueries({
+						queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+					})
 				}
 			},
 			onError: (error) => {
@@ -112,6 +116,31 @@ export default function SubtitlesPage() {
 			},
 		}),
 	)
+
+	// 优化转录 mutation（覆盖 transcription）
+	const optimizeMutation = useMutation(
+		queryOrpc.subtitle.optimizeTranscription.mutationOptions({
+			onSuccess: (data) => {
+				// 刷新媒体数据，带回 optimizedTranscription
+				queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+				})
+			},
+		}),
+	)
+
+
+    // 清除优化后的转录
+    const clearOptimizedMutation = useMutation(
+        queryOrpc.subtitle.clearOptimizedTranscription.mutationOptions({
+            onSuccess: () => {
+                // 回退到原始 transcription（刷新媒体详情）
+                queryClient.invalidateQueries({
+                    queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+                })
+            },
+        }),
+    )
 
 	// 翻译mutation
 	const translateMutation = useMutation(
@@ -286,14 +315,26 @@ export default function SubtitlesPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Step1Transcribe
-							selectedModel={selectedModel}
-							selectedProvider={selectedProvider}
-							onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
-							onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
-							isPending={transcribeMutation.isPending}
-							onStart={handleStartTranscription}
-							transcription={workflowState.transcription || ''}
+							<Step1Transcribe
+								selectedModel={selectedModel}
+								selectedProvider={selectedProvider}
+								onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
+								onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
+								isPending={transcribeMutation.isPending}
+								onStart={handleStartTranscription}
+								transcription={(media?.transcription ?? '')}
+								optimizedTranscription={media?.optimizedTranscription ?? undefined}
+								isClearingOptimized={clearOptimizedMutation.isPending}
+								mediaId={mediaId}
+								canOptimize={!!media?.transcriptionWords && (media.transcriptionWords as any[]).length > 0}
+								isOptimizing={optimizeMutation.isPending}
+								selectedAIModel={selectedAIModel}
+								onOptimizeModelChange={(m) => updateWorkflowState({ selectedAIModel: m })}
+							onOptimize={(params) => {
+								updateWorkflowState({ selectedAIModel })
+								optimizeMutation.mutate({ mediaId, model: selectedAIModel, ...params })
+							}}
+                            onRestoreOriginal={() => clearOptimizedMutation.mutate({ mediaId })}
 							errorMessage={
 								transcribeMutation.isError
 									? transcribeMutation.error.message
