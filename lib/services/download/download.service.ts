@@ -19,6 +19,7 @@ import { ProviderFactory } from '~/lib/providers/provider-factory'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { fileExists as fileExists } from '~/lib/utils/file'
 import { downloadVideo } from '~/lib/providers/youtube/downloader'
+import { readMetadataSummary, summariseMetadata } from '~/lib/media/metadata'
 
 const FORWARD_PROXY_PROTOCOLS = new Set(['http', 'https', 'socks4', 'socks5'])
 
@@ -66,7 +67,7 @@ export class DownloadService implements IDownloadService {
 			let remoteAudioKey: string | null = null
 			let remoteMetadataKey: string | null = null
 
-			await runDownloadPipeline(
+			const pipelineRes = await runDownloadPipeline(
 				{ url, quality },
 				{
 					ensureDir: async (dir) => {
@@ -136,8 +137,37 @@ export class DownloadService implements IDownloadService {
 				fileExists(_context.metadataPath),
 			])
 
-			// 4) 写库
-			const metadataForDb: BasicVideoInfo | null | undefined = undefined
+			// 4) 写库（与云端一致：提炼并写入元数据摘要）
+			let metadataForDb: BasicVideoInfo | null | undefined = null
+			try {
+				const providerSource = this.getProviderSource(provider.id)
+				if (pipelineRes && pipelineRes.rawMetadata !== undefined) {
+					const summary = summariseMetadata(pipelineRes.rawMetadata as Record<string, unknown>)
+					metadataForDb = {
+						title: summary.title,
+						author: summary.author,
+						thumbnail: summary.thumbnail,
+						viewCount: summary.viewCount,
+						likeCount: summary.likeCount,
+						source: providerSource !== 'unknown' ? (providerSource as 'youtube' | 'tiktok') : undefined,
+						// raw is optional; omit to keep payload light
+					}
+				} else if (metadataExists) {
+					const summary = await readMetadataSummary(_context.metadataPath)
+					if (summary) {
+						metadataForDb = {
+							title: summary.title,
+							author: summary.author,
+							thumbnail: summary.thumbnail,
+							viewCount: summary.viewCount,
+							likeCount: summary.likeCount,
+							source: providerSource !== 'unknown' ? (providerSource as 'youtube' | 'tiktok') : undefined,
+						}
+					}
+				}
+			} catch (e) {
+				console.warn('Failed to summarize metadata for DB update (local)', e)
+			}
 			const metadataPathForDb = metadataExists ? _context.metadataPath : downloadRecord?.rawMetadataPath ?? null
 			const metadataDownloadedAt = metadataExists
 				? new Date()
@@ -157,8 +187,8 @@ export class DownloadService implements IDownloadService {
             // Mark as used to satisfy lint when not otherwise emitted
             void downloadProgress
 
-			// 5) 返回结果（标题优先数据库/默认）
-			const title = downloadRecord?.title ?? 'video'
+			// 5) 返回结果（与云端一致：优先使用提炼到的标题）
+			const title = metadataForDb?.title ?? downloadRecord?.title ?? 'video'
 			const source = this.getProviderSource(provider.id)
 			return { id, videoPath: _context.videoPath, audioPath: _context.audioPath, title, source }
         } catch (error) {

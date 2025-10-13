@@ -8,6 +8,7 @@ import { promises as fs, createWriteStream } from 'node:fs'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
+import { readMetadataSummary } from '~/lib/media/metadata'
 
 type CallbackPayload = {
   jobId: string
@@ -218,73 +219,4 @@ async function downloadArtifact(url: string, filePath: string) {
   }
 }
 
-type MetadataSummary = {
-  title?: string
-  author?: string
-  thumbnail?: string
-  viewCount?: number
-  likeCount?: number
-}
-
-async function readMetadataSummary(metadataPath: string): Promise<MetadataSummary | null> {
-  try {
-    const raw = await fs.readFile(metadataPath, 'utf8')
-    if (!raw.trim()) return null
-    const parsed = JSON.parse(raw) as Record<string, unknown>
-    return summariseMetadata(parsed)
-  } catch (error) {
-    console.error('[cf-callback] failed to read metadata summary', error)
-    return null
-  }
-}
-
-function summariseMetadata(raw: Record<string, unknown> | null | undefined): MetadataSummary {
-  if (!raw) return {}
-
-  const asString = (value: unknown): string | undefined => {
-    if (typeof value === 'string' && value.trim()) return value
-    return undefined
-  }
-
-  const asNumber = (value: unknown): number | undefined => {
-    if (typeof value === 'number' && Number.isFinite(value)) return value
-    if (typeof value === 'string' && value.trim()) {
-      const parsed = Number.parseInt(value, 10)
-      if (!Number.isNaN(parsed)) return parsed
-    }
-    return undefined
-  }
-
-  let thumbnail = asString(raw.thumbnail)
-  if (!thumbnail && Array.isArray(raw.thumbnails)) {
-    const thumbnails = raw.thumbnails as unknown[]
-    for (let i = thumbnails.length - 1; i >= 0; i--) {
-      const candidate = thumbnails[i]
-      if (
-        candidate &&
-        typeof candidate === 'object' &&
-        candidate !== null &&
-        typeof (candidate as { url?: unknown }).url === 'string' &&
-        (candidate as { url: string }).url.trim()
-      ) {
-        thumbnail = (candidate as { url: string }).url
-        break
-      }
-    }
-  }
-
-  const author =
-    asString(raw.uploader) ??
-    asString(raw.channel) ??
-    asString(raw.artist) ??
-    asString(raw.owner) ??
-    undefined
-
-  return {
-    title: asString(raw.title),
-    author,
-    thumbnail,
-    viewCount: asNumber(raw['view_count'] ?? raw['viewCount']),
-    likeCount: asNumber(raw['like_count'] ?? raw['likeCount']),
-  }
-}
+// summariseMetadata is now provided by lib/media/metadata.ts and used internally by readMetadataSummary
