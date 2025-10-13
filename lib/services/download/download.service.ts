@@ -13,15 +13,14 @@ import type { BasicVideoInfo } from '~/lib/media/types'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { db, schema, createMediaUpdateData } from '~/lib/db'
 import { extractAudio } from '~/lib/media'
-import { runDownloadPipeline } from '@app/media-core'
+import { runDownloadPipeline, summariseMetadata, readMetadataSummary, isForwardProxyProtocolSupported, buildForwardProxyUrl } from '@app/media-core'
 import { downloadVideo as coreDownloadVideo, extractAudio as coreExtractAudio } from '@app/media-node'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { fileExists as fileExists } from '~/lib/utils/file'
 import { downloadVideo } from '~/lib/providers/youtube/downloader'
-import { readMetadataSummary, summariseMetadata } from '~/lib/media/metadata'
 
-const FORWARD_PROXY_PROTOCOLS = new Set(['http', 'https', 'socks4', 'socks5'])
+// use helpers from @app/media-core/proxy
 
 export class DownloadService implements IDownloadService {
 	private readonly operationDir: string = OPERATIONS_DIR
@@ -279,7 +278,7 @@ export class DownloadService implements IDownloadService {
 				return this.proxyUrl
 			}
 
-			if (!FORWARD_PROXY_PROTOCOLS.has(proxy.protocol)) {
+			if (!isForwardProxyProtocolSupported(proxy.protocol)) {
 				console.warn(
 					'DownloadService',
 					`Proxy protocol "${proxy.protocol}" is not supported for direct forwarding; falling back to default proxy.`,
@@ -287,13 +286,14 @@ export class DownloadService implements IDownloadService {
 				return this.proxyUrl
 			}
 
-			// Construct proxy URL
-			let auth = ''
-			if (proxy.username && proxy.password) {
-				auth = `${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@`
-			}
-
-			return `${proxy.protocol}://${auth}${proxy.server}:${proxy.port}`
+			// Construct proxy URL via shared helper
+			return buildForwardProxyUrl({
+				protocol: proxy.protocol as any,
+				server: proxy.server,
+				port: proxy.port,
+				username: proxy.username ?? undefined,
+				password: proxy.password ?? undefined,
+			})
 		} catch (error) {
 			console.error('Failed to get proxy configuration:', error)
 			return this.proxyUrl

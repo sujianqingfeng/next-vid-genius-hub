@@ -8,7 +8,7 @@ import { promises as fs, createWriteStream } from 'node:fs'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
-import { readMetadataSummary } from '~/lib/media/metadata'
+import { readMetadataSummary } from '@app/media-core'
 
 type CallbackPayload = {
   jobId: string
@@ -219,4 +219,4 @@ async function downloadArtifact(url: string, filePath: string) {
   }
 }
 
-// summariseMetadata is now provided by lib/media/metadata.ts and used internally by readMetadataSummary
+// summariseMetadata is provided by @app/media-core and used internally by readMetadataSummary

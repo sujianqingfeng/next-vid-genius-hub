@@ -32,6 +32,12 @@ export declare function runDownloadPipeline(
 
 declare const _default: {
   runDownloadPipeline: typeof runDownloadPipeline
+  runCommentsPipeline: typeof runCommentsPipeline
+  summariseMetadata: typeof summariseMetadata
+  readMetadataSummary: typeof readMetadataSummary
+  isForwardProxyProtocolSupported: typeof isForwardProxyProtocolSupported
+  buildForwardProxyUrl: typeof buildForwardProxyUrl
+  resolveForwardProxy: typeof resolveForwardProxy
 }
 
 export default _default
@@ -65,3 +71,19 @@ export interface ArtifactStore {
 }
 export type CommentsDownloader = (input: CommentsPipelineRequest) => Promise<unknown[]>
 export type ProgressReporter = (event: ProgressEvent) => void
+
+// Metadata helpers
+export interface MetadataSummary {
+  title?: string
+  author?: string
+  thumbnail?: string
+  viewCount?: number
+  likeCount?: number
+}
+export declare function summariseMetadata(raw: Record<string, unknown> | null | undefined): MetadataSummary
+export declare function readMetadataSummary(metadataPath: string): Promise<MetadataSummary | null>
+
+// Proxy helpers
+export declare function isForwardProxyProtocolSupported(protocol: string): boolean
+export declare function buildForwardProxyUrl(args: { protocol: 'http' | 'https' | 'socks4' | 'socks5'; server: string; port: number | string; username?: string; password?: string }): string
+export declare function resolveForwardProxy(args?: { proxy?: { protocol: string; server: string; port: number | string; username?: string; password?: string }; defaultProxyUrl?: string; logger?: { warn?: (...args: any[]) => any; info?: (...args: any[]) => any; log?: (...args: any[]) => any } }): string | undefined

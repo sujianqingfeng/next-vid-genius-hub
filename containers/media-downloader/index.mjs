@@ -14,6 +14,7 @@ import {
   downloadVideo as coreDownloadVideo,
   extractAudio as coreExtractAudio,
 } from '@app/media-node'
+import { summariseMetadata, resolveForwardProxy as resolveForwardProxyCore } from '@app/media-core'
 import {
   downloadYoutubeComments as providerDownloadYoutubeComments,
   downloadTikTokCommentsByUrl as providerDownloadTikTokComments,
@@ -499,18 +500,6 @@ function randomNonce() {
 
 // Legacy helpers removed in favor of @app/media-core
 
-function mapMetadata(raw, fallback = {}) {
-	if (!raw) return fallback
-	return {
-		title: raw.title ?? fallback.title,
-		author: raw.uploader ?? raw.channel ?? fallback.author,
-		thumbnail: raw.thumbnail ?? fallback.thumbnail,
-		viewCount: raw.view_count ?? fallback.viewCount,
-		likeCount: raw.like_count ?? fallback.likeCount,
-		duration: raw.duration ?? fallback.duration,
-	}
-}
-
 async function postUpdate(callbackUrl, body) {
 	if (!callbackUrl) return
 	const payload = JSON.stringify(body)
@@ -525,32 +514,7 @@ async function postUpdate(callbackUrl, body) {
 	}).catch(() => {})
 }
 
-async function resolveForwardProxy(engineOptions) {
-	const { proxy, defaultProxyUrl } = engineOptions || {}
-	if (proxy && proxy.server && proxy.port && proxy.protocol) {
-		if (!FORWARD_PROXY_PROTOCOLS.has(proxy.protocol)) {
-			console.warn(
-			`[media-downloader] Unsupported proxy protocol "${proxy.protocol}" for direct usage; falling back to default proxy.`,
-			)
-		} else {
-		console.log('[media-downloader] using direct forward proxy from engineOptions', {
-				server: proxy.server,
-				port: proxy.port,
-				protocol: proxy.protocol,
-				hasCredentials: Boolean(proxy.username && proxy.password),
-			})
-			let auth = ''
-			if (proxy.username && proxy.password) {
-				auth = `${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@`
-			}
-			return `${proxy.protocol}://${auth}${proxy.server}:${proxy.port}`
-		}
-	}
-	if (defaultProxyUrl) {
-	console.log('[media-downloader] falling back to defaultProxyUrl')
-	}
-	return defaultProxyUrl
-}
+// Forward proxy resolution moved to @app/media-core
 
 async function uploadArtifact(url, buffer, contentType = 'application/octet-stream') {
 	if (!url) return
@@ -631,7 +595,7 @@ async function handleRender(req, res) {
 
   const proxy = clashController
     ? clashController.proxyUrl
-    : await resolveForwardProxy(engineOptions)
+    : await resolveForwardProxyCore({ proxy: engineOptions?.proxy, defaultProxyUrl: engineOptions?.defaultProxyUrl, logger: console })
   console.log('[media-downloader] resolved proxy', { jobId, viaMihomo: Boolean(clashController), proxy })
   const tmpDir = tmpdir()
   const basePath = join(tmpDir, `${jobId}`)
@@ -736,7 +700,7 @@ async function handleRender(req, res) {
         }
       )
 
-      const finalMetadata = mapMetadata(pipelineRes?.rawMetadata || null, { quality })
+      const finalMetadata = summariseMetadata(pipelineRes?.rawMetadata || null)
       const outputs = {
         video: { key: outputVideoKey },
       }

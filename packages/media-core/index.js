@@ -1,4 +1,6 @@
 import path from 'node:path'
+import { summariseMetadata, readMetadataSummary } from './metadata.js'
+import { isForwardProxyProtocolSupported, buildForwardProxyUrl, resolveForwardProxy } from './proxy.js'
 
 const safeReport = (progress, payload) => {
 	if (typeof progress !== 'function') return
@@ -100,4 +102,17 @@ export async function runCommentsPipeline(req, env = {}, progress) {
 export default {
 	runDownloadPipeline,
 	runCommentsPipeline,
+	summariseMetadata,
+	readMetadataSummary,
+	isForwardProxyProtocolSupported,
+	buildForwardProxyUrl,
+	resolveForwardProxy,
+}
+
+export {
+	summariseMetadata,
+	readMetadataSummary,
+	isForwardProxyProtocolSupported,
+	buildForwardProxyUrl,
+	resolveForwardProxy,
 }
