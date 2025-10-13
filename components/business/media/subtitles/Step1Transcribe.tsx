@@ -120,79 +120,187 @@ interface Step1TranscribeProps {
 
 	return (
 		<div className="space-y-6">
-			{/* Configuration Section */}
-			<div className="flex flex-col sm:flex-row gap-3 items-end">
-				<div className="min-w-[140px]">
-					<label className="text-sm font-medium mb-2 block">Provider</label>
-					<Select
-						value={selectedProvider}
-						onValueChange={(value) => {
-							const newProvider = value as TranscriptionProvider
-							onProviderChange(newProvider)
-							const newModels = getAvailableModels(newProvider)
-							if (newModels.length > 0 && !newModels.includes(selectedModel)) {
-								onModelChange(newModels[0])
-							}
-						}}
-						disabled={isPending}
-					>
-						<SelectTrigger>
-							<SelectValue>
-								<div className="flex items-center gap-2">
-									{getProviderIcon(selectedProvider)}
-									{getProviderLabel(selectedProvider)}
-								</div>
-							</SelectValue>
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="local">
-								<div className="flex items-center gap-2">
-									<Server className="h-4 w-4" />
-									Local
-								</div>
-							</SelectItem>
-							<SelectItem value="cloudflare">
-								<div className="flex items-center gap-2">
-									<Cloud className="h-4 w-4" />
-									Cloudflare
-								</div>
-							</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-
-				<div className="min-w-[140px]">
-					<label className="text-sm font-medium mb-2 block">Model</label>
-					<Select
-						value={selectedModel}
-						onValueChange={(value) => onModelChange(value as WhisperModel)}
-						disabled={isPending}
-					>
-						<SelectTrigger>
-							<SelectValue placeholder="Select model" />
-						</SelectTrigger>
-						<SelectContent>
-							{availableModels.map((model) => (
-								<SelectItem key={model} value={model}>
-									{getModelLabel(model)}
+			{/* Transcription Controls */}
+			<div className="space-y-4">
+				<div className="flex flex-col sm:flex-row gap-3 items-end">
+					<div className="min-w-[140px]">
+						<label className="text-sm font-medium mb-2 block">Provider</label>
+						<Select
+							value={selectedProvider}
+							onValueChange={(value) => {
+								const newProvider = value as TranscriptionProvider
+								onProviderChange(newProvider)
+								const newModels = getAvailableModels(newProvider)
+								if (newModels.length > 0 && !newModels.includes(selectedModel)) {
+									onModelChange(newModels[0])
+								}
+							}}
+							disabled={isPending}
+						>
+							<SelectTrigger>
+								<SelectValue>
+									<div className="flex items-center gap-2">
+										{getProviderIcon(selectedProvider)}
+										{getProviderLabel(selectedProvider)}
+									</div>
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="local">
+									<div className="flex items-center gap-2">
+										<Server className="h-4 w-4" />
+										Local
+									</div>
 								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+								<SelectItem value="cloudflare">
+									<div className="flex items-center gap-2">
+										<Cloud className="h-4 w-4" />
+										Cloudflare
+									</div>
+								</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className="min-w-[140px]">
+						<label className="text-sm font-medium mb-2 block">Model</label>
+						<Select
+							value={selectedModel}
+							onValueChange={(value) => onModelChange(value as WhisperModel)}
+							disabled={isPending}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Select model" />
+							</SelectTrigger>
+							<SelectContent>
+								{availableModels.map((model) => (
+									<SelectItem key={model} value={model}>
+										{getModelLabel(model)}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+
+					<Button
+						onClick={onStart}
+						disabled={isPending}
+						className="min-w-[140px]"
+					>
+						{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+						{isPending ? 'Processing...' : 'Generate'}
+					</Button>
 				</div>
 
-				<Button
-					onClick={onStart}
-					disabled={isPending}
-					className="min-w-[140px]"
-				>
-					{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-					{isPending ? 'Processing...' : 'Generate'}
-				</Button>
+				{/* Optimization Controls - Shown when transcription exists */}
+				{transcription && canOptimize && (
+					<div className="border rounded-lg p-4 bg-muted/30 space-y-3">
+						<div className="flex items-center justify-between">
+							<h4 className="font-medium">Optimize Transcription</h4>
+							{onRestoreOriginal && props.optimizedTranscription && (
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={onRestoreOriginal}
+									disabled={!!isClearingOptimized}
+								>
+									{isClearingOptimized && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+									Clear Optimized
+								</Button>
+							)}
+						</div>
+
+						<div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+							<div>
+								<label className="text-sm font-medium mb-1 block">AI Model</label>
+								<Select
+									value={selectedAIModel}
+									onValueChange={(v) => onOptimizeModelChange?.(v as AIModelId)}
+									disabled={isOptimizing}
+								>
+									<SelectTrigger>
+										<SelectValue placeholder="Select model" />
+									</SelectTrigger>
+									<SelectContent>
+										{AIModelIds.map((id) => (
+											<SelectItem key={id} value={id}>
+												{id}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div>
+								<label className="text-sm font-medium mb-1 block">Pause Threshold (ms)</label>
+								<Input
+									type="number"
+									min={0}
+									max={5000}
+									value={pauseThresholdMs}
+									onChange={(e) => setPauseThresholdMs(Number(e.target.value) || 0)}
+								/>
+							</div>
+							<div>
+								<label className="text-sm font-medium mb-1 block">Max Sentence (ms)</label>
+								<Input
+									type="number"
+									min={1000}
+									max={30000}
+									value={maxSentenceMs}
+									onChange={(e) => setMaxSentenceMs(Number(e.target.value) || 0)}
+								/>
+							</div>
+							<div>
+								<label className="text-sm font-medium mb-1 block">Max Chars</label>
+								<Input
+									type="number"
+									min={10}
+									max={160}
+									value={maxChars}
+									onChange={(e) => setMaxChars(Number(e.target.value) || 0)}
+								/>
+							</div>
+						</div>
+
+						<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+							<div className="flex items-center gap-4">
+								<div className="flex items-center gap-2">
+									<Switch id="light-cleanup" checked={lightCleanup} onCheckedChange={setLightCleanup} />
+									<Label htmlFor="light-cleanup" className="text-sm">Light cleanup</Label>
+								</div>
+								<div className="flex items-center gap-2">
+									<Switch id="text-correct" checked={textCorrect} onCheckedChange={setTextCorrect} />
+									<Label htmlFor="text-correct" className="text-sm">Spelling/grammar</Label>
+								</div>
+							</div>
+							<Button
+								onClick={() => onOptimize?.({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect })}
+								disabled={isOptimizing}
+							>
+								{isOptimizing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+								{isOptimizing ? 'Optimizing...' : 'Apply Optimization'}
+							</Button>
+						</div>
+					</div>
+				)}
+
+				{/* Optimization unavailable message */}
+				{transcription && !canOptimize && (
+					<div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg border">
+						Optimization unavailable: per-word timings not found. Use Cloudflare transcription for optimization support.
+					</div>
+				)}
 			</div>
 
-			
-			{/* Results Section */}
+			{/* Error Message */}
+			{errorMessage && (
+				<div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+					<AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
+					<p className="text-sm text-red-700">{errorMessage}</p>
+				</div>
+			)}
+
+			{/* Results Section - Moved to bottom */}
 			{transcription && (
 				<div className="space-y-3">
 					<div className="flex items-center gap-2">
@@ -218,110 +326,6 @@ interface Step1TranscribeProps {
 							</div>
 						)}
 					</div>
-
-            {/* Optimization Controls */}
-            <div className="mt-4 space-y-3 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Optimize Transcription</h4>
-                {onRestoreOriginal && props.optimizedTranscription && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onRestoreOriginal}
-                    disabled={!!isClearingOptimized}
-                  >
-                    {isClearingOptimized && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Clear Optimized
-                  </Button>
-                )}
-              </div>
-              {!canOptimize ? (
-                <div className="text-sm text-muted-foreground">
-                  Optimization unavailable: per-word timings not found. Use Cloudflare transcription.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">AI Model</label>
-                      <Select
-                        value={selectedAIModel}
-                        onValueChange={(v) => onOptimizeModelChange?.(v as AIModelId)}
-                        disabled={isOptimizing}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select model" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {AIModelIds.map((id) => (
-                            <SelectItem key={id} value={id}>
-                              {id}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Pause Threshold (ms)</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={5000}
-                        value={pauseThresholdMs}
-                        onChange={(e) => setPauseThresholdMs(Number(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Max Sentence (ms)</label>
-                      <Input
-                        type="number"
-                        min={1000}
-                        max={30000}
-                        value={maxSentenceMs}
-                        onChange={(e) => setMaxSentenceMs(Number(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">Max Chars</label>
-                      <Input
-                        type="number"
-                        min={10}
-                        max={160}
-                        value={maxChars}
-                        onChange={(e) => setMaxChars(Number(e.target.value) || 0)}
-                      />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Switch id="light-cleanup" checked={lightCleanup} onCheckedChange={setLightCleanup} />
-                    <Label htmlFor="light-cleanup" className="text-sm">Light cleanup (optional)</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch id="text-correct" checked={textCorrect} onCheckedChange={setTextCorrect} />
-                    <Label htmlFor="text-correct" className="text-sm">Spelling/grammar correction</Label>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => onOptimize?.({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect })}
-                    disabled={isOptimizing}
-                  >
-                    {isOptimizing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    {isOptimizing ? 'Optimizing...' : 'Apply Optimization'}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-				</div>
-			)}
-
-			{/* Error Message */}
-			{errorMessage && (
-				<div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-					<AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
-					<p className="text-sm text-red-700">{errorMessage}</p>
 				</div>
 			)}
 		</div>
