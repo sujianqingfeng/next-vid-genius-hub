@@ -11,12 +11,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { type AIModelId, AIModelIds } from '~/lib/ai/models'
+import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 
 interface Step2TranslateProps {
-	selectedAIModel: AIModelId
-	onModelChange: (model: AIModelId) => void
+	selectedAIModel: ChatModelId
+	onModelChange: (model: ChatModelId) => void
 	isPending: boolean
 	onStart: () => void
 	translation: string
@@ -47,14 +47,14 @@ export function Step2Translate(props: Step2TranslateProps) {
 			<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
 				<Select
 					value={selectedAIModel}
-					onValueChange={(value) => onModelChange(value as AIModelId)}
+					onValueChange={(value) => onModelChange(value as ChatModelId)}
 					disabled={isPending}
 				>
 					<SelectTrigger className="w-full sm:w-[200px]">
 						<SelectValue placeholder="Select model" />
 					</SelectTrigger>
 					<SelectContent>
-						{AIModelIds.map((id) => (
+						{ChatModelIds.map((id) => (
 							<SelectItem key={id} value={id}>
 								{id}
 							</SelectItem>

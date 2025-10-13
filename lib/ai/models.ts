@@ -59,6 +59,10 @@ export const WhisperModelIds = whisperModels.map((m) => m.id)
 export const getChatModels = () => models.filter(m => 'modelName' in m)
 export const getTranslationModels = () => models.filter(m => 'modelName' in m)
 export const getTranscriptionModels = () => whisperModels
+
+// Language model IDs only (excluding Whisper)
+export const ChatModelIds = [...openaiModels, ...deepseekModels].map((m) => m.id)
+export type ChatModelId = (typeof openaiModels)[number]['id'] | (typeof deepseekModels)[number]['id']
 export const getDefaultChatModel = () => models.find(m => 'modelName' in m && m.id.includes('mini')) || getChatModels()[0]
 export const getDefaultTranslationModel = () => models.find(m => 'modelName' in m && m.id.includes('mini')) || getTranslationModels()[0]
 export const getDefaultTranscriptionModel = () => whisperModels[0] // Default to first whisper model

@@ -19,7 +19,7 @@ import {
 	getModelLabel,
 } from '~/lib/subtitle/config/models'
 import type { TranscriptionProvider, WhisperModel } from '~/lib/subtitle/config/models'
-import { type AIModelId, AIModelIds } from '~/lib/ai/models'
+import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
 import { useEffect, useMemo, useState } from 'react'
 
 interface Step1TranscribeProps {
@@ -37,8 +37,8 @@ interface Step1TranscribeProps {
   canOptimize?: boolean
   isOptimizing?: boolean
   isClearingOptimized?: boolean
-  selectedAIModel?: AIModelId
-  onOptimizeModelChange?: (model: AIModelId) => void
+  selectedAIModel?: ChatModelId
+  onOptimizeModelChange?: (model: ChatModelId) => void
   onOptimize?: (params: { pauseThresholdMs: number; maxSentenceMs: number; maxChars: number; lightCleanup?: boolean; textCorrect?: boolean }) => void
   // new
   // spelling/grammar correction without changing VTT structure
@@ -215,14 +215,14 @@ interface Step1TranscribeProps {
 								<label className="text-sm font-medium mb-1 block">AI Model</label>
 								<Select
 									value={selectedAIModel}
-									onValueChange={(v) => onOptimizeModelChange?.(v as AIModelId)}
+									onValueChange={(v) => onOptimizeModelChange?.(v as ChatModelId)}
 									disabled={isOptimizing}
 								>
 									<SelectTrigger>
 										<SelectValue placeholder="Select model" />
 									</SelectTrigger>
 									<SelectContent>
-										{AIModelIds.map((id) => (
+										{ChatModelIds.map((id) => (
 											<SelectItem key={id} value={id}>
 												{id}
 											</SelectItem>

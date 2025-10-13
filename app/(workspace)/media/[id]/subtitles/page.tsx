@@ -28,7 +28,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from '~/components/ui/card'
-import { type AIModelId, AIModelIds } from '~/lib/ai/models'
+import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
 import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { getDefaultModel } from '~/lib/subtitle/config/models'
@@ -69,7 +69,7 @@ export default function SubtitlesPage() {
 	// 设置默认值
 	const selectedModel = workflowState.selectedModel as WhisperModel || getDefaultModel('local')
 	const selectedProvider = workflowState.selectedProvider as TranscriptionProvider || 'local'
-	const selectedAIModel = workflowState.selectedAIModel as AIModelId || AIModelIds[0]
+	const selectedAIModel = workflowState.selectedAIModel as ChatModelId || ChatModelIds[0]
 
 	// 渲染后端选择（local | cloud）
 	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>(

@@ -18,7 +18,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
-import { AIModelId, AIModelIds } from '~/lib/ai'
+import { ChatModelId, ChatModelIds } from '~/lib/ai'
 import { extractVideoId } from '~/lib/providers/youtube'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
@@ -28,7 +28,7 @@ export default function CommentsPage() {
 	const id = params.id as string
 	const queryClient = useQueryClient()
 	const [pages, setPages] = useState('3')
-	const [model, setModel] = useState<AIModelId>(AIModelIds[0] as AIModelId)
+	const [model, setModel] = useState<ChatModelId>(ChatModelIds[0] as ChatModelId)
 
 	// Download comments backend toggle (local/cloud)
 	const [commentsBackend, setCommentsBackend] = useState<'local' | 'cloud'>('cloud')
@@ -322,12 +322,12 @@ export default function CommentsPage() {
 										<h3 className="font-medium">Translate Comments</h3>
 									</div>
 									<div className="flex items-center gap-3">
-										<Select value={model} onValueChange={(v) => setModel(v as AIModelId)}>
+										<Select value={model} onValueChange={(v) => setModel(v as ChatModelId)}>
 											<SelectTrigger className="flex-1">
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
-												{AIModelIds.map((modelId) => (
+												{ChatModelIds.map((modelId) => (
 													<SelectItem key={modelId} value={modelId}>
 														{modelId}
 													</SelectItem>
