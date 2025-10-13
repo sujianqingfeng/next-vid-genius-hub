@@ -143,45 +143,70 @@ async function handleRender(req, res) {
     const overlayOut = join(tmpdir(), `${jobId}_overlay.mp4`)
     const outFile = join(tmpdir(), `${jobId}_out.mp4`)
 
+    console.log('[remotion] downloading source video from:', inputVideoUrl.split('?')[0])
     {
       const r = await undiciFetch(inputVideoUrl)
       if (!r.ok) throw new Error(`download source failed: ${r.status}`)
       const buf = Buffer.from(await r.arrayBuffer())
+      console.log(`[remotion] source video downloaded: ${(buf.length / 1024 / 1024).toFixed(2)} MB`)
       writeFileSync(inFile, buf)
     }
+    console.log('[remotion] downloading comments data from:', inputDataUrl.split('?')[0])
     {
       const r = await undiciFetch(inputDataUrl)
       if (!r.ok) throw new Error(`download comments-data failed: ${r.status}`)
       const txt = await r.text()
+      console.log(`[remotion] comments data downloaded: ${(txt.length / 1024).toFixed(2)} KB`)
       writeFileSync(dataJson, txt)
     }
 
     // Parse input data
+    console.log('[remotion] parsing comments data')
     const { videoInfo, comments } = JSON.parse(readFileSync(dataJson, 'utf8'))
+    console.log(`[remotion] parsed ${comments?.length || 0} comments`)
 
     // Inline remote images to avoid <Img> network stalls inside headless browser
+    console.log(`[remotion] inlining remote images (1 video + ${comments?.length || 0} comment thumbnails)`)
     const PROXY_URL = process.env.PROXY_URL
-    const inlineRemoteImage = (url) => inlineRemoteImageFromPkg(url, { proxyUrl: PROXY_URL })
+    const inlineRemoteImage = (url) => inlineRemoteImageFromPkg(url, { proxyUrl: PROXY_URL, timeoutMs: 5000 })
     let inlineOk = 0, inlineFail = 0
+    
+    // Download video thumbnail
     const preparedVideoInfo = { ...videoInfo, thumbnail: await inlineRemoteImage(videoInfo?.thumbnail).then(v => { if (v) inlineOk++; else inlineFail++; return v }) }
+    
+    // Download comment thumbnails in batches of 10 concurrent requests
     const preparedComments = []
-    for (const c of comments || []) {
-      const inlined = await inlineRemoteImage(c?.authorThumbnail)
-      if (inlined) inlineOk++; else inlineFail++
-      preparedComments.push({ ...c, authorThumbnail: inlined || undefined })
+    const batchSize = 10
+    for (let i = 0; i < (comments || []).length; i += batchSize) {
+      const batch = comments.slice(i, i + batchSize)
+      console.log(`[remotion] inlining batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(comments.length / batchSize)} (${i + 1}-${Math.min(i + batchSize, comments.length)}/${comments.length})`)
+      const inlinedBatch = await Promise.all(
+        batch.map(async (c) => {
+          const inlined = await inlineRemoteImage(c?.authorThumbnail)
+          if (inlined) inlineOk++; else inlineFail++
+          return { ...c, authorThumbnail: inlined || undefined }
+        })
+      )
+      preparedComments.push(...inlinedBatch)
     }
-    console.log(`[remotion] images inlined ok=${inlineOk} fail=${inlineFail}`)
+    const total = inlineOk + inlineFail
+    const successRate = total > 0 ? ((inlineOk / total) * 100).toFixed(1) : '0.0'
+    console.log(`[remotion] images inlined: ok=${inlineOk} fail=${inlineFail} (${successRate}% success)`)
 
     // Build overlay via Remotion
     await progress('running', 0.15)
     const tmpOut = join(tmpdir(), `${jobId}_bundle`)
+    console.log('[remotion] bundling Remotion project...')
     const serveUrl = await bundle({ entryPoint: join(process.cwd(), 'remotion', 'index.ts'), outDir: tmpOut, publicDir: join(process.cwd(), 'public'), enableCaching: true })
+    console.log('[remotion] bundle complete, building timeline')
     const { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, totalDurationSeconds, coverDurationSeconds } = buildCommentTimeline(preparedComments, REMOTION_FPS)
+    console.log(`[remotion] timeline: cover=${coverDurationSeconds}s total=${totalDurationSeconds}s`)
     const inputProps = { videoInfo: preparedVideoInfo, comments: preparedComments, coverDurationInFrames, commentDurationsInFrames, fps: REMOTION_FPS }
+    console.log('[remotion] getting compositions...')
     const compositions = await getCompositions(serveUrl, { inputProps })
     const composition = compositions.find((c) => c.id === 'CommentsVideo')
     if (!composition) throw new Error('Remotion composition "CommentsVideo" not found')
-    console.log('[remotion] composition ok. frames=', totalDurationInFrames, 'fps=', REMOTION_FPS)
+    console.log('[remotion] composition ready. frames=', totalDurationInFrames, 'fps=', REMOTION_FPS)
     let lastRenderProgress = -1
     await renderMedia({
       composition: { ...composition, durationInFrames: totalDurationInFrames, fps: REMOTION_FPS },
@@ -206,6 +231,7 @@ async function handleRender(req, res) {
 
     // Compose overlay with source video via FFmpeg
     await progress('running', 0.8)
+    console.log('[remotion] starting FFmpeg composition...')
     const ffArgs = buildComposeArgs({
       overlayPath: overlayOut,
       sourceVideoPath: inFile,
@@ -216,7 +242,7 @@ async function handleRender(req, res) {
       preset: 'veryfast',
     })
     await execFFmpegWithProgress(ffArgs, totalDurationSeconds)
-    console.log('[remotion] ffmpeg compose done')
+    console.log('[remotion] FFmpeg composition complete')
     try { rmSync(tmpOut, { recursive: true, force: true }) } catch {}
 
     await progress('uploading', 0.95)
