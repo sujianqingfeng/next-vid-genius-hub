@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Download, Link, Loader2 } from 'lucide-react'
+import { Download, Link, Loader2, Cloud, HardDrive } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -25,6 +25,7 @@ export default function NewDownloadPage() {
 	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
 	const [cloudMediaId, setCloudMediaId] = useState<string | null>(null)
 	const [lastCloudStatus, setLastCloudStatus] = useState<string | null>(null)
+	
 	const router = useRouter()
 
 	const downloadMutation = useMutation({
@@ -142,30 +143,31 @@ export default function NewDownloadPage() {
 	}, [cloudStatusQuery.data?.status, cloudStatusQuery.data?.message, cloudJobId, lastCloudStatus])
 
 	return (
-		<div className="flex items-center justify-center min-h-screen bg-background p-4">
-			<div className="w-full max-w-md space-y-8">
+		<div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
+			<div className="w-full max-w-lg">
 				{/* Header */}
-				<div className="text-center space-y-2">
-					<div className="inline-flex items-center justify-center w-12 h-12 bg-primary rounded-full mb-4">
-						<Download className="w-6 h-6 text-primary-foreground" />
+				<div className="text-center mb-8">
+					<div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
+						<Download className="w-8 h-8 text-primary" />
 					</div>
-					<h1 className="text-2xl font-semibold">Download Video</h1>
-					<p className="text-sm text-muted-foreground">
+					<h1 className="text-3xl font-bold mb-2">Download Video</h1>
+					<p className="text-muted-foreground">
 						YouTube and TikTok videos
 					</p>
 				</div>
 
-				{/* Backend Selection */}
-				<div className="flex items-center justify-center gap-3">
-					<span className="text-sm text-muted-foreground">Backend:</span>
-					<div className="inline-flex rounded-md border bg-muted p-1">
+				{/* Main Card */}
+				<div className="bg-card border rounded-2xl shadow-sm p-6 space-y-6">
+					{/* Backend Selection */}
+					<div className="flex gap-2 p-1 bg-muted rounded-lg">
 						<Button
 							type="button"
 							variant={backend === 'cloud' ? 'default' : 'ghost'}
 							size="sm"
 							onClick={() => setBackend('cloud')}
-							className="px-4"
+							className="flex-1 gap-2"
 						>
+							<Cloud className="w-4 h-4" />
 							Cloud
 						</Button>
 						<Button
@@ -173,136 +175,137 @@ export default function NewDownloadPage() {
 							variant={backend === 'local' ? 'default' : 'ghost'}
 							size="sm"
 							onClick={() => setBackend('local')}
-							className="px-4"
+							className="flex-1 gap-2"
 						>
+							<HardDrive className="w-4 h-4" />
 							Local
 						</Button>
 					</div>
-				</div>
 
-				{/* Form */}
-				<form action={formAction} className="space-y-6">
-					{/* URL Input */}
-					<div className="space-y-2">
-						<label htmlFor="url" className="text-sm font-medium">
-							Video URL
-						</label>
-						<div className="relative">
-							<Link className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-							<Input
-								id="url"
-								name="url"
-								type="url"
-								placeholder="https://youtube.com/watch?v=..."
-								required
+					{/* Form */}
+					<form action={formAction} className="space-y-4">
+						{/* URL Input */}
+						<div>
+							<label htmlFor="url" className="text-sm font-medium mb-2 block">
+								Video URL
+							</label>
+							<div className="relative">
+								<Link className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+								<Input
+									id="url"
+									name="url"
+									type="url"
+									placeholder="https://youtube.com/watch?v=..."
+									required
+									disabled={isSubmitting}
+									className="pl-10 h-12"
+								/>
+							</div>
+						</div>
+
+						{/* Quality Selection */}
+						<div>
+							<label htmlFor="quality" className="text-sm font-medium mb-2 block">
+								Quality
+							</label>
+							<Select
+								name="quality"
+								defaultValue="1080p"
 								disabled={isSubmitting}
-								className="pl-10"
-							/>
+							>
+								<SelectTrigger className="h-10">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="1080p">1080p</SelectItem>
+									<SelectItem value="720p">720p</SelectItem>
+								</SelectContent>
+							</Select>
 						</div>
-					</div>
 
-					{/* Quality Selection */}
-					<div className="space-y-2">
-						<label htmlFor="quality" className="text-sm font-medium">
-							Quality
-						</label>
-						<Select
-							name="quality"
-							defaultValue="1080p"
+						{/* Proxy Selection */}
+						<ProxySelector
+							value={selectedProxyId}
+							onValueChange={setSelectedProxyId}
 							disabled={isSubmitting}
-						>
-							<SelectTrigger>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="1080p">1080p</SelectItem>
-								<SelectItem value="720p">720p</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
+						/>
 
-					{/* Proxy Selection */}
-					<ProxySelector
-						value={selectedProxyId}
-						onValueChange={setSelectedProxyId}
-						disabled={isSubmitting}
-					/>
-
-					{/* Error */}
-					{error && (
-						<div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-							{error}
-						</div>
-					)}
-
-					{/* Submit Button */}
-					<Button
-						type="submit"
-						disabled={isSubmitting}
-						className="w-full"
-					>
-						{isSubmitting ? (
-							<>
-								<Loader2 className="w-4 h-4 mr-2 animate-spin" />
-								{backend === 'cloud' ? 'Queueing...' : 'Downloading...'}
-							</>
-						) : (
-							<>
-								<Download className="w-4 h-4 mr-2" />
-								{backend === 'cloud' ? 'Start Cloud Download' : 'Download'}
-							</>
+						{/* Error */}
+						{error && (
+							<div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+								{error}
+							</div>
 						)}
-					</Button>
-				</form>
 
-				{/* Cloud status */}
-				{backend === 'cloud' && cloudJobId && (
-					<div className="rounded-md border border-border/40 bg-muted/40 p-4 text-sm text-muted-foreground space-y-1">
-					<div className="font-medium text-foreground">Cloud job in progress</div>
-					<div>Job ID: {cloudJobId}</div>
-					{cloudMediaId && <div>Media ID: {cloudMediaId}</div>}
-					<div>
-						Status:{' '}
-						{cloudStatusQuery.isLoading
-							? 'Loading...'
-							: statusLabel ?? cloudStatusQuery.data?.status ?? 'queued'}
-						{typeof cloudStatusQuery.data?.progress === 'number'
-							? ` (${Math.round(cloudStatusQuery.data.progress * 100)}%)`
-							: ''}
-					</div>
-					{phaseLabel && <div>Phase: {phaseLabel}</div>}
-					{outputs?.video?.key && (
-						<div>
-							Video key: <code className="break-all text-xs">{outputs.video.key}</code>
-						</div>
-					)}
-					{outputs?.audio?.key && (
-						<div>
-							Audio key: <code className="break-all text-xs">{outputs.audio.key}</code>
-						</div>
-					)}
-					{outputs?.metadata?.key && (
-						<div>
-							Metadata key: <code className="break-all text-xs">{outputs.metadata.key}</code>
-						</div>
-					)}
-					{outputs?.metadata?.key && (
-						<div className="text-xs text-emerald-600">
-							Raw metadata has been uploaded via the cloud proxy and is ready for downstream steps.
-						</div>
-					)}
-					{cloudStatusQuery.data?.message && (
-						<div className="text-destructive">
-							{cloudStatusQuery.data.message}
-						</div>
-					)}
-					</div>
-				)}
+						{/* Submit Button */}
+						<Button
+							type="submit"
+							disabled={isSubmitting}
+							className="w-full h-12 text-base font-medium"
+						>
+							{isSubmitting ? (
+								<>
+									<Loader2 className="w-5 h-5 mr-2 animate-spin" />
+									{backend === 'cloud' ? 'Queueing...' : 'Downloading...'}
+								</>
+							) : (
+								<>
+									<Download className="w-5 h-5 mr-2" />
+									{backend === 'cloud' ? 'Start Cloud Download' : 'Download'}
+								</>
+							)}
+						</Button>
+					</form>
 
-				{/* Help Text */}
-				<p className="text-xs text-muted-foreground text-center">
-					Max duration: 2 hours • File size: 2GB
-				</p>
+					{/* Cloud Status */}
+					{backend === 'cloud' && cloudJobId && (
+						<div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
+							<div className="font-medium flex items-center gap-2">
+								<Cloud className="w-4 h-4" />
+								Cloud Download Status
+							</div>
+							<div className="grid grid-cols-2 gap-2 text-xs">
+								<div>
+									<span className="text-muted-foreground">Job ID:</span>
+									<span className="ml-1 font-mono">{cloudJobId.slice(0, 8)}...</span>
+								</div>
+								{cloudMediaId && (
+									<div>
+										<span className="text-muted-foreground">Media ID:</span>
+										<span className="ml-1 font-mono">{cloudMediaId.slice(0, 8)}...</span>
+									</div>
+								)}
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Status:</span>
+								<span className="font-medium">
+									{cloudStatusQuery.isLoading
+										? 'Loading...'
+										: statusLabel ?? cloudStatusQuery.data?.status ?? 'queued'}
+									{typeof cloudStatusQuery.data?.progress === 'number'
+										? ` (${Math.round(cloudStatusQuery.data.progress * 100)}%)`
+										: ''}
+								</span>
+							</div>
+							{phaseLabel && (
+								<div className="flex items-center justify-between">
+									<span className="text-muted-foreground">Phase:</span>
+									<span>{phaseLabel}</span>
+								</div>
+							)}
+							{cloudStatusQuery.data?.message && (
+								<div className="text-destructive text-xs mt-2">
+									{cloudStatusQuery.data.message}
+								</div>
+							)}
+						</div>
+					)}
+
+					{/* Help Text */}
+					<p className="text-xs text-muted-foreground text-center">
+						Max duration: 2 hours • File size: 2GB
+					</p>
+				</div>
 			</div>
 		</div>
 	)
