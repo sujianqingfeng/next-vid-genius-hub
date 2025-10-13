@@ -101,10 +101,11 @@ export function getOverlayFilter({ coverDurationSeconds, totalDurationSeconds, l
   const actualWidth = Math.round(slot.width)
   const actualHeight = Math.round(slot.height)
   const delayMs = Math.round(coverDurationSeconds * 1000)
+  const videoDurationSeconds = totalDurationSeconds - coverDurationSeconds
   const filterGraph = [
-    `[1:v]fps=${fps},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_src]`,
+    `[1:v]loop=loop=-1:size=32767:start=0,fps=${fps},trim=duration=${videoDurationSeconds},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_src]`,
     `[0:v][scaled_src]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
-    `[1:a]adelay=${delayMs}|${delayMs},atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS[delayed_audio]`,
+    `[1:a]aloop=loop=-1:size=2e+09,atrim=0:${videoDurationSeconds},adelay=${delayMs}|${delayMs},asetpts=PTS-STARTPTS[delayed_audio]`,
   ].join(';')
   return { filterGraph, actualX, actualY, actualWidth, actualHeight, delayMs }
 }

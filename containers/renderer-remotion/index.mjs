@@ -182,6 +182,7 @@ async function handleRender(req, res) {
     const composition = compositions.find((c) => c.id === 'CommentsVideo')
     if (!composition) throw new Error('Remotion composition "CommentsVideo" not found')
     console.log('[remotion] composition ok. frames=', totalDurationInFrames, 'fps=', REMOTION_FPS)
+    let lastRenderProgress = -1
     await renderMedia({
       composition: { ...composition, durationInFrames: totalDurationInFrames, fps: REMOTION_FPS },
       serveUrl,
@@ -193,7 +194,13 @@ async function handleRender(req, res) {
       envVariables: { REMOTION_DISABLE_CHROMIUM_PROVIDED_HEADLESS_WARNING: 'true' },
       timeoutInMilliseconds: 120000,
       onProgress: ({ progress, renderedFrames, encodedFrames }) => {
-        if (typeof progress === 'number') console.log(`[remotion] render progress=${(progress*100).toFixed(1)}% frames=${renderedFrames}/${encodedFrames}`)
+        if (typeof progress === 'number') {
+          const currentProgress = Math.round(progress * 100)
+          if (currentProgress !== lastRenderProgress && (currentProgress % 5 === 0 || currentProgress === 100)) {
+            lastRenderProgress = currentProgress
+            console.log(`[remotion] render progress=${currentProgress}% frames=${renderedFrames}/${encodedFrames}`)
+          }
+        }
       },
     })
 
