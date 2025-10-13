@@ -7,6 +7,7 @@
     "@remotion/cli": "^4.0.167",
     "@remotion/bundler": "^4.0.167",
     "@remotion/renderer": "^4.0.167",
+    "@app/media-comments": "file:./packages/media-comments",
     "lucide-react": "^0.474.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

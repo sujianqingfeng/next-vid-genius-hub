@@ -14,6 +14,8 @@ WORKDIR /app
 # Install minimal deps first for better layer caching
 # When building with context at repo root, copy the container's manifest
 COPY containers/renderer-remotion/package.json ./package.json
+# Bring in local workspace package for installation via file: dependency
+COPY packages/media-comments ./packages/media-comments
 RUN npm i --omit=dev
 
 # Copy runtime files

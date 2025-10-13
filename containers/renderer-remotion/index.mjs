@@ -4,9 +4,10 @@ import { join } from 'node:path'
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import crypto from 'node:crypto'
-import { fetch as undiciFetch, ProxyAgent } from 'undici'
+import { fetch as undiciFetch } from 'undici'
 import { bundle } from '@remotion/bundler'
 import { getCompositions, renderMedia } from '@remotion/renderer'
+import { buildCommentTimeline, REMOTION_FPS, inlineRemoteImage as inlineRemoteImageFromPkg, buildComposeArgs } from '@app/media-comments'
 
 const PORT = process.env.PORT || 8090
 
@@ -108,98 +109,7 @@ async function getVideoResolution(videoPath) {
   }
 }
 
-// --- Timeline estimation (port from lib/media/remotion/durations.ts) ---
-const REMOTION_FPS = 30
-const COVER_DURATION_SECONDS = 3
-const MIN_COMMENT_DURATION_SECONDS = 3
-const MAX_COMMENT_DURATION_SECONDS = 8
-const BASE_SECONDS = 2.8
-const TRANSLATION_WEIGHT = 1.2
-const CHARACTER_DIVISOR = 90
-const APPEAR_DISAPPEAR_BUFFER_SECONDS = 1.6
-const SCROLL_CONTAINER_HEIGHT = 320
-const SCROLL_SPEED_PX_PER_SEC = 30
-const MIN_SCROLL_TIME_SECONDS = 1.5
-const chineseCharRegex = /[\u4e00-\u9fff]/
-function isChinese(text) { return Boolean(text && chineseCharRegex.test(text)) }
-function estimateCommentHeight(comment) {
-  const isPrimaryChinese = isChinese(comment.content)
-  const isTranslationChinese = isChinese(comment.translatedContent)
-  const mainFontSize = isPrimaryChinese ? 52 : 26
-  const mainLineHeight = isPrimaryChinese ? 1.4 : 1.52
-  const mainLineHeightPx = mainFontSize * mainLineHeight
-  const mainLines = String(comment.content || '').split('\n').length
-  const mainHeight = mainLines * mainLineHeightPx
-  let totalHeight = mainHeight
-  if (comment.translatedContent && comment.translatedContent !== comment.content) {
-    const translationFontSize = isTranslationChinese ? 52 : 24
-    const translationLineHeight = isTranslationChinese ? 1.4 : 1.48
-    const translationLineHeightPx = translationFontSize * translationLineHeight
-    const translationLines = String(comment.translatedContent || '').split('\n').length
-    const translationHeight = translationLines * translationLineHeightPx
-    const spacingBetweenSections = 36
-    totalHeight += spacingBetweenSections + translationHeight
-  }
-  return totalHeight
-}
-function calculateScrollingDuration(contentHeight) {
-  if (contentHeight <= SCROLL_CONTAINER_HEIGHT) return 0
-  const scrollDistance = contentHeight - SCROLL_CONTAINER_HEIGHT
-  const timeNeeded = scrollDistance / SCROLL_SPEED_PX_PER_SEC
-  return Math.max(MIN_SCROLL_TIME_SECONDS, timeNeeded)
-}
-function estimateCommentDurationSeconds(comment) {
-  const contentLength = (comment.content || '').length
-  const translationLength = (comment.translatedContent || '').length
-  const weightedChars = contentLength + translationLength * TRANSLATION_WEIGHT
-  const readingDuration = BASE_SECONDS + weightedChars / CHARACTER_DIVISOR
-  const contentHeight = estimateCommentHeight(comment)
-  const scrollingDuration = calculateScrollingDuration(contentHeight)
-  const total = readingDuration + scrollingDuration + APPEAR_DISAPPEAR_BUFFER_SECONDS
-  return Math.min(MAX_COMMENT_DURATION_SECONDS, Math.max(MIN_COMMENT_DURATION_SECONDS, total))
-}
-function buildCommentTimeline(comments, fps = REMOTION_FPS) {
-  const coverDurationInFrames = Math.round(COVER_DURATION_SECONDS * fps)
-  const commentDurationsInFrames = comments.map((c) => Math.round(estimateCommentDurationSeconds(c) * fps))
-  const totalDurationInFrames = coverDurationInFrames + commentDurationsInFrames.reduce((s, f) => s + f, 0)
-  const totalDurationSeconds = totalDurationInFrames / fps
-  return { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, totalDurationSeconds, coverDurationSeconds: COVER_DURATION_SECONDS }
-}
-
-// --- Layout constants (port from remotion/layout-constants.ts) ---
-const VIDEO_WIDTH = 720
-const VIDEO_HEIGHT = 405
-const PADDING_X = 64
-const PADDING_Y = 48
-const COLUMN_GAP = 24
-const INFO_PANEL_WIDTH = 600
-const CARD_PADDING_X = 24
-const REMOTION_CANVAS_WIDTH = 1920
-const containerContentWidth = REMOTION_CANVAS_WIDTH - (PADDING_X * 2)
-const videoPanelWidth = CARD_PADDING_X * 2 + VIDEO_WIDTH
-const gridContentWidth = INFO_PANEL_WIDTH + COLUMN_GAP + videoPanelWidth
-const centerOffset = Math.max(0, (containerContentWidth - gridContentWidth) / 2)
-const videoPanelX = PADDING_X + centerOffset + INFO_PANEL_WIDTH + COLUMN_GAP
-const videoPanelY = PADDING_Y
-const VIDEO_X = videoPanelX + CARD_PADDING_X
-const VIDEO_Y = videoPanelY
-
-function getOverlayFilter({ coverDurationSeconds, totalDurationSeconds }) {
-  const actualX = Math.round(VIDEO_X)
-  const actualY = Math.round(VIDEO_Y)
-  const actualWidth = Math.round(VIDEO_WIDTH)
-  const actualHeight = Math.round(VIDEO_HEIGHT)
-  const delayMs = Math.round(coverDurationSeconds * 1000)
-  const filterGraph = [
-    // Scale source (Input 1) to the slot size
-    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_src]`,
-    // Composite source on top of overlay canvas (Input 0) within the time window
-    `[0:v][scaled_src]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
-    // Delay source audio by cover duration, then trim to total duration to avoid hang
-    `[1:a]adelay=${delayMs}|${delayMs},atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS[delayed_audio]`,
-  ].join(';')
-  return { filterGraph, actualX, actualY, actualWidth, actualHeight }
-}
+// (timeline/layout helpers are provided by @app/media-comments)
 
 async function handleRender(req, res) {
   let body = ''
@@ -251,38 +161,7 @@ async function handleRender(req, res) {
 
     // Inline remote images to avoid <Img> network stalls inside headless browser
     const PROXY_URL = process.env.PROXY_URL
-    const dispatcher = PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined
-    const inferContentTypeFromUrl = (url) => {
-      try {
-        const ext = (new URL(url).pathname.split('.').pop() || '').toLowerCase()
-        switch (ext) {
-          case 'png': return 'image/png'
-          case 'webp': return 'image/webp'
-          case 'gif': return 'image/gif'
-          case 'bmp': return 'image/bmp'
-          case 'svg': return 'image/svg+xml'
-          case 'jpeg':
-          case 'jpg': return 'image/jpeg'
-          default: return undefined
-        }
-      } catch { return undefined }
-    }
-    async function inlineRemoteImage(url) {
-      if (!url) return undefined
-      const isRemote = /^https?:\/\//i.test(String(url))
-      if (!isRemote) return url
-      try {
-        const r = await undiciFetch(url, { signal: AbortSignal.timeout(15000), dispatcher })
-        if (!r.ok) throw new Error(String(r.status))
-        const arrayBuffer = await r.arrayBuffer()
-        const contentType = r.headers.get('content-type') || inferContentTypeFromUrl(url) || 'image/jpeg'
-        const dataUrl = `data:${contentType};base64,${Buffer.from(arrayBuffer).toString('base64')}`
-        return dataUrl
-      } catch (e) {
-        console.warn('[remotion] inline image failed:', url, e?.message || e)
-        return undefined
-      }
-    }
+    const inlineRemoteImage = (url) => inlineRemoteImageFromPkg(url, { proxyUrl: PROXY_URL })
     let inlineOk = 0, inlineFail = 0
     const preparedVideoInfo = { ...videoInfo, thumbnail: await inlineRemoteImage(videoInfo?.thumbnail).then(v => { if (v) inlineOk++; else inlineFail++; return v }) }
     const preparedComments = []
@@ -320,24 +199,15 @@ async function handleRender(req, res) {
 
     // Compose overlay with source video via FFmpeg
     await progress('running', 0.8)
-    const { filterGraph } = getOverlayFilter({ coverDurationSeconds, totalDurationSeconds })
-    console.log('[remotion] ffmpeg filterGraph=', filterGraph)
-    const ffArgs = [
-      '-y','-hide_banner','-loglevel','error',
-      '-progress','pipe:2',
-      // Input 0: overlay canvas, Input 1: source video (match local render)
-      '-i', overlayOut,
-      '-i', inFile,
-      '-filter_complex', filterGraph,
-      '-map','[composited]',
-      // Map delayed & trimmed source audio
-      '-map','[delayed_audio]?',
-      '-vsync','cfr','-r', String(REMOTION_FPS),
-      '-c:v','libx264','-c:a','aac','-b:a','192k',
-      '-preset','veryfast',
-      '-pix_fmt','yuv420p','-movflags','+faststart','-shortest',
-      outFile,
-    ]
+    const ffArgs = buildComposeArgs({
+      overlayPath: overlayOut,
+      sourceVideoPath: inFile,
+      outputPath: outFile,
+      fps: REMOTION_FPS,
+      coverDurationSeconds,
+      totalDurationSeconds,
+      preset: 'veryfast',
+    })
     await execFFmpegWithProgress(ffArgs, totalDurationSeconds)
     console.log('[remotion] ffmpeg compose done')
     try { rmSync(tmpOut, { recursive: true, force: true }) } catch {}

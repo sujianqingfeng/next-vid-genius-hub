@@ -64,6 +64,7 @@
     "tailwind-merge": "^3.3.1",
     "undici": "^7.16.0",
     "youtubei.js": "^15.1.1",
+    "@app/media-comments": "workspace:*",
     "@app/media-core": "workspace:*",
     "@app/media-node": "workspace:*",
     "@app/media-providers": "workspace:*",

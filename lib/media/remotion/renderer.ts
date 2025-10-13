@@ -1,17 +1,22 @@
 import { mkdtemp, rm } from 'node:fs/promises'
+import { createWriteStream } from 'node:fs'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { bundle } from '@remotion/bundler'
 import { getCompositions, renderMedia } from '@remotion/renderer'
-import { ProxyAgent, fetch as undiciFetch } from 'undici'
 import { execa } from 'execa'
 import type { Comment, VideoInfo } from '../types'
-import { layoutConstants } from '../../../remotion/layout-constants'
-import { buildCommentTimeline, REMOTION_FPS } from './durations'
-import { PROXY_URL } from '~/lib/constants'
-
-const proxyAgent = PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined
+import { PROXY_URL, CF_ORCHESTRATOR_URL } from '~/lib/constants'
+import {
+  layoutConstants,
+  buildCommentTimeline,
+  REMOTION_FPS,
+  inlineRemoteImage as inlineRemoteImageFromPkg,
+  buildComposeArgs,
+} from '@app/media-comments'
 
 async function getVideoResolution(videoPath: string): Promise<{ width: number; height: number }> {
   try {
@@ -27,31 +32,6 @@ async function getVideoResolution(videoPath: string): Promise<{ width: number; h
   } catch (error) {
     console.warn('Failed to get video resolution, assuming 1920x1080:', error)
     return { width: 1920, height: 1080 }
-  }
-}
-
-function inferContentTypeFromUrl(url: string): string | undefined {
-  try {
-    const ext = path.extname(new URL(url).pathname).toLowerCase()
-    switch (ext) {
-      case '.png':
-        return 'image/png'
-      case '.webp':
-        return 'image/webp'
-      case '.gif':
-        return 'image/gif'
-      case '.bmp':
-        return 'image/bmp'
-      case '.svg':
-        return 'image/svg+xml'
-      case '.jpeg':
-      case '.jpg':
-        return 'image/jpeg'
-      default:
-        return undefined
-    }
-  } catch {
-    return undefined
   }
 }
 
@@ -88,40 +68,14 @@ export async function renderVideoWithRemotion({
   const entryPoint = path.join(process.cwd(), 'remotion', 'index.ts')
   const publicDir = path.join(process.cwd(), 'public')
   const inlineCache = new Map<string, string>()
-
   const inlineRemoteImage = async (url?: string | null): Promise<string | undefined> => {
-    if (!url) {
-      return undefined
-    }
-
-    const isRemote = /^https?:\/\//i.test(url)
-    if (!isRemote) {
-      return url
-    }
-
-    if (inlineCache.has(url)) {
-      return inlineCache.get(url)
-    }
-
-    try {
-      const response = await undiciFetch(url, {
-        signal: AbortSignal.timeout(15_000),
-        dispatcher: proxyAgent,
-      })
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`)
-      }
-      const arrayBuffer = await response.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
-      const contentType =
-        response.headers.get('content-type') || inferContentTypeFromUrl(url) || 'image/jpeg'
-      const dataUrl = `data:${contentType};base64,${buffer.toString('base64')}`
-      inlineCache.set(url, dataUrl)
-      return dataUrl
-    } catch (error) {
-      console.warn('Failed to inline remote image for Remotion render:', url, error)
-      return undefined
-    }
+    if (!url) return undefined
+    if (!/^https?:\/\//i.test(url)) return url
+    if (inlineCache.has(url)) return inlineCache.get(url)
+    const dataUrl = await inlineRemoteImageFromPkg(url, { proxyUrl: PROXY_URL ?? undefined })
+    if (dataUrl) inlineCache.set(url, dataUrl)
+    else console.warn('Failed to inline remote image for Remotion render:', url)
+    return dataUrl
   }
 
   const preparedVideoInfo: VideoInfo = {
@@ -198,9 +152,11 @@ export async function renderVideoWithRemotion({
     })
     onProgress?.({ stage: 'render', progress: 1 })
 
+    const localSourcePath = await materializeSourceVideo(videoPath, tempDir)
+
     await composeWithSourceVideo({
       overlayPath,
-      sourceVideoPath: videoPath,
+      sourceVideoPath: localSourcePath,
       outputPath,
       coverDurationSeconds,
       totalDurationSeconds,
@@ -219,6 +175,26 @@ export async function renderVideoWithRemotion({
   } finally {
     await rm(tempDir, { recursive: true, force: true })
   }
+}
+
+async function materializeSourceVideo(sourcePath: string, tempDir: string): Promise<string> {
+  if (!sourcePath || typeof sourcePath !== 'string') return sourcePath
+  if (!sourcePath.startsWith('remote:orchestrator:')) return sourcePath
+
+  const jobId = sourcePath.split(':').pop() || ''
+  const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
+  if (!base || !jobId) {
+    throw new Error('Remote source requires CF_ORCHESTRATOR_URL and jobId')
+  }
+
+  const target = `${base}/artifacts/${encodeURIComponent(jobId)}`
+  const outPath = path.join(tempDir, `${randomUUID()}-source.mp4`)
+  const r = await fetch(target)
+  if (!r.ok || !r.body) {
+    throw new Error(`Failed to fetch remote source video: ${r.status || 'no_body'}`)
+  }
+  await pipeline(Readable.fromWeb(r.body as unknown as ReadableStream<Uint8Array>), createWriteStream(outPath))
+  return outPath
 }
 
 async function composeWithSourceVideo({
@@ -268,54 +244,15 @@ async function composeWithSourceVideo({
   console.log('- Cover duration:', coverDurationSeconds, 'seconds')
   console.log('- Total duration:', totalDurationSeconds, 'seconds')
 
-  const delayMs = Math.round(coverDurationSeconds * 1000)
-  const filterGraph = [
-    // 将 Remotion 输出的 1920x1080 视频缩放到适配原始视频分辨率的尺寸
-    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_video]`,
-    // 将缩放后的视频叠加到原始视频的正确位置
-    `[0:v][scaled_video]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
-    // 处理音频同步
-    `[1:a]adelay=${delayMs}|${delayMs},apad[delayed_audio]`,
-  ].join(';')
-
-  // 输出 FFmpeg 滤镜链用于调试
-  console.log('FFmpeg filter graph:')
-  console.log(filterGraph)
-
-  const ffmpegArgs = [
-    '-y',
-    '-hide_banner',
-    '-loglevel',
-    'error',
-    '-progress',
-    'pipe:2',
-    '-i',
+  const ffmpegArgs = buildComposeArgs({
     overlayPath,
-    '-i',
     sourceVideoPath,
-    '-filter_complex',
-    filterGraph,
-    '-map',
-    '[composited]',
-    '-map',
-    '[delayed_audio]?',
-    '-vsync',
-    'cfr',
-    '-r',
-    String(REMOTION_FPS),
-    '-c:v',
-    'libx264',
-    '-c:a',
-    'aac',
-    '-b:a',
-    '192k',
-    '-pix_fmt',
-    'yuv420p',
-    '-movflags',
-    '+faststart',
-    '-shortest',
     outputPath,
-  ]
+    fps: REMOTION_FPS,
+    coverDurationSeconds,
+    totalDurationSeconds,
+    layout: { x: actualX, y: actualY, width: actualWidth, height: actualHeight },
+  })
 
   const totalMicroseconds = totalDurationSeconds * 1_000_000
   const child = execa('ffmpeg', ffmpegArgs, {

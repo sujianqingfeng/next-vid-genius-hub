@@ -14,6 +14,9 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^1.0.19
         version: 1.0.19(zod@4.1.11)
+      '@app/media-comments':
+        specifier: workspace:*
+        version: link:packages/media-comments
       '@app/media-core':
         specifier: workspace:*
         version: link:packages/media-core
@@ -183,6 +186,12 @@ importers:
       wrangler:
         specifier: ^4.42.1
         version: 4.42.1
+
+  packages/media-comments:
+    dependencies:
+      undici:
+        specifier: ^7.16.0
+        version: 7.16.0
 
   packages/media-core: {}
 
