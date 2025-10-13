@@ -35,6 +35,8 @@ interface Step3RenderProps {
 	translation?: string | null
 	config: SubtitleRenderConfig
 	onConfigChange: (config: SubtitleRenderConfig) => void
+	renderBackend: 'local' | 'cloud'
+	onRenderBackendChange: (backend: 'local' | 'cloud') => void
 }
 
 /**
@@ -51,6 +53,8 @@ export function Step3Render(props: Step3RenderProps) {
 		translation,
 		config,
 		onConfigChange,
+		renderBackend,
+		onRenderBackendChange,
 	} = props
 
 	// 预设状态管理
@@ -156,26 +160,27 @@ export function Step3Render(props: Step3RenderProps) {
 	}
 
 	return (
-		<div className="space-y-4">
-			{/* 主布局：左右分栏 */}
-			<div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-				{/* 左侧：视频预览区域 */}
-				<div className="flex-1 lg:max-w-2xl">
-					<VideoPreview
-						mediaId={mediaId}
-						translation={translation}
-						config={config}
-						isRendering={isRendering}
-						onTimeUpdate={handleTimeUpdate}
-						onDurationChange={handleDurationChange}
-						onVideoRef={handleVideoRef}
-					/>
-				</div>
+		<div className="space-y-6">
+			{/* 视频预览区域 - 顶部主要区域 */}
+			<div className="rounded-xl border bg-card shadow-sm">
+				<VideoPreview
+					mediaId={mediaId}
+					translation={translation}
+					config={config}
+					isRendering={isRendering}
+					onTimeUpdate={handleTimeUpdate}
+					onDurationChange={handleDurationChange}
+					onVideoRef={handleVideoRef}
+				/>
+			</div>
 
-				{/* 右侧：配置控制区域 */}
-				<div className="flex-1 lg:max-w-xl">
-					<div className="space-y-4">
-						{/* 快速预设和手动设置 - 标签页模式 */}
+			{/* 配置控制区域 - 下方紧凑布局 */}
+			<div className="grid gap-6 md:grid-cols-2">
+				{/* 左列：基础配置 */}
+				<div className="space-y-4">
+					{/* 预设选择器 */}
+					<div className="rounded-lg border bg-card p-4">
+						<h3 className="text-sm font-medium mb-3">Quick Presets</h3>
 						<SubtitleConfigControls
 							presets={SUBTITLE_RENDER_PRESETS}
 							selectedPresetId={selectedPresetId}
@@ -186,14 +191,23 @@ export function Step3Render(props: Step3RenderProps) {
 							onOpacityChange={handleOpacityChange}
 							onColorChange={handleColorChange}
 						/>
+					</div>
 
-						{/* 提示文本配置 */}
+					{/* 提示文本配置 */}
+					<div className="rounded-lg border bg-card p-4">
+						<h3 className="text-sm font-medium mb-3">Hint Text</h3>
 						<HintTextConfigControls
 							config={config.hintTextConfig}
 							onChange={handleHintTextChange}
 						/>
+					</div>
+				</div>
 
-						{/* 时间段效果管理 - 折叠式 */}
+				{/* 右列：高级配置 */}
+				<div className="space-y-4">
+					{/* 时间段效果管理 */}
+					<div className="rounded-lg border bg-card p-4">
+						<h3 className="text-sm font-medium mb-3">Time Effects</h3>
 						<TimeSegmentEffectsManager
 							effects={config.timeSegmentEffects}
 							onChange={handleTimeSegmentEffectsChange}
@@ -201,14 +215,52 @@ export function Step3Render(props: Step3RenderProps) {
 							currentTime={currentTime}
 							onPlayPreview={handlePlayPreview}
 						/>
+					</div>
 
-						{/* 渲染按钮 - 配置区域底部 */}
-						<div className="border-t pt-4">
+					{/* 渲染控制 */}
+					<div className="rounded-lg border bg-card p-4">
+						<div className="flex flex-col gap-4">
+							<div className="flex items-center justify-between">
+								<h3 className="text-sm font-medium">Render Settings</h3>
+								{translationAvailable ? (
+									<span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+										Ready
+									</span>
+								) : (
+									<span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+										Need Translation
+									</span>
+								)}
+							</div>
+							
+							{/* 渲染后端选择 */}
+							<div className="space-y-2">
+								<label className="text-xs font-medium">Backend</label>
+								<div className="inline-flex gap-2 w-full">
+									<Button
+										variant={renderBackend === 'cloud' ? 'default' : 'outline'}
+										size="sm"
+										onClick={() => onRenderBackendChange('cloud')}
+										className="flex-1"
+									>
+										Cloud
+									</Button>
+									<Button
+										variant={renderBackend === 'local' ? 'default' : 'outline'}
+										size="sm"
+										onClick={() => onRenderBackendChange('local')}
+										className="flex-1"
+									>
+										Local
+									</Button>
+								</div>
+							</div>
+
 							<Button
 								onClick={() => onStart({ ...config })}
 								disabled={isRendering || !translationAvailable}
 								size="lg"
-								className="w-full"
+								className="w-full h-11"
 							>
 								{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 								{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}

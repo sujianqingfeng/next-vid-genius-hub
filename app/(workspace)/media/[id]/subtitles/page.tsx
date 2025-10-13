@@ -346,26 +346,6 @@ export default function SubtitlesPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						{/* 渲染方式切换 */}
-						<div className="flex items-center gap-2 mb-3">
-							<span className="text-sm text-muted-foreground">Backend:</span>
-							<div className="inline-flex gap-2">
-								<Button
-									variant={renderBackend === 'cloud' ? 'default' : 'outline'}
-									size="sm"
-									onClick={() => setRenderBackend('cloud')}
-								>
-									Cloud
-								</Button>
-								<Button
-									variant={renderBackend === 'local' ? 'default' : 'outline'}
-									size="sm"
-									onClick={() => setRenderBackend('local')}
-								>
-									Local
-								</Button>
-							</div>
-						</div>
 						<Step3Render
                         isRendering={
                             renderBackend === 'cloud'
@@ -379,6 +359,8 @@ export default function SubtitlesPage() {
 							translation={workflowState.translation}
 							config={subtitleConfig}
 							onConfigChange={handleConfigChange}
+							renderBackend={renderBackend}
+							onRenderBackendChange={setRenderBackend}
 						/>
 
 						{/* 云端渲染进度显示（简单版） */}
