@@ -8,11 +8,16 @@ import { readFileSync, unlinkSync } from 'node:fs'
 import { promises as fsPromises } from 'node:fs'
 import { setTimeout as delay } from 'node:timers/promises'
 import YAML from 'yaml'
-// Removed ProxyAgent/Innertube usage; relying on @app/media-core helpers
+// Compose pipelines via shared @app/media-* packages
+// Compose pipelines with shared adapters from the monorepo packages
 import {
   downloadVideo as coreDownloadVideo,
   extractAudio as coreExtractAudio,
-} from '@app/media-core'
+} from '@app/media-node'
+import {
+  downloadYoutubeComments as providerDownloadYoutubeComments,
+  downloadTikTokCommentsByUrl as providerDownloadTikTokComments,
+} from '@app/media-providers'
 
 const PORT = process.env.PORT || 8080
 const CALLBACK_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
@@ -655,9 +660,16 @@ async function handleRender(req, res) {
       const src = (engineOptions?.source || 'youtube').toLowerCase()
       console.log('[media-downloader] comments-only: start fetch via core pipeline', { source: src, pages: maxPages, viaMihomo: Boolean(clashController), proxy })
       const { runCommentsPipeline } = await import('@app/media-core')
+      const commentsDownloader = async ({ url: commentUrl, source, pages, proxy: proxyUrl }) => {
+        if (String(source).toLowerCase() === 'tiktok') {
+          return providerDownloadTikTokComments({ url: commentUrl, pages, proxy: proxyUrl })
+        }
+        return providerDownloadYoutubeComments({ url: commentUrl, pages, proxy: proxyUrl })
+      }
       const resPipeline = await runCommentsPipeline(
         { url, source: src === 'tiktok' ? 'tiktok' : 'youtube', pages: maxPages, proxy },
         {
+          commentsDownloader,
           artifactStore: {
             uploadMetadata: async (comments) => {
               if (!outputMetadataPutUrl) return

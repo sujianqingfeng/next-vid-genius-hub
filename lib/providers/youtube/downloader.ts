@@ -3,7 +3,7 @@
 
 import { createId } from '@paralleldrive/cuid2'
 import type { Innertube } from 'youtubei.js'
-import { downloadVideo as coreDownloadVideo } from '@app/media-core'
+import { downloadVideo as coreDownloadVideo } from '@app/media-node'
 import { sleep } from '~/lib/utils/time'
 
 export async function downloadVideo(

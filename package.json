@@ -64,7 +64,9 @@
     "tailwind-merge": "^3.3.1",
     "undici": "^7.16.0",
     "youtubei.js": "^15.1.1",
-    "@app/media-core": "file:packages/media-core",
+    "@app/media-core": "workspace:*",
+    "@app/media-node": "workspace:*",
+    "@app/media-providers": "workspace:*",
     "yt-dlp-wrap": "^2.3.12",
     "zod": "^4.1.11"
   },

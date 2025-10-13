@@ -31,6 +31,8 @@ WORKDIR /app
 # Expect build context at repo root so these COPY paths are valid
 COPY containers/media-downloader/package.json ./package.json
 COPY packages/media-core ./packages/media-core
+COPY packages/media-node ./packages/media-node
+COPY packages/media-providers ./packages/media-providers
 RUN npm install --omit=dev
 COPY containers/media-downloader/index.mjs ./index.mjs
 

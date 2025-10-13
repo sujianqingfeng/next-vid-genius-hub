@@ -3,9 +3,11 @@
 	"version": "0.1.0",
 	"type": "module",
 	"description": "Media downloader worker powered by yt-dlp + ffmpeg",
-	"license": "MIT",
+  "license": "MIT",
   "dependencies": {
     "@app/media-core": "file:./packages/media-core",
+    "@app/media-node": "file:./packages/media-node",
+    "@app/media-providers": "file:./packages/media-providers",
     "yaml": "^2.6.0"
   }
 }

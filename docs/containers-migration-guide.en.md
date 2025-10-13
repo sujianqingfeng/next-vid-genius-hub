@@ -26,6 +26,7 @@ Containers compose these packages via simple adapters. The goal remains: elimina
   - Map progress and run artifact uploads via injected `artifactStore`
 
 ## Prerequisites
+- The monorepo is managed via `pnpm` workspaces (`pnpm-workspace.yaml` includes `packages/*`); root dependencies reference internal packages with `workspace:*`. Container manifests keep local `file:` references so they can be installed inside Docker with plain `npm install`.
 - Build from repository root so containers can install local workspace packages:
   - `COPY containers/<container>/package.json ./package.json`
   - `COPY packages/media-core ./packages/media-core`
@@ -102,35 +103,17 @@ await runDownloadPipeline(
 - Comments-only:
 ```js
 import { runCommentsPipeline } from '@app/media-core'
-
-await runCommentsPipeline(
-  { url, source: 'youtube' /* or 'tiktok' */, pages, proxy },
-  {
-    artifactStore: {
-      uploadMetadata: async (comments) => {
-        const buf = Buffer.from(JSON.stringify({ comments }, null, 2), 'utf8')
-        await uploadArtifact(outputMetadataPutUrl, buf, 'application/json')
-      },
-    },
-  },
-  (e) => {/* map progress to orchestrator */}
-)
-```
-
-- Optional: explicit provider injection if your core exposes a `CommentsDownloader` port
-```js
-import { runCommentsPipeline } from '@app/media-core'
 import { downloadYoutubeComments, downloadTikTokCommentsByUrl } from '@app/media-providers'
 
 await runCommentsPipeline(
   { url, source, pages, proxy },
   {
-    artifactStore: { /* as above */ },
-    commentsDownloader: async ({ url, source, pages, proxy }) => (
-      source === 'youtube'
-        ? downloadYoutubeComments({ url, pages, proxy })
-        : downloadTikTokCommentsByUrl({ url, pages, proxy })
+    commentsDownloader: async ({ url: commentUrl, source: commentSource, pages: commentPages, proxy: commentProxy }) => (
+      commentSource === 'tiktok'
+        ? downloadTikTokCommentsByUrl({ url: commentUrl, pages: commentPages, proxy: commentProxy })
+        : downloadYoutubeComments({ url: commentUrl, pages: commentPages, proxy: commentProxy })
     ),
+    artifactStore: { /* as above */ },
   },
   onProgress
 )
@@ -139,8 +122,8 @@ await runCommentsPipeline(
 4) Remove redundant code from containers
 - Typical functions to delete after migration:
   - Inline `yt-dlp` wrappers, `ffmpeg` audio-extraction helpers
-  - ad-hoc YouTube/TikTok comment scraping (now in core)
-  - local proxy fetch wrappers (core handles Request normalization + proxy)
+  - ad-hoc YouTube/TikTok comment scraping (now in provider adapters)
+  - local proxy fetch wrappers (provider package handles Request normalization + proxy)
 
 5) Trim container dependencies
 - Containers should not import `undici` / `youtubei.js` directly; they now live in `@app/media-providers`.
@@ -180,9 +163,9 @@ downloadService.withArtifactStore({
 
 ## Troubleshooting
 - Module not found for core files
-  - Ensure Docker build context is repo root and `packages/media-core` is copied before `npm install`.
+  - Ensure Docker build context is repo root and `packages/media-core`, `packages/media-node`, `packages/media-providers` are copied before `npm install`.
   - Re-run `pnpm install` locally and fully restart dev servers.
 - YouTube comments via proxy errors
-  - Confirm proxy reachable; core fetch wrapper handles Request→URL normalization.
+  - Confirm proxy reachable; provider fetch wrapper handles Request→URL normalization.
 - yt-dlp issues
   - Ensure binary is installed in the downloader container; locally, core falls back to `yt-dlp-wrap` if binary is missing.

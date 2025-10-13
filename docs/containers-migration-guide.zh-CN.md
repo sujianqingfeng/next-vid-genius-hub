@@ -26,6 +26,7 @@
   - 通过 `artifactStore` 注入实现上传，并映射进度
 
 ## 前置条件
+- 仓库通过 `pnpm` workspace 管理（`pnpm-workspace.yaml` 仅包含 `packages/*`），根 `package.json` 使用 `workspace:*` 引用内部包。容器自身的 `package.json` 保留 `file:` 依赖，以便在 Docker 内执行 `npm install`。
 - 从仓库根目录构建容器，以安装本地工作区包：
   - `COPY containers/<container>/package.json ./package.json`
   - `COPY packages/media-core ./packages/media-core`
@@ -98,25 +99,6 @@ await runDownloadPipeline(
 )
 ```
 
-- 仅评论模式：
-```js
-import { runCommentsPipeline } from '@app/media-core'
-
-await runCommentsPipeline(
-  { url, source: 'youtube' /* 或 'tiktok' */, pages, proxy },
-  {
-    artifactStore: {
-      uploadMetadata: async (comments) => {
-        const buf = Buffer.from(JSON.stringify({ comments }, null, 2), 'utf8')
-        await uploadArtifact(outputMetadataPutUrl, buf, 'application/json')
-      },
-    },
-  },
-  (e) => {/* 进度映射到 orchestrator */}
-)
-```
-
-- 可选：如果 core 暴露了 `CommentsDownloader` 端口，也可以显式注入：
 ```js
 import { runCommentsPipeline } from '@app/media-core'
 import { downloadYoutubeComments, downloadTikTokCommentsByUrl } from '@app/media-providers'
@@ -124,12 +106,12 @@ import { downloadYoutubeComments, downloadTikTokCommentsByUrl } from '@app/media
 await runCommentsPipeline(
   { url, source, pages, proxy },
   {
-    artifactStore: { /* 同上 */ },
-    commentsDownloader: async ({ url, source, pages, proxy }) => (
-      source === 'youtube'
-        ? downloadYoutubeComments({ url, pages, proxy })
-        : downloadTikTokCommentsByUrl({ url, pages, proxy })
+    commentsDownloader: async ({ url: commentUrl, source: commentSource, pages: commentPages, proxy: commentProxy }) => (
+      commentSource === 'tiktok'
+        ? downloadTikTokCommentsByUrl({ url: commentUrl, pages: commentPages, proxy: commentProxy })
+        : downloadYoutubeComments({ url: commentUrl, pages: commentPages, proxy: commentProxy })
     ),
+    artifactStore: { /* 同上 */ },
   },
   onProgress
 )
@@ -138,8 +120,8 @@ await runCommentsPipeline(
 4) 清理容器内冗余代码
 - 迁移后可删除：
   - 内嵌的 `yt-dlp` 下载封装、`ffmpeg` 抽音辅助
-  - 自研 YouTube/TikTok 评论抓取逻辑（已在 core）
-  - 本地代理 fetch 包装（core 已兼容 Request 正常化 + 代理）
+  - 自研 YouTube/TikTok 评论抓取逻辑（已在 provider 包）
+  - 本地代理 fetch 包装（provider 包负责 Request 正常化 + 代理）
 
 5) 收缩容器依赖
 - 容器不再直接引入 `undici` / `youtubei.js`，它们在 `@app/media-providers` 中。
@@ -178,9 +160,9 @@ downloadService.withArtifactStore({
 
 ## 故障排查
 - “Module not found” 报错
-  - Docker 构建上下文需为仓库根，且 `packages/media-core` 必须在 `npm install` 之前复制到镜像。
+  - Docker 构建上下文需为仓库根，且 `packages/media-core`、`packages/media-node`、`packages/media-providers` 必须在 `npm install` 之前复制到镜像。
   - 本地重新执行 `pnpm install` 并重启 dev 进程。
 - YouTube 评论 + 代理异常
-  - 确认代理可达；core 的 fetch 包装已处理 Request→URL 正常化。
+  - 确认代理可达；provider 包的 fetch 包装已处理 Request→URL 正常化。
 - yt-dlp 相关问题
   - 确认下载容器中安装了 yt-dlp；本地模式下 core 会降级使用 `yt-dlp-wrap`。

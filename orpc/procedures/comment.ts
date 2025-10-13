@@ -16,7 +16,10 @@ import { db, schema } from '~/lib/db'
 import { renderVideoWithRemotion } from '~/lib/media'
 import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
 import type { RenderProgressEvent } from '~/lib/media'
-import { downloadYoutubeComments as coreDownloadYoutubeComments, downloadTikTokCommentsByUrl as coreDownloadTikTokComments } from '@app/media-core'
+import {
+	downloadYoutubeComments as coreDownloadYoutubeComments,
+	downloadTikTokCommentsByUrl as coreDownloadTikTokComments,
+} from '@app/media-providers'
 
 export const downloadComments = os
 	.input(
