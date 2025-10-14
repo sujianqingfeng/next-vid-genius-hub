@@ -25,13 +25,13 @@ const layout = {
 }
 
 const palette = {
-  background: '#f8fafc',
-  surface: '#ffffff',
-  border: 'rgba(15, 23, 42, 0.08)',
+  background: '#ffffff',
+  surface: '#f8fafc',
+  border: 'rgba(226, 232, 240, 0.8)',
   textPrimary: '#0f172a',
   textSecondary: '#334155',
   textMuted: '#64748b',
-  accent: '#ef4444',
+  accent: '#3b82f6',
 }
 
 const baseFont = 'Inter, "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont'
@@ -154,7 +154,7 @@ const MainLayout: React.FC<{
   return (
     <AbsoluteFill style={{
       ...containerStyle,
-      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.04))',
+      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02))',
     }}>
       <div style={topSectionStyle}>
         <InfoPanel videoInfo={videoInfo} commentCount={comments.length} />
@@ -254,7 +254,7 @@ const CoverSlide: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.03))',
+        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(59, 130, 246, 0.01))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -526,7 +526,7 @@ const CommentSlide: React.FC<{
           gap: 6,
           fontSize: 16,
           color: palette.textMuted,
-          backgroundColor: 'rgba(15, 23, 42, 0.05)',
+          backgroundColor: 'rgba(248, 250, 252, 0.8)',
           padding: '6px 10px',
           borderRadius: 8,
           border: `1px solid ${palette.border}`,
@@ -640,7 +640,7 @@ const VideoPlaceholder: React.FC = () => {
         alignSelf: 'center',
         borderRadius: 20,
         border: `1px solid ${palette.border}`,
-        backgroundColor: '#e0f2fe',
+        backgroundColor: '#f1f5f9',
         overflow: 'hidden',
       }}
     >
@@ -649,7 +649,7 @@ const VideoPlaceholder: React.FC = () => {
           position: 'relative',
           width: '100%',
           paddingTop: `${(VIDEO_HEIGHT / VIDEO_WIDTH) * 100}%`,
-          backgroundImage: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.06))',
+          backgroundImage: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02))',
           borderTop: `1px solid ${palette.border}`,
           borderBottom: `1px solid ${palette.border}`,
         }}
