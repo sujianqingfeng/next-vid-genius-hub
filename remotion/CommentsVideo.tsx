@@ -31,7 +31,7 @@ const palette = {
   textPrimary: '#0f172a',
   textSecondary: '#334155',
   textMuted: '#64748b',
-  accent: '#3b82f6',
+  accent: '#ef4444',
 }
 
 const baseFont = 'Inter, "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont'
@@ -278,7 +278,10 @@ const CoverSlide: React.FC<{
             fontWeight: 600,
             letterSpacing: '-0.025em',
             lineHeight: 1.15,
-            color: palette.textPrimary,
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
           }}
         >
           {videoInfo.translatedTitle ?? videoInfo.title}
@@ -289,7 +292,7 @@ const CoverSlide: React.FC<{
           <p style={{
             margin: '0 0 48px 0',
             fontSize: 28,
-            color: palette.textSecondary,
+            color: '#64748b',
             fontWeight: 400,
             lineHeight: 1.4,
           }}>
