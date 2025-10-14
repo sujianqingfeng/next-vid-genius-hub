@@ -154,7 +154,7 @@ const MainLayout: React.FC<{
   return (
     <AbsoluteFill style={{
       ...containerStyle,
-      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02))',
+      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02))',
     }}>
       <div style={topSectionStyle}>
         <InfoPanel videoInfo={videoInfo} commentCount={comments.length} />
@@ -254,7 +254,7 @@ const CoverSlide: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(59, 130, 246, 0.01))',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f8fafc 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -265,23 +265,65 @@ const CoverSlide: React.FC<{
         opacity,
       }}
     >
+      {/* Decorative background elements */}
       <div style={{
-        maxWidth: 1000,
+        position: 'absolute',
+        top: '10%',
+        left: '5%',
+        width: '200px',
+        height: '200px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%)',
+        filter: 'blur(40px)',
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: '15%',
+        right: '8%',
+        width: '250px',
+        height: '250px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, transparent 70%)',
+        filter: 'blur(50px)',
+      }} />
+
+      <div style={{
+        maxWidth: 1200,
         width: '100%',
         textAlign: 'center',
+        position: 'relative',
+        zIndex: 1,
       }}>
+        {/* Category badge */}
+        <div style={{
+          display: 'inline-block',
+          padding: '8px 20px',
+          borderRadius: '20px',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.2)',
+          marginBottom: '32px',
+          fontSize: 16,
+          fontWeight: 500,
+          color: palette.accent,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+        }}>
+          外网真实评论精选
+        </div>
+
         {/* Main Title */}
         <h1
           style={{
-            margin: '0 0 32px 0',
-            fontSize: 68,
-            fontWeight: 600,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.15,
-            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            margin: '0 0 40px 0',
+            fontSize: 72,
+            fontWeight: 700,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.1,
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
+            textShadow: '0 4px 20px rgba(239, 68, 68, 0.15)',
           }}
         >
           {videoInfo.translatedTitle ?? videoInfo.title}
@@ -290,55 +332,110 @@ const CoverSlide: React.FC<{
         {/* Original Title (if translated) */}
         {videoInfo.translatedTitle && videoInfo.translatedTitle !== videoInfo.title && (
           <p style={{
-            margin: '0 0 48px 0',
-            fontSize: 28,
-            color: '#64748b',
+            margin: '0 0 60px 0',
+            fontSize: 24,
+            color: '#6b7280',
             fontWeight: 400,
-            lineHeight: 1.4,
+            lineHeight: 1.5,
+            fontStyle: 'italic',
+            maxWidth: '800px',
+            marginLeft: 'auto',
+            marginRight: 'auto',
           }}>
-            {videoInfo.title}
+            原文：{videoInfo.title}
           </p>
         )}
 
-        {/* Simple divider */}
+        {/* Enhanced divider */}
         <div style={{
-          width: '80px',
-          height: '2px',
-          backgroundColor: palette.accent,
-          margin: '0 auto 48px',
-          opacity: 0.6,
-        }} />
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px',
+          margin: '0 auto 60px',
+          width: 'fit-content',
+        }}>
+          <div style={{
+            width: '60px',
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.3))',
+          }} />
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: palette.accent,
+          }} />
+          <div style={{
+            width: '60px',
+            height: '2px',
+            background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.3), transparent)',
+          }} />
+        </div>
 
-        {/* Meta Information */}
+        {/* Enhanced Meta Information */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: 32,
-          fontSize: 20,
-          color: palette.textMuted,
+          gap: 40,
+          fontSize: 22,
+          color: palette.textSecondary,
+          marginBottom: '32px',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontWeight: 500 }}>{formatCount(videoInfo.viewCount)}</span>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12,
+            padding: '12px 20px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(248, 250, 252, 0.8)',
+            border: '1px solid rgba(226, 232, 240, 0.6)',
+          }}>
+            <span style={{ fontWeight: 600, color: palette.accent }}>{formatCount(videoInfo.viewCount)}</span>
             <span>观看</span>
           </div>
-          <span>·</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontWeight: 500 }}>{commentCount}</span>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12,
+            padding: '12px 20px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(248, 250, 252, 0.8)',
+            border: '1px solid rgba(226, 232, 240, 0.6)',
+          }}>
+            <span style={{ fontWeight: 600, color: palette.accent }}>{commentCount}</span>
             <span>评论</span>
           </div>
-          <span>·</span>
-          <span>@{videoInfo.author ?? '未知'}</span>
         </div>
 
-        {/* Source indicator */}
+        {/* Author and source */}
         <div style={{
-          marginTop: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '20px',
           fontSize: 18,
-          color: palette.textMuted,
-          opacity: 0.7,
         }}>
-          外网真实评论 · TubeTweet
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            borderRadius: '20px',
+            backgroundColor: 'rgba(239, 68, 68, 0.05)',
+            border: '1px solid rgba(239, 68, 68, 0.15)',
+          }}>
+            <span style={{ fontWeight: 500 }}>@{videoInfo.author ?? '未知创作者'}</span>
+          </div>
+          <div style={{
+            fontSize: 16,
+            color: palette.textMuted,
+            fontWeight: 500,
+            letterSpacing: '0.05em',
+          }}>
+            TubeTweet 独家整理
+          </div>
         </div>
       </div>
     </AbsoluteFill>
