@@ -99,6 +99,33 @@ function MediaMetadata({ media }: { media: MediaItem }) {
 	)
 }
 
+// Video preview (prefers rendered-info > rendered-subtitles, falls back to thumbnail)
+function MediaVideoPreview({ media, id }: { media: MediaItem; id: string }) {
+  const previewUrl = media.videoWithInfoPath
+    ? `/api/media/${encodeURIComponent(id)}/rendered-info`
+    : media.videoWithSubtitlesPath
+      ? `/api/media/${encodeURIComponent(id)}/rendered`
+      : (media.filePath || media.remoteVideoKey || media.downloadJobId)
+        ? `/api/media/${encodeURIComponent(id)}/downloaded`
+        : null
+
+  if (!previewUrl) {
+    return <MediaThumbnail media={media} />
+  }
+
+  return (
+    <div className="relative">
+      <video
+        className="w-full aspect-[16/9] rounded-xl bg-black shadow-sm"
+        controls
+        playsInline
+        preload="metadata"
+        poster={media.thumbnail || undefined}
+        src={previewUrl}
+      />
+    </div>
+  )
+}
 
 export function MediaDetailPageClient({ id }: { id: string }) {
 	const mediaQuery = useQuery(
@@ -160,10 +187,10 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 				<div className="px-4 pb-8 space-y-8">
 					{/* Header Section */}
 					<div className="grid gap-6 lg:grid-cols-2 max-w-5xl mx-auto">
-						{/* Thumbnail */}
-						<div>
-							<MediaThumbnail media={media} />
-						</div>
+            {/* Preview (fallbacks to thumbnail) */}
+            <div>
+              <MediaVideoPreview media={media} id={id} />
+            </div>
 
 						{/* Metadata */}
 						<div className="flex flex-col justify-center">
