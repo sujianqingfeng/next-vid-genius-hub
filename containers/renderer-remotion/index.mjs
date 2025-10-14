@@ -8,6 +8,7 @@ import { fetch as undiciFetch } from 'undici'
 import { bundle } from '@remotion/bundler'
 import { getCompositions, renderMedia } from '@remotion/renderer'
 import { buildCommentTimeline, REMOTION_FPS, inlineRemoteImage as inlineRemoteImageFromPkg, buildComposeArgs } from '@app/media-comments'
+import { resolveForwardProxy, startMihomo as startMihomoProxy } from '@app/media-core'
 
 const PORT = process.env.PORT || 8090
 
@@ -118,8 +119,26 @@ async function handleRender(req, res) {
   const jobId = payload?.jobId || `job_${Math.random().toString(36).slice(2, 10)}`
   const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
   const cbUrl = payload?.callbackUrl
+  const engineOptions = payload?.engineOptions || {}
+  const safeEngineOptions = {
+    hasDefaultProxy: Boolean(engineOptions?.defaultProxyUrl),
+    proxy: engineOptions?.proxy
+      ? {
+          id: engineOptions.proxy.id,
+          protocol: engineOptions.proxy.protocol,
+          server: engineOptions.proxy.server,
+          port: engineOptions.proxy.port,
+          hasNodeUrl: Boolean(engineOptions.proxy.nodeUrl),
+          hasCredentials: Boolean(engineOptions.proxy.username && engineOptions.proxy.password),
+        }
+      : null,
+  }
   console.log(`[remotion] start job=${jobId}`)
+  console.log('[remotion] engine options', { jobId, engineOptions: safeEngineOptions })
   sendJson(res, 202, { jobId })
+
+  const baseDefaultProxyUrl = engineOptions?.defaultProxyUrl || process.env.PROXY_URL
+  let clashController = null
 
   // Optional progress helper
   async function progress(phase, pct) {
@@ -136,6 +155,15 @@ async function handleRender(req, res) {
     if (!inputVideoUrl || !inputDataUrl || !outputPutUrl) {
       throw new Error('missing required URLs (inputVideoUrl/inputDataUrl/outputPutUrl)')
     }
+
+    try {
+      clashController = await startMihomoProxy(engineOptions, { logger: console })
+    } catch (error) {
+      console.error('[remotion] Failed to start Clash/Mihomo', error)
+    }
+    const forwardProxy = resolveForwardProxy({ proxy: engineOptions?.proxy, defaultProxyUrl: baseDefaultProxyUrl, logger: console })
+    const effectiveProxy = clashController?.proxyUrl || forwardProxy || baseDefaultProxyUrl
+    console.log('[remotion] resolved proxy', { jobId, viaMihomo: Boolean(clashController), proxy: effectiveProxy })
 
     await progress('preparing', 0.05)
     const inFile = join(tmpdir(), `${jobId}_source.mp4`)
@@ -167,8 +195,7 @@ async function handleRender(req, res) {
 
     // Inline remote images to avoid <Img> network stalls inside headless browser
     console.log(`[remotion] inlining remote images (1 video + ${comments?.length || 0} comment thumbnails)`)
-    const PROXY_URL = process.env.PROXY_URL
-    const inlineRemoteImage = (url) => inlineRemoteImageFromPkg(url, { proxyUrl: PROXY_URL, timeoutMs: 5000 })
+    const inlineRemoteImage = (url) => inlineRemoteImageFromPkg(url, { proxyUrl: effectiveProxy || undefined, timeoutMs: 5000 })
     let inlineOk = 0, inlineFail = 0
     
     // Download video thumbnail
@@ -264,6 +291,14 @@ async function handleRender(req, res) {
     try {
       await progress('running', 1)
     } catch {}
+  } finally {
+    try {
+      if (clashController?.cleanup) {
+        await clashController.cleanup()
+      }
+    } catch (cleanupError) {
+      console.error('[remotion] Failed to shutdown Clash cleanly', cleanupError)
+    }
   }
 }
 

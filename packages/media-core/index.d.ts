@@ -38,6 +38,9 @@ declare const _default: {
   isForwardProxyProtocolSupported: typeof isForwardProxyProtocolSupported
   buildForwardProxyUrl: typeof buildForwardProxyUrl
   resolveForwardProxy: typeof resolveForwardProxy
+  createClashProxyFromDb: typeof createClashProxyFromDb
+  buildClashConfig: typeof buildClashConfig
+  startMihomo: typeof startMihomo
 }
 
 export default _default
@@ -87,3 +90,39 @@ export declare function readMetadataSummary(metadataPath: string): Promise<Metad
 export declare function isForwardProxyProtocolSupported(protocol: string): boolean
 export declare function buildForwardProxyUrl(args: { protocol: 'http' | 'https' | 'socks4' | 'socks5'; server: string; port: number | string; username?: string; password?: string }): string
 export declare function resolveForwardProxy(args?: { proxy?: { protocol: string; server: string; port: number | string; username?: string; password?: string }; defaultProxyUrl?: string; logger?: { warn?: (...args: any[]) => any; info?: (...args: any[]) => any; log?: (...args: any[]) => any } }): string | undefined
+
+export interface ProxyRecord {
+  id?: string
+  name?: string | null
+  server?: string | null
+  port?: number | string | null
+  protocol?: string | null
+  username?: string | null
+  password?: string | null
+  nodeUrl?: string | null
+}
+
+export interface EngineProxyOptions {
+  proxy?: ProxyRecord | null
+}
+
+export interface MihomoStartOptions {
+  logger?: { log?: (...args: any[]) => any; warn?: (...args: any[]) => any; error?: (...args: any[]) => any }
+  mihomoBin?: string
+  configDir?: string
+  providerDir?: string
+  port?: number
+  socksPort?: number
+  mode?: string
+  subscriptionUrl?: string | null
+  rawConfig?: string | null
+}
+
+export interface MihomoController {
+  proxyUrl: string
+  cleanup(): Promise<void> | void
+}
+
+export declare function createClashProxyFromDb(proxy?: ProxyRecord | null): Record<string, unknown> | null
+export declare function buildClashConfig(engineOptions?: EngineProxyOptions, overrides?: { port?: number; socksPort?: number; mode?: string; subscriptionUrl?: string | null; rawConfig?: string | null; logger?: { log?: (...args: any[]) => any; warn?: (...args: any[]) => any; error?: (...args: any[]) => any } }): string | null
+export declare function startMihomo(engineOptions?: EngineProxyOptions, options?: MihomoStartOptions): Promise<MihomoController | null>

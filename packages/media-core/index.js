@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { summariseMetadata, readMetadataSummary } from './metadata.js'
 import { isForwardProxyProtocolSupported, buildForwardProxyUrl, resolveForwardProxy } from './proxy.js'
+import { createClashProxyFromDb, buildClashConfig, startMihomo } from './clash.js'
 
 const safeReport = (progress, payload) => {
 	if (typeof progress !== 'function') return
@@ -107,6 +108,9 @@ export default {
 	isForwardProxyProtocolSupported,
 	buildForwardProxyUrl,
 	resolveForwardProxy,
+	createClashProxyFromDb,
+	buildClashConfig,
+	startMihomo,
 }
 
 export {
@@ -115,4 +119,7 @@ export {
 	isForwardProxyProtocolSupported,
 	buildForwardProxyUrl,
 	resolveForwardProxy,
+	createClashProxyFromDb,
+	buildClashConfig,
+	startMihomo,
 }

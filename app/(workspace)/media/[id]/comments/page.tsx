@@ -34,6 +34,7 @@ export default function CommentsPage() {
 	const [commentsBackend, setCommentsBackend] = useState<'local' | 'cloud'>('cloud')
 	const [commentsCloudJobId, setCommentsCloudJobId] = useState<string | null>(null)
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
+	const [renderProxyId, setRenderProxyId] = useState<string>('none')
 
 	// Persist comments cloud job id across reloads
 	useEffect(() => {
@@ -185,6 +186,28 @@ export default function CommentsPage() {
 	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, id, queryClient])
 
 	const comments = mediaQuery.data?.comments || []
+
+	// Persist render proxy selection for cloud renders
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		const key = `commentsRenderProxy:${id}`
+		try {
+			const saved = window.localStorage.getItem(key)
+			if (saved) setRenderProxyId(saved)
+		} catch {}
+	}, [id])
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		const key = `commentsRenderProxy:${id}`
+		try {
+			if (renderProxyId && renderProxyId !== 'none') {
+				window.localStorage.setItem(key, renderProxyId)
+			} else {
+				window.localStorage.removeItem(key)
+			}
+		} catch {}
+	}, [id, renderProxyId])
 
 	// Extract video source ID from URL
 	const getVideoSourceId = () => {
@@ -404,7 +427,10 @@ export default function CommentsPage() {
 										<Button
 											onClick={() => {
 												if (renderBackend === 'cloud') {
-													startCloudRenderMutation.mutate({ mediaId: id })
+													startCloudRenderMutation.mutate({
+														mediaId: id,
+														proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
+													})
 												} else {
 													renderMutation.mutate({ mediaId: id })
 												}
@@ -426,6 +452,13 @@ export default function CommentsPage() {
 											{typeof cloudStatusQuery.data?.progress === 'number' &&
 												` (${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)`}
 										</p>
+									)}
+									{renderBackend === 'cloud' && (
+										<ProxySelector
+											value={renderProxyId}
+											onValueChange={setRenderProxyId}
+											disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
+										/>
 									)}
 								</div>
 

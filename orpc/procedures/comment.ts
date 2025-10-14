@@ -263,10 +263,12 @@ export const startCloudRender = os
 	.input(
 		z.object({
 			mediaId: z.string(),
+			proxyId: z.string().optional(),
 		}),
 	)
 	.handler(async ({ input }) => {
-		const where = eq(schema.media.id, input.mediaId)
+		const { mediaId, proxyId } = input
+		const where = eq(schema.media.id, mediaId)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
 		if (!media.filePath) throw new Error('Media file path not found')
@@ -274,10 +276,29 @@ export const startCloudRender = os
 			throw new Error('No comments found for this media')
 		}
 
+		let proxyPayload: any = undefined
+		if (proxyId) {
+			const proxy = await db.query.proxies.findFirst({ where: eq(schema.proxies.id, proxyId) })
+			if (proxy && proxy.server && proxy.port && proxy.protocol) {
+				proxyPayload = {
+					id: proxy.id,
+					server: proxy.server,
+					port: proxy.port,
+					protocol: proxy.protocol,
+					username: proxy.username,
+					password: proxy.password,
+					nodeUrl: proxy.nodeUrl,
+				}
+			}
+		}
+
 		const job = await startCloudJob({
 			mediaId: media.id,
 			engine: 'renderer-remotion',
-			options: {},
+			options: {
+				defaultProxyUrl: PROXY_URL,
+				proxy: proxyPayload,
+			},
 		})
 		return { jobId: job.jobId }
 	})

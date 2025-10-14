@@ -7,8 +7,14 @@
   "main": "index.js",
   "files": [
     "index.js",
-    "index.d.ts"
+    "index.d.ts",
+    "metadata.js",
+    "proxy.js",
+    "clash.js"
   ],
+  "dependencies": {
+    "yaml": "^2.6.0"
+  },
   "exports": {
     ".": {
       "import": "./index.js",
