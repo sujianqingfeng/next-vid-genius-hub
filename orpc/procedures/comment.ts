@@ -271,7 +271,17 @@ export const startCloudRender = os
 		const where = eq(schema.media.id, mediaId)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
-		if (!media.filePath) throw new Error('Media file path not found')
+		// 允许在未本地落盘（ENABLE_LOCAL_HYDRATE=false）的情况下走云端渲染。
+		// 只要存在任一远端来源（videoWithSubtitlesPath 为 remote:orchestrator:*, 或 downloadJobId、remoteVideoKey）即可。
+		const hasAnySource = Boolean(
+			media.filePath ||
+			media.videoWithSubtitlesPath ||
+			media.downloadJobId ||
+			media.remoteVideoKey,
+		)
+		if (!hasAnySource) {
+			throw new Error('No source video available (neither local path nor remote job/key).')
+		}
 		if (!media.comments || media.comments.length === 0) {
 			throw new Error('No comments found for this media')
 		}
