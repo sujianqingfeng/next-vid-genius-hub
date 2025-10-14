@@ -29,12 +29,29 @@ async function handleRender(req, res) {
   sendJson(res, 202, { jobId })
 
   const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {}, callbackUrl } = payload
+  const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+
+  async function postUpdate(status, extra = {}) {
+    if (!callbackUrl) return
+    const body = { jobId, status, ts: Date.now(), nonce: randomNonce(), ...extra }
+    const sig = hmacHex(secret, JSON.stringify(body))
+    try {
+      const r = await fetch(callbackUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(body) })
+      if (!r.ok) {
+        const msg = await r.text().catch(() => '')
+        console.error('[render] callback non-2xx', r.status, msg)
+      }
+    } catch (e) {
+      console.error('[render] callback error', e?.message || e)
+    }
+  }
+
   if (!inputVideoUrl || !inputVttUrl || !outputPutUrl) {
     console.error('[render] missing required URLs in payload')
+    await postUpdate('failed', { error: 'missing required URLs (inputVideoUrl/inputVttUrl/outputPutUrl)' })
     return
   }
 
-  const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
   const progress = async (phase, pct) => {
     if (!callbackUrl) return
     const p = { jobId, status: phase === 'uploading' ? 'uploading' : 'running', phase, progress: pct, ts: Date.now(), nonce: randomNonce() }
@@ -84,6 +101,7 @@ async function handleRender(req, res) {
     console.log(`[render] ${jobId} completed`)
   } catch (e) {
     console.error(`[render] ${jobId} failed:`, e)
+    await postUpdate('failed', { error: e?.message || 'unknown error' })
   }
 }
 
@@ -94,4 +112,3 @@ const server = http.createServer(async (req, res) => {
 })
 
 server.listen(PORT, () => console.log(`burner-ffmpeg stub listening on ${PORT}`))
-

@@ -20,6 +20,7 @@ import {
 import { Skeleton } from '~/components/ui/skeleton'
 import { ChatModelId, ChatModelIds } from '~/lib/ai'
 import { extractVideoId } from '~/lib/providers/youtube'
+import { STATUS_LABELS } from '~/lib/constants'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 
@@ -359,13 +360,16 @@ export default function CommentsPage() {
 										onValueChange={setSelectedProxyId}
 										disabled={startCloudCommentsMutation.isPending || downloadCommentsMutation.isPending}
 									/>
-									{commentsBackend === 'cloud' && commentsCloudJobId && (
-										<p className="text-xs text-muted-foreground">
-											Job: {commentsCloudJobId} — {cloudCommentsStatusQuery.data?.status ?? 'starting'}
-											{typeof cloudCommentsStatusQuery.data?.progress === 'number' &&
-												` (${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%)`}
-										</p>
-									)}
+                            {commentsBackend === 'cloud' && commentsCloudJobId && (
+                                <p className="text-xs text-muted-foreground">
+                                    {(() => {
+                                      const s = cloudCommentsStatusQuery.data?.status
+                                      const label = s ? (STATUS_LABELS as any)[s] ?? s : 'starting'
+                                      const pct = typeof cloudCommentsStatusQuery.data?.progress === 'number' ? ` (${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
+                                      return <>Job: {commentsCloudJobId} — {label}{pct}</>
+                                    })()}
+                                </p>
+                            )}
 								</div>
 
 								<div className="border-t" />
@@ -446,13 +450,16 @@ export default function CommentsPage() {
 													: 'Start'}
 										</Button>
 									</div>
-									{renderBackend === 'cloud' && cloudJobId && (
-										<p className="text-xs text-muted-foreground">
-											Job: {cloudJobId} — {cloudStatusQuery.data?.status ?? 'starting'}
-											{typeof cloudStatusQuery.data?.progress === 'number' &&
-												` (${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)`}
-										</p>
-									)}
+                            {renderBackend === 'cloud' && cloudJobId && (
+                                <p className="text-xs text-muted-foreground">
+                                    {(() => {
+                                      const s = cloudStatusQuery.data?.status
+                                      const label = s ? (STATUS_LABELS as any)[s] ?? s : 'starting'
+                                      const pct = typeof cloudStatusQuery.data?.progress === 'number' ? ` (${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
+                                      return <>Job: {cloudJobId} — {label}{pct}</>
+                                    })()}
+                                </p>
+                            )}
 									{renderBackend === 'cloud' && (
 										<ProxySelector
 											value={renderProxyId}

@@ -15,6 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
+import { STATUS_LABELS, PHASE_LABELS } from '~/lib/constants'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { orpc } from '~/lib/orpc/client'
 
@@ -72,30 +73,12 @@ export default function NewDownloadPage() {
 		},
 	})
 
-	const statusLabelMap: Record<string, string> = {
-		queued: 'Queued',
-		fetching_metadata: 'Fetching metadata',
-		preparing: 'Preparing',
-		running: 'Running',
-		uploading: 'Uploading',
-		completed: 'Completed',
-		failed: 'Failed',
-		canceled: 'Canceled',
-	}
-
-	const phaseLabelMap: Record<string, string> = {
-		fetching_metadata: 'Fetching metadata',
-		preparing: 'Preparing',
-		running: 'Processing',
-		uploading: 'Uploading artifacts',
-	}
-
-	const statusLabel = cloudStatusQuery.data?.status
-		? statusLabelMap[cloudStatusQuery.data.status] ?? cloudStatusQuery.data.status
-		: null
-	const phaseLabel = cloudStatusQuery.data?.phase
-		? phaseLabelMap[cloudStatusQuery.data.phase] ?? cloudStatusQuery.data.phase
-		: null
+		const statusLabel = cloudStatusQuery.data?.status
+			? STATUS_LABELS[cloudStatusQuery.data.status] ?? cloudStatusQuery.data.status
+			: null
+		const phaseLabel = cloudStatusQuery.data?.phase
+			? PHASE_LABELS[cloudStatusQuery.data.phase] ?? cloudStatusQuery.data.phase
+			: null
 	const outputs = cloudStatusQuery.data?.outputs
 
 	const isSubmitting = downloadMutation.isPending || cloudDownloadMutation.isPending

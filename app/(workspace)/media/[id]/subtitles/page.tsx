@@ -39,6 +39,7 @@ import type {
 } from '~/lib/subtitle/config/models'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
+import { STATUS_LABELS } from '~/lib/constants'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
 
 export default function SubtitlesPage() {
@@ -405,11 +406,16 @@ export default function SubtitlesPage() {
 						/>
 
 						{/* 云端渲染进度显示（简单版） */}
-						{renderBackend === 'cloud' && cloudJobId && (
-							<div className="mt-3 text-sm text-muted-foreground">
-								Job: {cloudJobId} — Status: {cloudStatusQuery.data?.status ?? 'starting'} {typeof cloudStatusQuery.data?.progress === 'number' ? `(${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''}
-							</div>
-						)}
+                            {renderBackend === 'cloud' && cloudJobId && (
+                                <div className="mt-3 text-sm text-muted-foreground">
+                                    {(() => {
+                                      const s = cloudStatusQuery.data?.status
+                                      const label = s ? (STATUS_LABELS as any)[s] ?? s : 'starting'
+                                      const pct = typeof cloudStatusQuery.data?.progress === 'number' ? `(${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
+                                      return <>Job: {cloudJobId} — Status: {label} {pct}</>
+                                    })()}
+                                </div>
+                            )}
 					</CardContent>
 				</Card>
 			)}

@@ -148,6 +148,22 @@ async function handleRender(req, res) {
     await undiciFetch(cbUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(data) }).catch(() => {})
   }
 
+  async function postUpdate(status, extra = {}) {
+    if (!cbUrl) return
+    const body = { jobId, status, ts: Date.now(), nonce: randomNonce(), ...extra }
+    const sig = hmacHex(secret, JSON.stringify(body))
+    try {
+      const r = await undiciFetch(cbUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(body) })
+      if (!r.ok) {
+        let msg = ''
+        try { msg = await r.text() } catch {}
+        console.error('[remotion] callback non-2xx', r.status, msg)
+      }
+    } catch (e) {
+      console.error('[remotion] callback error', e?.message || e)
+    }
+  }
+
   try {
     const inputVideoUrl = payload?.inputVideoUrl
     const inputDataUrl = payload?.inputDataUrl
@@ -287,9 +303,8 @@ async function handleRender(req, res) {
     console.log(`[remotion] completed job=${jobId}`)
   } catch (e) {
     console.error(`[remotion] job ${jobId} failed:`, e)
-    // On failure we rely on Worker polling & timeout; optionally send failed progress
     try {
-      await progress('running', 1)
+      await postUpdate('failed', { error: e?.message || 'unknown error' })
     } catch {}
   } finally {
     try {

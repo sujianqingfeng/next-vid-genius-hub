@@ -143,15 +143,17 @@ export const APP_CONFIG = {
 	},
 
 	// 功能开关
-	features: {
-		enableAI: process.env.ENABLE_AI !== 'false',
-		enableComments: process.env.ENABLE_COMMENTS !== 'false',
-		enableSubtitles: process.env.ENABLE_SUBTITLES !== 'false',
-		enableDownloads: process.env.ENABLE_DOWNLOADS !== 'false',
-		enableLivePreview: process.env.ENABLE_LIVE_PREVIEW === 'true',
-		enableBatchProcessing: process.env.ENABLE_BATCH_PROCESSING === 'true',
-		enableAdvancedEditing: process.env.ENABLE_ADVANCED_EDITING === 'true',
-	},
+		features: {
+			enableAI: process.env.ENABLE_AI !== 'false',
+			enableComments: process.env.ENABLE_COMMENTS !== 'false',
+			enableSubtitles: process.env.ENABLE_SUBTITLES !== 'false',
+			enableDownloads: process.env.ENABLE_DOWNLOADS !== 'false',
+			enableLivePreview: process.env.ENABLE_LIVE_PREVIEW === 'true',
+			enableBatchProcessing: process.env.ENABLE_BATCH_PROCESSING === 'true',
+			enableAdvancedEditing: process.env.ENABLE_ADVANCED_EDITING === 'true',
+			// 如果为 false，则云端下载完成后仅保存远端 R2 Key，不把大文件回传到本地磁盘
+			enableLocalHydrate: process.env.ENABLE_LOCAL_HYDRATE !== 'false',
+		},
 
 	// UI 配置
 	ui: {
@@ -179,6 +181,7 @@ export const OPERATIONS_DIR = APP_CONFIG.operations.dir
 export const PROXY_URL = APP_CONFIG.proxy.url
 export const MAX_FILE_SIZE = APP_CONFIG.limits.maxFileSize
 export const MAX_VIDEO_DURATION = APP_CONFIG.limits.maxVideoDuration
+export const ENABLE_LOCAL_HYDRATE = APP_CONFIG.features.enableLocalHydrate
 
 // 便捷的访问器
 export const { database, operations, limits, qualities, app, services } = APP_CONFIG

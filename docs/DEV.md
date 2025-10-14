@@ -62,6 +62,11 @@ pnpm cf:dev
 pnpm dev:host   # 监听 0.0.0.0:3000（供 Worker 拉取源素材）
 ```
 
+### 本地是否回传大文件（ENABLE_LOCAL_HYDRATE）
+
+- 默认：`ENABLE_LOCAL_HYDRATE=true`，回调后会把云端下载/渲染产物（视频/音频/metadata）落到 `OPERATIONS_DIR/<mediaId>/`，方便后续本地处理与调试。
+- 若磁盘紧张或希望完全走 R2 播放链路，可在 `.env` 设置 `ENABLE_LOCAL_HYDRATE=false`，此时仅保存远端 Key；预览/播放通过 Worker 预签 URL 或 `/artifacts/:jobId` 进行。
+
 ## 流程验证
 
 1) 在字幕流程 Step 3 或下载页选择 Cloud → 启动任务。

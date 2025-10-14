@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
 import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/constants'
-import { OPERATIONS_DIR } from '~/lib/config/app.config'
+import { OPERATIONS_DIR, ENABLE_LOCAL_HYDRATE } from '~/lib/config/app.config'
 import { verifyHmacSHA256 } from '~/lib/security/hmac'
 import { promises as fs, createWriteStream } from 'node:fs'
 import { Readable } from 'node:stream'
@@ -80,6 +80,20 @@ export async function POST(req: NextRequest) {
           .where(eq(schema.media.id, media.id))
         console.log('[cf-callback] recorded remote subtitles artifact for job', payload.jobId)
       }
+    } else if (payload.status === 'failed' || payload.status === 'canceled') {
+      // 非 downloader 引擎的失败/取消也落库，便于在媒体详情中留痕
+      const isSub = payload.engine === 'burner-ffmpeg'
+      const isInfo = payload.engine === 'renderer-remotion'
+      const errorMessage = payload.error || (payload.status === 'failed' ? 'Cloud render failed' : 'Cloud render canceled')
+      const updates: Record<string, unknown> = {
+        downloadError: `[${payload.engine}] ${errorMessage}`,
+      }
+      // 不覆盖已有产物路径；仅在需要时可清理
+      await db
+        .update(schema.media)
+        .set(updates)
+        .where(eq(schema.media.id, media.id))
+      console.log('[cf-callback] recorded render failure for job', payload.jobId, 'engine=', payload.engine, 'status=', payload.status)
     }
 
     return NextResponse.json({ ok: true })
@@ -125,35 +139,38 @@ async function handleCloudDownloadCallback(
   const operationDir = path.join(OPERATIONS_DIR, payload.mediaId)
   await fs.mkdir(operationDir, { recursive: true })
 
-  const videoPath = path.join(operationDir, `${payload.mediaId}.mp4`)
   const audioUrl = payload.outputs?.audio?.url
-  const audioPath = audioUrl ? path.join(operationDir, `${payload.mediaId}.mp3`) : null
   const metadataUrl = payload.outputs?.metadata?.url
   const metadataKey = payload.outputs?.metadata?.key ?? null
+
+  const videoPath = path.join(operationDir, `${payload.mediaId}.mp4`)
+  const audioPath = audioUrl ? path.join(operationDir, `${payload.mediaId}.mp3`) : null
   const metadataPath = path.join(operationDir, 'metadata.json')
   let metadataDownloaded = false
 
-  try {
-    await downloadArtifact(videoUrl, videoPath)
-    if (audioUrl && audioPath) {
-      await downloadArtifact(audioUrl, audioPath)
+  if (ENABLE_LOCAL_HYDRATE) {
+    try {
+      await downloadArtifact(videoUrl, videoPath)
+      if (audioUrl && audioPath) {
+        await downloadArtifact(audioUrl, audioPath)
+      }
+      if (metadataUrl) {
+        await downloadArtifact(metadataUrl, metadataPath)
+        metadataDownloaded = true
+      }
+    } catch (error) {
+      console.error('[cf-callback] failed to persist cloud download', error)
+      await db
+        .update(schema.media)
+        .set({
+          downloadBackend: 'cloud',
+          downloadStatus: 'failed',
+          downloadError: error instanceof Error ? error.message : 'Failed to persist cloud artifacts',
+          downloadJobId: payload.jobId,
+        })
+        .where(where)
+      return
     }
-    if (metadataUrl) {
-      await downloadArtifact(metadataUrl, metadataPath)
-      metadataDownloaded = true
-    }
-  } catch (error) {
-    console.error('[cf-callback] failed to persist cloud download', error)
-    await db
-      .update(schema.media)
-      .set({
-        downloadBackend: 'cloud',
-        downloadStatus: 'failed',
-        downloadError: error instanceof Error ? error.message : 'Failed to persist cloud artifacts',
-        downloadJobId: payload.jobId,
-      })
-      .where(where)
-    return
   }
 
   const updates: Record<string, unknown> = {
@@ -165,12 +182,20 @@ async function handleCloudDownloadCallback(
     remoteVideoKey: payload.outputs?.video?.key ?? null,
     remoteAudioKey: payload.outputs?.audio?.key ?? null,
     remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
-    filePath: videoPath,
-    audioFilePath: audioPath ?? null,
-    rawMetadataPath: metadataDownloaded ? metadataPath : media.rawMetadataPath ?? null,
-    rawMetadataDownloadedAt: metadataDownloaded
-      ? new Date()
-      : media.rawMetadataDownloadedAt ?? null,
+    // hydrate 到本地时才写入本地路径
+    ...(ENABLE_LOCAL_HYDRATE
+      ? {
+          filePath: videoPath,
+          audioFilePath: audioPath ?? null,
+          rawMetadataPath: metadataDownloaded ? metadataPath : media.rawMetadataPath ?? null,
+          rawMetadataDownloadedAt: metadataDownloaded ? new Date() : media.rawMetadataDownloadedAt ?? null,
+        }
+      : {
+          filePath: media.filePath ?? null,
+          audioFilePath: media.audioFilePath ?? null,
+          rawMetadataPath: media.rawMetadataPath ?? null,
+          rawMetadataDownloadedAt: media.rawMetadataDownloadedAt ?? null,
+        }),
   }
 
   const metadataFromPayload = payload.metadata

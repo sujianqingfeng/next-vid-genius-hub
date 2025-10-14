@@ -501,17 +501,25 @@ function randomNonce() {
 // Legacy helpers removed in favor of @app/media-core
 
 async function postUpdate(callbackUrl, body) {
-	if (!callbackUrl) return
-	const payload = JSON.stringify(body)
-	const signature = hmacHex(CALLBACK_SECRET, payload)
-	await fetch(callbackUrl, {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			'x-signature': signature,
-		},
-		body: payload,
-	}).catch(() => {})
+    if (!callbackUrl) return
+    const payload = JSON.stringify(body)
+    const signature = hmacHex(CALLBACK_SECRET, payload)
+    try {
+        const r = await fetch(callbackUrl, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                'x-signature': signature,
+            },
+            body: payload,
+        })
+        if (!r.ok) {
+            const msg = await r.text().catch(() => '')
+            console.error('[media-downloader] callback non-2xx', r.status, msg)
+        }
+    } catch (e) {
+        console.error('[media-downloader] callback error', e?.message || e)
+    }
 }
 
 // Forward proxy resolution moved to @app/media-core

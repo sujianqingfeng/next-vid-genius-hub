@@ -20,6 +20,8 @@ services:
     container_name: burner-ffmpeg
     environment:
       - NODE_ENV=development
+      # Keep in sync with cloudflare/media-orchestrator/wrangler.toml [vars].
+      - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
     ports:
       - "8080:8080"
     depends_on:
@@ -32,7 +34,8 @@ services:
     container_name: renderer-remotion
     environment:
       - NODE_ENV=development
-      - JOB_CALLBACK_HMAC_SECRET=dev-secret
+      # Keep in sync with cloudflare/media-orchestrator/wrangler.toml [vars].
+      - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
     ports:
       - "8090:8090"
     depends_on:
@@ -45,7 +48,8 @@ services:
     container_name: media-downloader
     environment:
       - NODE_ENV=development
-      - JOB_CALLBACK_HMAC_SECRET=dev-secret
+      # Keep in sync with cloudflare/media-orchestrator/wrangler.toml [vars].
+      - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
       - CLASH_SUBSCRIPTION_URL=${CLASH_SUBSCRIPTION_URL:-}
       - CLASH_MODE=${CLASH_MODE:-Rule}
       - MIHOMO_PORT=${MIHOMO_PORT:-7890}
