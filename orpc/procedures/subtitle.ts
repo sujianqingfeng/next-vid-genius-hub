@@ -24,7 +24,8 @@ import {
 import {
     subtitleRenderConfigSchema,
 } from '~/lib/subtitle/types'
-import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
+import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
+import { tmpdir } from 'node:os'
 import {
 	parseVttCues,
 	serializeVttCues,
@@ -47,58 +48,88 @@ export const transcribe = os
 
 		logger.info('transcription', `Starting transcription for media ${mediaId} with ${provider}/${model}`)
 
-		const mediaRecord = await db.query.media.findFirst({
-			where: eq(schema.media.id, mediaId),
-		})
+        const mediaRecord = await db.query.media.findFirst({
+            where: eq(schema.media.id, mediaId),
+        })
 
-		if (!mediaRecord || !mediaRecord.audioFilePath) {
-			logger.error('transcription', 'Media not found or audio file path is missing')
-			throw new Error('Media not found or audio file path is missing.')
-		}
+        if (!mediaRecord) {
+            logger.error('transcription', 'Media not found')
+            throw new Error('Media not found.')
+        }
 
-		let vttContent: string
-		let transcriptionWords: TranscriptionWord[] | undefined
+        let vttContent: string
+        let transcriptionWords: TranscriptionWord[] | undefined
+        let tempAudioPath: string | undefined
+        let remoteAudioBuffer: ArrayBuffer | undefined
 
-		if (provider === 'cloudflare') {
-			// Validate Cloudflare configuration
-			if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
-				logger.error('transcription', 'Cloudflare configuration is missing')
-				throw new Error(
-					'Cloudflare configuration is missing. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables.',
-				)
-			}
+        // Resolve audio source: prefer local audioFilePath; otherwise try remoteAudioKey
+        const hasLocalAudio = Boolean(mediaRecord.audioFilePath)
+        if (!hasLocalAudio) {
+            if (mediaRecord.remoteAudioKey) {
+                try {
+                    const signedUrl = await presignGetByKey(mediaRecord.remoteAudioKey)
+                    const r = await fetch(signedUrl)
+                    if (!r.ok) throw new Error(`fetch audio failed: ${r.status}`)
+                    if (provider === 'cloudflare') {
+                        remoteAudioBuffer = await r.arrayBuffer()
+                    } else {
+                        // Local whisper requires a file path; write to temp and cleanup later
+                        const buf = Buffer.from(await r.arrayBuffer())
+                        const fileName = `${mediaId}-tmp-${Date.now()}.mp3`
+                        tempAudioPath = path.join(tmpdir(), fileName)
+                        await fs.writeFile(tempAudioPath, buf)
+                    }
+                } catch (e) {
+                    logger.error('transcription', `Failed to fetch remote audio: ${e instanceof Error ? e.message : String(e)}`)
+                    throw new Error('Audio not available: local path missing and remote fetch failed')
+                }
+            } else {
+                logger.error('transcription', 'Audio not available: missing audioFilePath and remoteAudioKey')
+                throw new Error('Audio not available: missing audioFilePath and remoteAudioKey')
+            }
+        }
 
-			logger.info('transcription', `Using Cloudflare provider with model ${model}`)
-			const transcriptionResult = await transcribeWithWhisper({
-				audioPath: mediaRecord.audioFilePath,
-				model,
-				provider: 'cloudflare',
-				cloudflareConfig: {
-					accountId: CLOUDFLARE_ACCOUNT_ID,
-					apiToken: CLOUDFLARE_API_TOKEN,
-				},
-			})
-			vttContent = transcriptionResult.vtt
-			transcriptionWords = transcriptionResult.words
-		} else {
-			// Validate local Whisper configuration
-			if (!WHISPER_CPP_PATH) {
-				logger.error('transcription', 'Whisper.cpp path is not configured')
-				throw new Error(
-					'WHISPER_CPP_PATH is not set in the environment variables.',
-				)
-			}
+        if (provider === 'cloudflare') {
+            // Validate Cloudflare configuration
+            if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
+                logger.error('transcription', 'Cloudflare configuration is missing')
+                throw new Error(
+                    'Cloudflare configuration is missing. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables.',
+                )
+            }
 
-			logger.info('transcription', `Using local Whisper provider with model ${model}`)
-			const transcriptionResult = await transcribeWithWhisper({
-				audioPath: mediaRecord.audioFilePath,
-				model,
-				provider: 'local',
-				whisperProjectPath: WHISPER_CPP_PATH,
-			})
-			vttContent = transcriptionResult.vtt
-			transcriptionWords = transcriptionResult.words
-		}
+            logger.info('transcription', `Using Cloudflare provider with model ${model}`)
+            const transcriptionResult = await transcribeWithWhisper({
+                audioPath: hasLocalAudio ? mediaRecord.audioFilePath! : undefined,
+                audioBuffer: remoteAudioBuffer,
+                model,
+                provider: 'cloudflare',
+                cloudflareConfig: {
+                    accountId: CLOUDFLARE_ACCOUNT_ID,
+                    apiToken: CLOUDFLARE_API_TOKEN,
+                },
+            })
+            vttContent = transcriptionResult.vtt
+            transcriptionWords = transcriptionResult.words
+        } else {
+            // Validate local Whisper configuration
+            if (!WHISPER_CPP_PATH) {
+                logger.error('transcription', 'Whisper.cpp path is not configured')
+                throw new Error(
+                    'WHISPER_CPP_PATH is not set in the environment variables.',
+                )
+            }
+
+            logger.info('transcription', `Using local Whisper provider with model ${model}`)
+            const transcriptionResult = await transcribeWithWhisper({
+                audioPath: hasLocalAudio ? mediaRecord.audioFilePath! : (tempAudioPath as string),
+                model,
+                provider: 'local',
+                whisperProjectPath: WHISPER_CPP_PATH,
+            })
+            vttContent = transcriptionResult.vtt
+            transcriptionWords = transcriptionResult.words
+        }
 
 		// 验证并标准化VTT格式
 		const validation = validateVttContent(vttContent)
@@ -126,8 +157,13 @@ export const transcribe = os
 			})
 			.where(eq(schema.media.id, mediaId))
 
-		logger.info('transcription', `Transcription completed successfully for media ${mediaId}`)
-		return { success: true, transcription: vttContent }
+        // Cleanup temp file if any
+        try {
+            if (tempAudioPath) await fs.unlink(tempAudioPath).catch(() => {})
+        } catch {}
+
+        logger.info('transcription', `Transcription completed successfully for media ${mediaId}`)
+        return { success: true, transcription: vttContent }
 	})
 
 const translateInput = z.object({

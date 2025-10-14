@@ -21,11 +21,13 @@ export interface CloudflareConfig {
 }
 
 interface TranscribeWithWhisperOptions {
-	audioPath: string
-	model: WhisperModel
-	provider: TranscriptionProvider
-	whisperProjectPath?: string
-	cloudflareConfig?: CloudflareConfig
+    // Prefer audioPath for local provider; for cloudflare provider, either audioPath or audioBuffer is accepted.
+    audioPath?: string
+    audioBuffer?: ArrayBuffer
+    model: WhisperModel
+    provider: TranscriptionProvider
+    whisperProjectPath?: string
+    cloudflareConfig?: CloudflareConfig
 }
 
 export interface TranscriptionResult {
@@ -37,23 +39,43 @@ export interface TranscriptionResult {
  * Main transcription function that routes to local or Cloudflare provider
  */
 export async function transcribeWithWhisper({
-	audioPath,
-	model,
-	provider,
-	whisperProjectPath,
-	cloudflareConfig,
+    audioPath,
+    audioBuffer,
+    model,
+    provider,
+    whisperProjectPath,
+    cloudflareConfig,
 }: TranscribeWithWhisperOptions): Promise<TranscriptionResult> {
-	if (provider === 'cloudflare') {
-		if (!cloudflareConfig) {
-			throw new Error('Cloudflare config is required for cloudflare provider')
-		}
-		return transcribeWithCloudflareProvider(audioPath, model, cloudflareConfig)
-	} else {
-		if (!whisperProjectPath) {
-			throw new Error('Whisper project path is required for local provider')
-		}
-		return transcribeWithLocalWhisper(audioPath, model, whisperProjectPath)
-	}
+    if (provider === 'cloudflare') {
+        if (!cloudflareConfig) {
+            throw new Error('Cloudflare config is required for cloudflare provider')
+        }
+        // Map our WhisperModel to Cloudflare model id
+        const cloudflareModelMap: Record<string, '@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo' | '@cf/openai/whisper'> = {
+            'whisper-tiny-en': '@cf/openai/whisper-tiny-en',
+            'whisper-large-v3-turbo': '@cf/openai/whisper-large-v3-turbo',
+            'whisper-medium': '@cf/openai/whisper',
+            'whisper-large': '@cf/openai/whisper',
+        }
+        const modelId = cloudflareModelMap[model]
+        if (!modelId) throw new Error(`Model ${model} is not supported by Cloudflare provider`)
+
+        if (audioBuffer) {
+            return transcribeWithCloudflareWhisper(audioBuffer, { ...cloudflareConfig, model: modelId })
+        }
+        if (!audioPath) throw new Error('Either audioBuffer or audioPath is required for cloudflare provider')
+        // Read file to buffer for Cloudflare
+        const fs = await import('fs/promises')
+        const b = await fs.readFile(audioPath)
+        const arrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer
+        return transcribeWithCloudflareWhisper(arrayBuffer, { ...cloudflareConfig, model: modelId })
+    } else {
+        if (!whisperProjectPath) {
+            throw new Error('Whisper project path is required for local provider')
+        }
+        if (!audioPath) throw new Error('audioPath is required for local provider')
+        return transcribeWithLocalWhisper(audioPath, model, whisperProjectPath)
+    }
 }
 
 /**
@@ -124,9 +146,9 @@ async function transcribeWithLocalWhisper(
  * Transcribe using Cloudflare Workers AI
  */
 async function transcribeWithCloudflareProvider(
-	audioPath: string,
-	model: WhisperModel,
-	config: CloudflareConfig,
+    audioPath: string,
+    model: WhisperModel,
+    config: CloudflareConfig,
 ): Promise<TranscriptionResult> {
 	logger.info('transcription', `Starting Cloudflare transcription for ${audioPath}`)
 
@@ -145,9 +167,9 @@ async function transcribeWithCloudflareProvider(
 
 	logger.info('transcription', `Using Cloudflare model: ${cloudflareModel}`)
 
-	// Read audio file as ArrayBuffer
-	const audioBuffer = await fs.readFile(audioPath)
-	const arrayBuffer = audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength) as ArrayBuffer
+    // Read audio file as ArrayBuffer
+    const audioBuffer = await fs.readFile(audioPath)
+    const arrayBuffer = audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength) as ArrayBuffer
 
 	logger.debug('transcription', `Audio buffer size: ${arrayBuffer.byteLength} bytes`)
 
