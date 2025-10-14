@@ -577,7 +577,23 @@ ${
 				{mediaQuery.data?.videoWithInfoPath && (
 					<Card>
 						<CardHeader>
-							<CardTitle>Rendered Video</CardTitle>
+							<div className="flex items-center justify-between">
+								<CardTitle>Rendered Video</CardTitle>
+								<Button
+									variant="outline"
+									size="sm"
+									asChild
+								>
+									<a
+										href={`/api/media/${id}/rendered-info`}
+										download={`${mediaQuery.data.title || id}-rendered.mp4`}
+										className="flex items-center gap-2"
+									>
+										<Download className="w-4 h-4" />
+										Download
+									</a>
+								</Button>
+							</div>
 						</CardHeader>
 						<CardContent>
 							<video controls className="w-full rounded-md" src={`/api/media/${id}/rendered-info`} />
