@@ -517,8 +517,9 @@ ${
 						<CardHeader>
 							<CardTitle>Comments</CardTitle>
 						</CardHeader>
-						<CardContent className="px-0">
-							{mediaQuery.isLoading && (
+						<CardContent className="p-0">
+							<div className="max-h-[600px] overflow-y-auto">
+								{mediaQuery.isLoading && (
 								<div className="space-y-1 px-4 py-3">
 									{[...Array(3)].map((_, i) => (
 										<div
@@ -576,6 +577,7 @@ ${
 									))}
 								</div>
 							)}
+							</div>
 						</CardContent>
 					</Card>
 				</div>
