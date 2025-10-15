@@ -77,6 +77,11 @@ async function execFFmpegWithProgress(args, totalDurationSeconds) {
         }
       }
     })
+    p.on('exit', (code, signal) => {
+      if (code !== 0) {
+        console.error(`[remotion] ffmpeg exited code=${code} signal=${signal || 'null'}`)
+      }
+    })
     p.on('close', (code) => {
       clearInterval(timer)
       if (code === 0) return resolve(0)

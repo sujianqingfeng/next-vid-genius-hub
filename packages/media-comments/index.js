@@ -102,10 +102,19 @@ export function getOverlayFilter({ coverDurationSeconds, totalDurationSeconds, l
   const actualHeight = Math.round(slot.height)
   const delayMs = Math.round(coverDurationSeconds * 1000)
   const videoDurationSeconds = totalDurationSeconds - coverDurationSeconds
+  // Important: Avoid extremely large in-filter loop buffers (loop/aloop) which can
+  // cause massive memory usage and OOM. Instead, rely on input-level `-stream_loop -1`
+  // and only trim/scale/offset inside the filtergraph.
   const filterGraph = [
-    `[1:v]loop=loop=-1:size=32767:start=0,fps=${fps},trim=duration=${videoDurationSeconds},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_src]`,
+    // Video: take the (input-looped) source video, conform FPS, trim to the
+    // post-cover duration, then scale to the placeholder region
+    `[1:v]fps=${fps},trim=duration=${videoDurationSeconds},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_src]`,
+    // Overlay the scaled source onto the Remotion-rendered canvas, only between
+    // the cover end and the total duration
     `[0:v][scaled_src]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
-    `[1:a]aloop=loop=-1:size=2e+09,atrim=0:${videoDurationSeconds},adelay=${delayMs}|${delayMs},asetpts=PTS-STARTPTS[delayed_audio]`,
+    // Audio: delay by the cover duration, then trim to the full output length
+    // (input is looped at demuxer level so no huge buffers here)
+    `[1:a]adelay=${delayMs}|${delayMs},atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS[delayed_audio]`,
   ].join(';')
   return { filterGraph, actualX, actualY, actualWidth, actualHeight, delayMs }
 }
@@ -133,7 +142,8 @@ export function buildComposeArgs({
     '-loglevel', 'error',
     '-progress', 'pipe:2',
     '-i', overlayPath,
-    '-i', sourceVideoPath,
+    // Loop the entire source at demuxer level to avoid giant in-filter loop buffers
+    '-stream_loop', '-1', '-i', sourceVideoPath,
     '-filter_complex', filterGraph,
     '-map', '[composited]',
     '-map', '[delayed_audio]?',

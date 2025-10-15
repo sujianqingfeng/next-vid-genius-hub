@@ -130,7 +130,8 @@ export function buildComposeArgs({
     '-loglevel', 'error',
     '-progress', 'pipe:2',
     '-i', overlayPath,
-    '-i', sourceVideoPath,
+    // Loop the source stream at the demuxer level; filtergraph only trims/offsets
+    '-stream_loop', '-1', '-i', sourceVideoPath,
     '-filter_complex', filterGraph,
     '-map', '[composited]',
     '-map', '[delayed_audio]?',
@@ -206,4 +207,3 @@ export default {
   VIDEO_WIDTH,
   VIDEO_HEIGHT,
 }
-
