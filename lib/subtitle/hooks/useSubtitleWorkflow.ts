@@ -81,7 +81,7 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
         const media = mediaQuery.data
 
         // 更新转录状态
-        const preferredTranscription = (media as any).optimizedTranscription || media.transcription
+        const preferredTranscription = media?.optimizedTranscription || media?.transcription
         if (preferredTranscription && !workflowState.transcription) {
             updateWorkflowState({ transcription: preferredTranscription })
             updateStepState('step1', { isCompleted: true })

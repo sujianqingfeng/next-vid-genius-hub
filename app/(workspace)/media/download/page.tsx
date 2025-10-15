@@ -67,9 +67,10 @@ export default function NewDownloadPage() {
 			return await orpc.download.getCloudDownloadStatus({ jobId: cloudJobId })
 		},
 		enabled: backend === 'cloud' && !!cloudJobId,
-		refetchInterval: (data) => {
-			if (!data) return 5000
-			return ['completed', 'failed', 'canceled'].includes(data.status) ? false : 5000
+		refetchInterval: (query) => {
+			const status = query.state.data?.status
+			if (!status) return 5000
+			return ['completed', 'failed', 'canceled'].includes(status) ? false : 5000
 		},
 	})
 

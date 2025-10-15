@@ -288,7 +288,7 @@ export class DownloadService implements IDownloadService {
 
 			// Construct proxy URL via shared helper
 			return buildForwardProxyUrl({
-				protocol: proxy.protocol as any,
+				protocol: proxy.protocol as 'http' | 'https' | 'socks4' | 'socks5',
 				server: proxy.server,
 				port: proxy.port,
 				username: proxy.username ?? undefined,
