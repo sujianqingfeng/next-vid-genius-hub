@@ -4,6 +4,7 @@ import { os } from '@orpc/server'
 import { desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { OPERATIONS_DIR } from '~/lib/config/app.config'
+import { deleteCloudArtifacts } from '~/lib/cloudflare'
 import { db, schema } from '~/lib/db'
 
 export const list = os
@@ -52,8 +53,39 @@ export const deleteById = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
 		const { id } = input
+
+		// 1) Load record to gather cloud references (best-effort)
+		const record = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
+
+		// 2) Best-effort cloud cleanup (remote keys + orchestrator artifacts)
+		try {
+			if (record) {
+				const keys: string[] = []
+				if (record.remoteVideoKey) keys.push(record.remoteVideoKey)
+				if (record.remoteAudioKey) keys.push(record.remoteAudioKey)
+				if (record.remoteMetadataKey) keys.push(record.remoteMetadataKey)
+
+				const artifactJobIds: string[] = []
+				// videoWithSubtitlesPath or videoWithInfoPath might store remote orchestrator artifact refs: "remote:orchestrator:<jobId>"
+				for (const p of [record.videoWithSubtitlesPath, record.videoWithInfoPath, record.filePath]) {
+					if (typeof p === 'string' && p.startsWith('remote:orchestrator:')) {
+						const jobId = p.split(':').pop()
+						if (jobId) artifactJobIds.push(jobId)
+					}
+				}
+
+				await deleteCloudArtifacts({ keys, artifactJobIds })
+			}
+		} catch (err) {
+			console.warn('[media.deleteById] cloud cleanup failed (continuing):', err)
+		}
+
+		// 3) Delete DB record
 		await db.delete(schema.media).where(eq(schema.media.id, id))
+
+		// 4) Remove local operation directory
 		const operationDir = path.join(OPERATIONS_DIR, id)
 		await fs.rm(operationDir, { recursive: true, force: true })
+
 		return { success: true }
 	})

@@ -71,3 +71,39 @@ export async function presignGetByKey(key: string): Promise<string> {
   if (!body?.getUrl) throw new Error('presignGetByKey: missing getUrl in response')
   return body.getUrl
 }
+
+// Best-effort deletion of remote artifacts via orchestrator helper endpoints.
+// - keys: R2 object keys to delete
+// - artifactJobIds: orchestrator artifact job ids to purge
+export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJobIds?: string[] }): Promise<void> {
+  const base = requireOrchestratorUrl()
+  const keys = (input.keys ?? []).filter(Boolean)
+  const jobIds = (input.artifactJobIds ?? []).filter(Boolean)
+
+  // 1) Batch delete objects by key (if any)
+  if (keys.length > 0) {
+    const url = `${base.replace(/\/$/, '')}/debug/delete`
+    const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+    const { payload, signature } = buildSignedBody(secret, { keys })
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-signature': signature,
+      },
+      body: payload,
+    })
+    if (!res.ok) {
+      throw new Error(`deleteCloudArtifacts: delete keys failed: ${res.status} ${await res.text()}`)
+    }
+  }
+
+  // 2) Delete orchestrator artifacts by job id (if any)
+  for (const id of jobIds) {
+    const url = `${base.replace(/\/$/, '')}/artifacts/${encodeURIComponent(id)}`
+    const r = await fetch(url, { method: 'DELETE' })
+    if (!r.ok && r.status !== 404) {
+      throw new Error(`deleteCloudArtifacts: delete artifact ${id} failed: ${r.status} ${await r.text()}`)
+    }
+  }
+}
