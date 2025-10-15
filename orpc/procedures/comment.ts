@@ -272,15 +272,15 @@ export const startCloudRender = os
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
 		// 允许在未本地落盘（ENABLE_LOCAL_HYDRATE=false）的情况下走云端渲染。
-		// 只要存在任一远端来源（videoWithSubtitlesPath 为 remote:orchestrator:*, 或 downloadJobId、remoteVideoKey）即可。
+		// 需要存在一个可用的源：本地文件、已完成的云下载（downloadStatus=completed）、已存在的远端 key，或已有渲染成品。
 		const hasAnySource = Boolean(
 			media.filePath ||
 			media.videoWithSubtitlesPath ||
-			media.downloadJobId ||
-			media.remoteVideoKey,
+			media.remoteVideoKey ||
+			(media.downloadJobId && media.downloadStatus === 'completed'),
 		)
 		if (!hasAnySource) {
-			throw new Error('No source video available (neither local path nor remote job/key).')
+			throw new Error('No source video available (need local file, rendered artifact, remote key, or a completed cloud download).')
 		}
 		if (!media.comments || media.comments.length === 0) {
 			throw new Error('No comments found for this media')

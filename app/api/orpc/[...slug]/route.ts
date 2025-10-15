@@ -5,17 +5,9 @@ import { appRouter } from '~/orpc/router'
 const handler = new RPCHandler(appRouter, {
 	interceptors: [
 		onError((error: unknown) => {
-			console.error(error)
+			console.error('[ORPC] Handler error:', error)
 		}),
 	],
-	// Add more detailed error handling
-	errorHandler: (error) => {
-		console.error('[ORPC] Handler error:', error)
-		return {
-			status: 500,
-			body: { error: 'Internal server error' },
-		}
-	},
 })
 
 async function handle(request: Request) {

@@ -33,6 +33,7 @@ type CallbackPayload = {
     likeCount?: number
     source?: 'youtube' | 'tiktok'
     quality?: '720p' | '1080p'
+    commentCount?: number  // For comments-only tasks
   }
 }
 
@@ -82,8 +83,6 @@ export async function POST(req: NextRequest) {
       }
     } else if (payload.status === 'failed' || payload.status === 'canceled') {
       // 非 downloader 引擎的失败/取消也落库，便于在媒体详情中留痕
-      const isSub = payload.engine === 'burner-ffmpeg'
-      const isInfo = payload.engine === 'renderer-remotion'
       const errorMessage = payload.error || (payload.status === 'failed' ? 'Cloud render failed' : 'Cloud render canceled')
       const updates: Record<string, unknown> = {
         downloadError: `[${payload.engine}] ${errorMessage}`,
@@ -109,6 +108,21 @@ async function handleCloudDownloadCallback(
 ) {
   const where = eq(schema.media.id, payload.mediaId)
 
+  // Detect comments-only task: no video output but has metadata output
+  const isCommentsOnly = !payload.outputs?.video?.url && Boolean(payload.outputs?.metadata?.url)
+
+  console.log('[cf-callback] media-downloader callback received', {
+    jobId: payload.jobId,
+    mediaId: payload.mediaId,
+    status: payload.status,
+    isCommentsOnly,
+    hasVideoUrl: Boolean(payload.outputs?.video?.url),
+    hasVideoKey: Boolean(payload.outputs?.video?.key),
+    hasMetadataUrl: Boolean(payload.outputs?.metadata?.url),
+    hasMetadataKey: Boolean(payload.outputs?.metadata?.key),
+    outputsKeys: Object.keys(payload.outputs || {}),
+  })
+
   if (payload.status !== 'completed') {
     await db
       .update(schema.media)
@@ -121,6 +135,14 @@ async function handleCloudDownloadCallback(
       .where(where)
     return
   }
+
+  // For comments-only tasks, skip video download logic
+  if (isCommentsOnly) {
+    console.log('[cf-callback] comments-only task completed, skipping video download fields update', { jobId: payload.jobId, mediaId: payload.mediaId })
+    return
+  }
+
+  console.log('[cf-callback] processing video download callback', { jobId: payload.jobId, mediaId: payload.mediaId, hasVideo: Boolean(payload.outputs?.video?.url) })
 
   const videoUrl = payload.outputs?.video?.url
   if (!videoUrl) {

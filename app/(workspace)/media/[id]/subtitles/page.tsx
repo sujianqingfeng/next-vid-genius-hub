@@ -329,7 +329,7 @@ export default function SubtitlesPage() {
                                 optimizedTranscription={media?.optimizedTranscription ?? undefined}
                                 isClearingOptimized={clearOptimizedMutation.isPending}
                                 mediaId={mediaId}
-                                canOptimize={!!media?.transcriptionWords && (media.transcriptionWords as any[]).length > 0}
+                                canOptimize={!!media?.transcriptionWords && Array.isArray(media.transcriptionWords) && media.transcriptionWords.length > 0}
                                 isOptimizing={optimizeMutation.isPending}
                                 selectedAIModel={selectedAIModel}
                                 onOptimizeModelChange={(m) => updateWorkflowState({ selectedAIModel: m })}
@@ -414,7 +414,7 @@ export default function SubtitlesPage() {
                                 <div className="mt-3 text-sm text-muted-foreground">
                                     {(() => {
                                       const s = cloudStatusQuery.data?.status
-                                      const label = s ? (STATUS_LABELS as any)[s] ?? s : 'starting'
+                                      const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'starting'
                                       const pct = typeof cloudStatusQuery.data?.progress === 'number' ? `(${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
                                       return <>Job: {cloudJobId} — Status: {label} {pct}</>
                                     })()}

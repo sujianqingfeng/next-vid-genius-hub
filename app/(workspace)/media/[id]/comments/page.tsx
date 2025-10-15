@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Copy, Download, Film, LanguagesIcon, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Copy, Download, Edit, Film, LanguagesIcon, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -10,6 +10,17 @@ import { CommentCard, RemotionPreviewCard } from '~/components/business/media'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from '~/components/ui/dialog'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
 import {
 	Select,
 	SelectContent,
@@ -37,6 +48,11 @@ export default function CommentsPage() {
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
 	const [renderProxyId, setRenderProxyId] = useState<string>('none')
 
+	// Edit titles dialog
+	const [editDialogOpen, setEditDialogOpen] = useState(false)
+	const [editTitle, setEditTitle] = useState('')
+	const [editTranslatedTitle, setEditTranslatedTitle] = useState('')
+
 	// Persist comments cloud job id across reloads
 	useEffect(() => {
 		const key = `commentsDownloadCloudJob:${id}`
@@ -54,6 +70,35 @@ export default function CommentsPage() {
 			input: { id },
 		}),
 	)
+
+	const updateTitlesMutation = useMutation(
+		queryOrpc.media.updateTitles.mutationOptions({
+			onSuccess: () => {
+				queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+				})
+				setEditDialogOpen(false)
+				toast.success('Titles updated successfully!')
+			},
+			onError: (error) => {
+				toast.error(`Failed to update titles: ${error.message}`)
+			},
+		}),
+	)
+
+	const handleEditClick = () => {
+		setEditTitle(mediaQuery.data?.title || '')
+		setEditTranslatedTitle(mediaQuery.data?.translatedTitle || '')
+		setEditDialogOpen(true)
+	}
+
+	const handleSaveTitles = () => {
+		updateTitlesMutation.mutate({
+			id,
+			title: editTitle,
+			translatedTitle: editTranslatedTitle,
+		})
+	}
 
 	const downloadCommentsMutation = useMutation(
 		queryOrpc.comment.downloadComments.mutationOptions({
@@ -103,10 +148,11 @@ export default function CommentsPage() {
 	)
 
 	useEffect(() => {
-		if (commentsBackend === 'cloud' && commentsCloudJobId && cloudCommentsStatusQuery.data?.status === 'completed') {
+		if (commentsBackend === 'cloud' && commentsCloudJobId && cloudCommentsStatusQuery.data?.status === 'completed' && !finalizeCloudCommentsMutation.isPending) {
 			finalizeCloudCommentsMutation.mutate({ mediaId: id, jobId: commentsCloudJobId })
 		}
-	}, [commentsBackend, commentsCloudJobId, cloudCommentsStatusQuery.data?.status, finalizeCloudCommentsMutation, id])
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [commentsBackend, commentsCloudJobId, cloudCommentsStatusQuery.data?.status, id])
 
 	const translateCommentsMutation = useMutation(
 		queryOrpc.comment.translateComments.mutationOptions({
@@ -184,7 +230,8 @@ export default function CommentsPage() {
 			try { window.localStorage.removeItem(`commentsCloudJob:${id}`) } catch {}
 			setCloudJobId(null)
 		}
-	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, id, queryClient])
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, id])
 
 	const comments = mediaQuery.data?.comments || []
 
@@ -246,33 +293,91 @@ export default function CommentsPage() {
 					{/* Media Title */}
 					{mediaQuery.data && (
 						<div className="mt-4 space-y-2">
-							{mediaQuery.data.title && (
-								<div className="flex items-start gap-2">
-									<p className="text-sm text-muted-foreground flex-1">
-										{mediaQuery.data.title}
-									</p>
+							<div className="flex items-center justify-between gap-2">
+								<div className="flex-1 space-y-2">
+									{mediaQuery.data.title && (
+										<div className="flex items-start gap-2">
+											<p className="text-sm text-muted-foreground flex-1">
+												{mediaQuery.data.title}
+											</p>
+										</div>
+									)}
+									{mediaQuery.data.translatedTitle && (
+										<div className="flex items-start gap-2">
+											<p className="text-sm font-medium flex-1">
+												{mediaQuery.data.translatedTitle}
+											</p>
+											<Button
+												variant="ghost"
+												size="sm"
+												className="h-auto py-1 px-2 -mt-1"
+												onClick={() => {
+													if (mediaQuery.data?.translatedTitle) {
+														navigator.clipboard.writeText(mediaQuery.data.translatedTitle)
+														toast.success('标题已复制到剪贴板')
+													}
+												}}
+											>
+												<Copy className="w-3.5 h-3.5" />
+											</Button>
+										</div>
+									)}
 								</div>
-							)}
-							{mediaQuery.data.translatedTitle && (
-								<div className="flex items-start gap-2">
-									<p className="text-sm font-medium flex-1">
-										{mediaQuery.data.translatedTitle}
-									</p>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-auto py-1 px-2 -mt-1"
-										onClick={() => {
-											if (mediaQuery.data?.translatedTitle) {
-												navigator.clipboard.writeText(mediaQuery.data.translatedTitle)
-												toast.success('标题已复制到剪贴板')
-											}
-										}}
-									>
-										<Copy className="w-3.5 h-3.5" />
-									</Button>
-								</div>
-							)}
+								<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+									<DialogTrigger asChild>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-auto py-1 px-2"
+											onClick={handleEditClick}
+										>
+											<Edit className="w-3.5 h-3.5" />
+										</Button>
+									</DialogTrigger>
+									<DialogContent>
+										<DialogHeader>
+											<DialogTitle>Edit Titles</DialogTitle>
+											<DialogDescription>
+												Update the original and translated titles for this media.
+											</DialogDescription>
+										</DialogHeader>
+										<div className="space-y-4 py-4">
+											<div className="space-y-2">
+												<Label htmlFor="title">Original Title (Chinese)</Label>
+												<Input
+													id="title"
+													value={editTitle}
+													onChange={(e) => setEditTitle(e.target.value)}
+													placeholder="Enter original title"
+												/>
+											</div>
+											<div className="space-y-2">
+												<Label htmlFor="translatedTitle">Translated Title (English)</Label>
+												<Input
+													id="translatedTitle"
+													value={editTranslatedTitle}
+													onChange={(e) => setEditTranslatedTitle(e.target.value)}
+													placeholder="Enter translated title"
+												/>
+											</div>
+										</div>
+										<DialogFooter>
+											<Button
+												variant="outline"
+												onClick={() => setEditDialogOpen(false)}
+											>
+												Cancel
+											</Button>
+											<Button
+												onClick={handleSaveTitles}
+												disabled={updateTitlesMutation.isPending}
+											>
+												{updateTitlesMutation.isPending ? 'Saving...' : 'Save'}
+											</Button>
+										</DialogFooter>
+									</DialogContent>
+								</Dialog>
+							</div>
 						</div>
 					)}
 				</div>
@@ -364,7 +469,7 @@ export default function CommentsPage() {
                                 <p className="text-xs text-muted-foreground">
                                     {(() => {
                                       const s = cloudCommentsStatusQuery.data?.status
-                                      const label = s ? (STATUS_LABELS as any)[s] ?? s : 'starting'
+                                      const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'starting'
                                       const pct = typeof cloudCommentsStatusQuery.data?.progress === 'number' ? ` (${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
                                       return <>Job: {commentsCloudJobId} — {label}{pct}</>
                                     })()}
@@ -454,7 +559,7 @@ export default function CommentsPage() {
                                 <p className="text-xs text-muted-foreground">
                                     {(() => {
                                       const s = cloudStatusQuery.data?.status
-                                      const label = s ? (STATUS_LABELS as any)[s] ?? s : 'starting'
+                                      const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'starting'
                                       const pct = typeof cloudStatusQuery.data?.progress === 'number' ? ` (${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
                                       return <>Job: {cloudJobId} — {label}{pct}</>
                                     })()}

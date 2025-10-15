@@ -676,7 +676,11 @@ async function s3Head(env: Env, bucket: string, key: string): Promise<boolean> {
 
 async function s3Put(env: Env, bucket: string, key: string, contentType: string, body: ReadableStream | string): Promise<void> {
   const url = await presignS3(env, 'PUT', bucket, key, 600, contentType)
-  const init: RequestInit = { method: 'PUT', headers: { 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' } }
+  const headers: Record<string, string> = {
+    'content-type': contentType,
+    'x-amz-content-sha256': 'UNSIGNED-PAYLOAD'
+  }
+  const init: RequestInit = { method: 'PUT', headers }
   if (typeof body === 'string') {
     init.body = body
   } else {
@@ -863,7 +867,10 @@ export class RenderJobDO {
         }
 
         if (shouldComplete) {
+          // Mark job as fully completed and normalize state
           doc.status = 'completed'
+          doc.phase = undefined
+          doc.progress = 1
           doc.ts = Date.now()
           await this.state.storage.put('job', doc)
 
@@ -879,6 +886,12 @@ export class RenderJobDO {
             await this.state.storage.put('job', doc)
           }
         }
+      }
+      // If job is already completed but retained a stale phase/progress from earlier stages,
+      // normalize the response so clients display a final 100% without an active phase.
+      if (doc.status === 'completed') {
+        if (doc.phase) delete doc.phase
+        if (doc.progress !== 1) doc.progress = 1
       }
       // Enrich outputs with presigned URLs for asr-pipeline artifacts
       try {
@@ -919,7 +932,10 @@ export class RenderJobDO {
 
     if (doc.engine === 'media-downloader') {
       const outputs: Record<string, unknown> = {}
-      if (doc.outputKey) {
+      // Only include video output if the container actually sent it
+      // Comments-only: outputs.video will be absent; video download: outputs.video exists
+      const hasVideoInOutputs = doc.outputs && 'video' in doc.outputs
+      if (hasVideoInOutputs && doc.outputKey) {
         outputs.video = {
           key: doc.outputKey,
           url: await presignS3(this.env, 'GET', bucket, doc.outputKey, 600),

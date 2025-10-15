@@ -24,6 +24,15 @@ export async function GET(
       return NextResponse.json({ error: 'Media not found' }, { status: 404 })
     }
 
+    console.log('[source] resolving video source', {
+      mediaId,
+      hasFilePath: Boolean(media.filePath),
+      hasRemoteVideoKey: Boolean(media.remoteVideoKey),
+      hasDownloadJobId: Boolean(media.downloadJobId),
+      downloadStatus: media.downloadStatus,
+      hasRenderedPath: Boolean(media.videoWithSubtitlesPath || media.videoWithInfoPath),
+    })
+
     // 1) Local file if hydrated
     if (media.filePath && !media.filePath.startsWith('remote:orchestrator:')) {
       return serveLocalFileWithRange(media.filePath, request, {
@@ -50,24 +59,53 @@ export async function GET(
           )
         }
         const remoteUrl = `${base}/artifacts/${encodeURIComponent(jobId)}`
-        return proxyRemoteWithRange(remoteUrl, request, { defaultCacheSeconds: 60 })
+        // Try remote artifact first; if missing (404), fall through to other remote fallbacks below
+        const range = request.headers.get('range')
+        const passHeaders: Record<string, string> = {}
+        if (range) passHeaders['range'] = range
+        const r = await fetch(remoteUrl, { headers: passHeaders })
+        if (r.ok) {
+          const respHeaders = new Headers()
+          const copy = ['content-type', 'accept-ranges', 'content-length', 'content-range', 'cache-control', 'etag', 'last-modified']
+          for (const h of copy) {
+            const v = r.headers.get(h)
+            if (v) respHeaders.set(h, v)
+          }
+          if (!respHeaders.has('cache-control')) respHeaders.set('cache-control', 'private, max-age=60')
+          return new NextResponse(r.body as unknown as ReadableStream, { status: r.status, headers: respHeaders })
+        }
+        // If remote artifact responded non-OK (e.g., 404), continue to generic remote resolution below
+      } else {
+        // Local rendered file
+        return serveLocalFileWithRange(renderedPath, request, {
+          contentType: 'video/mp4',
+          cacheSeconds: 600,
+        })
       }
-      // Local rendered file
-      return serveLocalFileWithRange(renderedPath, request, {
-        contentType: 'video/mp4',
-        cacheSeconds: 600,
-      })
     }
 
-    // 2) Remote fallbacks (orchestrator artifact by downloadJobId, or presigned R2 key)
-    const remoteUrl = await resolveRemoteVideoUrl({
-      filePath: media.filePath ?? null,
-      downloadJobId: media.downloadJobId ?? null,
-      remoteVideoKey: media.remoteVideoKey ?? null,
-      title: media.title ?? null,
-    })
-    if (remoteUrl) {
-      return proxyRemoteWithRange(remoteUrl, request, { defaultCacheSeconds: 60 })
+    // 2) Remote fallbacks
+    // Prefer presigned remoteVideoKey (if DB has one), otherwise try orchestrator artifact by downloadJobId.
+    // This also recovers stale DB states where downloadStatus isn't updated but artifact exists in R2.
+    const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
+    // 2.1) Try remoteVideoKey via orchestrator presign helper
+    if (media.remoteVideoKey) {
+      try {
+        const url = await resolveRemoteVideoUrl({
+          filePath: media.filePath ?? null,
+          downloadJobId: null,
+          remoteVideoKey: media.remoteVideoKey,
+          title: media.title ?? null,
+        })
+        if (url) return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
+      } catch (e) {
+        console.warn('[source] presign remoteVideoKey failed', e)
+      }
+    }
+    // 2.2) Try orchestrator artifact by downloadJobId (regardless of local downloadStatus)
+    if (media.downloadJobId && base) {
+      const url = `${base}/artifacts/${encodeURIComponent(media.downloadJobId)}`
+      return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
     }
 
     return NextResponse.json({ error: 'Source video not found' }, { status: 404 })

@@ -29,19 +29,35 @@ export async function GET(
       })
     }
 
-    // 2) Remote via orchestrator job id (preferred), else presign by key
-    const remoteUrl = await resolveRemoteVideoUrl({
-      filePath: media.filePath ?? null,
-      downloadJobId: media.downloadJobId ?? null,
-      remoteVideoKey: media.remoteVideoKey ?? null,
-      title: media.title ?? null,
-    })
-
-    if (remoteUrl) {
-      return proxyRemoteWithRange(remoteUrl, request, {
-        defaultCacheSeconds: 60,
-        forceDownloadName: downloadName,
-      })
+    // 2) Remote fallbacks
+    // Prefer presigned remoteVideoKey; otherwise try orchestrator artifact by downloadJobId even if DB status is stale.
+    if (media.remoteVideoKey) {
+      try {
+        const remoteUrl = await resolveRemoteVideoUrl({
+          filePath: media.filePath ?? null,
+          downloadJobId: null,
+          remoteVideoKey: media.remoteVideoKey,
+          title: media.title ?? null,
+        })
+        if (remoteUrl) {
+          return proxyRemoteWithRange(remoteUrl, request, {
+            defaultCacheSeconds: 60,
+            forceDownloadName: downloadName,
+          })
+        }
+      } catch (e) {
+        console.warn('[downloaded] presign remoteVideoKey failed', e)
+      }
+    }
+    if (media.downloadJobId) {
+      const base = (process.env.CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
+      if (base) {
+        const url = `${base}/artifacts/${encodeURIComponent(media.downloadJobId)}`
+        return proxyRemoteWithRange(url, request, {
+          defaultCacheSeconds: 60,
+          forceDownloadName: downloadName,
+        })
+      }
     }
 
     return NextResponse.json({ error: 'No video available' }, { status: 404 })
@@ -50,4 +66,3 @@ export async function GET(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
