@@ -36,13 +36,14 @@ import { buildCandidateBreaks, buildSegmentsByAI, segmentsToVtt, applyOrphanGuar
 // removed unused types from models
 
 export const transcribe = os
-	.input(
-		z.object({
-			mediaId: z.string(),
-			model: z.enum(['whisper-large', 'whisper-medium', 'whisper-tiny-en', 'whisper-large-v3-turbo']),
-			provider: z.enum(['local', 'cloudflare']).default('local'),
-		}),
-	)
+    .input(
+        z.object({
+            mediaId: z.string(),
+            model: z.enum(['whisper-large', 'whisper-medium', 'whisper-tiny-en', 'whisper-large-v3-turbo']),
+            provider: z.enum(['local', 'cloudflare']).default('local'),
+            downsampleBackend: z.enum(['auto','local','cloud']).default('auto').optional(),
+        }),
+    )
 	.handler(async ({ input }) => {
 		const { mediaId, model, provider } = input
 
@@ -61,27 +62,44 @@ export const transcribe = os
         let transcriptionWords: TranscriptionWord[] | undefined
         let tempAudioPath: string | undefined
         let remoteAudioBuffer: ArrayBuffer | undefined
+        const downsampleBackend = input.downsampleBackend || 'auto'
+        const useCloudDownsample = provider === 'cloudflare' && (
+            downsampleBackend === 'cloud' || (
+                downsampleBackend === 'auto' && (
+                    Boolean(process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME) ||
+                    process.env.FORCE_CLOUD_DOWNSAMPLE === 'true'
+                )
+            )
+        )
 
         // Resolve audio source: prefer local audioFilePath; otherwise try remoteAudioKey
         const hasLocalAudio = Boolean(mediaRecord.audioFilePath)
         if (!hasLocalAudio) {
             if (mediaRecord.remoteAudioKey) {
-                try {
-                    const signedUrl = await presignGetByKey(mediaRecord.remoteAudioKey)
-                    const r = await fetch(signedUrl)
-                    if (!r.ok) throw new Error(`fetch audio failed: ${r.status}`)
-                    if (provider === 'cloudflare') {
-                        remoteAudioBuffer = await r.arrayBuffer()
-                    } else {
-                        // Local whisper requires a file path; write to temp and cleanup later
-                        const buf = Buffer.from(await r.arrayBuffer())
-                        const fileName = `${mediaId}-tmp-${Date.now()}.mp3`
-                        tempAudioPath = path.join(tmpdir(), fileName)
-                        await fs.writeFile(tempAudioPath, buf)
+                // 若使用云端降采样，则不需要把音频拉回 Next；否则按原逻辑拉取
+                if (!(useCloudDownsample && provider === 'cloudflare')) {
+                    try {
+                        const signedUrl = await presignGetByKey(mediaRecord.remoteAudioKey)
+                        const r = await fetch(signedUrl)
+                        if (!r.ok) throw new Error(`fetch audio failed: ${r.status}`)
+                        if (provider === 'cloudflare') {
+                            remoteAudioBuffer = await r.arrayBuffer()
+                            try {
+                                const size = remoteAudioBuffer.byteLength
+                                const mb = (size / (1024 * 1024)).toFixed(2)
+                                logger.info('transcription', `Remote audio fetched: ${size} bytes (~${mb} MB) for media ${mediaId}`)
+                            } catch {}
+                        } else {
+                            // Local whisper requires a file path; write to temp and cleanup later
+                            const buf = Buffer.from(await r.arrayBuffer())
+                            const fileName = `${mediaId}-tmp-${Date.now()}.mp3`
+                            tempAudioPath = path.join(tmpdir(), fileName)
+                            await fs.writeFile(tempAudioPath, buf)
+                        }
+                    } catch (e) {
+                        logger.error('transcription', `Failed to fetch remote audio: ${e instanceof Error ? e.message : String(e)}`)
+                        throw new Error('Audio not available: local path missing and remote fetch failed')
                     }
-                } catch (e) {
-                    logger.error('transcription', `Failed to fetch remote audio: ${e instanceof Error ? e.message : String(e)}`)
-                    throw new Error('Audio not available: local path missing and remote fetch failed')
                 }
             } else {
                 logger.error('transcription', 'Audio not available: missing audioFilePath and remoteAudioKey')
@@ -90,27 +108,79 @@ export const transcribe = os
         }
 
         if (provider === 'cloudflare') {
-            // Validate Cloudflare configuration
-            if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
-                logger.error('transcription', 'Cloudflare configuration is missing')
-                throw new Error(
-                    'Cloudflare configuration is missing. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables.',
-                )
+            // Phase 2: 当使用 asr-pipeline（云端流水线）时，Next 端无需本地 AI 凭据
+            const useAsrPipeline = Boolean(useCloudDownsample && mediaRecord.remoteAudioKey)
+
+            // 仅在需要走旧路径（Next 直连 Workers AI）时才校验本地凭据
+            if (!useAsrPipeline) {
+                if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
+                    logger.error('transcription', 'Cloudflare configuration is missing')
+                    throw new Error(
+                        'Cloudflare configuration is missing. Please set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables.',
+                    )
+                }
             }
 
             logger.info('transcription', `Using Cloudflare provider with model ${model}`)
-            const transcriptionResult = await transcribeWithWhisper({
-                audioPath: hasLocalAudio ? mediaRecord.audioFilePath! : undefined,
-                audioBuffer: remoteAudioBuffer,
-                model,
-                provider: 'cloudflare',
-                cloudflareConfig: {
-                    accountId: CLOUDFLARE_ACCOUNT_ID,
-                    apiToken: CLOUDFLARE_API_TOKEN,
-                },
-            })
-            vttContent = transcriptionResult.vtt
-            transcriptionWords = transcriptionResult.words
+            if (useAsrPipeline) {
+                // Phase 2: asr-pipeline（Worker 端降采样 + ASR）
+                const targetBytes = Number(process.env.CLOUDFLARE_ASR_MAX_UPLOAD_BYTES || 4 * 1024 * 1024)
+                const sampleRate = Number(process.env.ASR_SAMPLE_RATE || 16000)
+                const targetBitrates = (process.env.ASR_TARGET_BITRATES || '48,24').split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0)
+                const cloudflareModelMap: Record<string, '@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo' | '@cf/openai/whisper'> = {
+                    'whisper-tiny-en': '@cf/openai/whisper-tiny-en',
+                    'whisper-large-v3-turbo': '@cf/openai/whisper-large-v3-turbo',
+                    'whisper-medium': '@cf/openai/whisper',
+                    'whisper-large': '@cf/openai/whisper',
+                }
+                const modelId = cloudflareModelMap[model]
+                const job = await startCloudJob({
+                    mediaId,
+                    engine: 'asr-pipeline',
+                    options: { sourceKey: mediaRecord.remoteAudioKey, maxBytes: targetBytes, targetBitrates, sampleRate, model: modelId },
+                })
+                const startedAt = Date.now()
+                let lastStatus = 'queued'
+                let vttUrl: string | undefined
+                let wordsUrl: string | undefined
+                while (Date.now() - startedAt < 180_000) { // 最多 180s
+                    const st = await getJobStatus(job.jobId)
+                    lastStatus = st.status
+                    if (st.status === 'completed') {
+                        vttUrl = st.outputs?.vtt?.url
+                        wordsUrl = st.outputs?.words?.url
+                        break
+                    }
+                    if (st.status === 'failed' || st.status === 'canceled') {
+                        throw new Error(st.message || 'Cloud ASR pipeline failed')
+                    }
+                    await new Promise(r => setTimeout(r, 1200))
+                }
+                if (!vttUrl) throw new Error(`Cloud ASR pipeline timeout; last status=${lastStatus}`)
+                const vttResp = await fetch(vttUrl)
+                if (!vttResp.ok) throw new Error(`fetch vtt failed: ${vttResp.status}`)
+                vttContent = await vttResp.text()
+                if (wordsUrl) {
+                    try {
+                        const wr = await fetch(wordsUrl)
+                        if (wr.ok) transcriptionWords = await wr.json() as any
+                    } catch {}
+                }
+            } else {
+                // Phase 1 路径：Next 端直连 Workers AI
+                const transcriptionResult = await transcribeWithWhisper({
+                    audioPath: hasLocalAudio ? mediaRecord.audioFilePath! : undefined,
+                    audioBuffer: remoteAudioBuffer,
+                    model,
+                    provider: 'cloudflare',
+                    cloudflareConfig: {
+                        accountId: CLOUDFLARE_ACCOUNT_ID,
+                        apiToken: CLOUDFLARE_API_TOKEN,
+                    },
+                })
+                vttContent = transcriptionResult.vtt
+                transcriptionWords = transcriptionResult.words
+            }
         } else {
             // Validate local Whisper configuration
             if (!WHISPER_CPP_PATH) {

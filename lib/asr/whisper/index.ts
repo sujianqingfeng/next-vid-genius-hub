@@ -2,6 +2,7 @@ import { spawn } from 'child_process'
 import fs from 'fs/promises'
 import path from 'path'
 import { transcribeWithCloudflareWhisper } from '~/lib/ai/cloudflare'
+import { prepareAudioForCloudflare } from '~/lib/asr/prepare'
 import { logger } from '~/lib/logger'
 import { type TranscriptionWord } from '~/lib/db/schema'
 import {
@@ -61,14 +62,26 @@ export async function transcribeWithWhisper({
         if (!modelId) throw new Error(`Model ${model} is not supported by Cloudflare provider`)
 
         if (audioBuffer) {
-            return transcribeWithCloudflareWhisper(audioBuffer, { ...cloudflareConfig, model: modelId })
+            try {
+                const size = audioBuffer.byteLength
+                const mb = (size / (1024 * 1024)).toFixed(2)
+                logger.info('transcription', `Cloudflare upload (buffer): ${size} bytes (~${mb} MB)`) 
+            } catch {}
+            const prepared = await prepareAudioForCloudflare(audioBuffer)
+            return transcribeWithCloudflareWhisper(prepared, { ...cloudflareConfig, model: modelId })
         }
         if (!audioPath) throw new Error('Either audioBuffer or audioPath is required for cloudflare provider')
         // Read file to buffer for Cloudflare
         const fs = await import('fs/promises')
         const b = await fs.readFile(audioPath)
+        try {
+            const size = b.byteLength
+            const mb = (size / (1024 * 1024)).toFixed(2)
+            logger.info('transcription', `Cloudflare upload (file): ${size} bytes (~${mb} MB) from ${audioPath}`)
+        } catch {}
         const arrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer
-        return transcribeWithCloudflareWhisper(arrayBuffer, { ...cloudflareConfig, model: modelId })
+        const prepared = await prepareAudioForCloudflare(arrayBuffer)
+        return transcribeWithCloudflareWhisper(prepared, { ...cloudflareConfig, model: modelId })
     } else {
         if (!whisperProjectPath) {
             throw new Error('Whisper project path is required for local provider')

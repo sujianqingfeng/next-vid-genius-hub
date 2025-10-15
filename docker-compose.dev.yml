@@ -57,3 +57,16 @@ services:
       - "8100:8080"
     depends_on:
       - minio
+
+  audio-transcoder:
+    build:
+      context: .
+      dockerfile: containers/audio-transcoder/Dockerfile
+    container_name: audio-transcoder
+    environment:
+      - NODE_ENV=development
+      - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
+    ports:
+      - "8110:8080"
+    depends_on:
+      - minio

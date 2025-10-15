@@ -45,6 +45,9 @@ interface Step1TranscribeProps {
   // (server will strictly preserve cues and timestamps)
   textCorrectDefault?: boolean
   onRestoreOriginal?: () => void
+  // Downsample backend selection
+  downsampleBackend?: 'auto' | 'local' | 'cloud'
+  onDownsampleBackendChange?: (v: 'auto' | 'local' | 'cloud') => void
 }
 
 	export function Step1Transcribe(props: Step1TranscribeProps) {
@@ -65,6 +68,8 @@ interface Step1TranscribeProps {
       onOptimize,
       isClearingOptimized,
       onRestoreOriginal,
+      downsampleBackend,
+      onDownsampleBackendChange,
 		} = props
 
 	const availableModels = getAvailableModels(selectedProvider)
@@ -90,6 +95,7 @@ interface Step1TranscribeProps {
   const [maxChars, setMaxChars] = useState<number>(68)
   const [lightCleanup, setLightCleanup] = useState<boolean>(false)
   const [textCorrect, setTextCorrect] = useState<boolean>(false)
+  const [downBackend, setDownBackend] = useState<'auto'|'local'|'cloud'>(downsampleBackend || 'auto')
 
   useEffect(() => {
     if (!storageKey) return
@@ -102,6 +108,9 @@ interface Step1TranscribeProps {
         if (typeof obj.maxChars === 'number') setMaxChars(obj.maxChars)
         if (typeof obj.lightCleanup === 'boolean') setLightCleanup(obj.lightCleanup)
         if (typeof obj.textCorrect === 'boolean') setTextCorrect(obj.textCorrect)
+        if (obj.downsampleBackend === 'auto' || obj.downsampleBackend === 'local' || obj.downsampleBackend === 'cloud') {
+          setDownBackend(obj.downsampleBackend)
+        }
       }
     } catch {}
   }, [storageKey])
@@ -112,11 +121,15 @@ interface Step1TranscribeProps {
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(
           storageKey,
-          JSON.stringify({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect }),
+          JSON.stringify({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect, downsampleBackend: downBackend }),
         )
       }
     } catch {}
-  }, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect])
+  }, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect, downBackend])
+
+  useEffect(() => {
+    if (downsampleBackend && downsampleBackend !== downBackend) setDownBackend(downsampleBackend)
+  }, [downsampleBackend])
 
 	return (
 		<div className="space-y-6">
@@ -160,7 +173,7 @@ interface Step1TranscribeProps {
 								</SelectItem>
 							</SelectContent>
 						</Select>
-					</div>
+            </div>
 
 					<div className="min-w-[140px]">
 						<label className="text-sm font-medium mb-2 block">Model</label>
@@ -182,6 +195,29 @@ interface Step1TranscribeProps {
 						</Select>
 					</div>
 
+            {/* Downsample backend selector */}
+            <div className="min-w-[160px]">
+              <label className="text-sm font-medium mb-2 block">Downsample</label>
+              <Select
+                value={downBackend}
+                onValueChange={(v) => {
+                  const val = v as 'auto'|'local'|'cloud'
+                  setDownBackend(val)
+                  onDownsampleBackendChange?.(val)
+                }}
+                disabled={isPending}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select downsample backend" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto</SelectItem>
+                  <SelectItem value="local">Local</SelectItem>
+                  <SelectItem value="cloud">Cloud</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
 					<Button
 						onClick={onStart}
 						disabled={isPending}
@@ -191,6 +227,28 @@ interface Step1TranscribeProps {
 						{isPending ? 'Processing...' : 'Generate'}
 					</Button>
 				</div>
+
+				{/* Pipeline indicator */}
+				{selectedProvider === 'cloudflare' && (
+					<div className="text-xs text-muted-foreground flex items-center gap-2">
+						{downBackend === 'cloud' ? (
+							<>
+								<Badge variant="secondary">ASR Pipeline: Cloud</Badge>
+								<span>转写在 Cloudflare Worker 侧完成（降采样 + Whisper）。</span>
+							</>
+						) : downBackend === 'local' ? (
+							<>
+								<Badge variant="outline">ASR Pipeline: Next</Badge>
+								<span>由 Next 直连 Workers AI（需要本地 CLOUDFLARE_* 令牌）。</span>
+							</>
+						) : (
+							<>
+								<Badge variant="secondary">ASR Pipeline: Auto</Badge>
+								<span>Serverless 环境将走 Cloud；本地可能走 Next。</span>
+							</>
+						)}
+					</div>
+				)}
 
 				{/* Optimization Controls - Shown when transcription exists */}
 				{transcription && canOptimize && (

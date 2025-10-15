@@ -15,7 +15,13 @@ bucket_name = "vidgen-render"
 
 [vars]
 JOB_TTL_SECONDS = 86400
+# Default container base; specific engines can override below
 CONTAINER_BASE_URL = "http://localhost:8080"
+# Audio transcoder engine (dev)
+CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
+# Workers AI (REST credentials) for ASR pipeline - set in your environment
+# CF_AI_ACCOUNT_ID = "<your-account-id>"
+# CF_AI_API_TOKEN = "<your-api-token>"
 # Dedicated Remotion renderer container (dev)
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8090"
 # Cloud download container (media-downloader)

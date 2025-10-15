@@ -70,7 +70,8 @@ export default function SubtitlesPage() {
 	// 设置默认值
 	const selectedModel = workflowState.selectedModel as WhisperModel || getDefaultModel('local')
 	const selectedProvider = workflowState.selectedProvider as TranscriptionProvider || 'local'
-	const selectedAIModel = workflowState.selectedAIModel as ChatModelId || ChatModelIds[0]
+    const selectedAIModel = workflowState.selectedAIModel as ChatModelId || ChatModelIds[0]
+    const downsampleBackend = (workflowState.downsampleBackend as ('auto'|'local'|'cloud')) || 'auto'
 
 	// 渲染后端选择（local | cloud）
 	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>(
@@ -221,12 +222,13 @@ export default function SubtitlesPage() {
 	const handleStartTranscription = () => {
 		logger.info('transcription', `User started transcription: ${selectedProvider}/${selectedModel} for media ${mediaId}`)
 		updateWorkflowState({ selectedModel, selectedProvider })
-		transcribeMutation.mutate({
-			mediaId,
-			model: selectedModel,
-			provider: selectedProvider
-		})
-	}
+        transcribeMutation.mutate({
+            mediaId,
+            model: selectedModel,
+            provider: selectedProvider,
+            downsampleBackend,
+        })
+    }
 
 	const handleStartTranslation = () => {
 		if (workflowState.transcription) {
@@ -316,32 +318,34 @@ export default function SubtitlesPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-							<Step1Transcribe
-								selectedModel={selectedModel}
-								selectedProvider={selectedProvider}
-								onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
-								onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
-								isPending={transcribeMutation.isPending}
-								onStart={handleStartTranscription}
-								transcription={(media?.transcription ?? '')}
-								optimizedTranscription={media?.optimizedTranscription ?? undefined}
-								isClearingOptimized={clearOptimizedMutation.isPending}
-								mediaId={mediaId}
-								canOptimize={!!media?.transcriptionWords && (media.transcriptionWords as any[]).length > 0}
-								isOptimizing={optimizeMutation.isPending}
-								selectedAIModel={selectedAIModel}
-								onOptimizeModelChange={(m) => updateWorkflowState({ selectedAIModel: m })}
-							onOptimize={(params) => {
-								updateWorkflowState({ selectedAIModel })
-								optimizeMutation.mutate({ mediaId, model: selectedAIModel, ...params })
-							}}
-                            onRestoreOriginal={() => clearOptimizedMutation.mutate({ mediaId })}
-							errorMessage={
-								transcribeMutation.isError
-									? transcribeMutation.error.message
-									: undefined
-							}
-						/>
+                            <Step1Transcribe
+                                selectedModel={selectedModel}
+                                selectedProvider={selectedProvider}
+                                onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
+                                onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
+                                isPending={transcribeMutation.isPending}
+                                onStart={handleStartTranscription}
+                                transcription={(media?.transcription ?? '')}
+                                optimizedTranscription={media?.optimizedTranscription ?? undefined}
+                                isClearingOptimized={clearOptimizedMutation.isPending}
+                                mediaId={mediaId}
+                                canOptimize={!!media?.transcriptionWords && (media.transcriptionWords as any[]).length > 0}
+                                isOptimizing={optimizeMutation.isPending}
+                                selectedAIModel={selectedAIModel}
+                                onOptimizeModelChange={(m) => updateWorkflowState({ selectedAIModel: m })}
+                                onOptimize={(params) => {
+                                    updateWorkflowState({ selectedAIModel })
+                                    optimizeMutation.mutate({ mediaId, model: selectedAIModel, ...params })
+                                }}
+                                onRestoreOriginal={() => clearOptimizedMutation.mutate({ mediaId })}
+                                errorMessage={
+                                    transcribeMutation.isError
+                                        ? transcribeMutation.error.message
+                                        : undefined
+                                }
+                                downsampleBackend={downsampleBackend}
+                                onDownsampleBackendChange={(v) => updateWorkflowState({ downsampleBackend: v })}
+                            />
 					</CardContent>
 				</Card>
 			)}

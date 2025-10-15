@@ -44,34 +44,58 @@ export async function transcribeWithCloudflareWhisper(
 	const { accountId, apiToken, model } = config
 
 	try {
-		// Convert ArrayBuffer to array of 8-bit unsigned integers as required by API
-		const audioArray = Array.from(new Uint8Array(audioBuffer))
+		// Log the payload size prior to upload
+		try {
+			const size = audioBuffer.byteLength
+			const mb = (size / (1024 * 1024)).toFixed(2)
+			console.info(`[Cloudflare Whisper] Upload size: ${size} bytes (~${mb} MB), model=${model}`)
+		} catch {}
+		// Send raw binary payload as documented by Cloudflare REST API
+		// (equivalent to: curl ... --data-binary "@file.mp3")
+		const binaryBody = audioBuffer
 
-		// Run inference directly with the Whisper model
-		const inferenceResponse = await fetch(
-			`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
-			{
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${apiToken}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					audio: audioArray,
-				}),
-			},
-		)
-
-		if (!inferenceResponse.ok) {
-			const errorText = await inferenceResponse.text()
-			console.error('Cloudflare API error:', errorText)
-			throw new Error(
-				`Transcription failed: ${inferenceResponse.status} ${errorText}`,
-			)
+		async function runOnce() {
+            const resp = await fetch(
+                `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${apiToken}`,
+                        // Use a specific audio type when possible; octet-stream also works.
+                        'Content-Type': 'audio/mpeg',
+                        Accept: 'application/json',
+                    },
+                    body: binaryBody,
+                },
+            )
+			if (!resp.ok) {
+				const errorText = await resp.text()
+				console.error('Cloudflare API error:', errorText)
+				throw new Error(`Transcription failed: ${resp.status} ${errorText}`)
+			}
+			const json: CloudflareApiResponse = await resp.json()
+			return json
 		}
 
-		const result: CloudflareApiResponse =
-			await inferenceResponse.json()
+		// Light retry for transient network issues (e.g., code 6001)
+		let result: CloudflareApiResponse | undefined
+		let lastErr: unknown
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				result = await runOnce()
+				break
+			} catch (e) {
+				lastErr = e
+				const msg = e instanceof Error ? e.message : String(e)
+				// Backoff on likely transient failures
+				if (/6001|Network connection lost|ECONNRESET|ETIMEDOUT/i.test(msg) && attempt < 2) {
+					await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
+					continue
+				}
+				throw e
+			}
+		}
+		if (!result) throw lastErr ?? new Error('Unknown Cloudflare error')
 
 		console.log('Cloudflare API response:', result)
 

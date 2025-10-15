@@ -5,6 +5,7 @@ export interface Env {
   CONTAINER_BASE_URL?: string
   CONTAINER_BASE_URL_REMOTION?: string
   CONTAINER_BASE_URL_DOWNLOADER?: string
+  CONTAINER_BASE_URL_AUDIO?: string
   NEXT_BASE_URL?: string
   JOB_CALLBACK_HMAC_SECRET?: string
   // Generic S3-compatible config (R2/MinIO)
@@ -16,9 +17,12 @@ export interface Env {
   S3_STYLE?: 'vhost' | 'path'
   S3_REGION?: string
   RENDER_JOB_DO?: DurableObjectNamespace
+  // Workers AI (REST credentials) for ASR pipeline
+  CF_AI_ACCOUNT_ID?: string
+  CF_AI_API_TOKEN?: string
 }
 
-type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader'
+type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'
 
 type JobStatus =
   | 'queued'
@@ -201,6 +205,17 @@ async function handleStart(env: Env, req: Request) {
       env.CONTAINER_BASE_URL_DOWNLOADER ||
       env.CONTAINER_BASE_URL ||
       'http://localhost:8080'
+  } else if (body.engine === 'audio-transcoder') {
+    containerBase =
+      (env as any).CONTAINER_BASE_URL_AUDIO ||
+      env.CONTAINER_BASE_URL ||
+      'http://localhost:8080'
+  } else if (body.engine === 'asr-pipeline') {
+    // Phase 2: chain audio-transcoder + Workers AI inside worker
+    containerBase =
+      (env as any).CONTAINER_BASE_URL_AUDIO ||
+      env.CONTAINER_BASE_URL ||
+      'http://localhost:8080'
   } else {
     containerBase = env.CONTAINER_BASE_URL || 'http://localhost:8080'
   }
@@ -211,6 +226,8 @@ async function handleStart(env: Env, req: Request) {
   // Ensure inputs exist in R2 (Worker fetches from Next, container不会访问Next)
   const bucketName = env.S3_BUCKET_NAME || 'vidgen-render'
   const isDownloader = body.engine === 'media-downloader'
+  const isAudioTranscoder = body.engine === 'audio-transcoder'
+  const isAsrPipeline = body.engine === 'asr-pipeline'
   const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
   const inputVideoKey = `inputs/videos/${body.mediaId}.mp4`
   const inputVttKey = `inputs/subtitles/${body.mediaId}.vtt`
@@ -218,13 +235,15 @@ async function handleStart(env: Env, req: Request) {
   const outputVideoKey = isDownloader
     ? `downloads/${body.mediaId}/${jobId}/video.mp4`
     : `outputs/by-media/${body.mediaId}/${jobId}/video.mp4`
-  const outputAudioKey = isDownloader ? `downloads/${body.mediaId}/${jobId}/audio.mp3` : undefined
+  const outputAudioKey = isDownloader
+    ? `downloads/${body.mediaId}/${jobId}/audio.mp3`
+    : ((isAudioTranscoder || isAsrPipeline) ? `asr/processed/${body.mediaId}/${jobId}/audio.mp3` : undefined)
   const outputMetadataKey = isDownloader ? `downloads/${body.mediaId}/${jobId}/metadata.json` : undefined
 
   let inputVideoUrl: string | undefined
   let inputVttUrl: string | undefined
   let inputDataUrl: string | undefined
-  if (!isDownloader) {
+  if (!isDownloader && !isAudioTranscoder) {
     const mirrorInputs = (env.MIRROR_INPUTS || 'true').toLowerCase() !== 'false'
     if (mirrorInputs) {
       const videoExists = await s3Head(env, bucketName, inputVideoKey)
@@ -267,7 +286,9 @@ async function handleStart(env: Env, req: Request) {
   }
 
   const putTtl = Number(env.PUT_EXPIRES || 600)
-  const outputVideoPutUrl = await presignS3(env, 'PUT', bucketName, outputVideoKey, putTtl, 'video/mp4', jobS3Endpoint)
+  const outputVideoPutUrl = (isAudioTranscoder || isAsrPipeline)
+    ? undefined
+    : await presignS3(env, 'PUT', bucketName, outputVideoKey, putTtl, 'video/mp4', jobS3Endpoint)
   const outputAudioPutUrl = outputAudioKey
     ? await presignS3(env, 'PUT', bucketName, outputAudioKey, putTtl, 'audio/mpeg', jobS3Endpoint)
     : undefined
@@ -289,7 +310,7 @@ async function handleStart(env: Env, req: Request) {
   const payload: any = {
     jobId,
     mediaId: body.mediaId,
-    engine: body.engine,
+    engine: isAsrPipeline ? 'audio-transcoder' : body.engine,
     // Use container-visible base URL so the callback reaches the Worker in dev/prod
     callbackUrl: `${baseSelfForContainer}/callbacks/container`,
     engineOptions: body.options || {},
@@ -302,6 +323,21 @@ async function handleStart(env: Env, req: Request) {
     if (outputAudioKey) payload.outputAudioKey = outputAudioKey
     if (outputMetadataPutUrl) payload.outputMetadataPutUrl = outputMetadataPutUrl
     if (outputMetadataKey) payload.outputMetadataKey = outputMetadataKey
+  } else if (isAudioTranscoder) {
+    // For audio transcoder, inputs: audio only; outputs: audio only
+    // Inputs: prefer sourceKey -> presign GET; else options.sourceUrl
+    let inputAudioUrl: string | undefined
+    const opts = (body.options || {}) as any
+    if (opts.sourceKey) {
+      inputAudioUrl = await presignS3(env, 'GET', bucketName, String(opts.sourceKey), 600, undefined, jobS3Endpoint)
+    } else if (opts.sourceUrl) {
+      inputAudioUrl = String(opts.sourceUrl)
+    }
+    if (!inputAudioUrl || !outputAudioPutUrl) {
+      return json({ error: 'audio-transcoder missing input or output URL' }, { status: 400 })
+    }
+    payload.inputAudioUrl = inputAudioUrl
+    payload.outputAudioPutUrl = outputAudioPutUrl
   } else {
     payload.inputVideoUrl = inputVideoUrl
     if (body.engine === 'burner-ffmpeg') {
@@ -335,6 +371,10 @@ async function handleStart(env: Env, req: Request) {
     }
     if (outputAudioKey) initPayload.outputAudioKey = outputAudioKey
     if (outputMetadataKey) initPayload.outputMetadataKey = outputMetadataKey
+    // Persist initial options for ASR pipeline (e.g., model/thresholds)
+    if (isAsrPipeline) {
+      initPayload['metadata'] = { ...(body.options || {}) }
+    }
     await stub.fetch('https://do/init', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -399,9 +439,95 @@ async function handleContainerCallback(env: Env, req: Request) {
   const stub = jobStub(env, body.jobId)
   if (stub) {
     const r = await stub.fetch('https://do/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: raw })
+    // After progress update, if this is an ASR pipeline and audio stage is completed, trigger ASR step
+    try {
+      const stateResp = await stub.fetch('https://do/')
+      if (stateResp.ok) {
+        const doc = (await stateResp.json()) as any
+        if (doc?.engine === 'asr-pipeline' && (body.status === 'completed' || body.status === 'uploading')) {
+          // Guard: if VTT already exists, skip
+          const hasVtt = Boolean(doc?.outputs?.vtt?.key)
+          if (!hasVtt) {
+            await runAsrForPipeline(env, doc)
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[asr-pipeline] chain error:', (e as Error)?.message || String(e))
+    }
     return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json' } })
   }
   return json({ ok: true })
+}
+
+async function runAsrForPipeline(env: Env, doc: any) {
+  const bucket = env.S3_BUCKET_NAME || 'vidgen-render'
+  const jobId = doc.jobId
+  const audioKey: string | undefined = doc.outputAudioKey || doc.outputs?.audio?.key
+  if (!audioKey) throw new Error('asr-pipeline: missing outputAudioKey')
+  if (!env.CF_AI_ACCOUNT_ID || !env.CF_AI_API_TOKEN) throw new Error('asr-pipeline: Workers AI credentials not configured')
+
+  // Fetch downsampled audio bytes via presigned GET
+  const audioUrl = await presignS3(env, 'GET', bucket, audioKey, 600)
+  const audioResp = await fetch(audioUrl)
+  if (!audioResp.ok) throw new Error(`fetch audio failed: ${audioResp.status}`)
+  const audioBuf = await audioResp.arrayBuffer()
+
+  // Decide model
+  const model: string = (doc?.metadata?.model as string) || '@cf/openai/whisper-tiny-en'
+
+  // Call Workers AI Whisper via REST
+  const runUrl = `https://api.cloudflare.com/client/v4/accounts/${env.CF_AI_ACCOUNT_ID}/ai/run/${encodeURIComponent(model)}`
+  const r = await fetch(runUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.CF_AI_API_TOKEN}`,
+      'Content-Type': 'application/octet-stream',
+      Accept: 'application/json',
+    },
+    body: audioBuf,
+  })
+  if (!r.ok) {
+    const t = await r.text().catch(() => '')
+    throw new Error(`Workers AI ASR failed: ${r.status} ${t}`)
+  }
+  const result = await r.json() as any
+  let vtt = ''
+  let words: unknown | undefined
+  if (result?.result?.vtt || result?.vtt) {
+    vtt = result?.result?.vtt || result?.vtt
+    words = result?.result?.words || result?.words
+  } else if (result?.result?.text || result?.text) {
+    const text = result?.result?.text || result?.text
+    vtt = `WEBVTT\n\n00:00:00.000 --> 00:00:03.000\n${String(text).trim()}\n`
+    words = result?.result?.words || result?.words
+  } else {
+    throw new Error('Workers AI ASR: unexpected response format')
+  }
+
+  // Store into R2
+  const vttKey = `asr/results/by-media/${doc.mediaId || 'unknown'}/${jobId}/transcript.vtt`
+  await s3Put(env, bucket, vttKey, 'text/vtt', String(vtt))
+
+  let wordsKey: string | undefined
+  if (words && (Array.isArray(words) ? words.length > 0 : true)) {
+    wordsKey = `asr/results/by-media/${doc.mediaId || 'unknown'}/${jobId}/words.json`
+    await s3Put(env, bucket, wordsKey, 'application/json', JSON.stringify(words))
+  }
+
+  // Update DO state with outputs
+  const stub = jobStub(env, jobId)
+  if (stub) {
+    const outputs: any = { vtt: { key: vttKey } }
+    if (wordsKey) outputs.words = { key: wordsKey }
+    const p = {
+      jobId,
+      status: 'completed',
+      outputs,
+      ts: Date.now(),
+    }
+    await stub.fetch('https://do/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) })
+  }
 }
 
 async function handleUpload(env: Env, req: Request, jobId: string) {
@@ -664,6 +790,7 @@ export class RenderJobDO {
         outputKey: body.outputKey,
         outputAudioKey: body.outputAudioKey,
         outputMetadataKey: body.outputMetadataKey,
+        metadata: body.metadata,
         ts: Date.now(),
       }
       await this.state.storage.put('job', doc)
@@ -698,7 +825,7 @@ export class RenderJobDO {
       }
       return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } })
     }
-    if (req.method === 'GET') {
+  if (req.method === 'GET') {
       let doc = (await this.state.storage.get('job')) as any
       if (!doc) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } })
       // Auto-complete if expected outputs exist in S3
@@ -753,6 +880,23 @@ export class RenderJobDO {
           }
         }
       }
+      // Enrich outputs with presigned URLs for asr-pipeline artifacts
+      try {
+        const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
+        if (doc.engine === 'asr-pipeline') {
+          if (doc.outputs?.vtt?.key) {
+            doc.outputs.vtt.url = await presignS3(this.env, 'GET', bucket, doc.outputs.vtt.key, 600)
+          }
+          if (doc.outputs?.words?.key) {
+            doc.outputs.words.url = await presignS3(this.env, 'GET', bucket, doc.outputs.words.key, 600)
+          }
+          if (!doc.outputs?.audio && doc.outputAudioKey) {
+            // Provide audio presigned URL for debugging if needed
+            doc.outputs = doc.outputs || {}
+            doc.outputs.audio = { key: doc.outputAudioKey, url: await presignS3(this.env, 'GET', bucket, doc.outputAudioKey, 600) }
+          }
+        }
+      } catch {}
       return new Response(JSON.stringify(doc), { headers: { 'content-type': 'application/json' } })
     }
     return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: { 'content-type': 'application/json' } })

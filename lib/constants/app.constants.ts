@@ -11,6 +11,14 @@ export const WHISPER_CPP_PATH = process.env.WHISPER_CPP_PATH
 // Cloudflare Workers AI configuration
 export const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
 export const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN
+// Optional: cap Cloudflare ASR upload size; if exceeded we will downsample
+export const CLOUDFLARE_ASR_MAX_UPLOAD_BYTES = Number(process.env.CLOUDFLARE_ASR_MAX_UPLOAD_BYTES || '') || 4 * 1024 * 1024 // 4 MiB default
+export const FORCE_CLOUD_DOWNSAMPLE = (process.env.FORCE_CLOUD_DOWNSAMPLE || '').toLowerCase() === 'true'
+export const ASR_TARGET_BITRATES = (process.env.ASR_TARGET_BITRATES || '48,24')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter((n) => Number.isFinite(n) && n > 0) as number[]
+export const ASR_SAMPLE_RATE = Number(process.env.ASR_SAMPLE_RATE || 16000)
 
 // Cloud rendering orchestrator (Workers) endpoint and shared secrets
 export const CF_ORCHESTRATOR_URL = process.env.CF_ORCHESTRATOR_URL

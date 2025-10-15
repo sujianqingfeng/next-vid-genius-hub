@@ -139,14 +139,15 @@ export type SubtitleStepId = 'step1' | 'step2' | 'step3' | 'step4'
  * 字幕工作流状态
  */
 export interface SubtitleWorkflowState {
-	activeStep: SubtitleStepId
-	transcription?: string
-	translation?: string
-	renderedVideoPath?: string
-	selectedModel?: string
-	selectedProvider?: string
-	selectedAIModel?: string
-	subtitleConfig?: SubtitleRenderConfig
+    activeStep: SubtitleStepId
+    transcription?: string
+    translation?: string
+    renderedVideoPath?: string
+    selectedModel?: string
+    selectedProvider?: string
+    selectedAIModel?: string
+    subtitleConfig?: SubtitleRenderConfig
+    downsampleBackend?: 'auto' | 'local' | 'cloud'
 }
 
 /**

@@ -1,7 +1,7 @@
 import { CF_ORCHESTRATOR_URL, JOB_CALLBACK_HMAC_SECRET } from '~/lib/constants'
 import { buildSignedBody } from '~/lib/security/hmac'
 
-type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader'
+type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'
 
 export interface StartJobInput {
   mediaId: string
@@ -24,6 +24,8 @@ export interface JobStatusResponse {
     video?: { key?: string; url?: string }
     audio?: { key?: string; url?: string }
     metadata?: { key?: string; url?: string }
+    vtt?: { key?: string; url?: string }
+    words?: { key?: string; url?: string }
   }
   metadata?: Record<string, unknown>
 }
