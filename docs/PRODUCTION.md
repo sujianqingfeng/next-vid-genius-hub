@@ -86,6 +86,22 @@ routes = [
 pnpm cf:deploy
 ```
 
+5) Workers AI 凭据（ASR，方案 A）
+
+生产环境不要把密钥写入 `wrangler.toml`。通过 wrangler secrets 注入 Worker 运行时可见的变量（与本地一致）：
+
+```bash
+cd cloudflare/media-orchestrator
+wrangler secret put CF_AI_ACCOUNT_ID
+wrangler secret put CF_AI_API_TOKEN
+
+# 可选：兼容命名（代码兜底）
+wrangler secret put CLOUDFLARE_ACCOUNT_ID
+wrangler secret put CLOUDFLARE_API_TOKEN
+```
+
+部署或重新发布后再验证字幕 Step 1（Cloud）是否能顺利产出 `vtt/words`。
+
 ## 容器（media-downloader）生产配置
 
 镜像：`containers/media-downloader/`

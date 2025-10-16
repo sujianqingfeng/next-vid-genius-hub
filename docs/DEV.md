@@ -56,6 +56,30 @@ CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100" # Cloud 下载容器
 pnpm cf:dev
 ```
 
+### Workers AI（ASR）凭据（方案 A）
+
+字幕 Step 1 若选择 Cloud（或降采样后端为 cloud/auto 触发 asr-pipeline），Worker 需要有 Workers AI 的 REST 凭据，否则会报错 `asr-pipeline: Workers AI credentials not configured`。
+
+本地开发强烈建议使用 wrangler secret 注入（不要把密钥写入仓库）：
+
+```bash
+cd cloudflare/media-orchestrator
+wrangler secret put CF_AI_ACCOUNT_ID   # 你的 Cloudflare Account ID
+wrangler secret put CF_AI_API_TOKEN    # 具有 Workers AI 访问权限的 API Token
+
+# 可选：同时设置兼容命名（代码已做兜底）
+wrangler secret put CLOUDFLARE_ACCOUNT_ID
+wrangler secret put CLOUDFLARE_API_TOKEN
+```
+
+设置完成后，重启本地 Worker：
+
+```bash
+pnpm cf:dev
+```
+
+验证方式：在字幕页 Step 1 选择 `provider=cloudflare`，将“降采样后端”设为 `cloud`（或 `auto`），触发转录后，wrangler 控制台不应再出现凭据缺失报错；`/jobs/:id` 会在 audio-transcoder 完成后继续执行 ASR，并返回 `vtt/words` 产物。
+
 ## Next 本地
 
 ```bash
