@@ -260,9 +260,30 @@ export function segmentsToVtt(
     words: TranscriptionWord[],
     segments: Segment[],
 ): string {
+    const MIN_CUE_DURATION = 0.12 // keep cues readable and pass VTT validation
+    const MIN_START_DELTA = 0 // ensure non-decreasing cue order
+    let lastEndTime = 0
     const cues = segments.map((seg) => {
-        const startTime = words[seg.startIndex]?.start ?? 0
-        const endTime = words[seg.endIndex]?.end ?? startTime + 0.5
+        const rawStart = words[seg.startIndex]?.start
+        const rawEnd = words[seg.endIndex]?.end
+
+        const hasValidStart = typeof rawStart === 'number' && Number.isFinite(rawStart)
+        const hasValidEnd = typeof rawEnd === 'number' && Number.isFinite(rawEnd)
+
+        let startTime = hasValidStart ? rawStart : lastEndTime
+        let endTime = hasValidEnd ? rawEnd : startTime
+
+        // Guard against non-monotonic timestamps coming from ASR word timings
+        if (startTime < lastEndTime + MIN_START_DELTA) {
+            startTime = lastEndTime
+        }
+
+        if (endTime <= startTime) {
+            endTime = startTime + MIN_CUE_DURATION
+        }
+
+        lastEndTime = endTime
+
         const start = formatVttTimestamp(startTime)
         const end = formatVttTimestamp(endTime)
         const text = wordsSliceToText(words, seg.startIndex, seg.endIndex)

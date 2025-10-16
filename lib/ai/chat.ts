@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { deepseekProvider } from './deepseek'
 import { AIModelId, models } from './models'
 import { openaiProvider } from './openai'
+import { packycodeProvider } from './packycode'
 
 function getModel(modelId: AIModelId) {
 	const modelInfo = models.find((m) => m.id === modelId)
@@ -17,6 +18,9 @@ function getModel(modelId: AIModelId) {
 	if ('modelName' in modelInfo) {
 		if (modelInfo.id.startsWith('deepseek/')) {
 			return deepseekProvider(modelInfo.modelName)
+		}
+		if (modelInfo.id.startsWith('packycode/')) {
+			return packycodeProvider(modelInfo.modelName)
 		}
 		return openaiProvider(modelInfo.modelName)
 	}

@@ -131,6 +131,12 @@ export const APP_CONFIG = {
 			maxTokens: parseInt(process.env.DEEPSEEK_MAX_TOKENS || '4096'),
 			model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
 		},
+		packycode: {
+			apiKey: process.env.PACKYCODE_API_KEY,
+			baseUrl: process.env.PACKYCODE_BASE_URL || 'https://codex-api.packycode.com',
+			maxTokens: parseInt(process.env.PACKYCODE_MAX_TOKENS || '4096'),
+			model: process.env.PACKYCODE_MODEL || 'gpt-5',
+		},
 		sentry: {
 			dsn: process.env.SENTRY_DSN,
 			environment: process.env.NODE_ENV || 'development',
@@ -185,7 +191,7 @@ export const ENABLE_LOCAL_HYDRATE = APP_CONFIG.features.enableLocalHydrate
 
 // 便捷的访问器
 export const { database, operations, limits, qualities, app, services } = APP_CONFIG
-export const { openai, deepseek, sentry } = services
+export const { openai, deepseek, packycode, sentry } = services
 export const { features, ui, monitoring } = APP_CONFIG
 
 // Centralized environment-backed app constants (migrated from constants/app.constants.ts)
