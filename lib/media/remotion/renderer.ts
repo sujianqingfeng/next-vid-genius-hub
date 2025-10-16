@@ -9,7 +9,7 @@ import { bundle } from '@remotion/bundler'
 import { getCompositions, renderMedia } from '@remotion/renderer'
 import { execa } from 'execa'
 import type { Comment, VideoInfo } from '../types'
-import { PROXY_URL, CF_ORCHESTRATOR_URL } from '~/lib/constants'
+import { PROXY_URL, CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
 import {
   layoutConstants,
   buildCommentTimeline,

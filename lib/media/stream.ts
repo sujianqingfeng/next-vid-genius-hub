@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { NextRequest, NextResponse } from 'next/server'
-import { CF_ORCHESTRATOR_URL } from '~/lib/constants'
+import { CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
 import { presignGetByKey } from '~/lib/cloudflare'
 
 export interface MinimalMediaLike {
@@ -145,4 +145,3 @@ export async function resolveRemoteVideoUrl(media: MinimalMediaLike): Promise<st
   }
   return null
 }
-

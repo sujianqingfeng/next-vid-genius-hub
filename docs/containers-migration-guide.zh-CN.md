@@ -177,7 +177,7 @@ await runCommentsPipeline(
 ## 本地服务集成（可选）
 - 本地 `DownloadService` 支持注入 artifact store，便于在本地模式也上传/同步：
 ```ts
-import { downloadService } from '~/lib/services/download'
+import { downloadService } from '~/lib/services/download/download.service'
 
 downloadService.withArtifactStore({
   uploadMetadata: async (data, ctx) => ({ key: `media/${ctx.operationDir.split('/').pop()}/metadata.json` }),

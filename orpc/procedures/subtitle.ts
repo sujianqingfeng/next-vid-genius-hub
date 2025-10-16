@@ -3,7 +3,8 @@ import path from 'node:path'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { AIModelIds, generateText } from '~/lib/ai'
+import { AIModelIds } from '~/lib/ai/models'
+import { generateText } from '~/lib/ai/chat'
 import { transcribeWithWhisper } from '~/lib/asr/whisper'
 import { logger } from '~/lib/logger'
 import {
@@ -14,9 +15,9 @@ import {
 	RENDERED_VIDEO_FILENAME,
 	CLOUDFLARE_ACCOUNT_ID,
 	CLOUDFLARE_API_TOKEN,
-} from '~/lib/constants/app.constants'
+} from '~/lib/config/app.config'
 import { db, schema, type TranscriptionWord } from '~/lib/db'
-import { renderVideoWithSubtitles } from '~/lib/media'
+import { renderVideoWithSubtitles } from '@app/media-subtitles'
 import {
 	getTranslationPrompt,
 	DEFAULT_TRANSLATION_PROMPT_ID
@@ -461,7 +462,7 @@ Strict constraints:
 - Keep all non-English tokens unchanged.
 Return the corrected VTT content as-is.`
             try {
-                const { text } = await import('~/lib/ai').then(m => m.generateText({
+                const { text } = await import('~/lib/ai/chat').then(m => m.generateText({
                     model,
                     system,
                     prompt: optimizedVtt,

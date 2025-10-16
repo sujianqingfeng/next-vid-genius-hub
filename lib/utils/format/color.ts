@@ -159,6 +159,17 @@ export function addOpacity(color: string, opacity: number): string {
 }
 
 /**
+ * Convert hex color to rgba string with given opacity.
+ * Provided for compatibility with modules that previously imported `hexToRgba`.
+ */
+export function hexToRgba(hex: string, opacity: number): string {
+  const rgb = hexToRgb(hex)
+  const alpha = Number.isFinite(opacity) ? Math.min(Math.max(opacity, 0), 1) : 1
+  if (!rgb) return `rgba(0, 0, 0, ${alpha})`
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`
+}
+
+/**
  * Blend two colors
  */
 export function blendColors(color1: string, color2: string, ratio: number): string {

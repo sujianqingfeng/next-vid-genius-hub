@@ -143,7 +143,7 @@ await runCommentsPipeline(
 - The local `DownloadService` supports an optional artifact store for syncing uploads:
 ```ts
 // Pseudo-wiring example
-import { downloadService } from '~/lib/services/download'
+import { downloadService } from '~/lib/services/download/download.service'
 
 downloadService.withArtifactStore({
   uploadMetadata: async (data, ctx) => ({ key: `media/${ctx.operationDir.split('/').pop()}/metadata.json` }),

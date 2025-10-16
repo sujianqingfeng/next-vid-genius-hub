@@ -2,9 +2,9 @@
 
 import { useEffect, type ReactNode } from 'react'
 import { Video, VideoOff } from 'lucide-react'
-import { useVideoPreview } from '~/lib/subtitle/hooks'
+import { useVideoPreview } from '~/lib/subtitle/hooks/useVideoPreview'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
-import { hexToRgba } from '~/lib/subtitle/utils/color'
+import { hexToRgba } from '~/lib/utils/format/color'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { SubtitleOverlay } from '../SubtitleOverlay'
 import { HintTextOverlay } from '../HintTextOverlay'
@@ -73,9 +73,9 @@ export function VideoPreview({
 	}, [duration, onDurationChange])
 
 	// 通知父组件视频元素引用
-	useEffect(() => {
-		onVideoRef?.(videoRef.current)
-	}, [onVideoRef])
+  useEffect(() => {
+    onVideoRef?.(videoRef.current)
+  }, [onVideoRef, videoRef])
 
 	// 计算当前时间的效果
 	const currentTimeEffect = config.timeSegmentEffects?.find(effect =>
@@ -83,11 +83,11 @@ export function VideoPreview({
 	)
 
 	// 应用实时效果
-	useEffect(() => {
-		if (videoRef.current) {
-			videoRef.current.muted = currentTimeEffect?.muteAudio ?? false
-		}
-	}, [currentTimeEffect])
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = currentTimeEffect?.muteAudio ?? false
+    }
+  }, [currentTimeEffect, videoRef])
 
 	// 预览样式
 	const previewStyle = {

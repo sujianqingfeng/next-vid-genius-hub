@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '~/lib/db'
-import { CF_ORCHESTRATOR_URL } from '~/lib/constants'
+import { CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
 
 export async function GET(
   request: NextRequest,
@@ -154,4 +154,3 @@ export async function GET(
     )
   }
 }
-

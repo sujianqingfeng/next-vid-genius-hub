@@ -19,7 +19,7 @@ import { Step4Preview } from '~/components/business/media/subtitles/Step4Preview
 import {
 	Stepper,
 } from '~/components/business/media/subtitles/Stepper'
-import { PageHeader } from '~/components/layout'
+import { PageHeader } from '~/components/layout/page-header'
 import { Button } from '~/components/ui/button'
 import {
 	Card,
@@ -32,14 +32,14 @@ import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
 import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { getDefaultModel } from '~/lib/subtitle/config/models'
-import { useSubtitleWorkflow } from '~/lib/subtitle/hooks'
+import { useSubtitleWorkflow } from '~/lib/subtitle/hooks/useSubtitleWorkflow'
 import type {
 	TranscriptionProvider,
 	WhisperModel
 } from '~/lib/subtitle/config/models'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
-import { STATUS_LABELS } from '~/lib/constants'
+import { STATUS_LABELS } from '~/lib/constants/media.constants'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
 
 export default function SubtitlesPage() {
@@ -120,16 +120,16 @@ export default function SubtitlesPage() {
 	)
 
 	// 优化转录 mutation（覆盖 transcription）
-	const optimizeMutation = useMutation(
-		queryOrpc.subtitle.optimizeTranscription.mutationOptions({
-			onSuccess: (data) => {
-				// 刷新媒体数据，带回 optimizedTranscription
-				queryClient.invalidateQueries({
-					queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-				})
-			},
-		}),
-	)
+    const optimizeMutation = useMutation(
+        queryOrpc.subtitle.optimizeTranscription.mutationOptions({
+            onSuccess: () => {
+                // 刷新媒体数据，带回 optimizedTranscription
+                queryClient.invalidateQueries({
+                    queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+                })
+            },
+        }),
+    )
 
 
     // 清除优化后的转录

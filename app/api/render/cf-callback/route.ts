@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
-import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/constants'
+import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
 import { OPERATIONS_DIR, ENABLE_LOCAL_HYDRATE } from '~/lib/config/app.config'
 import { verifyHmacSHA256 } from '~/lib/security/hmac'
 import { promises as fs, createWriteStream } from 'node:fs'

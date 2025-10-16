@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
 import type { MediaItem } from '~/lib/types/media.types'
-import { fileExists as fileExists } from '~/lib/utils/file'
+import { fileExists as fileExists } from '~/lib/utils/file/client-safe'
 
 export class MediaService {
 	/**

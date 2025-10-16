@@ -11,13 +11,14 @@ import type {
 } from '~/lib/types/download.types'
 import type { BasicVideoInfo } from '~/lib/media/types'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
-import { db, schema, createMediaUpdateData } from '~/lib/db'
-import { extractAudio } from '~/lib/media'
+import { db, schema } from '~/lib/db'
+import { createMediaUpdateData } from '~/lib/db/media-utils'
+import { extractAudio } from '@app/media-node'
 import { runDownloadPipeline, summariseMetadata, readMetadataSummary, isForwardProxyProtocolSupported, buildForwardProxyUrl } from '@app/media-core'
 import { downloadVideo as coreDownloadVideo, extractAudio as coreExtractAudio } from '@app/media-node'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
-import { fileExists as fileExists } from '~/lib/utils/file'
+import { fileExists as fileExists } from '~/lib/utils/file/client-safe'
 import { downloadVideo } from '~/lib/providers/youtube/downloader'
 
 // use helpers from @app/media-core/proxy

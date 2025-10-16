@@ -129,7 +129,7 @@ interface Step1TranscribeProps {
 
   useEffect(() => {
     if (downsampleBackend && downsampleBackend !== downBackend) setDownBackend(downsampleBackend)
-  }, [downsampleBackend])
+  }, [downsampleBackend, downBackend])
 
 	return (
 		<div className="space-y-6">

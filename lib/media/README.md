@@ -6,7 +6,7 @@ This directory contains the media pipeline for Next Vid Genius Hub. It now prior
 
 ```
 lib/media/
-├── index.ts              # Entry point re-exporting helpers
+├── (no index barrel)     # Re-exports removed; import concrete modules
 ├── processing/           # FFmpeg utilities (audio extraction, subtitle muxing)
 ├── remotion/             # Remotion renderer wrapper
 ├── types/                # Shared data contracts (VideoInfo, Comment, ...)
@@ -30,21 +30,12 @@ lib/media/
 
 ## Usage
 
-The recommended import surface comes from the module index:
-
-```ts
-import {
-  extractAudio,
-  renderVideoWithSubtitles,
-  renderVideoWithRemotion,
-} from '~/lib/media'
-```
-
-Import from submodules when you only need a specific concern:
+Import from submodules directly:
 
 ```ts
 import { renderVideoWithRemotion } from '~/lib/media/remotion/renderer'
-import { extractAudio } from '~/lib/media/processing'
+import { extractAudio } from '@app/media-node'
+import { renderVideoWithSubtitles } from '@app/media-subtitles'
 import type { Comment, VideoInfo } from '~/lib/media/types'
 ```
 

@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { execa } from 'execa'
 import { logger } from '~/lib/logger'
-import { CLOUDFLARE_ASR_MAX_UPLOAD_BYTES } from '~/lib/constants/app.constants'
+import { CLOUDFLARE_ASR_MAX_UPLOAD_BYTES } from '~/lib/config/app.config'
 
 /**
  * Ensure audio payload meets Cloudflare Workers AI size constraints.

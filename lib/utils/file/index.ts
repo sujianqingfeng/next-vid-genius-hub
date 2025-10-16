@@ -1,7 +1,5 @@
-// File utilities barrel export
-
-// Only export client-safe functions to avoid bundling issues
-export { fileExists, getFileSize, getFileInfo } from './client-safe'
+// File utilities module (no re-exports)
+// Import client-safe helpers directly from './client-safe' where needed.
 
 // Server-only function - not exported to prevent client-side bundling
 export async function fileExistsServer(path: string): Promise<boolean> {

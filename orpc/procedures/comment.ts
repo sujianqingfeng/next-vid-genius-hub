@@ -3,19 +3,17 @@ import path from 'node:path'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { translateText } from '~/lib/ai'
+import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import {
 	OPERATIONS_DIR,
 	PROXY_URL,
 } from '~/lib/config/app.config'
-import {
-	VIDEO_WITH_INFO_FILENAME,
-} from '~/lib/constants/app.constants'
+import { VIDEO_WITH_INFO_FILENAME } from '~/lib/config/app.config'
 import { db, schema } from '~/lib/db'
-import { renderVideoWithRemotion } from '~/lib/media'
+import { renderVideoWithRemotion } from '~/lib/media/remotion/renderer'
 import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
-import type { RenderProgressEvent } from '~/lib/media'
+import type { RenderProgressEvent } from '~/lib/media/remotion/renderer'
 import {
 	downloadYoutubeComments as coreDownloadYoutubeComments,
 	downloadTikTokCommentsByUrl as coreDownloadTikTokComments,

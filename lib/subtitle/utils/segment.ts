@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { TranscriptionWord } from '~/lib/db/schema'
 import { formatVttTimestamp } from '~/lib/subtitle/utils/time'
 import { createVttDocument } from '~/lib/subtitle/utils/vtt'
-import { generateObject } from '~/lib/ai'
+import { generateObject } from '~/lib/ai/chat'
 import type { AIModelId } from '~/lib/ai/models'
 
 export interface OptimizeParams {

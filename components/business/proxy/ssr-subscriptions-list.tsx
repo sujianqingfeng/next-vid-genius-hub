@@ -4,7 +4,6 @@ import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { Badge } from '~/components/ui/badge'
 import { toast } from 'sonner'
 import { queryOrpc } from '~/lib/orpc/query-client'
 

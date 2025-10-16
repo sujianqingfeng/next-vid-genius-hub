@@ -7,7 +7,7 @@ import {
   proxyRemoteWithRange,
   resolveRemoteVideoUrl,
 } from '~/lib/media/stream'
-import { CF_ORCHESTRATOR_URL } from '~/lib/constants'
+import { CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
 
 export async function GET(
   request: NextRequest,

@@ -187,3 +187,27 @@ export const ENABLE_LOCAL_HYDRATE = APP_CONFIG.features.enableLocalHydrate
 export const { database, operations, limits, qualities, app, services } = APP_CONFIG
 export const { openai, deepseek, sentry } = services
 export const { features, ui, monitoring } = APP_CONFIG
+
+// Centralized environment-backed app constants (migrated from constants/app.constants.ts)
+export const DATABASE_URL = APP_CONFIG.database.url
+// PROXY_URL and OPERATIONS_DIR already exported above for backward-compat
+export const WHISPER_CPP_PATH = process.env.WHISPER_CPP_PATH
+
+// Cloudflare Workers/Orchestrator configuration
+export const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
+export const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN
+export const CLOUDFLARE_ASR_MAX_UPLOAD_BYTES = Number(process.env.CLOUDFLARE_ASR_MAX_UPLOAD_BYTES || '') || 4 * 1024 * 1024 // 4 MiB
+export const FORCE_CLOUD_DOWNSAMPLE = (process.env.FORCE_CLOUD_DOWNSAMPLE || '').toLowerCase() === 'true'
+export const ASR_TARGET_BITRATES = (process.env.ASR_TARGET_BITRATES || '48,24')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter((n) => Number.isFinite(n) && n > 0) as number[]
+export const ASR_SAMPLE_RATE = Number(process.env.ASR_SAMPLE_RATE || 16000)
+
+export const CF_ORCHESTRATOR_URL = process.env.CF_ORCHESTRATOR_URL
+export const JOB_CALLBACK_HMAC_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET
+export const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL
+
+// Default artifact filenames
+export const RENDERED_VIDEO_FILENAME = 'video-with-subtitles.mp4'
+export const VIDEO_WITH_INFO_FILENAME = 'video-with-info-and-comments.mp4'

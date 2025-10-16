@@ -10,7 +10,8 @@ import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import { queryOrpc } from '~/lib/orpc/query-client'
-import { formatNumber, formatTimeAgo } from '~/lib/utils'
+import { formatNumber } from '~/lib/utils/format/format'
+import { getTimeAgo as formatTimeAgo } from '~/lib/utils/time'
 import type { MediaItem } from '~/lib/types/media.types'
 
 // Clean media thumbnail component

@@ -155,47 +155,5 @@ async function transcribeWithLocalWhisper(
 	return { vtt: vttContent, words }
 }
 
-/**
- * Transcribe using Cloudflare Workers AI
- */
-async function transcribeWithCloudflareProvider(
-    audioPath: string,
-    model: WhisperModel,
-    config: CloudflareConfig,
-): Promise<TranscriptionResult> {
-	logger.info('transcription', `Starting Cloudflare transcription for ${audioPath}`)
-
-	// Map model names to Cloudflare model identifiers
-	const cloudflareModelMap: Record<string, '@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo' | '@cf/openai/whisper'> = {
-		'whisper-tiny-en': '@cf/openai/whisper-tiny-en',
-		'whisper-large-v3-turbo': '@cf/openai/whisper-large-v3-turbo',
-		'whisper-medium': '@cf/openai/whisper',
-	}
-
-	const cloudflareModel = cloudflareModelMap[model]
-	if (!cloudflareModel) {
-		logger.error('transcription', `Model ${model} is not supported by Cloudflare provider`)
-		throw new Error(`Model ${model} is not supported by Cloudflare provider`)
-	}
-
-	logger.info('transcription', `Using Cloudflare model: ${cloudflareModel}`)
-
-    // Read audio file as ArrayBuffer
-    const audioBuffer = await fs.readFile(audioPath)
-    const arrayBuffer = audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength) as ArrayBuffer
-
-	logger.debug('transcription', `Audio buffer size: ${arrayBuffer.byteLength} bytes`)
-
-	// Call Cloudflare API
-	const result = await transcribeWithCloudflareWhisper(arrayBuffer, {
-		...config,
-		model: cloudflareModel,
-	})
-
-	logger.info('transcription', `Cloudflare transcription completed: ${result.vtt.length} characters${result.words ? `, ${result.words.length} words` : ''}`)
-
-	return result
-}
-
 // 重新导出新配置中的函数
 export { getAvailableModels, getModelLabel, getModelDescription, getDefaultModel }

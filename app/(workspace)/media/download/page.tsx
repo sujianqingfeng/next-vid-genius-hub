@@ -15,7 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { STATUS_LABELS, PHASE_LABELS } from '~/lib/constants'
+import { STATUS_LABELS, PHASE_LABELS } from '~/lib/constants/media.constants'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { orpc } from '~/lib/orpc/client'
 
@@ -80,8 +80,6 @@ export default function NewDownloadPage() {
 		const phaseLabel = cloudStatusQuery.data?.phase
 			? PHASE_LABELS[cloudStatusQuery.data.phase] ?? cloudStatusQuery.data.phase
 			: null
-	const outputs = cloudStatusQuery.data?.outputs
-
 	const isSubmitting = downloadMutation.isPending || cloudDownloadMutation.isPending
 
 	const formAction = async (formData: FormData) => {
