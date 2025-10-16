@@ -46,7 +46,6 @@ S3_BUCKET_NAME = "vidgen-render"
 S3_STYLE = "path"
 S3_REGION = "us-east-1"
 ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
-MIRROR_INPUTS = "true"
 
 [[durable_objects.bindings]]
 name = "RENDER_JOB_DO"

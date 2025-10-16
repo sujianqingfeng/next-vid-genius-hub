@@ -244,44 +244,35 @@ async function handleStart(env: Env, req: Request) {
   let inputVttUrl: string | undefined
   let inputDataUrl: string | undefined
   if (!isDownloader && !isAudioTranscoder) {
-    const mirrorInputs = (env.MIRROR_INPUTS || 'true').toLowerCase() !== 'false'
-    if (mirrorInputs) {
-      const videoExists = await s3Head(env, bucketName, inputVideoKey)
-      if (!videoExists) {
-        const src = await fetch(`${baseNext}/api/media/${body.mediaId}/source`)
-        if (!src.ok || !src.body) return json({ error: 'fetch source failed' }, { status: 502 })
-        await s3Put(env, bucketName, inputVideoKey, 'video/mp4', src.body as ReadableStream)
+    // Always mirror inputs to S3 and provide presigned GET URLs to containers
+    const videoExists = await s3Head(env, bucketName, inputVideoKey)
+    if (!videoExists) {
+      const src = await fetch(`${baseNext}/api/media/${body.mediaId}/source`)
+      if (!src.ok || !src.body) return json({ error: 'fetch source failed' }, { status: 502 })
+      await s3Put(env, bucketName, inputVideoKey, 'video/mp4', src.body as ReadableStream)
+    }
+    if (body.engine === 'burner-ffmpeg') {
+      const vttExists = await s3Head(env, bucketName, inputVttKey)
+      if (!vttExists) {
+        const sub = await fetch(`${baseNext}/api/media/${body.mediaId}/subtitles`)
+        if (!sub.ok) return json({ error: 'fetch subtitles failed' }, { status: 502 })
+        const text = await sub.text()
+        await s3Put(env, bucketName, inputVttKey, 'text/vtt', text)
       }
-      if (body.engine === 'burner-ffmpeg') {
-        const vttExists = await s3Head(env, bucketName, inputVttKey)
-        if (!vttExists) {
-          const sub = await fetch(`${baseNext}/api/media/${body.mediaId}/subtitles`)
-          if (!sub.ok) return json({ error: 'fetch subtitles failed' }, { status: 502 })
-          const text = await sub.text()
-          await s3Put(env, bucketName, inputVttKey, 'text/vtt', text)
-        }
-      } else if (body.engine === 'renderer-remotion') {
-        const dataExists = await s3Head(env, bucketName, inputDataKey)
-        if (!dataExists) {
-          const r = await fetch(`${baseNext}/api/media/${body.mediaId}/comments-data`)
-          if (!r.ok) return json({ error: 'fetch comments-data failed' }, { status: 502 })
-          const txt = await r.text()
-          await s3Put(env, bucketName, inputDataKey, 'application/json', txt)
-        }
+    } else if (body.engine === 'renderer-remotion') {
+      const dataExists = await s3Head(env, bucketName, inputDataKey)
+      if (!dataExists) {
+        const r = await fetch(`${baseNext}/api/media/${body.mediaId}/comments-data`)
+        if (!r.ok) return json({ error: 'fetch comments-data failed' }, { status: 502 })
+        const txt = await r.text()
+        await s3Put(env, bucketName, inputDataKey, 'application/json', txt)
       }
-      inputVideoUrl = await presignS3(env, 'GET', bucketName, inputVideoKey, 600, undefined, jobS3Endpoint)
-      if (body.engine === 'burner-ffmpeg') {
-        inputVttUrl = await presignS3(env, 'GET', bucketName, inputVttKey, 600, undefined, jobS3Endpoint)
-      } else if (body.engine === 'renderer-remotion') {
-        inputDataUrl = await presignS3(env, 'GET', bucketName, inputDataKey, 600, undefined, jobS3Endpoint)
-      }
-    } else {
-      inputVideoUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/video`
-      if (body.engine === 'burner-ffmpeg') {
-        inputVttUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/subtitles`
-      } else if (body.engine === 'renderer-remotion') {
-        inputDataUrl = `${baseSelfForContainer}/inputs/${encodeURIComponent(body.mediaId)}/comments`
-      }
+    }
+    inputVideoUrl = await presignS3(env, 'GET', bucketName, inputVideoKey, 600, undefined, jobS3Endpoint)
+    if (body.engine === 'burner-ffmpeg') {
+      inputVttUrl = await presignS3(env, 'GET', bucketName, inputVttKey, 600, undefined, jobS3Endpoint)
+    } else if (body.engine === 'renderer-remotion') {
+      inputDataUrl = await presignS3(env, 'GET', bucketName, inputDataKey, 600, undefined, jobS3Endpoint)
     }
   }
 
@@ -724,35 +715,7 @@ export default {
         return json({ error: (e as Error).message }, { status: 500 })
       }
     }
-    // Proxy inputs for fallback mode: /inputs/:mediaId/video|subtitles
-    if (req.method === 'GET' && pathname.startsWith('/inputs/')) {
-      const parts = pathname.split('/').filter(Boolean) // ['', 'inputs', ':mediaId', 'kind']
-      const mediaId = parts[1]
-      const kind = parts[2]
-      if (!mediaId || !kind) return json({ error: 'bad request' }, { status: 400 })
-      const nextBase = (env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
-      const target = kind === 'video'
-        ? `${nextBase}/api/media/${encodeURIComponent(mediaId)}/source`
-        : kind === 'subtitles'
-          ? `${nextBase}/api/media/${encodeURIComponent(mediaId)}/subtitles`
-          : kind === 'comments'
-            ? `${nextBase}/api/media/${encodeURIComponent(mediaId)}/comments-data`
-            : ''
-      if (!target) return json({ error: 'bad request' }, { status: 400 })
-      const headers: Record<string,string> = {}
-      const range = req.headers.get('range')
-      if (range) headers['range'] = range
-      const r = await fetch(target, { headers })
-      const respHeaders = new Headers()
-      // pass through important headers
-      const copy = ['content-type','accept-ranges','content-length','content-range','cache-control','etag','last-modified']
-      for (const h of copy) {
-        const v = r.headers.get(h)
-        if (v) respHeaders.set(h, v)
-      }
-      if (!respHeaders.has('cache-control')) respHeaders.set('cache-control','private, max-age=60')
-      return new Response(r.body, { status: r.status, headers: respHeaders })
-    }
+    // Inputs proxy fallback removed: containers always receive S3 presigned URLs now
     if (req.method === 'POST' && pathname === '/jobs') return handleStart(env, req)
     if (req.method === 'GET' && pathname.startsWith('/jobs/')) {
       const parts = pathname.split('/')
