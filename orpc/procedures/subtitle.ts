@@ -4,7 +4,7 @@ import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { AIModelIds } from '~/lib/ai/models'
-import { generateText } from '~/lib/ai/chat'
+import { generateObject } from '~/lib/ai/chat'
 import { transcribeWithWhisper } from '~/lib/asr/whisper'
 import { logger } from '~/lib/logger'
 import {
@@ -257,7 +257,7 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
         throw new Error('Transcription not found')
     }
 
-	// 使用配置化的提示词
+	// 使用配置化的提示词（用于约束说明）
 	const promptConfig = getTranslationPrompt(promptId || DEFAULT_TRANSLATION_PROMPT_ID)
 	if (!promptConfig) {
 		throw new Error(`Invalid translation prompt ID: ${promptId}`)
@@ -266,35 +266,76 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
 	logger.info('translation', `Using translation prompt: ${promptConfig.name} for media ${mediaId}`)
 	const sourceVtt = media.optimizedTranscription || media.transcription!
 	logger.info('translation', `Preparing to translate ${sourceVtt.length} characters for media ${mediaId} with model ${model}`)
-	let translatedText: string
-	try {
-		const result = await generateText({
-			model,
-			system: promptConfig.template,
-			prompt: sourceVtt,
-		})
-		translatedText = result.text
-		logger.info('translation', `Translation completed for media ${mediaId}, output length=${translatedText.length}`)
-		const preview = translatedText.slice(0, 200).replace(/\s+/g, ' ').trim()
-		logger.info('translation', `Translation preview for media ${mediaId}: "${preview}"${translatedText.length > 200 ? '…' : ''}`)
-		logger.info('translation', `Translation output for media ${mediaId}:\n${translatedText}`)
-	} catch (error) {
-		const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-		logger.error('translation', `Translation failed for media ${mediaId} with model ${model}: ${message}`)
-		if (error instanceof Error && error.stack) {
-			logger.error('translation', error.stack)
-		}
-		throw error
-	}
 
-	await db
-		.update(schema.media)
-		.set({ translation: translatedText })
-		.where(where)
+    // 解析原始 VTT 片段，作为时间轴的唯一来源
+    const originalCues = parseVttCues(sourceVtt)
+    if (!originalCues || originalCues.length === 0) {
+        throw new Error('Source VTT has no cues to translate')
+    }
 
-	return {
-		translation: translatedText,
-	}
+    // 压缩输入载荷（减少无关噪声）
+    const compact = originalCues.map((c) => ({
+        start: c.start,
+        end: c.end,
+        text: c.lines.join(' ').replace(/\s+/g, ' ').trim(),
+    }))
+
+    // 结构化输出 schema
+    const Schema = z.object({
+        cues: z.array(
+            z.object({
+                start: z.string(),
+                end: z.string(),
+                en: z.string().optional().default(''),
+                zh: z.string(),
+            }),
+        ).min(1),
+    })
+
+    // 严格 JSON 指令（生成对象）
+    const system = `You are a subtitle translator that outputs JSON only. Translate English to Chinese.
+Strict rules:
+- Keep timestamps (start, end) EXACTLY as provided
+- Produce the SAME number of cues, same order
+- For each cue: keep 'en' as concise English (optionally identical to input, without trailing punctuation), and 'zh' as natural Chinese
+- Do NOT add bullets, dashes, or extra commentary
+- Remove trailing sentence-ending punctuation in both languages
+- Output strictly valid JSON matching the provided schema`
+
+    const prompt = `Original WebVTT cues (timestamps + text):\n${JSON.stringify(compact)}\n\nReturn JSON with shape { cues: [{ start, end, en, zh }] } only.`
+
+    // 主路径：统一使用 generateObject（不再使用自由文本兜底）
+    let objectCues: Array<{ start: string; end: string; en?: string; zh: string }>
+    try {
+        const { object } = await generateObject({ model, system, prompt, schema: Schema })
+        const out = Array.isArray(object?.cues) ? object.cues : []
+        if (!out.length) throw new Error('Empty cues from structured translation')
+        objectCues = out
+        logger.info('translation', `Structured translation produced ${out.length} items for media ${mediaId}`)
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        logger.error('translation', `Structured translation failed for media ${mediaId}: ${msg}`)
+        throw new Error(`Structured translation failed: ${msg}`)
+    }
+
+    // 由结构化结果 + 原始时间戳重建 VTT
+    const pairs = originalCues.map((c, i) => {
+        const enFallback = c.lines.join(' ').trim()
+        const rawEn = (objectCues[i]?.en ?? enFallback).trim()
+        const rawZh = (objectCues[i]?.zh ?? '').trim()
+        const clean = (s: string) => s.replace(/^[-•\s]+/, '').replace(/[.,!?，。！？]$/g, '').trim()
+        const enText = clean(rawEn || enFallback)
+        const zhText = clean(rawZh || rawEn || enFallback)
+        const lines = [enText, zhText]
+        return { start: c.start, end: c.end, lines }
+    })
+    const rebuilt = serializeVttCues(pairs)
+    const vtt = rebuilt.trim().startsWith('WEBVTT') ? rebuilt : `WEBVTT\n\n${rebuilt}`
+    const check = validateVttContent(vtt)
+    if (!check.cues.length) throw new Error('Rebuilt VTT has 0 cues')
+
+    await db.update(schema.media).set({ translation: vtt }).where(where)
+    return { translation: vtt }
 })
 
 // 使用新架构中的Schema，移除重复定义

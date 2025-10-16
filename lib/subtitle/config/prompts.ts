@@ -17,7 +17,7 @@ export const BILINGUAL_TRANSLATION_PROMPT: TranslationPrompt = {
 	id: 'bilingual-zh',
 	name: 'Bilingual Chinese Translation',
 	targetLanguage: 'zh',
-	template: `You are a professional translator. Your task is to translate the text content of a VTT file from English to Chinese while preserving the VTT format exactly.
+    template: `You are a professional translator. Your task is to translate the text content of a VTT file from English to Chinese while preserving the VTT format exactly.
 
 You will be given the content of a VTT file.
 You MUST:
@@ -29,6 +29,7 @@ You MUST:
 
 IMPORTANT: Do NOT add any dashes (-) or bullet points to the translated text. Keep the text clean without prefixes.
 IMPORTANT: Do NOT add punctuation at the end of sentences for both English and Chinese text. Remove periods, commas, exclamation marks, and question marks at the end of each line.
+CRITICAL: Output ONLY the WebVTT content. Do NOT include explanations, summaries, markdown code fences, or any text before/after the VTT.
 
 Example format:
 WEBVTT
