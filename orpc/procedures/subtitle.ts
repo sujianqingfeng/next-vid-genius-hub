@@ -263,13 +263,28 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
 	}
 
 	logger.info('translation', `Using translation prompt: ${promptConfig.name} for media ${mediaId}`)
-
-    const sourceVtt = media.optimizedTranscription || media.transcription!
-    const { text: translatedText } = await generateText({
-        model,
-        system: promptConfig.template,
-        prompt: sourceVtt,
-    })
+	const sourceVtt = media.optimizedTranscription || media.transcription!
+	logger.info('translation', `Preparing to translate ${sourceVtt.length} characters for media ${mediaId} with model ${model}`)
+	let translatedText: string
+	try {
+		const result = await generateText({
+			model,
+			system: promptConfig.template,
+			prompt: sourceVtt,
+		})
+		translatedText = result.text
+		logger.info('translation', `Translation completed for media ${mediaId}, output length=${translatedText.length}`)
+		const preview = translatedText.slice(0, 200).replace(/\s+/g, ' ').trim()
+		logger.info('translation', `Translation preview for media ${mediaId}: "${preview}"${translatedText.length > 200 ? '…' : ''}`)
+		logger.info('translation', `Translation output for media ${mediaId}:\n${translatedText}`)
+	} catch (error) {
+		const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+		logger.error('translation', `Translation failed for media ${mediaId} with model ${model}: ${message}`)
+		if (error instanceof Error && error.stack) {
+			logger.error('translation', error.stack)
+		}
+		throw error
+	}
 
 	await db
 		.update(schema.media)
