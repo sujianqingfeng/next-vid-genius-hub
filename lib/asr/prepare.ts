@@ -13,11 +13,12 @@ import { CLOUDFLARE_ASR_MAX_UPLOAD_BYTES } from '~/lib/config/app.config'
  */
 export async function prepareAudioForCloudflare(
   buffer: ArrayBuffer,
-  opts?: { targetBitrateKbps?: number; sampleRate?: number }
+  opts?: { targetBitrateKbps?: number; sampleRate?: number; forceTranscode?: boolean }
 ): Promise<ArrayBuffer> {
   const maxBytes = CLOUDFLARE_ASR_MAX_UPLOAD_BYTES
   const size = buffer.byteLength
-  if (size <= maxBytes) return buffer
+  const force = opts?.forceTranscode === true
+  if (size <= maxBytes && !force) return buffer
 
   let bitrate = Math.max(16, Math.min(96, opts?.targetBitrateKbps ?? 48)) // 16–96 kbps
   const sampleRate = opts?.sampleRate ?? 16000

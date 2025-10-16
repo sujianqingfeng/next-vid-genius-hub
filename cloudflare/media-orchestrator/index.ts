@@ -468,7 +468,8 @@ async function runAsrForPipeline(env: Env, doc: any) {
   const model: string = (doc?.metadata?.model as string) || '@cf/openai/whisper-tiny-en'
 
   // Call Workers AI Whisper via REST
-  const runUrl = `https://api.cloudflare.com/client/v4/accounts/${env.CF_AI_ACCOUNT_ID}/ai/run/${encodeURIComponent(model)}`
+  // Workers AI run endpoint requires raw slug path (do not encode slashes)
+  const runUrl = `https://api.cloudflare.com/client/v4/accounts/${env.CF_AI_ACCOUNT_ID}/ai/run/${model}`
   const r = await fetch(runUrl, {
     method: 'POST',
     headers: {
