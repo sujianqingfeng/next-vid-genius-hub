@@ -5,14 +5,18 @@ import {
 	useState,
 	useEffect,
 	useRef,
+	useMemo,
 } from 'react'
 import {
 	AlertCircle,
 	Loader2,
 } from 'lucide-react'
+import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { SUBTITLE_RENDER_PRESETS, DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
+import { parseVttCues } from '~/lib/subtitle/utils/vtt'
+import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
 import type {
 	SubtitleRenderConfig,
 	SubtitleRenderPreset,
@@ -159,19 +163,66 @@ export function Step3Render(props: Step3RenderProps) {
 		videoRef.current = ref
 	}
 
+	// 解析字幕列表
+	const cues = useMemo(
+		() => (translation ? parseVttCues(translation) : []),
+		[translation],
+	)
+
 	return (
 		<div className="space-y-6">
-			{/* 视频预览区域 - 顶部主要区域 */}
-			<div className="rounded-xl border bg-card shadow-sm">
-				<VideoPreview
-					mediaId={mediaId}
-					translation={translation}
-					config={config}
-					isRendering={isRendering}
-					onTimeUpdate={handleTimeUpdate}
-					onDurationChange={handleDurationChange}
-					onVideoRef={handleVideoRef}
-				/>
+			{/* 视频预览 + 字幕列表 - 并排布局 */}
+			<div className="grid gap-4 lg:grid-cols-3">
+				{/* 左/上：视频预览区域 */}
+				<div className="lg:col-span-2 rounded-xl border bg-card shadow-sm">
+					<VideoPreview
+						mediaId={mediaId}
+						translation={translation}
+						config={config}
+						isRendering={isRendering}
+						onTimeUpdate={handleTimeUpdate}
+						onDurationChange={handleDurationChange}
+						onVideoRef={handleVideoRef}
+					/>
+				</div>
+
+				{/* 右：字幕列表 */}
+				<div className="flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden max-h-[600px]">
+					<div className="flex-shrink-0 px-4 py-3 border-b bg-muted/30">
+						<h3 className="text-sm font-semibold mb-2">Subtitles</h3>
+						<Badge variant="secondary" className="text-xs">
+							{cues.length} cues
+						</Badge>
+					</div>
+					<div className="flex-1 min-h-0 overflow-y-auto">
+						{cues.length === 0 ? (
+							<div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+								No subtitles available
+							</div>
+						) : (
+							<div className="divide-y">
+								{cues.map((cue, idx) => (
+									<div
+										key={`${cue.start}-${cue.end}-${idx}`}
+										className="px-3 py-2 text-xs hover:bg-muted/50 transition-colors cursor-pointer"
+										onClick={() => handlePlayPreview(parseVttTimestamp(cue.start))}
+									>
+										<div className="text-muted-foreground font-mono text-[10px] mb-1">
+											{cue.start} → {cue.end}
+										</div>
+										<div className="space-y-0.5">
+											{cue.lines.map((line, i) => (
+												<div key={i} className="text-xs font-mono break-words leading-snug">
+													{line}
+												</div>
+											))}
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+				</div>
 			</div>
 
 			{/* 配置控制区域 - 下方紧凑布局 */}
