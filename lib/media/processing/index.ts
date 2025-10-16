@@ -7,37 +7,12 @@ import {
 	type TimeSegmentEffect,
 	type HintTextConfig,
 } from '../types'
+import { getVideoResolution } from '~/lib/media/ffmpeg'
 
 async function runFfmpeg(args: string[]): Promise<void> {
 	await execa('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args])
 }
 
-/**
- * Get video resolution (width and height) using FFmpeg
- */
-async function getVideoResolution(videoPath: string): Promise<{ width: number; height: number }> {
-	try {
-		const { stdout } = await execa('ffprobe', [
-			'-v', 'quiet',
-			'-print_format', 'csv=p=0',
-			'-select_streams', 'v:0',
-			'-show_entries', 'stream=width,height',
-			videoPath
-		])
-
-		const [width, height] = stdout.split(',').map(Number)
-		if (!width || !height || Number.isNaN(width) || Number.isNaN(height)) {
-			// Fallback to 1080p if we can't detect resolution
-			return { width: 1920, height: 1080 }
-		}
-
-		return { width, height }
-	} catch (error) {
-		console.warn('Failed to get video resolution, using 1080p fallback:', error)
-		// Fallback to 1080p if detection fails
-		return { width: 1920, height: 1080 }
-	}
-}
 
 /**
  * Escape a path for use in FFmpeg filters

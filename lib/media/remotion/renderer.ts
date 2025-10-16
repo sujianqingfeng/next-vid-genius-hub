@@ -10,6 +10,7 @@ import { getCompositions, renderMedia } from '@remotion/renderer'
 import { execa } from 'execa'
 import type { Comment, VideoInfo } from '../types'
 import { PROXY_URL, CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
+import { getVideoResolution } from '~/lib/media/ffmpeg'
 import {
   layoutConstants,
   buildCommentTimeline,
@@ -18,22 +19,7 @@ import {
   buildComposeArgs,
 } from '@app/media-comments'
 
-async function getVideoResolution(videoPath: string): Promise<{ width: number; height: number }> {
-  try {
-    const { stdout } = await execa('ffprobe', [
-      '-v', 'quiet',
-      '-print_format', 'csv=p=0',
-      '-select_streams', 'v:0',
-      '-show_entries', 'stream=width,height',
-      videoPath
-    ])
-    const [width, height] = stdout.split(',').map(Number)
-    return { width, height }
-  } catch (error) {
-    console.warn('Failed to get video resolution, assuming 1920x1080:', error)
-    return { width: 1920, height: 1080 }
-  }
-}
+// getVideoResolution is centralized in ~/lib/media/ffmpeg
 
 export type RenderProgressStage = 'bundle' | 'render' | 'compose' | 'complete' | 'failed'
 
@@ -193,7 +179,9 @@ async function materializeSourceVideo(sourcePath: string, tempDir: string): Prom
   if (!r.ok || !r.body) {
     throw new Error(`Failed to fetch remote source video: ${r.status || 'no_body'}`)
   }
-  await pipeline(Readable.fromWeb(r.body as unknown as ReadableStream<Uint8Array>), createWriteStream(outPath))
+  // Casts are safe for Node pipeline; convert Web stream to Node stream
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await pipeline(Readable.fromWeb(r.body as any) as any, createWriteStream(outPath) as any)
   return outPath
 }
 

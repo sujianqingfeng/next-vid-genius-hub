@@ -12,10 +12,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  */
 const URL_REGEX = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
 
-/**
- * YouTube URL validation regex
- */
-const YOUTUBE_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/
+import { isValidYouTubeUrl as isValidYouTubeUrlFromProvider } from '~/lib/providers/youtube/utils'
 
 /**
  * TikTok URL validation regex
@@ -40,7 +37,7 @@ export function isValidUrl(url: string): boolean {
  * Validate YouTube URL
  */
 export function isValidYouTubeUrl(url: string): boolean {
-	return YOUTUBE_REGEX.test(url)
+	return isValidYouTubeUrlFromProvider(url)
 }
 
 /**

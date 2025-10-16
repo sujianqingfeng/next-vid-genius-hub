@@ -4,6 +4,7 @@
  */
 
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
+import { areConfigsEqual } from '~/lib/subtitle/utils/config'
 import type { SubtitleRenderPreset, SubtitleRenderConfig } from '~/lib/subtitle/types'
 
 /**
@@ -115,37 +116,4 @@ export function findMatchingPreset(config: SubtitleRenderConfig): SubtitleRender
 	return SUBTITLE_RENDER_PRESETS.find(preset => areConfigsEqual(preset.config, config))
 }
 
-/**
- * 比较两个字幕配置是否相等
- */
-function areConfigsEqual(configA: SubtitleRenderConfig, configB: SubtitleRenderConfig): boolean {
-	// 基础配置比较
-	const basicConfigEqual =
-		configA.fontSize === configB.fontSize &&
-		Math.abs(configA.backgroundOpacity - configB.backgroundOpacity) < 0.001 &&
-		configA.textColor.toLowerCase() === configB.textColor.toLowerCase() &&
-		configA.backgroundColor.toLowerCase() === configB.backgroundColor.toLowerCase() &&
-		configA.outlineColor.toLowerCase() === configB.outlineColor.toLowerCase() &&
-		configA.timeSegmentEffects.length === configB.timeSegmentEffects.length
-
-	if (!basicConfigEqual) return false
-
-	// 提示文本配置比较
-	const hintConfigA = configA.hintTextConfig
-	const hintConfigB = configB.hintTextConfig
-
-	if (!hintConfigA && !hintConfigB) return true
-	if (!hintConfigA || !hintConfigB) return false
-
-	return (
-		hintConfigA.enabled === hintConfigB.enabled &&
-		hintConfigA.text === hintConfigB.text &&
-		hintConfigA.fontSize === hintConfigB.fontSize &&
-		hintConfigA.textColor.toLowerCase() === hintConfigB.textColor.toLowerCase() &&
-		hintConfigA.backgroundColor.toLowerCase() === hintConfigB.backgroundColor.toLowerCase() &&
-		Math.abs((hintConfigA.backgroundOpacity ?? 0.8) - (hintConfigB.backgroundOpacity ?? 0.8)) < 0.001 &&
-		hintConfigA.outlineColor.toLowerCase() === hintConfigB.outlineColor.toLowerCase() &&
-		hintConfigA.position === hintConfigB.position &&
-		hintConfigA.animation === hintConfigB.animation
-	)
-}
+// areConfigsEqual moved to ~/lib/subtitle/utils/config

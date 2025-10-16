@@ -45,7 +45,10 @@ export async function prepareAudioForCloudflare(
       logger.info('transcription', `Downsampled audio: ${size} -> ${outBytes} bytes (~${(outBytes/1048576).toFixed(2)} MB) @ ${bitrate}kbps/${sampleRate}Hz`)
       if (outBytes <= maxBytes || attempt === 1) {
         await Promise.allSettled([fs.unlink(inPath), fs.unlink(outPath)])
-        return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength)
+        // Clone to a fresh ArrayBuffer to avoid SharedArrayBuffer typing
+        const view = new Uint8Array(out.buffer, out.byteOffset, out.byteLength)
+        const cloned = new Uint8Array(view)
+        return cloned.buffer
       }
       // If still too large, lower bitrate and try once more.
       bitrate = Math.max(16, Math.floor(bitrate / 2)) // e.g., 48 -> 24

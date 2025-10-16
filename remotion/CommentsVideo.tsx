@@ -12,6 +12,7 @@ import {
 } from "remotion";
 import type { CommentVideoInputProps } from "./types";
 import { VIDEO_WIDTH, VIDEO_HEIGHT } from "./layout-constants";
+import { formatCount } from "~/lib/utils/format/format";
 
 const layout = {
   paddingX: 64,
@@ -939,18 +940,4 @@ const MetaItem: React.FC<{ label: string; value: string }> = ({
   );
 };
 
-function formatCount(value?: number): string {
-  if (!value) {
-    return "0";
-  }
-
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`;
-  }
-
-  if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(1)}K`;
-  }
-
-  return new Intl.NumberFormat("en-US").format(value);
-}
+// use shared formatter from lib/utils

@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (payload.engine === 'media-downloader') {
-      await handleCloudDownloadCallback(media, payload)
+      await handleCloudDownloadCallback(media, payload as CallbackPayload & { engine: 'media-downloader' })
       return NextResponse.json({ ok: true })
     }
 
@@ -257,7 +257,9 @@ async function downloadArtifact(url: string, filePath: string) {
   const fileStream = createWriteStream(filePath)
   try {
     // Stream directly to disk to avoid buffering large artifacts in memory
-    await pipeline(Readable.fromWeb(body as ReadableStream<Uint8Array>), fileStream)
+    // Casts are safe here: Node's Readable.fromWeb returns a Node stream compatible with pipeline.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await pipeline(Readable.fromWeb(body as any) as any, fileStream as any)
   } catch (error) {
     fileStream.destroy()
     await fs.rm(filePath, { force: true }).catch(() => {})

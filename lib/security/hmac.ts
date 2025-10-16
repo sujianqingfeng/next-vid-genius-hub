@@ -15,10 +15,9 @@ export function verifyHmacSHA256(secret: string, payload: string, signature: str
   return crypto.timingSafeEqual(a, b)
 }
 
-export function buildSignedBody(secret: string, body: unknown & { ts?: number; nonce?: string }) {
+export function buildSignedBody(secret: string, body: object) {
   const ts = Date.now()
   const payload = JSON.stringify({ ...body, ts })
   const signature = signHmacSHA256(secret, payload)
   return { payload, signature, ts }
 }
-
