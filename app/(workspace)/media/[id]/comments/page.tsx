@@ -31,7 +31,7 @@ import {
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
 import { ChatModelId, ChatModelIds } from '~/lib/ai/models'
-import { extractVideoId } from '~/lib/providers/youtube/utils'
+import { extractVideoId } from '@app/media-providers'
 import { STATUS_LABELS } from '~/lib/constants/media.constants'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'

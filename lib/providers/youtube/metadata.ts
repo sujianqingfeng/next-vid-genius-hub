@@ -3,7 +3,7 @@
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { getYouTubeClient } from './client'
-import { extractVideoId } from './utils'
+import { extractVideoId } from '@app/media-providers'
 
 export async function fetchYouTubeMetadata(
 	url: string,
@@ -37,4 +37,3 @@ export async function fetchYouTubeMetadata(
 		return null
 	}
 }
-

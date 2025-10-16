@@ -2,7 +2,7 @@ import type { Innertube } from 'youtubei.js'
 import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.types'
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchYouTubeMetadata } from './metadata'
-import { extractVideoId } from './utils'
+import { extractVideoId } from '@app/media-providers'
 // import { getYouTubeClient } from './client'
 
 const clientCache = new Map<string, Promise<Innertube>>()

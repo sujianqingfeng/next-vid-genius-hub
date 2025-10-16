@@ -1,13 +1,7 @@
-import getYouTubeID from 'get-youtube-id'
+import { extractVideoId as providerExtractVideoId } from '@app/media-providers'
 
-/**
- * Extract YouTube video ID from URL
- * @param url YouTube URL (e.g., https://www.youtube.com/watch?v=VIDEO_ID)
- * @returns Video ID or null if invalid URL
- */
-export function extractVideoId(url: string): string | null {
-	return getYouTubeID(url)
-}
+// YouTube URL helpers for the app layer.
+// Prefer importing `extractVideoId` directly from `@app/media-providers` at call sites.
 
 /**
  * Check if a URL is a valid YouTube URL
@@ -15,7 +9,7 @@ export function extractVideoId(url: string): string | null {
  * @returns true if valid YouTube URL
  */
 export function isValidYouTubeUrl(url: string): boolean {
-	return extractVideoId(url) !== null
+	return providerExtractVideoId(url) !== null
 }
 
 /**
