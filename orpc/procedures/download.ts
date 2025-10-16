@@ -77,6 +77,7 @@ export const startCloudDownload = os
 				})
 				.onConflictDoNothing()
 		} else {
+			// 保留现有远端 Key，确保在新任务排队/执行期间仍可通过 /api/media/:id/source 提供可播放源
 			await db
 				.update(schema.media)
 				.set({
@@ -85,9 +86,8 @@ export const startCloudDownload = os
 					downloadError: null,
 					downloadQueuedAt: now,
 					downloadCompletedAt: null,
-					remoteVideoKey: null,
-					remoteAudioKey: null,
-					remoteMetadataKey: null,
+					// 保留 remoteVideoKey/remoteAudioKey/remoteMetadataKey，不要在重试时清空
+					// 新任务成功回调后会用最新 Key 覆盖
 					downloadJobId: null,
 					filePath: existing.filePath,
 					audioFilePath: existing.audioFilePath,

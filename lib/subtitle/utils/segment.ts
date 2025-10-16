@@ -25,7 +25,7 @@ function isPunctuation(token: string): boolean {
 export function wordsSliceToText(words: TranscriptionWord[], start: number, end: number): string {
     const parts: string[] = []
     for (let i = start; i <= end; i++) {
-        let w = words[i]?.word ?? ''
+        const w = words[i]?.word ?? ''
         if (!w) continue
 
         // Normalize common hyphenation artifact: preceding space before hyphenated continuation

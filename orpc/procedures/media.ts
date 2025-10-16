@@ -49,6 +49,30 @@ export const byId = os
 		return item
 	})
 
+export const updateTitles = os
+	.input(
+		z.object({
+			id: z.string(),
+			title: z.string().optional(),
+			translatedTitle: z.string().optional(),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const { id, title, translatedTitle } = input
+
+		const updateData: Record<string, string | undefined> = {}
+		if (title !== undefined) updateData.title = title
+		if (translatedTitle !== undefined) updateData.translatedTitle = translatedTitle
+
+		await db.update(schema.media).set(updateData).where(eq(schema.media.id, id))
+
+		const updated = await db.query.media.findFirst({
+			where: eq(schema.media.id, id),
+		})
+
+		return updated
+	})
+
 export const deleteById = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
