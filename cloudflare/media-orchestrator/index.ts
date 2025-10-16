@@ -247,7 +247,7 @@ async function handleStart(env: Env, req: Request) {
   let inputVideoUrl: string | undefined
   let inputVttUrl: string | undefined
   let inputDataUrl: string | undefined
-  if (!isDownloader && !isAudioTranscoder) {
+  if (!isDownloader && !isAudioTranscoder && !isAsrPipeline) {
     // Always mirror inputs to S3 and provide presigned GET URLs to containers
     const videoExists = await s3Head(env, bucketName, inputVideoKey)
     if (!videoExists) {
@@ -322,7 +322,7 @@ async function handleStart(env: Env, req: Request) {
     if (outputAudioKey) payload.outputAudioKey = outputAudioKey
     if (outputMetadataPutUrl) payload.outputMetadataPutUrl = outputMetadataPutUrl
     if (outputMetadataKey) payload.outputMetadataKey = outputMetadataKey
-  } else if (isAudioTranscoder) {
+  } else if (isAudioTranscoder || isAsrPipeline) {
     // For audio transcoder, inputs: audio only; outputs: audio only
     // Inputs: prefer sourceKey -> presign GET; else options.sourceUrl
     let inputAudioUrl: string | undefined
@@ -453,6 +453,14 @@ async function handleContainerCallback(env: Env, req: Request) {
       }
     } catch (e) {
       console.error('[asr-pipeline] chain error:', (e as Error)?.message || String(e))
+      // Propagate failure status so clients don't see a misleading 'completed'
+      try {
+        await stub.fetch('https://do/progress', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jobId: body.jobId, status: 'failed', error: (e as Error)?.message || String(e), ts: Date.now() }),
+        })
+      } catch {}
     }
     return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json' } })
   }
@@ -464,7 +472,10 @@ async function runAsrForPipeline(env: Env, doc: any) {
   const jobId = doc.jobId
   const audioKey: string | undefined = doc.outputAudioKey || doc.outputs?.audio?.key
   if (!audioKey) throw new Error('asr-pipeline: missing outputAudioKey')
-  if (!env.CF_AI_ACCOUNT_ID || !env.CF_AI_API_TOKEN) throw new Error('asr-pipeline: Workers AI credentials not configured')
+  // Allow fallback to CLOUDFLARE_* for local/dev convenience
+  const aiAccountId = env.CF_AI_ACCOUNT_ID || (env as any).CLOUDFLARE_ACCOUNT_ID
+  const aiApiToken = env.CF_AI_API_TOKEN || (env as any).CLOUDFLARE_API_TOKEN
+  if (!aiAccountId || !aiApiToken) throw new Error('asr-pipeline: Workers AI credentials not configured')
 
   // Fetch downsampled audio bytes via presigned GET
   const audioUrl = await presignS3(env, 'GET', bucket, audioKey, 600)
@@ -477,11 +488,11 @@ async function runAsrForPipeline(env: Env, doc: any) {
 
   // Call Workers AI Whisper via REST
   // Workers AI run endpoint requires raw slug path (do not encode slashes)
-  const runUrl = `https://api.cloudflare.com/client/v4/accounts/${env.CF_AI_ACCOUNT_ID}/ai/run/${model}`
+  const runUrl = `https://api.cloudflare.com/client/v4/accounts/${aiAccountId}/ai/run/${model}`
   const r = await fetch(runUrl, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${env.CF_AI_API_TOKEN}`,
+      Authorization: `Bearer ${aiApiToken}`,
       'Content-Type': 'application/octet-stream',
       Accept: 'application/json',
     },
@@ -793,7 +804,14 @@ export class RenderJobDO {
       const shouldNotify =
         TERMINAL_STATUSES.includes(next.status) &&
         !next.nextNotified &&
-        (next.status !== 'completed' || Boolean(next.outputKey))
+        (
+          next.status !== 'completed' ||
+          (
+            next.engine === 'asr-pipeline'
+              ? Boolean(next.outputs?.vtt?.key)
+              : Boolean(next.outputKey)
+          )
+        )
       if (shouldNotify) {
         await this.notifyNext(next)
         next.nextNotified = true
@@ -879,6 +897,11 @@ export class RenderJobDO {
             // Provide audio presigned URL for debugging if needed
             doc.outputs = doc.outputs || {}
             doc.outputs.audio = { key: doc.outputAudioKey, url: await presignS3(this.env, 'GET', bucket, doc.outputAudioKey, 600) }
+          }
+          // If the container stage has completed but ASR hasn't produced VTT yet,
+          // present a non-terminal status to clients to avoid premature completion.
+          if (doc.status === 'completed' && !doc.outputs?.vtt?.key) {
+            doc.status = 'running'
           }
         }
       } catch {}

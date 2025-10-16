@@ -153,7 +153,8 @@ export const transcribe = os
                         break
                     }
                     if (st.status === 'failed' || st.status === 'canceled') {
-                        throw new Error(st.message || 'Cloud ASR pipeline failed')
+                        const msg = (st as any).error || (st as any).message || 'Cloud ASR pipeline failed'
+                        throw new Error(msg)
                     }
                     await new Promise(r => setTimeout(r, 1200))
                 }
