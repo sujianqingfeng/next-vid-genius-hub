@@ -86,6 +86,20 @@ export async function renderVideoWithRemotion({
       outDir: bundleOutDir,
       publicDir,
       enableCaching: true,
+      webpackOverride: (config) => ({
+        ...config,
+        resolve: {
+          ...(config.resolve ?? {}),
+          alias: {
+            ...(config.resolve?.alias ?? {}),
+            '~': process.cwd(),
+          },
+          extensions: [
+            '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json',
+            ...((config.resolve?.extensions as string[] | undefined) ?? []),
+          ],
+        },
+      }),
     })
     onProgress?.({ stage: 'bundle', progress: 1 })
 

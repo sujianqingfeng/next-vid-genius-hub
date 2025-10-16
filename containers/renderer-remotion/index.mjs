@@ -245,7 +245,26 @@ async function handleRender(req, res) {
     await progress('running', 0.15)
     const tmpOut = join(tmpdir(), `${jobId}_bundle`)
     console.log('[remotion] bundling Remotion project...')
-    const serveUrl = await bundle({ entryPoint: join(process.cwd(), 'remotion', 'index.ts'), outDir: tmpOut, publicDir: join(process.cwd(), 'public'), enableCaching: true })
+    const serveUrl = await bundle({
+      entryPoint: join(process.cwd(), 'remotion', 'index.ts'),
+      outDir: tmpOut,
+      publicDir: join(process.cwd(), 'public'),
+      enableCaching: true,
+      webpackOverride: (config) => ({
+        ...config,
+        resolve: {
+          ...(config.resolve ?? {}),
+          alias: {
+            ...(config.resolve?.alias ?? {}),
+            '~': process.cwd(),
+          },
+          extensions: [
+            '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json',
+            ...((config.resolve?.extensions ?? [])),
+          ],
+        },
+      }),
+    })
     console.log('[remotion] bundle complete, building timeline')
     const { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, totalDurationSeconds, coverDurationSeconds } = buildCommentTimeline(preparedComments, REMOTION_FPS)
     console.log(`[remotion] timeline: cover=${coverDurationSeconds}s total=${totalDurationSeconds}s`)

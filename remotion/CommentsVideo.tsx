@@ -12,7 +12,8 @@ import {
 } from "remotion";
 import type { CommentVideoInputProps } from "./types";
 import { VIDEO_WIDTH, VIDEO_HEIGHT } from "./layout-constants";
-import { formatCount } from "~/lib/utils/format/format";
+// Use relative import to avoid Next.js path alias in Remotion bundler
+import { formatCount } from "./utils/format";
 
 const layout = {
   paddingX: 64,
