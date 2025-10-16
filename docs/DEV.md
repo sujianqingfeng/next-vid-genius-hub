@@ -73,7 +73,8 @@ pnpm dev:host   # 监听 0.0.0.0:3000（供 Worker 拉取源素材）
 2) Worker 日志：
    - `start job` → `mirror inputs to S3` → `trigger container`。
 3) 容器日志：
-   - 字幕渲染：`preparing` → `inputs ready` → `ffmpeg done` → `uploading artifact`。
+   - 字幕渲染：`preparing` → `inputs ready` → `20%/30%/...`（每10%一条）→ `ffmpeg done` → `uploading artifact`。
+   - 长时任务心跳：每 30s 打印一次 `running… <x>%`，频率可通过环境变量 `RENDER_HEARTBEAT_MS` 调整（设为 `0` 关闭）。
 - 云端下载：`preparing` → `fetching_metadata` → `downloading` → `extracting_audio` → `uploading`。
 4) 轮询 /jobs/:id：
    - 渲染：R2 出现 `outputs/by-media/<mediaId>/<jobId>/video.mp4` 即标记完成。

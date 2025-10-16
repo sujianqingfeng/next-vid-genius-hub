@@ -35,6 +35,7 @@ import { extractVideoId } from '@app/media-providers'
 import { STATUS_LABELS } from '~/lib/constants/media.constants'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
+import { Progress } from '~/components/ui/progress'
 
 export default function CommentsPage() {
 	const params = useParams()
@@ -467,14 +468,28 @@ export default function CommentsPage() {
 										disabled={startCloudCommentsMutation.isPending || downloadCommentsMutation.isPending}
 									/>
                             {commentsBackend === 'cloud' && commentsCloudJobId && (
-                                <p className="text-xs text-muted-foreground">
-                                    {(() => {
-                                      const s = cloudCommentsStatusQuery.data?.status
-                                      const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'starting'
-                                      const pct = typeof cloudCommentsStatusQuery.data?.progress === 'number' ? ` (${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
-                                      return <>Job: {commentsCloudJobId} — {label}{pct}</>
-                                    })()}
-                                </p>
+                              <div className="mt-2 flex items-center gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <Progress
+                                    value={
+                                      typeof cloudCommentsStatusQuery.data?.progress === 'number'
+                                        ? Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)
+                                        : 0
+                                    }
+                                    srLabel="Cloud comments download progress"
+                                  />
+                                </div>
+                                <div className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                                  {(() => {
+                                    const s = cloudCommentsStatusQuery.data?.status
+                                    const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'Starting'
+                                    const pct = typeof cloudCommentsStatusQuery.data?.progress === 'number'
+                                      ? `${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%`
+                                      : '0%'
+                                    return <span title={`Job ${commentsCloudJobId}`}>{label} • {pct}</span>
+                                  })()}
+                                </div>
+                              </div>
                             )}
 								</div>
 
@@ -557,14 +572,28 @@ export default function CommentsPage() {
 										</Button>
 									</div>
                             {renderBackend === 'cloud' && cloudJobId && (
-                                <p className="text-xs text-muted-foreground">
-                                    {(() => {
-                                      const s = cloudStatusQuery.data?.status
-                                      const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'starting'
-                                      const pct = typeof cloudStatusQuery.data?.progress === 'number' ? ` (${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
-                                      return <>Job: {cloudJobId} — {label}{pct}</>
-                                    })()}
-                                </p>
+                              <div className="mt-2 flex items-center gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <Progress
+                                    value={
+                                      typeof cloudStatusQuery.data?.progress === 'number'
+                                        ? Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)
+                                        : 0
+                                    }
+                                    srLabel="Cloud render progress"
+                                  />
+                                </div>
+                                <div className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                                  {(() => {
+                                    const s = cloudStatusQuery.data?.status
+                                    const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'Starting'
+                                    const pct = typeof cloudStatusQuery.data?.progress === 'number'
+                                      ? `${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%`
+                                      : '0%'
+                                    return <span title={`Job ${cloudJobId}`}>{label} • {pct}</span>
+                                  })()}
+                                </div>
+                              </div>
                             )}
 									{renderBackend === 'cloud' && (
 										<ProxySelector

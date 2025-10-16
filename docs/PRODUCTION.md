@@ -21,6 +21,7 @@
   - /render：调用 `yt-dlp` 下载源视频与原始元数据、`ffmpeg` 提取音轨，将产物上传至 R2。
 - 容器（containers/burner-ffmpeg）：
   - /render：接受 R2 预签名 URL（生产）或 fallback URL（开发），执行 ffmpeg 烧录后写回产物。
+  - 日志：每 10% 打印一次进度（如 `30%`），同时每 30s 打印一次心跳（`running… <x>%`）避免“卡死错觉”。通过 `RENDER_HEARTBEAT_MS` 自定义心跳间隔（设为 `0` 可关闭）。
 
 生产使用“仅 R2 直连”：容器仅访问 R2，Worker 负责编排与检测完成；不依赖 localhost/host.docker.internal。
 
@@ -182,7 +183,7 @@ ENABLE_LOCAL_HYDRATE=false
 ## 冒烟测试（生产）
 
 1) 上传 10–30 秒小样视频，手动触发 Step 3（Cloud）。
-2) Worker 日志：`start job ...` → 无错误；容器日志：`inputs ready` → `ffmpeg done`。
+2) Worker 日志：`start job ...` → 无错误；容器日志：`inputs ready` → 若为长视频可见 `20%/30%/...` → `ffmpeg done`。
 3) 轮询 /jobs/:id：status 从 `queued`→`running`（或 `preparing`）→ 检测到 R2 `outputs/...` → `completed`。
 4) Next 日志出现 `[cf-callback] recorded remote artifact for job <jobId>`，页面自动跳到 Step 4 可播放（Next 代理 Worker `/artifacts/:jobId`，支持 Range）。
 5) 针对云端下载：在下载页选择 Cloud，确认 Worker /jobs/:id 状态从 `queued` → `running` → `completed`，Next 日志输出“Cloud download completed”并在 `operations/<mediaId>` 下生成 mp4/mp3/metadata.json。

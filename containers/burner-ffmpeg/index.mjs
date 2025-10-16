@@ -85,7 +85,39 @@ async function handleRender(req, res) {
 
     console.log(`[render] ${jobId} inputs ready, start ffmpeg`)
     await progress('running', 0.2)
-    await renderVideoWithSubtitles(inFile, vttText, outFile, engineOptions.subtitleConfig || {})
+    let currentPct = 20
+    let lastLogPct = 20
+    let lastBeat = Date.now()
+    const heartbeatMs = Number(process.env.RENDER_HEARTBEAT_MS || 30000)
+    const hb = heartbeatMs > 0 ? setInterval(() => {
+      const now = Date.now()
+      if (now - lastBeat >= heartbeatMs - 50) {
+        console.log(`[render] ${jobId} running… ${Math.max(20, Math.min(99, Math.round(currentPct)))}%`)
+        lastBeat = now
+      }
+    }, heartbeatMs) : null
+    try {
+      await renderVideoWithSubtitles(
+        inFile,
+        vttText,
+        outFile,
+        engineOptions.subtitleConfig || {},
+        {
+          onProgress: async (p) => {
+            const pct = Math.max(0, Math.min(99, Math.round(p * 100)))
+            currentPct = Math.max(currentPct, Math.max(20, pct))
+            // Emit callback updates (fine-grained) but keep logs at 10% steps
+            try { await progress('running', currentPct / 100) } catch {}
+            if (currentPct - lastLogPct >= 10) {
+              lastLogPct = currentPct
+              console.log(`[render] ${jobId} ${lastLogPct}%`)
+            }
+          },
+        },
+      )
+    } finally {
+      if (hb) clearInterval(hb)
+    }
 
     console.log(`[render] ${jobId} ffmpeg done, uploading artifact`)
     await progress('uploading', 0.95)

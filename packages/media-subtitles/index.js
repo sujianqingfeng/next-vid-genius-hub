@@ -2,8 +2,60 @@ import { execa } from 'execa'
 import { promises as fs } from 'fs'
 import * as path from 'path'
 
-async function runFfmpeg(args) {
-  await execa('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args])
+async function getVideoDuration(inputPath) {
+  try {
+    const { stdout } = await execa('ffprobe', [
+      '-v', 'error',
+      '-show_entries', 'format=duration',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      inputPath,
+    ])
+    const d = parseFloat(String(stdout).trim())
+    return Number.isFinite(d) && d > 0 ? d : null
+  } catch {
+    return null
+  }
+}
+
+async function runFfmpeg(args, opts = {}) {
+  const { inputForProgress, totalDurationSeconds, onProgress } = opts
+  if (!onProgress) {
+    await execa('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args])
+    return
+  }
+  // With progress reporting
+  const ffArgs = ['-y', '-hide_banner', '-loglevel', 'error', '-progress', 'pipe:2', ...args]
+  const proc = execa('ffmpeg', ffArgs, { stderr: 'pipe' })
+  let lastPct = -1
+  let duration = totalDurationSeconds || null
+  if (!duration && inputForProgress) {
+    duration = await getVideoDuration(inputForProgress)
+  }
+  const parseProgress = (chunk) => {
+    try {
+      const lines = String(chunk || '').split(/\r?\n/)
+      for (const line of lines) {
+        const m = line.match(/^out_time_ms=(\d+)/)
+        if (m) {
+          const outMs = parseInt(m[1], 10)
+          if (duration && duration > 0) {
+            const pct = Math.max(0, Math.min(99, Math.floor((outMs / 1000) / duration * 100)))
+            if (pct > lastPct) {
+              lastPct = pct
+              onProgress(pct / 100)
+            }
+          } else {
+            // If duration unknown, emit coarse heartbeats on progress markers
+            const coarse = Math.min(99, (lastPct + 1) || 0)
+            lastPct = coarse
+            onProgress(coarse / 100)
+          }
+        }
+      }
+    } catch {}
+  }
+  if (proc.stderr) proc.stderr.on('data', parseProgress)
+  await proc
 }
 
 export async function getVideoResolution(videoPath) {
@@ -69,6 +121,7 @@ export async function renderVideoWithSubtitles(
   subtitleContent,
   outputPath,
   subtitleConfig = defaultSubtitleRenderConfig,
+  options = {},
 ) {
   const { height } = await getVideoResolution(videoPath)
   const scaleFactor = height / 1080
@@ -94,25 +147,44 @@ export async function renderVideoWithSubtitles(
   const tempAssPath = path.join(tempDir, `temp_${Date.now()}.ass`)
   await fs.writeFile(tempAssPath, assContent, 'utf8')
   const escapedAssPath = escapeForFFmpegFilterPath(tempAssPath)
+  const totalDuration = await getVideoDuration(videoPath)
+  const emit = typeof options.onProgress === 'function' ? options.onProgress : () => {}
+  const range = (start, end) => (p) => emit(start + (end - start) * Math.max(0, Math.min(1, p)))
 
   try {
     const effects = normalizedConfig.timeSegmentEffects
     if (!effects || effects.length === 0) {
-      await runFfmpeg(['-i', videoPath, '-vf', `subtitles=${escapedAssPath}`, outputPath])
+      await runFfmpeg(
+        ['-i', videoPath, '-vf', `subtitles=${escapedAssPath}`, outputPath],
+        { inputForProgress: videoPath, totalDurationSeconds: totalDuration, onProgress: range(0, 1) },
+      )
       return
     }
-    await renderVideoWithEffects(videoPath, escapedAssPath, effects, outputPath, normalizedConfig.hintTextConfig)
+    await renderVideoWithEffects(
+      videoPath,
+      escapedAssPath,
+      effects,
+      outputPath,
+      normalizedConfig.hintTextConfig,
+      { totalDuration, onProgress: emit },
+    )
   } finally {
     try { await fs.unlink(tempAssPath) } catch {}
   }
 }
 
-async function renderVideoWithEffects(videoPath, assPath, timeSegmentEffects, outputPath, hintTextConfig) {
+async function renderVideoWithEffects(videoPath, assPath, timeSegmentEffects, outputPath, hintTextConfig, opts = {}) {
   const hasBlackScreen = timeSegmentEffects.some((e) => e && e.blackScreen)
   const hasMuteAudio = timeSegmentEffects.some((e) => e && e.muteAudio)
+  const totalDuration = opts.totalDuration || null
+  const emit = typeof opts.onProgress === 'function' ? opts.onProgress : () => {}
+  const range = (start, end) => (p) => emit(start + (end - start) * Math.max(0, Math.min(1, p)))
 
   if (!hasBlackScreen && !hasMuteAudio) {
-    await runFfmpeg(['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-c:a', 'aac', '-y', outputPath])
+    await runFfmpeg(
+      ['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-c:a', 'aac', '-y', outputPath],
+      { inputForProgress: videoPath, totalDurationSeconds: totalDuration, onProgress: range(0, 1) },
+    )
     return
   }
 
@@ -121,28 +193,50 @@ async function renderVideoWithEffects(videoPath, assPath, timeSegmentEffects, ou
 
   try {
     if (hasBlackScreen) {
-      await renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects, tempVideoPath, hintTextConfig)
+      // Video rendering is the heaviest step → 70%
+      await renderVideoWithBlackScreen(
+        videoPath,
+        assPath,
+        timeSegmentEffects,
+        tempVideoPath,
+        hintTextConfig,
+        { totalDuration, onProgress: range(0, 0.7) },
+      )
     } else {
-      await runFfmpeg(['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-an', '-y', tempVideoPath])
+      await runFfmpeg(
+        ['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-an', '-y', tempVideoPath],
+        { inputForProgress: videoPath, totalDurationSeconds: totalDuration, onProgress: range(0, 0.7) },
+      )
     }
 
     if (hasMuteAudio) {
-      await processAudioWithMute(videoPath, timeSegmentEffects, tempAudioPath)
+      // Audio processing → 25%
+      await processAudioWithMute(videoPath, timeSegmentEffects, tempAudioPath, { onProgress: range(0.7, 0.95) })
     } else {
-      await runFfmpeg(['-i', videoPath, '-vn', '-c:a', 'aac', '-y', tempAudioPath])
+      await runFfmpeg(
+        ['-i', videoPath, '-vn', '-c:a', 'aac', '-y', tempAudioPath],
+        { inputForProgress: videoPath, totalDurationSeconds: totalDuration, onProgress: range(0.7, 0.95) },
+      )
     }
 
-    await runFfmpeg(['-i', tempVideoPath, '-i', tempAudioPath, '-c:v', 'copy', '-c:a', 'aac', '-y', outputPath])
+    // Final mux is quick → last 5%
+    await runFfmpeg(
+      ['-i', tempVideoPath, '-i', tempAudioPath, '-c:v', 'copy', '-c:a', 'aac', '-y', outputPath],
+      { inputForProgress: videoPath, totalDurationSeconds: totalDuration, onProgress: range(0.95, 1) },
+    )
   } finally {
     try { await fs.unlink(tempVideoPath) } catch {}
     try { await fs.unlink(tempAudioPath) } catch {}
   }
 }
 
-async function renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects, outputPath, hintTextConfig) {
+async function renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects, outputPath, hintTextConfig, opts = {}) {
   const segs = (timeSegmentEffects || []).filter((e) => e && e.blackScreen)
   if (!segs.length) {
-    await runFfmpeg(['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-an', '-y', outputPath])
+    await runFfmpeg(
+      ['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-an', '-y', outputPath],
+      { inputForProgress: videoPath, totalDurationSeconds: opts.totalDuration, onProgress: opts.onProgress },
+    )
     return
   }
   const startTime = segs[0].startTime
@@ -154,7 +248,7 @@ async function renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects
       '-filter_complex', `[0:v]subtitles=${assPath}[subt];[subt]colorchannelmixer=rr=0:gg=0:bb=0:enable='between(t,${startTime},${endTime})'[v]`,
       '-map', '[v]',
       '-c:v', 'libx264', '-an', '-y', outputPath,
-    ])
+    ], { inputForProgress: videoPath, totalDurationSeconds: opts.totalDuration, onProgress: opts.onProgress })
     return
   }
 
@@ -169,21 +263,30 @@ async function renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects
     '-filter_complex', `[0:v]subtitles=${assPath}[subt];[subt]colorchannelmixer=rr=0:gg=0:bb=0:enable='between(t,${startTime},${endTime})'[blk];[blk]${drawtext}[v]`,
     '-map', '[v]',
     '-c:v', 'libx264', '-an', '-y', outputPath,
-  ])
+  ], { inputForProgress: videoPath, totalDurationSeconds: opts.totalDuration, onProgress: opts.onProgress })
 }
 
-async function processAudioWithMute(videoPath, timeSegmentEffects, outputPath) {
+async function processAudioWithMute(videoPath, timeSegmentEffects, outputPath, opts = {}) {
   const muteSegments = (timeSegmentEffects || []).filter((e) => e && e.muteAudio)
   if (!muteSegments.length) {
-    await runFfmpeg(['-i', videoPath, '-vn', '-c:a', 'aac', '-y', outputPath])
+    await runFfmpeg(
+      ['-i', videoPath, '-vn', '-c:a', 'aac', '-y', outputPath],
+      { inputForProgress: videoPath, onProgress: opts.onProgress },
+    )
     return
   }
   if (muteSegments.length === 1) {
     const seg = muteSegments[0]
-    await runFfmpeg(['-i', videoPath, '-af', `volume=enable='between(t,${seg.startTime},${seg.endTime})':volume=0`, '-vn', '-c:a', 'aac', '-y', outputPath])
+    await runFfmpeg(
+      ['-i', videoPath, '-af', `volume=enable='between(t,${seg.startTime},${seg.endTime})':volume=0`, '-vn', '-c:a', 'aac', '-y', outputPath],
+      { inputForProgress: videoPath, onProgress: opts.onProgress },
+    )
   } else {
     const expr = muteSegments.map((s) => `between(t,${s.startTime},${s.endTime})`).join('+')
-    await runFfmpeg(['-i', videoPath, '-af', `volume=enable='${expr}':volume=0`, '-vn', '-c:a', 'aac', '-y', outputPath])
+    await runFfmpeg(
+      ['-i', videoPath, '-af', `volume=enable='${expr}':volume=0`, '-vn', '-c:a', 'aac', '-y', outputPath],
+      { inputForProgress: videoPath, onProgress: opts.onProgress },
+    )
   }
 }
 
@@ -275,4 +378,3 @@ export default {
   escapeForFFmpegFilterPath,
   defaultSubtitleRenderConfig,
 }
-

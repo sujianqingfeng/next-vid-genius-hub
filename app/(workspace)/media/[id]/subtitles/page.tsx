@@ -41,6 +41,7 @@ import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
 import { STATUS_LABELS } from '~/lib/constants/media.constants'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
+import { Progress } from '~/components/ui/progress'
 
 export default function SubtitlesPage() {
 	const params = useParams()
@@ -411,14 +412,28 @@ export default function SubtitlesPage() {
 
 						{/* 云端渲染进度显示（简单版） */}
                             {renderBackend === 'cloud' && cloudJobId && (
-                                <div className="mt-3 text-sm text-muted-foreground">
-                                    {(() => {
-                                      const s = cloudStatusQuery.data?.status
-                                      const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'starting'
-                                      const pct = typeof cloudStatusQuery.data?.progress === 'number' ? `(${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''
-                                      return <>Job: {cloudJobId} — Status: {label} {pct}</>
-                                    })()}
+                              <div className="mt-3 flex items-center gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <Progress
+                                    value={
+                                      typeof cloudStatusQuery.data?.progress === 'number'
+                                        ? Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)
+                                        : 0
+                                    }
+                                    srLabel="Cloud rendering progress"
+                                  />
                                 </div>
+                                <div className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                                  {(() => {
+                                    const s = cloudStatusQuery.data?.status
+                                    const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'Starting'
+                                    const pct = typeof cloudStatusQuery.data?.progress === 'number'
+                                      ? `${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%`
+                                      : '0%'
+                                    return <span title={`Job ${cloudJobId}`}>{label} • {pct}</span>
+                                  })()}
+                                </div>
+                              </div>
                             )}
 					</CardContent>
 				</Card>

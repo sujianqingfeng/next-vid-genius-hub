@@ -43,7 +43,8 @@ export declare function renderVideoWithSubtitles(
   videoPath: string,
   subtitleContent: string,
   outputPath: string,
-  subtitleConfig?: SubtitleRenderConfig
+  subtitleConfig?: SubtitleRenderConfig,
+  options?: { onProgress?: (percent: number) => void }
 ): Promise<void>
 
 declare const _default: {
@@ -55,4 +56,3 @@ declare const _default: {
 }
 
 export default _default
-
