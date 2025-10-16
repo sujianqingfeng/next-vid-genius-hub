@@ -7,6 +7,7 @@ import { Badge } from '~/components/ui/badge'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs'
+import { Switch } from '~/components/ui/switch'
 import type { SubtitleRenderConfig, SubtitleRenderPreset } from '~/lib/subtitle/types'
 
 interface SubtitleConfigControlsProps {
@@ -18,6 +19,7 @@ interface SubtitleConfigControlsProps {
 	onNumericChange: (field: keyof SubtitleRenderConfig) => (event: ChangeEvent<HTMLInputElement>) => void
 	onOpacityChange: (event: ChangeEvent<HTMLInputElement>) => void
 	onColorChange: (field: keyof SubtitleRenderConfig) => (event: ChangeEvent<HTMLInputElement>) => void
+    onSetOpacity: (value: number) => void
 }
 
 /**
@@ -32,9 +34,11 @@ export function SubtitleConfigControls({
 	onNumericChange,
 	onOpacityChange,
 	onColorChange,
+    onSetOpacity,
 }: SubtitleConfigControlsProps) {
-	return (
-		<div className="space-y-3">
+    const bgEnabled = (config.backgroundOpacity ?? 0) > 0
+    return (
+        <div className="space-y-3">
 			<div className="flex items-center justify-between">
 				<h3 className="text-sm font-medium">Subtitle Settings</h3>
 				<Badge variant="outline" className="text-xs">
@@ -79,10 +83,10 @@ export function SubtitleConfigControls({
 				<TabsContent value="manual" className="space-y-4 mt-4">
 					<div className="grid grid-cols-1 gap-4">
 						{/* 字体大小和背景透明度 */}
-						<div className="grid grid-cols-2 gap-3">
-							<div className="space-y-1.5">
-								<Label htmlFor="subtitle-font-size" className="text-xs">Font Size</Label>
-								<Input
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="subtitle-font-size" className="text-xs">Font Size</Label>
+                            <Input
 									type="number"
 									min={12}
 									max={72}
@@ -91,27 +95,43 @@ export function SubtitleConfigControls({
 									onChange={onNumericChange('fontSize')}
 									className="h-8 text-sm"
 								/>
-							</div>
+                        </div>
 
-							<div className="space-y-1.5">
-								<div className="flex items-center justify-between">
-									<Label htmlFor="subtitle-background-opacity" className="text-xs">Opacity</Label>
-									<span className="text-xs text-muted-foreground">
-										{Math.round(config.backgroundOpacity * 100)}%
-									</span>
-								</div>
-								<input
-									type="range"
-									id="subtitle-background-opacity"
-									className="w-full h-2"
-									min={0}
-									max={100}
-									step={1}
-									value={Math.round(config.backgroundOpacity * 100)}
-									onChange={onOpacityChange}
-								/>
-							</div>
-						</div>
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="subtitle-background-opacity" className="text-xs">Opacity</Label>
+                                <span className="text-xs text-muted-foreground">
+                                    {Math.round(config.backgroundOpacity * 100)}%
+                                </span>
+                            </div>
+                            <input
+                                type="range"
+                                id="subtitle-background-opacity"
+                                className="w-full h-2"
+                                min={0}
+                                max={100}
+                                step={1}
+                                value={Math.round(config.backgroundOpacity * 100)}
+                                onChange={onOpacityChange}
+                            />
+                        </div>
+                    </div>
+
+                    {/* 背景开关 */}
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="subtitle-bg-enabled" className="text-xs">Background</Label>
+                        <Switch
+                            id="subtitle-bg-enabled"
+                            checked={bgEnabled}
+                            onCheckedChange={(checked) => {
+                                if (!checked) {
+                                    onSetOpacity(0)
+                                } else {
+                                    onSetOpacity(config.backgroundOpacity > 0 ? config.backgroundOpacity : 0.65)
+                                }
+                            }}
+                        />
+                    </div>
 
 						{/* 颜色控制 */}
 						<div className="space-y-2">

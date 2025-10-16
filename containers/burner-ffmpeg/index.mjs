@@ -7,6 +7,8 @@ import { renderVideoWithSubtitles } from '@app/media-subtitles'
 
 const PORT = process.env.PORT || 8080
 
+// No default subtitle debug logs; can be enabled via environment when needed
+
 function sendJson(res, code, data) {
   res.writeHead(code, { 'content-type': 'application/json' })
   res.end(JSON.stringify(data))

@@ -82,6 +82,28 @@ export function escapeForFFmpegFilterPath(filePath) {
   return normalizedPath.replace(/:/g, '\\:').replace(/\\/g, '\\\\')
 }
 
+function toAssBackColourHex(hex, opacity) {
+  // Returns &HAABBGGRR
+  let normalized = String(hex || '#000000').trim().replace('#', '')
+  if (normalized.length === 3) normalized = normalized.split('').map((c) => c + c).join('')
+  const int = Number.parseInt(normalized, 16)
+  const r = (int >> 16) & 255
+  const g = (int >> 8) & 255
+  const b = int & 255
+  const a = Math.round((1 - Math.min(Math.max(opacity ?? 1, 0), 1)) * 255)
+  return `&H${a.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}`
+}
+
+function buildSubtitleFilter({ assPath, fontSize, backgroundColor, backgroundOpacity }) {
+  const useSubtitles = process.env.SUB_USE_SUBTITLES_FILTER === '1'
+  if (!useSubtitles) return `ass=${assPath}`
+  // Fallback path: use subtitles filter with force_style to guarantee box background
+  const boxPad = Math.max(2, Math.round(fontSize * 0.12))
+  const back = toAssBackColourHex(backgroundColor, backgroundOpacity)
+  const force = `BorderStyle=3,Outline=${boxPad},Shadow=0,BackColour=${back}`
+  return `subtitles=${assPath}:force_style='${force}'`
+}
+
 function getTextPosition(position) {
   switch (position) {
     case 'center':
@@ -155,7 +177,7 @@ export async function renderVideoWithSubtitles(
     const effects = normalizedConfig.timeSegmentEffects
     if (!effects || effects.length === 0) {
       await runFfmpeg(
-        ['-i', videoPath, '-vf', `subtitles=${escapedAssPath}`, outputPath],
+        ['-i', videoPath, '-vf', buildSubtitleFilter({ assPath: escapedAssPath, fontSize: normalizedConfig.fontSize, backgroundColor: normalizedConfig.backgroundColor, backgroundOpacity: normalizedConfig.backgroundOpacity }), outputPath],
         { inputForProgress: videoPath, totalDurationSeconds: totalDuration, onProgress: range(0, 1) },
       )
       return
@@ -182,7 +204,7 @@ async function renderVideoWithEffects(videoPath, assPath, timeSegmentEffects, ou
 
   if (!hasBlackScreen && !hasMuteAudio) {
     await runFfmpeg(
-      ['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-c:a', 'aac', '-y', outputPath],
+      ['-i', videoPath, '-vf', buildSubtitleFilter({ assPath, fontSize: (opts.fontSize || 18), backgroundColor: defaultSubtitleRenderConfig.backgroundColor, backgroundOpacity: defaultSubtitleRenderConfig.backgroundOpacity }), '-c:v', 'libx264', '-c:a', 'aac', '-y', outputPath],
       { inputForProgress: videoPath, totalDurationSeconds: totalDuration, onProgress: range(0, 1) },
     )
     return
@@ -204,7 +226,7 @@ async function renderVideoWithEffects(videoPath, assPath, timeSegmentEffects, ou
       )
     } else {
       await runFfmpeg(
-        ['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-an', '-y', tempVideoPath],
+        ['-i', videoPath, '-vf', buildSubtitleFilter({ assPath, fontSize: (opts.fontSize || 18), backgroundColor: defaultSubtitleRenderConfig.backgroundColor, backgroundOpacity: defaultSubtitleRenderConfig.backgroundOpacity }), '-c:v', 'libx264', '-an', '-y', tempVideoPath],
         { inputForProgress: videoPath, totalDurationSeconds: totalDuration, onProgress: range(0, 0.7) },
       )
     }
@@ -234,7 +256,7 @@ async function renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects
   const segs = (timeSegmentEffects || []).filter((e) => e && e.blackScreen)
   if (!segs.length) {
     await runFfmpeg(
-      ['-i', videoPath, '-vf', `subtitles=${assPath}`, '-c:v', 'libx264', '-an', '-y', outputPath],
+      ['-i', videoPath, '-vf', buildSubtitleFilter({ assPath, fontSize: (opts.fontSize || 18), backgroundColor: defaultSubtitleRenderConfig.backgroundColor, backgroundOpacity: defaultSubtitleRenderConfig.backgroundOpacity }), '-c:v', 'libx264', '-an', '-y', outputPath],
       { inputForProgress: videoPath, totalDurationSeconds: opts.totalDuration, onProgress: opts.onProgress },
     )
     return
@@ -245,7 +267,7 @@ async function renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects
   if (!hintTextConfig?.enabled || !String(hintTextConfig.text || '').trim()) {
     await runFfmpeg([
       '-i', videoPath,
-      '-filter_complex', `[0:v]subtitles=${assPath}[subt];[subt]colorchannelmixer=rr=0:gg=0:bb=0:enable='between(t,${startTime},${endTime})'[v]`,
+      '-filter_complex', `[0:v]${buildSubtitleFilter({ assPath, fontSize: (opts.fontSize || 18), backgroundColor: defaultSubtitleRenderConfig.backgroundColor, backgroundOpacity: defaultSubtitleRenderConfig.backgroundOpacity })}[subt];[subt]colorchannelmixer=rr=0:gg=0:bb=0:enable='between(t,${startTime},${endTime})'[v]`,
       '-map', '[v]',
       '-c:v', 'libx264', '-an', '-y', outputPath,
     ], { inputForProgress: videoPath, totalDurationSeconds: opts.totalDuration, onProgress: opts.onProgress })
@@ -260,7 +282,7 @@ async function renderVideoWithBlackScreen(videoPath, assPath, timeSegmentEffects
   const drawtext = `drawtext=text='${String(hintTextConfig.text || '').replace(/'/g, "\\'")}':fontsize=${fsPx}:fontcolor=${textColor}:x=${pos.x}:y=${pos.y}:enable='between(t,${startTime},${endTime})'`
   await runFfmpeg([
     '-i', videoPath,
-    '-filter_complex', `[0:v]subtitles=${assPath}[subt];[subt]colorchannelmixer=rr=0:gg=0:bb=0:enable='between(t,${startTime},${endTime})'[blk];[blk]${drawtext}[v]`,
+    '-filter_complex', `[0:v]${buildSubtitleFilter({ assPath, fontSize: (opts.fontSize || 18), backgroundColor: defaultSubtitleRenderConfig.backgroundColor, backgroundOpacity: defaultSubtitleRenderConfig.backgroundOpacity })}[subt];[subt]colorchannelmixer=rr=0:gg=0:bb=0:enable='between(t,${startTime},${endTime})'[blk];[blk]${drawtext}[v]`,
     '-map', '[v]',
     '-c:v', 'libx264', '-an', '-y', outputPath,
   ], { inputForProgress: videoPath, totalDurationSeconds: opts.totalDuration, onProgress: opts.onProgress })
@@ -325,7 +347,12 @@ export async function convertWebVttToAss(vttContent, config) {
   const outlineColor = toAssColor(config?.outlineColor ?? '#000000', 0.9)
   const backgroundColor = toAssColor(config?.backgroundColor ?? '#000000', config?.backgroundOpacity ?? 0.65)
   const fontSize = Math.max(12, Math.min(72, Math.round(config?.fontSize ?? 18)))
+  const engFontSize = Math.max(12, Math.min(72, Math.round(fontSize * 0.65)))
   const verticalMargin = Math.round(fontSize)
+  // For BorderStyle=3 (opaque box), the Outline field defines box padding.
+  // Provide a sensible padding proportional to font size so background is visible.
+  const boxPadZh = Math.max(2, Math.round(fontSize * 0.12))
+  const boxPadEn = Math.max(2, Math.round(engFontSize * 0.12))
 
   const hdr = [
     '[Script Info]',
@@ -334,8 +361,10 @@ export async function convertWebVttToAss(vttContent, config) {
     '',
     '[V4+ Styles]',
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-    `Style: English,Arial,${Math.round(fontSize * 0.65)},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,1,0,2,0,0,${verticalMargin},1`,
-    `Style: Chinese,Arial,${fontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,1,1,0,2,0,0,${verticalMargin},1`,
+    // Use BorderStyle=3 (opaque box) so BackColour renders as a box background.
+    // Set Outline=0 and Shadow=0 for a clean box matching the configured opacity/color.
+    `Style: English,Arial,${engFontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,3,${boxPadEn},0,2,0,0,${verticalMargin},1`,
+    `Style: Chinese,Arial,${fontSize},${primaryColor},${secondaryColor},${outlineColor},${backgroundColor},0,0,0,0,100,100,0,0,3,${boxPadZh},0,2,0,0,${verticalMargin},1`,
     '',
     '[Events]',
     'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',

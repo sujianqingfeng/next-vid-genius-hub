@@ -233,16 +233,20 @@ export function Step3Render(props: Step3RenderProps) {
 					{/* 预设选择器 */}
 					<div className="rounded-lg border bg-card p-4">
 						<h3 className="text-sm font-medium mb-3">Quick Presets</h3>
-						<SubtitleConfigControls
-							presets={SUBTITLE_RENDER_PRESETS}
-							selectedPresetId={selectedPresetId}
-							selectedPreset={selectedPreset}
-							onPresetClick={handlePresetClick}
-							config={config}
-							onNumericChange={handleNumericChange}
-							onOpacityChange={handleOpacityChange}
-							onColorChange={handleColorChange}
-						/>
+                        <SubtitleConfigControls
+                            presets={SUBTITLE_RENDER_PRESETS}
+                            selectedPresetId={selectedPresetId}
+                            selectedPreset={selectedPreset}
+                            onPresetClick={handlePresetClick}
+                            config={config}
+                            onNumericChange={handleNumericChange}
+                            onOpacityChange={handleOpacityChange}
+                            onColorChange={handleColorChange}
+                            onSetOpacity={(v) => {
+                                const value = Math.min(Math.max(v, COLOR_CONSTANTS.OPACITY_MIN), COLOR_CONSTANTS.OPACITY_MAX)
+                                onConfigChange({ ...config, backgroundOpacity: value })
+                            }}
+                        />
 					</div>
 
 					{/* 提示文本配置 */}
