@@ -229,7 +229,11 @@ async function handleStart(env: Env, req: Request) {
   const isAudioTranscoder = body.engine === 'audio-transcoder'
   const isAsrPipeline = body.engine === 'asr-pipeline'
   const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
-  const inputVideoKey = `inputs/videos/${body.mediaId}.mp4`
+  const sourcePolicy = ((body.options || {}) as any).sourcePolicy as 'auto' | 'original' | 'subtitles' | undefined
+  const inputVariant = sourcePolicy === 'original' ? 'raw' : sourcePolicy === 'subtitles' ? 'subtitles' : undefined
+  const inputVideoKey = inputVariant
+    ? `inputs/videos/${inputVariant}/${body.mediaId}.mp4`
+    : `inputs/videos/${body.mediaId}.mp4`
   const inputVttKey = `inputs/subtitles/${body.mediaId}.vtt`
   const inputDataKey = `inputs/comments/${body.mediaId}.json`
   const outputVideoKey = isDownloader
@@ -247,7 +251,11 @@ async function handleStart(env: Env, req: Request) {
     // Always mirror inputs to S3 and provide presigned GET URLs to containers
     const videoExists = await s3Head(env, bucketName, inputVideoKey)
     if (!videoExists) {
-      const src = await fetch(`${baseNext}/api/media/${body.mediaId}/source`)
+      const variantParam = inputVariant === 'raw' ? 'original' : (inputVariant === 'subtitles' ? 'subtitles' : undefined)
+      const srcUrl = variantParam
+        ? `${baseNext}/api/media/${body.mediaId}/source?variant=${variantParam}`
+        : `${baseNext}/api/media/${body.mediaId}/source`
+      const src = await fetch(srcUrl)
       if (!src.ok || !src.body) return json({ error: 'fetch source failed' }, { status: 502 })
       await s3Put(env, bucketName, inputVideoKey, 'video/mp4', src.body as ReadableStream)
     }

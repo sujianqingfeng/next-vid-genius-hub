@@ -164,13 +164,14 @@ export const deleteComment = os
 	})
 
 export const renderWithInfo = os
-	.input(
-		z.object({
-			mediaId: z.string(),
-		}),
-	)
-	.handler(async ({ input }) => {
-		const { mediaId } = input
+    .input(
+        z.object({
+            mediaId: z.string(),
+            sourcePolicy: z.enum(['auto', 'original', 'subtitles']).optional().default('auto'),
+        }),
+    )
+    .handler(async ({ input }) => {
+        const { mediaId } = input
 
 		// Get media data
 		const media = await db.query.media.findFirst({
@@ -228,15 +229,34 @@ export const renderWithInfo = os
 			series: '外网真实评论',
 		}
 
-		try {
-			// Render video with info and comments
-			await renderVideoWithRemotion({
-				videoPath: media.videoWithSubtitlesPath || media.filePath,
-				outputPath,
-				videoInfo,
-				comments: media.comments,
-				onProgress: recordProgress,
-			})
+        // Resolve source according to policy
+        const resolveLocalSource = (): string => {
+            const policy = input.sourcePolicy || 'auto'
+            if (policy === 'original') {
+                if (media.filePath) return media.filePath
+                if (media.downloadJobId) return `remote:orchestrator:${media.downloadJobId}`
+                throw new Error('Original video not available')
+            }
+            if (policy === 'subtitles') {
+                if (media.videoWithSubtitlesPath) return media.videoWithSubtitlesPath
+                throw new Error('Subtitled video not available')
+            }
+            // auto
+            return media.videoWithSubtitlesPath || media.filePath || (media.downloadJobId ? `remote:orchestrator:${media.downloadJobId}` : '')
+        }
+
+        const selectedSource = resolveLocalSource()
+        if (!selectedSource) throw new Error('No suitable source video found')
+
+        try {
+            // Render video with info and comments
+            await renderVideoWithRemotion({
+                videoPath: selectedSource,
+                outputPath,
+                videoInfo,
+                comments: media.comments,
+                onProgress: recordProgress,
+            })
 
 			// Update database with rendered path
 			await db
@@ -258,14 +278,15 @@ export const renderWithInfo = os
 
 // Cloud rendering: start job explicitly (Remotion renderer)
 export const startCloudRender = os
-	.input(
-		z.object({
-			mediaId: z.string(),
-			proxyId: z.string().optional(),
-		}),
-	)
-	.handler(async ({ input }) => {
-		const { mediaId, proxyId } = input
+    .input(
+        z.object({
+            mediaId: z.string(),
+            proxyId: z.string().optional(),
+            sourcePolicy: z.enum(['auto', 'original', 'subtitles']).optional().default('auto'),
+        }),
+    )
+    .handler(async ({ input }) => {
+        const { mediaId, proxyId } = input
 		const where = eq(schema.media.id, mediaId)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
@@ -300,16 +321,17 @@ export const startCloudRender = os
 			}
 		}
 
-		const job = await startCloudJob({
-			mediaId: media.id,
-			engine: 'renderer-remotion',
-			options: {
-				defaultProxyUrl: PROXY_URL,
-				proxy: proxyPayload,
-			},
-		})
-		return { jobId: job.jobId }
-	})
+        const job = await startCloudJob({
+            mediaId: media.id,
+            engine: 'renderer-remotion',
+            options: {
+                defaultProxyUrl: PROXY_URL,
+                proxy: proxyPayload,
+                sourcePolicy: input.sourcePolicy || 'auto',
+            },
+        })
+        return { jobId: job.jobId }
+    })
 
 // Cloud rendering: get status
 export const getRenderStatus = os

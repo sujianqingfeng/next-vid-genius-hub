@@ -194,6 +194,10 @@ export default function CommentsPage() {
 	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>('cloud')
 	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
 
+	// Source policy selection for rendering
+	type SourcePolicy = 'auto' | 'original' | 'subtitles'
+	const [sourcePolicy, setSourcePolicy] = useState<SourcePolicy>('auto')
+
 	useEffect(() => {
 		const key = `commentsCloudJob:${id}`
 		if (!cloudJobId) {
@@ -234,6 +238,24 @@ export default function CommentsPage() {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, id])
+
+	// Persist render source policy per media
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		const key = `commentsRenderSourcePolicy:${id}`
+		try {
+			const saved = window.localStorage.getItem(key) as SourcePolicy | null
+			if (saved) setSourcePolicy(saved)
+		} catch {}
+	}, [id])
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		const key = `commentsRenderSourcePolicy:${id}`
+		try {
+			if (sourcePolicy) window.localStorage.setItem(key, sourcePolicy)
+		} catch {}
+	}, [id, sourcePolicy])
 
 	const comments = mediaQuery.data?.comments || []
 
@@ -532,6 +554,21 @@ export default function CommentsPage() {
 										<Film className="w-4 h-4 text-muted-foreground" />
 										<h3 className="font-medium">Render Video</h3>
 									</div>
+
+									{/* Source selection */}
+									<div className="flex flex-wrap items-center gap-3">
+										<label className="text-sm text-muted-foreground">Source:</label>
+										<Select value={sourcePolicy} onValueChange={(v) => setSourcePolicy(v as SourcePolicy)}>
+											<SelectTrigger className="w-[180px]">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="auto">Auto</SelectItem>
+												<SelectItem value="original">Original</SelectItem>
+												<SelectItem value="subtitles" disabled={!mediaQuery.data?.videoWithSubtitlesPath}>With Subtitles</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
 									<div className="flex items-center gap-3">
 										<div className="flex items-center gap-2">
 											<Button
@@ -555,9 +592,10 @@ export default function CommentsPage() {
 													startCloudRenderMutation.mutate({
 														mediaId: id,
 														proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
+														sourcePolicy,
 													})
 												} else {
-													renderMutation.mutate({ mediaId: id })
+													renderMutation.mutate({ mediaId: id, sourcePolicy })
 												}
 											}}
 											disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
