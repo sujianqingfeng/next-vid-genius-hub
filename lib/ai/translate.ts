@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { generateObject, generateText } from './chat'
+import { logger } from '~/lib/logger'
 import { AIModelId } from './models'
 
 const unsupportedStructuredModels = new Set<AIModelId>()
@@ -67,9 +68,9 @@ export async function translateText(text: string, modelId: AIModelId) {
 				details.errorMessage = err.message ?? (err.cause as { message?: string } | undefined)?.message
 			}
 
-			console.warn('[translateText] Structured translation failed, falling back to text mode.', details)
-			unsupportedStructuredModels.add(modelId)
-		}
+            logger.warn('translation', '[translateText] Structured translation failed, falling back to text mode.')
+            unsupportedStructuredModels.add(modelId)
+        }
 	}
 
 	// Fallback: request raw text translation

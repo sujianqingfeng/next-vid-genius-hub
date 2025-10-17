@@ -2,6 +2,7 @@ import { type TranscriptionWord } from '~/lib/db/schema'
 import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici'
 import { PROXY_URL, ASR_TARGET_BITRATES, ASR_SAMPLE_RATE } from '~/lib/config/app.config'
 import { prepareAudioForCloudflare } from '~/lib/asr/prepare'
+import { logger } from '~/lib/logger'
 
 export interface CloudflareWhisperConfig {
 	accountId: string
@@ -87,11 +88,11 @@ export async function transcribeWithCloudflareWhisper(
 				body: body as any,
 				dispatcher,
 			})
-			if (!resp.ok) {
-				const errorText = await resp.text()
-				console.error('Cloudflare API error:', errorText)
-				throw new Error(`Transcription failed: ${resp.status} ${errorText}`)
-			}
+            if (!resp.ok) {
+                const errorText = await resp.text()
+                logger.error('transcription', `Cloudflare API error: ${errorText}`)
+                throw new Error(`Transcription failed: ${resp.status} ${errorText}`)
+            }
 			const json: CloudflareApiResponse = await resp.json()
 			return json
 		}
@@ -151,7 +152,7 @@ export async function transcribeWithCloudflareWhisper(
 		}
 		if (!result) throw lastErr ?? new Error('Unknown Cloudflare error')
 
-		console.log('Cloudflare API response:', result)
+		
 
 		// Check for error response
 		if ('success' in result && !result.success) {
@@ -177,12 +178,12 @@ export async function transcribeWithCloudflareWhisper(
 			}
 		}
 
-		console.error('Unexpected response format:', result)
-		throw new Error('Transcription failed - unexpected response format')
-	} catch (error) {
-		console.error('Cloudflare Whisper transcription error:', error)
-		const baseMsg = error instanceof Error ? error.message : 'Unknown error'
-		// Offer actionable guidance on common network issues
+        logger.error('transcription', 'Unexpected response format from Cloudflare API')
+        throw new Error('Transcription failed - unexpected response format')
+    } catch (error) {
+        logger.error('transcription', `Cloudflare Whisper transcription error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        const baseMsg = error instanceof Error ? error.message : 'Unknown error'
+        // Offer actionable guidance on common network issues
 		if (typeof baseMsg === 'string' && /UND_ERR_CONNECT_TIMEOUT|ECONNRESET|ENETUNREACH|ETIMEDOUT/i.test(baseMsg)) {
 			const hint = `
 		Cannot reach api.cloudflare.com within the configured connect timeout.

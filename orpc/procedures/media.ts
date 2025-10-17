@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { OPERATIONS_DIR } from '~/lib/config/app.config'
 import { deleteCloudArtifacts } from '~/lib/cloudflare'
 import { db, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 
 export const list = os
 	.input(
@@ -100,9 +101,10 @@ export const deleteById = os
 
 				await deleteCloudArtifacts({ keys, artifactJobIds })
 			}
-		} catch (err) {
-			console.warn('[media.deleteById] cloud cleanup failed (continuing):', err)
-		}
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        logger.warn('media', `[media.deleteById] cloud cleanup failed (continuing): ${msg}`)
+    }
 
 		// 3) Delete DB record
 		await db.delete(schema.media).where(eq(schema.media.id, id))

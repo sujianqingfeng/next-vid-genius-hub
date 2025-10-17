@@ -1,6 +1,7 @@
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
+import { logger } from '~/lib/logger'
 
 export class MetadataService {
 	/**
@@ -10,10 +11,10 @@ export class MetadataService {
 		try {
 			const provider = ProviderFactory.resolveProvider(url)
 			return await provider.fetchMetadata(url, context || {})
-		} catch (error) {
-			console.error('Failed to fetch video metadata:', error)
-			return null
-		}
+        } catch (error) {
+            logger.error('media', `Failed to fetch video metadata: ${error instanceof Error ? error.message : String(error)}`)
+            return null
+        }
 	}
 
 	/**
@@ -37,13 +38,13 @@ export class MetadataService {
 			const batchResults = await Promise.allSettled(batchPromises)
 
 			batchResults.forEach((result, index) => {
-				if (result.status === 'fulfilled') {
-					results.set(result.value.url, result.value.metadata)
-				} else {
-					console.error(`Failed to fetch metadata for ${batch[index]}:`, result.reason)
-					results.set(batch[index], null)
-				}
-			})
+                if (result.status === 'fulfilled') {
+                    results.set(result.value.url, result.value.metadata)
+                } else {
+                    logger.error('media', `Failed to fetch metadata for ${batch[index]}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`)
+                    results.set(batch[index], null)
+                }
+            })
 		}
 
 		return results

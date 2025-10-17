@@ -20,6 +20,7 @@ import { ProviderFactory } from '~/lib/providers/provider-factory'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { fileExists as fileExists } from '~/lib/utils/file/client-safe'
 import { downloadVideo } from '~/lib/providers/youtube/downloader'
+import { logger } from '~/lib/logger'
 
 // use helpers from @app/media-core/proxy
 
@@ -93,7 +94,7 @@ export class DownloadService implements IDownloadService {
                             await fs.writeFile(_context.metadataPath, JSON.stringify(data, null, 2), 'utf8')
                             metadataExists = true
                         } catch (e) {
-                            console.error('Failed to persist raw metadata:', e)
+                            logger.error('media', `Failed to persist raw metadata: ${e instanceof Error ? e.message : String(e)}`)
                         }
 					},
 					artifactStore: this.artifactStore
@@ -102,25 +103,25 @@ export class DownloadService implements IDownloadService {
 								try {
 									const res = await this.artifactStore!.uploadMetadata?.(data, _context)
 									if (res && res.key) remoteMetadataKey = res.key
-								} catch (err) {
-									console.warn('Local artifactStore.uploadMetadata failed', err)
-								}
+                            } catch (err) {
+                                logger.warn('media', `Local artifactStore.uploadMetadata failed: ${err instanceof Error ? err.message : String(err)}`)
+                            }
 							},
 							uploadVideo: async (path) => {
 								try {
 									const res = await this.artifactStore!.uploadVideo?.(path, _context)
 									if (res && res.key) remoteVideoKey = res.key
-								} catch (err) {
-									console.warn('Local artifactStore.uploadVideo failed', err)
-								}
+                            } catch (err) {
+                                logger.warn('media', `Local artifactStore.uploadVideo failed: ${err instanceof Error ? err.message : String(err)}`)
+                            }
 							},
 							uploadAudio: async (path) => {
 								try {
 									const res = await this.artifactStore!.uploadAudio?.(path, _context)
 									if (res && res.key) remoteAudioKey = res.key
-								} catch (err) {
-									console.warn('Local artifactStore.uploadAudio failed', err)
-								}
+                            } catch (err) {
+                                logger.warn('media', `Local artifactStore.uploadAudio failed: ${err instanceof Error ? err.message : String(err)}`)
+                            }
 							},
 						}
 					: undefined,
@@ -165,9 +166,9 @@ export class DownloadService implements IDownloadService {
 						}
 					}
 				}
-			} catch (e) {
-				console.warn('Failed to summarize metadata for DB update (local)', e)
-			}
+            } catch (e) {
+                logger.warn('media', `Failed to summarize metadata for DB update (local): ${e instanceof Error ? e.message : String(e)}`)
+            }
 			const metadataPathForDb = metadataExists ? _context.metadataPath : downloadRecord?.rawMetadataPath ?? null
 			const metadataDownloadedAt = metadataExists
 				? new Date()
@@ -222,13 +223,13 @@ export class DownloadService implements IDownloadService {
             void context
             return await provider.fetchMetadata(url, providerContext)
         } catch (error) {
-            console.error('Failed to fetch metadata:', error)
+            logger.error('media', `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`)
             return null
         }
 	}
 
 	async handleError(error: Error, context: DownloadContext): Promise<void> {
-		console.error('Download error:', error)
+    logger.error('media', `Download error: ${error instanceof Error ? error.message : String(error)}`)
 
 		// 记录错误到日志系统
 		// 这里可以集成更详细的错误处理逻辑
@@ -236,9 +237,9 @@ export class DownloadService implements IDownloadService {
 		// 可选：清理部分下载的文件
 		try {
 			await this.cleanup(context)
-		} catch (cleanupError) {
-			console.error('Cleanup failed:', cleanupError)
-		}
+        } catch (cleanupError) {
+            logger.error('media', `Cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`)
+        }
 	}
 
 	async cleanup(context: DownloadContext): Promise<void> {
@@ -253,9 +254,9 @@ export class DownloadService implements IDownloadService {
 					await fs.unlink(filePath)
 				}
 			}
-		} catch (error) {
-			console.error('Cleanup error:', error)
-		}
+    } catch (error) {
+        logger.error('media', `Cleanup error: ${error instanceof Error ? error.message : String(error)}`)
+    }
 	}
 
 	private async getProxyUrl(proxyId?: string): Promise<string | undefined> {
@@ -279,13 +280,10 @@ export class DownloadService implements IDownloadService {
 				return this.proxyUrl
 			}
 
-			if (!isForwardProxyProtocolSupported(proxy.protocol)) {
-				console.warn(
-					'DownloadService',
-					`Proxy protocol "${proxy.protocol}" is not supported for direct forwarding; falling back to default proxy.`,
-				)
-				return this.proxyUrl
-			}
+            if (!isForwardProxyProtocolSupported(proxy.protocol)) {
+                logger.warn('media', `Proxy protocol "${proxy.protocol}" is not supported for direct forwarding; falling back to default proxy.`)
+                return this.proxyUrl
+            }
 
 			// Construct proxy URL via shared helper
 			return buildForwardProxyUrl({
@@ -295,10 +293,10 @@ export class DownloadService implements IDownloadService {
 				username: proxy.username ?? undefined,
 				password: proxy.password ?? undefined,
 			})
-		} catch (error) {
-			console.error('Failed to get proxy configuration:', error)
-			return this.proxyUrl
-		}
+        } catch (error) {
+            logger.error('media', `Failed to get proxy configuration: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            return this.proxyUrl
+        }
 	}
 
     private createDownloadContext(id: string, downloadRecord?: typeof schema.media.$inferSelect | null, proxyUrl?: string): DownloadContext {
@@ -331,10 +329,10 @@ export class DownloadService implements IDownloadService {
 			await fs.mkdir(context.operationDir, { recursive: true })
 			await fs.writeFile(context.metadataPath, JSON.stringify(payload, null, 2), 'utf8')
 			return true
-		} catch (error) {
-			console.error('Failed to persist raw metadata:', error)
-			return false
-		}
+        } catch (error) {
+            logger.error('media', `Failed to persist raw metadata: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            return false
+        }
 	}
 
 	private getProviderSource(providerId: string): 'youtube' | 'tiktok' | 'unknown' {

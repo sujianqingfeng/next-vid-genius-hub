@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 import {
   serveLocalFileWithRange,
   proxyRemoteWithRange,
@@ -28,15 +29,7 @@ export async function GET(
 
     const variant = new URL(request.url).searchParams.get('variant') || 'auto'
 
-    console.log('[source] resolving video source', {
-      mediaId,
-      variant,
-      hasFilePath: Boolean(media.filePath),
-      hasRemoteVideoKey: Boolean(media.remoteVideoKey),
-      hasDownloadJobId: Boolean(media.downloadJobId),
-      downloadStatus: media.downloadStatus,
-      hasRenderedPath: Boolean(media.videoWithSubtitlesPath || media.videoWithInfoPath),
-    })
+    
 
     // Variant-specific handling
     if (variant === 'original') {
@@ -58,7 +51,7 @@ export async function GET(
           })
           if (url) return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
         } catch (e) {
-          console.warn('[source] original variant: presign remoteVideoKey failed', e)
+          logger.warn('api', `[source] original variant: presign remoteVideoKey failed: ${e instanceof Error ? e.message : String(e)}`)
         }
       }
       // Fallback to download job artifact if available
@@ -145,7 +138,7 @@ export async function GET(
         })
         if (url) return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
       } catch (e) {
-        console.warn('[source] presign remoteVideoKey failed', e)
+        logger.warn('api', `[source] presign remoteVideoKey failed: ${e instanceof Error ? e.message : String(e)}`)
       }
     }
     // 2.2) Try orchestrator artifact by downloadJobId (regardless of local downloadStatus)
@@ -158,7 +151,7 @@ export async function GET(
 
     return NextResponse.json({ error: 'Source video not found' }, { status: 404 })
   } catch (error) {
-    console.error('Error serving source video:', error)
+    logger.error('api', `Error serving source video: ${error instanceof Error ? error.message : String(error)}`)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

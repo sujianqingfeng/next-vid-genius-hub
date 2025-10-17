@@ -8,6 +8,7 @@ import {
 	type HintTextConfig,
 } from '../types'
 import { getVideoResolution } from '~/lib/media/ffmpeg'
+import { logger } from '~/lib/logger'
 
 async function runFfmpeg(args: string[]): Promise<void> {
 	await execa('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args])
@@ -75,7 +76,7 @@ export async function renderVideoWithSubtitles(
 			await renderVideoWithEffects(videoPath, escapedAssPath, timeSegmentEffects, outputPath, subtitleConfig.hintTextConfig)
 		}
 	} catch (error) {
-		console.error('Error rendering video with subtitles:', (error as Error).message)
+    logger.error('rendering', `Error rendering video with subtitles: ${(error as Error).message}`)
 		throw error
 	} finally {
 		// Clean up temporary file
@@ -318,7 +319,7 @@ async function processAudioWithMute(
 	if (muteSegments.length === 1) {
 		// Single mute segment
 		const segment = muteSegments[0]
-		console.log(`Applying mute from ${segment.startTime} to ${segment.endTime}`)
+    
 		await runFfmpeg([
 			'-i', videoPath,
 			'-af', `volume=enable='between(t,${segment.startTime},${segment.endTime})':volume=0`,
@@ -328,7 +329,7 @@ async function processAudioWithMute(
 		])
 	} else {
 		// Multiple mute segments - use a different approach
-		console.log(`Applying ${muteSegments.length} mute segments`)
+    
 		const muteExpressions = muteSegments
 			.map(segment => `between(t,${segment.startTime},${segment.endTime})`)
 			.join('+')

@@ -1,6 +1,7 @@
 'use server'
 
 import YTDlpWrap from 'yt-dlp-wrap'
+import { logger } from '~/lib/logger'
 
 export async function downloadTikTokVideo(
 	url: string,
@@ -28,11 +29,11 @@ export async function downloadTikTokVideo(
 			'--write-thumbnail', // Download thumbnail
 		])
 
-		console.log(`TikTok video downloaded successfully: ${outputPath}`)
-	} catch (error) {
-		console.error('Failed to download TikTok video:', error)
-		throw new Error(`TikTok video download failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-	}
+		
+    } catch (error) {
+        logger.error('media', `Failed to download TikTok video: ${error instanceof Error ? error.message : String(error)}`)
+        throw new Error(`TikTok video download failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
 }
 
 export async function downloadTikTokAudio(
@@ -51,11 +52,11 @@ export async function downloadTikTokAudio(
 			'--no-playlist',
 		])
 
-		console.log(`TikTok audio extracted successfully: ${outputPath}`)
-	} catch (error) {
-		console.error('Failed to extract TikTok audio:', error)
-		throw new Error(`TikTok audio extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-	}
+		
+    } catch (error) {
+        logger.error('media', `Failed to extract TikTok audio: ${error instanceof Error ? error.message : String(error)}`)
+        throw new Error(`TikTok audio extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
 }
 
 export async function getTikTokVideoFormats(url: string): Promise<Array<{
@@ -75,10 +76,10 @@ export async function getTikTokVideoFormats(url: string): Promise<Array<{
 
 		const info = JSON.parse(stdout)
 		return info.formats || []
-	} catch (error) {
-		console.error('Failed to get TikTok video formats:', error)
-		return []
-	}
+    } catch (error) {
+        logger.error('media', `Failed to get TikTok video formats: ${error instanceof Error ? error.message : String(error)}`)
+        return []
+    }
 }
 
 export async function getTikTokVideoInfo(url: string): Promise<unknown> {
@@ -90,8 +91,8 @@ export async function getTikTokVideoInfo(url: string): Promise<unknown> {
 		])
 
 		return JSON.parse(stdout)
-	} catch (error) {
-		console.error('Failed to get TikTok video info:', error)
-		return null
-	}
+    } catch (error) {
+        logger.error('media', `Failed to get TikTok video info: ${error instanceof Error ? error.message : String(error)}`)
+        return null
+    }
 }

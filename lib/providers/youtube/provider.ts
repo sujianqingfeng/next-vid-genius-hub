@@ -2,6 +2,7 @@ import type { Innertube } from 'youtubei.js'
 import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.types'
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchYouTubeMetadata } from './metadata'
+import { logger } from '~/lib/logger'
 import { extractVideoId } from '@app/media-providers'
 // import { getYouTubeClient } from './client'
 
@@ -28,10 +29,10 @@ export const youtubeProvider: VideoProvider = {
 				throw new Error('Failed to fetch YouTube metadata')
 			}
 			return metadata
-		} catch (error) {
-			console.error('YouTube metadata fetch error:', error)
-			throw new Error(`YouTube metadata fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+        } catch (error) {
+            logger.error('media', `YouTube metadata fetch error: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error(`YouTube metadata fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	},
 
 	async validateUrl(url: string): Promise<boolean> {
@@ -67,10 +68,10 @@ export const youtubeProvider: VideoProvider = {
             void channelId; void _maxResults;
             // Implementation would require YouTube API client
             // This is a placeholder for future enhancement
-            console.log('Channel videos fetching not yet implemented')
+            
             return []
         } catch (error) {
-            console.error('Failed to fetch channel videos:', error)
+            logger.error('media', `Failed to fetch channel videos: ${error instanceof Error ? error.message : String(error)}`)
             return []
         }
     },
@@ -80,10 +81,10 @@ export const youtubeProvider: VideoProvider = {
             void query; void _maxResults;
             // Implementation would require YouTube API client
             // This is a placeholder for future enhancement
-            console.log('Video search not yet implemented')
+            
             return []
         } catch (error) {
-            console.error('Failed to search videos:', error)
+            logger.error('media', `Failed to search videos: ${error instanceof Error ? error.message : String(error)}`)
             return []
         }
     },

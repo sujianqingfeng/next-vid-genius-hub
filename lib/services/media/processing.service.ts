@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { execa } from 'execa'
 import { fileExistsServer } from '~/lib/utils/file'
+import { logger } from '~/lib/logger'
 
 export class MediaProcessingService {
 	/**
@@ -24,11 +25,11 @@ export class MediaProcessingService {
 				audioPath
 			])
 
-			console.log(`Audio extracted successfully: ${audioPath}`)
-		} catch (error) {
-			console.error('Failed to extract audio:', error)
-			throw new Error(`Audio extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+			
+        } catch (error) {
+            logger.error('media', `Failed to extract audio: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            throw new Error(`Audio extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	}
 
 	/**
@@ -77,10 +78,10 @@ export class MediaProcessingService {
 				format: format.format_name || 'unknown',
 				codec: videoStream.codec_name || 'unknown'
 			}
-		} catch (error) {
-			console.error('Failed to get video info:', error)
-			return null
-		}
+            } catch (error) {
+                logger.error('media', `Failed to get video info: ${error instanceof Error ? error.message : 'Unknown error'}`)
+                return null
+            }
 	}
 
 	/**
@@ -126,10 +127,10 @@ export class MediaProcessingService {
 				codec: audioStream.codec_name || 'unknown',
 				bitrate: parseInt(format.bit_rate) || 0
 			}
-		} catch (error) {
-			console.error('Failed to get audio info:', error)
-			return null
-		}
+            } catch (error) {
+                logger.error('media', `Failed to get audio info: ${error instanceof Error ? error.message : 'Unknown error'}`)
+                return null
+            }
 	}
 
 	/**
@@ -176,11 +177,11 @@ export class MediaProcessingService {
 
 			await execa('ffmpeg', args)
 
-			console.log(`Video converted successfully: ${outputPath}`)
-		} catch (error) {
-			console.error('Failed to convert video:', error)
-			throw new Error(`Video conversion failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+			
+        } catch (error) {
+            logger.error('media', `Failed to convert video: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            throw new Error(`Video conversion failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	}
 
 	/**
@@ -230,11 +231,11 @@ export class MediaProcessingService {
 				outputPath
 			])
 
-			console.log(`Video compressed successfully: ${outputPath}`)
-		} catch (error) {
-			console.error('Failed to compress video:', error)
-			throw new Error(`Video compression failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+			
+        } catch (error) {
+            logger.error('media', `Failed to compress video: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            throw new Error(`Video compression failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	}
 
 	/**
@@ -265,11 +266,11 @@ export class MediaProcessingService {
 				thumbnailPath
 			])
 
-			console.log(`Thumbnail generated successfully: ${thumbnailPath}`)
-		} catch (error) {
-			console.error('Failed to generate thumbnail:', error)
-			throw new Error(`Thumbnail generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+			
+        } catch (error) {
+            logger.error('media', `Failed to generate thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            throw new Error(`Thumbnail generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	}
 
 	/**

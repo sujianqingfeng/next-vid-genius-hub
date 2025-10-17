@@ -2,6 +2,7 @@ import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.t
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchTikTokMetadata, pickTikTokThumbnail } from './metadata'
 import { isTikTokUrl, extractTikTokVideoId } from './utils'
+import { logger } from '~/lib/logger'
 
 export const tiktokProvider: VideoProvider = {
 	id: 'tiktok',
@@ -30,10 +31,10 @@ export const tiktokProvider: VideoProvider = {
 				source: 'tiktok',
 				raw: tiktokInfo,
 			}
-		} catch (error) {
-			console.error('TikTok metadata fetch error:', error)
-			throw new Error(`TikTok metadata fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+        } catch (error) {
+            logger.error('media', `TikTok metadata fetch error: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error(`TikTok metadata fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	},
 
 	async validateUrl(url: string): Promise<boolean> {
@@ -68,10 +69,10 @@ export const tiktokProvider: VideoProvider = {
             void _maxResults;
             // Implementation would require TikTok API or web scraping
             // This is a placeholder for future enhancement
-            console.log('TikTok trending videos fetching not yet implemented')
+            
             return []
         } catch (error) {
-            console.error('Failed to fetch trending TikTok videos:', error)
+            logger.error('media', `Failed to fetch trending TikTok videos: ${error instanceof Error ? error.message : String(error)}`)
             return []
         }
     },
@@ -81,10 +82,10 @@ export const tiktokProvider: VideoProvider = {
             void username; void _maxResults;
             // Implementation would require TikTok API or web scraping
             // This is a placeholder for future enhancement
-            console.log('TikTok user videos fetching not yet implemented')
+            
             return []
         } catch (error) {
-            console.error('Failed to fetch user TikTok videos:', error)
+            logger.error('media', `Failed to fetch user TikTok videos: ${error instanceof Error ? error.message : String(error)}`)
             return []
         }
     },
@@ -94,10 +95,10 @@ export const tiktokProvider: VideoProvider = {
             void query; void _maxResults;
             // Implementation would require TikTok API or web scraping
             // This is a placeholder for future enhancement
-            console.log('TikTok video search not yet implemented')
+            
             return []
         } catch (error) {
-            console.error('Failed to search TikTok videos:', error)
+            logger.error('media', `Failed to search TikTok videos: ${error instanceof Error ? error.message : String(error)}`)
             return []
         }
     },
@@ -121,10 +122,10 @@ export const tiktokProvider: VideoProvider = {
 				author: comment.author,
 				timestamp: Date.now() // Placeholder timestamp
 			}))
-		} catch (error) {
-			console.error('Failed to fetch TikTok comments:', error)
-			return []
-		}
+        } catch (error) {
+            logger.error('media', `Failed to fetch TikTok comments: ${error instanceof Error ? error.message : String(error)}`)
+            return []
+        }
 	},
 
 	// Cleanup method (if needed)

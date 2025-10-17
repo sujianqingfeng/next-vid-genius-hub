@@ -9,6 +9,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
 import { readMetadataSummary } from '@app/media-core'
+import { logger } from '~/lib/logger'
 
 type CallbackPayload = {
   jobId: string
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const secret = JOB_CALLBACK_HMAC_SECRET || 'replace-with-strong-secret'
     if (!verifyHmacSHA256(secret, bodyText, signature)) {
-      console.error('[cf-callback] invalid signature')
+      logger.error('api', '[cf-callback] invalid signature')
       return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
     }
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, payload.mediaId) })
     if (!media) {
-      console.error('[cf-callback] media not found', payload.mediaId)
+      logger.error('api', `[cf-callback] media not found: ${payload.mediaId}`)
       return NextResponse.json({ error: 'media not found' }, { status: 404 })
     }
 
@@ -73,13 +74,13 @@ export async function POST(req: NextRequest) {
           .update(schema.media)
           .set({ videoWithInfoPath: `remote:orchestrator:${payload.jobId}` })
           .where(eq(schema.media.id, media.id))
-        console.log('[cf-callback] recorded remote info artifact for job', payload.jobId)
+        
       } else {
         await db
           .update(schema.media)
           .set({ videoWithSubtitlesPath: `remote:orchestrator:${payload.jobId}` })
           .where(eq(schema.media.id, media.id))
-        console.log('[cf-callback] recorded remote subtitles artifact for job', payload.jobId)
+        
       }
     } else if (payload.status === 'failed' || payload.status === 'canceled') {
       // 非 downloader 引擎的失败/取消也落库，便于在媒体详情中留痕
@@ -92,12 +93,12 @@ export async function POST(req: NextRequest) {
         .update(schema.media)
         .set(updates)
         .where(eq(schema.media.id, media.id))
-      console.log('[cf-callback] recorded render failure for job', payload.jobId, 'engine=', payload.engine, 'status=', payload.status, 'error=', errorMessage)
+      
     }
 
     return NextResponse.json({ ok: true })
   } catch (e) {
-    console.error('[cf-callback] error', e)
+    logger.error('api', `[cf-callback] error: ${e instanceof Error ? e.message : String(e)}`)
     return NextResponse.json({ error: 'internal error' }, { status: 500 })
   }
 }
@@ -111,17 +112,7 @@ async function handleCloudDownloadCallback(
   // Detect comments-only task: no video output but has metadata output
   const isCommentsOnly = !payload.outputs?.video?.url && Boolean(payload.outputs?.metadata?.url)
 
-  console.log('[cf-callback] media-downloader callback received', {
-    jobId: payload.jobId,
-    mediaId: payload.mediaId,
-    status: payload.status,
-    isCommentsOnly,
-    hasVideoUrl: Boolean(payload.outputs?.video?.url),
-    hasVideoKey: Boolean(payload.outputs?.video?.key),
-    hasMetadataUrl: Boolean(payload.outputs?.metadata?.url),
-    hasMetadataKey: Boolean(payload.outputs?.metadata?.key),
-    outputsKeys: Object.keys(payload.outputs || {}),
-  })
+  
 
   if (payload.status !== 'completed') {
     await db
@@ -138,11 +129,11 @@ async function handleCloudDownloadCallback(
 
   // For comments-only tasks, skip video download logic
   if (isCommentsOnly) {
-    console.log('[cf-callback] comments-only task completed, skipping video download fields update', { jobId: payload.jobId, mediaId: payload.mediaId })
+    
     return
   }
 
-  console.log('[cf-callback] processing video download callback', { jobId: payload.jobId, mediaId: payload.mediaId, hasVideo: Boolean(payload.outputs?.video?.url) })
+  
 
   const videoUrl = payload.outputs?.video?.url
   if (!videoUrl) {
@@ -181,7 +172,7 @@ async function handleCloudDownloadCallback(
         metadataDownloaded = true
       }
     } catch (error) {
-      console.error('[cf-callback] failed to persist cloud download', error)
+      logger.error('api', `[cf-callback] failed to persist cloud download: ${error instanceof Error ? error.message : String(error)}`)
       await db
         .update(schema.media)
         .set({

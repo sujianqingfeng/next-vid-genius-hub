@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 import { proxyRemoteWithRange, resolveRemoteVideoUrl, serveLocalFileWithRange } from '~/lib/media/stream'
 
 export async function GET(
@@ -46,7 +47,7 @@ export async function GET(
           })
         }
       } catch (e) {
-        console.warn('[downloaded] presign remoteVideoKey failed', e)
+        logger.warn('api', `[downloaded] presign remoteVideoKey failed: ${e instanceof Error ? e.message : String(e)}`)
       }
     }
     if (media.downloadJobId) {
@@ -62,7 +63,7 @@ export async function GET(
 
     return NextResponse.json({ error: 'No video available' }, { status: 404 })
   } catch (error) {
-    console.error('Error serving downloaded video:', error)
+    logger.error('api', `Error serving downloaded video: ${error instanceof Error ? error.message : String(error)}`)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

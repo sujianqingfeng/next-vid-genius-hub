@@ -8,6 +8,7 @@ import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
+import { logger } from '~/lib/logger'
 
 const DownloadInputSchema = z.object({
 	url: z.string().url(),
@@ -31,13 +32,13 @@ export const download = os
 				title: result.title,
 				source: result.source,
 			}
-		} catch (error) {
-			console.error('Download failed:', error)
-			throw new Error(
-				`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-				)
-			}
-		})
+        } catch (error) {
+            logger.error('media', `Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            throw new Error(
+                `Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+                )
+            }
+        })
 
 export const startCloudDownload = os
 	.input(DownloadInputSchema)

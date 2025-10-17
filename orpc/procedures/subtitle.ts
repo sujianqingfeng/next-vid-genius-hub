@@ -411,7 +411,7 @@ Strict rules:
       prompt,
       schema: Schema,
     });
-    console.log("Structured translation result:", object);
+    
     const out = Array.isArray(object?.cues) ? object.cues : [];
     if (!out.length) throw new Error("Empty cues from structured translation");
     objectCues = out;

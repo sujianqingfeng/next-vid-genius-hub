@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 import type { MediaItem } from '~/lib/types/media.types'
 import { fileExists as fileExists } from '~/lib/utils/file/client-safe'
 
@@ -81,10 +82,10 @@ export class MediaService {
 				limit,
 				totalPages
 			}
-		} catch (error) {
-			console.error('Failed to get media list:', error)
-			throw new Error('Failed to retrieve media list')
-		}
+        } catch (error) {
+            logger.error('db', `Failed to get media list: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error('Failed to retrieve media list')
+        }
 	}
 
 	/**
@@ -97,10 +98,10 @@ export class MediaService {
 			})
 
 			return media ? media as unknown as MediaItem : null
-		} catch (error) {
-			console.error(`Failed to get media by ID ${id}:`, error)
-			return null
-		}
+        } catch (error) {
+            logger.error('db', `Failed to get media by ID ${id}: ${error instanceof Error ? error.message : String(error)}`)
+            return null
+        }
 	}
 
 	/**
@@ -113,10 +114,10 @@ export class MediaService {
 			})
 
 			return media ? media as unknown as MediaItem : null
-		} catch (error) {
-			console.error(`Failed to get media by URL ${url}:`, error)
-			return null
-		}
+        } catch (error) {
+            logger.error('db', `Failed to get media by URL ${url}: ${error instanceof Error ? error.message : String(error)}`)
+            return null
+        }
 	}
 
 	/**
@@ -130,10 +131,10 @@ export class MediaService {
                 .where(eq(schema.media.id, id))
 
 			return true
-		} catch (error) {
-			console.error(`Failed to update media ${id}:`, error)
-			return false
-		}
+        } catch (error) {
+            logger.error('db', `Failed to update media ${id}: ${error instanceof Error ? error.message : String(error)}`)
+            return false
+        }
 	}
 
 	/**
@@ -156,10 +157,10 @@ export class MediaService {
 			}
 
 			return true
-		} catch (error) {
-			console.error(`Failed to delete media ${id}:`, error)
-			return false
-		}
+        } catch (error) {
+            logger.error('db', `Failed to delete media ${id}: ${error instanceof Error ? error.message : String(error)}`)
+            return false
+        }
 	}
 
 	/**
@@ -202,10 +203,10 @@ export class MediaService {
 				limit,
 				totalPages
 			}
-		} catch (error) {
-			console.error('Failed to search media:', error)
-			throw new Error('Failed to search media')
-		}
+        } catch (error) {
+            logger.error('db', `Failed to search media: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error('Failed to search media')
+        }
 	}
 
 	/**
@@ -268,10 +269,10 @@ export class MediaService {
 				sourceCounts,
 				recentCount
 			}
-		} catch (error) {
-			console.error('Failed to get media stats:', error)
-			throw new Error('Failed to retrieve media statistics')
-		}
+        } catch (error) {
+            logger.error('db', `Failed to get media stats: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error('Failed to retrieve media statistics')
+        }
 	}
 
 	private async deleteMediaFiles(videoPath: string, audioPath: string): Promise<void> {
@@ -282,9 +283,9 @@ export class MediaService {
 			if (await fileExists(audioPath)) {
 				await fs.unlink(audioPath)
 			}
-		} catch (error) {
-			console.error('Failed to delete media files:', error)
-		}
+        } catch (error) {
+            logger.error('media', `Failed to delete media files: ${error instanceof Error ? error.message : String(error)}`)
+        }
 	}
 }
 

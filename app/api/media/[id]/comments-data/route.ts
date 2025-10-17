@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 
 // Provides JSON needed by the Remotion renderer container.
 // Shape aligns with lib/media/types: { videoInfo, comments }
@@ -44,11 +45,10 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('Error serving comments-data:', error)
+    logger.error('api', `Error serving comments-data: ${error instanceof Error ? error.message : String(error)}`)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
     )
   }
 }
-

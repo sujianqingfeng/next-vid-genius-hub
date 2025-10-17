@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 
 export async function GET(
 	request: NextRequest,
@@ -42,11 +43,11 @@ ${media.translation}`
 				'Cache-Control': 'public, max-age=3600',
 			},
 		})
-	} catch (error) {
-		console.error('Error serving subtitles:', error)
-		return NextResponse.json(
-			{ error: 'Internal server error' },
-			{ status: 500 },
-		)
-	}
+  } catch (error) {
+    logger.error('api', `Error serving subtitles: ${error instanceof Error ? error.message : String(error)}`)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    )
+  }
 }

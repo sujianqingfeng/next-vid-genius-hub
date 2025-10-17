@@ -18,6 +18,7 @@ import {
   inlineRemoteImage as inlineRemoteImageFromPkg,
   buildComposeArgs,
 } from '@app/media-comments'
+import { logger } from '~/lib/logger'
 
 // getVideoResolution is centralized in ~/lib/media/ffmpeg
 
@@ -60,7 +61,7 @@ export async function renderVideoWithRemotion({
     if (inlineCache.has(url)) return inlineCache.get(url)
     const dataUrl = await inlineRemoteImageFromPkg(url, { proxyUrl: PROXY_URL ?? undefined })
     if (dataUrl) inlineCache.set(url, dataUrl)
-    else console.warn('Failed to inline remote image for Remotion render:', url)
+    else logger.warn('rendering', `Failed to inline remote image for Remotion render: ${url}`)
     return dataUrl
   }
 
@@ -235,16 +236,7 @@ async function composeWithSourceVideo({
   const actualWidth = Math.round(video.width)
   const actualHeight = Math.round(video.height)
 
-  // 添加调试信息
-  console.log('Video composition debug info:')
-  console.log('- Source video resolution:', sourceResolution.width, 'x', sourceResolution.height)
-  console.log('- Remotion base resolution:', remotionBaseWidth, 'x', remotionBaseHeight)
-  console.log('- Original layout size:', video.width, 'x', video.height)
-  console.log('- Original layout position:', video.x, ',', video.y)
-  console.log('- Applied layout size:', actualWidth, 'x', actualHeight)
-  console.log('- Applied layout position:', actualX, ',', actualY)
-  console.log('- Cover duration:', coverDurationSeconds, 'seconds')
-  console.log('- Total duration:', totalDurationSeconds, 'seconds')
+  
 
   const ffmpegArgs = buildComposeArgs({
     overlayPath,

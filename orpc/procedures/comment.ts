@@ -19,6 +19,7 @@ import {
 	downloadTikTokCommentsByUrl as coreDownloadTikTokComments,
 } from '@app/media-providers'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
+import { logger } from '~/lib/logger'
 
 export const downloadComments = os
 	.input(
@@ -210,9 +211,9 @@ export const renderWithInfo = os
 						2,
 					),
 				)
-				.catch((error) => {
-					console.warn('Failed to record render progress', error)
-				})
+                .catch((error) => {
+                    logger.warn('rendering', `Failed to record render progress: ${error instanceof Error ? error.message : String(error)}`)
+                })
 		}
 
 		// seed initial progress state
@@ -272,10 +273,10 @@ export const renderWithInfo = os
 				videoWithInfoPath: outputPath,
 				commentsCount: media.comments.length,
 			}
-		} catch (error) {
-			console.error('Error rendering video with info:', error)
-			throw new Error(`Failed to render video: ${(error as Error).message}`)
-		}
+        } catch (error) {
+            logger.error('rendering', `Error rendering video with info: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error(`Failed to render video: ${(error as Error).message}`)
+        }
 	})
 
 // Cloud rendering: start job explicitly (Remotion renderer)
@@ -390,14 +391,14 @@ export const finalizeCloudCommentsDownload = os
 		const urlFromStatus = status.outputs?.metadata?.url
 		const keyFromStatus = status.outputs?.metadata?.key ?? status.outputMetadataKey
 
-		let metadataUrl = urlFromStatus
-		if (!metadataUrl && keyFromStatus) {
-			try {
-				metadataUrl = await presignGetByKey(keyFromStatus)
-			} catch (e) {
-				console.warn('Failed to presign metadata URL via orchestrator', e)
-			}
-		}
+    let metadataUrl = urlFromStatus
+    if (!metadataUrl && keyFromStatus) {
+        try {
+            metadataUrl = await presignGetByKey(keyFromStatus)
+        } catch (e) {
+            logger.warn('api', `Failed to presign metadata URL via orchestrator: ${e instanceof Error ? e.message : String(e)}`)
+        }
+    }
 
 		if (!metadataUrl) throw new Error('No comments metadata location (url or key) from job')
 		const r = await fetch(metadataUrl)

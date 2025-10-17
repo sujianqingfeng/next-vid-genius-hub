@@ -1,6 +1,7 @@
 import type { AIModelId } from '~/lib/ai/models'
 import { translateText } from '~/lib/ai/translate'
 import { getLanguageOptions } from '~/lib/constants/languages'
+import { logger } from '~/lib/logger'
 
 export interface TranslationRequest {
 	text: string
@@ -45,10 +46,10 @@ export class TranslationService {
 				model,
 				confidence: undefined // 可以根据模型实现添加置信度
 			}
-		} catch (error) {
-			console.error('Translation failed:', error)
-			throw new Error(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+        } catch (error) {
+            logger.error('translation', `Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            throw new Error(`Translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	}
 
 	/**
@@ -66,17 +67,17 @@ export class TranslationService {
 			try {
 				const result = await this.translate(request)
 				results.push(result)
-			} catch (error) {
-				console.error(`Failed to translate item ${i}:`, error)
-				// 对于批量操作，我们可能不想因为一个失败而停止整个批次
-				results.push({
-					translatedText: request.text, // 返回原文作为后备
-					from: request.from || 'unknown',
-					to: request.to,
-					model: request.model || this.defaultModel,
-					confidence: 0
-				})
-			}
+            } catch (error) {
+                logger.error('translation', `Failed to translate item ${i}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+                // 对于批量操作，我们可能不想因为一个失败而停止整个批次
+                results.push({
+                    translatedText: request.text, // 返回原文作为后备
+                    from: request.from || 'unknown',
+                    to: request.to,
+                    model: request.model || this.defaultModel,
+                    confidence: 0
+                })
+            }
 
 			// 报告进度
 			if (onProgress) {
@@ -153,10 +154,10 @@ export class TranslationService {
 			})
 
 			return result
-		} catch (error) {
-			console.error('Subtitle translation failed:', error)
-			throw new Error(`Subtitle translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+        } catch (error) {
+            logger.error('translation', `Subtitle translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            throw new Error(`Subtitle translation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	}
 
 	/**
@@ -197,13 +198,13 @@ export class TranslationService {
 				language: detectedLanguage,
 				confidence: maxConfidence
 			}
-		} catch (error) {
-			console.error('Language detection failed:', error)
-			return {
-				language: 'unknown',
-				confidence: 0
-			}
-		}
+        } catch (error) {
+            logger.error('translation', `Language detection failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            return {
+                language: 'unknown',
+                confidence: 0
+            }
+        }
 	}
 
 	/**
@@ -253,14 +254,14 @@ export class TranslationService {
 				confidence: Math.max(0, confidence),
 				issues
 			}
-		} catch (error) {
-			console.error('Translation validation failed:', error)
-			return {
-				isValid: false,
-				confidence: 0,
-				issues: ['Validation failed']
-			}
-		}
+        } catch (error) {
+            logger.error('translation', `Translation validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            return {
+                isValid: false,
+                confidence: 0,
+                issues: ['Validation failed']
+            }
+        }
 	}
 
 	/**

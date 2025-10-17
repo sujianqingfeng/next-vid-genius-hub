@@ -1,12 +1,14 @@
 import { onError } from '@orpc/server'
 import { RPCHandler } from '@orpc/server/fetch'
 import { appRouter } from '~/orpc/router'
+import { logger } from '~/lib/logger'
 
 const handler = new RPCHandler(appRouter, {
 	interceptors: [
-		onError((error: unknown) => {
-			console.error('[ORPC] Handler error:', error)
-		}),
+    onError((error: unknown) => {
+        const msg = error instanceof Error ? error.message : String(error)
+        logger.error('api', `[ORPC] Handler error: ${msg}`)
+    }),
 	],
 })
 

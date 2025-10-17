@@ -3,6 +3,7 @@ import { stat } from 'node:fs/promises'
 import { NextRequest, NextResponse } from 'next/server'
 import { CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
 import { presignGetByKey } from '~/lib/cloudflare'
+import { logger } from '~/lib/logger'
 
 export interface MinimalMediaLike {
   filePath: string | null
@@ -165,7 +166,7 @@ export async function resolveRemoteVideoUrl(media: MinimalMediaLike): Promise<st
     try {
       return await presignGetByKey(media.remoteVideoKey)
     } catch (e) {
-      console.error('[stream] presign by key failed', e)
+      logger.error('media', `[stream] presign by key failed: ${e instanceof Error ? e.message : String(e)}`)
       return null
     }
   }

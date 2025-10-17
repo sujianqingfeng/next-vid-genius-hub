@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 import {
 	buildDownloadFilename,
 	extractOrchestratorUrlFromPath,
@@ -50,11 +51,11 @@ export async function GET(
 			cacheSeconds: 3600,
 			downloadName,
 		})
-	} catch (error) {
-		console.error('Error serving rendered video:', error)
-		return NextResponse.json(
-			{ error: 'Internal server error' },
-			{ status: 500 },
-		)
-	}
+  } catch (error) {
+    logger.error('api', `Error serving rendered video: ${error instanceof Error ? error.message : String(error)}`)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    )
+  }
 }

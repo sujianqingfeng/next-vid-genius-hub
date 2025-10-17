@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { getLanguageOptions } from '~/lib/constants/languages'
+import { logger } from '~/lib/logger'
 
 export interface TranscriptionRequest {
 	audioPath: string
@@ -50,10 +51,10 @@ export class TranscriptionService {
 
 			// TODO: Implement transcription service integration
 			throw new Error('Transcription service not yet implemented in refactored code')
-		} catch (error) {
-			console.error('Transcription failed:', error)
-			throw new Error(`Transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+    } catch (error) {
+        logger.error('transcription', `Transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        throw new Error(`Transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
 	}
 
 	/**
@@ -133,10 +134,10 @@ export class TranscriptionService {
 				default:
 					throw new Error(`Unsupported subtitle format: ${format}`)
 			}
-		} catch (error) {
-			console.error('Subtitle generation failed:', error)
-			throw new Error(`Subtitle generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+    } catch (error) {
+        logger.error('transcription', `Subtitle generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        throw new Error(`Subtitle generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
 	}
 
 	/**
@@ -170,11 +171,11 @@ export class TranscriptionService {
 			}
 
 			await fs.writeFile(outputPath, content, 'utf-8')
-			console.log(`Transcription saved to: ${outputPath}`)
-		} catch (error) {
-			console.error('Failed to save transcription:', error)
-			throw new Error(`Failed to save transcription: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+			
+    } catch (error) {
+        logger.error('transcription', `Failed to save transcription: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        throw new Error(`Failed to save transcription: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
 	}
 
 	/**
@@ -196,13 +197,13 @@ export class TranscriptionService {
 				language: result.language,
 				confidence: 0.8 // Whisper 通常有较高的语言检测置信度
 			}
-		} catch (error) {
-			console.error('Language detection failed:', error)
-			return {
-				language: 'unknown',
-				confidence: 0
-			}
-		}
+    } catch (error) {
+        logger.error('transcription', `Language detection failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        return {
+            language: 'unknown',
+            confidence: 0
+        }
+    }
 	}
 
 	/**
