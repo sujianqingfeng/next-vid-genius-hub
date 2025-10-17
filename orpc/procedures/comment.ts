@@ -18,6 +18,7 @@ import {
 	downloadYoutubeComments as coreDownloadYoutubeComments,
 	downloadTikTokCommentsByUrl as coreDownloadTikTokComments,
 } from '@app/media-providers'
+import { toProxyJobPayload } from '~/lib/proxy/utils'
 
 export const downloadComments = os
 	.input(
@@ -107,7 +108,7 @@ export const translateComments = os
 					return comment
 				}
 				// 如果评论已经有翻译内容，跳过翻译
-				if (comment.translatedContent) {
+				if (comment.translatedContent && !force) {
 					return comment
 				}
 				const translatedContent = await translateText(comment.content, modelId)
@@ -306,20 +307,10 @@ export const startCloudRender = os
 			throw new Error('No comments found for this media')
 		}
 
-		let proxyPayload: any = undefined
+		let proxyPayload = undefined
 		if (proxyId) {
 			const proxy = await db.query.proxies.findFirst({ where: eq(schema.proxies.id, proxyId) })
-			if (proxy && proxy.server && proxy.port && proxy.protocol) {
-				proxyPayload = {
-					id: proxy.id,
-					server: proxy.server,
-					port: proxy.port,
-					protocol: proxy.protocol,
-					username: proxy.username,
-					password: proxy.password,
-					nodeUrl: proxy.nodeUrl,
-				}
-			}
+			proxyPayload = toProxyJobPayload(proxy)
 		}
 
         const job = await startCloudJob({
@@ -358,20 +349,10 @@ export const startCloudCommentsDownload = os
 		if (!media) throw new Error('Media not found')
 		if (!media.url) throw new Error('Media URL missing')
 
-		let proxyPayload: any = undefined
+		let proxyPayload = undefined
 		if (proxyId) {
 			const proxy = await db.query.proxies.findFirst({ where: eq(schema.proxies.id, proxyId) })
-			if (proxy && proxy.server && proxy.port && proxy.protocol) {
-				proxyPayload = {
-					id: proxy.id,
-					server: proxy.server,
-					port: proxy.port,
-					protocol: proxy.protocol,
-					username: proxy.username,
-					password: proxy.password,
-					nodeUrl: proxy.nodeUrl,
-				}
-			}
+			proxyPayload = toProxyJobPayload(proxy)
 		}
 
 		const job = await startCloudJob({

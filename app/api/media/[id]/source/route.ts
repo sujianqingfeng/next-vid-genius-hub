@@ -6,8 +6,10 @@ import {
   serveLocalFileWithRange,
   proxyRemoteWithRange,
   resolveRemoteVideoUrl,
+  createProxyResponse,
+  extractOrchestratorUrlFromPath,
+  makeOrchestratorArtifactUrl,
 } from '~/lib/media/stream'
-import { CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
 
 export async function GET(
   request: NextRequest,
@@ -60,10 +62,11 @@ export async function GET(
         }
       }
       // Fallback to download job artifact if available
-      if (media.downloadJobId && CF_ORCHESTRATOR_URL) {
-        const base = CF_ORCHESTRATOR_URL.replace(/\/$/, '')
-        const url = `${base}/artifacts/${encodeURIComponent(media.downloadJobId)}`
-        return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
+      if (media.downloadJobId) {
+        const remoteUrl = makeOrchestratorArtifactUrl(media.downloadJobId)
+        if (remoteUrl) {
+          return proxyRemoteWithRange(remoteUrl, request, { defaultCacheSeconds: 60 })
+        }
       }
       return NextResponse.json({ error: 'Original source not found' }, { status: 404 })
     }
@@ -74,10 +77,8 @@ export async function GET(
         return NextResponse.json({ error: 'Subtitled source not available' }, { status: 404 })
       }
       if (renderedPath.startsWith('remote:orchestrator:')) {
-        const jobId = renderedPath.split(':').pop()!
-        const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
-        if (!base) return NextResponse.json({ error: 'Orchestrator URL not configured' }, { status: 500 })
-        const remoteUrl = `${base}/artifacts/${encodeURIComponent(jobId)}`
+        const remoteUrl = extractOrchestratorUrlFromPath(renderedPath)
+        if (!remoteUrl) return NextResponse.json({ error: 'Orchestrator URL not configured' }, { status: 500 })
         return proxyRemoteWithRange(remoteUrl, request, { defaultCacheSeconds: 60 })
       }
       return serveLocalFileWithRange(renderedPath, request, {
@@ -105,29 +106,20 @@ export async function GET(
       const renderedPath = preferRendered
       // Remote artifact stored in orchestrator
       if (renderedPath.startsWith('remote:orchestrator:')) {
-        const jobId = renderedPath.split(':').pop()!
-        const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
-        if (!base) {
+        const remoteUrl = extractOrchestratorUrlFromPath(renderedPath)
+        if (!remoteUrl) {
           return NextResponse.json(
             { error: 'Orchestrator URL not configured' },
             { status: 500 },
           )
         }
-        const remoteUrl = `${base}/artifacts/${encodeURIComponent(jobId)}`
         // Try remote artifact first; if missing (404), fall through to other remote fallbacks below
         const range = request.headers.get('range')
         const passHeaders: Record<string, string> = {}
         if (range) passHeaders['range'] = range
         const r = await fetch(remoteUrl, { headers: passHeaders })
         if (r.ok) {
-          const respHeaders = new Headers()
-          const copy = ['content-type', 'accept-ranges', 'content-length', 'content-range', 'cache-control', 'etag', 'last-modified']
-          for (const h of copy) {
-            const v = r.headers.get(h)
-            if (v) respHeaders.set(h, v)
-          }
-          if (!respHeaders.has('cache-control')) respHeaders.set('cache-control', 'private, max-age=60')
-          return new NextResponse(r.body as unknown as ReadableStream, { status: r.status, headers: respHeaders })
+          return createProxyResponse(r, { defaultCacheSeconds: 60 })
         }
         // If remote artifact responded non-OK (e.g., 404), continue to generic remote resolution below
       } else {
@@ -142,7 +134,6 @@ export async function GET(
     // 2) Remote fallbacks
     // Prefer presigned remoteVideoKey (if DB has one), otherwise try orchestrator artifact by downloadJobId.
     // This also recovers stale DB states where downloadStatus isn't updated but artifact exists in R2.
-    const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
     // 2.1) Try remoteVideoKey via orchestrator presign helper
     if (media.remoteVideoKey) {
       try {
@@ -158,9 +149,11 @@ export async function GET(
       }
     }
     // 2.2) Try orchestrator artifact by downloadJobId (regardless of local downloadStatus)
-    if (media.downloadJobId && base) {
-      const url = `${base}/artifacts/${encodeURIComponent(media.downloadJobId)}`
-      return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
+    if (media.downloadJobId) {
+      const remoteUrl = makeOrchestratorArtifactUrl(media.downloadJobId)
+      if (remoteUrl) {
+        return proxyRemoteWithRange(remoteUrl, request, { defaultCacheSeconds: 60 })
+      }
     }
 
     return NextResponse.json({ error: 'Source video not found' }, { status: 404 })

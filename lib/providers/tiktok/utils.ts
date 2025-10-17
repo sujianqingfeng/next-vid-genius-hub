@@ -1,3 +1,5 @@
+import type { TikTokBasicComment } from './types'
+
 export function extractTikTokVideoId(url: string): string | null {
 	const patterns = [
 		/tiktok\.com\/@[\w.-]+\/video\/(\d+)/,
@@ -101,4 +103,47 @@ export async function fetchTikwmComments(
 
   const jsonUnknown = (await res.json()) as unknown
   return (jsonUnknown ?? {}) as TikwmCommentResp
+}
+
+export function normalizeTikwmComment(comment: TikwmComment): TikTokBasicComment | null {
+  const id = String(comment?.cid ?? comment?.comment_id ?? comment?.id ?? '')
+  if (!id) return null
+
+  const user: TikwmUser =
+    (comment?.user as TikwmUser) ?? (comment?.user_info as TikwmUser) ?? {}
+
+  const author =
+    user?.nickname ?? user?.unique_id ?? user?.nick_name ?? 'Unknown'
+
+  let avatarThumb: string | undefined
+  if (typeof user?.avatar_thumb === 'object') {
+    avatarThumb = user.avatar_thumb.url_list?.[0]
+  } else if (typeof user?.avatar_thumb === 'string') {
+    avatarThumb = user.avatar_thumb
+  } else if (typeof user?.avatar === 'string') {
+    avatarThumb = user.avatar
+  }
+
+  const content: string = String(comment?.text ?? comment?.content ?? '')
+  const likes: number = Number(comment?.digg_count ?? comment?.like_count ?? 0)
+  const replyCount: number | undefined =
+    comment?.reply_comment_total ?? comment?.reply_count ?? undefined
+
+  return {
+    id,
+    author,
+    authorThumbnail: avatarThumb,
+    content,
+    likes,
+    replyCount,
+  }
+}
+
+export function mapTikwmCommentsToBasic(list: TikwmComment[]): TikTokBasicComment[] {
+  const normalized: TikTokBasicComment[] = []
+  for (const comment of list) {
+    const basic = normalizeTikwmComment(comment)
+    if (basic) normalized.push(basic)
+  }
+  return normalized
 }

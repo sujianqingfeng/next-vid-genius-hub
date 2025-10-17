@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { getLanguageOptions } from '~/lib/constants/languages'
 
 export interface TranscriptionRequest {
 	audioPath: string
@@ -222,21 +223,7 @@ export class TranscriptionService {
 		name: string
 		nativeName: string
 	}> {
-		return [
-			{ code: 'auto', name: 'Auto-detect', nativeName: 'Auto-detect' },
-			{ code: 'en', name: 'English', nativeName: 'English' },
-			{ code: 'zh', name: 'Chinese', nativeName: '中文' },
-			{ code: 'ja', name: 'Japanese', nativeName: '日本語' },
-			{ code: 'ko', name: 'Korean', nativeName: '한국어' },
-			{ code: 'es', name: 'Spanish', nativeName: 'Español' },
-			{ code: 'fr', name: 'French', nativeName: 'Français' },
-			{ code: 'de', name: 'German', nativeName: 'Deutsch' },
-			{ code: 'it', name: 'Italian', nativeName: 'Italiano' },
-			{ code: 'pt', name: 'Portuguese', nativeName: 'Português' },
-			{ code: 'ru', name: 'Russian', nativeName: 'Русский' },
-			{ code: 'ar', name: 'Arabic', nativeName: 'العربية' },
-			{ code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
-		]
+		return getLanguageOptions({ includeAuto: true })
 	}
 
 	private async validateTranscriptionRequest(request: TranscriptionRequest): Promise<void> {

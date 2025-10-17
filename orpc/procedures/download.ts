@@ -7,15 +7,16 @@ import { db, schema } from '~/lib/db'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
+import { toProxyJobPayload } from '~/lib/proxy/utils'
+
+const DownloadInputSchema = z.object({
+	url: z.string().url(),
+	quality: z.enum(['1080p', '720p']).optional().default('1080p'),
+	proxyId: z.string().optional(),
+})
 
 export const download = os
-	.input(
-		z.object({
-			url: z.string().url(),
-			quality: z.enum(['1080p', '720p']).optional().default('1080p'),
-			proxyId: z.string().optional(),
-		}),
-	)
+	.input(DownloadInputSchema)
 	.handler(async ({ input }) => {
 		const { url, quality, proxyId } = input
 
@@ -39,13 +40,7 @@ export const download = os
 		})
 
 export const startCloudDownload = os
-	.input(
-		z.object({
-			url: z.string().url(),
-			quality: z.enum(['1080p', '720p']).optional().default('1080p'),
-			proxyId: z.string().optional(),
-		}),
-	)
+	.input(DownloadInputSchema)
 	.handler(async ({ input }) => {
 		const { url, quality, proxyId } = input
 
@@ -102,18 +97,7 @@ export const startCloudDownload = os
 					where: eq(schema.proxies.id, proxyId),
 				})
 			: null
-		const proxyPayload =
-			proxyConfig && proxyConfig.server && proxyConfig.port && proxyConfig.protocol
-				? {
-						id: proxyConfig.id,
-						server: proxyConfig.server,
-						port: proxyConfig.port,
-						protocol: proxyConfig.protocol,
-						username: proxyConfig.username,
-						password: proxyConfig.password,
-						nodeUrl: proxyConfig.nodeUrl,
-					}
-				: undefined
+		const proxyPayload = toProxyJobPayload(proxyConfig)
 
 		try {
 			const job = await startCloudJob({

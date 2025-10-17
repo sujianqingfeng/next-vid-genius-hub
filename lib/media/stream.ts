@@ -22,6 +22,18 @@ const DEFAULT_HEADERS = {
   cacheSeconds: 600,
 } satisfies LocalServeOptions
 
+const PROXY_HEADER_KEYS = ['content-type', 'accept-ranges', 'content-length', 'content-range', 'cache-control', 'etag', 'last-modified'] as const
+
+export function buildDownloadFilename(
+  title: string | null | undefined,
+  fallbackBase: string,
+  extension: string,
+): string {
+  const base = (title && title.trim().length > 0 ? title : fallbackBase).replace(/\s+/g, '_')
+  const normalizedExt = extension.replace(/^\./, '')
+  return `${base}.${normalizedExt}`
+}
+
 export async function serveLocalFileWithRange(
   filePath: string,
   request: NextRequest,
@@ -105,6 +117,28 @@ export async function serveLocalFileWithRange(
   return new NextResponse(stream as unknown as ReadableStream, { headers })
 }
 
+export function createProxyResponse(
+  upstream: Response,
+  options?: { defaultCacheSeconds?: number; forceDownloadName?: string | null },
+): NextResponse {
+  const respHeaders = new Headers()
+  for (const key of PROXY_HEADER_KEYS) {
+    const v = upstream.headers.get(key)
+    if (v) respHeaders.set(key, v)
+  }
+  if (!respHeaders.has('cache-control')) {
+    respHeaders.set('cache-control', `private, max-age=${options?.defaultCacheSeconds ?? 60}`)
+  }
+  if (options?.forceDownloadName) {
+    respHeaders.set('Content-Disposition', `attachment; filename="${options.forceDownloadName}"`)
+  }
+  const body = upstream.body ?? null
+  return new NextResponse(body as unknown as BodyInit | null, {
+    status: upstream.status,
+    headers: respHeaders,
+  })
+}
+
 export async function proxyRemoteWithRange(
   remoteUrl: string,
   request: NextRequest,
@@ -114,15 +148,7 @@ export async function proxyRemoteWithRange(
   const passHeaders: Record<string, string> = {}
   if (range) passHeaders['range'] = range
   const r = await fetch(remoteUrl, { headers: passHeaders })
-  const respHeaders = new Headers()
-  const copy = ['content-type', 'accept-ranges', 'content-length', 'content-range', 'cache-control', 'etag', 'last-modified']
-  for (const h of copy) {
-    const v = r.headers.get(h)
-    if (v) respHeaders.set(h, v)
-  }
-  if (!respHeaders.has('cache-control')) respHeaders.set('cache-control', `private, max-age=${options?.defaultCacheSeconds ?? 60}`)
-  if (options?.forceDownloadName) respHeaders.set('Content-Disposition', `attachment; filename="${options.forceDownloadName}"`)
-  return new NextResponse(r.body as unknown as ReadableStream, { status: r.status, headers: respHeaders })
+  return createProxyResponse(r, options)
 }
 
 export async function resolveRemoteVideoUrl(media: MinimalMediaLike): Promise<string | null> {
@@ -144,4 +170,17 @@ export async function resolveRemoteVideoUrl(media: MinimalMediaLike): Promise<st
     }
   }
   return null
+}
+
+export function makeOrchestratorArtifactUrl(jobId: string): string | null {
+  const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
+  if (!base) return null
+  return `${base}/artifacts/${encodeURIComponent(jobId)}`
+}
+
+export function extractOrchestratorUrlFromPath(path: string | null | undefined): string | null {
+  if (!path || !path.startsWith('remote:orchestrator:')) return null
+  const jobId = path.split(':').pop()
+  if (!jobId) return null
+  return makeOrchestratorArtifactUrl(jobId)
 }
