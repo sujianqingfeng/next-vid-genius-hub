@@ -37,7 +37,7 @@ const palette = {
 };
 
 const baseFont =
-  'Inter, "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont';
+  '"Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Noto Sans CJK", Inter, "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont';
 
 const containerStyle: CSSProperties = {
   backgroundColor: palette.background,
