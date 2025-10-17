@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, FileText, Play, Video } from 'lucide-react'
+import { Download, Play, Video } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 
 interface Step4PreviewProps {
@@ -15,16 +15,12 @@ export function Step4Preview(props: Step4PreviewProps) {
 	const { mediaId, hasRenderedVideo, thumbnail, cacheBuster, showVideo = true } = props
 
 	const baseRenderedUrl = `/api/media/${mediaId}/rendered`
-	const baseSubtitlesUrl = `/api/media/${mediaId}/subtitles`
 	const videoSrc = cacheBuster
 		? `${baseRenderedUrl}?v=${cacheBuster}`
 		: baseRenderedUrl
 	const downloadVideoUrl = cacheBuster
 		? `${baseRenderedUrl}?download=1&v=${cacheBuster}`
 		: `${baseRenderedUrl}?download=1`
-	const subtitlesDownloadUrl = cacheBuster
-		? `${baseSubtitlesUrl}?v=${cacheBuster}`
-		: baseSubtitlesUrl
 
 	if (!hasRenderedVideo) {
 		return (
@@ -84,13 +80,7 @@ export function Step4Preview(props: Step4PreviewProps) {
 							</a>
 						</Button>
 
-						{/* 次要下载按钮 */}
-						<Button asChild variant="outline" className="w-full">
-							<a href={subtitlesDownloadUrl} download>
-								<FileText className="h-4 w-4 mr-2" />
-								Download Subtitles
-							</a>
-						</Button>
+            {/* 移除字幕下载功能，根据需求不再提供 */}
 					</div>
 				</div>
 			</div>

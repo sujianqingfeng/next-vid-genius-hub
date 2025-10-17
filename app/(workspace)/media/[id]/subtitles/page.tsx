@@ -450,6 +450,7 @@ export default function SubtitlesPage() {
 							renderBackend={renderBackend}
 							onRenderBackendChange={setRenderBackend}
 							hidePreview
+							hideCuesList
 						/>
 
 

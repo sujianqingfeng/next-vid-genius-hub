@@ -44,6 +44,8 @@ interface Step3RenderProps {
 	onRenderBackendChange: (backend: 'local' | 'cloud') => void
   // When true, hide internal preview area since page shows global preview
   hidePreview?: boolean
+  // When true, also hide the internal cues list (use PreviewPane's list instead)
+  hideCuesList?: boolean
 }
 
 /**
@@ -63,6 +65,7 @@ export function Step3Render(props: Step3RenderProps) {
 		renderBackend,
 		onRenderBackendChange,
     hidePreview = false,
+    hideCuesList = false,
 	} = props
 
 	// 预设状态管理
@@ -175,61 +178,7 @@ export function Step3Render(props: Step3RenderProps) {
 
 	return (
 		<div className="space-y-6">
-		{/* 视频预览 + 字幕列表 - 并排布局（可隐藏预览） */}
-		<div className={hidePreview ? 'grid gap-4' : 'grid gap-4 lg:grid-cols-3'}>
-			{/* 左/上：视频预览区域（可隐藏） */}
-			{!hidePreview && (
-				<div className="lg:col-span-2 rounded-xl border bg-card shadow-sm">
-					<VideoPreview
-						mediaId={mediaId}
-						translation={translation}
-						config={config}
-						isRendering={isRendering}
-						onTimeUpdate={handleTimeUpdate}
-						onDurationChange={handleDurationChange}
-						onVideoRef={handleVideoRef}
-					/>
-				</div>
-			)}
-
-			{/* 右：字幕列表 */}
-			<div className={hidePreview ? 'flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden' : 'flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden max-h-[600px]'}>
-				<div className="flex-shrink-0 px-4 py-3 border-b bg-muted/30">
-					<h3 className="text-sm font-semibold mb-2">Subtitles</h3>
-					<Badge variant="secondary" className="text-xs">
-						{cues.length} cues
-					</Badge>
-				</div>
-				<div className="flex-1 min-h-0 overflow-y-auto">
-					{cues.length === 0 ? (
-						<div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-							No subtitles available
-						</div>
-					) : (
-						<div className="divide-y">
-							{cues.map((cue, idx) => (
-								<div
-									key={`${cue.start}-${cue.end}-${idx}`}
-									className="px-3 py-2 text-xs hover:bg-muted/50 transition-colors cursor-pointer"
-									onClick={() => handlePlayPreview(parseVttTimestamp(cue.start))}
-								>
-									<div className="text-muted-foreground font-mono text-[10px] mb-1">
-										{cue.start} → {cue.end}
-									</div>
-									<div className="space-y-0.5">
-										{cue.lines.map((line, i) => (
-											<div key={i} className="text-xs font-mono break-words leading-snug">
-												{line}
-											</div>
-										))}
-									</div>
-								</div>
-							))}
-						</div>
-					)}
-				</div>
-			</div>
-		</div>
+		{/* 视频预览与字幕列表由顶部 PreviewPane 接管，此处不再重复渲染 */}
 
 			{/* 配置控制区域 - 下方紧凑布局 */}
 			<div className="grid gap-6 md:grid-cols-2">
