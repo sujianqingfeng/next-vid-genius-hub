@@ -16,9 +16,7 @@ import { Step1Transcribe } from '~/components/business/media/subtitles/Step1Tran
 import { Step2Translate } from '~/components/business/media/subtitles/Step2Translate'
 import { Step3Render } from '~/components/business/media/subtitles/Step3Render'
 import { Step4Preview } from '~/components/business/media/subtitles/Step4Preview'
-import {
-	Stepper,
-} from '~/components/business/media/subtitles/Stepper'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs'
 import { PageHeader } from '~/components/layout/page-header'
 import { Button } from '~/components/ui/button'
 import {
@@ -39,9 +37,9 @@ import type {
 } from '~/lib/subtitle/config/models'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
-import { STATUS_LABELS } from '~/lib/constants/media.constants'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
-import { Progress } from '~/components/ui/progress'
+import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
+import type { SubtitleStepId } from '~/lib/subtitle/types'
 
 export default function SubtitlesPage() {
 	const params = useParams()
@@ -202,8 +200,8 @@ export default function SubtitlesPage() {
         }),
     )
 
-	// 云端渲染完成后，刷新媒体数据并跳到预览（用 effect 避免在渲染期间触发副作用）
-	useEffect(() => {
+  // 云端渲染完成后，刷新媒体数据并跳到预览（用 effect 避免在渲染期间触发副作用）
+  useEffect(() => {
 		if (renderBackend === 'cloud' && cloudJobId && cloudStatusQuery.data?.status === 'completed') {
 			queryClient.invalidateQueries({
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
@@ -217,7 +215,15 @@ export default function SubtitlesPage() {
 			try { window.localStorage.removeItem(`subtitleCloudJob:${mediaId}`) } catch {}
 			setCloudJobId(null)
 		}
-	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, activeStep, mediaId, queryClient, setActiveStep])
+  }, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, activeStep, mediaId, queryClient, setActiveStep])
+
+  // 预览用的云端渲染状态（避免 any）
+  const previewCloudStatus = (renderBackend === 'cloud' && cloudStatusQuery.data)
+    ? {
+        status: (cloudStatusQuery.data as { status?: string }).status,
+        progress: (cloudStatusQuery.data as { progress?: number }).progress,
+      }
+    : null
 
 	// 事件处理器
 	const handleStartTranscription = () => {
@@ -297,17 +303,50 @@ export default function SubtitlesPage() {
 				title="Generate Subtitles"
 			/>
 
-			{/* Step Navigation - Always Visible */}
-			<Stepper
-				activeTab={activeStep}
-				hasTranscription={hasTranscription}
-				hasTranslation={hasTranslation}
+			{/* Always-visible preview pane */}
+			<PreviewPane
+				mediaId={mediaId}
+				translation={workflowState.translation ?? null}
+				config={subtitleConfig}
 				hasRenderedVideo={hasRenderedVideo}
-				onChange={(step) => setActiveStep(step)}
+				thumbnail={media?.thumbnail ?? undefined}
+				cacheBuster={previewVersion}
+				isRendering={
+					(renderBackend === 'cloud'
+						? (startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? ''))
+						: renderMutation.isPending)
+				}
+				cloudStatus={previewCloudStatus}
+				renderBackend={renderBackend}
 			/>
 
+			{/* Step Navigation under preview (Tabs) */}
+			<Tabs
+				value={activeStep}
+				onValueChange={(v) => setActiveStep(v as SubtitleStepId)}
+				className="w-full"
+			>
+				<TabsList>
+					<TabsTrigger value="step1">
+						<FileText className="h-4 w-4" />
+						<span className="ml-1">Transcribe</span>
+					</TabsTrigger>
+					<TabsTrigger value="step2" disabled={!hasTranscription}>
+						<Languages className="h-4 w-4" />
+						<span className="ml-1">Translate</span>
+					</TabsTrigger>
+					<TabsTrigger value="step3" disabled={!hasTranslation}>
+						<Video className="h-4 w-4" />
+						<span className="ml-1">Render</span>
+					</TabsTrigger>
+					<TabsTrigger value="step4" disabled={!hasRenderedVideo}>
+						<Play className="h-4 w-4" />
+						<span className="ml-1">Export</span>
+					</TabsTrigger>
+				</TabsList>
+
 			{/* Main Content */}
-			{activeStep === 'step1' && (
+			<TabsContent value="step1">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -349,9 +388,11 @@ export default function SubtitlesPage() {
                             />
 					</CardContent>
 				</Card>
-			)}
+			</TabsContent>
 
-			{activeStep === 'step2' && (
+			
+
+			<TabsContent value="step2">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -379,9 +420,9 @@ export default function SubtitlesPage() {
 						/>
 					</CardContent>
 				</Card>
-			)}
+			</TabsContent>
 
-			{activeStep === 'step3' && (
+			<TabsContent value="step3">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -408,46 +449,23 @@ export default function SubtitlesPage() {
 							onConfigChange={handleConfigChange}
 							renderBackend={renderBackend}
 							onRenderBackendChange={setRenderBackend}
+							hidePreview
 						/>
 
-						{/* 云端渲染进度显示（简单版） */}
-                            {renderBackend === 'cloud' && cloudJobId && (
-                              <div className="mt-3 flex items-center gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <Progress
-                                    value={
-                                      typeof cloudStatusQuery.data?.progress === 'number'
-                                        ? Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)
-                                        : 0
-                                    }
-                                    srLabel="Cloud rendering progress"
-                                  />
-                                </div>
-                                <div className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                                  {(() => {
-                                    const s = cloudStatusQuery.data?.status
-                                    const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'Starting'
-                                    const pct = typeof cloudStatusQuery.data?.progress === 'number'
-                                      ? `${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%`
-                                      : '0%'
-                                    return <span title={`Job ${cloudJobId}`}>{label} • {pct}</span>
-                                  })()}
-                                </div>
-                              </div>
-                            )}
+
 					</CardContent>
 				</Card>
-			)}
+			</TabsContent>
 
-			{activeStep === 'step4' && (
+			<TabsContent value="step4">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<Play className="h-5 w-5" />
-							Step 4: Preview Video
+							Step 4: Export
 						</CardTitle>
 						<CardDescription>
-							Preview and download your rendered video
+							Download your rendered video and subtitles
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -456,10 +474,14 @@ export default function SubtitlesPage() {
 							hasRenderedVideo={hasRenderedVideo}
 							thumbnail={media?.thumbnail ?? undefined}
 							cacheBuster={previewVersion}
+							showVideo={false}
 						/>
 					</CardContent>
 				</Card>
-			)}
+			</TabsContent>
+
+			{/* Close Tabs root after all contents */}
+			</Tabs>
 		</div>
 	)
 }

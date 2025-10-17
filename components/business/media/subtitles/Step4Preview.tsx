@@ -8,10 +8,11 @@ interface Step4PreviewProps {
 	hasRenderedVideo: boolean
 	thumbnail?: string
 	cacheBuster?: number
+  showVideo?: boolean
 }
 
 export function Step4Preview(props: Step4PreviewProps) {
-	const { mediaId, hasRenderedVideo, thumbnail, cacheBuster } = props
+	const { mediaId, hasRenderedVideo, thumbnail, cacheBuster, showVideo = true } = props
 
 	const baseRenderedUrl = `/api/media/${mediaId}/rendered`
 	const baseSubtitlesUrl = `/api/media/${mediaId}/subtitles`
@@ -40,30 +41,32 @@ export function Step4Preview(props: Step4PreviewProps) {
 
 	return (
 		<div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-			{/* 左侧：视频预览区域 */}
-			<div className="flex-1 lg:max-w-2xl">
-				<div className="space-y-3">
-					<h3 className="text-lg font-semibold flex items-center gap-2">
-						<Play className="h-5 w-5" />
-						Preview Video
-					</h3>
-					<div className="w-full bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px', maxHeight: '80vh' }}>
-            <video
-                controls
-                preload="metadata"
-                className="w-full h-full object-contain"
-                poster={thumbnail || undefined}
-                crossOrigin="anonymous"
-						>
-							<source src={videoSrc} type="video/mp4" />
-							Your browser does not support the video tag.
-						</video>
+			{/* 左侧：视频预览区域（可隐藏） */}
+			{showVideo && (
+				<div className="flex-1 lg:max-w-2xl">
+					<div className="space-y-3">
+						<h3 className="text-lg font-semibold flex items-center gap-2">
+							<Play className="h-5 w-5" />
+							Preview Video
+						</h3>
+						<div className="w-full bg-black rounded-lg overflow-hidden" style={{ minHeight: '300px', maxHeight: '80vh' }}>
+              <video
+                  controls
+                  preload="metadata"
+                  className="w-full h-full object-contain"
+                  poster={thumbnail || undefined}
+                  crossOrigin="anonymous"
+							>
+								<source src={videoSrc} type="video/mp4" />
+								Your browser does not support the video tag.
+							</video>
+						</div>
 					</div>
 				</div>
-			</div>
+			)}
 
 			{/* 右侧：下载区域 */}
-			<div className="flex-1 lg:max-w-xl">
+			<div className={showVideo ? 'flex-1 lg:max-w-xl' : 'w-full lg:max-w-2xl'}>
 				<div className="space-y-4">
 					{/* 下载标题 */}
 					<h3 className="text-lg font-semibold flex items-center gap-2">
