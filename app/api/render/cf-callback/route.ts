@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         .update(schema.media)
         .set(updates)
         .where(eq(schema.media.id, media.id))
-      console.log('[cf-callback] recorded render failure for job', payload.jobId, 'engine=', payload.engine, 'status=', payload.status)
+      console.log('[cf-callback] recorded render failure for job', payload.jobId, 'engine=', payload.engine, 'status=', payload.status, 'error=', errorMessage)
     }
 
     return NextResponse.json({ ok: true })

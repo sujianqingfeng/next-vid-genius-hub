@@ -35,6 +35,11 @@ async function handleRender(req, res) {
     : [48, 24]
   const sampleRate = Number(engineOptions.sampleRate || 16000)
 
+  // Log effective transcode plan (without leaking presigned URLs)
+  console.log(
+    `[audio-transcoder] accepted job ${jobId} with plan: maxBytes=${maxBytes} bytes, bitrates=[${bitrates.join(',')}], sampleRate=${sampleRate}`,
+  )
+
   async function postUpdate(status, extra = {}) {
     if (!callbackUrl) return
     const body = { jobId, status, ts: Date.now(), nonce: randomNonce(), ...extra }
@@ -65,6 +70,9 @@ async function handleRender(req, res) {
     const r = await fetch(inputAudioUrl)
     if (!r.ok) throw new Error(`download failed: ${r.status}`)
     const buf = Buffer.from(await r.arrayBuffer())
+    console.log(
+      `[audio-transcoder] ${jobId} downloaded source audio: ${buf.length} bytes (~${(buf.length / 1048576).toFixed(2)} MB)`,
+    )
     writeFileSync(inFile, buf)
 
     let done = false
@@ -72,11 +80,13 @@ async function handleRender(req, res) {
       const br = Math.max(16, Math.min(256, Number(bitrates[i]) || 48))
       console.log(`[audio-transcoder] ${jobId} ffmpeg pass ${i + 1}: ${br}kbps/${sampleRate}Hz`)
       await postUpdate('running', { phase: 'running', progress: 0.2 + i * 0.3 })
-      await execa('ffmpeg', [
+      const args = [
         '-y', '-hide_banner', '-loglevel', 'error',
         '-i', inFile,
         '-vn', '-ac', '1', '-ar', String(sampleRate), '-b:a', `${br}k`, outFile,
-      ])
+      ]
+      console.log('[audio-transcoder] ffmpeg command:', 'ffmpeg', args.join(' '))
+      await execa('ffmpeg', args)
       const size = statSync(outFile).size
       console.log(`[audio-transcoder] size after ${br}kbps: ${size} bytes`)
       if (size <= maxBytes || i === bitrates.length - 1) {
@@ -89,6 +99,9 @@ async function handleRender(req, res) {
           const errorText = await up.text().catch(() => '')
           throw new Error(`upload failed: ${up.status} ${errorText}`)
         }
+        console.log(
+          `[audio-transcoder] ${jobId} uploaded processed audio: ${size} bytes (<= ${maxBytes} target: ${size <= maxBytes})`,
+        )
         done = true
         break
       }
@@ -110,4 +123,3 @@ const server = http.createServer(async (req, res) => {
 })
 
 server.listen(PORT, () => console.log(`audio-transcoder listening on ${PORT}`))
-

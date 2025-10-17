@@ -189,6 +189,10 @@ export const transcribe = os
             model: modelId,
           },
         });
+        logger.info(
+          "transcription",
+          `Cloud ASR job started: ${job.jobId} (maxBytes=${targetBytes}, bitrates=[${targetBitrates.join(",")}], sr=${sampleRate})`,
+        );
         const startedAt = Date.now();
         let lastStatus = "queued";
         let vttUrl: string | undefined;
@@ -197,6 +201,10 @@ export const transcribe = os
           // 最多 180s
           const st = await getJobStatus(job.jobId);
           lastStatus = st.status;
+          logger.debug(
+            "transcription",
+            `Cloud ASR status for ${job.jobId}: ${st.status} phase=${(st as any)?.phase ?? "-"} progress=${(st as any)?.progress ?? "-"}`,
+          );
           if (st.status === "completed") {
             vttUrl = st.outputs?.vtt?.url;
             wordsUrl = st.outputs?.words?.url;
@@ -207,13 +215,13 @@ export const transcribe = os
               (st as any).error ||
               (st as any).message ||
               "Cloud ASR pipeline failed";
-            throw new Error(msg);
+            throw new Error(`job ${job.jobId}: ${msg}`);
           }
           await new Promise((r) => setTimeout(r, 1200));
         }
         if (!vttUrl)
           throw new Error(
-            `Cloud ASR pipeline timeout; last status=${lastStatus}`,
+            `Cloud ASR pipeline timeout for ${job.jobId}; last status=${lastStatus}`,
           );
         const vttResp = await fetch(vttUrl);
         if (!vttResp.ok) throw new Error(`fetch vtt failed: ${vttResp.status}`);

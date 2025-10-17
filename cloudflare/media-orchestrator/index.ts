@@ -435,6 +435,11 @@ async function handleContainerCallback(env: Env, req: Request) {
   }
   if (!body.jobId || !body.status) return json({ error: 'bad request' }, { status: 400 })
   console.log('[orchestrator] callback', body.jobId, body.status, 'phase=', body.phase, 'progress=', body.progress)
+  if (body.status === 'failed') {
+    // surface container error details for easier debugging
+    const err = (body as any)?.error
+    if (err) console.error('[orchestrator] container error for job', body.jobId, ':', err)
+  }
   const stub = jobStub(env, body.jobId)
   if (stub) {
     const r = await stub.fetch('https://do/progress', { method: 'POST', headers: { 'content-type': 'application/json' }, body: raw })
@@ -477,11 +482,23 @@ async function runAsrForPipeline(env: Env, doc: any) {
   const aiApiToken = env.CF_AI_API_TOKEN || (env as any).CLOUDFLARE_API_TOKEN
   if (!aiAccountId || !aiApiToken) throw new Error('asr-pipeline: Workers AI credentials not configured')
 
-  // Fetch downsampled audio bytes via presigned GET
+  // Fetch downsampled audio bytes via presigned GET (with small retries)
   const audioUrl = await presignS3(env, 'GET', bucket, audioKey, 600)
-  const audioResp = await fetch(audioUrl)
-  if (!audioResp.ok) throw new Error(`fetch audio failed: ${audioResp.status}`)
+  console.log('[asr-pipeline] fetching audio for ASR', { jobId, key: audioKey })
+  let audioResp: Response | undefined
+  let attempts = 0
+  while (attempts < 3) {
+    attempts += 1
+    const r = await fetch(audioUrl)
+    if (r.ok) { audioResp = r; break }
+    console.warn('[asr-pipeline] fetch audio attempt failed', { jobId, key: audioKey, attempt: attempts, status: r.status })
+    await new Promise((res) => setTimeout(res, 300 * attempts))
+  }
+  if (!audioResp || !audioResp.ok) throw new Error(`fetch audio failed: ${audioResp?.status || 'n/a'}`)
   const audioBuf = await audioResp.arrayBuffer()
+  try {
+    console.log('[asr-pipeline] audio bytes ready', { jobId, bytes: audioBuf.byteLength, mb: (audioBuf.byteLength / 1048576).toFixed(2) })
+  } catch {}
 
   // Decide model
   const model: string = (doc?.metadata?.model as string) || '@cf/openai/whisper-tiny-en'
@@ -489,6 +506,7 @@ async function runAsrForPipeline(env: Env, doc: any) {
   // Call Workers AI Whisper via REST
   // Workers AI run endpoint requires raw slug path (do not encode slashes)
   const runUrl = `https://api.cloudflare.com/client/v4/accounts/${aiAccountId}/ai/run/${model}`
+  console.log('[asr-pipeline] calling Workers AI', { jobId, model })
   const r = await fetch(runUrl, {
     method: 'POST',
     headers: {
@@ -500,6 +518,7 @@ async function runAsrForPipeline(env: Env, doc: any) {
   })
   if (!r.ok) {
     const t = await r.text().catch(() => '')
+    console.error('[asr-pipeline] Workers AI ASR failed', { jobId, status: r.status, size: audioBuf.byteLength })
     throw new Error(`Workers AI ASR failed: ${r.status} ${t}`)
   }
   const result = await r.json() as any
