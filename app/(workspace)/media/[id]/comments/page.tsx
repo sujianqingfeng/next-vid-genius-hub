@@ -36,6 +36,7 @@ import { STATUS_LABELS } from '~/lib/constants/media.constants'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 import { Progress } from '~/components/ui/progress'
+import { Switch } from '~/components/ui/switch'
 
 export default function CommentsPage() {
 	const params = useParams()
@@ -43,6 +44,7 @@ export default function CommentsPage() {
 	const queryClient = useQueryClient()
 	const [pages, setPages] = useState('3')
 	const [model, setModel] = useState<ChatModelId>(ChatModelIds[0] as ChatModelId)
+	const [forceTranslate, setForceTranslate] = useState(false)
 
 	// Download comments backend toggle (local/cloud)
 	const [commentsBackend, setCommentsBackend] = useState<'local' | 'cloud'>('cloud')
@@ -538,11 +540,28 @@ export default function CommentsPage() {
 											</SelectContent>
 										</Select>
 										<Button
-											onClick={() => translateCommentsMutation.mutate({ mediaId: id, model })}
+											onClick={() =>
+												translateCommentsMutation.mutate({
+													mediaId: id,
+													model,
+													force: forceTranslate,
+												})
+											}
 											disabled={translateCommentsMutation.isPending}
 										>
 											{translateCommentsMutation.isPending ? 'Translating...' : 'Translate'}
 										</Button>
+									</div>
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<Switch
+											id="force-translate"
+											checked={forceTranslate}
+											onCheckedChange={setForceTranslate}
+											disabled={translateCommentsMutation.isPending}
+										/>
+										<Label htmlFor="force-translate" className="text-sm text-muted-foreground">
+											Overwrite existing translations
+										</Label>
 									</div>
 								</div>
 

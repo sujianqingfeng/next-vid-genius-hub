@@ -81,10 +81,11 @@ export const translateComments = os
 		z.object({
 			mediaId: z.string(),
 			model: z.enum(AIModelIds).default('openai/gpt-4o-mini' as AIModelId),
+			force: z.boolean().optional().default(false),
 		}),
 	)
 	.handler(async ({ input }) => {
-		const { mediaId, model: modelId } = input
+		const { mediaId, model: modelId, force } = input
 		const media = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),
 		})
@@ -95,7 +96,7 @@ export const translateComments = os
 
 		// 翻译标题
 		let translatedTitle = media.translatedTitle
-		if (media.title && !translatedTitle) {
+		if (media.title && (force || !translatedTitle)) {
 			translatedTitle = await translateText(media.title, modelId)
 		}
 
