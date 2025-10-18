@@ -1,13 +1,14 @@
 import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { randomUUID, createHmac } from 'node:crypto'
+// crypto not needed after moving to shared callback utils
 import { spawn } from 'node:child_process'
 import net from 'node:net'
 import { readFileSync, unlinkSync } from 'node:fs'
 import { promises as fsPromises } from 'node:fs'
 import { setTimeout as delay } from 'node:timers/promises'
 import YAML from 'yaml'
+import { makeStatusCallback } from '@app/callback-utils'
 // Compose pipelines via shared @app/media-* packages
 // Compose pipelines with shared adapters from the monorepo packages
 import {
@@ -490,37 +491,7 @@ function sendJson(res, status, data) {
 	res.end(JSON.stringify(data))
 }
 
-function hmacHex(secret, payload) {
-	return createHmac('sha256', secret).update(payload).digest('hex')
-}
-
-function randomNonce() {
-	return randomUUID()
-}
-
-// Legacy helpers removed in favor of @app/media-core
-
-async function postUpdate(callbackUrl, body) {
-    if (!callbackUrl) return
-    const payload = JSON.stringify(body)
-    const signature = hmacHex(CALLBACK_SECRET, payload)
-    try {
-        const r = await fetch(callbackUrl, {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json',
-                'x-signature': signature,
-            },
-            body: payload,
-        })
-        if (!r.ok) {
-            const msg = await r.text().catch(() => '')
-            console.error('[media-downloader] callback non-2xx', r.status, msg)
-        }
-    } catch (e) {
-        console.error('[media-downloader] callback error', e?.message || e)
-    }
-}
+// Legacy helpers removed in favor of shared callback utils
 
 // Forward proxy resolution moved to @app/media-core
 
@@ -578,19 +549,15 @@ async function handleRender(req, res) {
 
 	sendJson(res, 202, { jobId })
 
+  const postUpdate = makeStatusCallback({ callbackUrl, secret: CALLBACK_SECRET, baseFields: { jobId } })
+
   const url = engineOptions.url
   const quality = engineOptions.quality || '1080p'
   const task = (engineOptions.task || '').toString().toLowerCase()
   const isCommentsOnly = task === 'comments'
 
   if (!url || (!isCommentsOnly && !outputVideoPutUrl) || (isCommentsOnly && !outputMetadataPutUrl)) {
-    await postUpdate(callbackUrl, {
-      jobId,
-      status: 'failed',
-      error: isCommentsOnly ? 'missing url or outputMetadataPutUrl' : 'missing url or outputVideoPutUrl',
-      ts: Date.now(),
-      nonce: randomNonce(),
-    })
+    await postUpdate('failed', { error: isCommentsOnly ? 'missing url or outputMetadataPutUrl' : 'missing url or outputVideoPutUrl' })
     return
   }
 
@@ -612,14 +579,8 @@ async function handleRender(req, res) {
   const commentsDir = join(tmpDir, `${jobId}-comments`)
 
 	const progress = async (phase, pct) => {
-		await postUpdate(callbackUrl, {
-			jobId,
-			status: phase === 'uploading' ? 'uploading' : 'running',
-			phase,
-			progress: pct,
-			ts: Date.now(),
-			nonce: randomNonce(),
-		})
+		const status = phase === 'uploading' ? 'uploading' : 'running'
+		await postUpdate(status, { phase, progress: pct })
 	}
 
   try {
@@ -659,13 +620,9 @@ async function handleRender(req, res) {
 
       const outputs = {}
       if (outputMetadataKey) outputs.metadata = { key: outputMetadataKey }
-      await postUpdate(callbackUrl, {
-        jobId,
-        status: 'completed',
+      await postUpdate('completed', {
         phase: 'completed',
         progress: 1,
-        ts: Date.now(),
-        nonce: randomNonce(),
         outputMetadataKey,
         outputs,
         metadata: {
@@ -714,13 +671,9 @@ async function handleRender(req, res) {
       }
       if (outputAudioKey) outputs.audio = { key: outputAudioKey }
       if (outputMetadataKey && (pipelineRes?.rawMetadata != null)) outputs.metadata = { key: outputMetadataKey }
-      await postUpdate(callbackUrl, {
-        jobId,
-        status: 'completed',
+      await postUpdate('completed', {
         phase: 'completed',
         progress: 1,
-        ts: Date.now(),
-        nonce: randomNonce(),
         outputKey: outputVideoKey,
         outputAudioKey,
         outputMetadataKey,
@@ -734,13 +687,7 @@ async function handleRender(req, res) {
     }
   } catch (error) {
 		console.error('[media-downloader] job failed', jobId, error)
-		await postUpdate(callbackUrl, {
-			jobId,
-			status: 'failed',
-			error: error instanceof Error ? error.message : 'unknown error',
-			ts: Date.now(),
-			nonce: randomNonce(),
-		})
+		await postUpdate('failed', { error: error instanceof Error ? error.message : 'unknown error' })
   } finally {
     try {
       await clashController?.cleanup()

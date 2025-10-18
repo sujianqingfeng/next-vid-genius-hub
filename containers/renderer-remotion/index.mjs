@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { spawn } from 'node:child_process'
-import crypto from 'node:crypto'
+import { makeStatusCallback } from '@app/callback-utils'
 import { fetch as undiciFetch } from 'undici'
 import { bundle } from '@remotion/bundler'
 import { getCompositions, renderMedia } from '@remotion/renderer'
@@ -15,14 +15,6 @@ const PORT = process.env.PORT || 8090
 function sendJson(res, code, data) {
   res.writeHead(code, { 'content-type': 'application/json' })
   res.end(JSON.stringify(data))
-}
-
-function hmacHex(secret, data) {
-  return crypto.createHmac('sha256', secret).update(data).digest('hex')
-}
-
-function randomNonce() {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
 }
 
 async function execFFmpeg(args) {
@@ -146,28 +138,13 @@ async function handleRender(req, res) {
   let clashController = null
 
   // Optional progress helper
+  const postUpdate = makeStatusCallback({ callbackUrl: cbUrl, secret, baseFields: { jobId }, fetchImpl: undiciFetch })
   async function progress(phase, pct) {
     if (!cbUrl) return
-    const data = { jobId, status: phase === 'uploading' ? 'uploading' : 'running', phase, progress: pct, ts: Date.now(), nonce: randomNonce() }
-    const sig = hmacHex(secret, JSON.stringify(data))
-    await undiciFetch(cbUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(data) }).catch(() => {})
+    const status = phase === 'uploading' ? 'uploading' : 'running'
+    await postUpdate(status, { phase, progress: pct })
   }
 
-  async function postUpdate(status, extra = {}) {
-    if (!cbUrl) return
-    const body = { jobId, status, ts: Date.now(), nonce: randomNonce(), ...extra }
-    const sig = hmacHex(secret, JSON.stringify(body))
-    try {
-      const r = await undiciFetch(cbUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(body) })
-      if (!r.ok) {
-        let msg = ''
-        try { msg = await r.text() } catch {}
-        console.error('[remotion] callback non-2xx', r.status, msg)
-      }
-    } catch (e) {
-      console.error('[remotion] callback error', e?.message || e)
-    }
-  }
 
   try {
     const inputVideoUrl = payload?.inputVideoUrl

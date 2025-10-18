@@ -14,6 +14,9 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^1.0.19
         version: 1.0.19(zod@4.1.11)
+      '@app/callback-utils':
+        specifier: workspace:*
+        version: link:packages/callback-utils
       '@app/media-comments':
         specifier: workspace:*
         version: link:packages/media-comments
@@ -101,9 +104,6 @@ importers:
       execa:
         specifier: ^9.5.2
         version: 9.6.0
-      get-youtube-id:
-        specifier: ^1.0.1
-        version: 1.0.1
       lucide-react:
         specifier: ^0.544.0
         version: 0.544.0(react@19.2.0)
@@ -186,6 +186,8 @@ importers:
       wrangler:
         specifier: ^4.42.1
         version: 4.42.1
+
+  packages/callback-utils: {}
 
   packages/media-comments:
     dependencies:
@@ -3327,9 +3329,6 @@ packages:
 
   get-tsconfig@4.10.1:
     resolution: {integrity: sha512-auHyJ4AgMz7vgS8Hp3N6HXSmlMdUyhSUrfBF16w153rxtLIEOE+HGqaBppczZvnHLqQJfiHotCYpNhl0lUROFQ==}
-
-  get-youtube-id@1.0.1:
-    resolution: {integrity: sha512-5yidLzoLXbtw82a/Wb7LrajkGn29BM6JuLWeHyNfzOGp1weGyW4+7eMz6cP23+etqj27VlOFtq8fFFDMLq/FXQ==}
 
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
@@ -7807,8 +7806,6 @@ snapshots:
   get-tsconfig@4.10.1:
     dependencies:
       resolve-pkg-maps: 1.0.0
-
-  get-youtube-id@1.0.1: {}
 
   glob-parent@5.1.2:
     dependencies:

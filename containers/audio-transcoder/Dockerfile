@@ -8,6 +8,7 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY containers/audio-transcoder/package.json ./package.json
+COPY packages/callback-utils ./packages/callback-utils
 RUN npm install --omit=dev
 
 COPY containers/audio-transcoder/index.mjs ./index.mjs

@@ -1,5 +1,5 @@
 import { CF_ORCHESTRATOR_URL, JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
-import { buildSignedBody } from '~/lib/security/hmac'
+import { postSignedJson } from '@app/callback-utils'
 
 type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'
 
@@ -38,18 +38,8 @@ function requireOrchestratorUrl(): string {
 export async function startCloudJob(input: StartJobInput): Promise<StartJobResponse> {
   const base = requireOrchestratorUrl()
   const url = `${base.replace(/\/$/, '')}/jobs`
-
   const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
-  const { payload, signature } = buildSignedBody(secret, input)
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-signature': signature,
-    },
-    body: payload,
-  })
+  const res = await postSignedJson(url, secret, input)
   if (!res.ok) throw new Error(`startCloudJob failed: ${res.status} ${await res.text()}`)
   return (await res.json()) as StartJobResponse
 }
@@ -86,18 +76,8 @@ export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJob
   if (keys.length > 0) {
     const url = `${base.replace(/\/$/, '')}/debug/delete`
     const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
-    const { payload, signature } = buildSignedBody(secret, { keys })
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-signature': signature,
-      },
-      body: payload,
-    })
-    if (!res.ok) {
-      throw new Error(`deleteCloudArtifacts: delete keys failed: ${res.status} ${await res.text()}`)
-    }
+    const res = await postSignedJson(url, secret, { keys })
+    if (!res.ok) throw new Error(`deleteCloudArtifacts: delete keys failed: ${res.status} ${await res.text()}`)
   }
 
   // 2) Delete orchestrator artifacts by job id (if any)

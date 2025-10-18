@@ -2,22 +2,14 @@ import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readFileSync, writeFileSync, statSync, unlinkSync } from 'node:fs'
-import crypto from 'node:crypto'
 import { execa } from 'execa'
+import { makeStatusCallback } from '@app/callback-utils'
 
 const PORT = process.env.PORT || 8080
 
 function sendJson(res, code, data) {
   res.writeHead(code, { 'content-type': 'application/json' })
   res.end(JSON.stringify(data))
-}
-
-function hmacHex(secret, data) {
-  return crypto.createHmac('sha256', secret).update(data).digest('hex')
-}
-
-function randomNonce() {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
 }
 
 async function handleRender(req, res) {
@@ -40,20 +32,7 @@ async function handleRender(req, res) {
     `[audio-transcoder] accepted job ${jobId} with plan: maxBytes=${maxBytes} bytes, bitrates=[${bitrates.join(',')}], sampleRate=${sampleRate}`,
   )
 
-  async function postUpdate(status, extra = {}) {
-    if (!callbackUrl) return
-    const body = { jobId, status, ts: Date.now(), nonce: randomNonce(), ...extra }
-    const sig = hmacHex(secret, JSON.stringify(body))
-    try {
-      const r = await fetch(callbackUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(body) })
-      if (!r.ok) {
-        const msg = await r.text().catch(() => '')
-        console.error('[audio-transcoder] callback non-2xx', r.status, msg)
-      }
-    } catch (e) {
-      console.error('[audio-transcoder] callback error', e?.message || e)
-    }
-  }
+  const postUpdate = makeStatusCallback({ callbackUrl, secret, baseFields: { jobId } })
 
   if (!inputAudioUrl || !outputAudioPutUrl) {
     console.error('[audio-transcoder] missing input/output URL')

@@ -26,6 +26,7 @@ COPY containers/renderer-remotion/package.json ./package.json
 # Bring in local workspace package for installation via file: dependency
 COPY packages/media-comments ./packages/media-comments
 COPY packages/media-core ./packages/media-core
+COPY packages/callback-utils ./packages/callback-utils
 RUN npm i --omit=dev
 
 RUN mkdir -p /app/clash /app/clash/providers

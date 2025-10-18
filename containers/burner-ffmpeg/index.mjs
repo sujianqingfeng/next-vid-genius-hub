@@ -2,7 +2,7 @@ import http from 'node:http'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import crypto from 'node:crypto'
+import { makeStatusCallback } from '@app/callback-utils'
 import { renderVideoWithSubtitles } from '@app/media-subtitles'
 
 const PORT = process.env.PORT || 8080
@@ -12,14 +12,6 @@ const PORT = process.env.PORT || 8080
 function sendJson(res, code, data) {
   res.writeHead(code, { 'content-type': 'application/json' })
   res.end(JSON.stringify(data))
-}
-
-function hmacHex(secret, data) {
-  return crypto.createHmac('sha256', secret).update(data).digest('hex')
-}
-
-function randomNonce() {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
 }
 
 async function handleRender(req, res) {
@@ -32,21 +24,7 @@ async function handleRender(req, res) {
 
   const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {}, callbackUrl } = payload
   const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
-
-  async function postUpdate(status, extra = {}) {
-    if (!callbackUrl) return
-    const body = { jobId, status, ts: Date.now(), nonce: randomNonce(), ...extra }
-    const sig = hmacHex(secret, JSON.stringify(body))
-    try {
-      const r = await fetch(callbackUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(body) })
-      if (!r.ok) {
-        const msg = await r.text().catch(() => '')
-        console.error('[render] callback non-2xx', r.status, msg)
-      }
-    } catch (e) {
-      console.error('[render] callback error', e?.message || e)
-    }
-  }
+  const postUpdate = makeStatusCallback({ callbackUrl, secret, baseFields: { jobId } })
 
   if (!inputVideoUrl || !inputVttUrl || !outputPutUrl) {
     console.error('[render] missing required URLs in payload')
@@ -56,9 +34,8 @@ async function handleRender(req, res) {
 
   const progress = async (phase, pct) => {
     if (!callbackUrl) return
-    const p = { jobId, status: phase === 'uploading' ? 'uploading' : 'running', phase, progress: pct, ts: Date.now(), nonce: randomNonce() }
-    const sig = hmacHex(secret, JSON.stringify(p))
-    try { await fetch(callbackUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(p) }) } catch {}
+    const status = phase === 'uploading' ? 'uploading' : 'running'
+    try { await postUpdate(status, { phase, progress: pct }) } catch {}
   }
 
   try {

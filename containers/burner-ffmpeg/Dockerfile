@@ -11,6 +11,7 @@ WORKDIR /app
 # Install container deps and local monorepo packages needed at runtime
 COPY containers/burner-ffmpeg/package.json ./package.json
 COPY packages/media-subtitles ./packages/media-subtitles
+COPY packages/callback-utils ./packages/callback-utils
 RUN npm install --omit=dev
 
 # Add container entrypoint

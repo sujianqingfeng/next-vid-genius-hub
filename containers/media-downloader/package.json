@@ -8,6 +8,7 @@
     "@app/media-core": "file:./packages/media-core",
     "@app/media-node": "file:./packages/media-node",
     "@app/media-providers": "file:./packages/media-providers",
+    "@app/callback-utils": "file:./packages/callback-utils",
     "yaml": "^2.6.0"
   }
 }

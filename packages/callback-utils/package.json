@@ -1,0 +1,19 @@
+{
+  "name": "@app/callback-utils",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared HMAC signing and callback posting helpers for containers/workers",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  }
+}
+

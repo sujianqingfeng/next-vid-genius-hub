@@ -70,6 +70,7 @@
     "@app/media-node": "workspace:*",
     "@app/media-providers": "workspace:*",
     "@app/media-subtitles": "workspace:*",
+    "@app/callback-utils": "workspace:*",
     "yt-dlp-wrap": "^2.3.12",
     "zod": "^4.1.11"
   },
