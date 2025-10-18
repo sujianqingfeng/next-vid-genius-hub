@@ -45,31 +45,10 @@ export async function downloadVideo(url, quality, outputPath, options = {}) {
   const capture = Boolean(options.captureJson)
   const argsWithJson = capture ? [...args, '--print-json', '--no-playlist'] : args
 
-  if (await hasBinary('yt-dlp')) {
-    const { stdout } = await run('yt-dlp', argsWithJson)
-    if (!capture) return { rawMetadata: undefined }
-    const lines = String(stdout || '')
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean)
-    for (let i = lines.length - 1; i >= 0; i--) {
-      try {
-        const obj = JSON.parse(lines[i])
-        return { rawMetadata: obj }
-      } catch {}
-    }
-    return { rawMetadata: undefined }
+  if (!(await hasBinary('yt-dlp'))) {
+    throw new Error('yt-dlp binary not found on PATH')
   }
-
-  let YTDlpWrap
-  try {
-    const mod = await import('yt-dlp-wrap')
-    YTDlpWrap = mod.default || mod
-  } catch (e) {
-    throw new Error('yt-dlp not found on PATH and yt-dlp-wrap is not installed')
-  }
-  const ytdlp = new YTDlpWrap()
-  const stdout = await ytdlp.execPromise([url, '-f', format, '--merge-output-format', 'mp4', '-o', outputPath, ...(capture ? ['--print-json', '--no-playlist'] : [])])
+  const { stdout } = await run('yt-dlp', argsWithJson)
   if (!capture) return { rawMetadata: undefined }
   const lines = String(stdout || '')
     .split('\n')
@@ -98,4 +77,3 @@ export async function extractAudio(videoPath, audioPath) {
 }
 
 export default { downloadVideo, extractAudio }
-
