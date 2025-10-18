@@ -449,37 +449,53 @@ export default function CommentsPage() {
 												<Download className="w-4 h-4 text-muted-foreground" />
 												<h4 className="font-medium text-sm">Download Comments</h4>
 											</div>
-											<div className="grid grid-cols-2 gap-2">
-												<Select value={pages} onValueChange={setPages}>
-													<SelectTrigger className="w-full">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														{[...Array(10).keys()].map((i) => (
-															<SelectItem key={i + 1} value={String(i + 1)}>
-																{i + 1} page{i > 0 ? 's' : ''}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-												<div className="flex gap-1">
-													<Button
-														variant={commentsBackend === 'cloud' ? 'default' : 'outline'}
-														size="sm"
-														onClick={() => setCommentsBackend('cloud')}
-														className="flex-1"
-													>
-														Cloud
-													</Button>
-													<Button
-														variant={commentsBackend === 'local' ? 'default' : 'outline'}
-														size="sm"
-														onClick={() => setCommentsBackend('local')}
-														className="flex-1"
-													>
-														Local
-													</Button>
+											<div className="space-y-2">
+												<div>
+													<Label className="text-xs text-muted-foreground">Pages:</Label>
+													<Select value={pages} onValueChange={setPages}>
+														<SelectTrigger className="w-full">
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{[...Array(10).keys()].map((i) => (
+																<SelectItem key={i + 1} value={String(i + 1)}>
+																	{i + 1} page{i > 0 ? 's' : ''}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
 												</div>
+												<div>
+													<Label className="text-xs text-muted-foreground">Backend:</Label>
+													<div className="flex gap-1">
+														<Button
+															variant={commentsBackend === 'cloud' ? 'default' : 'outline'}
+															size="sm"
+															onClick={() => setCommentsBackend('cloud')}
+															className="flex-1"
+														>
+															Cloud
+														</Button>
+														<Button
+															variant={commentsBackend === 'local' ? 'default' : 'outline'}
+															size="sm"
+															onClick={() => setCommentsBackend('local')}
+															className="flex-1"
+														>
+															Local
+														</Button>
+													</div>
+												</div>
+												{commentsBackend === 'cloud' && (
+													<div>
+														<Label className="text-xs text-muted-foreground">Proxy:</Label>
+														<ProxySelector
+															value={selectedProxyId}
+															onValueChange={setSelectedProxyId}
+															disabled={startCloudCommentsMutation.isPending || downloadCommentsMutation.isPending}
+														/>
+													</div>
+												)}
 											</div>
 											<Button
 												onClick={() => {
@@ -500,20 +516,13 @@ export default function CommentsPage() {
 												{commentsBackend === 'cloud'
 													? startCloudCommentsMutation.isPending
 														? 'Queuing...'
-														: 'Start'
+														: 'Start Download'
 													: downloadCommentsMutation.isPending
 														? 'Downloading...'
-														: 'Start'}
+														: 'Start Download'}
 											</Button>
-											{commentsBackend === 'cloud' && (
-												<ProxySelector
-													value={selectedProxyId}
-													onValueChange={setSelectedProxyId}
-													disabled={startCloudCommentsMutation.isPending || downloadCommentsMutation.isPending}
-												/>
-											)}
 											{commentsBackend === 'cloud' && commentsCloudJobId && (
-												<div className="space-y-2">
+												<div className="space-y-2 pt-2 border-t">
 													<Progress
 														value={
 															typeof cloudCommentsStatusQuery.data?.progress === 'number'
@@ -604,77 +613,83 @@ export default function CommentsPage() {
 														</SelectContent>
 													</Select>
 												</div>
-												<div className="flex gap-1">
-													<Button
-														variant={renderBackend === 'cloud' ? 'default' : 'outline'}
-														size="sm"
-														onClick={() => setRenderBackend('cloud')}
-														className="flex-1"
-													>
-														Cloud
-													</Button>
-													<Button
-														variant={renderBackend === 'local' ? 'default' : 'outline'}
-														size="sm"
-														onClick={() => setRenderBackend('local')}
-														className="flex-1"
-													>
-														Local
-													</Button>
+												<div>
+													<Label className="text-xs text-muted-foreground">Backend:</Label>
+													<div className="flex gap-1">
+														<Button
+															variant={renderBackend === 'cloud' ? 'default' : 'outline'}
+															size="sm"
+															onClick={() => setRenderBackend('cloud')}
+															className="flex-1"
+														>
+															Cloud
+														</Button>
+														<Button
+															variant={renderBackend === 'local' ? 'default' : 'outline'}
+															size="sm"
+															onClick={() => setRenderBackend('local')}
+															className="flex-1"
+														>
+															Local
+														</Button>
+													</div>
 												</div>
-												<Button
-													onClick={() => {
-														if (renderBackend === 'cloud') {
-															startCloudRenderMutation.mutate({
-																mediaId: id,
-																proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
-																sourcePolicy,
-															})
-														} else {
-															renderMutation.mutate({ mediaId: id, sourcePolicy })
-														}
-													}}
-													disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
-													className="w-full"
-												>
-													{renderBackend === 'cloud'
-														? startCloudRenderMutation.isPending
-															? 'Queuing...'
-															: 'Start'
-														: renderMutation.isPending
-															? 'Rendering...'
-															: 'Start'}
-												</Button>
 												{renderBackend === 'cloud' && (
-													<ProxySelector
-														value={renderProxyId}
-														onValueChange={setRenderProxyId}
-														disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
-													/>
-												)}
-												{renderBackend === 'cloud' && cloudJobId && (
-													<div className="space-y-2">
-														<Progress
-															value={
-																typeof cloudStatusQuery.data?.progress === 'number'
-																	? Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)
-																	: 0
-															}
-															className="h-2"
+													<div>
+														<Label className="text-xs text-muted-foreground">Proxy:</Label>
+														<ProxySelector
+															value={renderProxyId}
+															onValueChange={setRenderProxyId}
+															disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
 														/>
-														<div className="text-xs text-muted-foreground text-center">
-															{(() => {
-																const s = cloudStatusQuery.data?.status
-																const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'Starting'
-																const pct = typeof cloudStatusQuery.data?.progress === 'number'
-																	? `${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%`
-																	: '0%'
-																return <span title={`Job ${cloudJobId}`}>{label} • {pct}</span>
-															})()}
-														</div>
 													</div>
 												)}
 											</div>
+											<Button
+												onClick={() => {
+													if (renderBackend === 'cloud') {
+														startCloudRenderMutation.mutate({
+															mediaId: id,
+															proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
+															sourcePolicy,
+														})
+													} else {
+														renderMutation.mutate({ mediaId: id, sourcePolicy })
+													}
+												}}
+												disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
+												className="w-full"
+											>
+												{renderBackend === 'cloud'
+													? startCloudRenderMutation.isPending
+														? 'Queuing...'
+														: 'Start Render'
+													: renderMutation.isPending
+														? 'Rendering...'
+														: 'Start Render'}
+											</Button>
+											{renderBackend === 'cloud' && cloudJobId && (
+												<div className="space-y-2 pt-2 border-t">
+													<Progress
+														value={
+															typeof cloudStatusQuery.data?.progress === 'number'
+																? Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)
+																: 0
+														}
+														className="h-2"
+													/>
+													<div className="text-xs text-muted-foreground text-center">
+														{(() => {
+															const s = cloudStatusQuery.data?.status
+															const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'Starting'
+															const pct = typeof cloudStatusQuery.data?.progress === 'number'
+																? `${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%`
+																: '0%'
+															return <span title={`Job ${cloudJobId}`}>{label} • {pct}</span>
+														})()}
+													</div>
+												</div>
+											)}
 										</div>
 									</TabsContent>
 								</Tabs>
