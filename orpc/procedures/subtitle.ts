@@ -677,24 +677,29 @@ export const optimizeTranscription = os
     // Compose VTT
     let optimizedVtt = segmentsToVtt(words, segments);
 
-    // Optional text-only correction while preserving VTT structure exactly
-    if (textCorrect) {
-      const system = `You are an English proofreader. You will receive the content of a WebVTT file.
-Your task: fix minor spelling/grammar errors ONLY.
+    // Optional post-processing via prompt: light cleanup and/or text correction
+    if (textCorrect || lightCleanup) {
+      const ops: string[] = [];
+      if (textCorrect) ops.push("fix minor English spelling/grammar only");
+      if (lightCleanup) {
+        ops.push(
+          "collapse multiple spaces",
+          "remove leading bullets/dashes (e.g., -, •) at line starts",
+          "remove trailing sentence-ending punctuation in both languages (.,!?，。！？…)",
+        );
+      }
+      const system = `You receive the content of a WebVTT file. Perform the following operations conservatively: ${ops.join(
+        "; ",
+      )}.
 Strict constraints:
-- Preserve the VTT structure EXACTLY (timestamps, order, line breaks, number of lines per cue)
-- Do NOT add or remove cues or timestamps
-- Do NOT merge or split lines
-- Do NOT change punctuation spacing except to fix actual typos
-- Keep all non-English tokens unchanged.
-Return the corrected VTT content as-is.`;
+- Preserve the VTT structure EXACTLY (timestamps, order, number of cues, number of lines per cue)
+- Do NOT add, remove, merge, or split cues/lines
+- Do NOT change timestamps or their formatting
+- Keep non-English tokens unchanged
+- Output the cleaned VTT content as-is, no extra commentary`;
       try {
         const { text } = await import("~/lib/ai/chat").then((m) =>
-          m.generateText({
-            model,
-            system,
-            prompt: optimizedVtt,
-          }),
+          m.generateText({ model, system, prompt: optimizedVtt }),
         );
         const v = text.trim();
         const check = validateVttContent(v);
@@ -704,7 +709,9 @@ Return the corrected VTT content as-is.`;
       } catch (err) {
         logger.warn(
           "transcription",
-          `Text correction skipped: ${err instanceof Error ? err.message : String(err)}`,
+          `Post-process (lightCleanup/textCorrect) skipped: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
         );
       }
     }
