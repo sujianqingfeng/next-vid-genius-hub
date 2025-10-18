@@ -67,10 +67,18 @@ export default function SubtitlesPage() {
 	})
 
 	// 设置默认值
-	const selectedModel = workflowState.selectedModel as WhisperModel || getDefaultModel('local')
-	const selectedProvider = workflowState.selectedProvider as TranscriptionProvider || 'local'
-    const selectedAIModel = workflowState.selectedAIModel as ChatModelId || ChatModelIds[0]
-    const downsampleBackend = (workflowState.downsampleBackend as ('auto'|'local'|'cloud')) || 'auto'
+	const selectedProvider =
+		(workflowState.selectedProvider as TranscriptionProvider) || 'cloudflare'
+	const selectedModel =
+		(workflowState.selectedModel as WhisperModel) ||
+		(selectedProvider === 'cloudflare'
+			? 'whisper-tiny-en'
+			: getDefaultModel(selectedProvider))
+	const selectedAIModel =
+		(workflowState.selectedAIModel as ChatModelId) || ChatModelIds[0]
+	const downsampleBackend =
+		((workflowState.downsampleBackend as ('auto' | 'local' | 'cloud')) ||
+			'cloud')
 
 	// 渲染后端选择（local | cloud）
 	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>(
