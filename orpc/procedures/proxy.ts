@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { os } from '@orpc/server'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, sql } from 'drizzle-orm'
 import { logger } from '~/lib/logger'
 import { db, schema } from '~/lib/db'
 import { ProxyNodeUrlSchema, ProxyProtocolEnum, parseSSRSubscription } from '~/lib/proxy/parser'
@@ -205,26 +205,31 @@ export const getProxies = os
 			whereCondition = eq(schema.proxies.subscriptionId, input.subscriptionId)
 		}
 
-		const [proxyList, totalCount] = await Promise.all([
-			db.query.proxies.findMany({
-				where: whereCondition,
-				orderBy: [desc(schema.proxies.createdAt)],
-				limit: input.limit,
-				offset,
-			}),
-			db.query.proxies.findMany({
-				where: whereCondition,
-			}).then(list => list.length),
-		])
+    const [proxyList, countRows] = await Promise.all([
+      db.query.proxies.findMany({
+        where: whereCondition,
+        orderBy: [desc(schema.proxies.createdAt)],
+        limit: input.limit,
+        offset,
+      }),
+      whereCondition
+        ? db
+            .select({ count: sql<number>`count(*)` })
+            .from(schema.proxies)
+            .where(whereCondition)
+        : db
+            .select({ count: sql<number>`count(*)` })
+            .from(schema.proxies),
+    ])
 
-		return {
-			proxies: proxyList,
-			total: totalCount,
-			page: input.page,
-			limit: input.limit,
-			totalPages: Math.ceil(totalCount / input.limit),
-		}
-	})
+    return {
+      proxies: proxyList,
+      total: Number((countRows?.[0]?.count ?? 0) as number),
+      page: input.page,
+      limit: input.limit,
+      totalPages: Math.ceil(Number((countRows?.[0]?.count ?? 0) as number) / input.limit),
+    }
+  })
 
 export const getProxy = os
 	.input(z.object({ id: z.string() }))
