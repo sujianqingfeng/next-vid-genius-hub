@@ -6,11 +6,12 @@
 
 - MinIO（S3 兼容）作为本地对象存储
 - 渲染容器 `burner-ffmpeg`（仅访问 S3）
-- Worker（wrangler dev）负责：
-  - 读取 Next 的 `/api/media/:id/{source|subtitles}`，镜像到 S3（MinIO）
-  - 生成 S3 预签名 URL（GET/PUT）
-  - 触发容器 /render，仅下发 S3 URL
-  - 轮询时 HEAD S3 输出对象，完成后回调 Next 落库
+- Worker（wrangler dev）负责（桶优先）：
+  - 直接从桶读取/检测输入（`inputs/...` 或 manifest 指针），不再从 Next 拉取源数据
+  - 生成 S3 预签名 URL（GET/PUT），仅将 URL 下发给容器
+  - 触发容器 `/render` 并在 Durable Object 中维护强一致状态
+  - 轮询时通过 HEAD 检测桶内产物；完成后回调 Next 落库
+  - 当字幕渲染完成时，自动将成品物化到 `inputs/videos/subtitles/<mediaId>.mp4`，并写入 `manifest.subtitlesInputKey`
 
 ## 启动 MinIO 与容器
 
@@ -83,8 +84,50 @@ pnpm cf:dev
 ## Next 本地
 
 ```bash
-pnpm dev:host   # 监听 0.0.0.0:3000（供 Worker 拉取源素材）
+pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中转）
 ```
+
+## 桶优先与清单（manifest）
+
+- 清单位置：`manifests/media/<mediaId>.json`
+- 字段说明：
+  - `remoteVideoKey` / `remoteAudioKey` / `remoteMetadataKey`：云下载产物的远端 Key
+  - `vttKey`：字幕文本输入（`inputs/subtitles/<mediaId>.vtt`）
+  - `commentsKey`：评论数据输入（`inputs/comments/<mediaId>.json`）
+  - `subtitlesInputKey`：带字幕视频输入（`inputs/videos/subtitles/<mediaId>.mp4`）
+  - `renderedSubtitlesJobId` / `renderedInfoJobId`：渲染作业号（观测用）
+
+示例：
+
+```json
+{
+  "mediaId": "abc123",
+  "remoteVideoKey": "downloads/abc123/job_xyz/video.mp4",
+  "remoteAudioKey": "downloads/abc123/job_xyz/audio.mp3",
+  "remoteMetadataKey": "downloads/abc123/job_xyz/metadata.json",
+  "vttKey": "inputs/subtitles/abc123.vtt",
+  "commentsKey": "inputs/comments/abc123.json",
+  "subtitlesInputKey": "inputs/videos/subtitles/abc123.mp4",
+  "renderedSubtitlesJobId": "job_sub_1",
+  "renderedInfoJobId": "job_info_2"
+}
+```
+
+物化职责：
+- Next：
+  - 转写完成后写入 `inputs/subtitles/<mediaId>.vtt` 并更新 `vttKey`
+  - 评论下载/翻译后写入 `inputs/comments/<mediaId>.json` 并更新 `commentsKey`
+  - 云下载回调时写入 `remote*Key`
+- Worker：
+  - 字幕渲染完成后，将成品物化到 `inputs/videos/subtitles/<mediaId>.mp4` 并更新 `subtitlesInputKey`
+
+严格模式（无回退）：
+- Worker 启动任务时仅依赖桶与 manifest；若缺少所需输入，直接返回 `missing_inputs`。
+- 启动任务前请确保：
+  - 原始视频：`inputs/videos/<mediaId>.mp4` 或存在 `remoteVideoKey`
+  - 字幕文本（字幕烧录时需要）：`inputs/subtitles/<mediaId>.vtt` 或 `vttKey`
+  - 评论数据（Remotion 渲染时需要）：`inputs/comments/<mediaId>.json` 或 `commentsKey`
+  - 带字幕视频（若源策略选择 subtitles）：`inputs/videos/subtitles/<mediaId>.mp4` 或 `subtitlesInputKey`
 
 ### 本地是否回传大文件（ENABLE_LOCAL_HYDRATE）
 
@@ -95,7 +138,7 @@ pnpm dev:host   # 监听 0.0.0.0:3000（供 Worker 拉取源素材）
 
 1) 在字幕流程 Step 3 或下载页选择 Cloud → 启动任务。
 2) Worker 日志：
-   - `start job` → `mirror inputs to S3` → `trigger container`。
+   - `start job` → `resolve inputs from bucket/manifest` → `trigger container`。
 3) 容器日志：
    - 字幕渲染：`preparing` → `inputs ready` → `20%/30%/...`（每10%一条）→ `ffmpeg done` → `uploading artifact`。
    - 长时任务心跳：每 30s 打印一次 `running… <x>%`，频率可通过环境变量 `RENDER_HEARTBEAT_MS` 调整（设为 `0` 关闭）。

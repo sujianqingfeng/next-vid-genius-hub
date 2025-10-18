@@ -10,6 +10,7 @@ import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
 import { readMetadataSummary } from '@app/media-core'
 import { logger } from '~/lib/logger'
+import { upsertMediaManifest } from '~/lib/cloudflare'
 
 type CallbackPayload = {
   jobId: string
@@ -74,13 +75,23 @@ export async function POST(req: NextRequest) {
           .update(schema.media)
           .set({ videoWithInfoPath: `remote:orchestrator:${payload.jobId}` })
           .where(eq(schema.media.id, media.id))
-        
+        // Update manifest to record rendered info artifact
+        try {
+          await upsertMediaManifest(payload.mediaId, { renderedInfoJobId: payload.jobId })
+        } catch (err) {
+          logger.warn('api', `[cf-callback] manifest (info) update skipped: ${err instanceof Error ? err.message : String(err)}`)
+        }
       } else {
         await db
           .update(schema.media)
           .set({ videoWithSubtitlesPath: `remote:orchestrator:${payload.jobId}` })
           .where(eq(schema.media.id, media.id))
-        
+        // Update manifest to record rendered subtitles artifact
+        try {
+          await upsertMediaManifest(payload.mediaId, { renderedSubtitlesJobId: payload.jobId })
+        } catch (err) {
+          logger.warn('api', `[cf-callback] manifest (subtitles) update skipped: ${err instanceof Error ? err.message : String(err)}`)
+        }
       }
     } else if (payload.status === 'failed' || payload.status === 'canceled') {
       // 非 downloader 引擎的失败/取消也落库，便于在媒体详情中留痕
@@ -233,6 +244,17 @@ async function handleCloudDownloadCallback(
   if (metadataFromPayload?.source) updates.source = metadataFromPayload.source
 
   await db.update(schema.media).set(updates).where(where)
+
+  // Update manifest with remote object keys (best-effort)
+  try {
+    await upsertMediaManifest(payload.mediaId, {
+      remoteVideoKey: payload.outputs?.video?.key ?? null,
+      remoteAudioKey: payload.outputs?.audio?.key ?? null,
+      remoteMetadataKey: payload.outputs?.metadata?.key ?? null,
+    })
+  } catch (err) {
+    logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
+  }
 }
 
 async function downloadArtifact(url: string, filePath: string) {

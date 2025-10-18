@@ -12,7 +12,7 @@ import {
 import { VIDEO_WITH_INFO_FILENAME } from '~/lib/config/app.config'
 import { db, schema } from '~/lib/db'
 import { renderVideoWithRemotion } from '~/lib/media/remotion/renderer'
-import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
+import { startCloudJob, getJobStatus, presignGetByKey, putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
 import type { RenderProgressEvent } from '~/lib/media/remotion/renderer'
 import {
 	downloadYoutubeComments as coreDownloadYoutubeComments,
@@ -66,7 +66,7 @@ export const downloadComments = os
 			return { success: true, count: 0 }
 		}
 
-		await db
+    await db
 			.update(schema.media)
 			.set({
 				comments,
@@ -74,6 +74,24 @@ export const downloadComments = os
 				commentsDownloadedAt: new Date(),
 			})
 			.where(eq(schema.media.id, mediaId))
+
+        // Materialize comments-data JSON to bucket and update manifest (best-effort)
+        try {
+            const key = `inputs/comments/${mediaId}.json`
+            const videoInfo = {
+                title: media.title || 'Untitled',
+                translatedTitle: media.translatedTitle || undefined,
+                viewCount: media.viewCount ?? 0,
+                author: media.author || undefined,
+                thumbnail: media.thumbnail || undefined,
+                series: '外网真实评论',
+            }
+            await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments }))
+            await upsertMediaManifest(mediaId, { commentsKey: key })
+            logger.info('comments', `comments-data materialized: ${key}`)
+        } catch (err) {
+            logger.warn('comments', `comments-data materialization skipped: ${err instanceof Error ? err.message : String(err)}`)
+        }
 
 		return { success: true, count: comments.length }
 	})
@@ -120,7 +138,7 @@ export const translateComments = os
 			}),
 		)
 
-		await db
+    await db
 			.update(schema.media)
 			.set({
 				comments: translatedComments,
@@ -128,6 +146,24 @@ export const translateComments = os
 				commentCount: translatedComments.length,
 			})
 			.where(eq(schema.media.id, mediaId))
+
+    // Materialize updated comments-data JSON to bucket and update manifest (best-effort)
+    try {
+        const key = `inputs/comments/${mediaId}.json`
+        const videoInfo = {
+            title: media.title || 'Untitled',
+            translatedTitle: translatedTitle || undefined,
+            viewCount: media.viewCount ?? 0,
+            author: media.author || undefined,
+            thumbnail: media.thumbnail || undefined,
+            series: '外网真实评论',
+        }
+        await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments: translatedComments }))
+        await upsertMediaManifest(mediaId, { commentsKey: key })
+        logger.info('comments', `comments-data materialized (translated): ${key}`)
+    } catch (err) {
+        logger.warn('comments', `comments-data materialization (translated) skipped: ${err instanceof Error ? err.message : String(err)}`)
+    }
 
 		return { success: true }
 	})
@@ -423,6 +459,25 @@ export const finalizeCloudCommentsDownload = os
 				commentsDownloadedAt: new Date(),
 			})
 			.where(eq(schema.media.id, mediaId))
+
+    // Materialize comments-data JSON to bucket and update manifest (best-effort)
+    try {
+        const key = `inputs/comments/${mediaId}.json`
+        const media2 = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
+        const videoInfo = {
+            title: media2?.title || 'Untitled',
+            translatedTitle: media2?.translatedTitle || undefined,
+            viewCount: media2?.viewCount ?? 0,
+            author: media2?.author || undefined,
+            thumbnail: media2?.thumbnail || undefined,
+            series: '外网真实评论',
+        }
+        await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments }))
+        await upsertMediaManifest(mediaId, { commentsKey: key })
+        logger.info('comments', `comments-data materialized (cloud): ${key}`)
+    } catch (err) {
+        logger.warn('comments', `comments-data materialization (cloud) skipped: ${err instanceof Error ? err.message : String(err)}`)
+    }
 
 		return { success: true, count: comments.length }
 	})

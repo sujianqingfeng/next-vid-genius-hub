@@ -21,7 +21,7 @@ import {
   DEFAULT_TRANSLATION_PROMPT_ID,
 } from "~/lib/subtitle/config/prompts";
 import { subtitleRenderConfigSchema } from "~/lib/subtitle/types";
-import { startCloudJob, getJobStatus, presignGetByKey } from "~/lib/cloudflare";
+import { startCloudJob, getJobStatus, presignGetByKey, putObjectByKey, upsertMediaManifest } from "~/lib/cloudflare";
 import { tmpdir } from "node:os";
 import {
   parseVttCues,
@@ -309,6 +309,19 @@ export const transcribe = os
       })
       .where(eq(schema.media.id, mediaId));
 
+    // Materialize VTT into bucket and update manifest (best-effort)
+    try {
+      const vttKey = `inputs/subtitles/${mediaId}.vtt`;
+      await putObjectByKey(vttKey, 'text/vtt', vttContent);
+      await upsertMediaManifest(mediaId, { vttKey });
+      logger.info("transcription", `VTT materialized to bucket: ${vttKey}`);
+    } catch (err) {
+      logger.warn(
+        "transcription",
+        `VTT materialization skipped: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
     // Cleanup temp file if any
     try {
       if (tempAudioPath) await fs.unlink(tempAudioPath).catch(() => {});
@@ -451,6 +464,16 @@ Strict rules:
   if (!check.cues.length) throw new Error("Rebuilt VTT has 0 cues");
 
   await db.update(schema.media).set({ translation: vtt }).where(where);
+
+  // Materialize translated VTT to bucket so cloud renderer burns CN/EN lines
+  try {
+    const vttKey = `inputs/subtitles/${mediaId}.vtt`;
+    await putObjectByKey(vttKey, 'text/vtt', vtt);
+    await upsertMediaManifest(mediaId, { vttKey });
+    logger.info('translation', `Translated VTT materialized: ${vttKey}`);
+  } catch (err) {
+    logger.warn('translation', `Translate materialization skipped: ${err instanceof Error ? err.message : String(err)}`);
+  }
   return { translation: vtt };
 });
 
@@ -528,6 +551,15 @@ export const updateTranslation = os
       .update(schema.media)
       .set({ translation: input.translation })
       .where(where);
+    // Also materialize to bucket
+    try {
+      const vttKey = `inputs/subtitles/${input.mediaId}.vtt`;
+      await putObjectByKey(vttKey, 'text/vtt', input.translation);
+      await upsertMediaManifest(input.mediaId, { vttKey });
+      logger.info('translation', `Translated VTT materialized (manual update): ${vttKey}`);
+    } catch (err) {
+      logger.warn('translation', `Materialization (manual update) skipped: ${err instanceof Error ? err.message : String(err)}`);
+    }
     return { success: true };
   });
 

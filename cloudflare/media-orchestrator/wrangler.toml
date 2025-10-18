@@ -31,6 +31,8 @@ JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 # 预签名 PUT 有效期（秒）：开发 600，生产可提升（如 1800）
 PUT_EXPIRES = 600
 
+# 启用回退到 Next 拉取源数据（迁移期建议保留 true；稳定后可改为 false 严格桶优先）
+
 # S3-compatible storage for both prod (R2 S3 endpoint) and dev (MinIO)
 # For production with R2, set:
 #   S3_ENDPOINT = "https://<accountid>.r2.cloudflarestorage.com"

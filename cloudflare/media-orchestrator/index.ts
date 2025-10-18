@@ -36,6 +36,23 @@ type JobStatus =
 
 const TERMINAL_STATUSES: JobStatus[] = ['completed', 'failed', 'canceled']
 
+// Manifest stored in bucket to advertise where inputs/remote keys are
+// Key: manifests/media/<mediaId>.json
+interface MediaManifest {
+  mediaId: string
+  // Original download outputs
+  remoteVideoKey?: string
+  remoteAudioKey?: string
+  remoteMetadataKey?: string
+  // Pre-materialized inputs (optional)
+  vttKey?: string
+  commentsKey?: string
+  subtitlesInputKey?: string
+  // Rendered artifacts (for reference)
+  renderedSubtitlesJobId?: string
+  renderedInfoJobId?: string
+}
+
 interface StartBody {
   mediaId: string
   engine: EngineId
@@ -182,6 +199,69 @@ async function getSigningKey(secret: string, date: string, region: string, servi
   return kSigning
 }
 
+async function readManifest(env: Env, bucket: string, mediaId: string): Promise<MediaManifest | null> {
+  const key = `manifests/media/${mediaId}.json`
+  // Prefer R2 binding if available
+  try {
+    if (env.RENDER_BUCKET) {
+      const obj = await env.RENDER_BUCKET.get(key)
+      if (obj) {
+        const text = await obj.text()
+        return JSON.parse(text) as MediaManifest
+      }
+    }
+  } catch {}
+  // Fallback to S3 presign if configured
+  try {
+    const exists = await s3Head(env, bucket, key)
+    if (exists) {
+      const url = await presignS3(env, 'GET', bucket, key, 300)
+      const r = await fetch(url)
+      if (r.ok) {
+        return (await r.json()) as MediaManifest
+      }
+    }
+  } catch {}
+  return null
+}
+
+async function presignGetForContainer(
+  env: Env,
+  bucket: string,
+  key: string,
+  endpointOverride?: string,
+): Promise<string> {
+  return presignS3(env, 'GET', bucket, key, 600, undefined, endpointOverride)
+}
+
+async function writeManifestPatch(env: Env, bucket: string, mediaId: string, patch: Partial<MediaManifest>): Promise<void> {
+  const key = `manifests/media/${mediaId}.json`
+  const merge = (base: any, add: any) => ({ ...base, ...Object.fromEntries(Object.entries(add).filter(([, v]) => v !== undefined)) })
+  // Prefer R2 binding
+  if (env.RENDER_BUCKET) {
+    let current: any = {}
+    try {
+      const cur = await env.RENDER_BUCKET.get(key)
+      if (cur) current = JSON.parse(await cur.text())
+    } catch {}
+    const next = merge({ mediaId, ...current }, patch)
+    await env.RENDER_BUCKET.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } })
+    return
+  }
+  // Fallback to S3 GET+PUT
+  let current: any = {}
+  try {
+    const exists = await s3Head(env, bucket, key)
+    if (exists) {
+      const url = await presignS3(env, 'GET', bucket, key, 300)
+      const r = await fetch(url)
+      if (r.ok) current = await r.json()
+    }
+  } catch {}
+  const next = merge({ mediaId, ...current }, patch)
+  await s3Put(env, bucket, key, 'application/json', JSON.stringify(next))
+}
+
 async function handleStart(env: Env, req: Request) {
   const raw = await req.text()
   const sig = req.headers.get('x-signature') || ''
@@ -192,7 +272,6 @@ async function handleStart(env: Env, req: Request) {
   if (!body?.mediaId || !body?.engine) return json({ error: 'bad request' }, { status: 400 })
   const jobId = uid()
   const now = Date.now()
-  const baseNext = (env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
   // Choose container base by engine
   let containerBase: string
   if (body.engine === 'renderer-remotion') {
@@ -248,39 +327,60 @@ async function handleStart(env: Env, req: Request) {
   let inputVttUrl: string | undefined
   let inputDataUrl: string | undefined
   if (!isDownloader && !isAudioTranscoder && !isAsrPipeline) {
-    // Always mirror inputs to S3 and provide presigned GET URLs to containers
-    const videoExists = await s3Head(env, bucketName, inputVideoKey)
-    if (!videoExists) {
-      const variantParam = inputVariant === 'raw' ? 'original' : (inputVariant === 'subtitles' ? 'subtitles' : undefined)
-      const srcUrl = variantParam
-        ? `${baseNext}/api/media/${body.mediaId}/source?variant=${variantParam}`
-        : `${baseNext}/api/media/${body.mediaId}/source`
-      const src = await fetch(srcUrl)
-      if (!src.ok || !src.body) return json({ error: 'fetch source failed' }, { status: 502 })
-      await s3Put(env, bucketName, inputVideoKey, 'video/mp4', src.body as ReadableStream)
+    // Bucket-first: try to use existing objects/manifest without touching Next
+    const manifest = await readManifest(env, bucketName, body.mediaId)
+
+    // 1) Video source
+    if (inputVariant === undefined || inputVariant === 'raw') {
+      const hasInputVideo = await s3Head(env, bucketName, inputVideoKey)
+      if (hasInputVideo) {
+        inputVideoUrl = await presignGetForContainer(env, bucketName, inputVideoKey, jobS3Endpoint)
+      } else if (manifest?.remoteVideoKey) {
+        // Use remote video directly without copying
+        inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.remoteVideoKey, jobS3Endpoint)
+      }
+    } else if (inputVariant === 'subtitles') {
+      // Prefer pre-materialized subtitles variant if present in bucket
+      const hasSubVideo = await s3Head(env, bucketName, inputVideoKey)
+      if (hasSubVideo) {
+        inputVideoUrl = await presignGetForContainer(env, bucketName, inputVideoKey, jobS3Endpoint)
+      } else if (manifest?.subtitlesInputKey) {
+        // Allow manifest to point to the materialized subtitles input (same as inputVideoKey by convention)
+        inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.subtitlesInputKey, jobS3Endpoint)
+      }
+      // Note: subtitles variant requires pre-materialized bucket input
     }
+
+    // 2) Text inputs (VTT / comments)
     if (body.engine === 'burner-ffmpeg') {
-      const vttExists = await s3Head(env, bucketName, inputVttKey)
-      if (!vttExists) {
-        const sub = await fetch(`${baseNext}/api/media/${body.mediaId}/subtitles`)
-        if (!sub.ok) return json({ error: 'fetch subtitles failed' }, { status: 502 })
-        const text = await sub.text()
-        await s3Put(env, bucketName, inputVttKey, 'text/vtt', text)
+      const hasVtt = await s3Head(env, bucketName, inputVttKey)
+      if (hasVtt) {
+        inputVttUrl = await presignGetForContainer(env, bucketName, inputVttKey, jobS3Endpoint)
+      } else if (manifest?.vttKey) {
+        inputVttUrl = await presignGetForContainer(env, bucketName, manifest.vttKey, jobS3Endpoint)
       }
     } else if (body.engine === 'renderer-remotion') {
-      const dataExists = await s3Head(env, bucketName, inputDataKey)
-      if (!dataExists) {
-        const r = await fetch(`${baseNext}/api/media/${body.mediaId}/comments-data`)
-        if (!r.ok) return json({ error: 'fetch comments-data failed' }, { status: 502 })
-        const txt = await r.text()
-        await s3Put(env, bucketName, inputDataKey, 'application/json', txt)
+      const hasData = await s3Head(env, bucketName, inputDataKey)
+      if (hasData) {
+        inputDataUrl = await presignGetForContainer(env, bucketName, inputDataKey, jobS3Endpoint)
+      } else if (manifest?.commentsKey) {
+        inputDataUrl = await presignGetForContainer(env, bucketName, manifest.commentsKey, jobS3Endpoint)
       }
     }
-    inputVideoUrl = await presignS3(env, 'GET', bucketName, inputVideoKey, 600, undefined, jobS3Endpoint)
-    if (body.engine === 'burner-ffmpeg') {
-      inputVttUrl = await presignS3(env, 'GET', bucketName, inputVttKey, 600, undefined, jobS3Endpoint)
-    } else if (body.engine === 'renderer-remotion') {
-      inputDataUrl = await presignS3(env, 'GET', bucketName, inputDataKey, 600, undefined, jobS3Endpoint)
+
+    // 3) Strict mode: if any input missing, fail fast with actionable error
+    const needVideo = !inputVideoUrl
+    const needVtt = body.engine === 'burner-ffmpeg' && !inputVttUrl
+    const needData = body.engine === 'renderer-remotion' && !inputDataUrl
+    if (needVideo || needVtt || needData) {
+      const missing: string[] = []
+      if (needVideo) missing.push('video')
+      if (needVtt) missing.push('subtitles')
+      if (needData) missing.push('comments-data')
+      return json(
+        { error: 'missing_inputs', details: { missing, hint: 'Materialize inputs in bucket and manifest' } },
+        { status: 400 },
+      )
     }
   }
 
@@ -448,7 +548,15 @@ async function handleContainerCallback(env: Env, req: Request) {
       const stateResp = await stub.fetch('https://do/')
       if (stateResp.ok) {
         const doc = (await stateResp.json()) as any
-        if (doc?.engine === 'asr-pipeline' && (body.status === 'completed' || body.status === 'uploading')) {
+        // Auto-materialize subtitles variant input when burner-ffmpeg completes
+        if (doc?.engine === 'burner-ffmpeg' && (body.status === 'completed')) {
+          try {
+            await materializeSubtitlesInput(env, doc)
+          } catch (e) {
+            console.warn('[materialize] subtitles input copy failed:', (e as Error)?.message || String(e))
+          }
+        }
+        if (doc?.engine === 'asr-pipeline' && body.status === 'completed') {
           // Guard: if VTT already exists, skip
           const hasVtt = Boolean(doc?.outputs?.vtt?.key)
           if (!hasVtt) {
@@ -470,6 +578,36 @@ async function handleContainerCallback(env: Env, req: Request) {
     return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json' } })
   }
   return json({ ok: true })
+}
+
+async function materializeSubtitlesInput(env: Env, doc: any) {
+  const bucket = env.S3_BUCKET_NAME || 'vidgen-render'
+  const mediaId: string | undefined = doc?.mediaId
+  const sourceKey: string | undefined = doc?.outputKey
+  if (!mediaId || !sourceKey) return
+  const targetKey = `inputs/videos/subtitles/${mediaId}.mp4`
+  // Skip if already materialized
+  const exists = await s3Head(env, bucket, targetKey)
+  if (exists) return
+  // Try S3 path first if configured
+  if (env.S3_ENDPOINT) {
+    const getUrl = await presignS3(env, 'GET', bucket, sourceKey, 600)
+    const r = await fetch(getUrl)
+    if (!r.ok || !r.body) throw new Error(`fetch source for copy failed: ${r.status}`)
+    await s3Put(env, bucket, targetKey, 'video/mp4', r.body as ReadableStream)
+    // Update manifest
+    try { await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }) } catch {}
+    return
+  }
+  // Fallback to R2 binding
+  if (env.RENDER_BUCKET) {
+    const obj = await env.RENDER_BUCKET.get(sourceKey)
+    if (!obj) throw new Error('sourceKey not found in R2')
+    await env.RENDER_BUCKET.put(targetKey, obj.body as ReadableStream, { httpMetadata: { contentType: 'video/mp4' } })
+    try { await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }) } catch {}
+    return
+  }
+  throw new Error('no storage configured for materialization')
 }
 
 async function runAsrForPipeline(env: Env, doc: any) {

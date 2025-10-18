@@ -5,25 +5,25 @@
 ## 总览架构
 
 - Next 应用（本仓库）：提供业务 UI/接口；在 Step 3 触发云渲染；在终态回调中落库并供 Step 4 预览。
-- Worker（cloudflare/media-orchestrator）：
-  - /jobs：创建作业 → 将输入镜像至 R2 → 生成 R2 预签名 URL → 触发容器 /render。
+- Worker（cloudflare/media-orchestrator）（桶优先）：
+  - /jobs：创建作业 → 从桶/manifest 解析输入位置 → 生成 R2 预签名 URL → 触发容器 /render。
   - /jobs/:id：供前端轮询；检测 R2 是否产生输出；若完成则回调 Next 落库。
-  - /upload/:id（兜底模式）：本地/开发时容器可直接 POST 成品到此处；Worker 写入 R2。
-  - /artifacts/:id（兜底模式）：从 R2 读取产物。
+  - /upload/:id（可选兜底）：容器可直接 POST 成品；Worker 写入 R2。
+  - /artifacts/:id：从 R2 读取产物（播放/下载代理）。
 - R2：
   - inputs/videos/{mediaId}.mp4
+  - inputs/videos/subtitles/{mediaId}.mp4
   - inputs/subtitles/{mediaId}.vtt
+  - inputs/comments/{mediaId}.json
   - outputs/by-media/{mediaId}/{jobId}/video.mp4
-  - downloads/{mediaId}/{jobId}/video.mp4
-  - downloads/{mediaId}/{jobId}/audio.mp3
-  - downloads/{mediaId}/{jobId}/metadata.json
+  - downloads/{mediaId}/{jobId}/{video.mp4,audio.mp3,metadata.json}
 - 容器（containers/media-downloader）：
   - /render：调用 `yt-dlp` 下载源视频与原始元数据、`ffmpeg` 提取音轨，将产物上传至 R2。
 - 容器（containers/burner-ffmpeg）：
-  - /render：接受 R2 预签名 URL（生产）或 fallback URL（开发），执行 ffmpeg 烧录后写回产物。
+ - /render：接受 R2 预签名 URL（生产）或 fallback URL（开发），执行 ffmpeg 烧录后写回产物。
   - 日志：每 10% 打印一次进度（如 `30%`），同时每 30s 打印一次心跳（`running… <x>%`）避免“卡死错觉”。通过 `RENDER_HEARTBEAT_MS` 自定义心跳间隔（设为 `0` 可关闭）。
 
-生产使用“仅 R2 直连”：容器仅访问 R2，Worker 负责编排与检测完成；不依赖 localhost/host.docker.internal。
+生产使用“仅 R2 直连 + 桶优先输入”：容器仅访问 R2，Worker 负责编排与检测完成；Next 不再承担输入中转。
 
 ## 先决条件
 
@@ -64,6 +64,24 @@ R2_S3_ENDPOINT = "<accountid>.r2.cloudflarestorage.com"
 R2_ACCESS_KEY_ID = "<access-key>"
 R2_SECRET_ACCESS_KEY = "<secret-key>"
 R2_BUCKET_NAME = "vidgen-render"
+
+```
+
+### 桶优先输入与清单（manifest）
+
+- 清单位置：`manifests/media/<mediaId>.json`
+- 字段：`remoteVideoKey/remoteAudioKey/remoteMetadataKey`、`vttKey`、`commentsKey`、`subtitlesInputKey`、`renderedSubtitlesJobId`、`renderedInfoJobId`
+- 物化职责：
+  - Next：
+    - 转写完成 → 写入 `inputs/subtitles/<mediaId>.vtt` → 更新 `vttKey`
+    - 评论下载/翻译完成 → 写入 `inputs/comments/<mediaId>.json` → 更新 `commentsKey`
+    - 云下载回调 → 更新 `remote*Key`
+  - Worker：
+    - 字幕渲染完成 → 物化 `inputs/videos/subtitles/<mediaId>.mp4` → 更新 `subtitlesInputKey`
+
+严格模式（无回退）：
+- Worker 启动任务仅依赖桶与 manifest；缺少输入直接报错。
+- 启动前请保证对应 inputs 或 manifest 指针存在。
 ```
 
 2) 生产密钥（不要写入 wrangler.toml）
@@ -166,11 +184,9 @@ ENABLE_LOCAL_HYDRATE=false
 
 - Vercel / 自建 Next Server / 其他平台均可；需要允许 Next 主动访问 Worker（对外网可达）。
 
-## 模式与回退
+## 模式
 
-- 生产（推荐）：设置 `R2_S3_*`，容器仅与 R2 交互，Worker 检测 R2 输出完成 → 回调 Next 落库。
-- 开发兜底：未设置 `R2_S3_*` 时：
-  - 容器从 Next 拉 `source/subtitles`；产物 POST 到 Worker `/upload/:jobId`；仍能完整闭环。
+- 生产/开发统一：设置 `R2_S3_*`（或使用 R2 绑定），容器仅与 R2 交互，Worker 检测 R2 输出完成 → 回调 Next 落库；无 Next 中转。
 
 ### 关于 ENABLE_LOCAL_HYDRATE
 
