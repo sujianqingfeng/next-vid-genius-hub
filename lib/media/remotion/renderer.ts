@@ -10,7 +10,6 @@ import { getCompositions, renderMedia } from '@remotion/renderer'
 import { execa } from 'execa'
 import type { Comment, VideoInfo } from '../types'
 import { PROXY_URL, CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
-import { getVideoResolution } from '~/lib/media/ffmpeg'
 import {
   layoutConstants,
   buildCommentTimeline,
@@ -223,9 +222,6 @@ async function composeWithSourceVideo({
   }
 
   onProgress?.({ stage: 'compose', progress: 0 })
-
-  // 获取原始视频分辨率用于调试
-  const sourceResolution = await getVideoResolution(sourceVideoPath)
 
   // Remotion 输出固定为 1920x1080，这里直接使用布局常量对齐占位区域
   const remotionBaseWidth = 1920

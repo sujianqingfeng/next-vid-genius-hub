@@ -13,13 +13,10 @@ import type { BasicVideoInfo } from '~/lib/media/types'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { db, schema } from '~/lib/db'
 import { createMediaUpdateData } from '~/lib/db/media-utils'
-import { extractAudio } from '@app/media-node'
 import { runDownloadPipeline, summariseMetadata, readMetadataSummary, isForwardProxyProtocolSupported, buildForwardProxyUrl } from '@app/media-core'
 import { downloadVideo as coreDownloadVideo, extractAudio as coreExtractAudio } from '@app/media-node'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
-import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { fileExists as fileExists } from '~/lib/utils/file/client-safe'
-import { downloadVideo } from '~/lib/providers/youtube/downloader'
 import { logger } from '~/lib/logger'
 
 // use helpers from @app/media-core/proxy
@@ -198,67 +195,6 @@ export class DownloadService implements IDownloadService {
         }
     }
 
-    async checkExistingFiles(context: DownloadContext): Promise<{
-        videoExists: boolean
-        audioExists: boolean
-        downloadRecord?: typeof schema.media.$inferSelect
-    }> {
-		const videoExists = await fileExists(context.videoPath)
-		const audioExists = await fileExists(context.audioPath)
-
-		const downloadRecord = await db.query.media.findFirst({
-			where: eq(schema.media.url, context.operationDir.split('/').pop() || ''),
-		})
-
-		return { videoExists, audioExists, downloadRecord }
-	}
-
-    async fetchMetadata(url: string, context: DownloadContext): Promise<BasicVideoInfo | null> {
-        const provider = ProviderFactory.resolveProvider(url)
-        const providerContext: VideoProviderContext = {
-            proxyUrl: this.proxyUrl,
-        }
-
-        try {
-            void context
-            return await provider.fetchMetadata(url, providerContext)
-        } catch (error) {
-            logger.error('media', `Failed to fetch metadata: ${error instanceof Error ? error.message : String(error)}`)
-            return null
-        }
-	}
-
-	async handleError(error: Error, context: DownloadContext): Promise<void> {
-    logger.error('media', `Download error: ${error instanceof Error ? error.message : String(error)}`)
-
-		// 记录错误到日志系统
-		// 这里可以集成更详细的错误处理逻辑
-
-		// 可选：清理部分下载的文件
-		try {
-			await this.cleanup(context)
-        } catch (cleanupError) {
-            logger.error('media', `Cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`)
-        }
-	}
-
-	async cleanup(context: DownloadContext): Promise<void> {
-		// 清理临时文件和目录
-		// 只在确实需要时才执行清理
-		try {
-			const files = await fs.readdir(context.operationDir)
-			for (const file of files) {
-				const filePath = path.join(context.operationDir, file)
-				const stat = await fs.stat(filePath)
-				if (stat.isFile() && !file.endsWith('.mp4') && !file.endsWith('.mp3')) {
-					await fs.unlink(filePath)
-				}
-			}
-    } catch (error) {
-        logger.error('media', `Cleanup error: ${error instanceof Error ? error.message : String(error)}`)
-    }
-	}
-
 	private async getProxyUrl(proxyId?: string): Promise<string | undefined> {
 		if (!proxyId || proxyId === 'none') {
 			return this.proxyUrl
@@ -309,30 +245,6 @@ export class DownloadService implements IDownloadService {
 			metadataPath: downloadRecord?.rawMetadataPath ?? path.join(operationDir, 'metadata.json'),
 			proxyUrl,
 		}
-	}
-
-	private async downloadVideo(url: string, quality: '1080p' | '720p', outputPath: string): Promise<void> {
-		await downloadVideo(url, quality, outputPath)
-	}
-
-	private async extractAudioFromVideo(videoPath: string, audioPath: string): Promise<void> {
-		await extractAudio(videoPath, audioPath)
-	}
-
-	private async persistRawMetadata(metadata: BasicVideoInfo | null | undefined, context: DownloadContext): Promise<boolean> {
-		const payload = metadata?.raw ?? metadata
-		if (!payload) {
-			return false
-		}
-
-		try {
-			await fs.mkdir(context.operationDir, { recursive: true })
-			await fs.writeFile(context.metadataPath, JSON.stringify(payload, null, 2), 'utf8')
-			return true
-        } catch (error) {
-            logger.error('media', `Failed to persist raw metadata: ${error instanceof Error ? error.message : 'Unknown error'}`)
-            return false
-        }
 	}
 
 	private getProviderSource(providerId: string): 'youtube' | 'tiktok' | 'unknown' {
