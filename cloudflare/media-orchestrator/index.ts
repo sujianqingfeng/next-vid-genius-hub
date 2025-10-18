@@ -107,7 +107,7 @@ function containerS3Endpoint(endpoint?: string, override?: string): string | und
 // ========= R2 S3 Pre-sign (SigV4) =========
 async function presignS3(
   env: Env,
-  method: 'GET' | 'PUT' | 'HEAD',
+  method: 'GET' | 'PUT' | 'HEAD' | 'DELETE',
   bucket: string,
   key: string | undefined,
   expiresSec: number,
@@ -131,6 +131,8 @@ async function presignS3(
   const headerEntries: Array<[string, string]> = [['host', host]]
   if (method === 'PUT') {
     if (contentType) headerEntries.push(['content-type', contentType])
+    headerEntries.push(['x-amz-content-sha256', 'UNSIGNED-PAYLOAD'])
+  } else if (method === 'DELETE') {
     headerEntries.push(['x-amz-content-sha256', 'UNSIGNED-PAYLOAD'])
   }
   headerEntries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -511,6 +513,76 @@ async function handleGetStatus(env: Env, jobId: string) {
   return new Response(raw, { headers: { 'content-type': 'application/json' } })
 }
 
+async function handleDebugDelete(env: Env, req: Request) {
+  const raw = await req.text()
+  const sig = req.headers.get('x-signature') || ''
+  if (!(await verifyHmac(env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret', raw, sig))) {
+    return json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  let body: any
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    return json({ error: 'invalid_json' }, { status: 400 })
+  }
+
+  const keys = Array.isArray(body?.keys)
+    ? body.keys.filter((k: unknown): k is string => typeof k === 'string' && k.trim().length > 0)
+    : []
+
+  const deleted: string[] = []
+  const errors: Record<string, string> = {}
+
+  for (const key of keys) {
+    try {
+      await deleteObjectFromStorage(env, key)
+      deleted.push(key)
+    } catch (err) {
+      errors[key] = err instanceof Error ? err.message : String(err)
+    }
+  }
+
+  const hasErrors = Object.keys(errors).length > 0
+  return json({ ok: !hasErrors, deleted, errors }, { status: hasErrors ? 500 : 200 })
+}
+
+async function handleArtifactDelete(env: Env, jobId: string) {
+  if (!jobId) return json({ error: 'jobId required' }, { status: 400 })
+  const stub = jobStub(env, jobId)
+  const doc = await loadJobDoc(env, jobId, stub)
+  const keys = collectKeysFromDoc(doc, jobId)
+
+  const deleted: string[] = []
+  const errors: Record<string, string> = {}
+
+  for (const key of keys) {
+    try {
+      await deleteObjectFromStorage(env, key)
+      deleted.push(key)
+    } catch (err) {
+      errors[key] = err instanceof Error ? err.message : String(err)
+    }
+  }
+
+  if (stub) {
+    try {
+      await stub.fetch('https://do/', { method: 'DELETE' })
+    } catch (err) {
+      console.warn('[artifact-delete] DO cleanup failed', err)
+    }
+  }
+
+  try {
+    await env.JOBS.delete(jobId)
+  } catch (err) {
+    console.warn('[artifact-delete] KV cleanup failed', err)
+  }
+
+  const hasErrors = Object.keys(errors).length > 0
+  return json({ ok: !hasErrors, deleted, keys, errors }, { status: hasErrors ? 500 : 200 })
+}
+
 async function handleContainerCallback(env: Env, req: Request) {
   const raw = await req.text()
   const sig = req.headers.get('x-signature') || ''
@@ -869,6 +941,109 @@ async function s3Put(env: Env, bucket: string, key: string, contentType: string,
   }
 }
 
+async function s3Delete(env: Env, bucket: string, key: string): Promise<void> {
+  const url = await presignS3(env, 'DELETE', bucket, key, 600)
+  const headers: Record<string, string> = { 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' }
+  const r = await fetch(url, { method: 'DELETE', headers })
+  if (!r.ok && r.status !== 404) {
+    let msg = ''
+    try { msg = await r.text() } catch {}
+    console.error('[s3Delete] DELETE', url.split('?')[0], r.status, msg)
+    throw new Error(`s3Delete failed: ${r.status}`)
+  }
+}
+
+async function deleteObjectFromStorage(env: Env, key: string): Promise<void> {
+  if (!key) return
+  let deleted = false
+  let lastError: Error | undefined
+
+  if (env.RENDER_BUCKET) {
+    try {
+      await env.RENDER_BUCKET.delete(key)
+      deleted = true
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e))
+    }
+  }
+
+  if (env.S3_ENDPOINT && env.S3_BUCKET_NAME) {
+    try {
+      await s3Delete(env, env.S3_BUCKET_NAME, key)
+      deleted = true
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e))
+    }
+  }
+
+  if (!env.RENDER_BUCKET && !(env.S3_ENDPOINT && env.S3_BUCKET_NAME)) {
+    throw new Error('deleteObjectFromStorage: no storage configured')
+  }
+
+  if (!deleted && lastError) throw lastError
+}
+
+async function loadJobDoc(env: Env, jobId: string, stub?: any): Promise<any | undefined> {
+  let doc: any | undefined
+  if (stub) {
+    try {
+      const r = await stub.fetch('https://do/')
+      if (r.ok) doc = await r.json()
+    } catch {}
+  }
+  if (!doc) {
+    try {
+      const raw = await env.JOBS.get(jobId)
+      if (raw) doc = JSON.parse(raw)
+    } catch {}
+  }
+  return doc
+}
+
+function collectKeysFromDoc(doc: any, jobId: string): string[] {
+  const collected = new Set<string>()
+  const push = (value: unknown) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed) collected.add(trimmed)
+    }
+  }
+
+  if (doc) {
+    push(doc.outputKey)
+    push(doc.outputAudioKey)
+    push(doc.outputMetadataKey)
+    if (doc.outputs && typeof doc.outputs === 'object') {
+      for (const value of Object.values(doc.outputs)) {
+        if (value && typeof value === 'object' && 'key' in value) {
+          push((value as { key?: unknown }).key)
+        }
+      }
+    }
+    if (Array.isArray(doc.outputs)) {
+      for (const item of doc.outputs) {
+        if (item && typeof item === 'object' && 'key' in item) {
+          push((item as { key?: unknown }).key)
+        }
+      }
+    }
+    const mediaId = typeof doc.mediaId === 'string' ? doc.mediaId : undefined
+    if (mediaId) {
+      push(`outputs/by-media/${mediaId}/${jobId}/video.mp4`)
+      push(`downloads/${mediaId}/${jobId}/video.mp4`)
+      push(`downloads/${mediaId}/${jobId}/audio.mp3`)
+      push(`downloads/${mediaId}/${jobId}/metadata.json`)
+      push(`asr/results/by-media/${mediaId}/${jobId}/transcript.vtt`)
+      push(`asr/results/by-media/${mediaId}/${jobId}/words.json`)
+    }
+  }
+
+  // Fallback canonical location
+  push(`outputs/${jobId}/video.mp4`)
+
+  return Array.from(collected)
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url)
@@ -892,6 +1067,9 @@ export default {
         return json({ error: (e as Error).message }, { status: 500 })
       }
     }
+    if (req.method === 'POST' && pathname === '/debug/delete') {
+      return handleDebugDelete(env, req)
+    }
     // Inputs proxy fallback removed: containers always receive S3 presigned URLs now
     if (req.method === 'POST' && pathname === '/jobs') return handleStart(env, req)
     if (req.method === 'GET' && pathname.startsWith('/jobs/')) {
@@ -903,6 +1081,10 @@ export default {
     if (req.method === 'POST' && pathname.startsWith('/upload/')) {
       const jobId = pathname.split('/').pop()!
       return handleUpload(env, req, jobId)
+    }
+    if (req.method === 'DELETE' && pathname.startsWith('/artifacts/')) {
+      const jobId = pathname.split('/').pop()!
+      return handleArtifactDelete(env, jobId)
     }
     if (req.method === 'GET' && pathname.startsWith('/artifacts/')) {
       const jobId = pathname.split('/').pop()!
@@ -924,6 +1106,10 @@ export class RenderJobDO {
   async fetch(req: Request) : Promise<Response> {
     const url = new URL(req.url)
     const path = url.pathname
+    if (req.method === 'DELETE') {
+      await this.state.storage.delete('job')
+      return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } })
+    }
     if (req.method === 'POST' && path.endsWith('/init')) {
       const body = await req.json() as any
       const doc = {
