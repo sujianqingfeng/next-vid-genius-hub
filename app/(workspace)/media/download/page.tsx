@@ -15,7 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { STATUS_LABELS, PHASE_LABELS } from '~/lib/constants/media.constants'
+import { STATUS_LABELS, PHASE_LABELS } from '~/lib/config/media-status.config'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { orpc } from '~/lib/orpc/client'
 

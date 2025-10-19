@@ -1,4 +1,5 @@
 // 从原来的 constants.ts 迁移核心配置
+import { MEDIA_CONFIG } from './media.config'
 export const APP_CONFIG = {
 	// 数据库配置
 	database: {
@@ -26,39 +27,11 @@ export const APP_CONFIG = {
 		retries: parseInt(process.env.PROXY_RETRIES || '3'),
 	},
 
-	// 文件限制
-	limits: {
-		maxVideoDuration: 2 * 60 * 60, // 2 hours in seconds
-		maxFileSize: 2 * 1024 * 1024 * 1024, // 2GB in bytes
-		maxConcurrentDownloads: 3,
-		maxConcurrentProcessing: 2,
-		maxUploadSize: 500 * 1024 * 1024, // 500MB
-		supportedFormats: {
-			video: ['mp4', 'avi', 'mov', 'mkv', 'webm'],
-			audio: ['mp3', 'wav', 'aac', 'flac', 'ogg'],
-			image: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-		},
-	},
+	// 文件限制（统一引用 MEDIA_CONFIG）
+	limits: MEDIA_CONFIG.limits,
 
-	// 质量配置
-	qualities: {
-		default: '1080p',
-		available: ['720p', '1080p'] as const,
-		formats: {
-			'720p': {
-				height: 720,
-				width: 1280,
-				bitrate: '2000k',
-				label: 'HD 720p',
-			},
-			'1080p': {
-				height: 1080,
-				width: 1920,
-				bitrate: '4000k',
-				label: 'Full HD 1080p',
-			},
-		},
-	},
+	// 质量配置（统一引用 MEDIA_CONFIG）
+	qualities: MEDIA_CONFIG.qualities,
 
 	// 应用信息
 	app: {
