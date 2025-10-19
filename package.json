@@ -12,7 +12,6 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
-    "rebuild:native": "node -e \"console.log('no native rebuilds required')\"",
     "remotion:ensure": "pnpm exec remotion browser ensure --log=info",
     "cf:dev": "cd cloudflare/media-orchestrator && wrangler dev",
     "cf:deploy": "cd cloudflare/media-orchestrator && wrangler deploy",
@@ -89,8 +88,7 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4",
     "wrangler": "^4.43.0"
-  }
-  ,
+  },
   "dependenciesOverrides": {},
   "pnpm": {
     "peerDependencyRules": {
