@@ -40,7 +40,7 @@ async function handleRender(req, res) {
 
   try {
     console.log(`[render] ${jobId} preparing: downloading inputs`)
-    await progress('preparing', 0.05)
+    await progress('preparing', 0)
 
     const inFile = join(tmpdir(), `${jobId}_source.mp4`)
     const subVtt = join(tmpdir(), `${jobId}.vtt`)
@@ -63,15 +63,15 @@ async function handleRender(req, res) {
     }
 
     console.log(`[render] ${jobId} inputs ready, start ffmpeg`)
-    await progress('running', 0.2)
-    let currentPct = 20
-    let lastLogPct = 20
+    await progress('running', 0)
+    let currentPct = 0
+    let lastLogPct = 0
     let lastBeat = Date.now()
     const heartbeatMs = Number(process.env.RENDER_HEARTBEAT_MS || 30000)
     const hb = heartbeatMs > 0 ? setInterval(() => {
       const now = Date.now()
       if (now - lastBeat >= heartbeatMs - 50) {
-        console.log(`[render] ${jobId} running… ${Math.max(20, Math.min(99, Math.round(currentPct)))}%`)
+        console.log(`[render] ${jobId} running… ${Math.max(0, Math.min(100, Math.round(currentPct)))}%`)
         lastBeat = now
       }
     }, heartbeatMs) : null
@@ -83,11 +83,13 @@ async function handleRender(req, res) {
         engineOptions.subtitleConfig || {},
         {
           onProgress: async (p) => {
-            const pct = Math.max(0, Math.min(99, Math.round(p * 100)))
-            currentPct = Math.max(currentPct, Math.max(20, pct))
+            const pct = Math.max(0, Math.min(100, Math.round(p * 100)))
+            if (pct <= currentPct) return
+            currentPct = pct
+            lastBeat = Date.now()
             // Emit callback updates (fine-grained) but keep logs at 10% steps
             try { await progress('running', currentPct / 100) } catch {}
-            if (currentPct - lastLogPct >= 10) {
+            if (currentPct - lastLogPct >= 10 || currentPct === 100) {
               lastLogPct = currentPct
               console.log(`[render] ${jobId} ${lastLogPct}%`)
             }
@@ -97,9 +99,12 @@ async function handleRender(req, res) {
     } finally {
       if (hb) clearInterval(hb)
     }
+    if (currentPct < 100) {
+      currentPct = 100
+      try { await progress('running', 1) } catch {}
+    }
 
     console.log(`[render] ${jobId} ffmpeg done, uploading artifact`)
-    await progress('uploading', 0.95)
 
     // Upload artifact
     const buf = readFileSync(outFile)
@@ -109,7 +114,9 @@ async function handleRender(req, res) {
       const errorText = await up.text().catch(() => '')
       throw new Error(`upload failed: ${up.status} ${errorText}`)
     }
+    try { await progress('uploading', 1) } catch {}
     console.log(`[render] ${jobId} completed`)
+    await postUpdate('completed', { phase: 'completed', progress: 1 })
   } catch (e) {
     console.error(`[render] ${jobId} failed:`, e)
     await postUpdate('failed', { error: e?.message || 'unknown error' })

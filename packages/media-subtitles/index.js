@@ -39,14 +39,17 @@ async function runFfmpeg(args, opts = {}) {
         if (m) {
           const outMs = parseInt(m[1], 10)
           if (duration && duration > 0) {
-            const pct = Math.max(0, Math.min(99, Math.floor((outMs / 1000) / duration * 100)))
+            const pct = Math.max(
+              0,
+              Math.min(100, Math.round((outMs / 1000) / duration * 100)),
+            )
             if (pct > lastPct) {
               lastPct = pct
               onProgress(pct / 100)
             }
           } else {
             // If duration unknown, emit coarse heartbeats on progress markers
-            const coarse = Math.min(99, (lastPct + 1) || 0)
+            const coarse = Math.min(100, (lastPct + 1) || 0)
             lastPct = coarse
             onProgress(coarse / 100)
           }
@@ -56,6 +59,9 @@ async function runFfmpeg(args, opts = {}) {
   }
   if (proc.stderr) proc.stderr.on('data', parseProgress)
   await proc
+  if (typeof onProgress === 'function' && lastPct < 100) {
+    try { onProgress(1) } catch {}
+  }
 }
 
 export async function getVideoResolution(videoPath) {
