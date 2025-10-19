@@ -1,6 +1,6 @@
 name = "media-orchestrator"
 main = "index.ts"
-compatibility_date = "2024-05-01"
+compatibility_date = "2025-10-19"
 
 workers_dev = true
 
@@ -56,3 +56,50 @@ class_name = "RenderJobDO"
 [[migrations]]
 tag = "v1-render-job-do"
 new_classes = ["RenderJobDO"]
+
+# Containers configuration (build and run media engines inside Cloudflare)
+# Requires Workers Paid plan + Containers beta access.
+[[containers]]
+class_name = "MediaDownloaderContainer"
+image = "../../containers/media-downloader/Dockerfile"
+max_instances = 10
+
+[[containers]]
+class_name = "AudioTranscoderContainer"
+image = "../../containers/audio-transcoder/Dockerfile"
+max_instances = 10
+
+[[containers]]
+class_name = "BurnerFfmpegContainer"
+image = "../../containers/burner-ffmpeg/Dockerfile"
+max_instances = 10
+
+[[containers]]
+class_name = "RendererRemotionContainer"
+image = "../../containers/renderer-remotion/Dockerfile"
+max_instances = 5
+
+[[durable_objects.bindings]]
+name = "MEDIA_DOWNLOADER"
+class_name = "MediaDownloaderContainer"
+
+[[durable_objects.bindings]]
+name = "AUDIO_TRANSCODER"
+class_name = "AudioTranscoderContainer"
+
+[[durable_objects.bindings]]
+name = "BURNER_FFMPEG"
+class_name = "BurnerFfmpegContainer"
+
+[[durable_objects.bindings]]
+name = "RENDERER_REMOTION"
+class_name = "RendererRemotionContainer"
+
+[[migrations]]
+tag = "v2-containers"
+new_sqlite_classes = [
+  "MediaDownloaderContainer",
+  "AudioTranscoderContainer",
+  "BurnerFfmpegContainer",
+  "RendererRemotionContainer",
+]

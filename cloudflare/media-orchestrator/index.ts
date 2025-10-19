@@ -1,3 +1,4 @@
+import { getContainer } from '@cloudflare/containers'
 export interface Env {
   JOBS: KVNamespace
   RENDER_BUCKET?: R2Bucket
@@ -20,6 +21,11 @@ export interface Env {
   // Workers AI (REST credentials) for ASR pipeline
   CF_AI_ACCOUNT_ID?: string
   CF_AI_API_TOKEN?: string
+  // Containers Durable Object bindings (optional; when configured, will be used instead of raw URLs)
+  MEDIA_DOWNLOADER?: DurableObjectNamespace
+  AUDIO_TRANSCODER?: DurableObjectNamespace
+  BURNER_FFMPEG?: DurableObjectNamespace
+  RENDERER_REMOTION?: DurableObjectNamespace
 }
 
 type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'
@@ -87,6 +93,9 @@ function jobStub(env: Env, jobId: string) {
   const id = env.RENDER_JOB_DO.idFromName(jobId)
   return env.RENDER_JOB_DO.get(id)
 }
+
+// Re-export container classes so the runtime can locate them by class_name
+export { MediaDownloaderContainer, AudioTranscoderContainer, BurnerFfmpegContainer, RendererRemotionContainer } from './containers'
 
 function containerS3Endpoint(endpoint?: string, override?: string): string | undefined {
   const base = override || endpoint
@@ -449,13 +458,44 @@ async function handleStart(env: Env, req: Request) {
     payload.outputPutUrl = outputVideoPutUrl
   }
 
-  // Fire-and-forget container call (no await required, but keep for error surfacing)
-  const res = await fetch(`${containerBase}/render`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  console.log('[orchestrator] start job', jobId, 'container=', containerBase, 'status=', res.status)
+  // Prefer Cloudflare Containers if a binding for the engine exists; fallback to external base URL otherwise
+  const bindingForEngine = (engine: EngineId): DurableObjectNamespace | undefined => {
+    switch (engine) {
+      case 'media-downloader':
+        return env.MEDIA_DOWNLOADER
+      case 'audio-transcoder':
+      case 'asr-pipeline':
+        return env.AUDIO_TRANSCODER
+      case 'burner-ffmpeg':
+        return env.BURNER_FFMPEG
+      case 'renderer-remotion':
+        return env.RENDERER_REMOTION
+      default:
+        return undefined
+    }
+  }
+
+  let res: Response
+  const contBinding = bindingForEngine(body.engine)
+  if (contBinding) {
+    // Use jobId as the container session key so each job gets its own instance
+    const inst = getContainer(contBinding, jobId)
+    const reqToContainer = new Request('http://container/render', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    res = await inst.fetch(reqToContainer)
+    console.log('[orchestrator] start job', jobId, 'container=cloudflare-containers', 'status=', res.status)
+  } else {
+    // Fire-and-forget HTTP call to external container host
+    res = await fetch(`${containerBase}/render`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    console.log('[orchestrator] start job', jobId, 'container=', containerBase, 'status=', res.status)
+  }
   if (!res.ok) {
     return json({ jobId, error: 'container_start_failed' }, { status: 502 })
   }
