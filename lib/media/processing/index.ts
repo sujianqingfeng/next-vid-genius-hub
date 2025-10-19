@@ -7,7 +7,7 @@ import {
 	type TimeSegmentEffect,
 	type HintTextConfig,
 } from '../types'
-import { getVideoResolution } from '~/lib/media/ffmpeg'
+import { getVideoResolution } from '@app/media-subtitles'
 import { logger } from '~/lib/logger'
 
 async function runFfmpeg(args: string[]): Promise<void> {
