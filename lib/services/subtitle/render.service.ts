@@ -4,9 +4,11 @@ import { eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
 import { OPERATIONS_DIR, RENDERED_VIDEO_FILENAME } from '~/lib/config/app.config'
 import { renderVideoWithSubtitles } from '@app/media-subtitles'
+import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
+import type { JobStatusResponse } from '~/lib/cloudflare'
 
-export async function render(input: { mediaId: string; subtitleConfig?: any; backend?: 'local' | 'cloud' }): Promise<{ message?: string; jobId?: string }> {
+export async function render(input: { mediaId: string; subtitleConfig?: SubtitleRenderConfig; backend?: 'local' | 'cloud' }): Promise<{ message?: string; jobId?: string }> {
   const where = eq(schema.media.id, input.mediaId)
   const media = await db.query.media.findFirst({ where })
   if (!media) throw new Error('Media not found')
@@ -27,7 +29,7 @@ export async function render(input: { mediaId: string; subtitleConfig?: any; bac
   return { message: 'Rendering started' }
 }
 
-export async function startCloudRender(input: { mediaId: string; subtitleConfig?: any }): Promise<{ jobId: string }> {
+export async function startCloudRender(input: { mediaId: string; subtitleConfig?: SubtitleRenderConfig }): Promise<{ jobId: string }> {
   const where = eq(schema.media.id, input.mediaId)
   const media = await db.query.media.findFirst({ where })
   if (!media) throw new Error('Media not found')
@@ -36,7 +38,7 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
   return { jobId: job.jobId }
 }
 
-export async function getRenderStatus(input: { jobId: string }) {
+export async function getRenderStatus(input: { jobId: string }): Promise<JobStatusResponse> {
   return getJobStatus(input.jobId)
 }
 

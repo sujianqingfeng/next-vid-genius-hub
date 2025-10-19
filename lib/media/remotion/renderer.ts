@@ -223,9 +223,7 @@ async function composeWithSourceVideo({
 
   onProgress?.({ stage: 'compose', progress: 0 })
 
-  // Remotion 输出固定为 1920x1080，这里直接使用布局常量对齐占位区域
-  const remotionBaseWidth = 1920
-  const remotionBaseHeight = 1080
+  // Remotion 输出固定为 1920x1080
 
   const actualX = Math.round(video.x)
   const actualY = Math.round(video.y)

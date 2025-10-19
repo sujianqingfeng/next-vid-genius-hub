@@ -145,7 +145,7 @@ export async function upsertMediaManifest(mediaId: string, patch: MediaManifestP
   const next = {
     mediaId,
     ...current,
-    ...Object.fromEntries(Object.entries(patch).filter(([_, v]) => v !== undefined)),
+    ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)),
   }
   const putResp = await fetch(putUrl, {
     method: 'PUT',

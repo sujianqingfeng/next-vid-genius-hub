@@ -85,7 +85,7 @@ export async function transcribeWithCloudflareWhisper(
 					'Content-Type': 'application/octet-stream',
 					Accept: 'application/json',
 				},
-				body: body as any,
+				body,
 				dispatcher,
 			})
             if (!resp.ok) {
@@ -120,7 +120,7 @@ export async function transcribeWithCloudflareWhisper(
 					} catch {}
 					candidates.push({ body: forced, label: `force-${br}kbps` })
 				}
-			} catch (e) {
+			} catch {
 				// If ffmpeg missing or fails, skip this candidate
 			}
 		}

@@ -323,7 +323,7 @@ export function normalizeVttContent(vttContent: string): string {
 
     // Enrich with numeric times
     type TmpCue = { startTime: number; endTime: number; lines: string[] }
-    let tmp: TmpCue[] = cues.map((c) => ({
+    const tmp: TmpCue[] = cues.map((c) => ({
         startTime: parseVttTimestamp(c.start),
         endTime: parseVttTimestamp(c.end),
         lines: c.lines,

@@ -5,26 +5,25 @@ import {
 	useState,
 	useEffect,
 	useRef,
-	useMemo,
 } from 'react'
 import {
 	AlertCircle,
 	Loader2,
 } from 'lucide-react'
 import { areConfigsEqual } from '~/lib/subtitle/utils/config'
-import { Badge } from '~/components/ui/badge'
+
 import { Button } from '~/components/ui/button'
 import { SUBTITLE_RENDER_PRESETS, DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
-import { parseVttCues } from '~/lib/subtitle/utils/vtt'
-import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
+
+
 import type {
 	SubtitleRenderConfig,
 	SubtitleRenderPreset,
 	HintTextConfig,
 	TimeSegmentEffect,
 } from '~/lib/subtitle/types'
-import { VideoPreview } from './VideoPreview/VideoPreview'
+
 import { SubtitleConfigControls } from './SubtitleConfig/SubtitleConfigControls'
 import { HintTextConfigControls } from './HintTextConfig/HintTextConfigControls'
 import { TimeSegmentEffectsManager } from './TimeSegmentEffects/TimeSegmentEffectsManager'
@@ -42,10 +41,7 @@ interface Step3RenderProps {
 	onConfigChange: (config: SubtitleRenderConfig) => void
 	renderBackend: 'local' | 'cloud'
 	onRenderBackendChange: (backend: 'local' | 'cloud') => void
-  // When true, hide internal preview area since page shows global preview
-  hidePreview?: boolean
-  // When true, also hide the internal cues list (use PreviewPane's list instead)
-  hideCuesList?: boolean
+
 }
 
 /**
@@ -57,15 +53,14 @@ export function Step3Render(props: Step3RenderProps) {
 		isRendering,
 		onStart,
 		errorMessage,
-		mediaId,
+
 		translationAvailable,
-		translation,
+
 		config,
 		onConfigChange,
 		renderBackend,
 		onRenderBackendChange,
-    hidePreview = false,
-    hideCuesList = false,
+
 	} = props
 
 	// 预设状态管理
@@ -88,8 +83,6 @@ export function Step3Render(props: Step3RenderProps) {
 	const selectedPreset = SUBTITLE_RENDER_PRESETS.find((preset) => preset.id === selectedPresetId)
 
 	// 视频状态管理
-	const [currentTime, setCurrentTime] = useState(0)
-	const [duration, setDuration] = useState(0)
 	const videoRef = useRef<HTMLVideoElement>(null)
 
 	// 预设点击处理
@@ -155,26 +148,7 @@ export function Step3Render(props: Step3RenderProps) {
 		}
 	}
 
-	// 处理视频时长变化
-	const handleDurationChange = (newDuration: number) => {
-		setDuration(newDuration)
-	}
 
-	// 处理视频时间更新
-	const handleTimeUpdate = (newTime: number) => {
-		setCurrentTime(newTime)
-	}
-
-	// 处理视频元素引用
-	const handleVideoRef = (ref: HTMLVideoElement | null) => {
-		videoRef.current = ref
-	}
-
-	// 解析字幕列表
-	const cues = useMemo(
-		() => (translation ? parseVttCues(translation) : []),
-		[translation],
-	)
 
 	return (
 		<div className="space-y-6">

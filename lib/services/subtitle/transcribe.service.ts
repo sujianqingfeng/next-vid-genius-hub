@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { db, schema, type TranscriptionWord } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { transcribeWithWhisper } from '~/lib/asr/whisper'
+
 import {
   CLOUDFLARE_ACCOUNT_ID,
   CLOUDFLARE_API_TOKEN,
@@ -112,14 +113,14 @@ export async function transcribe(input: {
       while (Date.now() - startedAt < 180_000) {
         const st = await getJobStatus(job.jobId)
         lastStatus = st.status
-        logger.debug('transcription', `Cloud ASR status for ${job.jobId}: ${st.status} phase=${(st as any)?.phase ?? '-'} progress=${(st as any)?.progress ?? '-'}`)
+        logger.debug('transcription', `Cloud ASR status for ${job.jobId}: ${st.status} phase=${st.phase ?? '-'} progress=${st.progress ?? '-'}`)
         if (st.status === 'completed') {
           vttUrl = st.outputs?.vtt?.url
           wordsUrl = st.outputs?.words?.url
           break
         }
         if (st.status === 'failed' || st.status === 'canceled') {
-          const msg = (st as any).error || (st as any).message || 'Cloud ASR pipeline failed'
+          const msg = st.message || 'Cloud ASR pipeline failed'
           throw new Error(`job ${job.jobId}: ${msg}`)
         }
         await new Promise((r) => setTimeout(r, 1200))
@@ -131,7 +132,7 @@ export async function transcribe(input: {
       if (wordsUrl) {
         try {
           const wr = await fetch(wordsUrl)
-          if (wr.ok) transcriptionWords = (await wr.json()) as any
+          if (wr.ok) transcriptionWords = await wr.json() as TranscriptionWord[]
         } catch {}
       }
     } else {
