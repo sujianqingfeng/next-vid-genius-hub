@@ -2,6 +2,7 @@ import { spawn } from 'child_process'
 import fs from 'fs/promises'
 import path from 'path'
 import { transcribeWithCloudflareWhisper } from '~/lib/ai/cloudflare'
+import { prepareAudioForCloudflare } from '~/lib/asr/prepare'
 import { logger } from '~/lib/logger'
 import { type TranscriptionWord } from '~/lib/db/schema'
 import {
@@ -21,11 +22,13 @@ export interface CloudflareConfig {
 }
 
 interface TranscribeWithWhisperOptions {
-	audioPath: string
-	model: WhisperModel
-	provider: TranscriptionProvider
-	whisperProjectPath?: string
-	cloudflareConfig?: CloudflareConfig
+    // Prefer audioPath for local provider; for cloudflare provider, either audioPath or audioBuffer is accepted.
+    audioPath?: string
+    audioBuffer?: ArrayBuffer
+    model: WhisperModel
+    provider: TranscriptionProvider
+    whisperProjectPath?: string
+    cloudflareConfig?: CloudflareConfig
 }
 
 export interface TranscriptionResult {
@@ -37,23 +40,55 @@ export interface TranscriptionResult {
  * Main transcription function that routes to local or Cloudflare provider
  */
 export async function transcribeWithWhisper({
-	audioPath,
-	model,
-	provider,
-	whisperProjectPath,
-	cloudflareConfig,
+    audioPath,
+    audioBuffer,
+    model,
+    provider,
+    whisperProjectPath,
+    cloudflareConfig,
 }: TranscribeWithWhisperOptions): Promise<TranscriptionResult> {
-	if (provider === 'cloudflare') {
-		if (!cloudflareConfig) {
-			throw new Error('Cloudflare config is required for cloudflare provider')
-		}
-		return transcribeWithCloudflareProvider(audioPath, model, cloudflareConfig)
-	} else {
-		if (!whisperProjectPath) {
-			throw new Error('Whisper project path is required for local provider')
-		}
-		return transcribeWithLocalWhisper(audioPath, model, whisperProjectPath)
-	}
+    if (provider === 'cloudflare') {
+        if (!cloudflareConfig) {
+            throw new Error('Cloudflare config is required for cloudflare provider')
+        }
+        // Map our WhisperModel to Cloudflare model id
+        const cloudflareModelMap: Record<string, '@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo' | '@cf/openai/whisper'> = {
+            'whisper-tiny-en': '@cf/openai/whisper-tiny-en',
+            'whisper-large-v3-turbo': '@cf/openai/whisper-large-v3-turbo',
+            'whisper-medium': '@cf/openai/whisper',
+            'whisper-large': '@cf/openai/whisper',
+        }
+        const modelId = cloudflareModelMap[model]
+        if (!modelId) throw new Error(`Model ${model} is not supported by Cloudflare provider`)
+
+        if (audioBuffer) {
+            try {
+                const size = audioBuffer.byteLength
+                const mb = (size / (1024 * 1024)).toFixed(2)
+                logger.info('transcription', `Cloudflare upload (buffer): ${size} bytes (~${mb} MB)`) 
+            } catch {}
+            const prepared = await prepareAudioForCloudflare(audioBuffer)
+            return transcribeWithCloudflareWhisper(prepared, { ...cloudflareConfig, model: modelId })
+        }
+        if (!audioPath) throw new Error('Either audioBuffer or audioPath is required for cloudflare provider')
+        // Read file to buffer for Cloudflare
+        const fs = await import('fs/promises')
+        const b = await fs.readFile(audioPath)
+        try {
+            const size = b.byteLength
+            const mb = (size / (1024 * 1024)).toFixed(2)
+            logger.info('transcription', `Cloudflare upload (file): ${size} bytes (~${mb} MB) from ${audioPath}`)
+        } catch {}
+        const arrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer
+        const prepared = await prepareAudioForCloudflare(arrayBuffer)
+        return transcribeWithCloudflareWhisper(prepared, { ...cloudflareConfig, model: modelId })
+    } else {
+        if (!whisperProjectPath) {
+            throw new Error('Whisper project path is required for local provider')
+        }
+        if (!audioPath) throw new Error('audioPath is required for local provider')
+        return transcribeWithLocalWhisper(audioPath, model, whisperProjectPath)
+    }
 }
 
 /**
@@ -118,48 +153,6 @@ async function transcribeWithLocalWhisper(
 	logger.info('transcription', `Local Whisper transcription completed: ${vttContent.length} characters`)
 
 	return { vtt: vttContent, words }
-}
-
-/**
- * Transcribe using Cloudflare Workers AI
- */
-async function transcribeWithCloudflareProvider(
-	audioPath: string,
-	model: WhisperModel,
-	config: CloudflareConfig,
-): Promise<TranscriptionResult> {
-	logger.info('transcription', `Starting Cloudflare transcription for ${audioPath}`)
-
-	// Map model names to Cloudflare model identifiers
-	const cloudflareModelMap: Record<string, '@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo' | '@cf/openai/whisper'> = {
-		'whisper-tiny-en': '@cf/openai/whisper-tiny-en',
-		'whisper-large-v3-turbo': '@cf/openai/whisper-large-v3-turbo',
-		'whisper-medium': '@cf/openai/whisper',
-	}
-
-	const cloudflareModel = cloudflareModelMap[model]
-	if (!cloudflareModel) {
-		logger.error('transcription', `Model ${model} is not supported by Cloudflare provider`)
-		throw new Error(`Model ${model} is not supported by Cloudflare provider`)
-	}
-
-	logger.info('transcription', `Using Cloudflare model: ${cloudflareModel}`)
-
-	// Read audio file as ArrayBuffer
-	const audioBuffer = await fs.readFile(audioPath)
-	const arrayBuffer = audioBuffer.buffer.slice(audioBuffer.byteOffset, audioBuffer.byteOffset + audioBuffer.byteLength) as ArrayBuffer
-
-	logger.debug('transcription', `Audio buffer size: ${arrayBuffer.byteLength} bytes`)
-
-	// Call Cloudflare API
-	const result = await transcribeWithCloudflareWhisper(arrayBuffer, {
-		...config,
-		model: cloudflareModel,
-	})
-
-	logger.info('transcription', `Cloudflare transcription completed: ${result.vtt.length} characters${result.words ? `, ${result.words.length} words` : ''}`)
-
-	return result
 }
 
 // 重新导出新配置中的函数

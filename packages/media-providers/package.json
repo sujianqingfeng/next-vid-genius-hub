@@ -1,0 +1,22 @@
+{
+  "name": "@app/media-providers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Provider adapters for comments and metadata (YouTube/TikTok).",
+  "main": "index.js",
+  "browser": "index.browser.js",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "browser": "./index.browser.js",
+      "import": "./index.js",
+      "default": "./index.js"
+    }
+  },
+  "files": ["index.js", "index.browser.js", "index.d.ts"],
+  "dependencies": {
+    "undici": "^7.16.0",
+    "youtubei.js": "^15.1.1"
+  }
+}

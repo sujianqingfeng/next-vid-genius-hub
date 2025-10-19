@@ -12,7 +12,6 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
-    "rebuild:native": "pnpm rebuild yt-dlp-wrap",
     "remotion:ensure": "pnpm exec remotion browser ensure --log=info",
     "cf:dev": "cd cloudflare/media-orchestrator && wrangler dev",
     "cf:deploy": "cd cloudflare/media-orchestrator && wrangler deploy",
@@ -24,20 +23,26 @@
     "dev:stack:restart-remotion": "pnpm dev:stack:rebuild-remotion && docker compose -f docker-compose.dev.yml up -d renderer-remotion",
     "dev:stack:rebuild-downloader": "docker compose -f docker-compose.dev.yml build media-downloader",
     "dev:stack:restart-downloader": "pnpm dev:stack:rebuild-downloader && docker compose -f docker-compose.dev.yml up -d media-downloader",
-    "dev:stack:restart-all": "docker compose -f docker-compose.dev.yml build burner-ffmpeg renderer-remotion media-downloader && docker compose -f docker-compose.dev.yml up -d burner-ffmpeg renderer-remotion media-downloader"
+    "dev:stack:rebuild-audio-transcoder": "docker compose -f docker-compose.dev.yml build audio-transcoder",
+    "dev:stack:restart-audio-transcoder": "pnpm dev:stack:rebuild-audio-transcoder && docker compose -f docker-compose.dev.yml up -d audio-transcoder",
+    "dev:stack:restart-all": "docker compose -f docker-compose.dev.yml build burner-ffmpeg renderer-remotion media-downloader audio-transcoder && docker compose -f docker-compose.dev.yml up -d burner-ffmpeg renderer-remotion media-downloader audio-transcoder"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",
     "@ai-sdk/openai-compatible": "^1.0.19",
+    "@app/callback-utils": "workspace:*",
+    "@app/media-comments": "workspace:*",
+    "@app/media-core": "workspace:*",
+    "@app/media-node": "workspace:*",
+    "@app/media-providers": "workspace:*",
+    "@app/media-subtitles": "workspace:*",
     "@libsql/client": "^0.15.15",
     "@orpc/client": "^1.9.3",
     "@orpc/openapi": "^1.9.3",
     "@orpc/server": "^1.9.3",
     "@orpc/tanstack-query": "^1.9.3",
     "@paralleldrive/cuid2": "^2.2.2",
-    "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-dialog": "^1.1.15",
-    "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
@@ -53,7 +58,6 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.6",
     "execa": "^9.5.2",
-    "get-youtube-id": "^1.0.1",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
     "next-themes": "^0.4.6",
@@ -64,7 +68,6 @@
     "tailwind-merge": "^3.3.1",
     "undici": "^7.16.0",
     "youtubei.js": "^15.1.1",
-    "yt-dlp-wrap": "^2.3.12",
     "zod": "^4.1.11"
   },
   "devDependencies": {
@@ -82,6 +85,12 @@
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4",
-    "wrangler": "^4.42.1"
+    "wrangler": "^4.43.0"
+  },
+  "dependenciesOverrides": {},
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": []
+    }
   }
 }

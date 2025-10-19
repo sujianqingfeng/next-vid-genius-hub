@@ -2,20 +2,22 @@ import { createId } from '@paralleldrive/cuid2'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { downloadService } from '~/lib/services/download'
+import { downloadService } from '~/lib/services/download/download.service'
 import { db, schema } from '~/lib/db'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
+import { toProxyJobPayload } from '~/lib/proxy/utils'
+import { logger } from '~/lib/logger'
+
+const DownloadInputSchema = z.object({
+	url: z.string().url(),
+	quality: z.enum(['1080p', '720p']).optional().default('1080p'),
+	proxyId: z.string().optional(),
+})
 
 export const download = os
-	.input(
-		z.object({
-			url: z.string().url(),
-			quality: z.enum(['1080p', '720p']).optional().default('1080p'),
-			proxyId: z.string().optional(),
-		}),
-	)
+	.input(DownloadInputSchema)
 	.handler(async ({ input }) => {
 		const { url, quality, proxyId } = input
 
@@ -30,22 +32,16 @@ export const download = os
 				title: result.title,
 				source: result.source,
 			}
-		} catch (error) {
-			console.error('Download failed:', error)
-			throw new Error(
-				`Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-				)
-			}
-		})
+        } catch (error) {
+            logger.error('media', `Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            throw new Error(
+                `Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+                )
+            }
+        })
 
 export const startCloudDownload = os
-	.input(
-		z.object({
-			url: z.string().url(),
-			quality: z.enum(['1080p', '720p']).optional().default('1080p'),
-			proxyId: z.string().optional(),
-		}),
-	)
+	.input(DownloadInputSchema)
 	.handler(async ({ input }) => {
 		const { url, quality, proxyId } = input
 
@@ -77,6 +73,7 @@ export const startCloudDownload = os
 				})
 				.onConflictDoNothing()
 		} else {
+			// 保留现有远端 Key，确保在新任务排队/执行期间仍可通过 /api/media/:id/source 提供可播放源
 			await db
 				.update(schema.media)
 				.set({
@@ -85,9 +82,8 @@ export const startCloudDownload = os
 					downloadError: null,
 					downloadQueuedAt: now,
 					downloadCompletedAt: null,
-					remoteVideoKey: null,
-					remoteAudioKey: null,
-					remoteMetadataKey: null,
+					// 保留 remoteVideoKey/remoteAudioKey/remoteMetadataKey，不要在重试时清空
+					// 新任务成功回调后会用最新 Key 覆盖
 					downloadJobId: null,
 					filePath: existing.filePath,
 					audioFilePath: existing.audioFilePath,
@@ -102,18 +98,7 @@ export const startCloudDownload = os
 					where: eq(schema.proxies.id, proxyId),
 				})
 			: null
-		const proxyPayload =
-			proxyConfig && proxyConfig.server && proxyConfig.port && proxyConfig.protocol
-				? {
-						id: proxyConfig.id,
-						server: proxyConfig.server,
-						port: proxyConfig.port,
-						protocol: proxyConfig.protocol,
-						username: proxyConfig.username,
-						password: proxyConfig.password,
-						nodeUrl: proxyConfig.nodeUrl,
-					}
-				: undefined
+		const proxyPayload = toProxyJobPayload(proxyConfig)
 
 		try {
 			const job = await startCloudJob({

@@ -2,25 +2,14 @@ import type { Innertube } from 'youtubei.js'
 import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.types'
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchYouTubeMetadata } from './metadata'
-import { extractVideoId } from './utils'
-import { getYouTubeClient } from './client'
+import { logger } from '~/lib/logger'
+import { extractVideoId } from '@app/media-providers'
+// import { getYouTubeClient } from './client'
 
 const clientCache = new Map<string, Promise<Innertube>>()
 
-async function resolveYouTubeClient(context: VideoProviderContext): Promise<Innertube> {
-	const cacheKey = context.proxyUrl ?? 'default'
-	const existing = clientCache.get(cacheKey)
-	if (existing) {
-		return existing
-	}
-
-	const clientPromise = getYouTubeClient({ proxy: context.proxyUrl }).catch((error) => {
-		clientCache.delete(cacheKey)
-		throw error
-	})
-	clientCache.set(cacheKey, clientPromise)
-	return clientPromise
-}
+// Note: Client cache + factory kept for future use. The inline
+// resolveYouTubeClient helper was unused – removing to keep file clean.
 
 function isYouTubeUrl(url: string): boolean {
 	const id = extractVideoId(url)
@@ -40,10 +29,10 @@ export const youtubeProvider: VideoProvider = {
 				throw new Error('Failed to fetch YouTube metadata')
 			}
 			return metadata
-		} catch (error) {
-			console.error('YouTube metadata fetch error:', error)
-			throw new Error(`YouTube metadata fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-		}
+        } catch (error) {
+            logger.error('media', `YouTube metadata fetch error: ${error instanceof Error ? error.message : String(error)}`)
+            throw new Error(`YouTube metadata fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
 	},
 
 	async validateUrl(url: string): Promise<boolean> {
@@ -74,29 +63,31 @@ export const youtubeProvider: VideoProvider = {
 	},
 
 	// Additional YouTube-specific methods
-	async getChannelVideos(channelId: string, _maxResults: number = 50): Promise<Array<{ id: string; title: string; url: string }>> {
-		try {
-			// Implementation would require YouTube API client
-			// This is a placeholder for future enhancement
-			console.log('Channel videos fetching not yet implemented')
-			return []
-		} catch (error) {
-			console.error('Failed to fetch channel videos:', error)
-			return []
-		}
-	},
+    async getChannelVideos(channelId: string, _maxResults: number = 50): Promise<Array<{ id: string; title: string; url: string }>> {
+        try {
+            void channelId; void _maxResults;
+            // Implementation would require YouTube API client
+            // This is a placeholder for future enhancement
+            
+            return []
+        } catch (error) {
+            logger.error('media', `Failed to fetch channel videos: ${error instanceof Error ? error.message : String(error)}`)
+            return []
+        }
+    },
 
-	async searchVideos(query: string, _maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
-		try {
-			// Implementation would require YouTube API client
-			// This is a placeholder for future enhancement
-			console.log('Video search not yet implemented')
-			return []
-		} catch (error) {
-			console.error('Failed to search videos:', error)
-			return []
-		}
-	},
+    async searchVideos(query: string, _maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {
+        try {
+            void query; void _maxResults;
+            // Implementation would require YouTube API client
+            // This is a placeholder for future enhancement
+            
+            return []
+        } catch (error) {
+            logger.error('media', `Failed to search videos: ${error instanceof Error ? error.message : String(error)}`)
+            return []
+        }
+    },
 
 	// Cleanup method
 	cleanup(): void {

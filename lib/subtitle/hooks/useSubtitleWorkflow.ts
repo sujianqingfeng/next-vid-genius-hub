@@ -74,22 +74,20 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 		setWorkflowState(prev => ({ ...prev, ...updates }))
 	}, [])
 
-	// 根据媒体数据更新状态
-	useEffect(() => {
-		if (!mediaQuery.data) return
+    // 根据媒体数据更新状态（优先使用 optimizedTranscription）
+    useEffect(() => {
+        if (!mediaQuery.data) return
 
-		const media = mediaQuery.data
+        const media = mediaQuery.data
 
-		// 更新转录状态
-		if (media.transcription && !workflowState.transcription) {
-			updateWorkflowState({ transcription: media.transcription })
-			updateStepState('step1', { isCompleted: true })
-			updateStepState('step2', { isEnabled: true })
-
-			if (workflowState.activeStep === 'step1') {
-				setActiveStep('step2')
-			}
-		}
+        // 更新转录状态
+        const preferredTranscription = media?.optimizedTranscription || media?.transcription
+        if (preferredTranscription && !workflowState.transcription) {
+            updateWorkflowState({ transcription: preferredTranscription })
+            updateStepState('step1', { isCompleted: true })
+            updateStepState('step2', { isEnabled: true })
+            // 保持在 step1，让用户可在转录后先进行“优化”
+        }
 
 		// 更新翻译状态
 		if (media.translation && !workflowState.translation) {

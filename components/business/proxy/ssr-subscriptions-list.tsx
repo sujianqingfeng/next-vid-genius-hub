@@ -2,17 +2,8 @@
 
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, Trash2, RefreshCw, MoreHorizontal } from 'lucide-react'
+import { Link, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
-import { Badge } from '~/components/ui/badge'
-import { 
-	DropdownMenu, 
-	DropdownMenuContent, 
-	DropdownMenuItem, 
-	DropdownMenuSeparator, 
-	DropdownMenuTrigger 
-} from '~/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
@@ -64,17 +55,12 @@ export function SSRSubscriptionsList() {
 
 	if (isLoading) {
 		return (
-			<div className="space-y-4">
+			<div className="space-y-2">
 				{[1, 2, 3].map((i) => (
-					<Card key={i} className="animate-pulse">
-						<CardHeader>
-							<div className="h-6 bg-muted rounded w-1/3"></div>
-							<div className="h-4 bg-muted rounded w-2/3 mt-2"></div>
-						</CardHeader>
-						<CardContent>
-							<div className="h-20 bg-muted rounded"></div>
-						</CardContent>
-					</Card>
+					<div key={i} className="animate-pulse">
+						<div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
+						<div className="h-3 bg-muted rounded w-2/3"></div>
+					</div>
 				))}
 			</div>
 		)
@@ -82,110 +68,58 @@ export function SSRSubscriptionsList() {
 
 	if (!subscriptionsData?.subscriptions?.length) {
 		return (
-			<Card>
-				<CardHeader className="text-center">
-					<Link className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-					<CardTitle>No SSR subscriptions yet</CardTitle>
-					<CardDescription>
-						Add your first SSR subscription to start managing proxy servers
-					</CardDescription>
-				</CardHeader>
-			</Card>
+			<div className="text-center py-8 text-muted-foreground">
+				<Link className="h-8 w-8 mx-auto mb-3 opacity-50" />
+				<div className="font-medium">No subscriptions yet</div>
+				<div className="text-sm mt-1">Add your first subscription to start</div>
+			</div>
 		)
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-3">
 			{subscriptionsData.subscriptions.map((subscription) => (
-				<Card key={subscription.id}>
-					<CardHeader>
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-3">
-								<div className="flex items-center gap-2">
-									<Link className="h-5 w-5" />
-									<CardTitle>{subscription.name}</CardTitle>
-								</div>
-							</div>
-							
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant="ghost" size="icon">
-										<MoreHorizontal className="h-4 w-4" />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end">
-									<DropdownMenuItem onClick={() => handleImportFromSubscription(subscription.id)}>
-										<RefreshCw className="h-4 w-4 mr-2" />
-										Import Proxies
-									</DropdownMenuItem>
-
-									<DropdownMenuSeparator />
-									<DropdownMenuItem 
-										onClick={() => handleDeleteSubscription(subscription.id)}
-										className="text-destructive"
-									>
-										<Trash2 className="h-4 w-4 mr-2" />
-										Delete Subscription
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+				<div key={subscription.id} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+					<div className="flex items-center justify-between mb-2">
+						<div className="flex items-center gap-2">
+							<Link className="h-4 w-4 text-muted-foreground" />
+							<span className="font-medium">{subscription.name}</span>
+							<span className="text-xs text-muted-foreground">
+								({subscription.proxies?.length || 0} proxies)
+							</span>
 						</div>
-						<CardDescription>
-							{subscription.url}
-							{subscription.lastUpdated && (
-								<span className="ml-2 text-xs">
-									Last updated: {new Date(subscription.lastUpdated).toLocaleDateString()}
-								</span>
-							)}
-						</CardDescription>
-					</CardHeader>
+						
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => handleDeleteSubscription(subscription.id)}
+							className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+						>
+							<Trash2 className="h-4 w-4" />
+						</Button>
+					</div>
 					
-					<CardContent>
-						<div className="space-y-3">
-							{/* Stats */}
-							<div className="flex items-center gap-4 text-sm text-muted-foreground">
-								<span>{subscription.proxies?.length || 0} proxies</span>
-							</div>
+					<div className="text-xs text-muted-foreground mb-3">
+						{subscription.url}
+						{subscription.lastUpdated && (
+							<span className="ml-2">
+								Updated {new Date(subscription.lastUpdated).toLocaleDateString()}
+							</span>
+						)}
+					</div>
 
-							{/* Recent Proxies */}
-							{subscription.proxies && subscription.proxies.length > 0 && (
-								<div className="space-y-2">
-									<h4 className="text-sm font-medium">Recent Proxies</h4>
-									<div className="space-y-1">
-										{subscription.proxies.slice(0, 3).map((proxy) => (
-											<div 
-												key={proxy.id} 
-												className="flex items-center justify-between p-2 bg-muted/50 rounded text-sm"
-											>
-												<div className="flex items-center gap-2">
-													<span className="font-medium">{proxy.name || `${proxy.server}:${proxy.port}`}</span>
-												</div>
-												<div className="flex items-center gap-2">
-													<Badge variant="outline" className="text-xs">
-														{proxy.protocol}
-													</Badge>
-												</div>
-											</div>
-										))}
-									</div>
-								</div>
-							)}
-
-							{/* Action Buttons */}
-							<div className="flex gap-2 pt-2">
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => handleImportFromSubscription(subscription.id)}
-									disabled={importFromSubscriptionMutation.isPending}
-								>
-									<RefreshCw className="h-4 w-4 mr-2" />
-									{importFromSubscriptionMutation.isPending ? 'Importing...' : 'Import Proxies'}
-								</Button>
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+					<div className="flex gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => handleImportFromSubscription(subscription.id)}
+							disabled={importFromSubscriptionMutation.isPending}
+						>
+							<RefreshCw className="h-3 w-3 mr-1" />
+							{importFromSubscriptionMutation.isPending ? 'Importing...' : 'Import'}
+						</Button>
+					</div>
+				</div>
 			))}
 		</div>
 	)

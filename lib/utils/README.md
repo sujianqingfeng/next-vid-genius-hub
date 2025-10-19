@@ -6,8 +6,9 @@
 
 ```
 lib/utils/
-├── index.ts           # 主入口文件，导出所有工具函数
-├── format.ts          # 格式化相关工具函数
+├── index.ts           # 仅导出 `cn`（不再聚合导出）
+├── format/format.ts   # 格式化相关工具函数
+├── format/color.ts    # 颜色相关工具函数
 ├── __tests__/         # 测试文件目录
 │   └── format.test.ts # 格式化函数的测试文件
 └── README.md          # 本文档
@@ -16,11 +17,11 @@ lib/utils/
 ## 导入方式
 
 ```typescript
-// 从 utils 主文件导入（推荐）
-import { formatNumber, formatTimeAgo, cn } from '~/lib/utils'
-
-// 或者直接从格式化模块导入
-import { formatNumber, formatTimeAgo } from '~/lib/utils/format'
+// 直接从具体模块导入（推荐）
+import { formatNumber } from '~/lib/utils/format/format'
+import { getTimeAgo as formatTimeAgo } from '~/lib/utils/time'
+// 仅 `cn` 仍从 utils 入口导入
+import { cn } from '~/lib/utils'
 ```
 
 ## 可用的工具函数

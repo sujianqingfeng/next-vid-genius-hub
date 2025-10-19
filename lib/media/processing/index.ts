@@ -7,37 +7,13 @@ import {
 	type TimeSegmentEffect,
 	type HintTextConfig,
 } from '../types'
+import { getVideoResolution } from '@app/media-subtitles'
+import { logger } from '~/lib/logger'
 
 async function runFfmpeg(args: string[]): Promise<void> {
 	await execa('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args])
 }
 
-/**
- * Get video resolution (width and height) using FFmpeg
- */
-async function getVideoResolution(videoPath: string): Promise<{ width: number; height: number }> {
-	try {
-		const { stdout } = await execa('ffprobe', [
-			'-v', 'quiet',
-			'-print_format', 'csv=p=0',
-			'-select_streams', 'v:0',
-			'-show_entries', 'stream=width,height',
-			videoPath
-		])
-
-		const [width, height] = stdout.split(',').map(Number)
-		if (!width || !height || Number.isNaN(width) || Number.isNaN(height)) {
-			// Fallback to 1080p if we can't detect resolution
-			return { width: 1920, height: 1080 }
-		}
-
-		return { width, height }
-	} catch (error) {
-		console.warn('Failed to get video resolution, using 1080p fallback:', error)
-		// Fallback to 1080p if detection fails
-		return { width: 1920, height: 1080 }
-	}
-}
 
 /**
  * Escape a path for use in FFmpeg filters
@@ -100,7 +76,7 @@ export async function renderVideoWithSubtitles(
 			await renderVideoWithEffects(videoPath, escapedAssPath, timeSegmentEffects, outputPath, subtitleConfig.hintTextConfig)
 		}
 	} catch (error) {
-		console.error('Error rendering video with subtitles:', (error as Error).message)
+    logger.error('rendering', `Error rendering video with subtitles: ${(error as Error).message}`)
 		throw error
 	} finally {
 		// Clean up temporary file
@@ -343,7 +319,7 @@ async function processAudioWithMute(
 	if (muteSegments.length === 1) {
 		// Single mute segment
 		const segment = muteSegments[0]
-		console.log(`Applying mute from ${segment.startTime} to ${segment.endTime}`)
+    
 		await runFfmpeg([
 			'-i', videoPath,
 			'-af', `volume=enable='between(t,${segment.startTime},${segment.endTime})':volume=0`,
@@ -353,7 +329,7 @@ async function processAudioWithMute(
 		])
 	} else {
 		// Multiple mute segments - use a different approach
-		console.log(`Applying ${muteSegments.length} mute segments`)
+    
 		const muteExpressions = muteSegments
 			.map(segment => `between(t,${segment.startTime},${segment.endTime})`)
 			.join('+')

@@ -20,7 +20,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import { type schema } from '~/lib/db'
 import { queryOrpc } from '~/lib/orpc/query-client'
-import { formatNumber, formatTimeAgo } from '~/lib/utils'
+import { formatNumber } from '~/lib/utils/format/format'
+import { getTimeAgo as formatTimeAgo } from '~/lib/utils/time'
 
 type MediaCardProps = {
 	media: typeof schema.media.$inferSelect

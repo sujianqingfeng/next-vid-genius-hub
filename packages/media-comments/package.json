@@ -1,0 +1,22 @@
+{
+  "name": "@app/media-comments",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared timeline, layout, image inlining, and FFmpeg args for comments video rendering (local + containers).",
+  "main": "index.js",
+  "files": ["index.js", "index.browser.js", "index.d.ts"],
+  "exports": {
+    ".": {
+      "browser": "./index.browser.js",
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "browser": {
+    "./index.js": "./index.browser.js"
+  },
+  "dependencies": {
+    "undici": "^7.16.0"
+  }
+}

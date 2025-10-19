@@ -3,10 +3,12 @@
 	"version": "0.1.0",
 	"type": "module",
 	"description": "Media downloader worker powered by yt-dlp + ffmpeg",
-	"license": "MIT",
+  "license": "MIT",
   "dependencies": {
-    "yaml": "^2.6.0",
-    "undici": "^6.19.8",
-    "youtubei.js": "^9.1.0"
+    "@app/media-core": "file:./packages/media-core",
+    "@app/media-node": "file:./packages/media-node",
+    "@app/media-providers": "file:./packages/media-providers",
+    "@app/callback-utils": "file:./packages/callback-utils",
+    "yaml": "^2.6.0"
   }
 }

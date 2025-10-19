@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Plus, Video } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
-import { MediaCard } from '~/components/business/media'
-import { PageHeader } from '~/components/layout'
+import { MediaCard } from '~/components/business/media/media-card'
+import { PageHeader } from '~/components/layout/page-header'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import {
@@ -102,7 +102,7 @@ export function MediaListPage() {
 					</Card>
 				)}
 
-				{/* Empty state */}
+				{/* Empty state (without CTA button) */}
 				{mediaQuery.isSuccess && mediaQuery.data.items.length === 0 && (
 					<Card className="border-dashed">
 						<CardContent className="p-12 text-center">
@@ -110,16 +110,9 @@ export function MediaListPage() {
 								<Video className="h-8 w-8 text-muted-foreground" />
 							</div>
 							<h3 className="mb-2 text-lg font-semibold">No media files yet</h3>
-							<p className="mb-6 text-muted-foreground max-w-sm mx-auto">
-								Get started by downloading your first video to begin building
-								your media library.
+							<p className="text-muted-foreground max-w-sm mx-auto">
+								Get started by downloading your first video to begin building your media library.
 							</p>
-							<Link href="/media/download">
-								<Button className="flex items-center gap-2">
-									<Plus className="w-4 h-4" />
-									Download Your First Video
-								</Button>
-							</Link>
 						</CardContent>
 					</Card>
 				)}

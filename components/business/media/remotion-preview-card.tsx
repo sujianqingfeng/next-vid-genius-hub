@@ -5,10 +5,10 @@ import { useMemo } from 'react'
 import { AlertCircle, Loader2, Play } from 'lucide-react'
 import type { PlayerPropsWithoutZod } from '@remotion/player'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '~/components/ui/card'
+import { Card, CardContent, CardFooter } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import type { Comment, VideoInfo } from '~/lib/media/types'
-import { Badge } from '~/components/ui/badge'
+
 import { buildCommentTimeline, REMOTION_FPS } from '~/lib/media/remotion/durations'
 import type { CommentVideoInputProps } from '~/remotion/types'
 import { CommentsVideo } from '~/remotion/CommentsVideo'
@@ -82,10 +82,6 @@ export function RemotionPreviewCard({
 
 	return (
 		<Card className="shadow-sm">
-			<CardHeader className="pb-2">
-				<CardTitle className="text-lg">Preview</CardTitle>
-				<CardDescription>Remotion overlay before kicking off rendering.</CardDescription>
-			</CardHeader>
 			<CardContent className="space-y-4">
 				{isLoading ? (
 					<div className="space-y-3">
@@ -121,16 +117,7 @@ export function RemotionPreviewCard({
 								style={{ width: '100%', height: '100%', backgroundColor: '#0b1120' }}
 							/>
 						</div>
-						<div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-							<Badge variant="outline" className="font-medium">
-								{comments.length} comment{comments.length === 1 ? '' : 's'}
-							</Badge>
-							<span>
-								{timeline.totalDurationSeconds.toFixed(1)}s total · cover {(
-									timeline.coverDurationSeconds
-								).toFixed(1)}s
-							</span>
-						</div>
+						
 					</div>
 				) : null}
 			</CardContent>

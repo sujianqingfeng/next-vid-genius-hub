@@ -33,11 +33,11 @@ export function ProxyList() {
 	})
 
 
-	const handleDeleteProxy = (proxyId: string) => {
-		if (confirm('Are you sure you want to delete this proxy?')) {
-			deleteProxyMutation.mutate(proxyId)
-		}
-	}
+    const handleDeleteProxy = (proxyId: string) => {
+        if (confirm('Are you sure you want to delete this proxy?')) {
+            deleteProxyMutation.mutate({ id: proxyId })
+        }
+    }
 
 	const filteredProxies = proxiesData?.proxies?.filter(proxy => 
 		proxy.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

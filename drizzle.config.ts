@@ -1,5 +1,5 @@
 import { defineConfig } from 'drizzle-kit'
-import { DATABASE_URL } from './lib/constants'
+import { DATABASE_URL } from './lib/config/app.config'
 
 if (!DATABASE_URL) {
 	throw new Error('DATABASE_URL is not set in .env file')

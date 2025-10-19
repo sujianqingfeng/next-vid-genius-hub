@@ -1,27 +1,17 @@
+
 'use server'
 
 import { createId } from '@paralleldrive/cuid2'
 import type { Innertube } from 'youtubei.js'
-import YTDlpWrap from 'yt-dlp-wrap'
+import { downloadVideo as coreDownloadVideo } from '@app/media-node'
 import { sleep } from '~/lib/utils/time'
 
 export async function downloadVideo(
-	url: string,
-	quality: '1080p' | '720p',
-	outputPath: string,
+    url: string,
+    quality: '1080p' | '720p',
+    outputPath: string,
 ): Promise<void> {
-	const ytdlp = new YTDlpWrap()
-	await ytdlp.execPromise([
-		url,
-		'-f',
-		quality === '1080p'
-			? 'bestvideo[height<=1080]+bestaudio/best'
-			: 'bestvideo[height<=720]+bestaudio/best',
-		'--merge-output-format',
-		'mp4',
-		'-o',
-		outputPath,
-	])
+    await coreDownloadVideo(url, quality, outputPath)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

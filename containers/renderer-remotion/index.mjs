@@ -3,24 +3,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { spawn } from 'node:child_process'
-import crypto from 'node:crypto'
-import { fetch as undiciFetch, ProxyAgent } from 'undici'
+import { makeStatusCallback } from '@app/callback-utils'
+import { fetch as undiciFetch } from 'undici'
 import { bundle } from '@remotion/bundler'
 import { getCompositions, renderMedia } from '@remotion/renderer'
+import { buildCommentTimeline, REMOTION_FPS, inlineRemoteImage as inlineRemoteImageFromPkg, buildComposeArgs } from '@app/media-comments'
+import { resolveForwardProxy, startMihomo as startMihomoProxy } from '@app/media-core'
 
 const PORT = process.env.PORT || 8090
 
 function sendJson(res, code, data) {
   res.writeHead(code, { 'content-type': 'application/json' })
   res.end(JSON.stringify(data))
-}
-
-function hmacHex(secret, data) {
-  return crypto.createHmac('sha256', secret).update(data).digest('hex')
-}
-
-function randomNonce() {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
 }
 
 async function execFFmpeg(args) {
@@ -75,6 +69,11 @@ async function execFFmpegWithProgress(args, totalDurationSeconds) {
         }
       }
     })
+    p.on('exit', (code, signal) => {
+      if (code !== 0) {
+        console.error(`[remotion] ffmpeg exited code=${code} signal=${signal || 'null'}`)
+      }
+    })
     p.on('close', (code) => {
       clearInterval(timer)
       if (code === 0) return resolve(0)
@@ -108,98 +107,7 @@ async function getVideoResolution(videoPath) {
   }
 }
 
-// --- Timeline estimation (port from lib/media/remotion/durations.ts) ---
-const REMOTION_FPS = 30
-const COVER_DURATION_SECONDS = 3
-const MIN_COMMENT_DURATION_SECONDS = 3
-const MAX_COMMENT_DURATION_SECONDS = 8
-const BASE_SECONDS = 2.8
-const TRANSLATION_WEIGHT = 1.2
-const CHARACTER_DIVISOR = 90
-const APPEAR_DISAPPEAR_BUFFER_SECONDS = 1.6
-const SCROLL_CONTAINER_HEIGHT = 320
-const SCROLL_SPEED_PX_PER_SEC = 30
-const MIN_SCROLL_TIME_SECONDS = 1.5
-const chineseCharRegex = /[\u4e00-\u9fff]/
-function isChinese(text) { return Boolean(text && chineseCharRegex.test(text)) }
-function estimateCommentHeight(comment) {
-  const isPrimaryChinese = isChinese(comment.content)
-  const isTranslationChinese = isChinese(comment.translatedContent)
-  const mainFontSize = isPrimaryChinese ? 52 : 26
-  const mainLineHeight = isPrimaryChinese ? 1.4 : 1.52
-  const mainLineHeightPx = mainFontSize * mainLineHeight
-  const mainLines = String(comment.content || '').split('\n').length
-  const mainHeight = mainLines * mainLineHeightPx
-  let totalHeight = mainHeight
-  if (comment.translatedContent && comment.translatedContent !== comment.content) {
-    const translationFontSize = isTranslationChinese ? 52 : 24
-    const translationLineHeight = isTranslationChinese ? 1.4 : 1.48
-    const translationLineHeightPx = translationFontSize * translationLineHeight
-    const translationLines = String(comment.translatedContent || '').split('\n').length
-    const translationHeight = translationLines * translationLineHeightPx
-    const spacingBetweenSections = 36
-    totalHeight += spacingBetweenSections + translationHeight
-  }
-  return totalHeight
-}
-function calculateScrollingDuration(contentHeight) {
-  if (contentHeight <= SCROLL_CONTAINER_HEIGHT) return 0
-  const scrollDistance = contentHeight - SCROLL_CONTAINER_HEIGHT
-  const timeNeeded = scrollDistance / SCROLL_SPEED_PX_PER_SEC
-  return Math.max(MIN_SCROLL_TIME_SECONDS, timeNeeded)
-}
-function estimateCommentDurationSeconds(comment) {
-  const contentLength = (comment.content || '').length
-  const translationLength = (comment.translatedContent || '').length
-  const weightedChars = contentLength + translationLength * TRANSLATION_WEIGHT
-  const readingDuration = BASE_SECONDS + weightedChars / CHARACTER_DIVISOR
-  const contentHeight = estimateCommentHeight(comment)
-  const scrollingDuration = calculateScrollingDuration(contentHeight)
-  const total = readingDuration + scrollingDuration + APPEAR_DISAPPEAR_BUFFER_SECONDS
-  return Math.min(MAX_COMMENT_DURATION_SECONDS, Math.max(MIN_COMMENT_DURATION_SECONDS, total))
-}
-function buildCommentTimeline(comments, fps = REMOTION_FPS) {
-  const coverDurationInFrames = Math.round(COVER_DURATION_SECONDS * fps)
-  const commentDurationsInFrames = comments.map((c) => Math.round(estimateCommentDurationSeconds(c) * fps))
-  const totalDurationInFrames = coverDurationInFrames + commentDurationsInFrames.reduce((s, f) => s + f, 0)
-  const totalDurationSeconds = totalDurationInFrames / fps
-  return { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, totalDurationSeconds, coverDurationSeconds: COVER_DURATION_SECONDS }
-}
-
-// --- Layout constants (port from remotion/layout-constants.ts) ---
-const VIDEO_WIDTH = 720
-const VIDEO_HEIGHT = 405
-const PADDING_X = 64
-const PADDING_Y = 48
-const COLUMN_GAP = 24
-const INFO_PANEL_WIDTH = 600
-const CARD_PADDING_X = 24
-const REMOTION_CANVAS_WIDTH = 1920
-const containerContentWidth = REMOTION_CANVAS_WIDTH - (PADDING_X * 2)
-const videoPanelWidth = CARD_PADDING_X * 2 + VIDEO_WIDTH
-const gridContentWidth = INFO_PANEL_WIDTH + COLUMN_GAP + videoPanelWidth
-const centerOffset = Math.max(0, (containerContentWidth - gridContentWidth) / 2)
-const videoPanelX = PADDING_X + centerOffset + INFO_PANEL_WIDTH + COLUMN_GAP
-const videoPanelY = PADDING_Y
-const VIDEO_X = videoPanelX + CARD_PADDING_X
-const VIDEO_Y = videoPanelY
-
-function getOverlayFilter({ coverDurationSeconds, totalDurationSeconds }) {
-  const actualX = Math.round(VIDEO_X)
-  const actualY = Math.round(VIDEO_Y)
-  const actualWidth = Math.round(VIDEO_WIDTH)
-  const actualHeight = Math.round(VIDEO_HEIGHT)
-  const delayMs = Math.round(coverDurationSeconds * 1000)
-  const filterGraph = [
-    // Scale source (Input 1) to the slot size
-    `[1:v]fps=${REMOTION_FPS},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_src]`,
-    // Composite source on top of overlay canvas (Input 0) within the time window
-    `[0:v][scaled_src]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
-    // Delay source audio by cover duration, then trim to total duration to avoid hang
-    `[1:a]adelay=${delayMs}|${delayMs},atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS[delayed_audio]`,
-  ].join(';')
-  return { filterGraph, actualX, actualY, actualWidth, actualHeight }
-}
+// (timeline/layout helpers are provided by @app/media-comments)
 
 async function handleRender(req, res) {
   let body = ''
@@ -208,16 +116,35 @@ async function handleRender(req, res) {
   const jobId = payload?.jobId || `job_${Math.random().toString(36).slice(2, 10)}`
   const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
   const cbUrl = payload?.callbackUrl
+  const engineOptions = payload?.engineOptions || {}
+  const safeEngineOptions = {
+    hasDefaultProxy: Boolean(engineOptions?.defaultProxyUrl),
+    proxy: engineOptions?.proxy
+      ? {
+          id: engineOptions.proxy.id,
+          protocol: engineOptions.proxy.protocol,
+          server: engineOptions.proxy.server,
+          port: engineOptions.proxy.port,
+          hasNodeUrl: Boolean(engineOptions.proxy.nodeUrl),
+          hasCredentials: Boolean(engineOptions.proxy.username && engineOptions.proxy.password),
+        }
+      : null,
+  }
   console.log(`[remotion] start job=${jobId}`)
+  console.log('[remotion] engine options', { jobId, engineOptions: safeEngineOptions })
   sendJson(res, 202, { jobId })
 
+  const baseDefaultProxyUrl = engineOptions?.defaultProxyUrl || process.env.PROXY_URL
+  let clashController = null
+
   // Optional progress helper
+  const postUpdate = makeStatusCallback({ callbackUrl: cbUrl, secret, baseFields: { jobId }, fetchImpl: undiciFetch })
   async function progress(phase, pct) {
     if (!cbUrl) return
-    const data = { jobId, status: phase === 'uploading' ? 'uploading' : 'running', phase, progress: pct, ts: Date.now(), nonce: randomNonce() }
-    const sig = hmacHex(secret, JSON.stringify(data))
-    await undiciFetch(cbUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': sig }, body: JSON.stringify(data) }).catch(() => {})
+    const status = phase === 'uploading' ? 'uploading' : 'running'
+    await postUpdate(status, { phase, progress: pct })
   }
+
 
   try {
     const inputVideoUrl = payload?.inputVideoUrl
@@ -227,82 +154,104 @@ async function handleRender(req, res) {
       throw new Error('missing required URLs (inputVideoUrl/inputDataUrl/outputPutUrl)')
     }
 
+    try {
+      clashController = await startMihomoProxy(engineOptions, { logger: console })
+    } catch (error) {
+      console.error('[remotion] Failed to start Clash/Mihomo', error)
+    }
+    const forwardProxy = resolveForwardProxy({ proxy: engineOptions?.proxy, defaultProxyUrl: baseDefaultProxyUrl, logger: console })
+    const effectiveProxy = clashController?.proxyUrl || forwardProxy || baseDefaultProxyUrl
+    console.log('[remotion] resolved proxy', { jobId, viaMihomo: Boolean(clashController), proxy: effectiveProxy })
+
     await progress('preparing', 0.05)
     const inFile = join(tmpdir(), `${jobId}_source.mp4`)
     const dataJson = join(tmpdir(), `${jobId}_data.json`)
     const overlayOut = join(tmpdir(), `${jobId}_overlay.mp4`)
     const outFile = join(tmpdir(), `${jobId}_out.mp4`)
 
+    console.log('[remotion] downloading source video from:', inputVideoUrl.split('?')[0])
     {
       const r = await undiciFetch(inputVideoUrl)
       if (!r.ok) throw new Error(`download source failed: ${r.status}`)
       const buf = Buffer.from(await r.arrayBuffer())
+      console.log(`[remotion] source video downloaded: ${(buf.length / 1024 / 1024).toFixed(2)} MB`)
       writeFileSync(inFile, buf)
     }
+    console.log('[remotion] downloading comments data from:', inputDataUrl.split('?')[0])
     {
       const r = await undiciFetch(inputDataUrl)
       if (!r.ok) throw new Error(`download comments-data failed: ${r.status}`)
       const txt = await r.text()
+      console.log(`[remotion] comments data downloaded: ${(txt.length / 1024).toFixed(2)} KB`)
       writeFileSync(dataJson, txt)
     }
 
     // Parse input data
+    console.log('[remotion] parsing comments data')
     const { videoInfo, comments } = JSON.parse(readFileSync(dataJson, 'utf8'))
+    console.log(`[remotion] parsed ${comments?.length || 0} comments`)
 
     // Inline remote images to avoid <Img> network stalls inside headless browser
-    const PROXY_URL = process.env.PROXY_URL
-    const dispatcher = PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined
-    const inferContentTypeFromUrl = (url) => {
-      try {
-        const ext = (new URL(url).pathname.split('.').pop() || '').toLowerCase()
-        switch (ext) {
-          case 'png': return 'image/png'
-          case 'webp': return 'image/webp'
-          case 'gif': return 'image/gif'
-          case 'bmp': return 'image/bmp'
-          case 'svg': return 'image/svg+xml'
-          case 'jpeg':
-          case 'jpg': return 'image/jpeg'
-          default: return undefined
-        }
-      } catch { return undefined }
-    }
-    async function inlineRemoteImage(url) {
-      if (!url) return undefined
-      const isRemote = /^https?:\/\//i.test(String(url))
-      if (!isRemote) return url
-      try {
-        const r = await undiciFetch(url, { signal: AbortSignal.timeout(15000), dispatcher })
-        if (!r.ok) throw new Error(String(r.status))
-        const arrayBuffer = await r.arrayBuffer()
-        const contentType = r.headers.get('content-type') || inferContentTypeFromUrl(url) || 'image/jpeg'
-        const dataUrl = `data:${contentType};base64,${Buffer.from(arrayBuffer).toString('base64')}`
-        return dataUrl
-      } catch (e) {
-        console.warn('[remotion] inline image failed:', url, e?.message || e)
-        return undefined
-      }
-    }
+    console.log(`[remotion] inlining remote images (1 video + ${comments?.length || 0} comment thumbnails)`)
+    const inlineRemoteImage = (url) => inlineRemoteImageFromPkg(url, { proxyUrl: effectiveProxy || undefined, timeoutMs: 5000 })
     let inlineOk = 0, inlineFail = 0
+    
+    // Download video thumbnail
     const preparedVideoInfo = { ...videoInfo, thumbnail: await inlineRemoteImage(videoInfo?.thumbnail).then(v => { if (v) inlineOk++; else inlineFail++; return v }) }
+    
+    // Download comment thumbnails in batches of 10 concurrent requests
     const preparedComments = []
-    for (const c of comments || []) {
-      const inlined = await inlineRemoteImage(c?.authorThumbnail)
-      if (inlined) inlineOk++; else inlineFail++
-      preparedComments.push({ ...c, authorThumbnail: inlined || undefined })
+    const batchSize = 10
+    for (let i = 0; i < (comments || []).length; i += batchSize) {
+      const batch = comments.slice(i, i + batchSize)
+      console.log(`[remotion] inlining batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(comments.length / batchSize)} (${i + 1}-${Math.min(i + batchSize, comments.length)}/${comments.length})`)
+      const inlinedBatch = await Promise.all(
+        batch.map(async (c) => {
+          const inlined = await inlineRemoteImage(c?.authorThumbnail)
+          if (inlined) inlineOk++; else inlineFail++
+          return { ...c, authorThumbnail: inlined || undefined }
+        })
+      )
+      preparedComments.push(...inlinedBatch)
     }
-    console.log(`[remotion] images inlined ok=${inlineOk} fail=${inlineFail}`)
+    const total = inlineOk + inlineFail
+    const successRate = total > 0 ? ((inlineOk / total) * 100).toFixed(1) : '0.0'
+    console.log(`[remotion] images inlined: ok=${inlineOk} fail=${inlineFail} (${successRate}% success)`)
 
     // Build overlay via Remotion
     await progress('running', 0.15)
     const tmpOut = join(tmpdir(), `${jobId}_bundle`)
-    const serveUrl = await bundle({ entryPoint: join(process.cwd(), 'remotion', 'index.ts'), outDir: tmpOut, publicDir: join(process.cwd(), 'public'), enableCaching: true })
+    console.log('[remotion] bundling Remotion project...')
+    const serveUrl = await bundle({
+      entryPoint: join(process.cwd(), 'remotion', 'index.ts'),
+      outDir: tmpOut,
+      publicDir: join(process.cwd(), 'public'),
+      enableCaching: true,
+      webpackOverride: (config) => ({
+        ...config,
+        resolve: {
+          ...(config.resolve ?? {}),
+          alias: {
+            ...(config.resolve?.alias ?? {}),
+            '~': process.cwd(),
+          },
+          extensions: [
+            '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json',
+            ...((config.resolve?.extensions ?? [])),
+          ],
+        },
+      }),
+    })
+    console.log('[remotion] bundle complete, building timeline')
     const { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, totalDurationSeconds, coverDurationSeconds } = buildCommentTimeline(preparedComments, REMOTION_FPS)
+    console.log(`[remotion] timeline: cover=${coverDurationSeconds}s total=${totalDurationSeconds}s`)
     const inputProps = { videoInfo: preparedVideoInfo, comments: preparedComments, coverDurationInFrames, commentDurationsInFrames, fps: REMOTION_FPS }
+    console.log('[remotion] getting compositions...')
     const compositions = await getCompositions(serveUrl, { inputProps })
     const composition = compositions.find((c) => c.id === 'CommentsVideo')
     if (!composition) throw new Error('Remotion composition "CommentsVideo" not found')
-    console.log('[remotion] composition ok. frames=', totalDurationInFrames, 'fps=', REMOTION_FPS)
+    console.log('[remotion] composition ready. frames=', totalDurationInFrames, 'fps=', REMOTION_FPS)
+    let lastRenderProgress = -1
     await renderMedia({
       composition: { ...composition, durationInFrames: totalDurationInFrames, fps: REMOTION_FPS },
       serveUrl,
@@ -314,32 +263,30 @@ async function handleRender(req, res) {
       envVariables: { REMOTION_DISABLE_CHROMIUM_PROVIDED_HEADLESS_WARNING: 'true' },
       timeoutInMilliseconds: 120000,
       onProgress: ({ progress, renderedFrames, encodedFrames }) => {
-        if (typeof progress === 'number') console.log(`[remotion] render progress=${(progress*100).toFixed(1)}% frames=${renderedFrames}/${encodedFrames}`)
+        if (typeof progress === 'number') {
+          const currentProgress = Math.round(progress * 100)
+          if (currentProgress !== lastRenderProgress && (currentProgress % 5 === 0 || currentProgress === 100)) {
+            lastRenderProgress = currentProgress
+            console.log(`[remotion] render progress=${currentProgress}% frames=${renderedFrames}/${encodedFrames}`)
+          }
+        }
       },
     })
 
     // Compose overlay with source video via FFmpeg
     await progress('running', 0.8)
-    const { filterGraph } = getOverlayFilter({ coverDurationSeconds, totalDurationSeconds })
-    console.log('[remotion] ffmpeg filterGraph=', filterGraph)
-    const ffArgs = [
-      '-y','-hide_banner','-loglevel','error',
-      '-progress','pipe:2',
-      // Input 0: overlay canvas, Input 1: source video (match local render)
-      '-i', overlayOut,
-      '-i', inFile,
-      '-filter_complex', filterGraph,
-      '-map','[composited]',
-      // Map delayed & trimmed source audio
-      '-map','[delayed_audio]?',
-      '-vsync','cfr','-r', String(REMOTION_FPS),
-      '-c:v','libx264','-c:a','aac','-b:a','192k',
-      '-preset','veryfast',
-      '-pix_fmt','yuv420p','-movflags','+faststart','-shortest',
-      outFile,
-    ]
+    console.log('[remotion] starting FFmpeg composition...')
+    const ffArgs = buildComposeArgs({
+      overlayPath: overlayOut,
+      sourceVideoPath: inFile,
+      outputPath: outFile,
+      fps: REMOTION_FPS,
+      coverDurationSeconds,
+      totalDurationSeconds,
+      preset: 'veryfast',
+    })
     await execFFmpegWithProgress(ffArgs, totalDurationSeconds)
-    console.log('[remotion] ffmpeg compose done')
+    console.log('[remotion] FFmpeg composition complete')
     try { rmSync(tmpOut, { recursive: true, force: true }) } catch {}
 
     await progress('uploading', 0.95)
@@ -357,10 +304,17 @@ async function handleRender(req, res) {
     console.log(`[remotion] completed job=${jobId}`)
   } catch (e) {
     console.error(`[remotion] job ${jobId} failed:`, e)
-    // On failure we rely on Worker polling & timeout; optionally send failed progress
     try {
-      await progress('running', 1)
+      await postUpdate('failed', { error: e?.message || 'unknown error' })
     } catch {}
+  } finally {
+    try {
+      if (clashController?.cleanup) {
+        await clashController.cleanup()
+      }
+    } catch (cleanupError) {
+      console.error('[remotion] Failed to shutdown Clash cleanly', cleanupError)
+    }
   }
 }
 

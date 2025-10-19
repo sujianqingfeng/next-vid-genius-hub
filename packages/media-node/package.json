@@ -1,0 +1,16 @@
+{
+  "name": "@app/media-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Node adapters for media pipelines (yt-dlp, ffmpeg).",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "files": ["index.js", "index.d.ts"],
+  "dependencies": {}
+}

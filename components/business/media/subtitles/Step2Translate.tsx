@@ -11,12 +11,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { type AIModelId, AIModelIds } from '~/lib/ai/models'
+import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 
 interface Step2TranslateProps {
-	selectedAIModel: AIModelId
-	onModelChange: (model: AIModelId) => void
+	selectedAIModel: ChatModelId
+	onModelChange: (model: ChatModelId) => void
 	isPending: boolean
 	onStart: () => void
 	translation: string
@@ -43,18 +43,18 @@ export function Step2Translate(props: Step2TranslateProps) {
 	)
 
 	return (
-		<div className="space-y-6">
+		<div className="flex flex-col h-full gap-6">
 			<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
 				<Select
 					value={selectedAIModel}
-					onValueChange={(value) => onModelChange(value as AIModelId)}
+					onValueChange={(value) => onModelChange(value as ChatModelId)}
 					disabled={isPending}
 				>
 					<SelectTrigger className="w-full sm:w-[200px]">
 						<SelectValue placeholder="Select model" />
 					</SelectTrigger>
 					<SelectContent>
-						{AIModelIds.map((id) => (
+						{ChatModelIds.map((id) => (
 							<SelectItem key={id} value={id}>
 								{id}
 							</SelectItem>
@@ -72,24 +72,24 @@ export function Step2Translate(props: Step2TranslateProps) {
 			</div>
 
 			{translation && (
-				<div className="space-y-3">
+				<div className="flex flex-col flex-1 gap-3 min-h-0">
 					<div className="flex items-center gap-2">
 						<h3 className="text-lg font-semibold">Translation Result</h3>
 						<Badge variant="secondary" className="text-xs">
 							{cues.length} cues
 						</Badge>
 					</div>
-					<div className="max-h-[420px] overflow-y-auto rounded-md border">
+					<div className="flex-1 overflow-y-auto rounded-md border bg-background">
 						{cues.map((cue, idx) => (
 							<div
 								key={`${cue.start}-${cue.end}-${idx}`}
-								className="flex items-start gap-3 px-3 py-2 border-b last:border-b-0"
+								className="flex items-start justify-between gap-3 px-4 py-3 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
 							>
-								<div className="flex-1">
+								<div className="flex-1 min-w-0">
 									<div className="text-xs text-muted-foreground font-mono">{`${cue.start} --> ${cue.end}`}</div>
-									<div className="mt-1 space-y-0.5">
+									<div className="mt-2 space-y-1">
 										{cue.lines.map((l, i) => (
-											<div key={i} className="text-sm font-mono">
+											<div key={i} className="text-sm font-mono break-words">
 												{l}
 											</div>
 										))}
@@ -99,11 +99,11 @@ export function Step2Translate(props: Step2TranslateProps) {
 									<Button
 										type="button"
 										variant="ghost"
-										size="icon"
+										size="sm"
 										onClick={() => onDeleteCue(idx)}
 										aria-label="Delete cue"
 										title="Delete this subtitle"
-										className="text-destructive hover:text-destructive"
+										className="text-destructive hover:text-destructive flex-shrink-0"
 									>
 										<Trash2 className="h-4 w-4" />
 									</Button>

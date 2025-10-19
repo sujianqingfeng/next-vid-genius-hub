@@ -14,6 +14,12 @@ export const AI_CONFIG = {
 		baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
 	},
 
+	// Packycode 配置
+	packycode: {
+		apiKey: process.env.PACKYCODE_API_KEY,
+		baseUrl: process.env.PACKYCODE_BASE_URL || 'https://codex-api.packycode.com',
+	},
+
 	// Whisper/转录配置
 	whisper: {
 		// 转录提供商类型
@@ -127,6 +133,6 @@ export const AI_CONFIG = {
 	},
 } as const
 
-export type AIProvider = 'openai' | 'deepseek'
+export type AIProvider = 'openai' | 'deepseek' | 'packycode'
 export type TranslationLanguage = typeof AI_CONFIG.translation.supportedLanguages[number]['code']
 export type TranscriptionFormat = typeof AI_CONFIG.transcription.outputFormats[number]

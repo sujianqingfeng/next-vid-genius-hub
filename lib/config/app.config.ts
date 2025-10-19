@@ -1,4 +1,5 @@
 // 从原来的 constants.ts 迁移核心配置
+import { MEDIA_CONFIG } from './media.config'
 export const APP_CONFIG = {
 	// 数据库配置
 	database: {
@@ -26,39 +27,11 @@ export const APP_CONFIG = {
 		retries: parseInt(process.env.PROXY_RETRIES || '3'),
 	},
 
-	// 文件限制
-	limits: {
-		maxVideoDuration: 2 * 60 * 60, // 2 hours in seconds
-		maxFileSize: 2 * 1024 * 1024 * 1024, // 2GB in bytes
-		maxConcurrentDownloads: 3,
-		maxConcurrentProcessing: 2,
-		maxUploadSize: 500 * 1024 * 1024, // 500MB
-		supportedFormats: {
-			video: ['mp4', 'avi', 'mov', 'mkv', 'webm'],
-			audio: ['mp3', 'wav', 'aac', 'flac', 'ogg'],
-			image: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-		},
-	},
+	// 文件限制（统一引用 MEDIA_CONFIG）
+	limits: MEDIA_CONFIG.limits,
 
-	// 质量配置
-	qualities: {
-		default: '1080p',
-		available: ['720p', '1080p'] as const,
-		formats: {
-			'720p': {
-				height: 720,
-				width: 1280,
-				bitrate: '2000k',
-				label: 'HD 720p',
-			},
-			'1080p': {
-				height: 1080,
-				width: 1920,
-				bitrate: '4000k',
-				label: 'Full HD 1080p',
-			},
-		},
-	},
+	// 质量配置（统一引用 MEDIA_CONFIG）
+	qualities: MEDIA_CONFIG.qualities,
 
 	// 应用信息
 	app: {
@@ -131,6 +104,12 @@ export const APP_CONFIG = {
 			maxTokens: parseInt(process.env.DEEPSEEK_MAX_TOKENS || '4096'),
 			model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
 		},
+		packycode: {
+			apiKey: process.env.PACKYCODE_API_KEY,
+			baseUrl: process.env.PACKYCODE_BASE_URL || 'https://codex-api.packycode.com',
+			maxTokens: parseInt(process.env.PACKYCODE_MAX_TOKENS || '4096'),
+			model: process.env.PACKYCODE_MODEL || 'gpt-5',
+		},
 		sentry: {
 			dsn: process.env.SENTRY_DSN,
 			environment: process.env.NODE_ENV || 'development',
@@ -143,15 +122,17 @@ export const APP_CONFIG = {
 	},
 
 	// 功能开关
-	features: {
-		enableAI: process.env.ENABLE_AI !== 'false',
-		enableComments: process.env.ENABLE_COMMENTS !== 'false',
-		enableSubtitles: process.env.ENABLE_SUBTITLES !== 'false',
-		enableDownloads: process.env.ENABLE_DOWNLOADS !== 'false',
-		enableLivePreview: process.env.ENABLE_LIVE_PREVIEW === 'true',
-		enableBatchProcessing: process.env.ENABLE_BATCH_PROCESSING === 'true',
-		enableAdvancedEditing: process.env.ENABLE_ADVANCED_EDITING === 'true',
-	},
+		features: {
+			enableAI: process.env.ENABLE_AI !== 'false',
+			enableComments: process.env.ENABLE_COMMENTS !== 'false',
+			enableSubtitles: process.env.ENABLE_SUBTITLES !== 'false',
+			enableDownloads: process.env.ENABLE_DOWNLOADS !== 'false',
+			enableLivePreview: process.env.ENABLE_LIVE_PREVIEW === 'true',
+			enableBatchProcessing: process.env.ENABLE_BATCH_PROCESSING === 'true',
+			enableAdvancedEditing: process.env.ENABLE_ADVANCED_EDITING === 'true',
+			// 如果为 false，则云端下载完成后仅保存远端 R2 Key，不把大文件回传到本地磁盘
+			enableLocalHydrate: process.env.ENABLE_LOCAL_HYDRATE !== 'false',
+		},
 
 	// UI 配置
 	ui: {
@@ -179,8 +160,33 @@ export const OPERATIONS_DIR = APP_CONFIG.operations.dir
 export const PROXY_URL = APP_CONFIG.proxy.url
 export const MAX_FILE_SIZE = APP_CONFIG.limits.maxFileSize
 export const MAX_VIDEO_DURATION = APP_CONFIG.limits.maxVideoDuration
+export const ENABLE_LOCAL_HYDRATE = APP_CONFIG.features.enableLocalHydrate
 
 // 便捷的访问器
 export const { database, operations, limits, qualities, app, services } = APP_CONFIG
-export const { openai, deepseek, sentry } = services
+export const { openai, deepseek, packycode, sentry } = services
 export const { features, ui, monitoring } = APP_CONFIG
+
+// Centralized environment-backed app constants (migrated from constants/app.constants.ts)
+export const DATABASE_URL = APP_CONFIG.database.url
+// PROXY_URL and OPERATIONS_DIR already exported above for backward-compat
+export const WHISPER_CPP_PATH = process.env.WHISPER_CPP_PATH
+
+// Cloudflare Workers/Orchestrator configuration
+export const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
+export const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN
+export const CLOUDFLARE_ASR_MAX_UPLOAD_BYTES = Number(process.env.CLOUDFLARE_ASR_MAX_UPLOAD_BYTES || '') || 4 * 1024 * 1024 // 4 MiB
+export const FORCE_CLOUD_DOWNSAMPLE = (process.env.FORCE_CLOUD_DOWNSAMPLE || '').toLowerCase() === 'true'
+export const ASR_TARGET_BITRATES = (process.env.ASR_TARGET_BITRATES || '48,24')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter((n) => Number.isFinite(n) && n > 0) as number[]
+export const ASR_SAMPLE_RATE = Number(process.env.ASR_SAMPLE_RATE || 16000)
+
+export const CF_ORCHESTRATOR_URL = process.env.CF_ORCHESTRATOR_URL
+export const JOB_CALLBACK_HMAC_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET
+export const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL
+
+// Default artifact filenames
+export const RENDERED_VIDEO_FILENAME = 'video-with-subtitles.mp4'
+export const VIDEO_WITH_INFO_FILENAME = 'video-with-info-and-comments.mp4'

@@ -100,6 +100,28 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 		</Link>
 	)
 
+	const renderMenuSection = (items: Array<(typeof menuItems)[0]>) =>
+		items.map((item) => {
+			const isActive = item.href === activeHref
+			return collapsed ? (
+				<Tooltip key={item.href}>
+					<TooltipTrigger asChild>
+						{renderMenuItem(item, isActive)}
+					</TooltipTrigger>
+					<TooltipContent side="right" className="max-w-xs">
+						<div>
+							<p className="font-medium">{item.title}</p>
+							<p className="text-xs text-muted-foreground">
+								{item.description}
+							</p>
+						</div>
+					</TooltipContent>
+				</Tooltip>
+			) : (
+				renderMenuItem(item, isActive)
+			)
+		})
+
 	return (
 		<div
 			className={cn(
@@ -143,50 +165,12 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 
 				{/* Navigation */}
 				<nav className="flex-1 space-y-1 p-3">
-					{menuItems.map((item) => {
-						const isActive = item.href === activeHref
-						return collapsed ? (
-							<Tooltip key={item.href}>
-								<TooltipTrigger asChild>
-									{renderMenuItem(item, isActive)}
-								</TooltipTrigger>
-								<TooltipContent side="right" className="max-w-xs">
-									<div>
-										<p className="font-medium">{item.title}</p>
-										<p className="text-xs text-muted-foreground">
-											{item.description}
-										</p>
-									</div>
-								</TooltipContent>
-							</Tooltip>
-						) : (
-							renderMenuItem(item, isActive)
-						)
-					})}
+					{renderMenuSection(menuItems)}
 				</nav>
 
 				{/* Bottom Navigation */}
 				<nav className="space-y-1 p-3 border-t border-sidebar-border">
-					{bottomMenuItems.map((item) => {
-						const isActive = item.href === activeHref
-						return collapsed ? (
-							<Tooltip key={item.href}>
-								<TooltipTrigger asChild>
-									{renderMenuItem(item, isActive)}
-								</TooltipTrigger>
-								<TooltipContent side="right" className="max-w-xs">
-									<div>
-										<p className="font-medium">{item.title}</p>
-										<p className="text-xs text-muted-foreground">
-											{item.description}
-										</p>
-									</div>
-								</TooltipContent>
-							</Tooltip>
-						) : (
-							renderMenuItem(item, isActive)
-						)
-					})}
+					{renderMenuSection(bottomMenuItems)}
 				</nav>
 
 				{/* Footer */}

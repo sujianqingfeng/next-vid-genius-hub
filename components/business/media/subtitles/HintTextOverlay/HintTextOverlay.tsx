@@ -1,6 +1,6 @@
 'use client'
 
-import { hexToRgba } from '~/lib/subtitle/utils/color'
+import { hexToRgba } from '~/lib/utils/format/color'
 import { UI_CONSTANTS } from '~/lib/subtitle/config/constants'
 import type { HintTextConfig } from '~/lib/subtitle/types'
 

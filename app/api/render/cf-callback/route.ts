@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
-import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/constants'
-import { OPERATIONS_DIR } from '~/lib/config/app.config'
-import { verifyHmacSHA256 } from '~/lib/security/hmac'
+import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
+import { OPERATIONS_DIR, ENABLE_LOCAL_HYDRATE } from '~/lib/config/app.config'
+import { verifyHmacSHA256 } from '@app/callback-utils'
 import { promises as fs, createWriteStream } from 'node:fs'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
+import { readMetadataSummary } from '@app/media-core'
+import { logger } from '~/lib/logger'
+import { upsertMediaManifest } from '~/lib/cloudflare'
 
 type CallbackPayload = {
   jobId: string
@@ -32,6 +35,7 @@ type CallbackPayload = {
     likeCount?: number
     source?: 'youtube' | 'tiktok'
     quality?: '720p' | '1080p'
+    commentCount?: number  // For comments-only tasks
   }
 }
 
@@ -47,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     const secret = JOB_CALLBACK_HMAC_SECRET || 'replace-with-strong-secret'
     if (!verifyHmacSHA256(secret, bodyText, signature)) {
-      console.error('[cf-callback] invalid signature')
+      logger.error('api', '[cf-callback] invalid signature')
       return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
     }
 
@@ -55,12 +59,12 @@ export async function POST(req: NextRequest) {
 
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, payload.mediaId) })
     if (!media) {
-      console.error('[cf-callback] media not found', payload.mediaId)
+      logger.error('api', `[cf-callback] media not found: ${payload.mediaId}`)
       return NextResponse.json({ error: 'media not found' }, { status: 404 })
     }
 
     if (payload.engine === 'media-downloader') {
-      await handleCloudDownloadCallback(media, payload)
+      await handleCloudDownloadCallback(media, payload as CallbackPayload & { engine: 'media-downloader' })
       return NextResponse.json({ ok: true })
     }
 
@@ -71,19 +75,41 @@ export async function POST(req: NextRequest) {
           .update(schema.media)
           .set({ videoWithInfoPath: `remote:orchestrator:${payload.jobId}` })
           .where(eq(schema.media.id, media.id))
-        console.log('[cf-callback] recorded remote info artifact for job', payload.jobId)
+        // Update manifest to record rendered info artifact
+        try {
+          await upsertMediaManifest(payload.mediaId, { renderedInfoJobId: payload.jobId })
+        } catch (err) {
+          logger.warn('api', `[cf-callback] manifest (info) update skipped: ${err instanceof Error ? err.message : String(err)}`)
+        }
       } else {
         await db
           .update(schema.media)
           .set({ videoWithSubtitlesPath: `remote:orchestrator:${payload.jobId}` })
           .where(eq(schema.media.id, media.id))
-        console.log('[cf-callback] recorded remote subtitles artifact for job', payload.jobId)
+        // Update manifest to record rendered subtitles artifact
+        try {
+          await upsertMediaManifest(payload.mediaId, { renderedSubtitlesJobId: payload.jobId })
+        } catch (err) {
+          logger.warn('api', `[cf-callback] manifest (subtitles) update skipped: ${err instanceof Error ? err.message : String(err)}`)
+        }
       }
+    } else if (payload.status === 'failed' || payload.status === 'canceled') {
+      // 非 downloader 引擎的失败/取消也落库，便于在媒体详情中留痕
+      const errorMessage = payload.error || (payload.status === 'failed' ? 'Cloud render failed' : 'Cloud render canceled')
+      const updates: Record<string, unknown> = {
+        downloadError: `[${payload.engine}] ${errorMessage}`,
+      }
+      // 不覆盖已有产物路径；仅在需要时可清理
+      await db
+        .update(schema.media)
+        .set(updates)
+        .where(eq(schema.media.id, media.id))
+      
     }
 
     return NextResponse.json({ ok: true })
   } catch (e) {
-    console.error('[cf-callback] error', e)
+    logger.error('api', `[cf-callback] error: ${e instanceof Error ? e.message : String(e)}`)
     return NextResponse.json({ error: 'internal error' }, { status: 500 })
   }
 }
@@ -93,6 +119,11 @@ async function handleCloudDownloadCallback(
   payload: CallbackPayload & { engine: 'media-downloader' },
 ) {
   const where = eq(schema.media.id, payload.mediaId)
+
+  // Detect comments-only task: no video output but has metadata output
+  const isCommentsOnly = !payload.outputs?.video?.url && Boolean(payload.outputs?.metadata?.url)
+
+  
 
   if (payload.status !== 'completed') {
     await db
@@ -106,6 +137,14 @@ async function handleCloudDownloadCallback(
       .where(where)
     return
   }
+
+  // For comments-only tasks, skip video download logic
+  if (isCommentsOnly) {
+    
+    return
+  }
+
+  
 
   const videoUrl = payload.outputs?.video?.url
   if (!videoUrl) {
@@ -124,35 +163,38 @@ async function handleCloudDownloadCallback(
   const operationDir = path.join(OPERATIONS_DIR, payload.mediaId)
   await fs.mkdir(operationDir, { recursive: true })
 
-  const videoPath = path.join(operationDir, `${payload.mediaId}.mp4`)
   const audioUrl = payload.outputs?.audio?.url
-  const audioPath = audioUrl ? path.join(operationDir, `${payload.mediaId}.mp3`) : null
   const metadataUrl = payload.outputs?.metadata?.url
   const metadataKey = payload.outputs?.metadata?.key ?? null
+
+  const videoPath = path.join(operationDir, `${payload.mediaId}.mp4`)
+  const audioPath = audioUrl ? path.join(operationDir, `${payload.mediaId}.mp3`) : null
   const metadataPath = path.join(operationDir, 'metadata.json')
   let metadataDownloaded = false
 
-  try {
-    await downloadArtifact(videoUrl, videoPath)
-    if (audioUrl && audioPath) {
-      await downloadArtifact(audioUrl, audioPath)
+  if (ENABLE_LOCAL_HYDRATE) {
+    try {
+      await downloadArtifact(videoUrl, videoPath)
+      if (audioUrl && audioPath) {
+        await downloadArtifact(audioUrl, audioPath)
+      }
+      if (metadataUrl) {
+        await downloadArtifact(metadataUrl, metadataPath)
+        metadataDownloaded = true
+      }
+    } catch (error) {
+      logger.error('api', `[cf-callback] failed to persist cloud download: ${error instanceof Error ? error.message : String(error)}`)
+      await db
+        .update(schema.media)
+        .set({
+          downloadBackend: 'cloud',
+          downloadStatus: 'failed',
+          downloadError: error instanceof Error ? error.message : 'Failed to persist cloud artifacts',
+          downloadJobId: payload.jobId,
+        })
+        .where(where)
+      return
     }
-    if (metadataUrl) {
-      await downloadArtifact(metadataUrl, metadataPath)
-      metadataDownloaded = true
-    }
-  } catch (error) {
-    console.error('[cf-callback] failed to persist cloud download', error)
-    await db
-      .update(schema.media)
-      .set({
-        downloadBackend: 'cloud',
-        downloadStatus: 'failed',
-        downloadError: error instanceof Error ? error.message : 'Failed to persist cloud artifacts',
-        downloadJobId: payload.jobId,
-      })
-      .where(where)
-    return
   }
 
   const updates: Record<string, unknown> = {
@@ -164,12 +206,20 @@ async function handleCloudDownloadCallback(
     remoteVideoKey: payload.outputs?.video?.key ?? null,
     remoteAudioKey: payload.outputs?.audio?.key ?? null,
     remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
-    filePath: videoPath,
-    audioFilePath: audioPath ?? null,
-    rawMetadataPath: metadataDownloaded ? metadataPath : media.rawMetadataPath ?? null,
-    rawMetadataDownloadedAt: metadataDownloaded
-      ? new Date()
-      : media.rawMetadataDownloadedAt ?? null,
+    // hydrate 到本地时才写入本地路径
+    ...(ENABLE_LOCAL_HYDRATE
+      ? {
+          filePath: videoPath,
+          audioFilePath: audioPath ?? null,
+          rawMetadataPath: metadataDownloaded ? metadataPath : media.rawMetadataPath ?? null,
+          rawMetadataDownloadedAt: metadataDownloaded ? new Date() : media.rawMetadataDownloadedAt ?? null,
+        }
+      : {
+          filePath: media.filePath ?? null,
+          audioFilePath: media.audioFilePath ?? null,
+          rawMetadataPath: media.rawMetadataPath ?? null,
+          rawMetadataDownloadedAt: media.rawMetadataDownloadedAt ?? null,
+        }),
   }
 
   const metadataFromPayload = payload.metadata
@@ -194,6 +244,17 @@ async function handleCloudDownloadCallback(
   if (metadataFromPayload?.source) updates.source = metadataFromPayload.source
 
   await db.update(schema.media).set(updates).where(where)
+
+  // Update manifest with remote object keys (best-effort)
+  try {
+    await upsertMediaManifest(payload.mediaId, {
+      remoteVideoKey: payload.outputs?.video?.key ?? null,
+      remoteAudioKey: payload.outputs?.audio?.key ?? null,
+      remoteMetadataKey: payload.outputs?.metadata?.key ?? null,
+    })
+  } catch (err) {
+    logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
+  }
 }
 
 async function downloadArtifact(url: string, filePath: string) {
@@ -209,7 +270,9 @@ async function downloadArtifact(url: string, filePath: string) {
   const fileStream = createWriteStream(filePath)
   try {
     // Stream directly to disk to avoid buffering large artifacts in memory
-    await pipeline(Readable.fromWeb(body as ReadableStream<Uint8Array>), fileStream)
+    // Casts are safe here: Node's Readable.fromWeb returns a Node stream compatible with pipeline.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await pipeline(Readable.fromWeb(body as any) as any, fileStream as any)
   } catch (error) {
     fileStream.destroy()
     await fs.rm(filePath, { force: true }).catch(() => {})
@@ -218,73 +281,4 @@ async function downloadArtifact(url: string, filePath: string) {
   }
 }
 
-type MetadataSummary = {
-  title?: string
-  author?: string
-  thumbnail?: string
-  viewCount?: number
-  likeCount?: number
-}
-
-async function readMetadataSummary(metadataPath: string): Promise<MetadataSummary | null> {
-  try {
-    const raw = await fs.readFile(metadataPath, 'utf8')
-    if (!raw.trim()) return null
-    const parsed = JSON.parse(raw) as Record<string, unknown>
-    return summariseMetadata(parsed)
-  } catch (error) {
-    console.error('[cf-callback] failed to read metadata summary', error)
-    return null
-  }
-}
-
-function summariseMetadata(raw: Record<string, unknown> | null | undefined): MetadataSummary {
-  if (!raw) return {}
-
-  const asString = (value: unknown): string | undefined => {
-    if (typeof value === 'string' && value.trim()) return value
-    return undefined
-  }
-
-  const asNumber = (value: unknown): number | undefined => {
-    if (typeof value === 'number' && Number.isFinite(value)) return value
-    if (typeof value === 'string' && value.trim()) {
-      const parsed = Number.parseInt(value, 10)
-      if (!Number.isNaN(parsed)) return parsed
-    }
-    return undefined
-  }
-
-  let thumbnail = asString(raw.thumbnail)
-  if (!thumbnail && Array.isArray(raw.thumbnails)) {
-    const thumbnails = raw.thumbnails as unknown[]
-    for (let i = thumbnails.length - 1; i >= 0; i--) {
-      const candidate = thumbnails[i]
-      if (
-        candidate &&
-        typeof candidate === 'object' &&
-        candidate !== null &&
-        typeof (candidate as { url?: unknown }).url === 'string' &&
-        (candidate as { url: string }).url.trim()
-      ) {
-        thumbnail = (candidate as { url: string }).url
-        break
-      }
-    }
-  }
-
-  const author =
-    asString(raw.uploader) ??
-    asString(raw.channel) ??
-    asString(raw.artist) ??
-    asString(raw.owner) ??
-    undefined
-
-  return {
-    title: asString(raw.title),
-    author,
-    thumbnail,
-    viewCount: asNumber(raw['view_count'] ?? raw['viewCount']),
-    likeCount: asNumber(raw['like_count'] ?? raw['likeCount']),
-  }
-}
+// summariseMetadata is provided by @app/media-core and used internally by readMetadataSummary

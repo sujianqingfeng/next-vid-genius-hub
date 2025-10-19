@@ -314,5 +314,54 @@ export function normalizeVttContent(vttContent: string): string {
 		return line
 	})
 
-	return normalizedLines.join('\n')
+    const prelim = normalizedLines.join('\n')
+
+    // Second pass: fix invalid or reversed ranges and enforce monotonic timings
+    // Parse cues after timestamp normalization
+    const cues = parseVttCues(prelim)
+    if (!cues || cues.length === 0) return prelim
+
+    // Enrich with numeric times
+    type TmpCue = { startTime: number; endTime: number; lines: string[] }
+    const tmp: TmpCue[] = cues.map((c) => ({
+        startTime: parseVttTimestamp(c.start),
+        endTime: parseVttTimestamp(c.end),
+        lines: c.lines,
+    }))
+
+    // Sort by start time first
+    tmp.sort((a, b) => a.startTime - b.startTime)
+
+    // Fix reversed/invalid durations and enforce small positive gap
+    const MIN_DUR = 0.35 // seconds
+    const GAP = 0.02 // seconds, avoid zero-length overlap when tightening
+    for (let i = 0; i < tmp.length; i++) {
+        const cur = tmp[i]
+        const next = tmp[i + 1]
+        // If end <= start, stretch minimally or up to next.start - GAP
+        if (!(cur.endTime > cur.startTime)) {
+            const nextStart = next ? next.startTime : cur.startTime + 3
+            const target = Math.max(cur.startTime + MIN_DUR, Math.min(cur.startTime + 3, nextStart - GAP))
+            cur.endTime = Number.isFinite(target) && target > cur.startTime ? target : cur.startTime + MIN_DUR
+        }
+        // If overlaps with previous end (after sorting), push start forward slightly
+        if (i > 0) {
+            const prev = tmp[i - 1]
+            if (cur.startTime < prev.endTime - GAP / 2) {
+                cur.startTime = Math.max(prev.endTime + GAP, cur.startTime)
+                if (cur.endTime <= cur.startTime) cur.endTime = cur.startTime + MIN_DUR
+            }
+        }
+    }
+
+    // Serialize back to VTT document
+    const fixed = createVttDocument(
+        tmp.map((t) => ({
+            start: formatVttTimestamp(t.startTime),
+            end: formatVttTimestamp(t.endTime),
+            lines: t.lines,
+        })),
+    )
+
+    return fixed
 }

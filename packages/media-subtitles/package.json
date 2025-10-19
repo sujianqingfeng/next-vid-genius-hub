@@ -1,0 +1,19 @@
+{
+  "name": "@app/media-subtitles",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared subtitle rendering (WebVTT->ASS + FFmpeg) for local runtime and containers.",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "files": ["index.js", "index.d.ts"],
+  "dependencies": {
+    "execa": "^9.5.2"
+  }
+}
+

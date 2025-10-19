@@ -141,18 +141,55 @@ export function TimelineSelector({
 	const conflicts = getConflicts()
 
 	// 处理精确时间输入
-	const handleTimeInputChange = (field: 'start' | 'end', value: string) => {
-		const numValue = parseFloat(value)
-		if (isNaN(numValue)) return
+const handleTimeInputChange = (field: 'start' | 'end', value: string) => {
+	const numValue = parseFloat(value)
+	if (isNaN(numValue)) return
 
-		if (field === 'start') {
-			const newStart = Math.max(0, Math.min(endTime - 0.1, numValue))
-			onChange(newStart, endTime)
-		} else {
-			const newEnd = Math.min(duration, Math.max(startTime + 0.1, numValue))
-			onChange(startTime, newEnd)
-		}
+	if (field === 'start') {
+		const newStart = Math.max(0, Math.min(endTime - 0.1, numValue))
+		onChange(newStart, endTime)
+	} else {
+		const newEnd = Math.min(duration, Math.max(startTime + 0.1, numValue))
+		onChange(startTime, newEnd)
 	}
+}
+
+const renderPreciseInput = (kind: 'start' | 'end') => {
+	const inputId = `${kind}-time-precise`
+	const value = kind === 'start' ? startTime : endTime
+	const label = kind === 'start' ? 'Start Time (seconds)' : 'End Time (seconds)'
+	return (
+		<div className="space-y-2" key={kind}>
+			<Label htmlFor={inputId}>{label}</Label>
+			<div className="flex items-center gap-2">
+				<Input
+					id={inputId}
+					type="number"
+					min={0}
+					max={duration}
+					step={0.1}
+					value={value.toFixed(1)}
+					onChange={(e) => handleTimeInputChange(kind, e.target.value)}
+					className="flex-1"
+				/>
+				{onPlayPreview && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => onPlayPreview(value)}
+						className="whitespace-nowrap"
+					>
+						<Clock className="h-3 w-3 mr-1" />
+						Preview
+					</Button>
+				)}
+			</div>
+			<div className="text-xs text-gray-500">
+				{formatTimeForDisplay(value)}
+			</div>
+		</div>
+	)
+}
 
 	return (
 		<div className="space-y-4">
@@ -248,65 +285,7 @@ export function TimelineSelector({
 
 			{/* 精确时间输入 */}
 			<div className="grid grid-cols-2 gap-4">
-				<div className="space-y-2">
-					<Label htmlFor="start-time-precise">Start Time (seconds)</Label>
-					<div className="flex items-center gap-2">
-						<Input
-							id="start-time-precise"
-							type="number"
-							min={0}
-							max={duration}
-							step={0.1}
-							value={startTime.toFixed(1)}
-							onChange={(e) => handleTimeInputChange('start', e.target.value)}
-							className="flex-1"
-						/>
-						{onPlayPreview && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => onPlayPreview(startTime)}
-								className="whitespace-nowrap"
-							>
-								<Clock className="h-3 w-3 mr-1" />
-								Preview
-							</Button>
-						)}
-					</div>
-					<div className="text-xs text-gray-500">
-						{formatTimeForDisplay(startTime)}
-					</div>
-				</div>
-
-				<div className="space-y-2">
-					<Label htmlFor="end-time-precise">End Time (seconds)</Label>
-					<div className="flex items-center gap-2">
-						<Input
-							id="end-time-precise"
-							type="number"
-							min={0}
-							max={duration}
-							step={0.1}
-							value={endTime.toFixed(1)}
-							onChange={(e) => handleTimeInputChange('end', e.target.value)}
-							className="flex-1"
-						/>
-						{onPlayPreview && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => onPlayPreview(endTime)}
-								className="whitespace-nowrap"
-							>
-								<Clock className="h-3 w-3 mr-1" />
-								Preview
-							</Button>
-						)}
-					</div>
-					<div className="text-xs text-gray-500">
-						{formatTimeForDisplay(endTime)}
-					</div>
-				</div>
+				{(['start', 'end'] as const).map(renderPreciseInput)}
 			</div>
 
 			{/* 时间段信息 */}

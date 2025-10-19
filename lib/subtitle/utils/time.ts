@@ -45,10 +45,13 @@ export function parseVttTimestamp(timestamp: string): number {
  * 将秒数格式化为VTT时间戳
  */
 export function formatVttTimestamp(seconds: number): string {
-	const hours = Math.floor(seconds / 3600)
-	const minutes = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-	const ms = Math.floor((seconds % 1) * 1000)
+	// Round to nearest millisecond to avoid 12.940 -> 12.939 drift
+	let totalMs = Math.round(seconds * 1000)
+	if (totalMs < 0) totalMs = 0
+	const hours = Math.floor(totalMs / 3600000)
+	const minutes = Math.floor((totalMs % 3600000) / 60000)
+	const secs = Math.floor((totalMs % 60000) / 1000)
+	const ms = totalMs % 1000
 
 	// 如果小时为0，使用简短格式
 	if (hours === 0) {

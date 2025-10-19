@@ -1,15 +1,25 @@
 import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { randomUUID, createHmac } from 'node:crypto'
+// crypto not needed after moving to shared callback utils
 import { spawn } from 'node:child_process'
 import net from 'node:net'
 import { readFileSync, unlinkSync } from 'node:fs'
 import { promises as fsPromises } from 'node:fs'
 import { setTimeout as delay } from 'node:timers/promises'
 import YAML from 'yaml'
-import { ProxyAgent } from 'undici'
-import { Innertube, UniversalCache } from 'youtubei.js'
+import { makeStatusCallback } from '@app/callback-utils'
+// Compose pipelines via shared @app/media-* packages
+// Compose pipelines with shared adapters from the monorepo packages
+import {
+  downloadVideo as coreDownloadVideo,
+  extractAudio as coreExtractAudio,
+} from '@app/media-node'
+import { summariseMetadata, resolveForwardProxy as resolveForwardProxyCore } from '@app/media-core'
+import {
+  downloadYoutubeComments as providerDownloadYoutubeComments,
+  downloadTikTokCommentsByUrl as providerDownloadTikTokComments,
+} from '@app/media-providers'
 
 const PORT = process.env.PORT || 8080
 const CALLBACK_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
@@ -481,354 +491,9 @@ function sendJson(res, status, data) {
 	res.end(JSON.stringify(data))
 }
 
-function hmacHex(secret, payload) {
-	return createHmac('sha256', secret).update(payload).digest('hex')
-}
+// Legacy helpers removed in favor of shared callback utils
 
-function randomNonce() {
-	return randomUUID()
-}
-
-function runCommand(bin, args, { cwd, env } = {}) {
-	return new Promise((resolve, reject) => {
-		const child = spawn(bin, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
-		let stdout = ''
-		let stderr = ''
-		child.stdout.on('data', (chunk) => {
-			stdout += chunk.toString()
-		})
-		child.stderr.on('data', (chunk) => {
-			stderr += chunk.toString()
-		})
-		child.on('error', reject)
-		child.on('close', (code) => {
-			if (code === 0) resolve({ stdout, stderr })
-			else reject(new Error(stderr || stdout || `${bin} exited with code ${code}`))
-		})
-	})
-}
-
-async function downloadVideoWithYtDlp({ url, quality, outputPath, proxy }) {
-	const format =
-		quality === '720p'
-			? 'bestvideo[height<=720]+bestaudio/best'
-			: 'bestvideo[height<=1080]+bestaudio/best'
-	const args = [
-		url,
-		'-f',
-		format,
-		'--merge-output-format',
-		'mp4',
-		'-o',
-		outputPath,
-		'--print-json',
-		'--no-playlist',
-	]
-	if (proxy) {
-		args.push('--proxy', proxy)
-	}
-	const { stdout } = await runCommand('yt-dlp', args)
-	// yt-dlp may output progress lines; metadata JSON is usually the last JSON object
-	const lines = stdout
-		.split('\n')
-		.map((line) => line.trim())
-		.filter(Boolean)
-	let metadata = null
-	for (let i = lines.length - 1; i >= 0; i--) {
-		try {
-			metadata = JSON.parse(lines[i])
-			break
-		} catch {
-			// continue searching
-		}
-	}
-	return metadata
-}
-
-async function downloadCommentsWithYtDlp({ url, outDir, proxy, source, maxComments }) {
-  await ensureDirExists(outDir)
-  const template = join(outDir, '%(id)s')
-  const args = [
-    url,
-    '--skip-download',
-    '--write-info-json',
-    '--write-comments',
-    '-o',
-    template,
-  ]
-  // Limit comment count for YouTube if requested
-  if (maxComments && source && String(source).toLowerCase() === 'youtube') {
-    const max = Math.max(1, Number.parseInt(String(maxComments), 10) || 0)
-    args.push('--extractor-args', `youtube:max_comments=${max}`)
-  }
-  if (proxy) args.push('--proxy', proxy)
-  await runCommand('yt-dlp', args)
-
-  // Find generated *.comments.json and *.info.json
-  const files = await fsPromises.readdir(outDir).catch(() => [])
-  const commentsFile = files.find((f) => f.endsWith('.comments.json'))
-  let comments = []
-  if (commentsFile) {
-    try {
-      const raw = await fsPromises.readFile(join(outDir, commentsFile), 'utf8')
-      const parsed = JSON.parse(raw)
-      const list = Array.isArray(parsed) ? parsed : (parsed.comments || [])
-      for (const c of list) {
-        const id = String(c?.id || c?.cid || c?.comment_id || randomUUID())
-        const author = c?.author?.name || c?.author || ''
-        const authorThumb = c?.author_thumbnail || c?.author?.thumbnails?.[0]?.url || undefined
-        const content = typeof c?.text === 'string' ? c.text : (c?.content?.text || '')
-        const likes = Number.parseInt(String(c?.like_count ?? c?.likes ?? 0), 10) || 0
-        const replyCount = Number.parseInt(String(c?.reply_count ?? c?.reply_comment_total ?? 0), 10) || 0
-        comments.push({ id, author, authorThumbnail: authorThumb, content, likes, replyCount, translatedContent: '' })
-      }
-    } catch (err) {
-      console.error('[media-downloader] failed to parse comments json', err)
-    }
-  }
-
-  // As a fallback, build a minimal payload
-  return { comments }
-}
-
-// ------------ YouTube (youtubei.js) comments downloader to match local semantics ------------
-function extractVideoId(url) {
-  try {
-    const u = new URL(url)
-    if (u.hostname.includes('youtu.be')) {
-      return u.pathname.replace(/^\//, '') || null
-    }
-    if (u.searchParams.get('v')) return u.searchParams.get('v')
-    const parts = u.pathname.split('/').filter(Boolean)
-    if (parts[0] === 'shorts' && parts[1]) return parts[1]
-    return null
-  } catch {
-    return null
-  }
-}
-
-function buildFetchWithProxy(proxyUrl) {
-  const agent = proxyUrl ? new ProxyAgent(proxyUrl) : undefined
-  return async (input, init = {}) => {
-    try {
-      let url
-      let opts = { ...(init || {}) }
-      if (typeof input === 'string') {
-        url = input
-      } else if (input instanceof URL) {
-        url = input.toString()
-      } else if (input && typeof input === 'object') {
-        // Request-like object normalization (youtubei.js may pass its own Request)
-        const maybeUrl = input.url || input.href || input.toString?.()
-        url = typeof maybeUrl === 'string' ? maybeUrl : String(maybeUrl)
-        // Merge basic fields if present
-        if (input.method && !opts.method) opts.method = input.method
-        if (input.headers && !opts.headers) opts.headers = input.headers
-        if (input.body && !opts.body) opts.body = input.body
-      } else {
-        url = String(input)
-      }
-      if (agent) opts.dispatcher = agent
-      return await globalThis.fetch(url, opts)
-    } catch (e) {
-      // fallback raw
-      return await globalThis.fetch(input, init)
-    }
-  }
-}
-
-async function getYouTubeClientForContainer(proxyUrl) {
-  const cache = new UniversalCache(true)
-  const fetchWithProxy = buildFetchWithProxy(proxyUrl)
-  return Innertube.create({ cache, fetch: fetchWithProxy })
-}
-
-function mapYoutubeComment(item) {
-  const c = item?.comment || item || {}
-  return {
-    id: c.id || randomUUID(),
-    content: (c.content && c.content.text) || '',
-    author: (c.author && c.author.name) || '',
-    likes: Number(c.like_count || 0) || 0,
-    authorThumbnail: (c.author && c.author.thumbnails && c.author.thumbnails[0]?.url) || '',
-    replyCount: c.reply_count || 0,
-    translatedContent: '',
-  }
-}
-
-async function downloadYoutubeCommentsWithInnertube({ url, pages = 3, proxy }) {
-  console.log('[media-downloader] yt: build client (proxy=', Boolean(proxy), ')')
-  const youtube = await getYouTubeClientForContainer(proxy)
-  const videoId = extractVideoId(url)
-  if (!videoId) throw new Error('Could not extract video ID from URL')
-  console.log('[media-downloader] yt: getComments for', videoId)
-  const commentsRoot = await youtube.getComments(videoId)
-  const initialCount = commentsRoot?.contents?.length || 0
-  console.log('[media-downloader] yt: initial contents =', initialCount)
-  if (!initialCount) return []
-  let comments = commentsRoot.contents.map(mapYoutubeComment)
-  let current = commentsRoot
-  let page = 1
-  while (current.has_continuation && page < pages) {
-    await delay(1000)
-    const next = await current.getContinuation()
-    const pageCount = next?.contents?.length || 0
-    console.log('[media-downloader] yt: page', page + 1, 'contents =', pageCount, 'has_continuation=', Boolean(next?.has_continuation))
-    if (!pageCount) break
-    comments = comments.concat(next.contents.map(mapYoutubeComment))
-    current = next
-    page++
-  }
-  console.log('[media-downloader] yt: total comments collected =', comments.length)
-  return comments
-}
-
-function makeFetchWithProxy(proxyUrl) {
-  return buildFetchWithProxy(proxyUrl)
-}
-
-async function resolveAwemeIdViaTikwm(url, proxyUrl) {
-  try {
-    const _fetch = makeFetchWithProxy(proxyUrl)
-    const endpoint = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`
-    const r = await _fetch(endpoint, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36',
-        Accept: 'application/json',
-      },
-    })
-    if (!r.ok) return null
-    const json = await r.json()
-    const data = (json && json.data) || {}
-    return data.aweme_id || data.awemeId || null
-  } catch {
-    return null
-  }
-}
-
-async function fetchTikwmComments(awemeId, cursor, proxyUrl) {
-  const _fetch = makeFetchWithProxy(proxyUrl)
-  const endpoint = `https://www.tikwm.com/api/comment/list/?aweme_id=${encodeURIComponent(awemeId)}&count=50&cursor=${cursor}`
-  const r = await _fetch(endpoint, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36',
-      Accept: 'application/json',
-      Referer: 'https://www.tikwm.com/',
-    },
-  })
-  try {
-    return await r.json()
-  } catch {
-    return {}
-  }
-}
-
-async function downloadTikTokCommentsByUrlWithProxy({ url, pages = 3, proxy }) {
-  console.log('[media-downloader] tiktok: resolve awemeId')
-  const awemeId = await resolveAwemeIdViaTikwm(url, proxy)
-  if (!awemeId) return []
-  const results = []
-  let cursor = 0
-  for (let i = 0; i < pages; i++) {
-    try {
-      const data = await fetchTikwmComments(awemeId, cursor, proxy)
-      const list = Array.isArray(data?.data?.comments) ? data.data.comments : []
-      console.log('[media-downloader] tiktok: page', i + 1, 'items =', list.length)
-      for (const c of list) {
-        const id = String(c?.cid ?? c?.comment_id ?? c?.id ?? '')
-        if (!id) continue
-        const user = (c?.user || c?.user_info || {})
-        const author = user?.nickname || user?.unique_id || user?.nick_name || 'Unknown'
-        let avatarThumb
-        if (user?.avatar_thumb && typeof user.avatar_thumb === 'object') {
-          avatarThumb = user.avatar_thumb.url_list?.[0]
-        } else if (typeof user?.avatar_thumb === 'string') {
-          avatarThumb = user.avatar_thumb
-        } else if (typeof user?.avatar === 'string') {
-          avatarThumb = user.avatar
-        }
-        const content = String(c?.text ?? c?.content ?? '')
-        const likes = Number.parseInt(String(c?.digg_count ?? c?.like_count ?? 0), 10) || 0
-        const replyCount = Number.parseInt(String(c?.reply_comment_total ?? c?.reply_count ?? 0), 10) || 0
-        results.push({ id, author, authorThumbnail: avatarThumb, content, likes, replyCount, translatedContent: '' })
-      }
-      const hasMore = Boolean(data?.data?.has_more)
-      const nextCursor = Number.parseInt(String(data?.data?.cursor ?? 0), 10) || 0
-      if (hasMore) cursor = nextCursor
-      else break
-    } catch {
-      break
-    }
-  }
-  return results
-}
-
-async function extractAudioWithFfmpeg(videoPath, audioPath) {
-	await runCommand('ffmpeg', [
-		'-y',
-		'-i',
-		videoPath,
-		'-vn',
-		'-acodec',
-		'libmp3lame',
-		'-b:a',
-		'192k',
-		audioPath,
-	])
-}
-
-function mapMetadata(raw, fallback = {}) {
-	if (!raw) return fallback
-	return {
-		title: raw.title ?? fallback.title,
-		author: raw.uploader ?? raw.channel ?? fallback.author,
-		thumbnail: raw.thumbnail ?? fallback.thumbnail,
-		viewCount: raw.view_count ?? fallback.viewCount,
-		likeCount: raw.like_count ?? fallback.likeCount,
-		duration: raw.duration ?? fallback.duration,
-	}
-}
-
-async function postUpdate(callbackUrl, body) {
-	if (!callbackUrl) return
-	const payload = JSON.stringify(body)
-	const signature = hmacHex(CALLBACK_SECRET, payload)
-	await fetch(callbackUrl, {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			'x-signature': signature,
-		},
-		body: payload,
-	}).catch(() => {})
-}
-
-async function resolveForwardProxy(engineOptions) {
-	const { proxy, defaultProxyUrl } = engineOptions || {}
-	if (proxy && proxy.server && proxy.port && proxy.protocol) {
-		if (!FORWARD_PROXY_PROTOCOLS.has(proxy.protocol)) {
-			console.warn(
-			`[media-downloader] Unsupported proxy protocol "${proxy.protocol}" for direct usage; falling back to default proxy.`,
-			)
-		} else {
-		console.log('[media-downloader] using direct forward proxy from engineOptions', {
-				server: proxy.server,
-				port: proxy.port,
-				protocol: proxy.protocol,
-				hasCredentials: Boolean(proxy.username && proxy.password),
-			})
-			let auth = ''
-			if (proxy.username && proxy.password) {
-				auth = `${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@`
-			}
-			return `${proxy.protocol}://${auth}${proxy.server}:${proxy.port}`
-		}
-	}
-	if (defaultProxyUrl) {
-	console.log('[media-downloader] falling back to defaultProxyUrl')
-	}
-	return defaultProxyUrl
-}
+// Forward proxy resolution moved to @app/media-core
 
 async function uploadArtifact(url, buffer, contentType = 'application/octet-stream') {
 	if (!url) return
@@ -884,19 +549,15 @@ async function handleRender(req, res) {
 
 	sendJson(res, 202, { jobId })
 
+  const postUpdate = makeStatusCallback({ callbackUrl, secret: CALLBACK_SECRET, baseFields: { jobId } })
+
   const url = engineOptions.url
   const quality = engineOptions.quality || '1080p'
   const task = (engineOptions.task || '').toString().toLowerCase()
   const isCommentsOnly = task === 'comments'
 
   if (!url || (!isCommentsOnly && !outputVideoPutUrl) || (isCommentsOnly && !outputMetadataPutUrl)) {
-    await postUpdate(callbackUrl, {
-      jobId,
-      status: 'failed',
-      error: isCommentsOnly ? 'missing url or outputMetadataPutUrl' : 'missing url or outputVideoPutUrl',
-      ts: Date.now(),
-      nonce: randomNonce(),
-    })
+    await postUpdate('failed', { error: isCommentsOnly ? 'missing url or outputMetadataPutUrl' : 'missing url or outputVideoPutUrl' })
     return
   }
 
@@ -909,7 +570,7 @@ async function handleRender(req, res) {
 
   const proxy = clashController
     ? clashController.proxyUrl
-    : await resolveForwardProxy(engineOptions)
+    : await resolveForwardProxyCore({ proxy: engineOptions?.proxy, defaultProxyUrl: engineOptions?.defaultProxyUrl, logger: console })
   console.log('[media-downloader] resolved proxy', { jobId, viaMihomo: Boolean(clashController), proxy })
   const tmpDir = tmpdir()
   const basePath = join(tmpDir, `${jobId}`)
@@ -918,14 +579,8 @@ async function handleRender(req, res) {
   const commentsDir = join(tmpDir, `${jobId}-comments`)
 
 	const progress = async (phase, pct) => {
-		await postUpdate(callbackUrl, {
-			jobId,
-			status: phase === 'uploading' ? 'uploading' : 'running',
-			phase,
-			progress: pct,
-			ts: Date.now(),
-			nonce: randomNonce(),
-		})
+		const status = phase === 'uploading' ? 'uploading' : 'running'
+		await postUpdate(status, { phase, progress: pct })
 	}
 
   try {
@@ -935,78 +590,90 @@ async function handleRender(req, res) {
 
     if (isCommentsOnly) {
       const maxPages = parseNumber(engineOptions?.commentsPages, 3)
-      console.log('[media-downloader] comments-only: start fetch', { source: engineOptions?.source, pages: maxPages, viaMihomo: Boolean(clashController), proxy })
-      let comments = []
-      const source = (engineOptions?.source || '').toLowerCase()
-      if (source === 'youtube') {
-        comments = await downloadYoutubeCommentsWithInnertube({ url, pages: maxPages, proxy })
-      } else if (source === 'tiktok') {
-        comments = await downloadTikTokCommentsByUrlWithProxy({ url, pages: maxPages, proxy })
-      } else {
-        comments = []
+      const src = (engineOptions?.source || 'youtube').toLowerCase()
+      console.log('[media-downloader] comments-only: start fetch via core pipeline', { source: src, pages: maxPages, viaMihomo: Boolean(clashController), proxy })
+      const { runCommentsPipeline } = await import('@app/media-core')
+      const commentsDownloader = async ({ url: commentUrl, source, pages, proxy: proxyUrl }) => {
+        if (String(source).toLowerCase() === 'tiktok') {
+          return providerDownloadTikTokComments({ url: commentUrl, pages, proxy: proxyUrl })
+        }
+        return providerDownloadYoutubeComments({ url: commentUrl, pages, proxy: proxyUrl })
       }
-      console.log('[media-downloader] comments-only: fetched', comments.length, 'comments')
-      await progress('downloading', 0.6)
-      const metadataBuffer = Buffer.from(JSON.stringify({ comments }, null, 2), 'utf8')
-      console.log('[media-downloader] comments-only: uploading metadata bytes', metadataBuffer.length)
-      await progress('uploading', 0.9)
-      await uploadArtifact(outputMetadataPutUrl, metadataBuffer, 'application/json')
-      await progress('uploading', 0.95)
+      const resPipeline = await runCommentsPipeline(
+        { url, source: src === 'tiktok' ? 'tiktok' : 'youtube', pages: maxPages, proxy },
+        {
+          commentsDownloader,
+          artifactStore: {
+            uploadMetadata: async (comments) => {
+              if (!outputMetadataPutUrl) return
+              const buf = Buffer.from(JSON.stringify({ comments }, null, 2), 'utf8')
+              await uploadArtifact(outputMetadataPutUrl, buf, 'application/json')
+            },
+          },
+        },
+        (e) => {
+          const stage = e.stage === 'completed' ? 'running' : e.stage
+          const p = Math.max(0, Math.min(1, e.progress ?? 0))
+          progress(stage, p)
+        }
+      )
 
       const outputs = {}
       if (outputMetadataKey) outputs.metadata = { key: outputMetadataKey }
-      await postUpdate(callbackUrl, {
-        jobId,
-        status: 'completed',
+      await postUpdate('completed', {
         phase: 'completed',
         progress: 1,
-        ts: Date.now(),
-        nonce: randomNonce(),
         outputMetadataKey,
         outputs,
         metadata: {
-          source: engineOptions.source || 'youtube',
+          source: src,
+          commentCount: resPipeline?.count || 0,
         },
       })
-      console.log('[media-downloader] job completed', jobId, 'comments=', comments.length)
+      console.log('[media-downloader] job completed', jobId, 'comments=', resPipeline?.count || 0)
     } else {
-      const metadata = await downloadVideoWithYtDlp({ url, quality, outputPath: videoPath, proxy })
-      await progress('downloading', 0.6)
+      const { runDownloadPipeline } = await import('@app/media-core')
+      const pipelineRes = await runDownloadPipeline(
+        { url, quality },
+        {
+          ensureDir: ensureDirExists,
+          resolvePaths: async () => ({ videoPath, audioPath }),
+          downloader: async (u, q, out) => coreDownloadVideo(u, q, out, { proxy, captureJson: Boolean(outputMetadataPutUrl) }),
+          audioExtractor: outputAudioPutUrl ? (v, a) => coreExtractAudio(v, a) : async () => {},
+          persistRawMetadata: async () => {},
+          artifactStore: {
+            uploadMetadata: async (data) => {
+              if (!outputMetadataPutUrl) return
+              const buf = Buffer.from(JSON.stringify(data, null, 2), 'utf8')
+              await uploadArtifact(outputMetadataPutUrl, buf, 'application/json')
+            },
+            uploadVideo: async (path) => {
+              const buf = readFileSync(path)
+              await uploadArtifact(outputVideoPutUrl, buf, 'video/mp4')
+            },
+            uploadAudio: async (path) => {
+              if (!outputAudioPutUrl) return
+              const buf = readFileSync(path)
+              await uploadArtifact(outputAudioPutUrl, buf, 'audio/mpeg')
+            },
+          },
+        },
+        (e) => {
+          const stage = e.stage === 'completed' ? 'running' : e.stage
+          const p = Math.max(0, Math.min(1, e.progress ?? 0))
+          progress(stage, p)
+        }
+      )
 
-      const metadataBuffer = metadata ? Buffer.from(JSON.stringify(metadata, null, 2), 'utf8') : null
-
-      let audioBuffer = null
-      if (outputAudioPutUrl) {
-        await extractAudioWithFfmpeg(videoPath, audioPath)
-        audioBuffer = readFileSync(audioPath)
-        await progress('extracting_audio', 0.8)
-      }
-
-      const videoBuffer = readFileSync(videoPath)
-      await progress('uploading', 0.9)
-      if (outputMetadataPutUrl && metadataBuffer) {
-        await uploadArtifact(outputMetadataPutUrl, metadataBuffer, 'application/json')
-      }
-      await progress('uploading', 0.95)
-
-      await uploadArtifact(outputVideoPutUrl, videoBuffer, 'video/mp4')
-      if (outputAudioPutUrl && audioBuffer) {
-        await uploadArtifact(outputAudioPutUrl, audioBuffer, 'audio/mpeg')
-      }
-
-      const finalMetadata = mapMetadata(metadata, { quality })
+      const finalMetadata = summariseMetadata(pipelineRes?.rawMetadata || null)
       const outputs = {
         video: { key: outputVideoKey },
       }
       if (outputAudioKey) outputs.audio = { key: outputAudioKey }
-      if (outputMetadataKey && metadataBuffer) outputs.metadata = { key: outputMetadataKey }
-      await postUpdate(callbackUrl, {
-        jobId,
-        status: 'completed',
+      if (outputMetadataKey && (pipelineRes?.rawMetadata != null)) outputs.metadata = { key: outputMetadataKey }
+      await postUpdate('completed', {
         phase: 'completed',
         progress: 1,
-        ts: Date.now(),
-        nonce: randomNonce(),
         outputKey: outputVideoKey,
         outputAudioKey,
         outputMetadataKey,
@@ -1020,13 +687,7 @@ async function handleRender(req, res) {
     }
   } catch (error) {
 		console.error('[media-downloader] job failed', jobId, error)
-		await postUpdate(callbackUrl, {
-			jobId,
-			status: 'failed',
-			error: error instanceof Error ? error.message : 'unknown error',
-			ts: Date.now(),
-			nonce: randomNonce(),
-		})
+		await postUpdate('failed', { error: error instanceof Error ? error.message : 'unknown error' })
   } finally {
     try {
       await clashController?.cleanup()

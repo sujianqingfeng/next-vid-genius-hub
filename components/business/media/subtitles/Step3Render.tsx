@@ -10,16 +10,20 @@ import {
 	AlertCircle,
 	Loader2,
 } from 'lucide-react'
+import { areConfigsEqual } from '~/lib/subtitle/utils/config'
+
 import { Button } from '~/components/ui/button'
 import { SUBTITLE_RENDER_PRESETS, DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
+
+
 import type {
 	SubtitleRenderConfig,
 	SubtitleRenderPreset,
 	HintTextConfig,
 	TimeSegmentEffect,
 } from '~/lib/subtitle/types'
-import { VideoPreview } from './VideoPreview/VideoPreview'
+
 import { SubtitleConfigControls } from './SubtitleConfig/SubtitleConfigControls'
 import { HintTextConfigControls } from './HintTextConfig/HintTextConfigControls'
 import { TimeSegmentEffectsManager } from './TimeSegmentEffects/TimeSegmentEffectsManager'
@@ -35,6 +39,9 @@ interface Step3RenderProps {
 	translation?: string | null
 	config: SubtitleRenderConfig
 	onConfigChange: (config: SubtitleRenderConfig) => void
+	renderBackend: 'local' | 'cloud'
+	onRenderBackendChange: (backend: 'local' | 'cloud') => void
+
 }
 
 /**
@@ -46,11 +53,14 @@ export function Step3Render(props: Step3RenderProps) {
 		isRendering,
 		onStart,
 		errorMessage,
-		mediaId,
+
 		translationAvailable,
-		translation,
+
 		config,
 		onConfigChange,
+		renderBackend,
+		onRenderBackendChange,
+
 	} = props
 
 	// 预设状态管理
@@ -73,8 +83,6 @@ export function Step3Render(props: Step3RenderProps) {
 	const selectedPreset = SUBTITLE_RENDER_PRESETS.find((preset) => preset.id === selectedPresetId)
 
 	// 视频状态管理
-	const [currentTime, setCurrentTime] = useState(0)
-	const [duration, setDuration] = useState(0)
 	const videoRef = useRef<HTMLVideoElement>(null)
 
 	// 预设点击处理
@@ -140,60 +148,50 @@ export function Step3Render(props: Step3RenderProps) {
 		}
 	}
 
-	// 处理视频时长变化
-	const handleDurationChange = (newDuration: number) => {
-		setDuration(newDuration)
-	}
 
-	// 处理视频时间更新
-	const handleTimeUpdate = (newTime: number) => {
-		setCurrentTime(newTime)
-	}
-
-	// 处理视频元素引用
-	const handleVideoRef = (ref: HTMLVideoElement | null) => {
-		videoRef.current = ref
-	}
 
 	return (
-		<div className="space-y-4">
-			{/* 主布局：左右分栏 */}
-			<div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
-				{/* 左侧：视频预览区域 */}
-				<div className="flex-1 lg:max-w-2xl">
-					<VideoPreview
-						mediaId={mediaId}
-						translation={translation}
-						config={config}
-						isRendering={isRendering}
-						onTimeUpdate={handleTimeUpdate}
-						onDurationChange={handleDurationChange}
-						onVideoRef={handleVideoRef}
-					/>
-				</div>
+		<div className="space-y-6">
+		{/* 视频预览与字幕列表由顶部 PreviewPane 接管，此处不再重复渲染 */}
 
-				{/* 右侧：配置控制区域 */}
-				<div className="flex-1 lg:max-w-xl">
-					<div className="space-y-4">
-						{/* 快速预设和手动设置 - 标签页模式 */}
-						<SubtitleConfigControls
-							presets={SUBTITLE_RENDER_PRESETS}
-							selectedPresetId={selectedPresetId}
-							selectedPreset={selectedPreset}
-							onPresetClick={handlePresetClick}
-							config={config}
-							onNumericChange={handleNumericChange}
-							onOpacityChange={handleOpacityChange}
-							onColorChange={handleColorChange}
-						/>
+			{/* 配置控制区域 - 下方紧凑布局 */}
+			<div className="grid gap-6 md:grid-cols-2">
+				{/* 左列：基础配置 */}
+				<div className="space-y-4">
+					{/* 预设选择器 */}
+					<div className="rounded-lg border bg-card p-4">
+						<h3 className="text-sm font-medium mb-3">Quick Presets</h3>
+                        <SubtitleConfigControls
+                            presets={SUBTITLE_RENDER_PRESETS}
+                            selectedPresetId={selectedPresetId}
+                            selectedPreset={selectedPreset}
+                            onPresetClick={handlePresetClick}
+                            config={config}
+                            onNumericChange={handleNumericChange}
+                            onOpacityChange={handleOpacityChange}
+                            onColorChange={handleColorChange}
+                            onSetOpacity={(v) => {
+                                const value = Math.min(Math.max(v, COLOR_CONSTANTS.OPACITY_MIN), COLOR_CONSTANTS.OPACITY_MAX)
+                                onConfigChange({ ...config, backgroundOpacity: value })
+                            }}
+                        />
+					</div>
 
-						{/* 提示文本配置 */}
+					{/* 提示文本配置 */}
+					<div className="rounded-lg border bg-card p-4">
+						<h3 className="text-sm font-medium mb-3">Hint Text</h3>
 						<HintTextConfigControls
 							config={config.hintTextConfig}
 							onChange={handleHintTextChange}
 						/>
+					</div>
+				</div>
 
-						{/* 时间段效果管理 - 折叠式 */}
+				{/* 右列：高级配置 */}
+				<div className="space-y-4">
+					{/* 时间段效果管理 */}
+					<div className="rounded-lg border bg-card p-4">
+						<h3 className="text-sm font-medium mb-3">Time Effects</h3>
 						<TimeSegmentEffectsManager
 							effects={config.timeSegmentEffects}
 							onChange={handleTimeSegmentEffectsChange}
@@ -201,14 +199,52 @@ export function Step3Render(props: Step3RenderProps) {
 							currentTime={currentTime}
 							onPlayPreview={handlePlayPreview}
 						/>
+					</div>
 
-						{/* 渲染按钮 - 配置区域底部 */}
-						<div className="border-t pt-4">
+					{/* 渲染控制 */}
+					<div className="rounded-lg border bg-card p-4">
+						<div className="flex flex-col gap-4">
+							<div className="flex items-center justify-between">
+								<h3 className="text-sm font-medium">Render Settings</h3>
+								{translationAvailable ? (
+									<span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+										Ready
+									</span>
+								) : (
+									<span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+										Need Translation
+									</span>
+								)}
+							</div>
+							
+							{/* 渲染后端选择 */}
+							<div className="space-y-2">
+								<label className="text-xs font-medium">Backend</label>
+								<div className="inline-flex gap-2 w-full">
+									<Button
+										variant={renderBackend === 'cloud' ? 'default' : 'outline'}
+										size="sm"
+										onClick={() => onRenderBackendChange('cloud')}
+										className="flex-1"
+									>
+										Cloud
+									</Button>
+									<Button
+										variant={renderBackend === 'local' ? 'default' : 'outline'}
+										size="sm"
+										onClick={() => onRenderBackendChange('local')}
+										className="flex-1"
+									>
+										Local
+									</Button>
+								</div>
+							</div>
+
 							<Button
 								onClick={() => onStart({ ...config })}
 								disabled={isRendering || !translationAvailable}
 								size="lg"
-								className="w-full"
+								className="w-full h-11"
 							>
 								{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 								{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
@@ -232,37 +268,4 @@ export function Step3Render(props: Step3RenderProps) {
 	)
 }
 
-/**
- * 比较两个字幕配置是否相等
- */
-function areConfigsEqual(configA: SubtitleRenderConfig, configB: SubtitleRenderConfig): boolean {
-	// 基础配置比较
-	const basicConfigEqual =
-		configA.fontSize === configB.fontSize &&
-		Math.abs(configA.backgroundOpacity - configB.backgroundOpacity) < 0.001 &&
-		configA.textColor.toLowerCase() === configB.textColor.toLowerCase() &&
-		configA.backgroundColor.toLowerCase() === configB.backgroundColor.toLowerCase() &&
-		configA.outlineColor.toLowerCase() === configB.outlineColor.toLowerCase() &&
-		configA.timeSegmentEffects.length === configB.timeSegmentEffects.length
-
-	if (!basicConfigEqual) return false
-
-	// 提示文本配置比较
-	const hintConfigA = configA.hintTextConfig
-	const hintConfigB = configB.hintTextConfig
-
-	if (!hintConfigA && !hintConfigB) return true
-	if (!hintConfigA || !hintConfigB) return false
-
-	return (
-		hintConfigA.enabled === hintConfigB.enabled &&
-		hintConfigA.text === hintConfigB.text &&
-		hintConfigA.fontSize === hintConfigB.fontSize &&
-		hintConfigA.textColor.toLowerCase() === hintConfigB.textColor.toLowerCase() &&
-		hintConfigA.backgroundColor.toLowerCase() === hintConfigB.backgroundColor.toLowerCase() &&
-		Math.abs((hintConfigA.backgroundOpacity ?? 0.8) - (hintConfigB.backgroundOpacity ?? 0.8)) < 0.001 &&
-		hintConfigA.outlineColor.toLowerCase() === hintConfigB.outlineColor.toLowerCase() &&
-		hintConfigA.position === hintConfigB.position &&
-		hintConfigA.animation === hintConfigB.animation
-	)
-}
+// areConfigsEqual moved to shared util in ~/lib/subtitle/utils/config

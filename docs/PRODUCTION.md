@@ -5,24 +5,25 @@
 ## 总览架构
 
 - Next 应用（本仓库）：提供业务 UI/接口；在 Step 3 触发云渲染；在终态回调中落库并供 Step 4 预览。
-- Worker（cloudflare/media-orchestrator）：
-  - /jobs：创建作业 → 将输入镜像至 R2 → 生成 R2 预签名 URL → 触发容器 /render。
+- Worker（cloudflare/media-orchestrator）（桶优先）：
+  - /jobs：创建作业 → 从桶/manifest 解析输入位置 → 生成 R2 预签名 URL → 触发容器 /render。
   - /jobs/:id：供前端轮询；检测 R2 是否产生输出；若完成则回调 Next 落库。
-  - /upload/:id（兜底模式）：本地/开发时容器可直接 POST 成品到此处；Worker 写入 R2。
-  - /artifacts/:id（兜底模式）：从 R2 读取产物。
+  - /upload/:id（可选兜底）：容器可直接 POST 成品；Worker 写入 R2。
+  - /artifacts/:id：从 R2 读取产物（播放/下载代理）。
 - R2：
   - inputs/videos/{mediaId}.mp4
+  - inputs/videos/subtitles/{mediaId}.mp4
   - inputs/subtitles/{mediaId}.vtt
+  - inputs/comments/{mediaId}.json
   - outputs/by-media/{mediaId}/{jobId}/video.mp4
-  - downloads/{mediaId}/{jobId}/video.mp4
-  - downloads/{mediaId}/{jobId}/audio.mp3
-  - downloads/{mediaId}/{jobId}/metadata.json
+  - downloads/{mediaId}/{jobId}/{video.mp4,audio.mp3,metadata.json}
 - 容器（containers/media-downloader）：
   - /render：调用 `yt-dlp` 下载源视频与原始元数据、`ffmpeg` 提取音轨，将产物上传至 R2。
 - 容器（containers/burner-ffmpeg）：
-  - /render：接受 R2 预签名 URL（生产）或 fallback URL（开发），执行 ffmpeg 烧录后写回产物。
+ - /render：接受 R2 预签名 URL（生产）或 fallback URL（开发），执行 ffmpeg 烧录后写回产物。
+  - 日志：每 10% 打印一次进度（如 `30%`），同时每 30s 打印一次心跳（`running… <x>%`）避免“卡死错觉”。通过 `RENDER_HEARTBEAT_MS` 自定义心跳间隔（设为 `0` 可关闭）。
 
-生产使用“仅 R2 直连”：容器仅访问 R2，Worker 负责编排与检测完成；不依赖 localhost/host.docker.internal。
+生产使用“仅 R2 直连 + 桶优先输入”：容器仅访问 R2，Worker 负责编排与检测完成；Next 不再承担输入中转。
 
 ## 先决条件
 
@@ -63,6 +64,24 @@ R2_S3_ENDPOINT = "<accountid>.r2.cloudflarestorage.com"
 R2_ACCESS_KEY_ID = "<access-key>"
 R2_SECRET_ACCESS_KEY = "<secret-key>"
 R2_BUCKET_NAME = "vidgen-render"
+
+```
+
+### 桶优先输入与清单（manifest）
+
+- 清单位置：`manifests/media/<mediaId>.json`
+- 字段：`remoteVideoKey/remoteAudioKey/remoteMetadataKey`、`vttKey`、`commentsKey`、`subtitlesInputKey`、`renderedSubtitlesJobId`、`renderedInfoJobId`
+- 物化职责：
+  - Next：
+    - 转写完成 → 写入 `inputs/subtitles/<mediaId>.vtt` → 更新 `vttKey`
+    - 评论下载/翻译完成 → 写入 `inputs/comments/<mediaId>.json` → 更新 `commentsKey`
+    - 云下载回调 → 更新 `remote*Key`
+  - Worker：
+    - 字幕渲染完成 → 物化 `inputs/videos/subtitles/<mediaId>.mp4` → 更新 `subtitlesInputKey`
+
+严格模式（无回退）：
+- Worker 启动任务仅依赖桶与 manifest；缺少输入直接报错。
+- 启动前请保证对应 inputs 或 manifest 指针存在。
 ```
 
 2) 生产密钥（不要写入 wrangler.toml）
@@ -84,6 +103,22 @@ routes = [
 ```bash
 pnpm cf:deploy
 ```
+
+5) Workers AI 凭据（ASR，方案 A）
+
+生产环境不要把密钥写入 `wrangler.toml`。通过 wrangler secrets 注入 Worker 运行时可见的变量（与本地一致）：
+
+```bash
+cd cloudflare/media-orchestrator
+wrangler secret put CF_AI_ACCOUNT_ID
+wrangler secret put CF_AI_API_TOKEN
+
+# 可选：兼容命名（代码兜底）
+wrangler secret put CLOUDFLARE_ACCOUNT_ID
+wrangler secret put CLOUDFLARE_API_TOKEN
+```
+
+部署或重新发布后再验证字幕 Step 1（Cloud）是否能顺利产出 `vtt/words`。
 
 ## 容器（media-downloader）生产配置
 
@@ -141,17 +176,23 @@ docker push <registry>/<project>/burner-ffmpeg:<tag>
 CF_ORCHESTRATOR_URL=https://orchestrator.example.com
 JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 # 可选：R2_PUBLIC_BASE_URL=
+# 可选：关闭本地落盘以减少出网/磁盘成本（仅保存远端 R2 Key）
+ENABLE_LOCAL_HYDRATE=false
 ```
 
 2) 部署方式
 
 - Vercel / 自建 Next Server / 其他平台均可；需要允许 Next 主动访问 Worker（对外网可达）。
 
-## 模式与回退
+## 模式
 
-- 生产（推荐）：设置 `R2_S3_*`，容器仅与 R2 交互，Worker 检测 R2 输出完成 → 回调 Next 落库。
-- 开发兜底：未设置 `R2_S3_*` 时：
-  - 容器从 Next 拉 `source/subtitles`；产物 POST 到 Worker `/upload/:jobId`；仍能完整闭环。
+- 生产/开发统一：设置 `R2_S3_*`（或使用 R2 绑定），容器仅与 R2 交互，Worker 检测 R2 输出完成 → 回调 Next 落库；无 Next 中转。
+
+### 关于 ENABLE_LOCAL_HYDRATE
+
+- 为默认 `true`：Next 在回调时会把视频/音频/metadata 拉取到本地 `OPERATIONS_DIR/<mediaId>/` 并落库，适合本地处理或需要本地副本的部署。
+- 设置为 `false`：Next 仅记录 `remoteVideoKey/remoteAudioKey/remoteMetadataKey`，不回传大文件；前端播放应通过 Worker 的 `/artifacts/:jobId` 或直接使用 R2 预签名 URL（已由 Worker 在回调中提供）。
+- 切换该开关不影响已存在的本地文件；仅对新回调生效。
 
 ## 安全建议
 
@@ -174,7 +215,7 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 ## 冒烟测试（生产）
 
 1) 上传 10–30 秒小样视频，手动触发 Step 3（Cloud）。
-2) Worker 日志：`start job ...` → 无错误；容器日志：`inputs ready` → `ffmpeg done`。
+2) Worker 日志：`start job ...` → 无错误；容器日志：`inputs ready` → 若为长视频可见 `20%/30%/...` → `ffmpeg done`。
 3) 轮询 /jobs/:id：status 从 `queued`→`running`（或 `preparing`）→ 检测到 R2 `outputs/...` → `completed`。
 4) Next 日志出现 `[cf-callback] recorded remote artifact for job <jobId>`，页面自动跳到 Step 4 可播放（Next 代理 Worker `/artifacts/:jobId`，支持 Range）。
 5) 针对云端下载：在下载页选择 Cloud，确认 Worker /jobs/:id 状态从 `queued` → `running` → `completed`，Next 日志输出“Cloud download completed”并在 `operations/<mediaId>` 下生成 mp4/mp3/metadata.json。

@@ -1,9 +1,10 @@
 'use server'
 
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
+import { logger } from '~/lib/logger'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
 import { getYouTubeClient } from './client'
-import { extractVideoId } from './utils'
+import { extractVideoId } from '@app/media-providers'
 
 export async function fetchYouTubeMetadata(
 	url: string,
@@ -32,9 +33,8 @@ export async function fetchYouTubeMetadata(
 			source: 'youtube',
 			raw: info,
 		}
-	} catch (error) {
-		console.error('Failed to fetch YouTube metadata:', error)
-		return null
-	}
+    } catch (error) {
+        logger.error('media', `Failed to fetch YouTube metadata: ${error instanceof Error ? error.message : String(error)}`)
+        return null
+    }
 }
-

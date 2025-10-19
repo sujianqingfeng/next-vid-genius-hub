@@ -1,6 +1,6 @@
 name = "media-orchestrator"
 main = "index.ts"
-compatibility_date = "2024-05-01"
+compatibility_date = "2025-10-19"
 
 workers_dev = true
 
@@ -15,7 +15,13 @@ bucket_name = "vidgen-render"
 
 [vars]
 JOB_TTL_SECONDS = 86400
+# Default container base; specific engines can override below
 CONTAINER_BASE_URL = "http://localhost:8080"
+# Audio transcoder engine (dev)
+CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
+# Workers AI (REST credentials) for ASR pipeline - set in your environment
+# CF_AI_ACCOUNT_ID = "<your-account-id>"
+# CF_AI_API_TOKEN = "<your-api-token>"
 # Dedicated Remotion renderer container (dev)
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8090"
 # Cloud download container (media-downloader)
@@ -24,6 +30,8 @@ NEXT_BASE_URL = "http://localhost:3000"
 JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 # 预签名 PUT 有效期（秒）：开发 600，生产可提升（如 1800）
 PUT_EXPIRES = 600
+
+# 启用回退到 Next 拉取源数据（迁移期建议保留 true；稳定后可改为 false 严格桶优先）
 
 # S3-compatible storage for both prod (R2 S3 endpoint) and dev (MinIO)
 # For production with R2, set:
@@ -40,7 +48,6 @@ S3_BUCKET_NAME = "vidgen-render"
 S3_STYLE = "path"
 S3_REGION = "us-east-1"
 ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
-MIRROR_INPUTS = "false"
 
 [[durable_objects.bindings]]
 name = "RENDER_JOB_DO"
@@ -49,3 +56,50 @@ class_name = "RenderJobDO"
 [[migrations]]
 tag = "v1-render-job-do"
 new_classes = ["RenderJobDO"]
+
+# Containers configuration (build and run media engines inside Cloudflare)
+# Requires Workers Paid plan + Containers beta access.
+[[containers]]
+class_name = "MediaDownloaderContainer"
+image = "../../containers/media-downloader/Dockerfile"
+max_instances = 10
+
+[[containers]]
+class_name = "AudioTranscoderContainer"
+image = "../../containers/audio-transcoder/Dockerfile"
+max_instances = 10
+
+[[containers]]
+class_name = "BurnerFfmpegContainer"
+image = "../../containers/burner-ffmpeg/Dockerfile"
+max_instances = 10
+
+[[containers]]
+class_name = "RendererRemotionContainer"
+image = "../../containers/renderer-remotion/Dockerfile"
+max_instances = 5
+
+[[durable_objects.bindings]]
+name = "MEDIA_DOWNLOADER"
+class_name = "MediaDownloaderContainer"
+
+[[durable_objects.bindings]]
+name = "AUDIO_TRANSCODER"
+class_name = "AudioTranscoderContainer"
+
+[[durable_objects.bindings]]
+name = "BURNER_FFMPEG"
+class_name = "BurnerFfmpegContainer"
+
+[[durable_objects.bindings]]
+name = "RENDERER_REMOTION"
+class_name = "RendererRemotionContainer"
+
+[[migrations]]
+tag = "v2-containers"
+new_sqlite_classes = [
+  "MediaDownloaderContainer",
+  "AudioTranscoderContainer",
+  "BurnerFfmpegContainer",
+  "RendererRemotionContainer",
+]

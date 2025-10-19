@@ -1,0 +1,24 @@
+{
+  "name": "@app/media-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared media pipeline orchestrators and port typings.",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "metadata.js",
+    "proxy.js",
+    "clash.js"
+  ],
+  "dependencies": {
+    "yaml": "^2.6.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  }
+}

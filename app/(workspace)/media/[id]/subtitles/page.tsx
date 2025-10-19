@@ -16,10 +16,8 @@ import { Step1Transcribe } from '~/components/business/media/subtitles/Step1Tran
 import { Step2Translate } from '~/components/business/media/subtitles/Step2Translate'
 import { Step3Render } from '~/components/business/media/subtitles/Step3Render'
 import { Step4Preview } from '~/components/business/media/subtitles/Step4Preview'
-import {
-	Stepper,
-} from '~/components/business/media/subtitles/Stepper'
-import { PageHeader } from '~/components/layout'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs'
+import { PageHeader } from '~/components/layout/page-header'
 import { Button } from '~/components/ui/button'
 import {
 	Card,
@@ -28,11 +26,11 @@ import {
 	CardHeader,
 	CardTitle,
 } from '~/components/ui/card'
-import { type AIModelId, AIModelIds } from '~/lib/ai/models'
+import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
 import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { getDefaultModel } from '~/lib/subtitle/config/models'
-import { useSubtitleWorkflow } from '~/lib/subtitle/hooks'
+import { useSubtitleWorkflow } from '~/lib/subtitle/hooks/useSubtitleWorkflow'
 import type {
 	TranscriptionProvider,
 	WhisperModel
@@ -40,6 +38,8 @@ import type {
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
+import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
+import type { SubtitleStepId } from '~/lib/subtitle/types'
 
 export default function SubtitlesPage() {
 	const params = useParams()
@@ -67,9 +67,18 @@ export default function SubtitlesPage() {
 	})
 
 	// 设置默认值
-	const selectedModel = workflowState.selectedModel as WhisperModel || getDefaultModel('local')
-	const selectedProvider = workflowState.selectedProvider as TranscriptionProvider || 'local'
-	const selectedAIModel = workflowState.selectedAIModel as AIModelId || AIModelIds[0]
+	const selectedProvider =
+		(workflowState.selectedProvider as TranscriptionProvider) || 'cloudflare'
+	const selectedModel =
+		(workflowState.selectedModel as WhisperModel) ||
+		(selectedProvider === 'cloudflare'
+			? 'whisper-tiny-en'
+			: getDefaultModel(selectedProvider))
+	const selectedAIModel =
+		(workflowState.selectedAIModel as ChatModelId) || ChatModelIds[0]
+	const downsampleBackend =
+		((workflowState.downsampleBackend as ('auto' | 'local' | 'cloud')) ||
+			'cloud')
 
 	// 渲染后端选择（local | cloud）
 	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>(
@@ -105,6 +114,10 @@ export default function SubtitlesPage() {
 						selectedModel,
 						selectedProvider
 					})
+					// 确保媒体详情刷新，带回 transcriptionWords
+					queryClient.invalidateQueries({
+						queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+					})
 				}
 			},
 			onError: (error) => {
@@ -112,6 +125,31 @@ export default function SubtitlesPage() {
 			},
 		}),
 	)
+
+	// 优化转录 mutation（覆盖 transcription）
+    const optimizeMutation = useMutation(
+        queryOrpc.subtitle.optimizeTranscription.mutationOptions({
+            onSuccess: () => {
+                // 刷新媒体数据，带回 optimizedTranscription
+                queryClient.invalidateQueries({
+                    queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+                })
+            },
+        }),
+    )
+
+
+    // 清除优化后的转录
+    const clearOptimizedMutation = useMutation(
+        queryOrpc.subtitle.clearOptimizedTranscription.mutationOptions({
+            onSuccess: () => {
+                // 回退到原始 transcription（刷新媒体详情）
+                queryClient.invalidateQueries({
+                    queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+                })
+            },
+        }),
+    )
 
 	// 翻译mutation
 	const translateMutation = useMutation(
@@ -157,21 +195,21 @@ export default function SubtitlesPage() {
 	)
 
 	// 云端渲染：轮询状态
-	const cloudStatusQuery = useQuery(
-		queryOrpc.subtitle.getRenderStatus.queryOptions({
-			input: cloudJobId ? { jobId: cloudJobId } : (undefined as any),
-			enabled: !!cloudJobId && isVisible && activeStep === 'step3',
-			refetchInterval: (q) => {
-				const s = (q.state.data as any)?.status
-				return s && ['completed', 'failed', 'canceled'].includes(s)
-					? false
-					: TIME_CONSTANTS.RENDERING_POLL_INTERVAL
-			},
-		}),
-	)
+    const cloudStatusQuery = useQuery(
+        queryOrpc.subtitle.getRenderStatus.queryOptions({
+            input: { jobId: cloudJobId ?? '' },
+            enabled: !!cloudJobId && isVisible && activeStep === 'step3',
+            refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+                const s = q.state.data?.status
+                return s && ['completed', 'failed', 'canceled'].includes(s)
+                    ? false
+                    : TIME_CONSTANTS.RENDERING_POLL_INTERVAL
+            },
+        }),
+    )
 
-	// 云端渲染完成后，刷新媒体数据并跳到预览（用 effect 避免在渲染期间触发副作用）
-	useEffect(() => {
+  // 云端渲染完成后，刷新媒体数据并跳到预览（用 effect 避免在渲染期间触发副作用）
+  useEffect(() => {
 		if (renderBackend === 'cloud' && cloudJobId && cloudStatusQuery.data?.status === 'completed') {
 			queryClient.invalidateQueries({
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
@@ -185,18 +223,27 @@ export default function SubtitlesPage() {
 			try { window.localStorage.removeItem(`subtitleCloudJob:${mediaId}`) } catch {}
 			setCloudJobId(null)
 		}
-	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, activeStep, mediaId, queryClient, setActiveStep])
+  }, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, activeStep, mediaId, queryClient, setActiveStep])
+
+  // 预览用的云端渲染状态（避免 any）
+  const previewCloudStatus = (renderBackend === 'cloud' && cloudStatusQuery.data)
+    ? {
+        status: (cloudStatusQuery.data as { status?: string }).status,
+        progress: (cloudStatusQuery.data as { progress?: number }).progress,
+      }
+    : null
 
 	// 事件处理器
 	const handleStartTranscription = () => {
 		logger.info('transcription', `User started transcription: ${selectedProvider}/${selectedModel} for media ${mediaId}`)
 		updateWorkflowState({ selectedModel, selectedProvider })
-		transcribeMutation.mutate({
-			mediaId,
-			model: selectedModel,
-			provider: selectedProvider
-		})
-	}
+        transcribeMutation.mutate({
+            mediaId,
+            model: selectedModel,
+            provider: selectedProvider,
+            downsampleBackend,
+        })
+    }
 
 	const handleStartTranslation = () => {
 		if (workflowState.transcription) {
@@ -264,17 +311,50 @@ export default function SubtitlesPage() {
 				title="Generate Subtitles"
 			/>
 
-			{/* Step Navigation - Always Visible */}
-			<Stepper
-				activeTab={activeStep}
-				hasTranscription={hasTranscription}
-				hasTranslation={hasTranslation}
+			{/* Always-visible preview pane */}
+			<PreviewPane
+				mediaId={mediaId}
+				translation={workflowState.translation ?? null}
+				config={subtitleConfig}
 				hasRenderedVideo={hasRenderedVideo}
-				onChange={(step) => setActiveStep(step)}
+				thumbnail={media?.thumbnail ?? undefined}
+				cacheBuster={previewVersion}
+				isRendering={
+					(renderBackend === 'cloud'
+						? (startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? ''))
+						: renderMutation.isPending)
+				}
+				cloudStatus={previewCloudStatus}
+				renderBackend={renderBackend}
 			/>
 
+			{/* Step Navigation under preview (Tabs) */}
+			<Tabs
+				value={activeStep}
+				onValueChange={(v) => setActiveStep(v as SubtitleStepId)}
+				className="w-full"
+			>
+				<TabsList>
+					<TabsTrigger value="step1">
+						<FileText className="h-4 w-4" />
+						<span className="ml-1">Transcribe</span>
+					</TabsTrigger>
+					<TabsTrigger value="step2" disabled={!hasTranscription}>
+						<Languages className="h-4 w-4" />
+						<span className="ml-1">Translate</span>
+					</TabsTrigger>
+					<TabsTrigger value="step3" disabled={!hasTranslation}>
+						<Video className="h-4 w-4" />
+						<span className="ml-1">Render</span>
+					</TabsTrigger>
+					<TabsTrigger value="step4" disabled={!hasRenderedVideo}>
+						<Play className="h-4 w-4" />
+						<span className="ml-1">Export</span>
+					</TabsTrigger>
+				</TabsList>
+
 			{/* Main Content */}
-			{activeStep === 'step1' && (
+			<TabsContent value="step1">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -286,25 +366,41 @@ export default function SubtitlesPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Step1Transcribe
-							selectedModel={selectedModel}
-							selectedProvider={selectedProvider}
-							onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
-							onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
-							isPending={transcribeMutation.isPending}
-							onStart={handleStartTranscription}
-							transcription={workflowState.transcription || ''}
-							errorMessage={
-								transcribeMutation.isError
-									? transcribeMutation.error.message
-									: undefined
-							}
-						/>
+                            <Step1Transcribe
+                                selectedModel={selectedModel}
+                                selectedProvider={selectedProvider}
+                                onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
+                                onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
+                                isPending={transcribeMutation.isPending}
+                                onStart={handleStartTranscription}
+                                transcription={(media?.transcription ?? '')}
+                                optimizedTranscription={media?.optimizedTranscription ?? undefined}
+                                isClearingOptimized={clearOptimizedMutation.isPending}
+                                mediaId={mediaId}
+                                canOptimize={!!media?.transcriptionWords && Array.isArray(media.transcriptionWords) && media.transcriptionWords.length > 0}
+                                isOptimizing={optimizeMutation.isPending}
+                                selectedAIModel={selectedAIModel}
+                                onOptimizeModelChange={(m) => updateWorkflowState({ selectedAIModel: m })}
+                                onOptimize={(params) => {
+                                    updateWorkflowState({ selectedAIModel })
+                                    optimizeMutation.mutate({ mediaId, model: selectedAIModel, ...params })
+                                }}
+                                onRestoreOriginal={() => clearOptimizedMutation.mutate({ mediaId })}
+                                errorMessage={
+                                    transcribeMutation.isError
+                                        ? transcribeMutation.error.message
+                                        : undefined
+                                }
+                                downsampleBackend={downsampleBackend}
+                                onDownsampleBackendChange={(v) => updateWorkflowState({ downsampleBackend: v })}
+                            />
 					</CardContent>
 				</Card>
-			)}
+			</TabsContent>
 
-			{activeStep === 'step2' && (
+			
+
+			<TabsContent value="step2">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -332,9 +428,9 @@ export default function SubtitlesPage() {
 						/>
 					</CardContent>
 				</Card>
-			)}
+			</TabsContent>
 
-			{activeStep === 'step3' && (
+			<TabsContent value="step3">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -346,32 +442,12 @@ export default function SubtitlesPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						{/* 渲染方式切换 */}
-						<div className="flex items-center gap-2 mb-3">
-							<span className="text-sm text-muted-foreground">Backend:</span>
-							<div className="inline-flex gap-2">
-								<Button
-									variant={renderBackend === 'cloud' ? 'default' : 'outline'}
-									size="sm"
-									onClick={() => setRenderBackend('cloud')}
-								>
-									Cloud
-								</Button>
-								<Button
-									variant={renderBackend === 'local' ? 'default' : 'outline'}
-									size="sm"
-									onClick={() => setRenderBackend('local')}
-								>
-									Local
-								</Button>
-							</div>
-						</div>
 						<Step3Render
-							isRendering={
-								renderBackend === 'cloud'
-									? startCloudRenderMutation.isPending || (cloudStatusQuery.data && ['queued','preparing','running','uploading'].includes((cloudStatusQuery.data as any).status))
-								: renderMutation.isPending
-							}
+                        isRendering={
+                            renderBackend === 'cloud'
+                                ? startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
+                                : renderMutation.isPending
+                        }
 							onStart={handleRenderStart}
 							errorMessage={(renderBackend === 'cloud' ? startCloudRenderMutation.error?.message : renderMutation.error?.message)}
 							mediaId={mediaId}
@@ -379,27 +455,26 @@ export default function SubtitlesPage() {
 							translation={workflowState.translation}
 							config={subtitleConfig}
 							onConfigChange={handleConfigChange}
+							renderBackend={renderBackend}
+							onRenderBackendChange={setRenderBackend}
+							hidePreview
+							hideCuesList
 						/>
 
-						{/* 云端渲染进度显示（简单版） */}
-						{renderBackend === 'cloud' && cloudJobId && (
-							<div className="mt-3 text-sm text-muted-foreground">
-								Job: {cloudJobId} — Status: {cloudStatusQuery.data?.status ?? 'starting'} {typeof cloudStatusQuery.data?.progress === 'number' ? `(${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%)` : ''}
-							</div>
-						)}
+
 					</CardContent>
 				</Card>
-			)}
+			</TabsContent>
 
-			{activeStep === 'step4' && (
+			<TabsContent value="step4">
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<Play className="h-5 w-5" />
-							Step 4: Preview Video
+							Step 4: Export
 						</CardTitle>
 						<CardDescription>
-							Preview and download your rendered video
+							Download your rendered video and subtitles
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -408,10 +483,14 @@ export default function SubtitlesPage() {
 							hasRenderedVideo={hasRenderedVideo}
 							thumbnail={media?.thumbnail ?? undefined}
 							cacheBuster={previewVersion}
+							showVideo={false}
 						/>
 					</CardContent>
 				</Card>
-			)}
+			</TabsContent>
+
+			{/* Close Tabs root after all contents */}
+			</Tabs>
 		</div>
 	)
 }

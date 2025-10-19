@@ -7,11 +7,15 @@
     "@remotion/cli": "^4.0.167",
     "@remotion/bundler": "^4.0.167",
     "@remotion/renderer": "^4.0.167",
+    "@app/media-comments": "file:./packages/media-comments",
+    "@app/media-core": "file:./packages/media-core",
+    "@app/callback-utils": "file:./packages/callback-utils",
     "lucide-react": "^0.474.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "remotion": "^4.0.167",
     "execa": "^9.4.0",
-    "undici": "^6.19.2"
+    "undici": "^6.19.2",
+    "yaml": "^2.6.0"
   }
 }
