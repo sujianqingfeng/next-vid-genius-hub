@@ -104,6 +104,25 @@ export default function CommentsPage() {
 		})
 	}
 
+	const copyTitleValue = (value: string | null | undefined, label: string) => {
+		if (!value) {
+			toast.error(`${label}不存在`)
+			return
+		}
+		if (typeof navigator === 'undefined' || !navigator.clipboard) {
+			toast.error('无法访问剪贴板')
+			return
+		}
+		navigator.clipboard
+			.writeText(value)
+			.then(() => {
+				toast.success(`${label}已复制到剪贴板`)
+			})
+			.catch(() => {
+				toast.error(`复制${label}失败`)
+			})
+	}
+
 	const downloadCommentsMutation = useMutation(
 		queryOrpc.comment.downloadComments.mutationOptions({
 			onSuccess: () => {
@@ -299,75 +318,34 @@ export default function CommentsPage() {
 		<div className="min-h-screen bg-background">
 			{/* Compact Header */}
 			<div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-				<div className="max-w-7xl mx-auto px-4 py-3">
-					<div className="flex items-center justify-between gap-4">
-						<div className="flex items-center gap-3">
-							<Link
-								href={`/media/${id}`}
-								className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-							>
-								<ArrowLeft className="w-4 h-4" />
-								<span className="hidden sm:inline">Back to Media</span>
-								<span className="sm:hidden">Back</span>
-							</Link>
-							<div className="h-4 w-px bg-border" />
-							<h1 className="text-lg font-semibold">Comments</h1>
-						</div>
-						{mediaQuery.data && (
-							<div className="flex items-center gap-2">
-								<Badge variant="secondary" className="text-xs">
-									{comments.length} comment{comments.length !== 1 ? 's' : ''}
-								</Badge>
-								{mediaQuery.data.translatedTitle && (
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-8 px-2"
-										onClick={handleEditClick}
-										title="Edit titles"
-									>
-										<Edit className="w-3.5 h-3.5" />
-									</Button>
-								)}
+					<div className="max-w-7xl mx-auto px-4 py-3">
+						<div className="flex items-center justify-between gap-4">
+							<div className="flex items-center gap-3">
+								<Link
+									href={`/media/${id}`}
+									className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+								>
+									<ArrowLeft className="w-4 h-4" />
+									<span className="hidden sm:inline">Back to Media</span>
+									<span className="sm:hidden">Back</span>
+								</Link>
+								<div className="h-4 w-px bg-border" />
+								<h1 className="text-lg font-semibold">Comments</h1>
 							</div>
-						)}
+							{mediaQuery.data?.translatedTitle && (
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-8 px-2"
+									onClick={handleEditClick}
+									title="Edit titles"
+								>
+									<Edit className="w-3.5 h-3.5" />
+								</Button>
+							)}
+						</div>
 					</div>
-					
-					{/* Compact Media Titles */}
-					{mediaQuery.data && (mediaQuery.data.title || mediaQuery.data.translatedTitle) && (
-						<div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-							<div className="flex-1 min-w-0">
-								{mediaQuery.data.translatedTitle ? (
-									<div className="flex items-center gap-2">
-										<p className="text-sm font-medium truncate">
-											{mediaQuery.data.translatedTitle}
-										</p>
-										<Button
-											variant="ghost"
-											size="sm"
-											className="h-6 w-6 p-0 flex-shrink-0"
-											onClick={() => {
-												if (mediaQuery.data?.translatedTitle) {
-													navigator.clipboard.writeText(mediaQuery.data.translatedTitle)
-													toast.success('标题已复制到剪贴板')
-												}
-											}}
-											title="Copy title"
-										>
-											<Copy className="w-3 h-3" />
-										</Button>
-									</div>
-								) : null}
-								{mediaQuery.data.title && (
-									<p className="text-xs text-muted-foreground truncate">
-										{mediaQuery.data.title}
-									</p>
-								)}
-							</div>
-						</div>
-					)}
 				</div>
-			</div>
 
 			{/* Edit Dialog */}
 			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -437,12 +415,67 @@ export default function CommentsPage() {
 							</CardHeader>
 							<CardContent className="space-y-4">
 								<Tabs defaultValue="download" className="w-full">
-									<TabsList className="grid w-full grid-cols-3">
+									<TabsList className="grid w-full grid-cols-4">
+										<TabsTrigger value="basics" className="text-xs">Base Data</TabsTrigger>
 										<TabsTrigger value="download" className="text-xs">Download</TabsTrigger>
 										<TabsTrigger value="translate" className="text-xs">Translate</TabsTrigger>
 										<TabsTrigger value="render" className="text-xs">Render</TabsTrigger>
 									</TabsList>
-									
+
+									<TabsContent value="basics" className="space-y-4 mt-4">
+										<div className="space-y-3">
+											<div className="flex items-center gap-2">
+												<Film className="w-4 h-4 text-muted-foreground" />
+												<h4 className="font-medium text-sm">Base Data</h4>
+											</div>
+											<div className="space-y-3 text-sm">
+												<div className="space-y-2">
+													<p className="text-xs uppercase text-muted-foreground">Translated Title</p>
+													<p className="font-medium break-words">
+														{mediaQuery.data.translatedTitle ?? '暂无翻译标题'}
+													</p>
+													<Button
+														variant="outline"
+														size="sm"
+														className="h-8 px-2 text-xs"
+														disabled={!mediaQuery.data.translatedTitle}
+														onClick={() => copyTitleValue(mediaQuery.data?.translatedTitle, '英文标题')}
+													>
+														<Copy className="w-3 h-3 mr-2" />
+														复制英文标题
+													</Button>
+												</div>
+												<div className="space-y-2">
+													<p className="text-xs uppercase text-muted-foreground">Original Title</p>
+													<p className="break-words text-muted-foreground">
+														{mediaQuery.data.title ?? '暂无原始标题'}
+													</p>
+													<Button
+														variant="outline"
+														size="sm"
+														className="h-8 px-2 text-xs"
+														disabled={!mediaQuery.data.title}
+														onClick={() => copyTitleValue(mediaQuery.data?.title, '原始标题')}
+													>
+														<Copy className="w-3 h-3 mr-2" />
+														复制原始标题
+													</Button>
+												</div>
+											</div>
+											<div className="border-t pt-3">
+												<Button
+													variant="default"
+													size="sm"
+													className="w-full text-xs"
+													onClick={handleEditClick}
+												>
+													<Edit className="w-3 h-3 mr-2" />
+													编辑标题
+												</Button>
+											</div>
+										</div>
+									</TabsContent>
+
 									<TabsContent value="download" className="space-y-4 mt-4">
 										<div className="space-y-3">
 											<div className="flex items-center gap-2">
@@ -736,14 +769,19 @@ ${
 						</Card>
 					)}
 
-					{/* Right: Comments List */}
-					<Card className="lg:col-span-2">
-						<CardHeader className="pb-3">
-							<CardTitle className="text-base flex items-center gap-2">
-								<MessageCircle className="w-4 h-4" />
-								Comments
-							</CardTitle>
-						</CardHeader>
+						{/* Right: Comments List */}
+						<Card className="lg:col-span-2">
+							<CardHeader className="pb-3">
+								<div className="flex items-center justify-between gap-3">
+									<CardTitle className="text-base flex items-center gap-2">
+										<MessageCircle className="w-4 h-4" />
+										Comments
+									</CardTitle>
+									<Badge variant="secondary" className="text-xs">
+										{comments.length} comment{comments.length !== 1 ? 's' : ''}
+									</Badge>
+								</div>
+							</CardHeader>
 						<CardContent className="p-0">
 							<div className="max-h-[600px] overflow-y-auto">
 								{mediaQuery.isLoading && (
