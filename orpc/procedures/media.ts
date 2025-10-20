@@ -86,9 +86,17 @@ export const deleteById = os
 		try {
 			if (record) {
 				const keys: string[] = []
+				// Directly referenced remote objects from the record
 				if (record.remoteVideoKey) keys.push(record.remoteVideoKey)
 				if (record.remoteAudioKey) keys.push(record.remoteAudioKey)
 				if (record.remoteMetadataKey) keys.push(record.remoteMetadataKey)
+				// Well-known per-media objects that we materialize into the bucket
+				keys.push(
+					`manifests/media/${id}.json`,
+					`inputs/subtitles/${id}.vtt`,
+					`inputs/videos/subtitles/${id}.mp4`,
+					`inputs/comments/${id}.json`,
+				)
 
 				const artifactJobIds: string[] = []
 				// videoWithSubtitlesPath or videoWithInfoPath might store remote orchestrator artifact refs: "remote:orchestrator:<jobId>"
@@ -98,8 +106,17 @@ export const deleteById = os
 						if (jobId) artifactJobIds.push(jobId)
 					}
 				}
+				// Also include the cloud download job id (if any)
+				if (record.downloadJobId) artifactJobIds.push(record.downloadJobId)
 
-				await deleteCloudArtifacts({ keys, artifactJobIds })
+				// Known per-media prefixes that may contain multiple artifacts
+				const prefixes = [
+					`outputs/by-media/${id}/`,
+					`downloads/${id}/`,
+					`asr/results/by-media/${id}/`,
+				]
+
+				await deleteCloudArtifacts({ keys, artifactJobIds, prefixes })
 			}
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)

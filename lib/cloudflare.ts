@@ -67,10 +67,11 @@ export async function presignGetByKey(key: string): Promise<string> {
 // Best-effort deletion of remote artifacts via orchestrator helper endpoints.
 // - keys: R2 object keys to delete
 // - artifactJobIds: orchestrator artifact job ids to purge
-export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJobIds?: string[] }): Promise<void> {
+export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJobIds?: string[]; prefixes?: string[] }): Promise<void> {
   const base = requireOrchestratorUrl()
   const keys = (input.keys ?? []).filter(Boolean)
   const jobIds = (input.artifactJobIds ?? []).filter(Boolean)
+  const prefixes = (input.prefixes ?? []).filter(Boolean)
 
   // 1) Batch delete objects by key (if any)
   if (keys.length > 0) {
@@ -87,6 +88,14 @@ export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJob
     if (!r.ok && r.status !== 404) {
       throw new Error(`deleteCloudArtifacts: delete artifact ${id} failed: ${r.status} ${await r.text()}`)
     }
+  }
+
+  // 3) Delete by prefixes (list + bulk delete)
+  if (prefixes.length > 0) {
+    const url = `${base.replace(/\/$/, '')}/debug/delete-prefixes`
+    const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+    const res = await postSignedJson(url, secret, { prefixes })
+    if (!res.ok) throw new Error(`deleteCloudArtifacts: delete prefixes failed: ${res.status} ${await res.text()}`)
   }
 }
 

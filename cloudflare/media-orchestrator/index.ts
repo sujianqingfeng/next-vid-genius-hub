@@ -122,6 +122,7 @@ async function presignS3(
   expiresSec: number,
   contentType?: string,
   endpointOverride?: string,
+  extraQuery?: Record<string, string>,
 ): Promise<string> {
   const endpoint = endpointOverride || env.S3_ENDPOINT
   if (!endpoint || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY) {
@@ -163,9 +164,11 @@ async function presignS3(
     'X-Amz-Expires': String(expiresSec),
     'X-Amz-SignedHeaders': signedHeaders,
   }
-  const canonicalQuery = Object.keys(qpObj)
+  // Merge any extra query params (e.g., list-type=2&prefix=... for ListObjectsV2)
+  const allQuery: Record<string, string> = { ...qpObj, ...(extraQuery || {}) }
+  const canonicalQuery = Object.keys(allQuery)
     .sort()
-    .map((k) => `${enc(k)}=${enc(qpObj[k])}`)
+    .map((k) => `${enc(k)}=${enc(allQuery[k])}`)
     .join('&')
   const canonicalHeaders = headerEntries.map(([name, value]) => `${name}:${value}\n`).join('')
   const payloadHash = 'UNSIGNED-PAYLOAD'
@@ -1024,6 +1027,88 @@ async function deleteObjectFromStorage(env: Env, key: string): Promise<void> {
   if (!deleted && lastError) throw lastError
 }
 
+// List keys under a prefix using either R2 binding or S3 ListObjectsV2
+async function listKeysByPrefix(env: Env, prefix: string): Promise<string[]> {
+  const out: string[] = []
+  // Prefer R2 binding if available
+  if (env.RENDER_BUCKET) {
+    let cursor: string | undefined
+    // Cloudflare R2 list supports pagination via cursor
+    while (true) {
+      const resp = await env.RENDER_BUCKET.list({ prefix, cursor, limit: 1000 })
+      for (const obj of resp.objects) {
+        if (obj.key) out.push(obj.key)
+      }
+      if (!resp.truncated || !resp.cursor) break
+      cursor = resp.cursor
+    }
+    return out
+  }
+  // Fallback to S3-compatible listing (MinIO/R2 S3)
+  const bucket = env.S3_BUCKET_NAME
+  const endpoint = env.S3_ENDPOINT
+  if (!bucket || !endpoint) return out
+  let token: string | undefined
+  // Loop until all pages are fetched
+  while (true) {
+    const extra: Record<string, string> = { 'list-type': '2', prefix, 'max-keys': '1000' }
+    if (token) extra['continuation-token'] = token
+    const url = await presignS3(env, 'GET', bucket, undefined, 120, undefined, undefined, extra)
+    const r = await fetch(url)
+    if (!r.ok) {
+      // If list fails, break to avoid blocking deletion of explicit keys
+      break
+    }
+    const xml = await r.text()
+    // Extract keys
+    const keyMatches = xml.matchAll(/<Key>([^<]+)<\/Key>/g)
+    for (const m of keyMatches) {
+      const k = m[1]
+      if (k && k.startsWith(prefix)) out.push(k)
+    }
+    const isTruncated = /<IsTruncated>true<\/IsTruncated>/.test(xml)
+    if (!isTruncated) break
+    const tokenMatch = xml.match(/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/)
+    token = tokenMatch ? tokenMatch[1] : undefined
+    if (!token) break
+  }
+  return out
+}
+
+async function handleDebugDeletePrefixes(env: Env, req: Request) {
+  const raw = await req.text()
+  const sig = req.headers.get('x-signature') || ''
+  if (!(await verifyHmac(env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret', raw, sig))) {
+    return json({ error: 'unauthorized' }, { status: 401 })
+  }
+  let body: any
+  try { body = JSON.parse(raw) } catch { return json({ error: 'invalid_json' }, { status: 400 }) }
+  const prefixes: string[] = Array.isArray(body?.prefixes) ? body.prefixes.filter((p: unknown): p is string => typeof p === 'string' && p.trim().length > 0) : []
+  if (prefixes.length === 0) return json({ ok: true, deleted: [] })
+  const toDelete = new Set<string>()
+  for (const p of prefixes) {
+    try {
+      const keys = await listKeysByPrefix(env, p)
+      for (const k of keys) toDelete.add(k)
+    } catch (err) {
+      // Best-effort: continue other prefixes
+      console.warn('[delete-prefixes] list failed for', p, err)
+    }
+  }
+  const deleted: string[] = []
+  const errors: Record<string, string> = {}
+  for (const key of toDelete) {
+    try {
+      await deleteObjectFromStorage(env, key)
+      deleted.push(key)
+    } catch (err) {
+      errors[key] = err instanceof Error ? err.message : String(err)
+    }
+  }
+  const hasErrors = Object.keys(errors).length > 0
+  return json({ ok: !hasErrors, deleted, errors }, { status: hasErrors ? 500 : 200 })
+}
+
 async function loadJobDoc(env: Env, jobId: string, stub?: any): Promise<any | undefined> {
   let doc: any | undefined
   if (stub) {
@@ -1110,6 +1195,9 @@ export default {
     }
     if (req.method === 'POST' && pathname === '/debug/delete') {
       return handleDebugDelete(env, req)
+    }
+    if (req.method === 'POST' && pathname === '/debug/delete-prefixes') {
+      return handleDebugDeletePrefixes(env, req)
     }
     // Inputs proxy fallback removed: containers always receive S3 presigned URLs now
     if (req.method === 'POST' && pathname === '/jobs') return handleStart(env, req)
