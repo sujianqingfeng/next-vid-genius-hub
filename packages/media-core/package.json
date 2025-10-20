@@ -4,21 +4,24 @@
   "private": true,
   "type": "module",
   "description": "Shared media pipeline orchestrators and port typings.",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
-    "index.js",
-    "index.d.ts",
-    "metadata.js",
-    "proxy.js",
-    "clash.js"
+    "dist"
   ],
   "dependencies": {
     "yaml": "^2.6.0"
   },
   "exports": {
     ".": {
-      "import": "./index.js",
+      "import": "./dist/index.js",
       "types": "./index.d.ts"
     }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "tsdown --clean"
   }
 }

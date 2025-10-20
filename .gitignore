@@ -76,3 +76,6 @@ temp
 cache
 logs
 exports
+
+# package builds
+packages/**/dist

@@ -4,19 +4,24 @@
   "private": true,
   "type": "module",
   "description": "Shared timeline, layout, image inlining, and FFmpeg args for comments video rendering (local + containers).",
-  "main": "index.js",
-  "files": ["index.js", "index.browser.js", "index.d.ts"],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
   "exports": {
     ".": {
-      "browser": "./index.browser.js",
-      "import": "./index.js",
-      "types": "./index.d.ts"
+      "browser": "./dist/index.browser.js",
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
-  "browser": {
-    "./index.js": "./index.browser.js"
-  },
+  
   "dependencies": {
     "undici": "^7.16.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "tsdown --clean"
   }
 }

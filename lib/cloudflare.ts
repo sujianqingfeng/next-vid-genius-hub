@@ -104,13 +104,14 @@ export async function presignPutAndGetByKey(key: string, contentType: string): P
 // Upload small object via presigned PUT
 export async function putObjectByKey(key: string, contentType: string, body: string | Uint8Array | Buffer): Promise<void> {
   const { putUrl } = await presignPutAndGetByKey(key, contentType)
+  const payload: BodyInit = typeof body === 'string' ? body : (body as unknown as BodyInit)
   const init: RequestInit = {
     method: 'PUT',
     headers: {
       'content-type': contentType,
       'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
     },
-    body: typeof body === 'string' ? body : (body as Uint8Array | Buffer),
+    body: payload,
   }
   const res = await fetch(putUrl, init)
   if (!res.ok) throw new Error(`putObjectByKey failed: ${res.status} ${await res.text()}`)

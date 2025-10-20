@@ -457,8 +457,6 @@ export default function SubtitlesPage() {
 							onConfigChange={handleConfigChange}
 							renderBackend={renderBackend}
 							onRenderBackendChange={setRenderBackend}
-							hidePreview
-							hideCuesList
 						/>
 
 

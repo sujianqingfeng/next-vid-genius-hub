@@ -195,8 +195,6 @@ export function Step3Render(props: Step3RenderProps) {
 						<TimeSegmentEffectsManager
 							effects={config.timeSegmentEffects}
 							onChange={handleTimeSegmentEffectsChange}
-							mediaDuration={duration}
-							currentTime={currentTime}
 							onPlayPreview={handlePlayPreview}
 						/>
 					</div>

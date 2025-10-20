@@ -24,27 +24,6 @@ export interface ProgressEvent {
   message?: string
 }
 
-export declare function runDownloadPipeline(
-  req: DownloadPipelineRequest,
-  env: DownloadPipelineEnv,
-  progress?: (e: ProgressEvent) => void
-): Promise<{ videoPath: string; audioPath?: string; metadataPath?: string; rawMetadata?: unknown }>
-
-declare const _default: {
-  runDownloadPipeline: typeof runDownloadPipeline
-  runCommentsPipeline: typeof runCommentsPipeline
-  summariseMetadata: typeof summariseMetadata
-  readMetadataSummary: typeof readMetadataSummary
-  isForwardProxyProtocolSupported: typeof isForwardProxyProtocolSupported
-  buildForwardProxyUrl: typeof buildForwardProxyUrl
-  resolveForwardProxy: typeof resolveForwardProxy
-  createClashProxyFromDb: typeof createClashProxyFromDb
-  buildClashConfig: typeof buildClashConfig
-  startMihomo: typeof startMihomo
-}
-
-export default _default
-
 export interface CommentsPipelineRequest {
   url: string
   source: string
@@ -59,12 +38,6 @@ export interface CommentsPipelineEnv {
   }
 }
 
-export declare function runCommentsPipeline(
-  req: CommentsPipelineRequest,
-  env: CommentsPipelineEnv,
-  progress?: (e: ProgressEvent) => void
-): Promise<{ count: number; comments: unknown[] }>
-
 export type VideoDownloader = (url: string, quality: Quality, outputPath: string) => Promise<void | { rawMetadata?: unknown }>
 export type AudioExtractor = (videoPath: string, audioPath: string) => Promise<void>
 export interface ArtifactStore {
@@ -75,7 +48,6 @@ export interface ArtifactStore {
 export type CommentsDownloader = (input: CommentsPipelineRequest) => Promise<unknown[]>
 export type ProgressReporter = (event: ProgressEvent) => void
 
-// Metadata helpers
 export interface MetadataSummary {
   title?: string
   author?: string
@@ -83,13 +55,6 @@ export interface MetadataSummary {
   viewCount?: number
   likeCount?: number
 }
-export declare function summariseMetadata(raw: Record<string, unknown> | null | undefined): MetadataSummary
-export declare function readMetadataSummary(metadataPath: string): Promise<MetadataSummary | null>
-
-// Proxy helpers
-export declare function isForwardProxyProtocolSupported(protocol: string): boolean
-export declare function buildForwardProxyUrl(args: { protocol: 'http' | 'https' | 'socks4' | 'socks5'; server: string; port: number | string; username?: string; password?: string }): string
-export declare function resolveForwardProxy(args?: { proxy?: { protocol: string; server: string; port: number | string; username?: string; password?: string }; defaultProxyUrl?: string; logger?: { warn?: (...args: any[]) => any; info?: (...args: any[]) => any; log?: (...args: any[]) => any } }): string | undefined
 
 export interface ProxyRecord {
   id?: string
@@ -123,6 +88,11 @@ export interface MihomoController {
   cleanup(): Promise<void> | void
 }
 
-export declare function createClashProxyFromDb(proxy?: ProxyRecord | null): Record<string, unknown> | null
-export declare function buildClashConfig(engineOptions?: EngineProxyOptions, overrides?: { port?: number; socksPort?: number; mode?: string; subscriptionUrl?: string | null; rawConfig?: string | null; logger?: { log?: (...args: any[]) => any; warn?: (...args: any[]) => any; error?: (...args: any[]) => any } }): string | null
-export declare function startMihomo(engineOptions?: EngineProxyOptions, options?: MihomoStartOptions): Promise<MihomoController | null>
+export type BuildForwardProxyArgs = {
+  protocol: 'http' | 'https' | 'socks4' | 'socks5'
+  server: string
+  port: number | string
+  username?: string
+  password?: string
+}
+

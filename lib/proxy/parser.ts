@@ -247,10 +247,9 @@ function getNodeScheme(value: string): ProxyNodeScheme | null {
 }
 
 function containsSupportedScheme(content: string): boolean {
-	const lower = content.toLowerCase()
-	return (Object.values(NODE_SCHEME_PREFIXES) as readonly string[][]).some((prefixes) =>
-		prefixes.some((prefix) => lower.includes(prefix))
-	)
+    const lower = content.toLowerCase()
+    const values = Object.values(NODE_SCHEME_PREFIXES) as unknown as ReadonlyArray<ReadonlyArray<string>>
+    return values.some((prefixes) => prefixes.some((prefix) => lower.includes(prefix)))
 }
 
 function startsWithSupportedScheme(line: string): boolean {
