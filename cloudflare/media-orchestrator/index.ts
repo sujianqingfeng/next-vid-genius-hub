@@ -476,7 +476,8 @@ async function handleStart(env: Env, req: Request) {
   }
 
   let res: Response
-  const contBinding = bindingForEngine(body.engine)
+  const preferExternal = (env as any).PREFER_EXTERNAL_CONTAINERS === 'true' || (env as any).NO_CF_CONTAINERS === 'true'
+  const contBinding = preferExternal ? undefined : bindingForEngine(body.engine)
   if (contBinding) {
     // Use jobId as the container session key so each job gets its own instance
     const inst = getContainer(contBinding, jobId)

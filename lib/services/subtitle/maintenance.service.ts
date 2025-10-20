@@ -4,6 +4,7 @@ import { logger } from '~/lib/logger'
 import { parseVttCues, serializeVttCues, validateVttContent } from '~/lib/subtitle/utils/vtt'
 import { buildCandidateBreaks, buildSegmentsByAI, segmentsToVtt, applyOrphanGuard, applyPhraseGuard } from '~/lib/subtitle/utils/segment'
 import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
+import type { AIModelId } from '~/lib/ai/models'
 
 export async function updateTranslation(input: { mediaId: string; translation: string }): Promise<{ success: true }> {
   const where = eq(schema.media.id, input.mediaId)
@@ -33,7 +34,7 @@ export async function deleteTranslationCue(input: { mediaId: string; index: numb
 
 export async function optimizeTranscription(input: {
   mediaId: string
-  model: string
+  model: AIModelId
   pauseThresholdMs: number
   maxSentenceMs: number
   maxChars: number
@@ -89,4 +90,3 @@ export async function clearOptimizedTranscription(input: { mediaId: string }): P
   await db.update(schema.media).set({ optimizedTranscription: null }).where(where)
   return { success: true }
 }
-

@@ -141,7 +141,7 @@ export async function transcribe(input: {
         audioBuffer: remoteAudioBuffer,
         model,
         provider: 'cloudflare',
-        cloudflareConfig: { accountId: CLOUDFLARE_ACCOUNT_ID, apiToken: CLOUDFLARE_API_TOKEN },
+        cloudflareConfig: { accountId: CLOUDFLARE_ACCOUNT_ID as string, apiToken: CLOUDFLARE_API_TOKEN as string },
       })
       vttContent = transcriptionResult.vtt
       transcriptionWords = transcriptionResult.words
@@ -156,7 +156,7 @@ export async function transcribe(input: {
       audioPath: hasLocalAudio ? (mediaRecord.audioFilePath as string) : (tempAudioPath as string),
       model,
       provider: 'local',
-      whisperProjectPath: WHISPER_CPP_PATH,
+      whisperProjectPath: WHISPER_CPP_PATH as string,
     })
     vttContent = transcriptionResult.vtt
     transcriptionWords = transcriptionResult.words
@@ -191,4 +191,3 @@ export async function transcribe(input: {
   logger.info('transcription', `Transcription completed successfully for media ${mediaId}`)
   return { success: true, transcription: vttContent, words: transcriptionWords }
 }
-

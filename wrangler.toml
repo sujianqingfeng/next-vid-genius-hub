@@ -1,5 +1,10 @@
 name = "media-orchestrator"
-main = "index.ts"
+main = "cloudflare/media-orchestrator/index.ts"
+tsconfig = "cloudflare/media-orchestrator/tsconfig.json"
+
+[dev]
+port = 8787
+local_protocol = "http"
 compatibility_date = "2025-10-19"
 
 workers_dev = true
@@ -15,6 +20,8 @@ bucket_name = "vidgen-render"
 
 [vars]
 JOB_TTL_SECONDS = 86400
+# Prefer external Docker Compose containers in local dev
+PREFER_EXTERNAL_CONTAINERS = "true"
 # Default container base; specific engines can override below
 CONTAINER_BASE_URL = "http://localhost:8080"
 # Audio transcoder engine (dev)
@@ -61,22 +68,22 @@ new_classes = ["RenderJobDO"]
 # Requires Workers Paid plan + Containers beta access.
 [[containers]]
 class_name = "MediaDownloaderContainer"
-image = "../../containers/media-downloader/Dockerfile"
+image = "Dockerfile.media-downloader"
 max_instances = 10
 
 [[containers]]
 class_name = "AudioTranscoderContainer"
-image = "../../containers/audio-transcoder/Dockerfile"
+image = "Dockerfile.audio-transcoder"
 max_instances = 10
 
 [[containers]]
 class_name = "BurnerFfmpegContainer"
-image = "../../containers/burner-ffmpeg/Dockerfile"
+image = "Dockerfile.burner-ffmpeg"
 max_instances = 10
 
 [[containers]]
 class_name = "RendererRemotionContainer"
-image = "../../containers/renderer-remotion/Dockerfile"
+image = "Dockerfile.renderer-remotion"
 max_instances = 5
 
 [[durable_objects.bindings]]
