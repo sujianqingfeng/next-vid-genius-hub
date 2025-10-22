@@ -1,44 +1,35 @@
 'use client'
 
 import * as React from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { toast } from 'sonner'
 import { queryOrpc } from '~/lib/orpc/query-client'
+import { useProxySubscriptionMutation } from '~/lib/proxy/useProxySubscriptionMutation'
 
 export function SSRSubscriptionsList() {
-	const queryClient = useQueryClient()
-
 	const { data: subscriptionsData, isLoading } = useQuery(
 		queryOrpc.proxy.getSSRSubscriptions.queryOptions(),
 	)
 
-	const deleteSubscriptionMutation = useMutation({
-		...queryOrpc.proxy.deleteSSRSubscription.mutationOptions(),
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
-			})
-			toast.success('SSR subscription deleted successfully')
+	const deleteSubscriptionMutation = useProxySubscriptionMutation(
+		queryOrpc.proxy.deleteSSRSubscription.mutationOptions(),
+		{
+			successToast: 'SSR subscription deleted successfully',
+			errorToast: ({ error }) => `Failed to delete SSR subscription: ${error.message}`,
 		},
-		onError: (error) => {
-			toast.error(`Failed to delete SSR subscription: ${error.message}`)
-		},
-	})
+	)
 
-	const importFromSubscriptionMutation = useMutation({
-		...queryOrpc.proxy.importSSRFromSubscription.mutationOptions(),
-		onSuccess: (data) => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
-			})
-			toast.success(`Successfully imported ${data.count} proxies from subscription`)
+	const importFromSubscriptionMutation = useProxySubscriptionMutation(
+		queryOrpc.proxy.importSSRFromSubscription.mutationOptions(),
+		{
+			successToast: ({ data }) =>
+				data && typeof data === 'object' && 'count' in data
+					? `Successfully imported ${(data as { count?: number }).count ?? 0} proxies from subscription`
+					: 'Imported proxies from subscription',
+			errorToast: ({ error }) => `Failed to import from subscription: ${error.message}`,
 		},
-		onError: (error) => {
-			toast.error(`Failed to import from subscription: ${error.message}`)
-		},
-	})
+	)
 
 
 	const handleDeleteSubscription = (subscriptionId: string) => {

@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import {
@@ -15,6 +14,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { toast } from 'sonner'
 import { queryOrpc } from '~/lib/orpc/query-client'
+import { useProxySubscriptionMutation } from '~/lib/proxy/useProxySubscriptionMutation'
 
 interface AddSSRSubscriptionDialogProps {
 	open: boolean
@@ -25,22 +25,18 @@ export function AddSSRSubscriptionDialog({ open, onOpenChange }: AddSSRSubscript
 	const [name, setName] = React.useState('')
 	const [url, setUrl] = React.useState('')
 	
-	const queryClient = useQueryClient()
-	
-	const createSubscriptionMutation = useMutation({
-		...queryOrpc.proxy.createSSRSubscription.mutationOptions(),
-		onSuccess: () => {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
-			})
-			toast.success('SSR subscription created successfully')
-			handleReset()
-			onOpenChange(false)
+	const createSubscriptionMutation = useProxySubscriptionMutation(
+		queryOrpc.proxy.createSSRSubscription.mutationOptions({
+			onSuccess: () => {
+				handleReset()
+				onOpenChange(false)
+			},
+		}),
+		{
+			successToast: 'SSR subscription created successfully',
+			errorToast: ({ error }) => `Failed to create SSR subscription: ${error.message}`,
 		},
-		onError: (error) => {
-			toast.error(`Failed to create SSR subscription: ${error.message}`)
-		},
-	})
+	)
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()

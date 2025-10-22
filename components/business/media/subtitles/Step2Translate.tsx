@@ -4,14 +4,8 @@ import { AlertCircle, Loader2, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '~/components/ui/select'
-import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
+import { type ChatModelId } from '~/lib/ai/models'
+import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 
 interface Step2TranslateProps {
@@ -44,23 +38,13 @@ export function Step2Translate(props: Step2TranslateProps) {
 
 	return (
 		<div className="flex flex-col h-full gap-6">
-			<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-				<Select
-					value={selectedAIModel}
-					onValueChange={(value) => onModelChange(value as ChatModelId)}
-					disabled={isPending}
-				>
-					<SelectTrigger className="w-full sm:w-[200px]">
-						<SelectValue placeholder="Select model" />
-					</SelectTrigger>
-					<SelectContent>
-						{ChatModelIds.map((id) => (
-							<SelectItem key={id} value={id}>
-								{id}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
+		<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+			<ChatModelSelect
+				value={selectedAIModel}
+				onChange={onModelChange}
+				disabled={isPending}
+				triggerClassName="w-full sm:w-[200px]"
+			/>
 				<Button
 					onClick={onStart}
 					disabled={isPending || !canStart}

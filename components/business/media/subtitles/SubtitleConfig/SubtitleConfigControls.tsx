@@ -8,6 +8,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs'
 import { Switch } from '~/components/ui/switch'
+import { ColorPickerGrid } from '~/components/business/media/subtitles/ColorPickerGrid'
 import type { SubtitleRenderConfig, SubtitleRenderPreset } from '~/lib/subtitle/types'
 
 interface SubtitleConfigControlsProps {
@@ -133,44 +134,32 @@ export function SubtitleConfigControls({
                         />
                     </div>
 
-						{/* 颜色控制 */}
-						<div className="space-y-2">
-							<Label className="text-xs font-medium">Colors</Label>
-							<div className="grid grid-cols-3 gap-2">
-								<div className="space-y-1">
-									<Label htmlFor="subtitle-text-color" className="text-xs">Text</Label>
-									<Input
-										type="color"
-										id="subtitle-text-color"
-										value={config.textColor}
-										onChange={onColorChange('textColor')}
-										className="h-8 w-full p-1 cursor-pointer"
-									/>
-								</div>
-
-								<div className="space-y-1">
-									<Label htmlFor="subtitle-background-color" className="text-xs">BG</Label>
-									<Input
-										type="color"
-										id="subtitle-background-color"
-										value={config.backgroundColor}
-										onChange={onColorChange('backgroundColor')}
-										className="h-8 w-full p-1 cursor-pointer"
-									/>
-								</div>
-
-								<div className="space-y-1">
-									<Label htmlFor="subtitle-outline-color" className="text-xs">Outline</Label>
-									<Input
-										type="color"
-										id="subtitle-outline-color"
-										value={config.outlineColor}
-										onChange={onColorChange('outlineColor')}
-										className="h-8 w-full p-1 cursor-pointer"
-									/>
-								</div>
-							</div>
-						</div>
+				{/* 颜色控制 */}
+				<div className="space-y-2">
+					<Label className="text-xs font-medium">Colors</Label>
+					<ColorPickerGrid
+						fields={[
+							{
+								id: 'subtitle-text-color',
+								label: 'Text',
+								value: config.textColor,
+								onChange: onColorChange('textColor'),
+							},
+							{
+								id: 'subtitle-background-color',
+								label: 'BG',
+								value: config.backgroundColor,
+								onChange: onColorChange('backgroundColor'),
+							},
+							{
+								id: 'subtitle-outline-color',
+								label: 'Outline',
+								value: config.outlineColor,
+								onChange: onColorChange('outlineColor'),
+							},
+						]}
+					/>
+				</div>
 
 						{/* 重置按钮 */}
 						<Button

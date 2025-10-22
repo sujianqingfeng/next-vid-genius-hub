@@ -6,6 +6,7 @@ import { Label } from '~/components/ui/label'
 import { Textarea } from '~/components/ui/textarea'
 import { Input } from '~/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
+import { ColorPickerGrid } from '~/components/business/media/subtitles/ColorPickerGrid'
 import { DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
 import type { HintTextConfig } from '~/lib/subtitle/types'
@@ -149,41 +150,30 @@ export function HintTextConfigControls({ config, onChange }: HintTextConfigContr
 						</div>
 					</div>
 
-					{/* 颜色控制 */}
-					<div className="grid grid-cols-3 gap-2">
-						<div className="space-y-1">
-							<Label htmlFor="hint-text-color" className="text-xs">Text</Label>
-							<Input
-								type="color"
-								id="hint-text-color"
-								value={hintConfig.textColor}
-								onChange={(e) => onChange('textColor', e.target.value)}
-								className="h-8 w-full p-1 cursor-pointer"
-							/>
-						</div>
-
-						<div className="space-y-1">
-							<Label htmlFor="hint-background-color" className="text-xs">BG</Label>
-							<Input
-								type="color"
-								id="hint-background-color"
-								value={hintConfig.backgroundColor}
-								onChange={(e) => onChange('backgroundColor', e.target.value)}
-								className="h-8 w-full p-1 cursor-pointer"
-							/>
-						</div>
-
-						<div className="space-y-1">
-							<Label htmlFor="hint-outline-color" className="text-xs">Outline</Label>
-							<Input
-								type="color"
-								id="hint-outline-color"
-								value={hintConfig.outlineColor}
-								onChange={(e) => onChange('outlineColor', e.target.value)}
-								className="h-8 w-full p-1 cursor-pointer"
-							/>
-						</div>
-					</div>
+				{/* 颜色控制 */}
+				<ColorPickerGrid
+					labelClassName="text-xs"
+					fields={[
+						{
+							id: 'hint-text-color',
+							label: 'Text',
+							value: hintConfig.textColor,
+							onChange: (e) => onChange('textColor', e.target.value),
+						},
+						{
+							id: 'hint-background-color',
+							label: 'BG',
+							value: hintConfig.backgroundColor,
+							onChange: (e) => onChange('backgroundColor', e.target.value),
+						},
+						{
+							id: 'hint-outline-color',
+							label: 'Outline',
+							value: hintConfig.outlineColor,
+							onChange: (e) => onChange('outlineColor', e.target.value),
+						},
+					]}
+				/>
 				</div>
 			)}
 		</div>

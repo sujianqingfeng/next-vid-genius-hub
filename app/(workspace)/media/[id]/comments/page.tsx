@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Copy, Download, Edit, Film, LanguagesIcon, MessageCircle, Settings, Play } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -37,6 +37,8 @@ import { queryOrpc } from '~/lib/orpc/query-client'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 import { Progress } from '~/components/ui/progress'
 import { Switch } from '~/components/ui/switch'
+import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useCloudJob } from '~/lib/hooks/useCloudJob'
 
 export default function CommentsPage() {
 	const params = useParams()
@@ -48,7 +50,6 @@ export default function CommentsPage() {
 
 	// Download comments backend toggle (local/cloud)
 	const [commentsBackend, setCommentsBackend] = useState<'local' | 'cloud'>('cloud')
-	const [commentsCloudJobId, setCommentsCloudJobId] = useState<string | null>(null)
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
 	const [renderProxyId, setRenderProxyId] = useState<string>('none')
 
@@ -57,17 +58,24 @@ export default function CommentsPage() {
 	const [editTitle, setEditTitle] = useState('')
 	const [editTranslatedTitle, setEditTranslatedTitle] = useState('')
 
-	// Persist comments cloud job id across reloads
-	useEffect(() => {
-		const key = `commentsDownloadCloudJob:${id}`
-		if (!commentsCloudJobId) {
-			const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
-			if (saved) setCommentsCloudJobId(saved)
-		}
-		if (commentsCloudJobId) {
-			try { window.localStorage.setItem(key, commentsCloudJobId) } catch {}
-		}
-	}, [id, commentsCloudJobId])
+	const {
+		jobId: commentsCloudJobId,
+		setJobId: setCommentsCloudJobId,
+		statusQuery: cloudCommentsStatusQuery,
+	} = useCloudJob({
+		storageKey: `commentsDownloadCloudJob:${id}`,
+		enabled: commentsBackend === 'cloud',
+		autoClearOnComplete: false,
+		createQueryOptions: (jobId) =>
+			queryOrpc.comment.getCloudCommentsStatus.queryOptions({
+				input: { jobId },
+				enabled: !!jobId,
+				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+					const s = q.state.data?.status
+					return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
+				},
+			}),
+	})
 
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
@@ -75,19 +83,19 @@ export default function CommentsPage() {
 		}),
 	)
 
-	const updateTitlesMutation = useMutation(
+	const updateTitlesMutation = useEnhancedMutation(
 		queryOrpc.media.updateTitles.mutationOptions({
 			onSuccess: () => {
-				queryClient.invalidateQueries({
-					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-				})
 				setEditDialogOpen(false)
-				toast.success('Titles updated successfully!')
-			},
-			onError: (error) => {
-				toast.error(`Failed to update titles: ${error.message}`)
 			},
 		}),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+			},
+			successToast: 'Titles updated successfully!',
+			errorToast: ({ error }) => `Failed to update titles: ${error.message}`,
+		},
 	)
 
 	const handleEditClick = () => {
@@ -123,72 +131,71 @@ export default function CommentsPage() {
 			})
 	}
 
-	const downloadCommentsMutation = useMutation(
-		queryOrpc.comment.downloadComments.mutationOptions({
-			onSuccess: () => {
-				queryClient.invalidateQueries({
-					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-				})
-				toast.success('Comments downloaded!')
+	const downloadCommentsMutation = useEnhancedMutation(
+		queryOrpc.comment.downloadComments.mutationOptions(),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			},
-			onError: (error) => {
-				toast.error(`Failed to download comments: ${error.message}`)
-			},
-		}),
+			successToast: 'Comments downloaded!',
+			errorToast: ({ error }) => `Failed to download comments: ${error.message}`,
+		},
 	)
 
-	const startCloudCommentsMutation = useMutation(
+	const startCloudCommentsMutation = useEnhancedMutation(
 		queryOrpc.comment.startCloudCommentsDownload.mutationOptions({
 			onSuccess: (data) => {
 				setCommentsCloudJobId(data.jobId)
-				toast.success('Cloud comments download queued')
 			},
-			onError: (e) => toast.error(e.message),
 		}),
+		{
+			successToast: 'Cloud comments download queued',
+			errorToast: ({ error }) => error.message,
+		},
 	)
 
-    const cloudCommentsStatusQuery = useQuery(
-        queryOrpc.comment.getCloudCommentsStatus.queryOptions({
-            input: { jobId: commentsCloudJobId ?? '' },
-            enabled: !!commentsCloudJobId,
-            refetchInterval: (q: { state: { data?: { status?: string } } }) => {
-                const s = q.state.data?.status
-                return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
-            },
-        }),
-    )
-
-	const finalizeCloudCommentsMutation = useMutation(
+	const finalizeCloudCommentsMutation = useEnhancedMutation(
 		queryOrpc.comment.finalizeCloudCommentsDownload.mutationOptions({
 			onSuccess: () => {
-				queryClient.invalidateQueries({ queryKey: queryOrpc.media.byId.queryKey({ input: { id } }) })
-				try { window.localStorage.removeItem(`commentsDownloadCloudJob:${id}`) } catch {}
 				setCommentsCloudJobId(null)
-				toast.success('Comments downloaded!')
 			},
-			onError: (e) => toast.error(e.message),
 		}),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+			},
+			successToast: 'Comments downloaded!',
+			errorToast: ({ error }) => error.message,
+		},
 	)
 
 	useEffect(() => {
-		if (commentsBackend === 'cloud' && commentsCloudJobId && cloudCommentsStatusQuery.data?.status === 'completed' && !finalizeCloudCommentsMutation.isPending) {
+		if (
+			commentsBackend === 'cloud' &&
+			commentsCloudJobId &&
+			cloudCommentsStatusQuery.data?.status === 'completed' &&
+			!finalizeCloudCommentsMutation.isPending
+		) {
 			finalizeCloudCommentsMutation.mutate({ mediaId: id, jobId: commentsCloudJobId })
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [commentsBackend, commentsCloudJobId, cloudCommentsStatusQuery.data?.status, id])
+	}, [
+		commentsBackend,
+		commentsCloudJobId,
+		cloudCommentsStatusQuery.data?.status,
+		finalizeCloudCommentsMutation,
+		finalizeCloudCommentsMutation.isPending,
+		id,
+	])
 
-	const translateCommentsMutation = useMutation(
-		queryOrpc.comment.translateComments.mutationOptions({
-			onSuccess: () => {
-				queryClient.invalidateQueries({
-					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-				})
-				toast.success('Comments translated!')
+	const translateCommentsMutation = useEnhancedMutation(
+		queryOrpc.comment.translateComments.mutationOptions(),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			},
-			onError: (error) => {
-				toast.error(`Failed to translate comments: ${error.message}`)
-			},
-		}),
+			successToast: 'Comments translated!',
+			errorToast: ({ error }) => `Failed to translate comments: ${error.message}`,
+		},
 	)
 
 	const previewVideoInfo = mediaQuery.data
@@ -201,64 +208,56 @@ export default function CommentsPage() {
 		  }
 		: null
 
-	const renderMutation = useMutation({
-		...queryOrpc.comment.renderWithInfo.mutationOptions(),
-		onSuccess: () => {
-			toast.success('Video rendering started!')
+	const renderMutation = useEnhancedMutation(
+		queryOrpc.comment.renderWithInfo.mutationOptions(),
+		{
+			successToast: 'Video rendering started!',
+			errorToast: ({ error }) => `Failed to start rendering: ${error.message}`,
 		},
-		onError: (error) => {
-			toast.error(`Failed to start rendering: ${error.message}`)
-		},
-	})
+	)
 
 	// Cloud rendering (Remotion) — start
 	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>('cloud')
-	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
+
+	const {
+		jobId: cloudJobId,
+		setJobId: setCloudJobId,
+		statusQuery: cloudStatusQuery,
+	} = useCloudJob({
+		storageKey: `commentsCloudJob:${id}`,
+		enabled: renderBackend === 'cloud',
+		completeStatuses: ['completed'],
+		onCompleted: () => {
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+			})
+		},
+		createQueryOptions: (jobId) =>
+			queryOrpc.comment.getRenderStatus.queryOptions({
+				input: { jobId },
+				enabled: !!jobId,
+				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+					const s = q.state.data?.status
+					return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
+				},
+			}),
+	})
 
 	// Source policy selection for rendering
 	type SourcePolicy = 'auto' | 'original' | 'subtitles'
 	const [sourcePolicy, setSourcePolicy] = useState<SourcePolicy>('auto')
 
-	useEffect(() => {
-		const key = `commentsCloudJob:${id}`
-		if (!cloudJobId) {
-			const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
-			if (saved) setCloudJobId(saved)
-		}
-		if (cloudJobId) {
-			window.localStorage.setItem(key, cloudJobId)
-		}
-	}, [id, cloudJobId])
-
-	const startCloudRenderMutation = useMutation(
+	const startCloudRenderMutation = useEnhancedMutation(
 		queryOrpc.comment.startCloudRender.mutationOptions({
 			onSuccess: (data) => {
 				setCloudJobId(data.jobId)
-				toast.success('Cloud render queued')
 			},
-			onError: (e) => toast.error(e.message),
 		}),
+		{
+			successToast: 'Cloud render queued',
+			errorToast: ({ error }) => error.message,
+		},
 	)
-
-    const cloudStatusQuery = useQuery(
-        queryOrpc.comment.getRenderStatus.queryOptions({
-            input: { jobId: cloudJobId ?? '' },
-            enabled: !!cloudJobId,
-            refetchInterval: (q: { state: { data?: { status?: string } } }) => {
-                const s = q.state.data?.status
-                return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
-            },
-        }),
-    )
-
-	useEffect(() => {
-		if (renderBackend === 'cloud' && cloudJobId && cloudStatusQuery.data?.status === 'completed') {
-			queryClient.invalidateQueries({ queryKey: queryOrpc.media.byId.queryKey({ input: { id } }) })
-			try { window.localStorage.removeItem(`commentsCloudJob:${id}`) } catch {}
-			setCloudJobId(null)
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, id])
 
 	// Persist render source policy per media
 	useEffect(() => {
