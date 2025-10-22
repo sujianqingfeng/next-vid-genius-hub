@@ -2,16 +2,29 @@ FROM public.ecr.aws/docker/library/node:22-bookworm-slim
 
 ARG MIHOMO_VERSION=1.18.10
 ARG MIHOMO_PLATFORM=linux-amd64-compatible
+ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
+ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security
 
 # Install system dependencies: ffmpeg, fontconfig, CJK fonts, Chromium deps
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-     ffmpeg fontconfig fonts-noto-cjk fonts-dejavu-core \
-     ca-certificates curl gzip unzip \
-     libnss3 libxss1 libasound2 libx11-6 libx11-xcb1 libxcomposite1 \
-     libxdamage1 libxrandr2 libxtst6 libgtk-3-0 libgbm1 \
-  && fc-cache -f \
-  && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    release="$(awk -F= '/^VERSION_CODENAME=/{print $2}' /etc/os-release)"; \
+    if [ "$release" = "bookworm" ] || [ "$release" = "trixie" ]; then \
+      components="main contrib non-free non-free-firmware"; \
+    else \
+      components="main contrib non-free"; \
+    fi; \
+    printf 'deb %s %s %s\n' "${DEBIAN_MIRROR}" "${release}" "${components}" > /etc/apt/sources.list; \
+    printf 'deb %s %s-updates %s\n' "${DEBIAN_MIRROR}" "${release}" "${components}" >> /etc/apt/sources.list; \
+    printf 'deb %s %s-backports %s\n' "${DEBIAN_MIRROR}" "${release}" "${components}" >> /etc/apt/sources.list; \
+    printf 'deb %s %s-security %s\n' "${DEBIAN_SECURITY_MIRROR}" "${release}" "${components}" >> /etc/apt/sources.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      ffmpeg fontconfig fonts-noto-cjk fonts-dejavu-core \
+      ca-certificates curl gzip unzip \
+      libnss3 libxss1 libasound2 libx11-6 libx11-xcb1 libxcomposite1 \
+      libxdamage1 libxrandr2 libxtst6 libgtk-3-0 libgbm1; \
+    fc-cache -f; \
+    rm -rf /var/lib/apt/lists/*
 
 RUN curl -fL -o /tmp/mihomo.gz "https://github.com/MetaCubeX/mihomo/releases/download/v${MIHOMO_VERSION}/mihomo-${MIHOMO_PLATFORM}-v${MIHOMO_VERSION}.gz" \
   && gunzip /tmp/mihomo.gz \

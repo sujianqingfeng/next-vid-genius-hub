@@ -199,6 +199,24 @@ export const deleteComment = os
 			})
 			.where(eq(schema.media.id, mediaId))
 
+		// Materialize updated comments-data JSON to bucket and update manifest (best-effort)
+		try {
+			const key = `inputs/comments/${mediaId}.json`
+			const videoInfo = {
+				title: media.title || 'Untitled',
+				translatedTitle: media.translatedTitle || undefined,
+				viewCount: media.viewCount ?? 0,
+				author: media.author || undefined,
+				thumbnail: media.thumbnail || undefined,
+				series: '外网真实评论',
+			}
+			await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments: updatedComments }))
+			await upsertMediaManifest(mediaId, { commentsKey: key })
+			logger.info('comments', `comments-data materialized (delete): ${key}`)
+		} catch (err) {
+			logger.warn('comments', `comments-data materialization (delete) skipped: ${err instanceof Error ? err.message : String(err)}`)
+		}
+
 		return { success: true }
 	})
 

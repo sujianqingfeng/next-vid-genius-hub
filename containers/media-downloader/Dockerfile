@@ -4,18 +4,31 @@ ARG MIHOMO_VERSION=1.18.10
 # Use the "compatible" build by default to run on CPUs without x86-64-v3/AVX2.
 # Can be overridden at build time with --build-arg MIHOMO_PLATFORM=linux-amd64 if desired.
 ARG MIHOMO_PLATFORM=linux-amd64-compatible
+ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
+ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-     ffmpeg \
-     python3 \
-     python3-pip \
-     curl \
-     ca-certificates \
-     gzip \
-     unzip \
-  && rm -rf /var/lib/apt/lists/* \
-  && update-ca-certificates
+RUN set -eux; \
+    release="$(awk -F= '/^VERSION_CODENAME=/{print $2}' /etc/os-release)"; \
+    if [ "$release" = "bookworm" ] || [ "$release" = "trixie" ]; then \
+      components="main contrib non-free non-free-firmware"; \
+    else \
+      components="main contrib non-free"; \
+    fi; \
+    printf 'deb %s %s %s\n' "${DEBIAN_MIRROR}" "${release}" "${components}" > /etc/apt/sources.list; \
+    printf 'deb %s %s-updates %s\n' "${DEBIAN_MIRROR}" "${release}" "${components}" >> /etc/apt/sources.list; \
+    printf 'deb %s %s-backports %s\n' "${DEBIAN_MIRROR}" "${release}" "${components}" >> /etc/apt/sources.list; \
+    printf 'deb %s %s-security %s\n' "${DEBIAN_SECURITY_MIRROR}" "${release}" "${components}" >> /etc/apt/sources.list; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      ffmpeg \
+      python3 \
+      python3-pip \
+      curl \
+      ca-certificates \
+      gzip \
+      unzip; \
+    rm -rf /var/lib/apt/lists/*; \
+    update-ca-certificates
 
 # Install latest yt-dlp binary (apt package may lag behind and break YouTube downloads)
 RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
