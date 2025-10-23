@@ -4,9 +4,12 @@ ARG MIHOMO_VERSION=1.18.10
 ARG MIHOMO_PLATFORM=linux-amd64-compatible
 ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security
+ARG NPM_REGISTRY=https://registry.npmmirror.com
 
 # Install system dependencies: ffmpeg, fontconfig, CJK fonts, Chromium deps
 RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates; \
     release="$(awk -F= '/^VERSION_CODENAME=/{print $2}' /etc/os-release)"; \
     if [ "$release" = "bookworm" ] || [ "$release" = "trixie" ]; then \
       components="main contrib non-free non-free-firmware"; \
@@ -20,7 +23,7 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
       ffmpeg fontconfig fonts-noto-cjk fonts-dejavu-core \
-      ca-certificates curl gzip unzip \
+      curl gzip unzip \
       libnss3 libxss1 libasound2 libx11-6 libx11-xcb1 libxcomposite1 \
       libxdamage1 libxrandr2 libxtst6 libgtk-3-0 libgbm1; \
     fc-cache -f; \
@@ -40,6 +43,7 @@ COPY containers/renderer-remotion/package.json ./package.json
 COPY packages/media-comments ./packages/media-comments
 COPY packages/media-core ./packages/media-core
 COPY packages/callback-utils ./packages/callback-utils
+RUN npm config set registry ${NPM_REGISTRY}
 RUN npm i --omit=dev
 
 RUN mkdir -p /app/clash /app/clash/providers

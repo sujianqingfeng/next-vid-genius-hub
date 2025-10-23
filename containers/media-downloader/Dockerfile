@@ -6,8 +6,11 @@ ARG MIHOMO_VERSION=1.18.10
 ARG MIHOMO_PLATFORM=linux-amd64-compatible
 ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security
+ARG NPM_REGISTRY=https://registry.npmmirror.com
 
 RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates; \
     release="$(awk -F= '/^VERSION_CODENAME=/{print $2}' /etc/os-release)"; \
     if [ "$release" = "bookworm" ] || [ "$release" = "trixie" ]; then \
       components="main contrib non-free non-free-firmware"; \
@@ -24,7 +27,6 @@ RUN set -eux; \
       python3 \
       python3-pip \
       curl \
-      ca-certificates \
       gzip \
       unzip; \
     rm -rf /var/lib/apt/lists/*; \
@@ -47,6 +49,7 @@ COPY packages/media-core ./packages/media-core
 COPY packages/media-node ./packages/media-node
 COPY packages/media-providers ./packages/media-providers
 COPY packages/callback-utils ./packages/callback-utils
+RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev
 COPY containers/media-downloader/index.mjs ./index.mjs
 

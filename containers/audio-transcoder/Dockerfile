@@ -1,8 +1,11 @@
 FROM public.ecr.aws/docker/library/node:18-slim
 ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security
+ARG NPM_REGISTRY=https://registry.npmmirror.com
 
 RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates; \
     release="$(awk -F= '/^VERSION_CODENAME=/{print $2}' /etc/os-release)"; \
     if [ "$release" = "bookworm" ] || [ "$release" = "trixie" ]; then \
       components="main contrib non-free non-free-firmware"; \
@@ -22,6 +25,7 @@ WORKDIR /app
 
 COPY containers/audio-transcoder/package.json ./package.json
 COPY packages/callback-utils ./packages/callback-utils
+RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev
 
 COPY containers/audio-transcoder/index.mjs ./index.mjs
