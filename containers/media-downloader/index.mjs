@@ -23,6 +23,8 @@ import {
   downloadYoutubeComments as providerDownloadYoutubeComments,
   downloadTikTokCommentsByUrl as providerDownloadTikTokComments,
 } from "@app/media-providers";
+import { Innertube, UniversalCache } from "youtubei.js";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 const PORT = process.env.PORT || 8080;
 const CALLBACK_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET || "dev-secret";
@@ -646,16 +648,19 @@ async function handleRender(req, res) {
   const quality = engineOptions.quality || "1080p";
   const task = (engineOptions.task || "").toString().toLowerCase();
   const isCommentsOnly = task === "comments";
+  const isChannelList = task === "channel-list";
 
   if (
-    !url ||
-    (!isCommentsOnly && !outputVideoPutUrl) ||
-    (isCommentsOnly && !outputMetadataPutUrl)
+    (!isChannelList && (!url || (!isCommentsOnly && !outputVideoPutUrl))) ||
+    (isCommentsOnly && !outputMetadataPutUrl) ||
+    (isChannelList && !outputMetadataPutUrl)
   ) {
     await postUpdate("failed", {
       error: isCommentsOnly
         ? "missing url or outputMetadataPutUrl"
-        : "missing url or outputVideoPutUrl",
+        : isChannelList
+          ? "missing outputMetadataPutUrl"
+          : "missing url or outputVideoPutUrl",
     });
     return;
   }
@@ -694,6 +699,111 @@ async function handleRender(req, res) {
     await progress("preparing", 0.05);
     await delay(100);
     await progress("fetching_metadata", 0.1);
+
+    if (isChannelList) {
+      const limit = Number.parseInt(String(engineOptions?.limit ?? 20), 10) || 20;
+      const channelUrlOrId = String(engineOptions?.channelUrlOrId || engineOptions?.url || "").trim();
+      if (!channelUrlOrId) throw new Error("channelUrlOrId is required for channel-list task");
+
+      // Build youtube client with proxy
+      const cache = new UniversalCache(true);
+      const agent = proxy ? new ProxyAgent(proxy) : undefined;
+      const fetchWithProxy = async (input, init = {}) => {
+        const opts = { ...(init || {}) };
+        if (agent) opts.dispatcher = agent;
+        return undiciFetch(input, opts);
+      };
+      const youtube = await Innertube.create({ cache, fetch: fetchWithProxy });
+
+      const channelIdFromInput = (() => {
+        try {
+          if (channelUrlOrId.startsWith("UC")) return channelUrlOrId;
+          const u = new URL(channelUrlOrId);
+          const parts = u.pathname.split("/").filter(Boolean);
+          const idx = parts.findIndex((p) => p.toLowerCase() === "channel");
+          if (idx >= 0 && parts[idx + 1] && parts[idx + 1].startsWith("UC")) return parts[idx + 1];
+          return null;
+        } catch {
+          return null;
+        }
+      })();
+
+      let resolvedChannelId = channelIdFromInput;
+      // Best-effort search fallback when not a UC id
+      if (!resolvedChannelId) {
+        try {
+          const searchRes = await youtube.search(channelUrlOrId, { type: "channel" });
+          const first = (searchRes?.results || searchRes?.items || []).find((x) => (x?.type === "channel") || Boolean(x?.id));
+          const cand = first?.id || first?.channel_id || first?.channelId;
+          if (cand && String(cand).startsWith("UC")) resolvedChannelId = String(cand);
+        } catch (e) {
+          console.warn("[media-downloader] channel-list: search resolve failed", e);
+        }
+      }
+
+      const results = [];
+      try {
+        if (resolvedChannelId) {
+          // Prefer uploads playlist traversal as it is stable
+          const uploadsId = `UU${resolvedChannelId.slice(2)}`;
+          let playlist = await youtube.getPlaylist(uploadsId);
+          if (playlist && typeof playlist.getVideos === "function") {
+            const page = await playlist.getVideos();
+            const items = (page?.videos || page?.items || page?.contents || []).slice(0, limit);
+            for (const it of items) {
+              const v = it?.short_view_video_renderer || it?.video || it || {};
+              const id = String(v?.id || v?.videoId || v?.video_id || v?.compact_video_renderer?.video_id || "");
+              if (!id) continue;
+              const title = String(v?.title?.text || v?.title || "");
+              const thumb = (v?.thumbnail?.thumbnails?.[0]?.url) || (v?.thumbnails?.[0]?.url) || undefined;
+              const published = v?.published || v?.publishedTimeText || v?.date || undefined;
+              results.push({ id, title, url: `https://www.youtube.com/watch?v=${id}`, thumbnail: thumb, publishedAt: published });
+              if (results.length >= limit) break;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[media-downloader] channel-list: uploads traversal failed, trying channel.getVideos", e);
+      }
+
+      if (results.length < limit) {
+        try {
+          const ch = await youtube.getChannel(resolvedChannelId || channelUrlOrId);
+          if (ch && typeof ch.getVideos === "function") {
+            const page = await ch.getVideos();
+            const items = (page?.videos || page?.items || page?.contents || []).slice(0, limit - results.length);
+            for (const it of items) {
+              const v = it?.video || it || {};
+              const id = String(v?.id || v?.videoId || v?.video_id || "");
+              if (!id) continue;
+              const title = String(v?.title?.text || v?.title || "");
+              const thumb = (v?.thumbnails?.[0]?.url) || (v?.thumbnail?.thumbnails?.[0]?.url) || undefined;
+              const published = v?.published || v?.publishedTimeText || v?.date || undefined;
+              results.push({ id, title, url: `https://www.youtube.com/watch?v=${id}`, thumbnail: thumb, publishedAt: published });
+              if (results.length >= limit) break;
+            }
+          }
+        } catch (e) {
+          console.warn("[media-downloader] channel-list: channel.getVideos fallback failed", e);
+        }
+      }
+
+      // Upload compact JSON to metadata output
+      const payload = { channel: { input: channelUrlOrId, id: resolvedChannelId }, count: results.length, videos: results };
+      const buf = Buffer.from(JSON.stringify(payload, null, 2), "utf8");
+      await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
+      const outputs = {};
+      if (outputMetadataKey) outputs.metadata = { key: outputMetadataKey };
+      await postUpdate("completed", {
+        phase: "completed",
+        progress: 1,
+        outputs,
+        outputMetadataKey,
+        metadata: { source: "youtube", channelId: resolvedChannelId, count: results.length },
+      });
+      console.log("[media-downloader] job completed", jobId, "channel-list=", results.length);
+      return;
+    }
 
     if (isCommentsOnly) {
       const maxPages = parseNumber(engineOptions?.commentsPages, 3);

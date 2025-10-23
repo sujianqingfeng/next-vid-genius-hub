@@ -5,6 +5,7 @@ import {
 	ChevronRight,
 	Download,
 	FileVideo,
+	ListVideo,
 	Settings,
 	Globe,
 } from 'lucide-react'
@@ -29,6 +30,12 @@ const menuItems = [
 		href: '/media',
 		icon: FileVideo,
 		description: 'Manage your videos',
+	},
+	{
+		title: 'Channels',
+		href: '/channels',
+		icon: ListVideo,
+		description: 'Track YouTube channels',
 	},
 	{
 		title: 'Downloads',

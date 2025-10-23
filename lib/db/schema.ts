@@ -103,3 +103,47 @@ export const proxies = sqliteTable('proxies', {
 		.notNull()
 		.$defaultFn(() => new Date()),
 })
+
+// ---------------- Channels & Channel Videos ----------------
+export const channels = sqliteTable('channels', {
+  id: text('id')
+    .unique()
+    .notNull()
+    .$defaultFn(() => createId()),
+  provider: text('provider', { enum: ['youtube'] })
+    .notNull()
+    .default('youtube'),
+  channelUrl: text('channel_url').notNull(),
+  channelId: text('channel_id'),
+  title: text('title'),
+  thumbnail: text('thumbnail'),
+  defaultProxyId: text('default_proxy_id'),
+  lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
+  lastSyncStatus: text('last_sync_status', {
+    enum: ['queued', 'running', 'completed', 'failed'],
+  }),
+  lastJobId: text('last_job_id'),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }),
+})
+
+export const channelVideos = sqliteTable('channel_videos', {
+  id: text('id')
+    .unique()
+    .notNull()
+    .$defaultFn(() => createId()),
+  channelId: text('channel_id').notNull(),
+  videoId: text('video_id').notNull().unique(),
+  title: text('title').notNull(),
+  url: text('url').notNull(),
+  thumbnail: text('thumbnail'),
+  publishedAt: integer('published_at', { mode: 'timestamp' }),
+  viewCount: integer('view_count'),
+  likeCount: integer('like_count'),
+  raw: text('raw', { mode: 'json' }),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+})
