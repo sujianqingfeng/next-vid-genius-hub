@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Copy, Download, Edit, Film, LanguagesIcon, MessageCircle, Settings, Play } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CommentCard } from '~/components/business/media/comment-card'
 import { RemotionPreviewCard } from '~/components/business/media/remotion-preview-card'
@@ -169,6 +169,8 @@ export default function CommentsPage() {
 		},
 	)
 
+	const finalizeAttemptedJobIdsRef = useRef<Set<string>>(new Set())
+
 	useEffect(() => {
 		if (
 			commentsBackend === 'cloud' &&
@@ -176,7 +178,10 @@ export default function CommentsPage() {
 			cloudCommentsStatusQuery.data?.status === 'completed' &&
 			!finalizeCloudCommentsMutation.isPending
 		) {
-			finalizeCloudCommentsMutation.mutate({ mediaId: id, jobId: commentsCloudJobId })
+			if (!finalizeAttemptedJobIdsRef.current.has(commentsCloudJobId)) {
+				finalizeAttemptedJobIdsRef.current.add(commentsCloudJobId)
+				finalizeCloudCommentsMutation.mutate({ mediaId: id, jobId: commentsCloudJobId })
+			}
 		}
 	}, [
 		commentsBackend,
