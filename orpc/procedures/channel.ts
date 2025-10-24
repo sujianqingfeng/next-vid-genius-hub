@@ -126,13 +126,42 @@ export const finalizeCloudSync = os
     const list: any[] = Array.isArray(data?.videos) ? data.videos : []
 
     // Upsert videos
+    function toDateOrUndefined(value: unknown): Date | undefined {
+      if (value == null) return undefined
+      if (value instanceof Date) return isNaN(value.getTime()) ? undefined : value
+      if (typeof value === 'number') {
+        const ms = value < 1e12 ? value * 1000 : value
+        const d = new Date(ms)
+        return isNaN(d.getTime()) ? undefined : d
+      }
+      if (typeof value === 'string') {
+        const d = new Date(value)
+        return isNaN(d.getTime()) ? undefined : d
+      }
+      if (typeof value === 'object') {
+        // youtube may return objects like { text: '3 hours ago' } — skip; or { timestamp: 1690000000 }
+        const anyv: any = value as any
+        const ts = anyv?.timestamp ?? anyv?.seconds ?? anyv?.ms
+        if (typeof ts === 'number') {
+          const d = new Date(ts < 1e12 ? ts * 1000 : ts)
+          return isNaN(d.getTime()) ? undefined : d
+        }
+        const txt = anyv?.text
+        if (typeof txt === 'string') {
+          const d = new Date(txt)
+          if (!isNaN(d.getTime())) return d
+        }
+      }
+      return undefined
+    }
+
     for (const v of list) {
       const vid: string = String(v?.id || '')
       if (!vid) continue
       const title: string = String(v?.title || '')
       const url: string = String(v?.url || (vid ? `https://www.youtube.com/watch?v=${vid}` : ''))
-      const publishedRaw = v?.publishedAt || v?.published || v?.date
-      const publishedAt = publishedRaw ? new Date(publishedRaw) : null
+      const publishedRaw = v?.publishedAt || v?.published || v?.date || v?.publishedTimeText
+      const publishedAt = toDateOrUndefined(publishedRaw)
       const thumb: string | undefined = v?.thumbnail || v?.thumbnails?.[0]?.url || undefined
       const viewCount = typeof v?.viewCount === 'number' ? v.viewCount : undefined
       const likeCount = typeof v?.likeCount === 'number' ? v.likeCount : undefined
@@ -198,4 +227,3 @@ export const listChannelVideos = os
       .limit(input.limit)
     return { videos: rows }
   })
-

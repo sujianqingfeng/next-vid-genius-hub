@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { startJsonServer, createStatusHelpers, sanitizeEngineOptions } from "../shared.mjs";
+import { startJsonServer, createStatusHelpers, sanitizeEngineOptions } from "./shared.mjs";
 import { fetch as undiciFetch } from "undici";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia } from "@remotion/renderer";

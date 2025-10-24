@@ -2,7 +2,7 @@ import http from 'node:http'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { startJsonServer, createStatusHelpers } from '../shared.mjs'
+import { startJsonServer, createStatusHelpers } from './shared.mjs'
 import { renderVideoWithSubtitles } from '@app/media-subtitles'
 
 const PORT = process.env.PORT || 8080

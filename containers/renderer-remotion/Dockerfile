@@ -1,4 +1,6 @@
-FROM public.ecr.aws/docker/library/node:22-bookworm-slim
+# Use Docker Hub by default; override with BASE_NODE_IMAGE if needed
+ARG BASE_NODE_IMAGE=node:22-bookworm-slim
+FROM ${BASE_NODE_IMAGE}
 
 ARG MIHOMO_VERSION=1.18.10
 ARG MIHOMO_PLATFORM=linux-amd64-compatible
@@ -50,6 +52,7 @@ RUN mkdir -p /app/clash /app/clash/providers
 
 # Copy runtime files
 COPY containers/renderer-remotion/index.mjs ./index.mjs
+COPY containers/shared.mjs ./shared.mjs
 # Copy Remotion project (from repo root)
 COPY remotion ./remotion
 COPY public ./public

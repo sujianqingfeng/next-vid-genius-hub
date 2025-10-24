@@ -59,6 +59,12 @@ export async function POST(req: NextRequest) {
 
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, payload.mediaId) })
     if (!media) {
+      // Gracefully ignore callbacks that aren't tied to a media row (e.g. channel-list or comments-only tasks)
+      const hasMetadataOnly = !!(payload.outputs as any)?.metadata && !(payload.outputs as any)?.video
+      if (payload.engine === 'media-downloader' && hasMetadataOnly) {
+        logger.info('api', `[cf-callback] non-media job callback ignored mediaId=${payload.mediaId}`)
+        return NextResponse.json({ ok: true, ignored: true })
+      }
       logger.error('api', `[cf-callback] media not found: ${payload.mediaId}`)
       return NextResponse.json({ error: 'media not found' }, { status: 404 })
     }

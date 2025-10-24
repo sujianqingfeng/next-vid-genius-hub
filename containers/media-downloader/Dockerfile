@@ -1,4 +1,6 @@
-FROM public.ecr.aws/docker/library/node:22-slim
+# Use Docker Hub by default; can override with --build-arg BASE_NODE_IMAGE=ghcr.io/library/node:22-slim
+ARG BASE_NODE_IMAGE=node:22-slim
+FROM ${BASE_NODE_IMAGE}
 
 ARG MIHOMO_VERSION=1.18.10
 # Use the "compatible" build by default to run on CPUs without x86-64-v3/AVX2.
@@ -52,6 +54,7 @@ COPY packages/callback-utils ./packages/callback-utils
 RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev
 COPY containers/media-downloader/index.mjs ./index.mjs
+COPY containers/shared.mjs ./shared.mjs
 
 RUN mkdir -p /app/clash /app/clash/providers
 

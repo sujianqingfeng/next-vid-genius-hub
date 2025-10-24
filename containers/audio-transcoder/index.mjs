@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { readFileSync, writeFileSync, statSync, unlinkSync } from 'node:fs'
 import { execa } from 'execa'
 import { makeStatusCallback } from '@app/callback-utils'
-import { sendJson, startJsonServer } from '../shared.mjs'
+import { sendJson, startJsonServer } from './shared.mjs'
 
 const PORT = process.env.PORT || 8080
 

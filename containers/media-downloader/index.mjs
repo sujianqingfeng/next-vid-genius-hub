@@ -8,7 +8,7 @@ import { readFileSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import YAML from "yaml";
-import { sendJson, sanitizeEngineOptions, createStatusHelpers, uploadArtifact, ensureDirExists, startJsonServer } from "../shared.mjs";
+import { sendJson, sanitizeEngineOptions, createStatusHelpers, uploadArtifact, ensureDirExists, startJsonServer } from "./shared.mjs";
 // Compose pipelines via shared @app/media-* packages
 // Compose pipelines with shared adapters from the monorepo packages
 import {
@@ -25,6 +25,14 @@ import {
 } from "@app/media-providers";
 import { Innertube, UniversalCache } from "youtubei.js";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
+
+// Debug flag for verbose channel-list logging
+const DEBUG_CHANNEL_LIST =
+  process.env.DEBUG_CHANNEL_LIST === "1" ||
+  process.env.MEDIA_DOWNLOADER_DEBUG === "1";
+const dlog = (...args) => {
+  if (DEBUG_CHANNEL_LIST) console.log("[channel-list/debug]", ...args);
+};
 
 const PORT = process.env.PORT || 8080;
 const CALLBACK_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET || "dev-secret";
@@ -656,10 +664,29 @@ async function handleRender(req, res) {
       // Build youtube client with proxy
       const cache = new UniversalCache(true);
       const agent = proxy ? new ProxyAgent(proxy) : undefined;
+      // Normalize Request/URL/string inputs to avoid ERR_INVALID_URL from undici
       const fetchWithProxy = async (input, init = {}) => {
         const opts = { ...(init || {}) };
         if (agent) opts.dispatcher = agent;
-        return undiciFetch(input, opts);
+        try {
+          let url;
+          if (typeof input === "string") {
+            url = input;
+          } else if (input instanceof URL) {
+            url = input.toString();
+          } else if (input && typeof input === "object") {
+            const maybeUrl = input.url || input.href || input.toString?.();
+            url = typeof maybeUrl === "string" ? maybeUrl : String(maybeUrl);
+            if (input.method && !opts.method) opts.method = input.method;
+            if (input.headers && !opts.headers) opts.headers = input.headers;
+            if (input.body && !opts.body) opts.body = input.body;
+          } else {
+            url = String(input);
+          }
+          return undiciFetch(url, opts);
+        } catch {
+          return undiciFetch(input, opts);
+        }
       };
       const youtube = await Innertube.create({ cache, fetch: fetchWithProxy });
 
@@ -677,6 +704,7 @@ async function handleRender(req, res) {
       })();
 
       let resolvedChannelId = channelIdFromInput;
+      dlog("input=", channelUrlOrId, "channelIdFromInput=", channelIdFromInput);
       // Best-effort search fallback when not a UC id
       if (!resolvedChannelId) {
         try {
@@ -684,6 +712,7 @@ async function handleRender(req, res) {
           const first = (searchRes?.results || searchRes?.items || []).find((x) => (x?.type === "channel") || Boolean(x?.id));
           const cand = first?.id || first?.channel_id || first?.channelId;
           if (cand && String(cand).startsWith("UC")) resolvedChannelId = String(cand);
+          dlog("search fallback resolved id=", resolvedChannelId);
         } catch (e) {
           console.warn("[media-downloader] channel-list: search resolve failed", e);
         }
@@ -698,6 +727,7 @@ async function handleRender(req, res) {
           if (playlist && typeof playlist.getVideos === "function") {
             const page = await playlist.getVideos();
             const items = (page?.videos || page?.items || page?.contents || []).slice(0, limit);
+            dlog("uploads playlist items=", items.length);
             for (const it of items) {
               const v = it?.short_view_video_renderer || it?.video || it || {};
               const id = String(v?.id || v?.videoId || v?.video_id || v?.compact_video_renderer?.video_id || "");
@@ -720,6 +750,7 @@ async function handleRender(req, res) {
           if (ch && typeof ch.getVideos === "function") {
             const page = await ch.getVideos();
             const items = (page?.videos || page?.items || page?.contents || []).slice(0, limit - results.length);
+            dlog("channel.getVideos items=", items.length);
             for (const it of items) {
               const v = it?.video || it || {};
               const id = String(v?.id || v?.videoId || v?.video_id || "");
@@ -738,6 +769,7 @@ async function handleRender(req, res) {
 
       // Upload compact JSON to metadata output
       const payload = { channel: { input: channelUrlOrId, id: resolvedChannelId }, count: results.length, videos: results };
+      dlog("final results count=", results.length, "firstIds=", results.slice(0, 3).map((x) => x.id));
       const buf = Buffer.from(JSON.stringify(payload, null, 2), "utf8");
       await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
       const outputs = {};

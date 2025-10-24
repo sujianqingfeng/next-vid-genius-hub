@@ -1,4 +1,5 @@
-FROM public.ecr.aws/docker/library/node:18-slim
+ARG BASE_NODE_IMAGE=node:18-slim
+FROM ${BASE_NODE_IMAGE}
 ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security
 ARG NPM_REGISTRY=https://registry.npmmirror.com
@@ -29,6 +30,7 @@ RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev
 
 COPY containers/audio-transcoder/index.mjs ./index.mjs
+COPY containers/shared.mjs ./shared.mjs
 
 EXPOSE 8080
 CMD ["node", "index.mjs"]
