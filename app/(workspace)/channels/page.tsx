@@ -5,8 +5,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-
-
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 import { ChannelVideoList } from '~/components/business/channels/channel-video-list'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
@@ -78,66 +76,89 @@ export default function ChannelsPage() {
     finalizeMutation.mutate({ id, jobId })
   }, [finalizeMutation])
 
+  const handleAddChannel = React.useCallback(
+    (event?: React.FormEvent<HTMLFormElement>) => {
+      event?.preventDefault()
+      const trimmed = newInput.trim()
+      if (!trimmed || createMutation.isPending) return
+      createMutation.mutate({ channelUrlOrId: trimmed })
+    },
+    [createMutation, newInput],
+  )
+
   return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold mb-4">Channels</h1>
-        
-        <div className="flex gap-2 mb-6">
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-semibold tracking-tight">Channels</h1>
+          <p className="text-sm text-muted-foreground">
+            Collect the creators you follow, keep their feeds in sync, and translate titles in one place.
+          </p>
+        </div>
+        <form
+          onSubmit={handleAddChannel}
+          className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center"
+        >
           <Input
             value={newInput}
             onChange={(e) => setNewInput(e.target.value)}
-            placeholder="YouTube channel URL or ID"
-            className="flex-1 max-w-md"
+            placeholder="Paste a YouTube channel URL or ID"
+            className="w-full min-w-0 sm:w-80"
           />
-          <Button
-            disabled={!newInput || createMutation.isPending}
-            onClick={() => createMutation.mutate({ channelUrlOrId: newInput })}
-          >
-            Add
+          <Button type="submit" disabled={!newInput.trim() || createMutation.isPending}>
+            {createMutation.isPending ? 'Adding…' : 'Add Channel'}
           </Button>
-        </div>
-      </div>
+        </form>
+      </header>
 
-      <div className="space-y-4">
+      <main className="space-y-6">
         {listQuery.isLoading && (
-          <div className="text-center py-8 text-muted-foreground">Loading...</div>
+          <div className="py-10 text-center text-muted-foreground">Loading your channels…</div>
         )}
-        
-        {listQuery.data?.channels?.map((ch) => (
-          <ChannelCard
-            key={ch.id}
-            ch={ch}
-            selectedProxyId={selectedProxyByChannel[ch.id] ?? (ch.defaultProxyId || 'none')}
-            selectedModel={selectedModelByChannel[ch.id] ?? defaultChannelModel}
-            onSelectProxy={(v) => setSelectedProxyByChannel((m) => ({ ...m, [ch.id]: v }))}
-            onSelectModel={(v) => setSelectedModelByChannel((m) => ({ ...m, [ch.id]: v }))}
-            jobId={jobMap[ch.id]}
-            status={statusMap[ch.id] ?? ch.lastSyncStatus}
-            setStatus={(s) => setStatusFor(ch.id, s)}
-            onSync={() => {
-              const sel = selectedProxyByChannel[ch.id]
-              startSyncMutation.mutate({ 
-                id: ch.id, 
-                limit: 20, 
-                proxyId: sel && sel !== 'none' ? sel : undefined 
-              })
-            }}
-            onFinalize={() => {
-              const jid = jobMap[ch.id]
-              if (jid) finalizeJob(ch.id, jid)
-            }}
-            expanded={!!expanded[ch.id]}
-            onToggleExpanded={() => setExpanded((m) => ({ ...m, [ch.id]: !m[ch.id] }))}
-          />
-        ))}
-        
-        {!listQuery.isLoading && !listQuery.data?.channels?.length && (
-          <div className="text-center py-12 text-muted-foreground">
-            No channels added yet
+
+        {!!listQuery.data?.channels?.length && (
+          <div className="grid gap-4">
+            {listQuery.data.channels.map((ch) => (
+              <ChannelCard
+                key={ch.id}
+                ch={ch}
+                selectedProxyId={selectedProxyByChannel[ch.id] ?? (ch.defaultProxyId || 'none')}
+                selectedModel={selectedModelByChannel[ch.id] ?? defaultChannelModel}
+                onSelectProxy={(v) => setSelectedProxyByChannel((m) => ({ ...m, [ch.id]: v }))}
+                onSelectModel={(v) => setSelectedModelByChannel((m) => ({ ...m, [ch.id]: v }))}
+                jobId={jobMap[ch.id]}
+                status={statusMap[ch.id] ?? ch.lastSyncStatus}
+                setStatus={(s) => setStatusFor(ch.id, s)}
+                onSync={() => {
+                  const sel = selectedProxyByChannel[ch.id]
+                  startSyncMutation.mutate({
+                    id: ch.id,
+                    limit: 20,
+                    proxyId: sel && sel !== 'none' ? sel : undefined,
+                  })
+                }}
+                onFinalize={() => {
+                  const jid = jobMap[ch.id]
+                  if (jid) finalizeJob(ch.id, jid)
+                }}
+                expanded={!!expanded[ch.id]}
+                onToggleExpanded={() =>
+                  setExpanded((m) => ({
+                    ...m,
+                    [ch.id]: !m[ch.id],
+                  }))
+                }
+              />
+            ))}
           </div>
         )}
-      </div>
+
+        {!listQuery.isLoading && !listQuery.data?.channels?.length && (
+          <div className="rounded-lg border border-dashed py-12 text-center text-muted-foreground">
+            Add a channel to start tracking new uploads.
+          </div>
+        )}
+      </main>
     </div>
   )
 }
@@ -208,86 +229,109 @@ function ChannelCard({ ch, selectedProxyId, selectedModel, onSelectProxy, onSele
     },
   )
 
+  const statusLabel = React.useMemo(() => {
+    if (!status) return 'Idle'
+    return status.replace(/_/g, ' ')
+  }, [status])
+
+  const isSyncing = status === 'running' || status === 'queued'
+
   return (
-    <div className="border rounded-lg p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          {ch.thumbnail ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img 
-              src={ch.thumbnail} 
-              alt="thumbnail" 
-              className="w-10 h-10 rounded object-cover"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded bg-muted" />
-          )}
-          <div className="min-w-0">
-            <div className="font-medium truncate">
-              {ch.title || ch.channelUrl || ch.channelId || ch.id}
+    <article className="rounded-xl border bg-background/60 p-6 shadow-sm transition-colors hover:border-primary/40">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            {ch.thumbnail ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={ch.thumbnail}
+                alt="Channel thumbnail"
+                className="h-12 w-12 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-lg bg-muted" aria-hidden="true" />
+            )}
+            <div className="min-w-0 space-y-1">
+              <p className="truncate text-base font-semibold">
+                {ch.title || ch.channelUrl || ch.channelId || ch.id}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{ch.channelUrl}</p>
             </div>
-            <div className="text-xs text-muted-foreground truncate">
-              {ch.channelUrl}
-            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="text-xs text-muted-foreground min-w-[80px] text-right">
-            {status || '-'}
-          </div>
-          <div className="hidden sm:block min-w-[140px]">
-            <ProxySelector value={selectedProxyId} onValueChange={onSelectProxy} />
-          </div>
-          <div className="min-w-[180px] max-w-[220px]">
-            <ChatModelSelect
-              value={selectedModel}
-              onChange={onSelectModel}
-              disabled={translateMutation.isPending}
-              triggerClassName="w-full"
-            />
-          </div>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => translateMutation.mutate({ channelId: ch.id, limit: 20, model: selectedModel })}
-            disabled={translateMutation.isPending}
-            title="Translate the latest video titles to Chinese"
-          >
-            {translateMutation.isPending ? 'Translating…' : 'Translate'}
-          </Button>
-          {translatedMap && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowTranslated((v) => !v)}
-              title={showTranslated ? 'Hide translated titles' : 'Show translated titles'}
-            >
-              {showTranslated ? 'Hide Translation' : 'Show Translation'}
-            </Button>
-          )}
-          <Button 
-            size="sm"
-            onClick={onSync}
-            disabled={status === 'running' || status === 'queued'}
-          >
-            {status === 'running' || status === 'queued' ? '...' : 'Sync'}
-          </Button>
-          <Button 
-            size="sm"
-            variant="outline" 
-            onClick={onToggleExpanded}
-          >
-            {expanded ? 'Hide' : 'Show'}
+          <Button size="sm" variant="outline" onClick={onToggleExpanded}>
+            {expanded ? 'Hide videos' : 'View videos'}
           </Button>
         </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <section className="rounded-lg border bg-muted/10 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold leading-none text-foreground">Sync</h3>
+                <p className="text-xs text-muted-foreground">Select a proxy and fetch the newest uploads.</p>
+              </div>
+              <span className="rounded-full border border-border px-3 py-1 text-xs font-medium capitalize text-foreground">
+                {statusLabel}
+              </span>
+            </div>
+            <div className="mt-4 space-y-4">
+              <ProxySelector value={selectedProxyId} onValueChange={onSelectProxy} />
+              <Button size="sm" className="w-full sm:w-auto" onClick={onSync} disabled={isSyncing}>
+                {isSyncing ? 'Syncing…' : 'Sync latest'}
+              </Button>
+            </div>
+          </section>
+
+          <section className="rounded-lg border bg-muted/10 p-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold leading-none text-foreground">Translate</h3>
+              <p className="text-xs text-muted-foreground">Choose a model to localize the latest video titles.</p>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="space-y-2">
+                <span className="text-sm font-medium text-muted-foreground">Model</span>
+                <ChatModelSelect
+                  value={selectedModel}
+                  onChange={onSelectModel}
+                  disabled={translateMutation.isPending}
+                  triggerClassName="w-full"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => translateMutation.mutate({ channelId: ch.id, limit: 20, model: selectedModel })}
+                  disabled={translateMutation.isPending}
+                  title="Translate the latest video titles to Chinese"
+                >
+                  {translateMutation.isPending ? 'Translating…' : 'Translate titles'}
+                </Button>
+                {translatedMap && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowTranslated((v) => !v)}
+                    title={showTranslated ? 'Hide translated titles' : 'Show translated titles'}
+                  >
+                    {showTranslated ? 'Hide translation' : 'Show translation'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {expanded && (
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <ChannelVideoList
+              channelId={ch.id}
+              limit={20}
+              translatedTitleMap={showTranslated ? translatedMap ?? undefined : undefined}
+            />
+          </div>
+        )}
       </div>
-      
-      {expanded && (
-        <div className="mt-4 pt-4 border-t">
-          <ChannelVideoList channelId={ch.id} limit={20} translatedTitleMap={showTranslated ? translatedMap ?? undefined : undefined} />
-        </div>
-      )}
-    </div>
+    </article>
   )
 }
