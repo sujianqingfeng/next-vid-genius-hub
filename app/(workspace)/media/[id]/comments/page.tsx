@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Copy, Download, Edit, Film, LanguagesIcon, MessageCircle, Settings, Play } from 'lucide-react'
+import { ArrowLeft, Copy, Download, Edit, Film, LanguagesIcon, MessageCircle, Settings, Play, ShieldAlert, Filter } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -47,6 +47,9 @@ export default function CommentsPage() {
 	const [pages, setPages] = useState('3')
 	const [model, setModel] = useState<ChatModelId>(ChatModelIds[0] as ChatModelId)
 	const [forceTranslate, setForceTranslate] = useState(false)
+    const [modModel, setModModel] = useState<ChatModelId>(ChatModelIds[0] as ChatModelId)
+    const [overwriteModeration, setOverwriteModeration] = useState(false)
+    const [onlyFlagged, setOnlyFlagged] = useState(false)
 
 	// Download comments backend toggle (local/cloud)
 	const [commentsBackend, setCommentsBackend] = useState<'local' | 'cloud'>('cloud')
@@ -203,6 +206,17 @@ export default function CommentsPage() {
 		},
 	)
 
+    const moderateCommentsMutation = useEnhancedMutation(
+        queryOrpc.comment.moderateComments.mutationOptions(),
+        {
+            invalidateQueries: {
+                queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+            },
+            successToast: ({ data }) => `Moderation done: ${data?.flaggedCount ?? 0} flagged`,
+            errorToast: ({ error }) => `Failed to moderate: ${error.message}`,
+        },
+    )
+
 	const previewVideoInfo = mediaQuery.data
 		? {
 				title: mediaQuery.data.title ?? undefined,
@@ -283,6 +297,7 @@ export default function CommentsPage() {
 	}, [id, sourcePolicy])
 
 	const comments = mediaQuery.data?.comments || []
+    const visibleComments = onlyFlagged ? comments.filter((c) => c?.moderation?.flagged) : comments
 
 	// Persist render proxy selection for cloud renders
 	useEffect(() => {
@@ -419,12 +434,13 @@ export default function CommentsPage() {
 							</CardHeader>
 							<CardContent className="space-y-4">
 								<Tabs defaultValue="download" className="w-full">
-									<TabsList className="grid w-full grid-cols-4">
-										<TabsTrigger value="basics" className="text-xs">Base Data</TabsTrigger>
-										<TabsTrigger value="download" className="text-xs">Download</TabsTrigger>
-										<TabsTrigger value="translate" className="text-xs">Translate</TabsTrigger>
-										<TabsTrigger value="render" className="text-xs">Render</TabsTrigger>
-									</TabsList>
+										<TabsList className="grid w-full grid-cols-5">
+											<TabsTrigger value="basics" className="text-xs">Base Data</TabsTrigger>
+											<TabsTrigger value="download" className="text-xs">Download</TabsTrigger>
+											<TabsTrigger value="translate" className="text-xs">Translate</TabsTrigger>
+											<TabsTrigger value="moderate" className="text-xs">Moderate</TabsTrigger>
+											<TabsTrigger value="render" className="text-xs">Render</TabsTrigger>
+										</TabsList>
 
 									<TabsContent value="basics" className="space-y-4 mt-4">
 										<div className="space-y-3">
@@ -630,7 +646,53 @@ export default function CommentsPage() {
 										</div>
 									</TabsContent>
 
-									<TabsContent value="render" className="space-y-4 mt-4">
+									<TabsContent value="moderate" className="space-y-4 mt-4">
+										<div className="space-y-3">
+											<div className="flex items-center gap-2">
+												<ShieldAlert className="w-4 h-4 text-muted-foreground" />
+												<h4 className="font-medium text-sm">Moderate Comments</h4>
+											</div>
+
+											<div className="space-y-2">
+												<Select value={modModel} onValueChange={(v) => setModModel(v as ChatModelId)}>
+													<SelectTrigger className="w-full">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{ChatModelIds.map((modelId) => (
+															<SelectItem key={modelId} value={modelId}>
+																{modelId}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+
+											<div className="flex items-center gap-2">
+												<Switch
+													id="overwrite-moderation"
+													checked={overwriteModeration}
+													onCheckedChange={setOverwriteModeration}
+													disabled={moderateCommentsMutation.isPending}
+												/>
+												<Label htmlFor="overwrite-moderation" className="text-xs text-muted-foreground">
+													Overwrite existing
+												</Label>
+											</div>
+
+											<Button
+												onClick={() =>
+													moderateCommentsMutation.mutate({ mediaId: id, model: modModel, overwrite: overwriteModeration })
+												}
+												disabled={moderateCommentsMutation.isPending}
+												className="w-full"
+											>
+												{moderateCommentsMutation.isPending ? 'Moderating...' : 'Run Moderation'}
+											</Button>
+										</div>
+									</div>
+								</TabsContent>
+
+								<TabsContent value="render" className="space-y-4 mt-4">
 										<div className="space-y-3">
 											<div className="flex items-center gap-2">
 												<Film className="w-4 h-4 text-muted-foreground" />
@@ -781,9 +843,21 @@ ${
 										<MessageCircle className="w-4 h-4" />
 										Comments
 									</CardTitle>
-									<Badge variant="secondary" className="text-xs">
-										{comments.length} comment{comments.length !== 1 ? 's' : ''}
-									</Badge>
+										<div className="flex items-center gap-2">
+											<Badge variant="secondary" className="text-xs">
+												{visibleComments.length} / {comments.length}
+											</Badge>
+											<Button
+												variant={onlyFlagged ? 'default' : 'outline'}
+												size="sm"
+												onClick={() => setOnlyFlagged((v) => !v)}
+												className="h-7 px-2 text-xs"
+												title="Toggle only flagged"
+											>
+												<Filter className="w-3 h-3 mr-1" />
+												{onlyFlagged ? 'Only flagged' : 'All comments'}
+											</Button>
+										</div>
 								</div>
 							</CardHeader>
 						<CardContent className="p-0">
@@ -834,12 +908,12 @@ ${
 										</p>
 									</div>
 								)}
-								{comments.length > 0 && (
+								{visibleComments.length > 0 && (
 									<div>
-										{comments.map((comment, index) => (
+										{visibleComments.map((comment, index) => (
 											<div key={comment.id}>
 												<CommentCard comment={comment} mediaId={id} />
-												{index < comments.length - 1 && (
+												{index < visibleComments.length - 1 && (
 													<div className="border-b mx-4" />
 												)}
 											</div>
@@ -882,6 +956,6 @@ ${
 					</Card>
 				)}
 			</div>
-		</div>
-	)
+        </div>
+    )
 }

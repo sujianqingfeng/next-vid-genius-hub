@@ -10,13 +10,22 @@ import { Button } from '~/components/ui/button'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 interface Comment {
-	id: string
-	author: string
-	authorThumbnail?: string
-	content: string
-	translatedContent?: string
-	likes: number
-	replyCount?: number
+    id: string
+    author: string
+    authorThumbnail?: string
+    content: string
+    translatedContent?: string
+    likes: number
+    replyCount?: number
+    moderation?: {
+        flagged: boolean
+        labels: string[]
+        severity: 'low' | 'medium' | 'high'
+        reason: string
+        runId: string
+        modelId: string
+        moderatedAt: string
+    }
 }
 
 interface CommentCardProps {
@@ -47,10 +56,10 @@ function getAuthorInitials(author?: string) {
 }
 
 export function CommentCard({ comment, mediaId }: CommentCardProps) {
-	const queryClient = useQueryClient()
-	const [avatarError, setAvatarError] = useState(false)
-	const showFallback = avatarError || !comment.authorThumbnail
-	const fallbackInitials = getAuthorInitials(comment.author)
+    const queryClient = useQueryClient()
+    const [avatarError, setAvatarError] = useState(false)
+    const showFallback = avatarError || !comment.authorThumbnail
+    const fallbackInitials = getAuthorInitials(comment.author)
 
 	const deleteCommentMutation = useMutation(
 		queryOrpc.comment.deleteComment.mutationOptions({
@@ -66,14 +75,24 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 		}),
 	)
 
-	return (
-		<div className="group">
-			<div className="flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-all duration-200">
-				<div className="flex-shrink-0">
-					{showFallback ? (
-						<div className="w-8 h-8 rounded-full border border-background shadow-sm bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground uppercase" aria-hidden>
-							{fallbackInitials}
-						</div>
+    const flagged = Boolean(comment.moderation?.flagged)
+    const severity = comment.moderation?.severity || 'low'
+    const severityClass = flagged
+        ? severity === 'high'
+            ? 'bg-destructive/10 border-l-2 border-destructive/60'
+            : severity === 'medium'
+                ? 'bg-amber-100/20 dark:bg-amber-900/10 border-l-2 border-amber-400/50'
+                : 'bg-primary/5 border-l-2 border-primary/30'
+        : ''
+
+    return (
+        <div className="group">
+            <div className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-all duration-200 ${severityClass}`}>
+                <div className="flex-shrink-0">
+                    {showFallback ? (
+                        <div className="w-8 h-8 rounded-full border border-background shadow-sm bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground uppercase" aria-hidden>
+                            {fallbackInitials}
+                        </div>
 					) : (
 						<Image
 							src={comment.authorThumbnail!}
@@ -107,28 +126,39 @@ export function CommentCard({ comment, mediaId }: CommentCardProps) {
 									)}
 								</div>
 							</div>
-						</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() =>
-								deleteCommentMutation.mutate({
-									mediaId,
-									commentId: comment.id,
-								})
-							}
-							disabled={deleteCommentMutation.isPending}
-							aria-label="Delete comment"
-							title="Delete comment"
-							className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-destructive hover:text-destructive"
-						>
-							<Trash2 className="w-3.5 h-3.5" />
-						</Button>
-					</div>
-					<div className="space-y-2">
-						<p className="text-xs leading-snug text-foreground break-words whitespace-pre-wrap">
-							{comment.content}
-						</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {flagged && (
+                            <Badge
+                                variant={severity === 'high' ? 'destructive' : 'secondary'}
+                                className="text-[10px] h-4 px-1.5"
+                                title={comment.moderation?.reason || ''}
+                            >
+                                {comment.moderation?.labels?.join(', ') || 'flagged'}
+                            </Badge>
+                        )}
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                            deleteCommentMutation.mutate({
+                                mediaId,
+                                commentId: comment.id,
+                            })
+                        }
+                        disabled={deleteCommentMutation.isPending}
+                        aria-label="Delete comment"
+                        title="Delete comment"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-destructive hover:text-destructive"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                </div>
+                <div className="space-y-2">
+                    <p className="text-xs leading-snug text-foreground break-words whitespace-pre-wrap">
+                        {comment.content}
+                    </p>
 						{comment.translatedContent && (
 							<div className="bg-gradient-to-r from-primary/5 to-primary/10 border-l-2 border-primary/30 pl-2.5 py-2 rounded-r">
 								<div className="flex items-center gap-1.5 mb-1">

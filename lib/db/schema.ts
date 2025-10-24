@@ -1,14 +1,27 @@
 import { createId } from '@paralleldrive/cuid2'
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
+export type ModerationSeverity = 'low' | 'medium' | 'high'
+
+export interface CommentModeration {
+    flagged: boolean
+    labels: string[]
+    severity: ModerationSeverity
+    reason: string
+    runId: string
+    modelId: string
+    moderatedAt: string // ISO string
+}
+
 export interface Comment {
-	id: string
-	author: string
-	authorThumbnail?: string
-	content: string
-	translatedContent?: string
-	likes: number
-	replyCount?: number
+    id: string
+    author: string
+    authorThumbnail?: string
+    content: string
+    translatedContent?: string
+    likes: number
+    replyCount?: number
+    moderation?: CommentModeration
 }
 
 export interface TranscriptionWord {
@@ -43,9 +56,13 @@ export const media = sqliteTable('media', {
 	transcriptionWords: text('transcription_words', { mode: 'json' }).$type<TranscriptionWord[]>(),
 	translation: text('translation'),
 	videoWithSubtitlesPath: text('video_with_subtitles_path'),
-	videoWithInfoPath: text('video_with_info_path'),
-	comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
-	commentsDownloadedAt: integer('comments_downloaded_at', { mode: 'timestamp' }),
+    videoWithInfoPath: text('video_with_info_path'),
+    comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
+    commentsDownloadedAt: integer('comments_downloaded_at', { mode: 'timestamp' }),
+    commentsModeratedAt: integer('comments_moderated_at', { mode: 'timestamp' }),
+    commentsModerationModel: text('comments_moderation_model'),
+    commentsFlaggedCount: integer('comments_flagged_count').default(0),
+    commentsModerationSummary: text('comments_moderation_summary', { mode: 'json' }).$type<Record<string, number>>(),
 	downloadBackend: text('download_backend', { enum: ['local', 'cloud'] }).default('local').notNull(),
 	downloadJobId: text('download_job_id'),
 	downloadStatus: text('download_status', {
