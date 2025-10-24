@@ -50,6 +50,12 @@ export function PreviewPane(props: PreviewPaneProps) {
   }, [storageKey])
 
   useEffect(() => {
+    if (!hasRenderedVideo && mode === 'rendered') {
+      setMode('auto')
+    }
+  }, [hasRenderedVideo, mode])
+
+  useEffect(() => {
     try {
       if (typeof window !== 'undefined') window.localStorage.setItem(storageKey, mode)
     } catch {}

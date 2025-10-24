@@ -2,6 +2,8 @@ import { os } from '@orpc/server'
 import { z } from 'zod'
 import { and, desc, eq } from 'drizzle-orm'
 import { db, schema } from '~/lib/db'
+import { translateText } from '~/lib/ai/translate'
+import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { startCloudJob, getJobStatus, presignGetByKey, putObjectByKey } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
@@ -226,4 +228,32 @@ export const listChannelVideos = os
       .orderBy(desc(schema.channelVideos.publishedAt ?? schema.channelVideos.createdAt))
       .limit(input.limit)
     return { videos: rows }
+  })
+
+// Translate the latest channel video titles (non-persistent, on-demand)
+export const translateVideoTitles = os
+  .input(
+    z.object({
+      channelId: z.string().min(1),
+      limit: z.number().min(1).max(100).default(20),
+      model: z.enum(AIModelIds).default('openai/gpt-4o-mini' as AIModelId),
+    }),
+  )
+  .handler(async ({ input }) => {
+    const rows = await db
+      .select()
+      .from(schema.channelVideos)
+      .where(eq(schema.channelVideos.channelId, input.channelId))
+      .orderBy(desc(schema.channelVideos.publishedAt ?? schema.channelVideos.createdAt))
+      .limit(input.limit)
+
+    const translations = await Promise.all(
+      rows.map(async (r) => {
+        const text = r.title || ''
+        const t = await translateText(text, input.model)
+        return { id: r.id, translation: t }
+      }),
+    )
+
+    return { items: translations }
   })

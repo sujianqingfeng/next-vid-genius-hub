@@ -9,6 +9,9 @@ import { Input } from '~/components/ui/input'
 
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 import { ChannelVideoList } from '~/components/business/channels/channel-video-list'
+import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
+import { ChatModelIds, type ChatModelId } from '~/lib/ai/models'
 
 export default function ChannelsPage() {
   const qc = useQueryClient()
@@ -17,6 +20,12 @@ export default function ChannelsPage() {
   const [statusMap, setStatusMap] = React.useState<Record<string, string>>({})
   const [selectedProxyByChannel, setSelectedProxyByChannel] = React.useState<Record<string, string>>({})
   const [expanded, setExpanded] = React.useState<Record<string, boolean>>({})
+  const defaultChannelModel = React.useMemo<ChatModelId>(() => {
+    const fallback = 'openai/gpt-4o-mini'
+    const configured = ChatModelIds.find((id) => id === fallback) ?? ChatModelIds[0]
+    return (configured ?? fallback) as ChatModelId
+  }, [])
+  const [selectedModelByChannel, setSelectedModelByChannel] = React.useState<Record<string, ChatModelId>>({})
 
   const listQuery = useQuery(queryOrpc.channel.listChannels.queryOptions({}))
 
@@ -100,7 +109,9 @@ export default function ChannelsPage() {
             key={ch.id}
             ch={ch}
             selectedProxyId={selectedProxyByChannel[ch.id] ?? (ch.defaultProxyId || 'none')}
+            selectedModel={selectedModelByChannel[ch.id] ?? defaultChannelModel}
             onSelectProxy={(v) => setSelectedProxyByChannel((m) => ({ ...m, [ch.id]: v }))}
+            onSelectModel={(v) => setSelectedModelByChannel((m) => ({ ...m, [ch.id]: v }))}
             jobId={jobMap[ch.id]}
             status={statusMap[ch.id] ?? ch.lastSyncStatus}
             setStatus={(s) => setStatusFor(ch.id, s)}
@@ -142,7 +153,9 @@ interface ChannelCardProps {
     lastSyncStatus: string | null
   }
   selectedProxyId: string
+  selectedModel: ChatModelId
   onSelectProxy: (v: string) => void
+  onSelectModel: (v: ChatModelId) => void
   jobId?: string
   status?: string
   setStatus: (s: string) => void
@@ -152,8 +165,10 @@ interface ChannelCardProps {
   onToggleExpanded: () => void
 }
 
-function ChannelCard({ ch, selectedProxyId, onSelectProxy, jobId, status, setStatus, onSync, onFinalize, expanded, onToggleExpanded }: ChannelCardProps) {
+function ChannelCard({ ch, selectedProxyId, selectedModel, onSelectProxy, onSelectModel, jobId, status, setStatus, onSync, onFinalize, expanded, onToggleExpanded }: ChannelCardProps) {
   const finalizeAttemptedRef = React.useRef(false)
+  const [translatedMap, setTranslatedMap] = React.useState<Record<string, string> | null>(null)
+  const [showTranslated, setShowTranslated] = React.useState(false)
   // Always call useQuery in same order
   const statusQuery = useQuery({
     ...(jobId ? queryOrpc.channel.getCloudSyncStatus.queryOptions({ input: { jobId } }) : {
@@ -177,6 +192,21 @@ function ChannelCard({ ch, selectedProxyId, onSelectProxy, jobId, status, setSta
       onFinalize()
     }
   }, [statusQuery?.data, jobId, setStatus, onFinalize])
+
+  const translateMutation = useEnhancedMutation(
+    queryOrpc.channel.translateVideoTitles.mutationOptions({
+      onSuccess: (res) => {
+        const map = Object.fromEntries((res.items ?? []).map((i) => [i.id, i.translation]))
+        setTranslatedMap(map)
+        // auto show translated when finished
+        setShowTranslated(true)
+      },
+    }),
+    {
+      successToast: 'Titles translated!',
+      errorToast: ({ error }) => `Failed to translate titles: ${error.message}`,
+    },
+  )
 
   return (
     <div className="border rounded-lg p-4">
@@ -202,13 +232,40 @@ function ChannelCard({ ch, selectedProxyId, onSelectProxy, jobId, status, setSta
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="text-xs text-muted-foreground min-w-[80px] text-right">
             {status || '-'}
           </div>
           <div className="hidden sm:block min-w-[140px]">
             <ProxySelector value={selectedProxyId} onValueChange={onSelectProxy} />
           </div>
+          <div className="min-w-[180px] max-w-[220px]">
+            <ChatModelSelect
+              value={selectedModel}
+              onChange={onSelectModel}
+              disabled={translateMutation.isPending}
+              triggerClassName="w-full"
+            />
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => translateMutation.mutate({ channelId: ch.id, limit: 20, model: selectedModel })}
+            disabled={translateMutation.isPending}
+            title="Translate the latest video titles to Chinese"
+          >
+            {translateMutation.isPending ? 'Translating…' : 'Translate'}
+          </Button>
+          {translatedMap && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowTranslated((v) => !v)}
+              title={showTranslated ? 'Hide translated titles' : 'Show translated titles'}
+            >
+              {showTranslated ? 'Hide Translation' : 'Show Translation'}
+            </Button>
+          )}
           <Button 
             size="sm"
             onClick={onSync}
@@ -228,7 +285,7 @@ function ChannelCard({ ch, selectedProxyId, onSelectProxy, jobId, status, setSta
       
       {expanded && (
         <div className="mt-4 pt-4 border-t">
-          <ChannelVideoList channelId={ch.id} limit={20} />
+          <ChannelVideoList channelId={ch.id} limit={20} translatedTitleMap={showTranslated ? translatedMap ?? undefined : undefined} />
         </div>
       )}
     </div>
