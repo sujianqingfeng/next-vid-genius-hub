@@ -1,7 +1,23 @@
-import {
+// Re-export env-agnostic helpers from core for browser bundle too
+export {
   type Comment,
   type TimelineDurations,
   type SlotLayout,
+  REMOTION_FPS,
+  COVER_DURATION_SECONDS,
+  MIN_COMMENT_DURATION_SECONDS,
+  MAX_COMMENT_DURATION_SECONDS,
+  estimateCommentDurationSeconds,
+  buildCommentTimeline,
+  layoutConstants,
+  VIDEO_WIDTH,
+  VIDEO_HEIGHT,
+  getOverlayFilter,
+  buildComposeArgs,
+} from './core/shared'
+
+// Import for assembling the default export object
+import {
   REMOTION_FPS,
   COVER_DURATION_SECONDS,
   MIN_COMMENT_DURATION_SECONDS,
