@@ -91,12 +91,15 @@ export const deleteById = os
 				if (record.remoteAudioKey) keys.push(record.remoteAudioKey)
 				if (record.remoteMetadataKey) keys.push(record.remoteMetadataKey)
 				// Well-known per-media objects that we materialize into the bucket
-				keys.push(
-					`manifests/media/${id}.json`,
-					`inputs/subtitles/${id}.vtt`,
-					`inputs/videos/subtitles/${id}.mp4`,
-					`inputs/comments/${id}.json`,
-				)
+					keys.push(
+						`manifests/media/${id}.json`,
+						`inputs/subtitles/${id}.vtt`,
+						`inputs/videos/subtitles/${id}.mp4`,
+						// Include all possible input video variants to avoid leftovers
+						`inputs/videos/${id}.mp4`,
+						`inputs/videos/raw/${id}.mp4`,
+						`inputs/comments/${id}.json`,
+					)
 
 				const artifactJobIds: string[] = []
 				// videoWithSubtitlesPath or videoWithInfoPath might store remote orchestrator artifact refs: "remote:orchestrator:<jobId>"
@@ -110,18 +113,20 @@ export const deleteById = os
 				if (record.downloadJobId) artifactJobIds.push(record.downloadJobId)
 
 				// Known per-media prefixes that may contain multiple artifacts
-				const prefixes = [
-					`outputs/by-media/${id}/`,
-					`downloads/${id}/`,
-					`asr/results/by-media/${id}/`,
-				]
+					const prefixes = [
+						`outputs/by-media/${id}/`,
+						`downloads/${id}/`,
+						`asr/results/by-media/${id}/`,
+						// Also delete audio produced by audio-transcoder/ASR pipeline
+						`asr/processed/${id}/`,
+					]
 
-				await deleteCloudArtifacts({ keys, artifactJobIds, prefixes })
-			}
-    } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        logger.warn('media', `[media.deleteById] cloud cleanup failed (continuing): ${msg}`)
-    }
+					await deleteCloudArtifacts({ keys, artifactJobIds, prefixes })
+				}
+	    } catch (err) {
+	        const msg = err instanceof Error ? err.message : String(err)
+	        logger.warn('media', `[media.deleteById] cloud cleanup failed (continuing): ${msg}`)
+	    }
 
 		// 3) Delete DB record
 		await db.delete(schema.media).where(eq(schema.media.id, id))
@@ -130,5 +135,5 @@ export const deleteById = os
 		const operationDir = path.join(OPERATIONS_DIR, id)
 		await fs.rm(operationDir, { recursive: true, force: true })
 
-		return { success: true }
-	})
+			return { success: true }
+		})
