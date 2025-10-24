@@ -4,13 +4,11 @@ import { join } from 'node:path'
 import { readFileSync, writeFileSync, statSync, unlinkSync } from 'node:fs'
 import { execa } from 'execa'
 import { makeStatusCallback } from '@app/callback-utils'
+import { sendJson, startJsonServer } from '../shared.mjs'
 
 const PORT = process.env.PORT || 8080
 
-function sendJson(res, code, data) {
-  res.writeHead(code, { 'content-type': 'application/json' })
-  res.end(JSON.stringify(data))
-}
+// sendJson imported from shared
 
 async function handleRender(req, res) {
   let raw = ''
@@ -95,10 +93,4 @@ async function handleRender(req, res) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`)
-  if (req.method === 'POST' && url.pathname === '/render') return handleRender(req, res)
-  sendJson(res, 404, { error: 'not found' })
-})
-
-server.listen(PORT, () => console.log(`audio-transcoder listening on ${PORT}`))
+startJsonServer(PORT, handleRender, 'audio-transcoder')

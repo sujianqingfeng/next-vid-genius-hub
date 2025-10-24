@@ -2,7 +2,9 @@ import type { NextConfig } from 'next'
 
 
 const nextConfig: NextConfig = {
-	optimizePackageImports: ['lucide-react'],
+    experimental: {
+        optimizePackageImports: ['lucide-react'],
+    },
 	images: {
 		remotePatterns: [
 			{

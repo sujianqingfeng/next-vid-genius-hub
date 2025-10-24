@@ -1,21 +1,6 @@
-export interface BasicComment {
-  id: string
-  author: string
-  authorThumbnail?: string
-  content: string
-  likes: number
-  replyCount: number
-  translatedContent: string
-}
-
-export interface CommentsDownloadParams {
-  url: string
-  pages?: number
-  proxy?: string
-}
-
 import { ProxyAgent, fetch as undiciFetch } from 'undici'
 import { Innertube, UniversalCache } from 'youtubei.js'
+import { extractVideoId, type BasicComment, type CommentsDownloadParams } from './core/shared'
 
 function makeFetchWithProxy(proxyUrl?: string) {
   const agent = proxyUrl ? new ProxyAgent(proxyUrl) : undefined
@@ -46,20 +31,7 @@ function makeFetchWithProxy(proxyUrl?: string) {
   }
 }
 
-export function extractVideoId(url: string): string | null {
-  try {
-    const u = new URL(url)
-    if (u.hostname.includes('youtu.be')) {
-      return u.pathname.replace(/^\//, '') || null
-    }
-    if (u.searchParams.get('v')) return u.searchParams.get('v')
-    const parts = u.pathname.split('/').filter(Boolean)
-    if (parts[0] === 'shorts' && parts[1]) return parts[1]
-    return null
-  } catch {
-    return null
-  }
-}
+export { extractVideoId }
 
 async function getYouTubeClient(proxyUrl?: string) {
   const cache = new UniversalCache(true)

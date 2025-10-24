@@ -8,7 +8,7 @@ import { readFileSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import YAML from "yaml";
-import { makeStatusCallback } from "@app/callback-utils";
+import { sendJson, sanitizeEngineOptions, createStatusHelpers, uploadArtifact, ensureDirExists, startJsonServer } from "../shared.mjs";
 // Compose pipelines via shared @app/media-* packages
 // Compose pipelines with shared adapters from the monorepo packages
 import {
@@ -58,13 +58,7 @@ function parseNumber(value, fallback) {
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
-async function ensureDirExists(dir) {
-  try {
-    await fsPromises.mkdir(dir, { recursive: true });
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  }
-}
+// ensureDirExists imported from shared
 
 function decodeBase64Url(input = "") {
   let normalized = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -566,35 +560,13 @@ async function startMihomo(engineOptions) {
   }
 }
 
-function sendJson(res, status, data) {
-  res.writeHead(status, { "content-type": "application/json" });
-  res.end(JSON.stringify(data));
-}
+// sendJson imported from shared
 
 // Legacy helpers removed in favor of shared callback utils
 
 // Forward proxy resolution moved to @app/media-core
 
-async function uploadArtifact(
-  url,
-  buffer,
-  contentType = "application/octet-stream",
-) {
-  if (!url) return;
-  const requestOptions = {
-    method: "PUT",
-    headers: {
-      "content-type": contentType,
-      "x-amz-content-sha256": "UNSIGNED-PAYLOAD",
-    },
-    body: buffer,
-  };
-  const res = await fetch(url, requestOptions);
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`upload failed: ${res.status} ${errorText}`);
-  }
-}
+// uploadArtifact imported from shared
 
 async function handleRender(req, res) {
   let body = "";
@@ -613,24 +585,7 @@ async function handleRender(req, res) {
     callbackUrl,
   } = payload;
 
-  const safeEngineOptions = {
-    url: engineOptions?.url,
-    quality: engineOptions?.quality,
-    source: engineOptions?.source,
-    hasDefaultProxy: Boolean(engineOptions?.defaultProxyUrl),
-    proxy: engineOptions?.proxy
-      ? {
-          id: engineOptions.proxy.id,
-          protocol: engineOptions.proxy.protocol,
-          server: engineOptions.proxy.server,
-          port: engineOptions.proxy.port,
-          hasNodeUrl: Boolean(engineOptions.proxy.nodeUrl),
-          hasCredentials: Boolean(
-            engineOptions.proxy.username && engineOptions.proxy.password,
-          ),
-        }
-      : null,
-  };
+  const safeEngineOptions = sanitizeEngineOptions(engineOptions);
   console.log("[media-downloader] received render request", {
     jobId,
     engineOptions: safeEngineOptions,
@@ -638,11 +593,7 @@ async function handleRender(req, res) {
 
   sendJson(res, 202, { jobId });
 
-  const postUpdate = makeStatusCallback({
-    callbackUrl,
-    secret: CALLBACK_SECRET,
-    baseFields: { jobId },
-  });
+  const { postUpdate, progress } = createStatusHelpers({ callbackUrl, secret: CALLBACK_SECRET, jobId });
 
   const url = engineOptions.url;
   const quality = engineOptions.quality || "1080p";
@@ -690,10 +641,7 @@ async function handleRender(req, res) {
   const audioPath = `${basePath}.mp3`;
   const commentsDir = join(tmpDir, `${jobId}-comments`);
 
-  const progress = async (phase, pct) => {
-    const status = phase === "uploading" ? "uploading" : "running";
-    await postUpdate(status, { phase, progress: pct });
-  };
+  // progress helper imported from shared (created above)
 
   try {
     await progress("preparing", 0.05);
@@ -978,13 +926,4 @@ async function handleRender(req, res) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
-  if (req.method === "POST" && url.pathname === "/render")
-    return handleRender(req, res);
-  sendJson(res, 404, { error: "not found" });
-});
-
-server.listen(PORT, () => {
-  console.log(`[media-downloader] listening on ${PORT}`);
-});
+startJsonServer(PORT, handleRender, 'media-downloader');

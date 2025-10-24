@@ -1,27 +1,6 @@
-export interface BasicComment {
-  id: string
-  author: string
-  authorThumbnail?: string
-  content: string
-  likes: number
-  replyCount: number
-  translatedContent: string
-}
+import { extractVideoId, type BasicComment } from './core/shared'
 
-export function extractVideoId(url: string): string | null {
-  try {
-    const u = new URL(url)
-    if (u.hostname.includes('youtu.be')) {
-      return u.pathname.replace(/^\//, '') || null
-    }
-    if (u.searchParams.get('v')) return u.searchParams.get('v')
-    const parts = u.pathname.split('/').filter(Boolean)
-    if (parts[0] === 'shorts' && parts[1]) return parts[1]
-    return null
-  } catch {
-    return null
-  }
-}
+export { extractVideoId }
 
 export async function downloadYoutubeComments(): Promise<BasicComment[]> {
   throw new Error(
@@ -40,4 +19,3 @@ export default {
   downloadYoutubeComments,
   downloadTikTokCommentsByUrl,
 }
-

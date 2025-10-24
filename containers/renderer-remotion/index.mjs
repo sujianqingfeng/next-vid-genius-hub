@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { makeStatusCallback } from "@app/callback-utils";
+import { startJsonServer, createStatusHelpers, sanitizeEngineOptions } from "../shared.mjs";
 import { fetch as undiciFetch } from "undici";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia } from "@remotion/renderer";
@@ -19,11 +19,6 @@ import {
 } from "@app/media-core";
 
 const PORT = process.env.PORT || 8090;
-
-function sendJson(res, code, data) {
-  res.writeHead(code, { "content-type": "application/json" });
-  res.end(JSON.stringify(data));
-}
 
 async function execFFmpegWithProgress(args, totalDurationSeconds) {
   return new Promise((resolve, reject) => {
@@ -98,21 +93,7 @@ async function handleRender(req, res) {
   const secret = process.env.JOB_CALLBACK_HMAC_SECRET || "dev-secret";
   const cbUrl = payload?.callbackUrl;
   const engineOptions = payload?.engineOptions || {};
-  const safeEngineOptions = {
-    hasDefaultProxy: Boolean(engineOptions?.defaultProxyUrl),
-    proxy: engineOptions?.proxy
-      ? {
-          id: engineOptions.proxy.id,
-          protocol: engineOptions.proxy.protocol,
-          server: engineOptions.proxy.server,
-          port: engineOptions.proxy.port,
-          hasNodeUrl: Boolean(engineOptions.proxy.nodeUrl),
-          hasCredentials: Boolean(
-            engineOptions.proxy.username && engineOptions.proxy.password,
-          ),
-        }
-      : null,
-  };
+  const safeEngineOptions = sanitizeEngineOptions(engineOptions);
   console.log(`[remotion] start job=${jobId}`);
   console.log("[remotion] engine options", {
     jobId,
@@ -125,17 +106,7 @@ async function handleRender(req, res) {
   let clashController = null;
 
   // Optional progress helper
-  const postUpdate = makeStatusCallback({
-    callbackUrl: cbUrl,
-    secret,
-    baseFields: { jobId },
-    fetchImpl: undiciFetch,
-  });
-  async function progress(phase, pct) {
-    if (!cbUrl) return;
-    const status = phase === "uploading" ? "uploading" : "running";
-    await postUpdate(status, { phase, progress: pct });
-  }
+  const { postUpdate, progress } = createStatusHelpers({ callbackUrl: cbUrl, secret, jobId, fetchImpl: undiciFetch });
 
   try {
     const inputVideoUrl = payload?.inputVideoUrl;
@@ -410,13 +381,4 @@ async function handleRender(req, res) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
-  if (req.method === "POST" && url.pathname === "/render")
-    return handleRender(req, res);
-  return sendJson(res, 404, { error: "not found" });
-});
-
-server.listen(PORT, () =>
-  console.log(`renderer-remotion scaffold listening on ${PORT}`),
-);
+startJsonServer(PORT, handleRender, 'renderer-remotion scaffold');
