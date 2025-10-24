@@ -1,4 +1,4 @@
-ARG BASE_NODE_IMAGE=node:22-bookworm-slim
+ARG BASE_NODE_IMAGE=docker.m.daocloud.io/library/node:22-bookworm-slim
 FROM ${BASE_NODE_IMAGE}
 
 ARG MIHOMO_VERSION=1.18.10

@@ -1,5 +1,5 @@
-# Use Docker Hub by default; can override with --build-arg BASE_NODE_IMAGE=ghcr.io/library/node:22-slim
-ARG BASE_NODE_IMAGE=node:22-slim
+# Use DaoCloud mirror by default; override with --build-arg BASE_NODE_IMAGE=<registry>/<repo>:<tag> when needed.
+ARG BASE_NODE_IMAGE=docker.m.daocloud.io/library/node:22-slim
 FROM ${BASE_NODE_IMAGE}
 
 ARG MIHOMO_VERSION=1.18.10

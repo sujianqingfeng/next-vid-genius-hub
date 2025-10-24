@@ -1,4 +1,4 @@
-ARG BASE_NODE_IMAGE=node:18-slim
+ARG BASE_NODE_IMAGE=docker.m.daocloud.io/library/node:18-slim
 FROM ${BASE_NODE_IMAGE}
 ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security

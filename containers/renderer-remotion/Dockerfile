@@ -1,5 +1,5 @@
-# Use Docker Hub by default; override with BASE_NODE_IMAGE if needed
-ARG BASE_NODE_IMAGE=node:22-bookworm-slim
+# Use DaoCloud mirror by default; override with BASE_NODE_IMAGE if needed
+ARG BASE_NODE_IMAGE=docker.m.daocloud.io/library/node:22-bookworm-slim
 FROM ${BASE_NODE_IMAGE}
 
 ARG MIHOMO_VERSION=1.18.10
