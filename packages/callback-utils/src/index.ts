@@ -72,7 +72,8 @@ export function makeStatusCallback({
         if (!(r as any)?.ok) {
           let msg = ''
           try {
-            msg = await (r as any).text?.()
+            // Clone before reading so callers can still read the body later.
+            msg = await (r as any).clone?.().text?.()
           } catch {}
           logger?.error?.('[callback-utils] callback non-2xx', (r as any)?.status, msg)
         }
@@ -104,7 +105,8 @@ export async function postSignedJson(
   if (!(r as any).ok) {
     let msg = ''
     try {
-      msg = await (r as any).text?.()
+      // Clone before reading so callers can still read the body later.
+      msg = await (r as any).clone?.().text?.()
     } catch {}
     logger?.error?.('[callback-utils] postSignedJson non-2xx', (r as any).status, msg)
   }
@@ -117,4 +119,3 @@ export function buildSignedBody(secret: string, body: Record<string, unknown>): 
   const signature = signHmacSHA256(secret || 'dev-secret', payload)
   return { payload, signature, ts }
 }
-

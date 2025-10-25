@@ -40,7 +40,12 @@ export async function startCloudJob(input: StartJobInput): Promise<StartJobRespo
   const url = `${base.replace(/\/$/, '')}/jobs`
   const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
   const res = await postSignedJson(url, secret, input)
-  if (!res.ok) throw new Error(`startCloudJob failed: ${res.status} ${await res.text()}`)
+  if (!res.ok) {
+    // Body may have been read already by postSignedJson for logging; use clone() defensively.
+    let msg = ''
+    try { msg = await res.clone().text() } catch {}
+    throw new Error(`startCloudJob failed: ${res.status} ${msg}`)
+  }
   return (await res.json()) as StartJobResponse
 }
 
