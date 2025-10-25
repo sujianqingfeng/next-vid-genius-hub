@@ -57,11 +57,71 @@ name = "media-orchestrator-local"
 [env.local.vars]
 # In local dev, prefer hitting Docker Compose services directly
 PREFER_EXTERNAL_CONTAINERS = "true"
+JOB_TTL_SECONDS = 86400
+CONTAINER_BASE_URL = "http://localhost:8080"
+CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
+CONTAINER_BASE_URL_REMOTION = "http://localhost:8090"
+CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
+NEXT_BASE_URL = "http://localhost:3000"
+JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
+PUT_EXPIRES = 600
+S3_ENDPOINT = "http://127.0.0.1:9000"
+S3_INTERNAL_ENDPOINT = "http://minio:9000"
+S3_ACCESS_KEY_ID = "minioadmin"
+S3_SECRET_ACCESS_KEY = "minioadmin"
+S3_BUCKET_NAME = "vidgen-render"
+S3_STYLE = "path"
+S3_REGION = "us-east-1"
+ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
 
 [[env.local.kv_namespaces]]
 binding = "JOBS"
 id = "local-jobs-namespace"
 preview_id = "local-jobs-namespace"
+
+[[env.local.r2_buckets]]
+binding = "RENDER_BUCKET"
+bucket_name = "vidgen-render"
+
+[[env.local.durable_objects.bindings]]
+name = "RENDER_JOB_DO"
+class_name = "RenderJobDO"
+
+[[env.local.containers]]
+class_name = "MediaDownloaderContainer"
+image = "Dockerfile.media-downloader"
+max_instances = 10
+
+[[env.local.containers]]
+class_name = "AudioTranscoderContainer"
+image = "Dockerfile.audio-transcoder"
+max_instances = 10
+
+[[env.local.containers]]
+class_name = "BurnerFfmpegContainer"
+image = "Dockerfile.burner-ffmpeg"
+max_instances = 10
+
+[[env.local.containers]]
+class_name = "RendererRemotionContainer"
+image = "Dockerfile.renderer-remotion"
+max_instances = 5
+
+[[env.local.durable_objects.bindings]]
+name = "MEDIA_DOWNLOADER"
+class_name = "MediaDownloaderContainer"
+
+[[env.local.durable_objects.bindings]]
+name = "AUDIO_TRANSCODER"
+class_name = "AudioTranscoderContainer"
+
+[[env.local.durable_objects.bindings]]
+name = "BURNER_FFMPEG"
+class_name = "BurnerFfmpegContainer"
+
+[[env.local.durable_objects.bindings]]
+name = "RENDERER_REMOTION"
+class_name = "RendererRemotionContainer"
 
 ## Production environment bindings (replace with real IDs before deploy)
 [env.production]
