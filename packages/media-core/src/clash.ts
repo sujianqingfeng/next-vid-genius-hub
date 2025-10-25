@@ -33,6 +33,55 @@ function parseNumber(value: string | number | null | undefined, fallback: number
   return Number.isNaN(parsed) ? fallback : parsed
 }
 
+// ---------- Option builders to dedupe WS/GRPC/HTTP parsing ----------
+function buildWsOpts(
+  params: URLSearchParams,
+  opts: { defaultPath?: string; hostHeaderFallback?: string; includeEarlyData?: boolean } = {},
+) {
+  const wsOpts: any = {}
+  const rawPath = params.get('path') ?? opts.defaultPath
+  if (rawPath) wsOpts.path = ensureLeadingSlash(rawPath)
+
+  const hostHeader = params.get('host') || params.get('authority') || opts.hostHeaderFallback
+  if (hostHeader) wsOpts.headers = { Host: hostHeader }
+
+  if (opts.includeEarlyData) {
+    const earlyData = params.get('ed') || params.get('maxearlydata') || params.get('earlydata')
+    const earlyHeader = params.get('edh') || params.get('earlydataheader') || params.get('earlydataheadername')
+    if (earlyData) {
+      const earlyValue = Number.parseInt(earlyData, 10)
+      if (!Number.isNaN(earlyValue)) wsOpts['max-early-data'] = earlyValue
+    }
+    if (earlyHeader) wsOpts['early-data-header-name'] = earlyHeader
+  }
+
+  return Object.keys(wsOpts).length ? wsOpts : undefined
+}
+
+function buildGrpcOpts(params: URLSearchParams) {
+  const grpc: any = {}
+  const serviceName = params.get('servicename') || params.get('serviceName')
+  const mode = params.get('mode')
+  if (serviceName) grpc['grpc-service-name'] = serviceName
+  if (mode) grpc['grpc-mode'] = mode
+  return Object.keys(grpc).length ? grpc : undefined
+}
+
+function buildHttpOpts(params: URLSearchParams) {
+  const http: any = {}
+  const path = params.get('path')
+  const host = params.get('host')
+  if (path) {
+    const normalizedPaths = path
+      .split(',')
+      .map((p) => ensureLeadingSlash(p.trim()))
+      .filter(Boolean)
+    if (normalizedPaths.length) http.path = normalizedPaths
+  }
+  if (host) http.headers = { Host: host }
+  return Object.keys(http).length ? http : undefined
+}
+
 async function ensureDirExists(dir: string) {
   try {
     await fsPromises.mkdir(dir, { recursive: true })
@@ -143,20 +192,12 @@ export function createClashProxyFromDb(proxy?: { name?: string | null; server?: 
 
       if (network === 'ws' || network === 'websocket') {
         proxyConfig.network = 'ws'
-        const wsOpts: any = {}
-        const path = params.get('path')
-        const host = params.get('host') || params.get('authority') || sni
-        if (path) wsOpts.path = ensureLeadingSlash(path)
-        if (host) wsOpts.headers = { Host: host }
-        if (Object.keys(wsOpts).length) proxyConfig['ws-opts'] = wsOpts
+        const ws = buildWsOpts(params, { hostHeaderFallback: sni })
+        if (ws) proxyConfig['ws-opts'] = ws
       } else if (network === 'grpc') {
         proxyConfig.network = 'grpc'
-        const grpcOpts: any = {}
-        const serviceName = params.get('servicename') || params.get('serviceName')
-        const mode = params.get('mode')
-        if (serviceName) grpcOpts['grpc-service-name'] = serviceName
-        if (mode) grpcOpts['grpc-mode'] = mode
-        if (Object.keys(grpcOpts).length) proxyConfig['grpc-opts'] = grpcOpts
+        const grpc = buildGrpcOpts(params)
+        if (grpc) proxyConfig['grpc-opts'] = grpc
       }
 
       return proxyConfig
@@ -224,45 +265,15 @@ export function createClashProxyFromDb(proxy?: { name?: string | null; server?: 
       }
 
       if (network === 'ws') {
-        const wsOpts: any = {}
-        const wsPath = params.get('path')
-        const hostHeader = params.get('host') || params.get('authority')
-        const earlyData = params.get('ed') || params.get('maxearlydata') || params.get('earlydata')
-        const earlyHeader = params.get('edh') || params.get('earlydataheader') || params.get('earlydataheadername')
-
-        wsOpts.path = ensureLeadingSlash(wsPath || '/')
-        const headers: Record<string, string> = {}
-        if (hostHeader) headers.Host = hostHeader
-        if (Object.keys(headers).length) wsOpts.headers = headers
-        if (earlyData) {
-          const earlyValue = Number.parseInt(earlyData, 10)
-          if (!Number.isNaN(earlyValue)) wsOpts['max-early-data'] = earlyValue
-        }
-        if (earlyHeader) wsOpts['early-data-header-name'] = earlyHeader
-        proxyConfig['ws-opts'] = wsOpts
+        const ws = buildWsOpts(params, { defaultPath: '/', includeEarlyData: true })
+        if (ws) proxyConfig['ws-opts'] = ws
       } else if (network === 'grpc') {
-        const grpcOpts: any = {}
-        const serviceName = params.get('servicename') || params.get('serviceName')
-        const mode = params.get('mode')
-        if (serviceName) grpcOpts['grpc-service-name'] = serviceName
-        if (mode) grpcOpts['grpc-mode'] = mode
-        if (Object.keys(grpcOpts).length) proxyConfig['grpc-opts'] = grpcOpts
+        const grpc = buildGrpcOpts(params)
+        if (grpc) proxyConfig['grpc-opts'] = grpc
       } else if (network === 'h2' || network === 'http') {
         proxyConfig.network = 'http'
-        const httpOpts: any = {}
-        const path = params.get('path')
-        const host = params.get('host')
-        if (path) {
-          const normalizedPaths = path
-            .split(',')
-            .map((p) => ensureLeadingSlash(p.trim()))
-            .filter(Boolean)
-          if (normalizedPaths.length) httpOpts.path = normalizedPaths
-        }
-        if (host) {
-          httpOpts.headers = { Host: host }
-        }
-        if (Object.keys(httpOpts).length) proxyConfig['http-opts'] = httpOpts
+        const http = buildHttpOpts(params)
+        if (http) proxyConfig['http-opts'] = http
       }
 
       return proxyConfig
@@ -500,4 +511,3 @@ export default {
   buildClashConfig,
   startMihomo,
 }
-

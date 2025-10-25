@@ -1,4 +1,4 @@
-import type { TikTokBasicComment } from './types'
+import type { TikTokBasicComment, TikTokInfo } from './types'
 
 export function extractTikTokVideoId(url: string): string | null {
 	const patterns = [
@@ -31,7 +31,7 @@ export function isTikTokUrl(url: string): boolean {
 	return tiktokPatterns.some(pattern => pattern.test(url))
 }
 
-// ---------- Shared TikWM helpers/types (used by comments & legacy-compat) ----------
+// ---------- Shared TikWM helpers/types (used by comments & metadata) ----------
 
 export type TikwmUser = {
   nickname?: string
@@ -146,4 +146,16 @@ export function mapTikwmCommentsToBasic(list: TikwmComment[]): TikTokBasicCommen
     if (basic) normalized.push(basic)
   }
   return normalized
+}
+
+// Pick best thumbnail from TikTokInfo
+export function pickTikTokThumbnail(info: TikTokInfo | null): string | undefined {
+  if (!info) return undefined
+  if (typeof info.thumbnail === 'string' && info.thumbnail.length > 0) {
+    return info.thumbnail
+  }
+  const first = info.thumbnails?.find(
+    (t) => typeof t.url === 'string' && (t.url as string).length > 0,
+  )
+  return first?.url
 }

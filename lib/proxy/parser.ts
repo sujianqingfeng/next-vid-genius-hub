@@ -90,43 +90,64 @@ export async function parseSSRUrl(ssrUrl: string): Promise<ParsedProxy[]> {
   }
 }
 
+// ---------- Shared helpers for node URL parsing ----------
+function extractRemarkFromUrl(url: URL, fallbackPort: number): string {
+  const port = parsePortNumber(url.port, fallbackPort);
+  return (
+    decodeLabel(url.hash) ||
+    safeDecode(url.searchParams.get("remarks")) ||
+    safeDecode(url.searchParams.get("remark")) ||
+    `${url.hostname}:${port}`
+  );
+}
+
+type AuthMode = "trojan" | "default";
+function parseAuthFromUrl(url: URL, mode: AuthMode): {
+  username?: string;
+  password?: string;
+} {
+  const user = safeDecode(url.username);
+  const pass = safeDecode(url.password);
+  if (mode === "trojan") {
+    // For trojan links: when only username is present, it's actually the password
+    if (pass) {
+      return { username: user, password: pass };
+    }
+    if (user) {
+      return { password: user };
+    }
+    return {};
+  }
+  return { username: user, password: pass };
+}
+
+function buildParsedProxy(
+  url: URL,
+  protocol: ProxyProtocol,
+  nodeUrl: string,
+  defaultPort: number,
+  authMode: AuthMode = "default",
+): ParsedProxy {
+  const port = parsePortNumber(url.port, defaultPort);
+  const name = extractRemarkFromUrl(url, defaultPort);
+  const { username, password } = parseAuthFromUrl(url, authMode);
+  return {
+    id: createId(),
+    name,
+    server: url.hostname,
+    port,
+    protocol,
+    username,
+    password,
+    nodeUrl,
+  };
+}
+
 function parseTrojanUrl(trojanUrl: string): ParsedProxy {
   try {
     const url = new URL(trojanUrl);
-    if (!url.hostname) {
-      throw new Error("Missing hostname");
-    }
-
-    const port = parsePortNumber(url.port, 443);
-    const remark =
-      decodeLabel(url.hash) ??
-      safeDecode(url.searchParams.get("remarks")) ??
-      safeDecode(url.searchParams.get("remark")) ??
-      `${url.hostname}:${port}`;
-
-    const usernameValue = safeDecode(url.username);
-    const passwordValue = safeDecode(url.password);
-
-    let username: string | undefined;
-    let password: string | undefined;
-
-    if (passwordValue) {
-      username = usernameValue;
-      password = passwordValue;
-    } else if (usernameValue) {
-      password = usernameValue;
-    }
-
-    return {
-      id: createId(),
-      name: remark,
-      server: url.hostname,
-      port,
-      protocol: "trojan",
-      username,
-      password,
-      nodeUrl: trojanUrl,
-    };
+    if (!url.hostname) throw new Error("Missing hostname");
+    return buildParsedProxy(url, "trojan", trojanUrl, 443, "trojan");
   } catch (error) {
     throw new Error(
       `Failed to parse trojan URL: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -137,30 +158,8 @@ function parseTrojanUrl(trojanUrl: string): ParsedProxy {
 function parseVlessUrl(vlessUrl: string): ParsedProxy {
   try {
     const url = new URL(vlessUrl);
-    if (!url.hostname) {
-      throw new Error("Missing hostname");
-    }
-
-    const port = parsePortNumber(url.port, 443);
-    const remark =
-      decodeLabel(url.hash) ??
-      safeDecode(url.searchParams.get("remarks")) ??
-      safeDecode(url.searchParams.get("remark")) ??
-      `${url.hostname}:${port}`;
-
-    const username = safeDecode(url.username);
-    const password = safeDecode(url.password);
-
-    return {
-      id: createId(),
-      name: remark,
-      server: url.hostname,
-      port,
-      protocol: "vless",
-      username,
-      password,
-      nodeUrl: vlessUrl,
-    };
+    if (!url.hostname) throw new Error("Missing hostname");
+    return buildParsedProxy(url, "vless", vlessUrl, 443, "default");
   } catch (error) {
     throw new Error(
       `Failed to parse vless URL: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -173,32 +172,9 @@ function parseHysteria2Url(hysteriaUrl: string): ParsedProxy {
     const normalizedUrl = hysteriaUrl.startsWith("hy2://")
       ? `hysteria2://${hysteriaUrl.slice("hy2://".length)}`
       : hysteriaUrl;
-
     const url = new URL(normalizedUrl);
-    if (!url.hostname) {
-      throw new Error("Missing hostname");
-    }
-
-    const port = parsePortNumber(url.port, 443);
-    const remark =
-      decodeLabel(url.hash) ??
-      safeDecode(url.searchParams.get("remarks")) ??
-      safeDecode(url.searchParams.get("remark")) ??
-      `${url.hostname}:${port}`;
-
-    const username = safeDecode(url.username);
-    const password = safeDecode(url.password);
-
-    return {
-      id: createId(),
-      name: remark,
-      server: url.hostname,
-      port,
-      protocol: "hysteria2",
-      username,
-      password,
-      nodeUrl: hysteriaUrl,
-    };
+    if (!url.hostname) throw new Error("Missing hostname");
+    return buildParsedProxy(url, "hysteria2", hysteriaUrl, 443, "default");
   } catch (error) {
     throw new Error(
       `Failed to parse hysteria2 URL: ${error instanceof Error ? error.message : "Unknown error"}`,
