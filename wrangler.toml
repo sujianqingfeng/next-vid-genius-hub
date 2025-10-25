@@ -1,18 +1,13 @@
 name = "media-orchestrator"
 main = "cloudflare/media-orchestrator/index.ts"
 tsconfig = "cloudflare/media-orchestrator/tsconfig.json"
+compatibility_date = "2025-10-19"
 
 [dev]
 port = 8787
 local_protocol = "http"
-compatibility_date = "2025-10-19"
 
 workers_dev = true
-
-[[kv_namespaces]]
-binding = "JOBS"
-id = "local-jobs-namespace"
-preview_id = "local-jobs-namespace"
 
 [[r2_buckets]]
 binding = "RENDER_BUCKET"
@@ -21,7 +16,7 @@ bucket_name = "vidgen-render"
 [vars]
 JOB_TTL_SECONDS = 86400
 # Prefer external Docker Compose containers in local dev
-PREFER_EXTERNAL_CONTAINERS = "true"
+PREFER_EXTERNAL_CONTAINERS = "false"
 # Default container base; specific engines can override below
 CONTAINER_BASE_URL = "http://localhost:8080"
 # Audio transcoder engine (dev)
@@ -38,8 +33,6 @@ JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 # 预签名 PUT 有效期（秒）：开发 600，生产可提升（如 1800）
 PUT_EXPIRES = 600
 
-# 启用回退到 Next 拉取源数据（迁移期建议保留 true；稳定后可改为 false 严格桶优先）
-
 # S3-compatible storage for both prod (R2 S3 endpoint) and dev (MinIO)
 # For production with R2, set:
 #   S3_ENDPOINT = "https://<accountid>.r2.cloudflarestorage.com"
@@ -55,6 +48,28 @@ S3_BUCKET_NAME = "vidgen-render"
 S3_STYLE = "path"
 S3_REGION = "us-east-1"
 ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
+
+## Local development environment overrides
+[env.local]
+# Optionally give a distinct name for clarity
+name = "media-orchestrator-local"
+
+[env.local.vars]
+# In local dev, prefer hitting Docker Compose services directly
+PREFER_EXTERNAL_CONTAINERS = "true"
+
+[[env.local.kv_namespaces]]
+binding = "JOBS"
+id = "local-jobs-namespace"
+preview_id = "local-jobs-namespace"
+
+## Production environment bindings (replace with real IDs before deploy)
+[env.production]
+
+[[env.production.kv_namespaces]]
+binding = "JOBS"
+# TODO: replace with your real KV namespace ID
+id = "REPLACE_WITH_PROD_JOBS_NAMESPACE_ID"
 
 [[durable_objects.bindings]]
 name = "RENDER_JOB_DO"
