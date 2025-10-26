@@ -6,7 +6,6 @@ import {
 	Download,
 	FileVideo,
 	ListVideo,
-	Settings,
 	Globe,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -51,14 +50,9 @@ const menuItems = [
 	},
 ]
 
-const bottomMenuItems = [
-	{
-		title: 'Settings',
-		href: '/settings',
-		icon: Settings,
-		description: 'App configuration',
-	},
-]
+type MenuItem = (typeof menuItems)[number]
+
+const bottomMenuItems: MenuItem[] = []
 
 export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 	const [collapsed, setCollapsed] = React.useState(defaultCollapsed)
@@ -78,7 +72,7 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 		return best
 	}, [pathname])
 
-	const renderMenuItem = (item: (typeof menuItems)[0], isActive: boolean) => (
+	const renderMenuItem = (item: MenuItem, isActive: boolean) => (
 		<Link
 			key={item.href}
 			href={item.href}
@@ -107,7 +101,7 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 		</Link>
 	)
 
-	const renderMenuSection = (items: Array<(typeof menuItems)[0]>) =>
+	const renderMenuSection = (items: MenuItem[]) =>
 		items.map((item) => {
 			const isActive = item.href === activeHref
 			return collapsed ? (
@@ -176,9 +170,11 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 				</nav>
 
 				{/* Bottom Navigation */}
-				<nav className="space-y-1 p-3 border-t border-sidebar-border">
-					{renderMenuSection(bottomMenuItems)}
-				</nav>
+				{bottomMenuItems.length > 0 && (
+					<nav className="space-y-1 p-3 border-t border-sidebar-border">
+						{renderMenuSection(bottomMenuItems)}
+					</nav>
+				)}
 
 				{/* Footer */}
 				<div className="border-t border-sidebar-border p-3">
