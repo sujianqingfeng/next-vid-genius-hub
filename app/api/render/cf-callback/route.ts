@@ -152,8 +152,13 @@ async function handleCloudDownloadCallback(
 
   
 
+  // Accept either a presigned URL (preferred) or just the key when not hydrating locally.
+  // Some orchestrator/container versions may omit outputs.video in progress payloads
+  // but still provide the final outputKey. In such cases, we should not fail the job
+  // when ENABLE_LOCAL_HYDRATE=false.
   const videoUrl = payload.outputs?.video?.url
-  if (!videoUrl) {
+  const videoKey = payload.outputs?.video?.key || (payload as any).outputKey || null
+  if (!videoUrl && !videoKey) {
     await db
       .update(schema.media)
       .set({
@@ -178,7 +183,7 @@ async function handleCloudDownloadCallback(
   const metadataPath = path.join(operationDir, 'metadata.json')
   let metadataDownloaded = false
 
-  if (ENABLE_LOCAL_HYDRATE) {
+  if (ENABLE_LOCAL_HYDRATE && videoUrl) {
     try {
       await downloadArtifact(videoUrl, videoPath)
       if (audioUrl && audioPath) {
@@ -209,7 +214,8 @@ async function handleCloudDownloadCallback(
     downloadError: null,
     downloadJobId: payload.jobId,
     downloadCompletedAt: new Date(),
-    remoteVideoKey: payload.outputs?.video?.key ?? null,
+    // Prefer outputs.video.key; fall back to outputKey for backward compatibility
+    remoteVideoKey: payload.outputs?.video?.key ?? (videoKey ?? null),
     remoteAudioKey: payload.outputs?.audio?.key ?? null,
     remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
     // hydrate 到本地时才写入本地路径

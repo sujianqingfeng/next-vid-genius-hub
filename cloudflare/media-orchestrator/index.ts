@@ -1399,10 +1399,9 @@ export class RenderJobDO {
 
     if (doc.engine === 'media-downloader') {
       const outputs: Record<string, unknown> = {}
-      // Only include video output if the container actually sent it
-      // Comments-only: outputs.video will be absent; video download: outputs.video exists
-      const hasVideoInOutputs = doc.outputs && 'video' in doc.outputs
-      if (hasVideoInOutputs && doc.outputKey) {
+      // Be robust: if a final outputKey exists, always include video output,
+      // even if the container did not explicitly populate outputs.video during progress updates.
+      if (doc.outputKey) {
         outputs.video = {
           key: doc.outputKey,
           url: await presignS3(this.env, 'GET', bucket, doc.outputKey, 600),
