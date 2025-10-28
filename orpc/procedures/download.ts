@@ -2,43 +2,17 @@ import { createId } from '@paralleldrive/cuid2'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { downloadService } from '~/lib/services/download/download.service'
 import { db, schema } from '~/lib/db'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
-import { logger } from '~/lib/logger'
 
 const DownloadInputSchema = z.object({
 	url: z.string().url(),
 	quality: z.enum(['1080p', '720p']).optional().default('1080p'),
 	proxyId: z.string().optional(),
 })
-
-export const download = os
-	.input(DownloadInputSchema)
-	.handler(async ({ input }) => {
-		const { url, quality, proxyId } = input
-
-		try {
-			// 使用新的下载服务
-			const result = await downloadService.download({ url, quality, proxyId })
-
-			return {
-				id: result.id,
-				videoPath: result.videoPath,
-				audioPath: result.audioPath,
-				title: result.title,
-				source: result.source,
-			}
-        } catch (error) {
-            logger.error('media', `Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-            throw new Error(
-                `Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-                )
-            }
-        })
 
 export const startCloudDownload = os
 	.input(DownloadInputSchema)

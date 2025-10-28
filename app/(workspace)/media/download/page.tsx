@@ -1,8 +1,7 @@
 'use client'
 
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Download, Link, Loader2, Cloud, HardDrive } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { Download, Link, Loader2, Cloud } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
@@ -24,7 +23,6 @@ export default function NewDownloadPage() {
 	const [error, setError] = useState<string | null>(null)
 	const [urlValue, setUrlValue] = useState<string>('')
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
-	const [backend, setBackend] = useState<'local' | 'cloud'>('cloud')
 	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
 	const [cloudMediaId, setCloudMediaId] = useState<string | null>(null)
 	const [lastCloudStatus, setLastCloudStatus] = useState<string | null>(null)
@@ -63,25 +61,6 @@ export default function NewDownloadPage() {
 		const label = p.name || `${p.protocol}://${p.server}:${p.port}`
 		return label
 	}
-	
-	const router = useRouter()
-
-	const downloadMutation = useMutation({
-		...queryOrpc.download.download.mutationOptions(),
-			onSuccess: () => {
-			toast.success('Download started successfully!')
-			setError(null)
-			// 本地下载成功后清空 URL，再返回上一页
-			setUrlValue('')
-			setTimeout(() => {
-				router.back()
-			}, 1000)
-			},
-		onError: (err: Error) => {
-			console.error(err)
-			setError(err.message || 'Failed to start download')
-		},
-	})
 
 	const cloudDownloadMutation = useMutation(
 		queryOrpc.download.startCloudDownload.mutationOptions({
@@ -107,7 +86,7 @@ export default function NewDownloadPage() {
 			if (!cloudJobId) throw new Error('jobId not set')
 			return await orpc.download.getCloudDownloadStatus({ jobId: cloudJobId })
 		},
-		enabled: backend === 'cloud' && !!cloudJobId,
+		enabled: !!cloudJobId,
 		refetchInterval: (query) => {
 			const status = query.state.data?.status
 			if (!status) return 5000
@@ -115,13 +94,13 @@ export default function NewDownloadPage() {
 		},
 	})
 
-		const statusLabel = cloudStatusQuery.data?.status
-			? STATUS_LABELS[cloudStatusQuery.data.status] ?? cloudStatusQuery.data.status
-			: null
-		const phaseLabel = cloudStatusQuery.data?.phase
-			? PHASE_LABELS[cloudStatusQuery.data.phase] ?? cloudStatusQuery.data.phase
-			: null
-	const isSubmitting = downloadMutation.isPending || cloudDownloadMutation.isPending
+	const statusLabel = cloudStatusQuery.data?.status
+		? STATUS_LABELS[cloudStatusQuery.data.status] ?? cloudStatusQuery.data.status
+		: null
+	const phaseLabel = cloudStatusQuery.data?.phase
+		? PHASE_LABELS[cloudStatusQuery.data.phase] ?? cloudStatusQuery.data.phase
+		: null
+	const isSubmitting = cloudDownloadMutation.isPending
 
 	const formAction = async (formData: FormData) => {
 		const url = (urlValue || (formData.get('url') as string) || '').trim()
@@ -135,27 +114,18 @@ export default function NewDownloadPage() {
 		setError(null)
 		setLastInput({ url, quality })
 		setAutoRetryStopped(false)
-		// prepare rotation queue for cloud mode
-		if (backend === 'cloud') {
-			const all = proxiesQuery.data?.proxies ?? []
-			const queue = buildRotationQueue(all, selectedProxyId, rotationScope)
-			// For rotation queue, remove the first element if it equals the selected proxy, because
-			// initial submit uses the selected proxy (attempt #1)
-			const nextQueue = queue.filter((id) => id !== selectedProxyId)
-			setRotationQueue(nextQueue)
-			setAttempt(1) // initial cloud submit counts as attempt #1
-			cloudDownloadMutation.mutate({
-				url,
-				quality,
-				proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
-			})
-		} else {
-			downloadMutation.mutate({
-				url,
-				quality,
-				proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
-			})
-		}
+		const all = proxiesQuery.data?.proxies ?? []
+		const queue = buildRotationQueue(all, selectedProxyId, rotationScope)
+		// For rotation queue, remove the first element if it equals the selected proxy, because
+		// initial submit uses the selected proxy (attempt #1)
+		const nextQueue = queue.filter((id) => id !== selectedProxyId)
+		setRotationQueue(nextQueue)
+		setAttempt(1) // initial cloud submit counts as attempt #1
+		cloudDownloadMutation.mutate({
+			url,
+			quality,
+			proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
+		})
 	}
 
 	useEffect(() => {
@@ -181,7 +151,6 @@ export default function NewDownloadPage() {
 
 			// Auto-rotate retry (cloud only)
 			if (
-				backend === 'cloud' &&
 				autoRotate &&
 				!autoRetryStopped &&
 				attempt < maxAttempts &&
@@ -208,7 +177,7 @@ export default function NewDownloadPage() {
 				}
 			}
 		}
-	}, [backend, autoRotate, autoRetryStopped, attempt, maxAttempts, rotationQueue, cloudStatusQuery.data?.status, cloudStatusQuery.data?.message, cloudJobId, lastCloudStatus, cloudDownloadMutation, lastInput])
+	}, [autoRotate, autoRetryStopped, attempt, maxAttempts, rotationQueue, cloudStatusQuery.data?.status, cloudStatusQuery.data?.message, cloudJobId, lastCloudStatus, cloudDownloadMutation, lastInput])
 
 	return (
 		<div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
@@ -226,34 +195,10 @@ export default function NewDownloadPage() {
 
 				{/* Main Card */}
 				<div className="bg-card border rounded-2xl shadow-sm p-6 space-y-6">
-					{/* Backend Selection */}
-					<div className="flex gap-2 p-1 bg-muted rounded-lg">
-						<Button
-							type="button"
-							variant={backend === 'cloud' ? 'default' : 'ghost'}
-							size="sm"
-							onClick={() => setBackend('cloud')}
-							className="flex-1 gap-2"
-						>
-							<Cloud className="w-4 h-4" />
-							Cloud
-						</Button>
-						<Button
-							type="button"
-							variant={backend === 'local' ? 'default' : 'ghost'}
-							size="sm"
-							onClick={() => setBackend('local')}
-							className="flex-1 gap-2"
-						>
-							<HardDrive className="w-4 h-4" />
-							Local
-						</Button>
-					</div>
-
 					{/* Form */}
 					<form action={formAction} className="space-y-4">
 						{/* URL Input */}
-			<div>
+						<div>
 							<label htmlFor="url" className="text-sm font-medium mb-2 block">
 								Video URL
 							</label>
@@ -293,7 +238,7 @@ export default function NewDownloadPage() {
 							</Select>
 						</div>
 
-					{/* Proxy Selection */}
+						{/* Proxy Selection */}
 						<ProxySelector
 							value={selectedProxyId}
 							onValueChange={setSelectedProxyId}
@@ -361,19 +306,19 @@ export default function NewDownloadPage() {
 							{isSubmitting ? (
 								<>
 									<Loader2 className="w-5 h-5 mr-2 animate-spin" />
-									{backend === 'cloud' ? 'Queueing...' : 'Downloading...'}
+									Queueing...
 								</>
 							) : (
 								<>
 									<Download className="w-5 h-5 mr-2" />
-									{backend === 'cloud' ? 'Start Cloud Download' : 'Download'}
+									Start Cloud Download
 								</>
 							)}
 						</Button>
 					</form>
 
 					{/* Cloud Status */}
-					{backend === 'cloud' && cloudJobId && (
+					{cloudJobId && (
 						<div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
 							<div className="font-medium flex items-center gap-2">
 								<Cloud className="w-4 h-4" />
