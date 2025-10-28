@@ -1,20 +1,12 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
-import {
-	OPERATIONS_DIR,
-	PROXY_URL,
-} from '~/lib/config/app.config'
-import { VIDEO_WITH_INFO_FILENAME } from '~/lib/config/app.config'
+import { PROXY_URL } from '~/lib/config/app.config'
 import { db, schema } from '~/lib/db'
-import { renderVideoWithRemotion } from '~/lib/media/remotion/renderer'
 import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
 import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
-import type { RenderProgressEvent } from '~/lib/media/remotion/renderer'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { logger } from '~/lib/logger'
 import { generateObject } from '~/lib/ai/chat'
@@ -106,132 +98,6 @@ export const deleteComment = os
 			.where(eq(schema.media.id, mediaId))
 
 		return { success: true }
-	})
-
-export const renderWithInfo = os
-    .input(
-        z.object({
-            mediaId: z.string(),
-            sourcePolicy: z.enum(['auto', 'original', 'subtitles']).optional().default('auto'),
-        }),
-    )
-    .handler(async ({ input }) => {
-        const { mediaId } = input
-
-		// Get media data
-		const media = await db.query.media.findFirst({
-			where: eq(schema.media.id, mediaId),
-		})
-
-		if (!media) {
-			throw new Error('Media not found')
-		}
-
-		if (!media.filePath) {
-			throw new Error('Media file path not found')
-		}
-
-		if (!media.comments || media.comments.length === 0) {
-			throw new Error('No comments found for this media')
-		}
-
-		// Create operation directory
-		const operationDir = path.join(OPERATIONS_DIR, media.id)
-		await fs.mkdir(operationDir, { recursive: true })
-		const progressFile = path.join(operationDir, 'render-progress.json')
-
-		const recordProgress = (event: RenderProgressEvent) => {
-			void fs
-				.writeFile(
-					progressFile,
-					JSON.stringify(
-						{
-							...event,
-							updatedAt: new Date().toISOString(),
-						},
-						null,
-						2,
-					),
-				)
-                .catch((error) => {
-                    logger.warn('rendering', `Failed to record render progress: ${error instanceof Error ? error.message : String(error)}`)
-                })
-		}
-
-		// seed initial progress state
-		recordProgress({ stage: 'bundle', progress: 0 })
-
-		// Define output path
-		const outputPath = path.join(operationDir, VIDEO_WITH_INFO_FILENAME)
-
-		// Prepare video info
-		const videoInfo = {
-			title: media.title,
-			translatedTitle: media.translatedTitle || undefined,
-			viewCount: media.viewCount || 0,
-			author: media.author || undefined,
-			thumbnail: media.thumbnail || undefined,
-			series: '外网真实评论',
-		}
-
-		const comments = media.comments
-
-		// Ensure latest comments snapshot is materialized at render time
-		try {
-			const { key } = await buildCommentsSnapshot(media, { comments })
-			logger.info('comments', `comments-data materialized (render-local): ${key}`)
-		} catch (error) {
-			logger.warn(
-				'comments',
-				`Failed to materialize comments-data before local render: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-        // Resolve source according to policy
-        const resolveLocalSource = (): string => {
-            const policy = input.sourcePolicy || 'auto'
-            if (policy === 'original') {
-                if (media.filePath) return media.filePath
-                if (media.downloadJobId) return `remote:orchestrator:${media.downloadJobId}`
-                throw new Error('Original video not available')
-            }
-            if (policy === 'subtitles') {
-                if (media.videoWithSubtitlesPath) return media.videoWithSubtitlesPath
-                throw new Error('Subtitled video not available')
-            }
-            // auto
-            return media.videoWithSubtitlesPath || media.filePath || (media.downloadJobId ? `remote:orchestrator:${media.downloadJobId}` : '')
-        }
-
-        const selectedSource = resolveLocalSource()
-        if (!selectedSource) throw new Error('No suitable source video found')
-
-        try {
-            // Render video with info and comments
-            await renderVideoWithRemotion({
-                videoPath: selectedSource,
-                outputPath,
-                videoInfo,
-                comments,
-                onProgress: recordProgress,
-            })
-
-			// Update database with rendered path
-			await db
-				.update(schema.media)
-				.set({ videoWithInfoPath: outputPath })
-				.where(eq(schema.media.id, mediaId))
-
-			return {
-				success: true,
-				message: 'Video rendered with info and comments successfully',
-				videoWithInfoPath: outputPath,
-				commentsCount: comments.length,
-			}
-        } catch (error) {
-            logger.error('rendering', `Error rendering video with info: ${error instanceof Error ? error.message : String(error)}`)
-            throw new Error(`Failed to render video: ${(error as Error).message}`)
-        }
 	})
 
 // Cloud rendering: start job explicitly (Remotion renderer)

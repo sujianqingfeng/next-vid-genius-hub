@@ -212,16 +212,7 @@ export default function CommentsPage() {
 		  }
 		: null
 
-	const renderMutation = useEnhancedMutation(
-		queryOrpc.comment.renderWithInfo.mutationOptions(),
-		{
-			successToast: 'Video rendering started!',
-			errorToast: ({ error }) => `Failed to start rendering: ${error.message}`,
-		},
-	)
-
 	// Cloud rendering (Remotion) — start
-	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>('cloud')
 
 	const {
 		jobId: cloudJobId,
@@ -229,7 +220,7 @@ export default function CommentsPage() {
 		statusQuery: cloudStatusQuery,
 	} = useCloudJob({
 		storageKey: `commentsCloudJob:${id}`,
-		enabled: renderBackend === 'cloud',
+		enabled: true,
 		completeStatuses: ['completed'],
 		onCompleted: () => {
 			queryClient.invalidateQueries({
@@ -665,61 +656,28 @@ export default function CommentsPage() {
 													</Select>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">Backend:</Label>
-													<div className="flex gap-1">
-														<Button
-															variant={renderBackend === 'cloud' ? 'default' : 'outline'}
-															size="sm"
-															onClick={() => setRenderBackend('cloud')}
-															className="flex-1"
-														>
-															Cloud
-														</Button>
-														<Button
-															variant={renderBackend === 'local' ? 'default' : 'outline'}
-															size="sm"
-															onClick={() => setRenderBackend('local')}
-															className="flex-1"
-														>
-															Local
-														</Button>
-													</div>
+													<Label className="text-xs text-muted-foreground">Proxy:</Label>
+													<ProxySelector
+														value={renderProxyId}
+														onValueChange={setRenderProxyId}
+														disabled={startCloudRenderMutation.isPending}
+													/>
 												</div>
-												{renderBackend === 'cloud' && (
-													<div>
-														<Label className="text-xs text-muted-foreground">Proxy:</Label>
-														<ProxySelector
-															value={renderProxyId}
-															onValueChange={setRenderProxyId}
-															disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
-														/>
-													</div>
-												)}
 											</div>
 											<Button
 												onClick={() => {
-													if (renderBackend === 'cloud') {
-														startCloudRenderMutation.mutate({
-															mediaId: id,
-															proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
-															sourcePolicy,
-														})
-													} else {
-														renderMutation.mutate({ mediaId: id, sourcePolicy })
-													}
+													startCloudRenderMutation.mutate({
+														mediaId: id,
+														proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
+														sourcePolicy,
+													})
 												}}
-												disabled={startCloudRenderMutation.isPending || renderMutation.isPending}
+												disabled={startCloudRenderMutation.isPending}
 												className="w-full"
 											>
-												{renderBackend === 'cloud'
-													? startCloudRenderMutation.isPending
-														? 'Queuing...'
-														: 'Start Render'
-													: renderMutation.isPending
-														? 'Rendering...'
-														: 'Start Render'}
+												{startCloudRenderMutation.isPending ? 'Queuing...' : 'Start Render'}
 											</Button>
-											{renderBackend === 'cloud' && cloudJobId && (
+											{cloudJobId && (
 												<div className="space-y-2 pt-2 border-t">
 													<Progress
 														value={
