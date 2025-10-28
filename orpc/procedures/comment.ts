@@ -78,14 +78,6 @@ export const downloadComments = os
 			})
 			.where(eq(schema.media.id, mediaId))
 
-		// Materialize comments-data JSON to bucket and update manifest (best-effort)
-		try {
-			const { key } = await buildCommentsSnapshot(media, { comments })
-			logger.info('comments', `comments-data materialized: ${key}`)
-		} catch (err) {
-			logger.warn('comments', `comments-data materialization skipped: ${err instanceof Error ? err.message : String(err)}`)
-		}
-
 		return { success: true, count: comments.length }
 	})
 
@@ -140,17 +132,6 @@ export const translateComments = os
 			})
 			.where(eq(schema.media.id, mediaId))
 
-		// Materialize updated comments-data JSON to bucket and update manifest (best-effort)
-		try {
-			const { key } = await buildCommentsSnapshot(media, {
-				comments: translatedComments,
-				translatedTitle,
-			})
-			logger.info('comments', `comments-data materialized (translated): ${key}`)
-		} catch (err) {
-			logger.warn('comments', `comments-data materialization (translated) skipped: ${err instanceof Error ? err.message : String(err)}`)
-		}
-
 		return { success: true }
 	})
 
@@ -184,14 +165,6 @@ export const deleteComment = os
 				commentCount: updatedComments.length,
 			})
 			.where(eq(schema.media.id, mediaId))
-
-		// Materialize updated comments-data JSON to bucket and update manifest (best-effort)
-		try {
-			const { key } = await buildCommentsSnapshot(media, { comments: updatedComments })
-			logger.info('comments', `comments-data materialized (delete): ${key}`)
-		} catch (err) {
-			logger.warn('comments', `comments-data materialization (delete) skipped: ${err instanceof Error ? err.message : String(err)}`)
-		}
 
 		return { success: true }
 	})
@@ -262,6 +235,19 @@ export const renderWithInfo = os
 			series: '外网真实评论',
 		}
 
+		const comments = media.comments
+
+		// Ensure latest comments snapshot is materialized at render time
+		try {
+			const { key } = await buildCommentsSnapshot(media, { comments })
+			logger.info('comments', `comments-data materialized (render-local): ${key}`)
+		} catch (error) {
+			logger.warn(
+				'comments',
+				`Failed to materialize comments-data before local render: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+
         // Resolve source according to policy
         const resolveLocalSource = (): string => {
             const policy = input.sourcePolicy || 'auto'
@@ -287,7 +273,7 @@ export const renderWithInfo = os
                 videoPath: selectedSource,
                 outputPath,
                 videoInfo,
-                comments: media.comments,
+                comments,
                 onProgress: recordProgress,
             })
 
@@ -301,7 +287,7 @@ export const renderWithInfo = os
 				success: true,
 				message: 'Video rendered with info and comments successfully',
 				videoWithInfoPath: outputPath,
-				commentsCount: media.comments.length,
+				commentsCount: comments.length,
 			}
         } catch (error) {
             logger.error('rendering', `Error rendering video with info: ${error instanceof Error ? error.message : String(error)}`)
@@ -336,6 +322,21 @@ export const startCloudRender = os
 		}
 		if (!media.comments || media.comments.length === 0) {
 			throw new Error('No comments found for this media')
+		}
+
+		const comments = media.comments
+
+		let snapshotKey: string | undefined
+		try {
+			const snapshot = await buildCommentsSnapshot(media, { comments })
+			snapshotKey = snapshot.key
+			logger.info('comments', `comments-data materialized (render-cloud): ${snapshotKey}`)
+		} catch (error) {
+			logger.error(
+				'comments',
+				`Failed to materialize comments-data before cloud render: ${error instanceof Error ? error.message : String(error)}`,
+			)
+			throw new Error('Failed to prepare comments metadata for cloud render')
 		}
 
 		let proxyPayload = undefined
@@ -453,16 +454,6 @@ export const finalizeCloudCommentsDownload = os
 				commentsDownloadedAt: new Date(),
 			})
 			.where(eq(schema.media.id, mediaId))
-		// Materialize comments-data JSON to bucket and update manifest (best-effort)
-		try {
-			const updatedMedia = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
-			if (!updatedMedia) throw new Error('Media not found after comments update')
-			const { key } = await buildCommentsSnapshot(updatedMedia, { comments })
-			logger.info('comments', `comments-data materialized (cloud): ${key}`)
-		} catch (err) {
-			logger.warn('comments', `comments-data materialization (cloud) skipped: ${err instanceof Error ? err.message : String(err)}`)
-		}
-
 		return { success: true, count: comments.length }
 	})
 
@@ -638,14 +629,6 @@ export const moderateComments = os
         commentsModerationSummary: Object.fromEntries(summary.entries()),
       })
       .where(eq(schema.media.id, mediaId))
-
-    // Best-effort snapshot
-    try {
-      const { key } = await buildCommentsSnapshot(media, { comments: updated })
-      logger.info('comments', `comments-data materialized (moderated): ${key}`)
-    } catch (err) {
-      logger.warn('comments', `comments-data materialization (moderated) skipped: ${err instanceof Error ? err.message : String(err)}`)
-    }
 
     return { success: true, flaggedCount, total: comments.length }
   })
