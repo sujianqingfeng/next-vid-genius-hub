@@ -82,10 +82,7 @@ export default function SubtitlesPage() {
 		((workflowState.downsampleBackend as ('auto' | 'local' | 'cloud')) ||
 			'cloud')
 
-	// 渲染后端选择（local | cloud）
-	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>(
-		'cloud',
-	)
+	// 渲染默认使用云端
 	const [previewVersion, setPreviewVersion] = useState<number | undefined>(undefined)
 	const queryClient = useQueryClient()
   const isVisible = usePageVisibility()
@@ -105,7 +102,7 @@ export default function SubtitlesPage() {
 		statusQuery: cloudStatusQuery,
 	} = useCloudJob({
 		storageKey: `subtitleCloudJob:${mediaId}`,
-		enabled: renderBackend === 'cloud' && isVisible && activeStep === 'step3',
+		enabled: isVisible && activeStep === 'step3',
 		completeStatuses: ['completed'],
 		onCompleted: handleCloudRenderComplete,
 		createQueryOptions: (jobId) =>
@@ -191,15 +188,6 @@ export default function SubtitlesPage() {
 		}),
 	)
 
-	// 本地渲染mutation
-	const renderMutation = useEnhancedMutation(
-		queryOrpc.subtitle.render.mutationOptions({
-			onSuccess: () => {
-				// 本地渲染：Hook 会自动更新状态
-			},
-		}),
-	)
-
 	// 云端渲染：启动
 	const startCloudRenderMutation = useEnhancedMutation(
 		queryOrpc.subtitle.startCloudRender.mutationOptions({
@@ -210,12 +198,12 @@ export default function SubtitlesPage() {
 	)
 
 	// 预览用的云端渲染状态（避免 any）
-  const previewCloudStatus = (renderBackend === 'cloud' && cloudStatusQuery.data)
-    ? {
-        status: (cloudStatusQuery.data as { status?: string }).status,
-        progress: (cloudStatusQuery.data as { progress?: number }).progress,
-      }
-    : null
+	const previewCloudStatus = cloudStatusQuery.data
+		? {
+				status: (cloudStatusQuery.data as { status?: string }).status,
+				progress: (cloudStatusQuery.data as { progress?: number }).progress,
+			}
+		: null
 
 	// 事件处理器
 	const handleStartTranscription = () => {
@@ -248,11 +236,7 @@ export default function SubtitlesPage() {
 
 	const handleRenderStart = (config: SubtitleRenderConfig) => {
 		updateWorkflowState({ subtitleConfig: config })
-		if (renderBackend === 'cloud') {
-			startCloudRenderMutation.mutate({ mediaId, subtitleConfig: config })
-		} else {
-			renderMutation.mutate({ mediaId, subtitleConfig: config, backend: 'local' })
-		}
+		startCloudRenderMutation.mutate({ mediaId, subtitleConfig: config })
 	}
 
 	const handleConfigChange = (config: SubtitleRenderConfig) => {
@@ -304,12 +288,9 @@ export default function SubtitlesPage() {
 				thumbnail={media?.thumbnail ?? undefined}
 				cacheBuster={previewVersion}
 				isRendering={
-					(renderBackend === 'cloud'
-						? (startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? ''))
-						: renderMutation.isPending)
+					startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
 				}
 				cloudStatus={previewCloudStatus}
-				renderBackend={renderBackend}
 			/>
 
 			{/* Step Navigation under preview (Tabs) */}
@@ -426,22 +407,16 @@ export default function SubtitlesPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Step3Render
-                        isRendering={
-                            renderBackend === 'cloud'
-                                ? startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
-                                : renderMutation.isPending
-                        }
-							onStart={handleRenderStart}
-							errorMessage={(renderBackend === 'cloud' ? startCloudRenderMutation.error?.message : renderMutation.error?.message)}
-							mediaId={mediaId}
-							translationAvailable={!!workflowState.translation}
-							translation={workflowState.translation}
-							config={subtitleConfig}
-							onConfigChange={handleConfigChange}
-							renderBackend={renderBackend}
-							onRenderBackendChange={setRenderBackend}
-						/>
+							<Step3Render
+								isRendering={
+									startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
+								}
+								onStart={handleRenderStart}
+								errorMessage={startCloudRenderMutation.error?.message}
+								translationAvailable={!!workflowState.translation}
+								config={subtitleConfig}
+								onConfigChange={handleConfigChange}
+							/>
 
 
 					</CardContent>
