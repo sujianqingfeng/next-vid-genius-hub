@@ -15,71 +15,10 @@ import { renderVideoWithRemotion } from '~/lib/media/remotion/renderer'
 import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
 import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
 import type { RenderProgressEvent } from '~/lib/media/remotion/renderer'
-import {
-	downloadYoutubeComments as coreDownloadYoutubeComments,
-	downloadTikTokCommentsByUrl as coreDownloadTikTokComments,
-} from '@app/media-providers'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { logger } from '~/lib/logger'
 import { generateObject } from '~/lib/ai/chat'
 import { createId } from '@paralleldrive/cuid2'
-
-export const downloadComments = os
-	.input(
-		z.object({
-			mediaId: z.string(),
-			pages: z.number().default(3),
-		}),
-	)
-	.handler(async ({ input }) => {
-		const { mediaId, pages: pageCount } = input
-
-		const media = await db.query.media.findFirst({
-			where: eq(schema.media.id, mediaId),
-		})
-
-		if (!media) {
-			throw new Error('Media not found')
-		}
-
-        let comments: schema.Comment[] = []
-        if (media.source === 'tiktok') {
-            const basic = await coreDownloadTikTokComments({ url: media.url, pages: pageCount, proxy: PROXY_URL })
-            comments = basic.map((c) => ({
-                id: c.id,
-                author: c.author,
-                authorThumbnail: c.authorThumbnail,
-                content: c.content,
-                likes: c.likes,
-                replyCount: c.replyCount,
-            }))
-        } else {
-            const basic = await coreDownloadYoutubeComments({ url: media.url, pages: pageCount, proxy: PROXY_URL })
-            comments = basic.map((c) => ({
-                id: c.id,
-                author: c.author,
-                authorThumbnail: c.authorThumbnail,
-                content: c.content,
-                likes: c.likes,
-                replyCount: c.replyCount,
-            }))
-        }
-
-		if (comments.length === 0) {
-			return { success: true, count: 0 }
-		}
-
-		await db
-			.update(schema.media)
-			.set({
-				comments,
-				commentCount: comments.length,
-				commentsDownloadedAt: new Date(),
-			})
-			.where(eq(schema.media.id, mediaId))
-
-		return { success: true, count: comments.length }
-	})
 
 export const translateComments = os
 	.input(

@@ -51,8 +51,6 @@ export default function CommentsPage() {
     const [overwriteModeration, setOverwriteModeration] = useState(false)
     const [onlyFlagged, setOnlyFlagged] = useState(false)
 
-	// Download comments backend toggle (local/cloud)
-	const [commentsBackend, setCommentsBackend] = useState<'local' | 'cloud'>('cloud')
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
 	const [renderProxyId, setRenderProxyId] = useState<string>('none')
 
@@ -67,7 +65,7 @@ export default function CommentsPage() {
 		statusQuery: cloudCommentsStatusQuery,
 	} = useCloudJob({
 		storageKey: `commentsDownloadCloudJob:${id}`,
-		enabled: commentsBackend === 'cloud',
+		enabled: true,
 		autoClearOnComplete: false,
 		createQueryOptions: (jobId) =>
 			queryOrpc.comment.getCloudCommentsStatus.queryOptions({
@@ -134,17 +132,6 @@ export default function CommentsPage() {
 			})
 	}
 
-	const downloadCommentsMutation = useEnhancedMutation(
-		queryOrpc.comment.downloadComments.mutationOptions(),
-		{
-			invalidateQueries: {
-				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-			},
-			successToast: 'Comments downloaded!',
-			errorToast: ({ error }) => `Failed to download comments: ${error.message}`,
-		},
-	)
-
 	const startCloudCommentsMutation = useEnhancedMutation(
 		queryOrpc.comment.startCloudCommentsDownload.mutationOptions({
 			onSuccess: (data) => {
@@ -176,7 +163,6 @@ export default function CommentsPage() {
 
 	useEffect(() => {
 		if (
-			commentsBackend === 'cloud' &&
 			commentsCloudJobId &&
 			cloudCommentsStatusQuery.data?.status === 'completed' &&
 			!finalizeCloudCommentsMutation.isPending
@@ -187,7 +173,6 @@ export default function CommentsPage() {
 			}
 		}
 	}, [
-		commentsBackend,
 		commentsCloudJobId,
 		cloudCommentsStatusQuery.data?.status,
 		finalizeCloudCommentsMutation,
@@ -519,62 +504,29 @@ export default function CommentsPage() {
 													</Select>
 												</div>
 												<div>
-													<Label className="text-xs text-muted-foreground">Backend:</Label>
-													<div className="flex gap-1">
-														<Button
-															variant={commentsBackend === 'cloud' ? 'default' : 'outline'}
-															size="sm"
-															onClick={() => setCommentsBackend('cloud')}
-															className="flex-1"
-														>
-															Cloud
-														</Button>
-														<Button
-															variant={commentsBackend === 'local' ? 'default' : 'outline'}
-															size="sm"
-															onClick={() => setCommentsBackend('local')}
-															className="flex-1"
-														>
-															Local
-														</Button>
-													</div>
+													<Label className="text-xs text-muted-foreground">Proxy:</Label>
+													<ProxySelector
+														value={selectedProxyId}
+														onValueChange={setSelectedProxyId}
+														disabled={startCloudCommentsMutation.isPending}
+													/>
 												</div>
-												{commentsBackend === 'cloud' && (
-													<div>
-														<Label className="text-xs text-muted-foreground">Proxy:</Label>
-														<ProxySelector
-															value={selectedProxyId}
-															onValueChange={setSelectedProxyId}
-															disabled={startCloudCommentsMutation.isPending || downloadCommentsMutation.isPending}
-														/>
-													</div>
-												)}
 											</div>
 											<Button
 												onClick={() => {
 													const p = parseInt(pages, 10)
-													if (commentsBackend === 'cloud') {
-														startCloudCommentsMutation.mutate({
-															mediaId: id,
-															pages: p,
-															proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
-														})
-													} else {
-														downloadCommentsMutation.mutate({ mediaId: id, pages: p })
-													}
+													startCloudCommentsMutation.mutate({
+														mediaId: id,
+														pages: p,
+														proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
+													})
 												}}
-												disabled={downloadCommentsMutation.isPending || startCloudCommentsMutation.isPending}
+												disabled={startCloudCommentsMutation.isPending}
 												className="w-full"
 											>
-												{commentsBackend === 'cloud'
-													? startCloudCommentsMutation.isPending
-														? 'Queuing...'
-														: 'Start Download'
-													: downloadCommentsMutation.isPending
-														? 'Downloading...'
-														: 'Start Download'}
+												{startCloudCommentsMutation.isPending ? 'Queuing...' : 'Start Download'}
 											</Button>
-											{commentsBackend === 'cloud' && commentsCloudJobId && (
+											{commentsCloudJobId && (
 												<div className="space-y-2 pt-2 border-t">
 													<Progress
 														value={
