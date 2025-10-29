@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Shared HMAC signing and callback posting helpers for containers/workers",
   "main": "index.js",
+  "types": "index.d.ts",
   "files": [
+    "dist",
     "index.js",
     "index.d.ts"
   ],
@@ -14,6 +16,11 @@
       "import": "./index.js",
       "types": "./index.d.ts"
     }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "tsdown --clean"
   }
 }
-

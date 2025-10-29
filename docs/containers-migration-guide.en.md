@@ -139,20 +139,6 @@ await runCommentsPipeline(
   - Progress callbacks (status/phase/progress)
   - Uploaded artifacts (video/audio/metadata) keys
 
-## Local Service Integration (optional)
-- The local `DownloadService` supports an optional artifact store for syncing uploads:
-```ts
-// Pseudo-wiring example
-import { downloadService } from '~/lib/services/download/download.service'
-
-downloadService.withArtifactStore({
-  uploadMetadata: async (data, ctx) => ({ key: `media/${ctx.operationDir.split('/').pop()}/metadata.json` }),
-  uploadVideo: async (path, ctx) => ({ key: `media/${ctx.operationDir.split('/').pop()}.mp4` }),
-  uploadAudio: async (path, ctx) => ({ key: `media/${ctx.operationDir.split('/').pop()}.mp3` }),
-})
-```
-- Keys returned from the artifact store are persisted to DB (`remote*Key`).
-
 ## Proxy Handling
 - If the container runs a local Clash/Mihomo, inject `proxy` as a plain HTTP URL (e.g., `http://127.0.0.1:7890`).
 - `@app/media-providers` normalizes Request inputs for `youtubei.js`/Undici to prevent `ERR_INVALID_URL`.

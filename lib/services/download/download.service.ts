@@ -9,7 +9,8 @@ import type {
     DownloadProgress,
     DownloadService as IDownloadService
 } from '~/lib/types/download.types'
-import type { BasicVideoInfo } from '~/lib/media/types'
+import type { BasicVideoInfo as MediaBasicVideoInfo } from '~/lib/media/types'
+import type { BasicVideoInfo as ProviderBasicVideoInfo } from '~/lib/types/provider.types'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { db, schema } from '~/lib/db'
 import { createMediaUpdateData } from '~/lib/db/media-utils'
@@ -136,7 +137,7 @@ export class DownloadService implements IDownloadService {
 			])
 
 			// 4) 写库（与云端一致：提炼并写入元数据摘要）
-			let metadataForDb: BasicVideoInfo | null | undefined = null
+				let metadataForDb: MediaBasicVideoInfo | null | undefined = null
 			try {
 				const providerSource = this.getProviderSource(provider.id)
 				if (pipelineRes && pipelineRes.rawMetadata !== undefined) {
@@ -235,6 +236,44 @@ export class DownloadService implements IDownloadService {
         }
 	}
 
+    // IDownloadService helpers (implemented to satisfy interface and enable reuse)
+    async checkExistingFiles(context: DownloadContext): Promise<{
+        videoExists: boolean
+        audioExists: boolean
+        downloadRecord?: typeof schema.media.$inferSelect
+    }> {
+        const [videoExists, audioExists] = await Promise.all([
+            fileExists(context.videoPath),
+            fileExists(context.audioPath),
+        ])
+        // Best-effort: try to locate an existing DB record by file path
+        let downloadRecord: typeof schema.media.$inferSelect | undefined
+        try {
+            const byVideo = await db.query.media.findFirst({ where: eq(schema.media.filePath, context.videoPath) })
+            downloadRecord = byVideo ?? undefined
+        } catch {}
+        return { videoExists, audioExists, downloadRecord }
+    }
+
+    async fetchMetadata(url: string, context: DownloadContext): Promise<ProviderBasicVideoInfo | null> {
+        try {
+            const provider = ProviderFactory.resolveProvider(url)
+            return await provider.fetchMetadata(url, { proxyUrl: context.proxyUrl })
+        } catch (err) {
+            logger.warn('media', `fetchMetadata failed: ${err instanceof Error ? err.message : String(err)}`)
+            return null
+        }
+    }
+
+    async handleError(error: Error): Promise<void> {
+        logger.error('media', `Download error: ${error.message}`)
+    }
+
+    async cleanup(): Promise<void> {
+        // No-op for now. Local artifacts are kept by design; containers handle their own cleanup.
+        return
+    }
+
     private createDownloadContext(id: string, downloadRecord?: typeof schema.media.$inferSelect | null, proxyUrl?: string): DownloadContext {
 		const operationDir = path.join(this.operationDir, id)
 
@@ -261,7 +300,7 @@ export class DownloadService implements IDownloadService {
     private async updateDatabaseRecord(
         id: string,
         url: string,
-        metadata: BasicVideoInfo | null | undefined,
+        metadata: MediaBasicVideoInfo | null | undefined,
         downloadRecord: typeof schema.media.$inferSelect | null | undefined,
         context: DownloadContext,
         quality: '1080p' | '720p',
@@ -307,20 +346,53 @@ export class DownloadService implements IDownloadService {
 				(resolvedMetadataPath ? now : null),
 		}
 
+        // Build insert/update payload explicitly to satisfy Drizzle's required fields
+        const baseValues = {
+            id,
+            url,
+            source: source as 'youtube' | 'tiktok',
+            title: data.title,
+            author: data.author,
+            thumbnail: data.thumbnail,
+            viewCount: data.viewCount,
+            likeCount: data.likeCount,
+            filePath: context.videoPath,
+            audioFilePath: context.audioPath,
+            quality,
+            rawMetadataPath: resolvedMetadataPath ?? undefined,
+        }
+
         await db
             .insert(schema.media)
             .values({
-                id,
-                url,
-                source: source as 'youtube' | 'tiktok',
-                ...(data as Partial<typeof schema.media.$inferInsert>),
-                ...(downloadMeta as Partial<typeof schema.media.$inferInsert>),
+                ...baseValues,
+                downloadBackend: downloadMeta.downloadBackend,
+                downloadStatus: downloadMeta.downloadStatus,
+                downloadError: downloadMeta.downloadError,
+                downloadQueuedAt: downloadMeta.downloadQueuedAt,
+                downloadCompletedAt: downloadMeta.downloadCompletedAt,
+                remoteVideoKey: downloadMeta.remoteVideoKey,
+                remoteAudioKey: downloadMeta.remoteAudioKey,
+                remoteMetadataKey: downloadMeta.remoteMetadataKey,
+                downloadJobId: downloadMeta.downloadJobId,
+                rawMetadataPath: downloadMeta.rawMetadataPath,
+                rawMetadataDownloadedAt: downloadMeta.rawMetadataDownloadedAt,
             })
             .onConflictDoUpdate({
                 target: schema.media.url,
                 set: {
-                    ...(data as Partial<typeof schema.media.$inferInsert>),
-                    ...(downloadMeta as Partial<typeof schema.media.$inferInsert>),
+                    ...baseValues,
+                    downloadBackend: downloadMeta.downloadBackend,
+                    downloadStatus: downloadMeta.downloadStatus,
+                    downloadError: downloadMeta.downloadError,
+                    downloadQueuedAt: downloadMeta.downloadQueuedAt,
+                    downloadCompletedAt: downloadMeta.downloadCompletedAt,
+                    remoteVideoKey: downloadMeta.remoteVideoKey,
+                    remoteAudioKey: downloadMeta.remoteAudioKey,
+                    remoteMetadataKey: downloadMeta.remoteMetadataKey,
+                    downloadJobId: downloadMeta.downloadJobId,
+                    rawMetadataPath: downloadMeta.rawMetadataPath,
+                    rawMetadataDownloadedAt: downloadMeta.rawMetadataDownloadedAt,
                 },
             })
 	}

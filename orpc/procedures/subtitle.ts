@@ -38,18 +38,6 @@ export const translate = os.input(translateInput).handler(async ({ input }) => {
 
 // 使用新架构中的Schema，移除重复定义
 
-export const render = os
-  .input(
-    z.object({
-      mediaId: z.string(),
-      subtitleConfig: subtitleRenderConfigSchema.optional(),
-      backend: z.enum(["local", "cloud"]).optional().default("local"),
-    }),
-  )
-  .handler(async ({ input }) => {
-    return subtitleService.render(input)
-  });
-
 export const updateTranslation = os
   .input(
     z.object({

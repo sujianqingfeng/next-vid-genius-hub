@@ -4,16 +4,21 @@
   "private": true,
   "type": "module",
   "description": "Shared subtitle rendering (WebVTT->ASS + FFmpeg) for local runtime and containers.",
-  "main": "index.js",
+  "main": "dist/index.js",
   "exports": {
     ".": {
-      "import": "./index.js",
+      "import": "./dist/index.js",
       "types": "./index.d.ts"
     }
   },
-  "files": ["index.js", "index.d.ts"],
+  "files": ["dist", "index.d.ts"],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "tsdown --clean"
+  },
   "dependencies": {
     "execa": "^9.5.2"
   }
 }
-

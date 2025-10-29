@@ -34,13 +34,9 @@ interface Step3RenderProps {
 	isRendering: boolean
 	onStart: (config: SubtitleRenderConfig) => void
 	errorMessage?: string
-	mediaId: string
 	translationAvailable: boolean
-	translation?: string | null
 	config: SubtitleRenderConfig
 	onConfigChange: (config: SubtitleRenderConfig) => void
-	renderBackend: 'local' | 'cloud'
-	onRenderBackendChange: (backend: 'local' | 'cloud') => void
 
 }
 
@@ -53,14 +49,9 @@ export function Step3Render(props: Step3RenderProps) {
 		isRendering,
 		onStart,
 		errorMessage,
-
 		translationAvailable,
-
 		config,
 		onConfigChange,
-		renderBackend,
-		onRenderBackendChange,
-
 	} = props
 
 	// 预设状态管理
@@ -195,8 +186,6 @@ export function Step3Render(props: Step3RenderProps) {
 						<TimeSegmentEffectsManager
 							effects={config.timeSegmentEffects}
 							onChange={handleTimeSegmentEffectsChange}
-							mediaDuration={duration}
-							currentTime={currentTime}
 							onPlayPreview={handlePlayPreview}
 						/>
 					</div>
@@ -216,39 +205,15 @@ export function Step3Render(props: Step3RenderProps) {
 									</span>
 								)}
 							</div>
-							
-							{/* 渲染后端选择 */}
-							<div className="space-y-2">
-								<label className="text-xs font-medium">Backend</label>
-								<div className="inline-flex gap-2 w-full">
-									<Button
-										variant={renderBackend === 'cloud' ? 'default' : 'outline'}
-										size="sm"
-										onClick={() => onRenderBackendChange('cloud')}
-										className="flex-1"
-									>
-										Cloud
-									</Button>
-									<Button
-										variant={renderBackend === 'local' ? 'default' : 'outline'}
-										size="sm"
-										onClick={() => onRenderBackendChange('local')}
-										className="flex-1"
-									>
-										Local
-									</Button>
-								</div>
-							</div>
-
-							<Button
-								onClick={() => onStart({ ...config })}
-								disabled={isRendering || !translationAvailable}
-								size="lg"
-								className="w-full h-11"
-							>
-								{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-								{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
-							</Button>
+								<Button
+									onClick={() => onStart({ ...config })}
+									disabled={isRendering || !translationAvailable}
+									size="lg"
+									className="w-full h-11"
+								>
+									{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+									{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
+								</Button>
 						</div>
 					</div>
 				</div>

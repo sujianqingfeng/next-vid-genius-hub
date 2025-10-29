@@ -36,8 +36,25 @@ const palette = {
   accent: "#ef4444",
 };
 
-const baseFont =
-  '"Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Noto Sans CJK", Inter, "Noto Sans", system-ui, -apple-system, BlinkMacSystemFont';
+const baseFontStack = [
+  '"Noto Sans CJK SC"',
+  '"Noto Sans SC"',
+  '"Source Han Sans SC"',
+  '"Noto Sans CJK"',
+  "Inter",
+  '"Noto Sans"',
+  "system-ui",
+  "-apple-system",
+  "BlinkMacSystemFont",
+  '"Segoe UI Emoji"',
+  '"Apple Color Emoji"',
+  '"Noto Color Emoji"',
+  '"Twemoji Mozilla"',
+  '"EmojiSymbols"',
+  "sans-serif",
+];
+
+const baseFont = baseFontStack.join(", ");
 
 const containerStyle: CSSProperties = {
   backgroundColor: palette.background,

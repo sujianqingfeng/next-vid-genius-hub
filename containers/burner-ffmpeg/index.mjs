@@ -2,17 +2,12 @@ import http from 'node:http'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { makeStatusCallback } from '@app/callback-utils'
+import { startJsonServer, createStatusHelpers } from './shared.mjs'
 import { renderVideoWithSubtitles } from '@app/media-subtitles'
 
 const PORT = process.env.PORT || 8080
 
 // No default subtitle debug logs; can be enabled via environment when needed
-
-function sendJson(res, code, data) {
-  res.writeHead(code, { 'content-type': 'application/json' })
-  res.end(JSON.stringify(data))
-}
 
 async function handleRender(req, res) {
   let body = ''
@@ -24,7 +19,7 @@ async function handleRender(req, res) {
 
   const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {}, callbackUrl } = payload
   const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
-  const postUpdate = makeStatusCallback({ callbackUrl, secret, baseFields: { jobId } })
+  const { postUpdate, progress } = createStatusHelpers({ callbackUrl, secret, jobId })
 
   if (!inputVideoUrl || !inputVttUrl || !outputPutUrl) {
     console.error('[render] missing required URLs in payload')
@@ -32,11 +27,7 @@ async function handleRender(req, res) {
     return
   }
 
-  const progress = async (phase, pct) => {
-    if (!callbackUrl) return
-    const status = phase === 'uploading' ? 'uploading' : 'running'
-    try { await postUpdate(status, { phase, progress: pct }) } catch {}
-  }
+  // progress helper provided by shared
 
   try {
     console.log(`[render] ${jobId} preparing: downloading inputs`)
@@ -123,10 +114,4 @@ async function handleRender(req, res) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`)
-  if (req.method === 'POST' && url.pathname === '/render') return handleRender(req, res)
-  sendJson(res, 404, { error: 'not found' })
-})
-
-server.listen(PORT, () => console.log(`burner-ffmpeg stub listening on ${PORT}`))
+startJsonServer(PORT, handleRender, 'burner-ffmpeg stub')

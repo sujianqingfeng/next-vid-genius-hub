@@ -93,7 +93,7 @@ export async function transcribeWithCloudflareWhisper(
                 logger.error('transcription', `Cloudflare API error: ${errorText}`)
                 throw new Error(`Transcription failed: ${resp.status} ${errorText}`)
             }
-			const json: CloudflareApiResponse = await resp.json()
+			const json = (await resp.json()) as CloudflareApiResponse
 			return json
 		}
 

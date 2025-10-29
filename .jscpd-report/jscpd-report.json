@@ -1,0 +1,4437 @@
+{
+  "statistics": {
+    "detectionDate": "2025-10-25T06:53:51.362Z",
+    "formats": {
+      "javascript": {
+        "sources": {
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/VideoPreview/VideoPreview.tsx": {
+            "lines": 58,
+            "tokens": 413,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/TimeSegmentEffects/TimelineSelector.tsx": {
+            "lines": 110,
+            "tokens": 864,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/TimeSegmentEffects/TimeSegmentEffectsManager.tsx": {
+            "lines": 237,
+            "tokens": 1882,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/SubtitleOverlay/SubtitleOverlay.tsx": {
+            "lines": 4,
+            "tokens": 15,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/SubtitleConfig/SubtitleConfigControls.tsx": {
+            "lines": 103,
+            "tokens": 721,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/HintTextOverlay/HintTextOverlay.tsx": {
+            "lines": 0,
+            "tokens": 16,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/HintTextConfig/HintTextConfigControls.tsx": {
+            "lines": 140,
+            "tokens": 1126,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/subtitles/page.tsx": {
+            "lines": 175,
+            "tokens": 1423,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/comments/page.tsx": {
+            "lines": 610,
+            "tokens": 5101,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/Step4Preview.tsx": {
+            "lines": 29,
+            "tokens": 233,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/Step3Render.tsx": {
+            "lines": 59,
+            "tokens": 425,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/Step2Translate.tsx": {
+            "lines": 44,
+            "tokens": 394,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/Step1Transcribe.tsx": {
+            "lines": 191,
+            "tokens": 1725,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/PreviewPane.tsx": {
+            "lines": 96,
+            "tokens": 847,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/ColorPickerGrid.tsx": {
+            "lines": 8,
+            "tokens": 77,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/ChatModelSelect.tsx": {
+            "lines": 9,
+            "tokens": 91,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/download/page.tsx": {
+            "lines": 203,
+            "tokens": 1652,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/page.tsx": {
+            "lines": 1,
+            "tokens": 14,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/proxy/ssr-subscriptions-list.tsx": {
+            "lines": 56,
+            "tokens": 492,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/proxy/proxy-selector.tsx": {
+            "lines": 9,
+            "tokens": 86,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/proxy/proxy-list.tsx": {
+            "lines": 87,
+            "tokens": 724,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/proxy/add-ssr-subscription-dialog.tsx": {
+            "lines": 52,
+            "tokens": 423,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/remotion-preview-card.tsx": {
+            "lines": 17,
+            "tokens": 123,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/media-list-page.tsx": {
+            "lines": 123,
+            "tokens": 995,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/media-detail-page.tsx": {
+            "lines": 192,
+            "tokens": 1576,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/media-card.tsx": {
+            "lines": 148,
+            "tokens": 1171,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/comment-card.tsx": {
+            "lines": 60,
+            "tokens": 490,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/channels/channel-video-list.tsx": {
+            "lines": 18,
+            "tokens": 187,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/proxy/page.tsx": {
+            "lines": 37,
+            "tokens": 260,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/page.tsx": {
+            "lines": 0,
+            "tokens": 3,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/channels/page.tsx": {
+            "lines": 328,
+            "tokens": 2620,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/index.js": {
+            "lines": 414,
+            "tokens": 5506,
+            "sources": 1,
+            "clones": 4,
+            "duplicatedLines": 34,
+            "duplicatedTokens": 778,
+            "percentage": 8.21,
+            "percentageTokens": 14.13,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-node/index.js": {
+            "lines": 78,
+            "tokens": 808,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/proxy.js": {
+            "lines": 46,
+            "tokens": 446,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/metadata.js": {
+            "lines": 63,
+            "tokens": 612,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/index.js": {
+            "lines": 124,
+            "tokens": 1180,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/clash.js": {
+            "lines": 494,
+            "tokens": 5108,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 12,
+            "duplicatedTokens": 208,
+            "percentage": 2.43,
+            "percentageTokens": 4.07,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/callback-utils/index.js": {
+            "lines": 82,
+            "tokens": 1076,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/query/hydration.tsx": {
+            "lines": 0,
+            "tokens": 3,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/tooltip.tsx": {
+            "lines": 32,
+            "tokens": 191,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/textarea.tsx": {
+            "lines": 3,
+            "tokens": 11,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/tabs.tsx": {
+            "lines": 45,
+            "tokens": 218,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/switch.tsx": {
+            "lines": 10,
+            "tokens": 40,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/sonner.tsx": {
+            "lines": 8,
+            "tokens": 46,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/skeleton.tsx": {
+            "lines": 0,
+            "tokens": 8,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/select.tsx": {
+            "lines": 128,
+            "tokens": 637,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/progress.tsx": {
+            "lines": 0,
+            "tokens": 7,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/pagination.tsx": {
+            "lines": 93,
+            "tokens": 543,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/label.tsx": {
+            "lines": 3,
+            "tokens": 11,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/input.tsx": {
+            "lines": 7,
+            "tokens": 29,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/dialog.tsx": {
+            "lines": 86,
+            "tokens": 466,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/card.tsx": {
+            "lines": 69,
+            "tokens": 401,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/button.tsx": {
+            "lines": 0,
+            "tokens": 15,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/badge.tsx": {
+            "lines": 0,
+            "tokens": 13,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/layout/page-header.tsx": {
+            "lines": 1,
+            "tokens": 22,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/remotion/Root.tsx": {
+            "lines": 5,
+            "tokens": 36,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/remotion/CommentsVideo.tsx": {
+            "lines": 795,
+            "tokens": 5423,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 52,
+            "duplicatedTokens": 294,
+            "percentage": 6.54,
+            "percentageTokens": 5.42,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/sidebar.tsx": {
+            "lines": 106,
+            "tokens": 725,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/providers.tsx": {
+            "lines": 1,
+            "tokens": 14,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/layout.tsx": {
+            "lines": 0,
+            "tokens": 15,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 5897,
+          "tokens": 49779,
+          "sources": 60,
+          "clones": 4,
+          "duplicatedLines": 49,
+          "duplicatedTokens": 640,
+          "percentage": 0.83,
+          "percentageTokens": 1.29,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "tsx": {
+        "sources": {
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/VideoPreview/VideoPreview.tsx": {
+            "lines": 200,
+            "tokens": 1298,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/TimeSegmentEffects/TimelineSelector.tsx": {
+            "lines": 301,
+            "tokens": 2745,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/TimeSegmentEffects/TimeSegmentEffectsManager.tsx": {
+            "lines": 354,
+            "tokens": 2786,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/SubtitleOverlay/SubtitleOverlay.tsx": {
+            "lines": 81,
+            "tokens": 591,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/SubtitleConfig/SubtitleConfigControls.tsx": {
+            "lines": 178,
+            "tokens": 1377,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/HintTextOverlay/HintTextOverlay.tsx": {
+            "lines": 63,
+            "tokens": 472,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/HintTextConfig/HintTextConfigControls.tsx": {
+            "lines": 180,
+            "tokens": 1458,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/subtitles/page.tsx": {
+            "lines": 477,
+            "tokens": 3791,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 15,
+            "duplicatedTokens": 233,
+            "percentage": 3.14,
+            "percentageTokens": 6.15,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/comments/page.tsx": {
+            "lines": 960,
+            "tokens": 8356,
+            "sources": 1,
+            "clones": 6,
+            "duplicatedLines": 101,
+            "duplicatedTokens": 873,
+            "percentage": 10.52,
+            "percentageTokens": 10.45,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/Step4Preview.tsx": {
+            "lines": 88,
+            "tokens": 696,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/Step3Render.tsx": {
+            "lines": 268,
+            "tokens": 2169,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/Step2Translate.tsx": {
+            "lines": 111,
+            "tokens": 866,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/Step1Transcribe.tsx": {
+            "lines": 380,
+            "tokens": 3421,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/PreviewPane.tsx": {
+            "lines": 219,
+            "tokens": 2181,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/ColorPickerGrid.tsx": {
+            "lines": 37,
+            "tokens": 267,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/ChatModelSelect.tsx": {
+            "lines": 38,
+            "tokens": 272,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/download/page.tsx": {
+            "lines": 452,
+            "tokens": 4127,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/page.tsx": {
+            "lines": 28,
+            "tokens": 278,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/proxy/ssr-subscriptions-list.tsx": {
+            "lines": 116,
+            "tokens": 999,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/proxy/proxy-selector.tsx": {
+            "lines": 93,
+            "tokens": 731,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/proxy/proxy-list.tsx": {
+            "lines": 148,
+            "tokens": 1311,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/proxy/add-ssr-subscription-dialog.tsx": {
+            "lines": 138,
+            "tokens": 1026,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/remotion-preview-card.tsx": {
+            "lines": 153,
+            "tokens": 1291,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/media-list-page.tsx": {
+            "lines": 180,
+            "tokens": 1415,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/media-detail-page.tsx": {
+            "lines": 228,
+            "tokens": 1924,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/media-card.tsx": {
+            "lines": 194,
+            "tokens": 1523,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/comment-card.tsx": {
+            "lines": 179,
+            "tokens": 1429,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/channels/channel-video-list.tsx": {
+            "lines": 64,
+            "tokens": 570,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/proxy/page.tsx": {
+            "lines": 63,
+            "tokens": 492,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/page.tsx": {
+            "lines": 21,
+            "tokens": 185,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/channels/page.tsx": {
+            "lines": 464,
+            "tokens": 3997,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/query/hydration.tsx": {
+            "lines": 11,
+            "tokens": 79,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/tooltip.tsx": {
+            "lines": 56,
+            "tokens": 338,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/textarea.tsx": {
+            "lines": 17,
+            "tokens": 99,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/tabs.tsx": {
+            "lines": 65,
+            "tokens": 334,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/switch.tsx": {
+            "lines": 30,
+            "tokens": 147,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/sonner.tsx": {
+            "lines": 24,
+            "tokens": 154,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/skeleton.tsx": {
+            "lines": 12,
+            "tokens": 83,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/select.tsx": {
+            "lines": 184,
+            "tokens": 987,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/progress.tsx": {
+            "lines": 29,
+            "tokens": 279,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/pagination.tsx": {
+            "lines": 125,
+            "tokens": 739,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/label.tsx": {
+            "lines": 23,
+            "tokens": 118,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/input.tsx": {
+            "lines": 20,
+            "tokens": 114,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/dialog.tsx": {
+            "lines": 142,
+            "tokens": 811,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/card.tsx": {
+            "lines": 91,
+            "tokens": 515,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/button.tsx": {
+            "lines": 58,
+            "tokens": 347,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/ui/badge.tsx": {
+            "lines": 45,
+            "tokens": 279,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/layout/page-header.tsx": {
+            "lines": 68,
+            "tokens": 483,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/page.tsx": {
+            "lines": 122,
+            "tokens": 1082,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 22,
+            "duplicatedTokens": 206,
+            "percentage": 18.03,
+            "percentageTokens": 19.04,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/layout.tsx": {
+            "lines": 15,
+            "tokens": 108,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/remotion/Root.tsx": {
+            "lines": 38,
+            "tokens": 251,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/remotion/CommentsVideo.tsx": {
+            "lines": 960,
+            "tokens": 6520,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/sidebar.tsx": {
+            "lines": 208,
+            "tokens": 1447,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/providers.tsx": {
+            "lines": 35,
+            "tokens": 241,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/page.tsx": {
+            "lines": 86,
+            "tokens": 671,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/layout.tsx": {
+            "lines": 38,
+            "tokens": 267,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 8958,
+          "tokens": 70537,
+          "sources": 56,
+          "clones": 5,
+          "duplicatedLines": 69,
+          "duplicatedTokens": 656,
+          "percentage": 0.77,
+          "percentageTokens": 0.93,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "typescript": {
+        "sources": {
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/SubtitleOverlay/index.ts": {
+            "lines": 4,
+            "tokens": 13,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components/business/media/subtitles/HintTextOverlay/index.ts": {
+            "lines": 4,
+            "tokens": 13,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/subtitles/route.ts": {
+            "lines": 45,
+            "tokens": 395,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 30,
+            "duplicatedTokens": 312,
+            "percentage": 66.67,
+            "percentageTokens": 78.99,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/source/route.ts": {
+            "lines": 159,
+            "tokens": 1462,
+            "sources": 1,
+            "clones": 5,
+            "duplicatedLines": 66,
+            "duplicatedTokens": 691,
+            "percentage": 41.51,
+            "percentageTokens": 47.26,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/rendered-info/route.ts": {
+            "lines": 64,
+            "tokens": 560,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 45,
+            "duplicatedTokens": 405,
+            "percentage": 70.31,
+            "percentageTokens": 72.32,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/rendered/route.ts": {
+            "lines": 60,
+            "tokens": 508,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 27,
+            "duplicatedTokens": 237,
+            "percentage": 45,
+            "percentageTokens": 46.65,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/downloaded/route.ts": {
+            "lines": 68,
+            "tokens": 722,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 13,
+            "duplicatedTokens": 126,
+            "percentage": 19.12,
+            "percentageTokens": 17.45,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/comments-data/route.ts": {
+            "lines": 53,
+            "tokens": 499,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 15,
+            "duplicatedTokens": 159,
+            "percentage": 28.3,
+            "percentageTokens": 31.86,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-providers/src/core/shared.ts": {
+            "lines": 30,
+            "tokens": 259,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-comments/src/core/shared.ts": {
+            "lines": 168,
+            "tokens": 1871,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/api/render/cf-callback/route.ts": {
+            "lines": 289,
+            "tokens": 3010,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/app/api/orpc/[...slug]/route.ts": {
+            "lines": 34,
+            "tokens": 292,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/src/index.ts": {
+            "lines": 436,
+            "tokens": 6110,
+            "sources": 1,
+            "clones": 5,
+            "duplicatedLines": 56,
+            "duplicatedTokens": 913,
+            "percentage": 12.84,
+            "percentageTokens": 14.94,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/__tests__/convert-ass.test.ts": {
+            "lines": 82,
+            "tokens": 601,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-providers/src/index.ts": {
+            "lines": 158,
+            "tokens": 2308,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-providers/src/index.browser.ts": {
+            "lines": 20,
+            "tokens": 121,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-node/src/index.ts": {
+            "lines": 91,
+            "tokens": 941,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/src/types.ts": {
+            "lines": 96,
+            "tokens": 967,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/src/proxy.ts": {
+            "lines": 54,
+            "tokens": 606,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/src/metadata.ts": {
+            "lines": 64,
+            "tokens": 775,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/src/index.ts": {
+            "lines": 157,
+            "tokens": 1398,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/src/clash.ts": {
+            "lines": 501,
+            "tokens": 5684,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 12,
+            "duplicatedTokens": 214,
+            "percentage": 2.4,
+            "percentageTokens": 3.76,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-comments/src/index.ts": {
+            "lines": 138,
+            "tokens": 1218,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 151,
+            "percentage": 13.04,
+            "percentageTokens": 12.4,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-comments/src/index.browser.ts": {
+            "lines": 89,
+            "tokens": 758,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 151,
+            "percentage": 20.22,
+            "percentageTokens": 19.92,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/callback-utils/src/index.ts": {
+            "lines": 118,
+            "tokens": 1432,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/utils/time/index.ts": {
+            "lines": 40,
+            "tokens": 416,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/utils/format/format.ts": {
+            "lines": 267,
+            "tokens": 2508,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/utils/format/color.ts": {
+            "lines": 314,
+            "tokens": 2955,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/utils/file/client-safe.ts": {
+            "lines": 38,
+            "tokens": 249,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/utils/vtt.ts": {
+            "lines": 366,
+            "tokens": 2916,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/utils/time.ts": {
+            "lines": 127,
+            "tokens": 1114,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/utils/segment.ts": {
+            "lines": 292,
+            "tokens": 3057,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/utils/config.ts": {
+            "lines": 32,
+            "tokens": 401,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/types/index.ts": {
+            "lines": 207,
+            "tokens": 1351,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 10,
+            "duplicatedTokens": 226,
+            "percentage": 4.83,
+            "percentageTokens": 16.73,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/hooks/useVideoPreview.ts": {
+            "lines": 205,
+            "tokens": 1646,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/hooks/useSubtitleWorkflow.ts": {
+            "lines": 171,
+            "tokens": 1517,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 12,
+            "duplicatedTokens": 224,
+            "percentage": 7.02,
+            "percentageTokens": 14.77,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/config/prompts.ts": {
+            "lines": 62,
+            "tokens": 152,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/config/presets.ts": {
+            "lines": 118,
+            "tokens": 747,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/config/models.ts": {
+            "lines": 82,
+            "tokens": 494,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/config/constants.ts": {
+            "lines": 84,
+            "tokens": 410,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/services/subtitle/translate.service.ts": {
+            "lines": 80,
+            "tokens": 1250,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/services/subtitle/transcribe.service.ts": {
+            "lines": 192,
+            "tokens": 2338,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/services/subtitle/subtitle.service.ts": {
+            "lines": 15,
+            "tokens": 173,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/services/subtitle/render.service.ts": {
+            "lines": 42,
+            "tokens": 716,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 10,
+            "duplicatedTokens": 182,
+            "percentage": 23.81,
+            "percentageTokens": 25.42,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/services/subtitle/maintenance.service.ts": {
+            "lines": 91,
+            "tokens": 1330,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/services/download/download.service.ts": {
+            "lines": 401,
+            "tokens": 4069,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 26,
+            "duplicatedTokens": 216,
+            "percentage": 6.48,
+            "percentageTokens": 5.31,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/proxy/__tests__/parser.test.ts": {
+            "lines": 195,
+            "tokens": 1485,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/youtube/provider.ts": {
+            "lines": 95,
+            "tokens": 917,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 107,
+            "percentage": 8.42,
+            "percentageTokens": 11.67,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/youtube/metadata.ts": {
+            "lines": 39,
+            "tokens": 382,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/youtube/client.ts": {
+            "lines": 37,
+            "tokens": 348,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/utils.ts": {
+            "lines": 148,
+            "tokens": 1260,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/types.ts": {
+            "lines": 20,
+            "tokens": 138,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/provider.ts": {
+            "lines": 134,
+            "tokens": 1246,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 107,
+            "percentage": 5.97,
+            "percentageTokens": 8.59,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/metadata.ts": {
+            "lines": 9,
+            "tokens": 71,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/metadata.server.ts": {
+            "lines": 29,
+            "tokens": 311,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 16,
+            "duplicatedTokens": 200,
+            "percentage": 55.17,
+            "percentageTokens": 64.31,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/legacy-compat.ts": {
+            "lines": 82,
+            "tokens": 837,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 48,
+            "duplicatedTokens": 496,
+            "percentage": 58.54,
+            "percentageTokens": 59.26,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/comments.ts": {
+            "lines": 42,
+            "tokens": 342,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 32,
+            "duplicatedTokens": 296,
+            "percentage": 76.19,
+            "percentageTokens": 86.55,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/media/types/index.ts": {
+            "lines": 144,
+            "tokens": 968,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 22,
+            "duplicatedTokens": 135,
+            "percentage": 15.28,
+            "percentageTokens": 13.95,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/media/remotion/renderer.ts": {
+            "lines": 293,
+            "tokens": 2601,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/media/remotion/durations.ts": {
+            "lines": 97,
+            "tokens": 874,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/asr/whisper/index.ts": {
+            "lines": 158,
+            "tokens": 1278,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/remotion/utils/format.ts": {
+            "lines": 7,
+            "tokens": 123,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/tsdown.config.ts": {
+            "lines": 12,
+            "tokens": 85,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-providers/tsdown.config.ts": {
+            "lines": 13,
+            "tokens": 95,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-node/tsdown.config.ts": {
+            "lines": 11,
+            "tokens": 76,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/tsdown.config.ts": {
+            "lines": 12,
+            "tokens": 85,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-comments/tsdown.config.ts": {
+            "lines": 13,
+            "tokens": 92,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/callback-utils/tsdown.config.ts": {
+            "lines": 12,
+            "tokens": 84,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/orpc/procedures/subtitle.ts": {
+            "lines": 115,
+            "tokens": 1093,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/orpc/procedures/proxy.ts": {
+            "lines": 371,
+            "tokens": 3484,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/orpc/procedures/media.ts": {
+            "lines": 138,
+            "tokens": 1382,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/orpc/procedures/download.ts": {
+            "lines": 144,
+            "tokens": 1241,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/orpc/procedures/comment.ts": {
+            "lines": 650,
+            "tokens": 6570,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 22,
+            "duplicatedTokens": 214,
+            "percentage": 3.38,
+            "percentageTokens": 3.26,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/orpc/procedures/channel.ts": {
+            "lines": 258,
+            "tokens": 3299,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/utils/index.ts": {
+            "lines": 10,
+            "tokens": 63,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/types/provider.types.ts": {
+            "lines": 44,
+            "tokens": 595,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/types/media.types.ts": {
+            "lines": 49,
+            "tokens": 472,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/types/download.types.ts": {
+            "lines": 58,
+            "tokens": 379,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/query/client.ts": {
+            "lines": 14,
+            "tokens": 94,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/proxy/utils.ts": {
+            "lines": 27,
+            "tokens": 259,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/proxy/useProxySubscriptionMutation.ts": {
+            "lines": 17,
+            "tokens": 213,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/proxy/parser.ts": {
+            "lines": 884,
+            "tokens": 7864,
+            "sources": 1,
+            "clones": 4,
+            "duplicatedLines": 64,
+            "duplicatedTokens": 596,
+            "percentage": 7.24,
+            "percentageTokens": 7.58,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/providers/provider-factory.ts": {
+            "lines": 245,
+            "tokens": 1515,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/orpc/query-client.ts": {
+            "lines": 3,
+            "tokens": 36,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/orpc/client.ts": {
+            "lines": 29,
+            "tokens": 191,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/media/stream.ts": {
+            "lines": 186,
+            "tokens": 2230,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/media/comments-snapshot.ts": {
+            "lines": 44,
+            "tokens": 349,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/logger/types.ts": {
+            "lines": 17,
+            "tokens": 110,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/logger/index.ts": {
+            "lines": 68,
+            "tokens": 617,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/logger/formatters.ts": {
+            "lines": 14,
+            "tokens": 210,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/hooks/usePersistedJobId.ts": {
+            "lines": 48,
+            "tokens": 448,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/hooks/usePageVisibility.ts": {
+            "lines": 16,
+            "tokens": 151,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/hooks/useEnhancedMutation.ts": {
+            "lines": 62,
+            "tokens": 717,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/hooks/useCloudJob.ts": {
+            "lines": 58,
+            "tokens": 625,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/db/schema.ts": {
+            "lines": 165,
+            "tokens": 1838,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/db/media-utils.ts": {
+            "lines": 66,
+            "tokens": 463,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/db/index.ts": {
+            "lines": 16,
+            "tokens": 134,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/config/media.config.ts": {
+            "lines": 58,
+            "tokens": 475,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/config/media-status.config.ts": {
+            "lines": 50,
+            "tokens": 287,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/config/app.config.ts": {
+            "lines": 197,
+            "tokens": 1919,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/asr/prepare.ts": {
+            "lines": 64,
+            "tokens": 743,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/ai/translate.ts": {
+            "lines": 102,
+            "tokens": 887,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/ai/packycode.ts": {
+            "lines": 12,
+            "tokens": 98,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/ai/openai.ts": {
+            "lines": 16,
+            "tokens": 162,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/ai/models.ts": {
+            "lines": 70,
+            "tokens": 475,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/ai/deepseek.ts": {
+            "lines": 12,
+            "tokens": 94,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/ai/cloudflare.ts": {
+            "lines": 244,
+            "tokens": 2172,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/ai/chat.ts": {
+            "lines": 60,
+            "tokens": 473,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/cloudflare/media-orchestrator/containers.ts": {
+            "lines": 24,
+            "tokens": 134,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/cloudflare/media-orchestrator/containers-shim.ts": {
+            "lines": 25,
+            "tokens": 173,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/remotion/types.ts": {
+            "lines": 18,
+            "tokens": 119,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/remotion/index.ts": {
+            "lines": 3,
+            "tokens": 28,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/orpc/router.ts": {
+            "lines": 17,
+            "tokens": 137,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/cloudflare.ts": {
+            "lines": 165,
+            "tokens": 2265,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/vitest.config.ts": {
+            "lines": 12,
+            "tokens": 100,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/next.config.ts": {
+            "lines": 82,
+            "tokens": 465,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/middleware.ts": {
+            "lines": 63,
+            "tokens": 502,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/drizzle.config.ts": {
+            "lines": 16,
+            "tokens": 108,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 12936,
+          "tokens": 124488,
+          "sources": 118,
+          "clones": 21,
+          "duplicatedLines": 289,
+          "duplicatedTokens": 3179,
+          "percentage": 2.23,
+          "percentageTokens": 2.55,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "json": {
+        "sources": {
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/tsconfig.json": {
+            "lines": 7,
+            "tokens": 43,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/package.json": {
+            "lines": 23,
+            "tokens": 140,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-providers/tsconfig.json": {
+            "lines": 7,
+            "tokens": 43,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-providers/package.json": {
+            "lines": 26,
+            "tokens": 158,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-node/tsconfig.json": {
+            "lines": 7,
+            "tokens": 40,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-node/package.json": {
+            "lines": 22,
+            "tokens": 136,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/tsconfig.json": {
+            "lines": 7,
+            "tokens": 43,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/package.json": {
+            "lines": 26,
+            "tokens": 148,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-comments/tsconfig.json": {
+            "lines": 7,
+            "tokens": 43,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/media-comments/package.json": {
+            "lines": 26,
+            "tokens": 153,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/callback-utils/tsconfig.json": {
+            "lines": 7,
+            "tokens": 40,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/packages/callback-utils/package.json": {
+            "lines": 25,
+            "tokens": 140,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/containers/renderer-remotion/package.json": {
+            "lines": 20,
+            "tokens": 129,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/containers/media-downloader/package.json": {
+            "lines": 13,
+            "tokens": 80,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/containers/burner-ffmpeg/package.json": {
+            "lines": 10,
+            "tokens": 59,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/containers/audio-transcoder/package.json": {
+            "lines": 10,
+            "tokens": 59,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/cloudflare/media-orchestrator/tsconfig.json": {
+            "lines": 15,
+            "tokens": 98,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/.vscode/settings.json": {
+            "lines": 20,
+            "tokens": 91,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/.claude/settings.local.json": {
+            "lines": 21,
+            "tokens": 87,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/tsconfig.packages.json": {
+            "lines": 21,
+            "tokens": 151,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/tsconfig.json": {
+            "lines": 36,
+            "tokens": 199,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/package.json": {
+            "lines": 99,
+            "tokens": 664,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/components.json": {
+            "lines": 20,
+            "tokens": 124,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/biome.json": {
+            "lines": 32,
+            "tokens": 178,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/.unimported.json": {
+            "lines": 242,
+            "tokens": 1709,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 749,
+          "tokens": 4755,
+          "sources": 25,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "markdown": {
+        "sources": {
+          "/Users/hens/code-space/next-vid-genius-hub/lib/utils/README.md": {
+            "lines": 149,
+            "tokens": 652,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/lib/media/README.md": {
+            "lines": 44,
+            "tokens": 551,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/containers/media-downloader/README.md": {
+            "lines": 28,
+            "tokens": 596,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/containers/burner-ffmpeg/README.md": {
+            "lines": 8,
+            "tokens": 123,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/docs/containers-migration-guide.zh-CN.md": {
+            "lines": 201,
+            "tokens": 1047,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/docs/containers-migration-guide.en.md": {
+            "lines": 167,
+            "tokens": 1380,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/docs/PRODUCTION.md": {
+            "lines": 225,
+            "tokens": 1523,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/docs/DEV.md": {
+            "lines": 154,
+            "tokens": 1010,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/docs/CLOUDFLARE_DEPLOY.zh-CN.md": {
+            "lines": 408,
+            "tokens": 1953,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/hens/code-space/next-vid-genius-hub/AGENTS.md": {
+            "lines": 32,
+            "tokens": 655,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 1416,
+          "tokens": 9490,
+          "sources": 10,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      },
+      "css": {
+        "sources": {
+          "/Users/hens/code-space/next-vid-genius-hub/app/globals.css": {
+            "lines": 121,
+            "tokens": 1359,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 121,
+          "tokens": 1359,
+          "sources": 1,
+          "clones": 0,
+          "duplicatedLines": 0,
+          "duplicatedTokens": 0,
+          "percentage": 0,
+          "percentageTokens": 0,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      }
+    },
+    "total": {
+      "lines": 30077,
+      "tokens": 260408,
+      "sources": 270,
+      "clones": 30,
+      "duplicatedLines": 407,
+      "duplicatedTokens": 4475,
+      "percentage": 1.35,
+      "percentageTokens": 1.72,
+      "newDuplicatedLines": 0,
+      "newClones": 0
+    }
+  },
+  "duplicates": [
+    {
+      "format": "typescript",
+      "lines": 16,
+      "fragment": "export async function GET(\n  request: NextRequest,\n  context: { params: Promise<{ id: string }> },\n) {\n  try {\n    const { id: mediaId } = await context.params\n\n    const media = await db.query.media.findFirst({\n      where: eq(schema.media.id, mediaId),\n    })\n\n    if (!media) {\n      return NextResponse.json({ error: 'Media not found' }, { status: 404 })\n    }\n\n    const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/source/route.ts",
+        "start": 15,
+        "end": 30,
+        "startLoc": {
+          "line": 15,
+          "column": 1,
+          "position": 90
+        },
+        "endLoc": {
+          "line": 30,
+          "column": 6,
+          "position": 243
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/subtitles/route.ts",
+        "start": 8,
+        "end": 23,
+        "startLoc": {
+          "line": 8,
+          "column": 1,
+          "position": 59
+        },
+        "endLoc": {
+          "line": 23,
+          "column": 3,
+          "position": 212
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 11,
+      "fragment": "if (media.remoteVideoKey) {\n      try {\n        const url = await resolveRemoteVideoUrl({\n          filePath: media.filePath ?? null,\n          downloadJobId: null,\n          remoteVideoKey: media.remoteVideoKey,\n          title: media.title ?? null,\n        })\n        if (url) return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })\n      } catch (e) {\n        logger.warn('api', `[source] presign remoteVideoKey failed: ",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/source/route.ts",
+        "start": 131,
+        "end": 141,
+        "startLoc": {
+          "line": 131,
+          "column": 5,
+          "position": 1145
+        },
+        "endLoc": {
+          "line": 141,
+          "column": 42,
+          "position": 1267
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/source/route.ts",
+        "start": 44,
+        "end": 54,
+        "startLoc": {
+          "line": 44,
+          "column": 7,
+          "position": 355
+        },
+        "endLoc": {
+          "line": 54,
+          "column": 60,
+          "position": 477
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 19,
+      "fragment": ",\n} from '~/lib/media/stream'\n\nexport async function GET(\n  request: NextRequest,\n  context: { params: Promise<{ id: string }> },\n) {\n  try {\n    const { id: mediaId } = await context.params\n\n    const media = await db.query.media.findFirst({\n      where: eq(schema.media.id, mediaId),\n    })\n\n    if (!media) {\n      return NextResponse.json({ error: 'Media not found' }, { status: 404 })\n    }\n\n    if (!media.videoWithInfoPath",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/rendered-info/route.ts",
+        "start": 10,
+        "end": 28,
+        "startLoc": {
+          "line": 10,
+          "column": 24,
+          "position": 73
+        },
+        "endLoc": {
+          "line": 28,
+          "column": 18,
+          "position": 241
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/source/route.ts",
+        "start": 12,
+        "end": 23,
+        "startLoc": {
+          "line": 12,
+          "column": 28,
+          "position": 81
+        },
+        "endLoc": {
+          "line": 23,
+          "column": 12,
+          "position": 218
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 28,
+      "fragment": "import { eq } from 'drizzle-orm'\n\nimport { NextRequest, NextResponse } from 'next/server'\nimport { db, schema } from '~/lib/db'\nimport { logger } from '~/lib/logger'\nimport {\n\tbuildDownloadFilename,\n\textractOrchestratorUrlFromPath,\n\tproxyRemoteWithRange,\n\tserveLocalFileWithRange,\n} from '~/lib/media/stream'\n\nexport async function GET(\n\trequest: NextRequest,\n\tcontext: { params: Promise<{ id: string }> },\n) {\n\ttry {\n\t\tconst { id: mediaId } = await context.params\n\n\t\tconst media = await db.query.media.findFirst({\n\t\t\twhere: eq(schema.media.id, mediaId),\n\t\t})\n\n\t\tif (!media) {\n\t\t\treturn NextResponse.json({ error: 'Media not found' }, { status: 404 })\n\t\t}\n\n\t\tconst download",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/rendered/route.ts",
+        "start": 1,
+        "end": 28,
+        "startLoc": {
+          "line": 1,
+          "column": 1,
+          "position": 0
+        },
+        "endLoc": {
+          "line": 28,
+          "column": 9,
+          "position": 237
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/rendered-info/route.ts",
+        "start": 1,
+        "end": 30,
+        "startLoc": {
+          "line": 1,
+          "column": 1,
+          "position": 0
+        },
+        "endLoc": {
+          "line": 30,
+          "column": 8,
+          "position": 245
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": "} from '~/lib/media/stream'\n\nexport async function GET(\n  request: NextRequest,\n  context: { params: Promise<{ id: string }> },\n) {\n  try {\n    const { id: mediaId } = await context.params\n\n    const media = await db.query.media.findFirst({\n      where: eq(schema.media.id, mediaId),\n    })\n\n    if (!media) return",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/downloaded/route.ts",
+        "start": 6,
+        "end": 19,
+        "startLoc": {
+          "line": 6,
+          "column": 2,
+          "position": 67
+        },
+        "endLoc": {
+          "line": 19,
+          "column": 7,
+          "position": 193
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/source/route.ts",
+        "start": 13,
+        "end": 19,
+        "startLoc": {
+          "line": 13,
+          "column": 1,
+          "position": 83
+        },
+        "endLoc": {
+          "line": 19,
+          "column": 2,
+          "position": 178
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 16,
+      "fragment": "export async function GET(\n  request: NextRequest,\n  context: { params: Promise<{ id: string }> },\n) {\n  try {\n    const { id: mediaId } = await context.params\n\n    const media = await db.query.media.findFirst({\n      where: eq(schema.media.id, mediaId),\n    })\n\n    if (!media) {\n      return NextResponse.json({ error: 'Media not found' }, { status: 404 })\n    }\n\n    if (!media.comments",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/comments-data/route.ts",
+        "start": 8,
+        "end": 23,
+        "startLoc": {
+          "line": 8,
+          "column": 1,
+          "position": 59
+        },
+        "endLoc": {
+          "line": 23,
+          "column": 9,
+          "position": 218
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/api/media/[id]/subtitles/route.ts",
+        "start": 8,
+        "end": 23,
+        "startLoc": {
+          "line": 8,
+          "column": 1,
+          "position": 59
+        },
+        "endLoc": {
+          "line": 23,
+          "column": 12,
+          "position": 218
+        }
+      }
+    },
+    {
+      "format": "tsx",
+      "lines": 6,
+      "fragment": ".queryOptions({\n\t\t\t\tinput: { jobId },\n\t\t\t\tenabled: !!jobId,\n\t\t\t\trefetchInterval: (q: { state: { data?: { status?: string } } }) => {\n\t\t\t\t\tconst s = q.state.data?.status\n\t\t\t\t\treturn s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/comments/page.tsx",
+        "start": 73,
+        "end": 78,
+        "startLoc": {
+          "line": 73,
+          "column": 23,
+          "position": 787
+        },
+        "endLoc": {
+          "line": 78,
+          "column": 5,
+          "position": 894
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/subtitles/page.tsx",
+        "start": 112,
+        "end": 119,
+        "startLoc": {
+          "line": 112,
+          "column": 16,
+          "position": 943
+        },
+        "endLoc": {
+          "line": 119,
+          "column": 15,
+          "position": 1052
+        }
+      }
+    },
+    {
+      "format": "tsx",
+      "lines": 11,
+      "fragment": ".getRenderStatus.queryOptions({\n\t\t\t\tinput: { jobId },\n\t\t\t\tenabled: !!jobId,\n\t\t\t\trefetchInterval: (q: { state: { data?: { status?: string } } }) => {\n\t\t\t\t\tconst s = q.state.data?.status\n\t\t\t\t\treturn s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000\n\t\t\t\t},\n\t\t\t}),\n\t})\n\n\t// Source policy selection for rendering",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/comments/page.tsx",
+        "start": 255,
+        "end": 265,
+        "startLoc": {
+          "line": 255,
+          "column": 8,
+          "position": 2374
+        },
+        "endLoc": {
+          "line": 265,
+          "column": 41,
+          "position": 2500
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/subtitles/page.tsx",
+        "start": 112,
+        "end": 83,
+        "startLoc": {
+          "line": 112,
+          "column": 9,
+          "position": 941
+        },
+        "endLoc": {
+          "line": 83,
+          "column": 6,
+          "position": 911
+        }
+      }
+    },
+    {
+      "format": "tsx",
+      "lines": 20,
+      "fragment": "Comments</h4>\n\t\t\t\t\t\t\t\t\t\t\t</div>\n\n\t\t\t\t\t\t\t\t\t\t\t<div className=\"space-y-2\">\n\t\t\t\t\t\t\t\t\t\t\t\t<Select value={modModel} onValueChange={(v) => setModModel(v as ChatModelId)}>\n\t\t\t\t\t\t\t\t\t\t\t\t\t<SelectTrigger className=\"w-full\">\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t<SelectValue />\n\t\t\t\t\t\t\t\t\t\t\t\t\t</SelectTrigger>\n\t\t\t\t\t\t\t\t\t\t\t\t\t<SelectContent>\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t{ChatModelIds.map((modelId) => (\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t<SelectItem key={modelId} value={modelId}>\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t{modelId}\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t</SelectItem>\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t))}\n\t\t\t\t\t\t\t\t\t\t\t\t\t</SelectContent>\n\t\t\t\t\t\t\t\t\t\t\t\t</Select>\n\n\t\t\t\t\t\t\t\t\t\t\t<div className=\"flex items-center gap-2\">\n\t\t\t\t\t\t\t\t\t\t\t\t<Switch\n\t\t\t\t\t\t\t\t\t\t\t\t\t",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/comments/page.tsx",
+        "start": 653,
+        "end": 672,
+        "startLoc": {
+          "line": 653,
+          "column": 2,
+          "position": 5861
+        },
+        "endLoc": {
+          "line": 672,
+          "column": 14,
+          "position": 6009
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/comments/page.tsx",
+        "start": 606,
+        "end": 623,
+        "startLoc": {
+          "line": 606,
+          "column": 2,
+          "position": 5507
+        },
+        "endLoc": {
+          "line": 623,
+          "column": 15,
+          "position": 5653
+        }
+      }
+    },
+    {
+      "format": "tsx",
+      "lines": 25,
+      "fragment": "</SelectContent>\n\t\t\t\t\t\t\t\t\t\t\t\t\t</Select>\n\t\t\t\t\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t\t\t\t\t<div>\n\t\t\t\t\t\t\t\t\t\t\t\t\t<Label className=\"text-xs text-muted-foreground\">Backend:</Label>\n\t\t\t\t\t\t\t\t\t\t\t\t\t<div className=\"flex gap-1\">\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t<Button\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tvariant={renderBackend === 'cloud' ? 'default' : 'outline'}\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tsize=\"sm\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tonClick={() => setRenderBackend('cloud')}\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tclassName=\"flex-1\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tCloud\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t</Button>\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t<Button\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tvariant={renderBackend === 'local' ? 'default' : 'outline'}\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tsize=\"sm\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tonClick={() => setRenderBackend('local')}\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tclassName=\"flex-1\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t>\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tLocal\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t</Button>\n\t\t\t\t\t\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t\t\t\t\t{renderBackend",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/comments/page.tsx",
+        "start": 712,
+        "end": 736,
+        "startLoc": {
+          "line": 712,
+          "column": 15,
+          "position": 6375
+        },
+        "endLoc": {
+          "line": 736,
+          "column": 14,
+          "position": 6547
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/media/[id]/comments/page.tsx",
+        "start": 518,
+        "end": 542,
+        "startLoc": {
+          "line": 518,
+          "column": 15,
+          "position": 4730
+        },
+        "endLoc": {
+          "line": 542,
+          "column": 16,
+          "position": 4902
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": ").trim().replace('#', '')\n  if (normalized.length === 3) normalized = normalized.split('').map((c) => c + c).join('')\n  const int = Number.parseInt(normalized, 16)\n  const r = (int >> 16) & 255\n  const g = (int >> 8) & 255\n  const b = int & 255\n  return",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/src/index.ts",
+        "start": 173,
+        "end": 179,
+        "startLoc": {
+          "line": 173,
+          "column": 10,
+          "position": 1951
+        },
+        "endLoc": {
+          "line": 179,
+          "column": 7,
+          "position": 2078
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/src/index.ts",
+        "start": 140,
+        "end": 146,
+        "startLoc": {
+          "line": 140,
+          "column": 10,
+          "position": 1395
+        },
+        "endLoc": {
+          "line": 146,
+          "column": 6,
+          "position": 1522
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": ") {\n  let normalized = String(hex || '#ffffff').trim().replace('#', '')\n  if (normalized.length === 3) normalized = normalized.split('').map((c) => c + c).join('')\n  const int = Number.parseInt(normalized, 16)\n  const r = (int >> 16) & 255\n  const g = (int >> 8) & 255\n  const b = int & 255\n  const a = Math.round((1 - Math.min(Math.max(opacity ?? 1, 0), 1)) * 255)\n  return `&H${a.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}`\n}\n\nexport",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/src/index.ts",
+        "start": 182,
+        "end": 193,
+        "startLoc": {
+          "line": 182,
+          "column": 7,
+          "position": 2149
+        },
+        "endLoc": {
+          "line": 193,
+          "column": 7,
+          "position": 2411
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/src/index.ts",
+        "start": 172,
+        "end": 150,
+        "startLoc": {
+          "line": 172,
+          "column": 7,
+          "position": 1933
+        },
+        "endLoc": {
+          "line": 150,
+          "column": 9,
+          "position": 1639
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": "const grpcOpts: any = {}\n        const serviceName = params.get('servicename') || params.get('serviceName')\n        const mode = params.get('mode')\n        if (serviceName) grpcOpts['grpc-service-name'] = serviceName\n        if (mode) grpcOpts['grpc-mode'] = mode\n        if (Object.keys(grpcOpts).length) proxyConfig['grpc-opts'] = grpcOpts\n      } else",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/src/clash.ts",
+        "start": 244,
+        "end": 250,
+        "startLoc": {
+          "line": 244,
+          "column": 9,
+          "position": 3139
+        },
+        "endLoc": {
+          "line": 250,
+          "column": 5,
+          "position": 3246
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/src/clash.ts",
+        "start": 154,
+        "end": 162,
+        "startLoc": {
+          "line": 154,
+          "column": 9,
+          "position": 1913
+        },
+        "endLoc": {
+          "line": 162,
+          "column": 7,
+          "position": 2022
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 19,
+      "fragment": "function inferContentTypeFromUrl(url: string) {\n  try {\n    const ext = new URL(url).pathname.split('.').pop()?.toLowerCase()\n    switch (ext) {\n      case 'png': return 'image/png'\n      case 'webp': return 'image/webp'\n      case 'gif': return 'image/gif'\n      case 'bmp': return 'image/bmp'\n      case 'svg': return 'image/svg+xml'\n      case 'jpeg':\n      case 'jpg': return 'image/jpeg'\n      default: return undefined\n    }\n  } catch {\n    return undefined\n  }\n}\n\nexport",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-comments/src/index.browser.ts",
+        "start": 34,
+        "end": 52,
+        "startLoc": {
+          "line": 34,
+          "column": 1,
+          "position": 132
+        },
+        "endLoc": {
+          "line": 52,
+          "column": 7,
+          "position": 283
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-comments/src/index.ts",
+        "start": 39,
+        "end": 57,
+        "startLoc": {
+          "line": 39,
+          "column": 1,
+          "position": 141
+        },
+        "endLoc": {
+          "line": 57,
+          "column": 9,
+          "position": 292
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": "fontSize: z.number().min(COLOR_CONSTANTS.FONT_SIZE_MIN).max(COLOR_CONSTANTS.FONT_SIZE_MAX),\n\ttextColor: z.string().regex(COLOR_CONSTANTS.HEX_COLOR_REGEX, 'Invalid text color format'),\n\tbackgroundColor: z.string().regex(COLOR_CONSTANTS.HEX_COLOR_REGEX, 'Invalid background color format'),\n\tbackgroundOpacity: z.number().min(COLOR_CONSTANTS.OPACITY_MIN).max(COLOR_CONSTANTS.OPACITY_MAX),\n\toutlineColor: z.string().regex(COLOR_CONSTANTS.HEX_COLOR_REGEX, 'Invalid outline color format'),\n\ttimeSegmentEffects",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/types/index.ts",
+        "start": 101,
+        "end": 106,
+        "startLoc": {
+          "line": 101,
+          "column": 2,
+          "position": 705
+        },
+        "endLoc": {
+          "line": 106,
+          "column": 19,
+          "position": 818
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/types/index.ts",
+        "start": 88,
+        "end": 93,
+        "startLoc": {
+          "line": 88,
+          "column": 2,
+          "position": 528
+        },
+        "endLoc": {
+          "line": 93,
+          "column": 9,
+          "position": 641
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": "({\n\t\t\tstep1: { isCompleted: false, isEnabled: true, isLoading: false },\n\t\t\tstep2: { isCompleted: false, isEnabled: false, isLoading: false },\n\t\t\tstep3: { isCompleted: false, isEnabled: false, isLoading: false },\n\t\t\tstep4: { isCompleted: false, isEnabled: false, isLoading: false },\n\t\t})\n\t}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/hooks/useSubtitleWorkflow.ts",
+        "start": 138,
+        "end": 144,
+        "startLoc": {
+          "line": 138,
+          "column": 14,
+          "position": 1243
+        },
+        "endLoc": {
+          "line": 144,
+          "column": 2,
+          "position": 1355
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/subtitle/hooks/useSubtitleWorkflow.ts",
+        "start": 37,
+        "end": 44,
+        "startLoc": {
+          "line": 37,
+          "column": 3,
+          "position": 266
+        },
+        "endLoc": {
+          "line": 44,
+          "column": 10,
+          "position": 379
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": ": string }> {\n  const where = eq(schema.media.id, input.mediaId)\n  const media = await db.query.media.findFirst({ where })\n  if (!media) throw new Error('Media not found')\n  if (!media.translation) throw new Error('Translation not found')\n  const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/services/subtitle/render.service.ts",
+        "start": 32,
+        "end": 37,
+        "startLoc": {
+          "line": 32,
+          "column": 6,
+          "position": 526
+        },
+        "endLoc": {
+          "line": 37,
+          "column": 6,
+          "position": 617
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/services/subtitle/render.service.ts",
+        "start": 11,
+        "end": 16,
+        "startLoc": {
+          "line": 11,
+          "column": 2,
+          "position": 167
+        },
+        "endLoc": {
+          "line": 16,
+          "column": 3,
+          "position": 258
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": "{\n                    ...baseValues,\n                    downloadBackend: downloadMeta.downloadBackend,\n                    downloadStatus: downloadMeta.downloadStatus,\n                    downloadError: downloadMeta.downloadError,\n                    downloadQueuedAt: downloadMeta.downloadQueuedAt,\n                    downloadCompletedAt: downloadMeta.downloadCompletedAt,\n                    remoteVideoKey: downloadMeta.remoteVideoKey,\n                    remoteAudioKey: downloadMeta.remoteAudioKey,\n                    remoteMetadataKey: downloadMeta.remoteMetadataKey,\n                    downloadJobId: downloadMeta.downloadJobId,\n                    rawMetadataPath: downloadMeta.rawMetadataPath,\n                    rawMetadataDownloadedAt: downloadMeta.rawMetadataDownloadedAt,\n                },",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/services/download/download.service.ts",
+        "start": 383,
+        "end": 396,
+        "startLoc": {
+          "line": 383,
+          "column": 2,
+          "position": 3935
+        },
+        "endLoc": {
+          "line": 396,
+          "column": 2,
+          "position": 4043
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/services/download/download.service.ts",
+        "start": 367,
+        "end": 380,
+        "startLoc": {
+          "line": 367,
+          "column": 2,
+          "position": 3804
+        },
+        "endLoc": {
+          "line": 380,
+          "column": 2,
+          "position": 3912
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": "${error instanceof Error ? error.message : String(error)}`)\n            return []\n        }\n    },\n\n    async searchVideos(query: string, _maxResults: number = 20): Promise<Array<{ id: string; title: string; url: string; thumbnail: string }>> {\n        try {\n            void query; void _maxResults;\n            // Implementation would require TikTok API or web scraping",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/provider.ts",
+        "start": 88,
+        "end": 96,
+        "startLoc": {
+          "line": 88,
+          "column": 38,
+          "position": 803
+        },
+        "endLoc": {
+          "line": 96,
+          "column": 59,
+          "position": 910
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/providers/youtube/provider.ts",
+        "start": 74,
+        "end": 82,
+        "startLoc": {
+          "line": 74,
+          "column": 34,
+          "position": 719
+        },
+        "endLoc": {
+          "line": 82,
+          "column": 51,
+          "position": 826
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 17,
+      "fragment": "const p = spawn('yt-dlp', args)\n\t\t\tlet out = ''\n\t\t\tlet err = ''\n\t\t\tp.stdout.on('data', (d) => (out += d.toString()))\n\t\t\tp.stderr.on('data', (d) => (err += d.toString()))\n\t\t\tp.on('close', (code) => {\n\t\t\t\tif (code === 0) resolve(out)\n\t\t\t\telse reject(new Error(err || `yt-dlp exit ${code}`))\n\t\t\t})\n\t\t\tp.on('error', reject)\n\t\t})\n\t\tconst parsed = JSON.parse(stdout) as TikTokInfo\n\t\treturn parsed\n\t} catch {\n\t\treturn null\n\t}\n}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/legacy-compat.ts",
+        "start": 23,
+        "end": 39,
+        "startLoc": {
+          "line": 23,
+          "column": 4,
+          "position": 202
+        },
+        "endLoc": {
+          "line": 39,
+          "column": 2,
+          "position": 402
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/metadata.server.ts",
+        "start": 14,
+        "end": 30,
+        "startLoc": {
+          "line": 14,
+          "column": 7,
+          "position": 111
+        },
+        "endLoc": {
+          "line": 30,
+          "column": 2,
+          "position": 311
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 33,
+      "fragment": "export async function downloadTikTokCommentsByUrl(\n\tvideoUrl: string,\n\tpages: number = 3,\n): Promise<TikTokBasicComment[]> {\n\tconst awemeId = await resolveAwemeIdViaTikwm(videoUrl)\n\tif (!awemeId) return []\n\n\tconst results: TikTokBasicComment[] = []\n\tlet cursor = 0\n\n\tfor (let i = 0; i < pages; i++) {\n\t\ttry {\n\t\t\tconst data = await fetchTikwmComments(awemeId, cursor)\n\t\t\tconst list: TikwmComment[] = Array.isArray(data?.data?.comments)\n\t\t\t\t? (data!.data!.comments as TikwmComment[])\n\t\t\t\t: []\n\n\t\t\tresults.push(...mapTikwmCommentsToBasic(list))\n\n\t\t\tconst hasMore = Boolean(data?.data?.has_more)\n\t\t\tconst nextCursor = Number(data?.data?.cursor ?? 0)\n\t\t\tif (hasMore) {\n\t\t\t\tcursor = nextCursor\n\t\t\t} else {\n\t\t\t\tbreak\n\t\t\t}\n\t\t} catch {\n\t\t\tbreak\n\t\t}\n\t}\n\n\treturn results\n}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/comments.ts",
+        "start": 11,
+        "end": 43,
+        "startLoc": {
+          "line": 11,
+          "column": 1,
+          "position": 46
+        },
+        "endLoc": {
+          "line": 43,
+          "column": 2,
+          "position": 342
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/providers/tiktok/legacy-compat.ts",
+        "start": 55,
+        "end": 83,
+        "startLoc": {
+          "line": 55,
+          "column": 1,
+          "position": 545
+        },
+        "endLoc": {
+          "line": 83,
+          "column": 2,
+          "position": 837
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 23,
+      "fragment": "}\n\nexport const defaultSubtitleRenderConfig: SubtitleRenderConfig = {\n\tfontSize: 18,\n\ttextColor: '#ffffff',\n\tbackgroundColor: '#000000',\n\tbackgroundOpacity: 0.65,\n\toutlineColor: '#000000',\n\ttimeSegmentEffects: [],\n\thintTextConfig: {\n\t\tenabled: false,\n\t\ttext: 'Please wait...',\n\t\tfontSize: 24,\n\t\ttextColor: '#ffffff',\n\t\tbackgroundColor: '#000000',\n\t\tbackgroundOpacity: 0.8,\n\t\toutlineColor: '#000000',\n\t\tposition: 'center',\n\t\tanimation: 'fade-in',\n\t},\n}\n\nexport",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/media/types/index.ts",
+        "start": 63,
+        "end": 85,
+        "startLoc": {
+          "line": 63,
+          "column": 1,
+          "position": 430
+        },
+        "endLoc": {
+          "line": 85,
+          "column": 7,
+          "position": 565
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/src/index.ts",
+        "start": 36,
+        "end": 58,
+        "startLoc": {
+          "line": 36,
+          "column": 1,
+          "position": 235
+        },
+        "endLoc": {
+          "line": 58,
+          "column": 6,
+          "position": 370
+        }
+      }
+    },
+    {
+      "format": "javascript",
+      "lines": 7,
+      "fragment": ").trim().replace('#', '')\n  if (normalized.length === 3) normalized = normalized.split('').map((c) => c + c).join('')\n  const int = Number.parseInt(normalized, 16)\n  const r = (int >> 16) & 255\n  const g = (int >> 8) & 255\n  const b = int & 255\n  return",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/index.js",
+        "start": 127,
+        "end": 133,
+        "startLoc": {
+          "line": 127,
+          "column": 10,
+          "position": 1504
+        },
+        "endLoc": {
+          "line": 133,
+          "column": 7,
+          "position": 1631
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/index.js",
+        "start": 93,
+        "end": 99,
+        "startLoc": {
+          "line": 93,
+          "column": 10,
+          "position": 987
+        },
+        "endLoc": {
+          "line": 99,
+          "column": 6,
+          "position": 1114
+        }
+      }
+    },
+    {
+      "format": "javascript",
+      "lines": 12,
+      "fragment": ") {\n  let normalized = String(hex || '#ffffff').trim().replace('#', '')\n  if (normalized.length === 3) normalized = normalized.split('').map((c) => c + c).join('')\n  const int = Number.parseInt(normalized, 16)\n  const r = (int >> 16) & 255\n  const g = (int >> 8) & 255\n  const b = int & 255\n  const a = Math.round((1 - Math.min(Math.max(opacity ?? 1, 0), 1)) * 255)\n  return `&H${a.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}`\n}\n\nexport",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/index.js",
+        "start": 136,
+        "end": 147,
+        "startLoc": {
+          "line": 136,
+          "column": 8,
+          "position": 1695
+        },
+        "endLoc": {
+          "line": 147,
+          "column": 7,
+          "position": 1957
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-subtitles/index.js",
+        "start": 126,
+        "end": 103,
+        "startLoc": {
+          "line": 126,
+          "column": 4,
+          "position": 1486
+        },
+        "endLoc": {
+          "line": 103,
+          "column": 9,
+          "position": 1231
+        }
+      }
+    },
+    {
+      "format": "javascript",
+      "lines": 7,
+      "fragment": "const grpcOpts = {}\n\t\t\t\tconst serviceName = params.get('servicename') || params.get('serviceName')\n\t\t\t\tconst mode = params.get('mode')\n\t\t\t\tif (serviceName) grpcOpts['grpc-service-name'] = serviceName\n\t\t\t\tif (mode) grpcOpts['grpc-mode'] = mode\n\t\t\t\tif (Object.keys(grpcOpts).length) proxyConfig['grpc-opts'] = grpcOpts\n\t\t\t} else",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/clash.js",
+        "start": 243,
+        "end": 249,
+        "startLoc": {
+          "line": 243,
+          "column": 5,
+          "position": 2960
+        },
+        "endLoc": {
+          "line": 249,
+          "column": 5,
+          "position": 3064
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/packages/media-core/clash.js",
+        "start": 153,
+        "end": 161,
+        "startLoc": {
+          "line": 153,
+          "column": 5,
+          "position": 1755
+        },
+        "endLoc": {
+          "line": 161,
+          "column": 7,
+          "position": 1861
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": "({ url: media.url, pages: pageCount, proxy: PROXY_URL })\n            comments = basic.map((c) => ({\n                id: c.id,\n                author: c.author,\n                authorThumbnail: c.authorThumbnail,\n                content: c.content,\n                likes: c.likes,\n                replyCount: c.replyCount,\n            }))\n        }\n\n\t\tif",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/orpc/procedures/comment.ts",
+        "start": 57,
+        "end": 68,
+        "startLoc": {
+          "line": 57,
+          "column": 28,
+          "position": 578
+        },
+        "endLoc": {
+          "line": 68,
+          "column": 3,
+          "position": 685
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/orpc/procedures/comment.ts",
+        "start": 47,
+        "end": 56,
+        "startLoc": {
+          "line": 47,
+          "column": 27,
+          "position": 459
+        },
+        "endLoc": {
+          "line": 56,
+          "column": 5,
+          "position": 564
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 13,
+      "fragment": ");\n    if (!url.hostname) {\n      throw new Error(\"Missing hostname\");\n    }\n\n    const port = parsePortNumber(url.port, 443);\n    const remark =\n      decodeLabel(url.hash) ??\n      safeDecode(url.searchParams.get(\"remarks\")) ??\n      safeDecode(url.searchParams.get(\"remark\")) ??\n      `${url.hostname}:${port}`;\n\n    const username",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/proxy/parser.ts",
+        "start": 139,
+        "end": 151,
+        "startLoc": {
+          "line": 139,
+          "column": 9,
+          "position": 1122
+        },
+        "endLoc": {
+          "line": 151,
+          "column": 9,
+          "position": 1238
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/proxy/parser.ts",
+        "start": 95,
+        "end": 107,
+        "startLoc": {
+          "line": 95,
+          "column": 10,
+          "position": 761
+        },
+        "endLoc": {
+          "line": 107,
+          "column": 14,
+          "position": 877
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 21,
+      "fragment": ");\n    if (!url.hostname) {\n      throw new Error(\"Missing hostname\");\n    }\n\n    const port = parsePortNumber(url.port, 443);\n    const remark =\n      decodeLabel(url.hash) ??\n      safeDecode(url.searchParams.get(\"remarks\")) ??\n      safeDecode(url.searchParams.get(\"remark\")) ??\n      `${url.hostname}:${port}`;\n\n    const username = safeDecode(url.username);\n    const password = safeDecode(url.password);\n\n    return {\n      id: createId(),\n      name: remark,\n      server: url.hostname,\n      port,\n      protocol: \"hysteria2\"",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/proxy/parser.ts",
+        "start": 177,
+        "end": 197,
+        "startLoc": {
+          "line": 177,
+          "column": 14,
+          "position": 1443
+        },
+        "endLoc": {
+          "line": 197,
+          "column": 12,
+          "position": 1625
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/lib/proxy/parser.ts",
+        "start": 95,
+        "end": 159,
+        "startLoc": {
+          "line": 95,
+          "column": 10,
+          "position": 761
+        },
+        "endLoc": {
+          "line": 159,
+          "column": 8,
+          "position": 1304
+        }
+      }
+    },
+    {
+      "format": "tsx",
+      "lines": 12,
+      "fragment": " className=\"h-4 w-4 text-muted-foreground\" />\n\t\t\t\t\t\t</CardHeader>\n\t\t\t\t\t\t<CardContent>\n\t\t\t\t\t\t\t<div className=\"text-2xl font-bold\">0</div>\n\t\t\t\t\t\t\t<p className=\"text-xs text-muted-foreground\">\n\t\t\t\t\t\t\t\t+0% from last month\n\t\t\t\t\t\t\t</p>\n\t\t\t\t\t\t</CardContent>\n\t\t\t\t\t</Card>\n\t\t\t\t\t<Card className=\"border-border/50 hover:shadow-md transition-shadow\">\n\t\t\t\t\t\t<CardHeader className=\"flex flex-row items-center justify-between space-y-0 pb-2\">\n\t\t\t\t\t\t\t<CardTitle className=\"text-sm font-medium\">Processing",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/page.tsx",
+        "start": 41,
+        "end": 52,
+        "startLoc": {
+          "line": 41,
+          "column": 9,
+          "position": 375
+        },
+        "endLoc": {
+          "line": 52,
+          "column": 11,
+          "position": 478
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/app/(workspace)/page.tsx",
+        "start": 29,
+        "end": 40,
+        "startLoc": {
+          "line": 29,
+          "column": 10,
+          "position": 262
+        },
+        "endLoc": {
+          "line": 40,
+          "column": 6,
+          "position": 365
+        }
+      }
+    },
+    {
+      "format": "javascript",
+      "lines": 27,
+      "fragment": "}}>\n              {formatCount(videoInfo.viewCount)}\n            </span>\n            <span>观看</span>\n          </div>\n          <div\n            style={{\n              display: \"flex\",\n              alignItems: \"center\",\n              gap: 12,\n              padding: \"12px 20px\",\n              borderRadius: \"12px\",\n              backgroundColor: \"rgba(248, 250, 252, 0.8)\",\n              border: \"1px solid rgba(226, 232, 240, 0.6)\",\n            }}\n          >\n            <span style={{ fontWeight: 600, color: palette.accent }}>\n              {commentCount}\n            </span>\n            <span>评论</span>\n          </div>\n        </div>\n\n        {/* Author and source */}\n        <div\n          style={{\n            display",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/remotion/CommentsVideo.tsx",
+        "start": 475,
+        "end": 501,
+        "startLoc": {
+          "line": 475,
+          "column": 8,
+          "position": 2876
+        },
+        "endLoc": {
+          "line": 501,
+          "column": 20,
+          "position": 3023
+        }
+      },
+      "secondFile": {
+        "name": "/Users/hens/code-space/next-vid-genius-hub/remotion/CommentsVideo.tsx",
+        "start": 462,
+        "end": 482,
+        "startLoc": {
+          "line": 462,
+          "column": 11,
+          "position": 2804
+        },
+        "endLoc": {
+          "line": 482,
+          "column": 22,
+          "position": 2917
+        }
+      }
+    }
+  ]
+}

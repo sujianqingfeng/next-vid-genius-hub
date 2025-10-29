@@ -66,6 +66,9 @@ cloudflare/media-orchestrator/.mf
 cloudflare/media-orchestrator/.dev.vars
 cloudflare/media-orchestrator/orchestrator.log
 
+# Root-level Cloudflare Wrangler state
+/.wrangler
+
 # Container dev artifacts
 containers/**/node_modules
 containers/**/package-lock.json
@@ -76,3 +79,16 @@ temp
 cache
 logs
 exports
+
+# package builds
+packages/**/dist
+
+# Other build outputs
+/dist
+cloudflare/**/dist
+
+# Static analysis & explorer outputs
+.depcheck.json
+.knip-output.json
+.tsprune.txt
+.unimported.json

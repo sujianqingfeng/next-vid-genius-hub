@@ -174,19 +174,6 @@ await runCommentsPipeline(
   - 进度回调（status/phase/progress）
   - 产物上传（video/audio/metadata）键
 
-## 本地服务集成（可选）
-- 本地 `DownloadService` 支持注入 artifact store，便于在本地模式也上传/同步：
-```ts
-import { downloadService } from '~/lib/services/download/download.service'
-
-downloadService.withArtifactStore({
-  uploadMetadata: async (data, ctx) => ({ key: `media/${ctx.operationDir.split('/').pop()}/metadata.json` }),
-  uploadVideo: async (path, ctx) => ({ key: `media/${ctx.operationDir.split('/').pop()}.mp4` }),
-  uploadAudio: async (path, ctx) => ({ key: `media/${ctx.operationDir.split('/').pop()}.mp3` }),
-})
-```
-- 返回的 `{ key }` 会在数据库中持久化到 `remote*Key` 字段。
-
 ## 代理处理
 - 若容器中运行 Clash/Mihomo，向流水线注入形如 `http://127.0.0.1:7890` 的 HTTP 代理。
 - `@app/media-providers` 对 `youtubei.js`/Undici 的 Request 输入做了 URL 正常化，避免 `ERR_INVALID_URL`。

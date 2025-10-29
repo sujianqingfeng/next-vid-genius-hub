@@ -19,7 +19,8 @@ import {
 	getModelLabel,
 } from '~/lib/subtitle/config/models'
 import type { TranscriptionProvider, WhisperModel } from '~/lib/subtitle/config/models'
-import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
+import { type ChatModelId } from '~/lib/ai/models'
+import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
 import { useEffect, useMemo, useState } from 'react'
 
 interface Step1TranscribeProps {
@@ -269,25 +270,14 @@ interface Step1TranscribeProps {
 						</div>
 
 						<div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-							<div>
-								<label className="text-sm font-medium mb-1 block">AI Model</label>
-								<Select
-									value={selectedAIModel}
-									onValueChange={(v) => onOptimizeModelChange?.(v as ChatModelId)}
-									disabled={isOptimizing}
-								>
-									<SelectTrigger>
-										<SelectValue placeholder="Select model" />
-									</SelectTrigger>
-									<SelectContent>
-										{ChatModelIds.map((id) => (
-											<SelectItem key={id} value={id}>
-												{id}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
+					<div>
+						<label className="text-sm font-medium mb-1 block">AI Model</label>
+						<ChatModelSelect
+							value={selectedAIModel}
+							onChange={(model) => onOptimizeModelChange?.(model)}
+							disabled={isOptimizing}
+						/>
+					</div>
 							<div>
 								<label className="text-sm font-medium mb-1 block">Pause Threshold (ms)</label>
 								<Input

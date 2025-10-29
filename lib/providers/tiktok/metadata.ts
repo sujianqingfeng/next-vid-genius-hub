@@ -1,4 +1,4 @@
-import { pickTikTokThumbnail } from './legacy-compat'
+import { pickTikTokThumbnail } from './utils'
 
 // Re-export utility functions
 export { pickTikTokThumbnail }

@@ -7,3 +7,12 @@ declare interface KVNamespace {}
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 declare interface R2Bucket {}
 
+// Minimal Durable Objects ambient declarations
+interface DurableObjectId {}
+interface DurableObjectStub {
+  fetch(input: Request | string, init?: RequestInit): Promise<Response>
+}
+interface DurableObjectNamespace {
+  idFromName(name: string): DurableObjectId
+  get(id: DurableObjectId): DurableObjectStub
+}

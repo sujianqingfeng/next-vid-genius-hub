@@ -7,7 +7,8 @@ export type LogCategory =
   | "api"
   | "db"
   | "media"
-  | "proxy";
+  | "proxy"
+  | "comments";
 
 export interface LogEntry {
   timestamp: string;

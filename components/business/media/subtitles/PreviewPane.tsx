@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '~/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Progress } from '~/components/ui/progress'
-import { Video, Layers, MonitorPlay, Film, Loader2 } from 'lucide-react'
+import { Video, Layers, MonitorPlay, Film } from 'lucide-react'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { VideoPreview } from './VideoPreview/VideoPreview'
 import { STATUS_LABELS } from '~/lib/config/media-status.config'
@@ -23,7 +23,6 @@ interface PreviewPaneProps {
   // Rendering state hints
   isRendering?: boolean
   cloudStatus?: { status?: string; progress?: number } | null
-  renderBackend?: 'local' | 'cloud'
 }
 
 export function PreviewPane(props: PreviewPaneProps) {
@@ -36,7 +35,6 @@ export function PreviewPane(props: PreviewPaneProps) {
     cacheBuster,
     isRendering,
     cloudStatus,
-    renderBackend,
   } = props
 
   const storageKey = useMemo(() => `subtitlePreviewMode:${mediaId}`, [mediaId])
@@ -48,6 +46,12 @@ export function PreviewPane(props: PreviewPaneProps) {
       if (val === 'overlay' || val === 'rendered' || val === 'auto') setMode(val)
     } catch {}
   }, [storageKey])
+
+  useEffect(() => {
+    if (!hasRenderedVideo && mode === 'rendered') {
+      setMode('auto')
+    }
+  }, [hasRenderedVideo, mode])
 
   useEffect(() => {
     try {
@@ -63,7 +67,6 @@ export function PreviewPane(props: PreviewPaneProps) {
   const renderedUrlBase = `/api/media/${mediaId}/rendered`
   const renderedSrc = cacheBuster ? `${renderedUrlBase}?v=${cacheBuster}` : renderedUrlBase
 
-  const isCloud = renderBackend === 'cloud'
   const statusLabel = useMemo(() => {
     const s = cloudStatus?.status
     if (!s) return isRendering ? 'Rendering…' : null
@@ -100,7 +103,7 @@ export function PreviewPane(props: PreviewPaneProps) {
         <div className="flex items-center gap-3">
           {(isRendering || cloudStatus?.status) && (
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-              {isCloud ? <Film className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}
+              <Film className="h-4 w-4" />
               <span>{statusLabel ?? 'Rendering…'}</span>
               {typeof progressPct === 'number' && <span className="tabular-nums">• {progressPct}%</span>}
             </div>

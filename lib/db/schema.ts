@@ -1,14 +1,27 @@
 import { createId } from '@paralleldrive/cuid2'
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
+export type ModerationSeverity = 'low' | 'medium' | 'high'
+
+export interface CommentModeration {
+    flagged: boolean
+    labels: string[]
+    severity: ModerationSeverity
+    reason: string
+    runId: string
+    modelId: string
+    moderatedAt: string // ISO string
+}
+
 export interface Comment {
-	id: string
-	author: string
-	authorThumbnail?: string
-	content: string
-	translatedContent?: string
-	likes: number
-	replyCount?: number
+    id: string
+    author: string
+    authorThumbnail?: string
+    content: string
+    translatedContent?: string
+    likes: number
+    replyCount?: number
+    moderation?: CommentModeration
 }
 
 export interface TranscriptionWord {
@@ -43,9 +56,13 @@ export const media = sqliteTable('media', {
 	transcriptionWords: text('transcription_words', { mode: 'json' }).$type<TranscriptionWord[]>(),
 	translation: text('translation'),
 	videoWithSubtitlesPath: text('video_with_subtitles_path'),
-	videoWithInfoPath: text('video_with_info_path'),
-	comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
-	commentsDownloadedAt: integer('comments_downloaded_at', { mode: 'timestamp' }),
+    videoWithInfoPath: text('video_with_info_path'),
+    comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
+    commentsDownloadedAt: integer('comments_downloaded_at', { mode: 'timestamp' }),
+    commentsModeratedAt: integer('comments_moderated_at', { mode: 'timestamp' }),
+    commentsModerationModel: text('comments_moderation_model'),
+    commentsFlaggedCount: integer('comments_flagged_count').default(0),
+    commentsModerationSummary: text('comments_moderation_summary', { mode: 'json' }).$type<Record<string, number>>(),
 	downloadBackend: text('download_backend', { enum: ['local', 'cloud'] }).default('local').notNull(),
 	downloadJobId: text('download_job_id'),
 	downloadStatus: text('download_status', {
@@ -102,4 +119,48 @@ export const proxies = sqliteTable('proxies', {
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date()),
+})
+
+// ---------------- Channels & Channel Videos ----------------
+export const channels = sqliteTable('channels', {
+  id: text('id')
+    .unique()
+    .notNull()
+    .$defaultFn(() => createId()),
+  provider: text('provider', { enum: ['youtube'] })
+    .notNull()
+    .default('youtube'),
+  channelUrl: text('channel_url').notNull(),
+  channelId: text('channel_id'),
+  title: text('title'),
+  thumbnail: text('thumbnail'),
+  defaultProxyId: text('default_proxy_id'),
+  lastSyncedAt: integer('last_synced_at', { mode: 'timestamp' }),
+  lastSyncStatus: text('last_sync_status', {
+    enum: ['queued', 'running', 'completed', 'failed'],
+  }),
+  lastJobId: text('last_job_id'),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }),
+})
+
+export const channelVideos = sqliteTable('channel_videos', {
+  id: text('id')
+    .unique()
+    .notNull()
+    .$defaultFn(() => createId()),
+  channelId: text('channel_id').notNull(),
+  videoId: text('video_id').notNull().unique(),
+  title: text('title').notNull(),
+  url: text('url').notNull(),
+  thumbnail: text('thumbnail'),
+  publishedAt: integer('published_at', { mode: 'timestamp' }),
+  viewCount: integer('view_count'),
+  likeCount: integer('like_count'),
+  raw: text('raw', { mode: 'json' }),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
 })

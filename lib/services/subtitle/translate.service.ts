@@ -6,8 +6,9 @@ import { generateObject } from '~/lib/ai/chat'
 import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
 import { getTranslationPrompt, DEFAULT_TRANSLATION_PROMPT_ID } from '~/lib/subtitle/config/prompts'
 import { z } from 'zod'
+import type { AIModelId } from '~/lib/ai/models'
 
-export async function translate(input: { mediaId: string; model: string; promptId?: string }): Promise<{ translation: string }> {
+export async function translate(input: { mediaId: string; model: AIModelId; promptId?: string }): Promise<{ translation: string }> {
   const { mediaId, model, promptId } = input
   const where = eq(schema.media.id, mediaId)
   const media = await db.query.media.findFirst({ where })
@@ -78,4 +79,3 @@ Strict rules:
   }
   return { translation: vtt }
 }
-

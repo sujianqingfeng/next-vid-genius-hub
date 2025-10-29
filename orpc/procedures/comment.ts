@@ -1,100 +1,16 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
-import {
-	OPERATIONS_DIR,
-	PROXY_URL,
-} from '~/lib/config/app.config'
-import { VIDEO_WITH_INFO_FILENAME } from '~/lib/config/app.config'
+import { PROXY_URL } from '~/lib/config/app.config'
 import { db, schema } from '~/lib/db'
-import { renderVideoWithRemotion } from '~/lib/media/remotion/renderer'
-import { startCloudJob, getJobStatus, presignGetByKey, putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
-import type { RenderProgressEvent } from '~/lib/media/remotion/renderer'
-import {
-	downloadYoutubeComments as coreDownloadYoutubeComments,
-	downloadTikTokCommentsByUrl as coreDownloadTikTokComments,
-} from '@app/media-providers'
+import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
+import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { logger } from '~/lib/logger'
-
-export const downloadComments = os
-	.input(
-		z.object({
-			mediaId: z.string(),
-			pages: z.number().default(3),
-		}),
-	)
-	.handler(async ({ input }) => {
-		const { mediaId, pages: pageCount } = input
-
-		const media = await db.query.media.findFirst({
-			where: eq(schema.media.id, mediaId),
-		})
-
-		if (!media) {
-			throw new Error('Media not found')
-		}
-
-        let comments: schema.Comment[] = []
-        if (media.source === 'tiktok') {
-            const basic = await coreDownloadTikTokComments({ url: media.url, pages: pageCount, proxy: PROXY_URL })
-            comments = basic.map((c) => ({
-                id: c.id,
-                author: c.author,
-                authorThumbnail: c.authorThumbnail,
-                content: c.content,
-                likes: c.likes,
-                replyCount: c.replyCount,
-            }))
-        } else {
-            const basic = await coreDownloadYoutubeComments({ url: media.url, pages: pageCount, proxy: PROXY_URL })
-            comments = basic.map((c) => ({
-                id: c.id,
-                author: c.author,
-                authorThumbnail: c.authorThumbnail,
-                content: c.content,
-                likes: c.likes,
-                replyCount: c.replyCount,
-            }))
-        }
-
-		if (comments.length === 0) {
-			return { success: true, count: 0 }
-		}
-
-    await db
-			.update(schema.media)
-			.set({
-				comments,
-				commentCount: comments.length,
-				commentsDownloadedAt: new Date(),
-			})
-			.where(eq(schema.media.id, mediaId))
-
-        // Materialize comments-data JSON to bucket and update manifest (best-effort)
-        try {
-            const key = `inputs/comments/${mediaId}.json`
-            const videoInfo = {
-                title: media.title || 'Untitled',
-                translatedTitle: media.translatedTitle || undefined,
-                viewCount: media.viewCount ?? 0,
-                author: media.author || undefined,
-                thumbnail: media.thumbnail || undefined,
-                series: '外网真实评论',
-            }
-            await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments }))
-            await upsertMediaManifest(mediaId, { commentsKey: key })
-            logger.info('comments', `comments-data materialized: ${key}`)
-        } catch (err) {
-            logger.warn('comments', `comments-data materialization skipped: ${err instanceof Error ? err.message : String(err)}`)
-        }
-
-		return { success: true, count: comments.length }
-	})
+import { generateObject } from '~/lib/ai/chat'
+import { createId } from '@paralleldrive/cuid2'
 
 export const translateComments = os
 	.input(
@@ -138,7 +54,7 @@ export const translateComments = os
 			}),
 		)
 
-    await db
+		await db
 			.update(schema.media)
 			.set({
 				comments: translatedComments,
@@ -146,24 +62,6 @@ export const translateComments = os
 				commentCount: translatedComments.length,
 			})
 			.where(eq(schema.media.id, mediaId))
-
-    // Materialize updated comments-data JSON to bucket and update manifest (best-effort)
-    try {
-        const key = `inputs/comments/${mediaId}.json`
-        const videoInfo = {
-            title: media.title || 'Untitled',
-            translatedTitle: translatedTitle || undefined,
-            viewCount: media.viewCount ?? 0,
-            author: media.author || undefined,
-            thumbnail: media.thumbnail || undefined,
-            series: '外网真实评论',
-        }
-        await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments: translatedComments }))
-        await upsertMediaManifest(mediaId, { commentsKey: key })
-        logger.info('comments', `comments-data materialized (translated): ${key}`)
-    } catch (err) {
-        logger.warn('comments', `comments-data materialization (translated) skipped: ${err instanceof Error ? err.message : String(err)}`)
-    }
 
 		return { success: true }
 	})
@@ -202,119 +100,6 @@ export const deleteComment = os
 		return { success: true }
 	})
 
-export const renderWithInfo = os
-    .input(
-        z.object({
-            mediaId: z.string(),
-            sourcePolicy: z.enum(['auto', 'original', 'subtitles']).optional().default('auto'),
-        }),
-    )
-    .handler(async ({ input }) => {
-        const { mediaId } = input
-
-		// Get media data
-		const media = await db.query.media.findFirst({
-			where: eq(schema.media.id, mediaId),
-		})
-
-		if (!media) {
-			throw new Error('Media not found')
-		}
-
-		if (!media.filePath) {
-			throw new Error('Media file path not found')
-		}
-
-		if (!media.comments || media.comments.length === 0) {
-			throw new Error('No comments found for this media')
-		}
-
-		// Create operation directory
-		const operationDir = path.join(OPERATIONS_DIR, media.id)
-		await fs.mkdir(operationDir, { recursive: true })
-		const progressFile = path.join(operationDir, 'render-progress.json')
-
-		const recordProgress = (event: RenderProgressEvent) => {
-			void fs
-				.writeFile(
-					progressFile,
-					JSON.stringify(
-						{
-							...event,
-							updatedAt: new Date().toISOString(),
-						},
-						null,
-						2,
-					),
-				)
-                .catch((error) => {
-                    logger.warn('rendering', `Failed to record render progress: ${error instanceof Error ? error.message : String(error)}`)
-                })
-		}
-
-		// seed initial progress state
-		recordProgress({ stage: 'bundle', progress: 0 })
-
-		// Define output path
-		const outputPath = path.join(operationDir, VIDEO_WITH_INFO_FILENAME)
-
-		// Prepare video info
-		const videoInfo = {
-			title: media.title,
-			translatedTitle: media.translatedTitle || undefined,
-			viewCount: media.viewCount || 0,
-			author: media.author || undefined,
-			thumbnail: media.thumbnail || undefined,
-			series: '外网真实评论',
-		}
-
-        // Resolve source according to policy
-        const resolveLocalSource = (): string => {
-            const policy = input.sourcePolicy || 'auto'
-            if (policy === 'original') {
-                if (media.filePath) return media.filePath
-                if (media.downloadJobId) return `remote:orchestrator:${media.downloadJobId}`
-                throw new Error('Original video not available')
-            }
-            if (policy === 'subtitles') {
-                if (media.videoWithSubtitlesPath) return media.videoWithSubtitlesPath
-                throw new Error('Subtitled video not available')
-            }
-            // auto
-            return media.videoWithSubtitlesPath || media.filePath || (media.downloadJobId ? `remote:orchestrator:${media.downloadJobId}` : '')
-        }
-
-        const selectedSource = resolveLocalSource()
-        if (!selectedSource) throw new Error('No suitable source video found')
-
-        try {
-            // Render video with info and comments
-            await renderVideoWithRemotion({
-                videoPath: selectedSource,
-                outputPath,
-                videoInfo,
-                comments: media.comments,
-                onProgress: recordProgress,
-            })
-
-			// Update database with rendered path
-			await db
-				.update(schema.media)
-				.set({ videoWithInfoPath: outputPath })
-				.where(eq(schema.media.id, mediaId))
-
-			return {
-				success: true,
-				message: 'Video rendered with info and comments successfully',
-				videoWithInfoPath: outputPath,
-				commentsCount: media.comments.length,
-			}
-        } catch (error) {
-            logger.error('rendering', `Error rendering video with info: ${error instanceof Error ? error.message : String(error)}`)
-            throw new Error(`Failed to render video: ${(error as Error).message}`)
-        }
-	})
-
 // Cloud rendering: start job explicitly (Remotion renderer)
 export const startCloudRender = os
     .input(
@@ -342,6 +127,21 @@ export const startCloudRender = os
 		}
 		if (!media.comments || media.comments.length === 0) {
 			throw new Error('No comments found for this media')
+		}
+
+		const comments = media.comments
+
+		let snapshotKey: string | undefined
+		try {
+			const snapshot = await buildCommentsSnapshot(media, { comments })
+			snapshotKey = snapshot.key
+			logger.info('comments', `comments-data materialized (render-cloud): ${snapshotKey}`)
+		} catch (error) {
+			logger.error(
+				'comments',
+				`Failed to materialize comments-data before cloud render: ${error instanceof Error ? error.message : String(error)}`,
+			)
+			throw new Error('Failed to prepare comments metadata for cloud render')
 		}
 
 		let proxyPayload = undefined
@@ -459,25 +259,181 @@ export const finalizeCloudCommentsDownload = os
 				commentsDownloadedAt: new Date(),
 			})
 			.where(eq(schema.media.id, mediaId))
-
-    // Materialize comments-data JSON to bucket and update manifest (best-effort)
-    try {
-        const key = `inputs/comments/${mediaId}.json`
-        const media2 = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
-        const videoInfo = {
-            title: media2?.title || 'Untitled',
-            translatedTitle: media2?.translatedTitle || undefined,
-            viewCount: media2?.viewCount ?? 0,
-            author: media2?.author || undefined,
-            thumbnail: media2?.thumbnail || undefined,
-            series: '外网真实评论',
-        }
-        await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments }))
-        await upsertMediaManifest(mediaId, { commentsKey: key })
-        logger.info('comments', `comments-data materialized (cloud): ${key}`)
-    } catch (err) {
-        logger.warn('comments', `comments-data materialization (cloud) skipped: ${err instanceof Error ? err.message : String(err)}`)
-    }
-
 		return { success: true, count: comments.length }
 	})
+
+// ============ AI Moderation ============
+const moderationResultSchema = z.object({
+  flagged: z
+    .array(
+      z.object({
+        index: z.number().int().nonnegative(),
+        commentId: z.string().min(1),
+        labels: z.array(z.string().min(1)).min(1),
+        severity: z.enum(['low', 'medium', 'high']),
+        reason: z.string().min(3).max(500),
+      }),
+    )
+    .default([]),
+  total: z.number().int().optional(),
+})
+
+const MODERATION_LABEL_LIST = [
+  'politics',
+  'pornography',
+  'nudity',
+  'violence',
+  'abuse',
+  'hate',
+  'discrimination',
+  'self_harm',
+  'drugs',
+  'weapon',
+  'scam_fraud',
+  'gambling',
+  'privacy',
+  'copyright',
+  'spam',
+  'other',
+] as const
+
+function buildModerationSystemPrompt() {
+  return [
+    '你是内容审核助手，需严格依据中国大陆主流平台的审核标准判断评论是否需要拦截或谨慎展示。',
+    '仅按要求输出 JSON，不要输出多余文本、代码块或 markdown。',
+    '审核维度包括但不限于：涉政、色情/裸露、暴力、辱骂、仇恨/歧视、自残/自杀、毒品、武器、诈骗/引流、赌博、隐私泄露、版权侵权、垃圾信息等。',
+    `标签可从以下集合中选择：${MODERATION_LABEL_LIST.join(', ')}。`,
+    '判定为需标记时，给出最贴切的 1-3 个标签，标注严重度（low/medium/high）并简述理由（不超过 300 字）。',
+    '输出格式（严格）：{"flagged":[{"index":0,"commentId":"id","labels":["spam"],"severity":"medium","reason":"..."}],"total":N}',
+  ].join('\n')
+}
+
+function buildChunkPrompt(items: Array<{ index: number; commentId: string; text: string; translatedText?: string }>) {
+  const header = [
+    '任务：对以下评论进行审核。仅返回 JSON，且必须匹配给定 schema。',
+    '输入为数组，每项包含 index、commentId、text、translatedText(可选)。',
+    '请仅返回需要标记的评论，未命中的不要出现在结果中。',
+  ].join('\n')
+
+  const body = JSON.stringify(
+    items.map((it) => ({ index: it.index, commentId: it.commentId, text: it.text, translatedText: it.translatedText })),
+  )
+
+  const tail = [
+    '严格输出 JSON：{"flagged":[{"index":number,"commentId":"string","labels":["string"],"severity":"low|medium|high","reason":"string"}],"total":number}',
+  ].join('\n')
+
+  return [header, '评论列表(JSON)：', body, tail].join('\n')
+}
+
+export const moderateComments = os
+  .input(
+    z.object({
+      mediaId: z.string(),
+      model: z.enum(AIModelIds).default('openai/gpt-4.1-mini' as AIModelId),
+      overwrite: z.boolean().optional().default(false),
+    }),
+  )
+  .handler(async ({ input }) => {
+    const { mediaId, model: modelId, overwrite } = input
+
+    const media = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
+    if (!media) throw new Error('Media not found')
+    const comments = media.comments || []
+    if (!comments || comments.length === 0) throw new Error('No comments to moderate')
+
+    const runId = createId()
+    const nowIso = new Date().toISOString()
+
+    // Build chunks
+    const CHUNK_SIZE = 120
+    const chunks: Array<{ start: number; end: number; items: Array<{ index: number; commentId: string; text: string; translatedText?: string }> }> = []
+    for (let i = 0; i < comments.length; i += CHUNK_SIZE) {
+      const slice = comments.slice(i, i + CHUNK_SIZE)
+      const items = slice.map((c, idx) => ({
+        index: idx,
+        commentId: c.id,
+        text: c.content || '',
+        translatedText: c.translatedContent || undefined,
+      }))
+      chunks.push({ start: i, end: i + slice.length, items })
+    }
+
+    const system = buildModerationSystemPrompt()
+    const idToIndex = new Map(comments.map((c, i) => [c.id, i]))
+
+    const flaggedGlobal: Array<{ index: number; labels: string[]; severity: 'low' | 'medium' | 'high'; reason: string }> = []
+
+    for (const ch of chunks) {
+      const prompt = buildChunkPrompt(ch.items)
+      try {
+        const { object } = await generateObject({ model: modelId, system, prompt, schema: moderationResultSchema })
+        const parsed = moderationResultSchema.parse(object)
+        for (const item of parsed.flagged) {
+          // Prefer commentId mapping; fallback to offset+index
+          let idx = idToIndex.get(item.commentId)
+          if (typeof idx !== 'number') idx = ch.start + item.index
+          if (Number.isNaN(idx) || idx == null || idx < 0 || idx >= comments.length) continue
+          flaggedGlobal.push({ index: idx, labels: item.labels.slice(0, 3), severity: item.severity, reason: item.reason })
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        logger.warn('comments', `[moderateComments] chunk failed, skipping: ${msg}`)
+      }
+    }
+
+    if (flaggedGlobal.length === 0) {
+      // Still update summary timestamps to indicate run happened
+      await db
+        .update(schema.media)
+        .set({
+          commentsModeratedAt: new Date(),
+          commentsModerationModel: modelId,
+          commentsFlaggedCount: 0,
+          commentsModerationSummary: {},
+        })
+        .where(eq(schema.media.id, mediaId))
+      return { success: true, flaggedCount: 0, total: comments.length }
+    }
+
+    // Apply to comment list
+    const touched = new Set<number>()
+    const updated: schema.Comment[] = comments.map((c) => ({ ...c }))
+    const summary = new Map<string, number>()
+
+    for (const f of flaggedGlobal) {
+      if (touched.has(f.index)) continue
+      const current = updated[f.index]
+      if (!current) continue
+      if (current.moderation && !overwrite) continue
+      current.moderation = {
+        flagged: true,
+        labels: f.labels,
+        severity: f.severity,
+        reason: f.reason,
+        runId,
+        modelId,
+        moderatedAt: nowIso,
+      }
+      touched.add(f.index)
+      for (const label of f.labels) summary.set(label, (summary.get(label) || 0) + 1)
+    }
+
+    let flaggedCount = 0
+    for (const c of updated) {
+      if (c?.moderation?.flagged) flaggedCount++
+    }
+
+    await db
+      .update(schema.media)
+      .set({
+        comments: updated,
+        commentsModeratedAt: new Date(),
+        commentsModerationModel: modelId,
+        commentsFlaggedCount: flaggedCount,
+        commentsModerationSummary: Object.fromEntries(summary.entries()),
+      })
+      .where(eq(schema.media.id, mediaId))
+
+    return { success: true, flaggedCount, total: comments.length }
+  })

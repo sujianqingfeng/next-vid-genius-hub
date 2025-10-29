@@ -1,7 +1,7 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useState } from 'react'
 import {
 	AlertCircle,
 	FileText,
@@ -38,6 +38,8 @@ import type {
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
+import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
 import type { SubtitleStepId } from '~/lib/subtitle/types'
 
@@ -80,31 +82,44 @@ export default function SubtitlesPage() {
 		((workflowState.downsampleBackend as ('auto' | 'local' | 'cloud')) ||
 			'cloud')
 
-	// 渲染后端选择（local | cloud）
-	const [renderBackend, setRenderBackend] = useState<'local' | 'cloud'>(
-		'cloud',
-	)
-	const [cloudJobId, setCloudJobId] = useState<string | null>(null)
+	// 渲染默认使用云端
 	const [previewVersion, setPreviewVersion] = useState<number | undefined>(undefined)
 	const queryClient = useQueryClient()
   const isVisible = usePageVisibility()
 
-  // 恢复/持久化 cloudJobId（按媒体维度）
-  useEffect(() => {
-    const key = `subtitleCloudJob:${mediaId}`
-    // 恢复
-    if (!cloudJobId) {
-      const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null
-      if (saved) setCloudJobId(saved)
-    }
-    // 持久化
-    if (cloudJobId) {
-      window.localStorage.setItem(key, cloudJobId)
-    }
-  }, [mediaId, cloudJobId])
+  const handleCloudRenderComplete = useCallback(() => {
+		queryClient.invalidateQueries({
+			queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+		})
+		if (activeStep === 'step3') {
+			setActiveStep('step4')
+		}
+		setPreviewVersion((v) => v ?? Date.now())
+  }, [activeStep, mediaId, queryClient, setActiveStep])
+
+	const {
+		setJobId: setCloudJobId,
+		statusQuery: cloudStatusQuery,
+	} = useCloudJob({
+		storageKey: `subtitleCloudJob:${mediaId}`,
+		enabled: isVisible && activeStep === 'step3',
+		completeStatuses: ['completed'],
+		onCompleted: handleCloudRenderComplete,
+		createQueryOptions: (jobId) =>
+			queryOrpc.subtitle.getRenderStatus.queryOptions({
+				input: { jobId },
+				enabled: !!jobId,
+				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+					const s = q.state.data?.status
+					return s && ['completed', 'failed', 'canceled'].includes(s)
+						? false
+						: TIME_CONSTANTS.RENDERING_POLL_INTERVAL
+				},
+			}),
+	})
 
 	// 转录mutation
-	const transcribeMutation = useMutation(
+	const transcribeMutation = useEnhancedMutation(
 		queryOrpc.subtitle.transcribe.mutationOptions({
 			onSuccess: (data) => {
 				if (data.transcription) {
@@ -114,45 +129,42 @@ export default function SubtitlesPage() {
 						selectedModel,
 						selectedProvider
 					})
-					// 确保媒体详情刷新，带回 transcriptionWords
-					queryClient.invalidateQueries({
-						queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-					})
 				}
 			},
 			onError: (error) => {
 				logger.error('transcription', `Transcription failed: ${error.message}`)
 			},
 		}),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+			},
+		},
 	)
 
 	// 优化转录 mutation（覆盖 transcription）
-    const optimizeMutation = useMutation(
-        queryOrpc.subtitle.optimizeTranscription.mutationOptions({
-            onSuccess: () => {
-                // 刷新媒体数据，带回 optimizedTranscription
-                queryClient.invalidateQueries({
-                    queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-                })
-            },
-        }),
-    )
+	const optimizeMutation = useEnhancedMutation(
+		queryOrpc.subtitle.optimizeTranscription.mutationOptions(),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+			},
+		},
+	)
 
 
-    // 清除优化后的转录
-    const clearOptimizedMutation = useMutation(
-        queryOrpc.subtitle.clearOptimizedTranscription.mutationOptions({
-            onSuccess: () => {
-                // 回退到原始 transcription（刷新媒体详情）
-                queryClient.invalidateQueries({
-                    queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-                })
-            },
-        }),
-    )
+	// 清除优化后的转录
+	const clearOptimizedMutation = useEnhancedMutation(
+		queryOrpc.subtitle.clearOptimizedTranscription.mutationOptions(),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
+			},
+		},
+	)
 
 	// 翻译mutation
-	const translateMutation = useMutation(
+	const translateMutation = useEnhancedMutation(
 		queryOrpc.subtitle.translate.mutationOptions({
 			onSuccess: (data) => {
 				if (data.translation) {
@@ -166,7 +178,7 @@ export default function SubtitlesPage() {
 	)
 
 	// 删除字幕片段mutation
-	const deleteCueMutation = useMutation(
+	const deleteCueMutation = useEnhancedMutation(
 		queryOrpc.subtitle.deleteTranslationCue.mutationOptions({
 			onSuccess: (data) => {
 				if (data.translation) {
@@ -176,17 +188,8 @@ export default function SubtitlesPage() {
 		}),
 	)
 
-	// 本地渲染mutation
-	const renderMutation = useMutation(
-		queryOrpc.subtitle.render.mutationOptions({
-			onSuccess: () => {
-				// 本地渲染：Hook会自动更新状态
-			},
-		}),
-	)
-
 	// 云端渲染：启动
-	const startCloudRenderMutation = useMutation(
+	const startCloudRenderMutation = useEnhancedMutation(
 		queryOrpc.subtitle.startCloudRender.mutationOptions({
 			onSuccess: (data) => {
 				setCloudJobId(data.jobId)
@@ -194,44 +197,13 @@ export default function SubtitlesPage() {
 		}),
 	)
 
-	// 云端渲染：轮询状态
-    const cloudStatusQuery = useQuery(
-        queryOrpc.subtitle.getRenderStatus.queryOptions({
-            input: { jobId: cloudJobId ?? '' },
-            enabled: !!cloudJobId && isVisible && activeStep === 'step3',
-            refetchInterval: (q: { state: { data?: { status?: string } } }) => {
-                const s = q.state.data?.status
-                return s && ['completed', 'failed', 'canceled'].includes(s)
-                    ? false
-                    : TIME_CONSTANTS.RENDERING_POLL_INTERVAL
-            },
-        }),
-    )
-
-  // 云端渲染完成后，刷新媒体数据并跳到预览（用 effect 避免在渲染期间触发副作用）
-  useEffect(() => {
-		if (renderBackend === 'cloud' && cloudJobId && cloudStatusQuery.data?.status === 'completed') {
-			queryClient.invalidateQueries({
-				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-			})
-			if (activeStep === 'step3') {
-				setActiveStep('step4')
+	// 预览用的云端渲染状态（避免 any）
+	const previewCloudStatus = cloudStatusQuery.data
+		? {
+				status: (cloudStatusQuery.data as { status?: string }).status,
+				progress: (cloudStatusQuery.data as { progress?: number }).progress,
 			}
-			// 生成一次性的预览版本号，避免无限刷新
-			setPreviewVersion((v) => v ?? Date.now())
-			// 完成后清理并停止后续状态查询
-			try { window.localStorage.removeItem(`subtitleCloudJob:${mediaId}`) } catch {}
-			setCloudJobId(null)
-		}
-  }, [renderBackend, cloudJobId, cloudStatusQuery.data?.status, activeStep, mediaId, queryClient, setActiveStep])
-
-  // 预览用的云端渲染状态（避免 any）
-  const previewCloudStatus = (renderBackend === 'cloud' && cloudStatusQuery.data)
-    ? {
-        status: (cloudStatusQuery.data as { status?: string }).status,
-        progress: (cloudStatusQuery.data as { progress?: number }).progress,
-      }
-    : null
+		: null
 
 	// 事件处理器
 	const handleStartTranscription = () => {
@@ -264,11 +236,7 @@ export default function SubtitlesPage() {
 
 	const handleRenderStart = (config: SubtitleRenderConfig) => {
 		updateWorkflowState({ subtitleConfig: config })
-		if (renderBackend === 'cloud') {
-			startCloudRenderMutation.mutate({ mediaId, subtitleConfig: config })
-		} else {
-			renderMutation.mutate({ mediaId, subtitleConfig: config, backend: 'local' })
-		}
+		startCloudRenderMutation.mutate({ mediaId, subtitleConfig: config })
 	}
 
 	const handleConfigChange = (config: SubtitleRenderConfig) => {
@@ -320,12 +288,9 @@ export default function SubtitlesPage() {
 				thumbnail={media?.thumbnail ?? undefined}
 				cacheBuster={previewVersion}
 				isRendering={
-					(renderBackend === 'cloud'
-						? (startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? ''))
-						: renderMutation.isPending)
+					startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
 				}
 				cloudStatus={previewCloudStatus}
-				renderBackend={renderBackend}
 			/>
 
 			{/* Step Navigation under preview (Tabs) */}
@@ -442,24 +407,16 @@ export default function SubtitlesPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Step3Render
-                        isRendering={
-                            renderBackend === 'cloud'
-                                ? startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
-                                : renderMutation.isPending
-                        }
-							onStart={handleRenderStart}
-							errorMessage={(renderBackend === 'cloud' ? startCloudRenderMutation.error?.message : renderMutation.error?.message)}
-							mediaId={mediaId}
-							translationAvailable={!!workflowState.translation}
-							translation={workflowState.translation}
-							config={subtitleConfig}
-							onConfigChange={handleConfigChange}
-							renderBackend={renderBackend}
-							onRenderBackendChange={setRenderBackend}
-							hidePreview
-							hideCuesList
-						/>
+							<Step3Render
+								isRendering={
+									startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
+								}
+								onStart={handleRenderStart}
+								errorMessage={startCloudRenderMutation.error?.message}
+								translationAvailable={!!workflowState.translation}
+								config={subtitleConfig}
+								onConfigChange={handleConfigChange}
+							/>
 
 
 					</CardContent>

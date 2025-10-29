@@ -40,7 +40,12 @@ export async function startCloudJob(input: StartJobInput): Promise<StartJobRespo
   const url = `${base.replace(/\/$/, '')}/jobs`
   const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
   const res = await postSignedJson(url, secret, input)
-  if (!res.ok) throw new Error(`startCloudJob failed: ${res.status} ${await res.text()}`)
+  if (!res.ok) {
+    // Body may have been read already by postSignedJson for logging; use clone() defensively.
+    let msg = ''
+    try { msg = await res.clone().text() } catch {}
+    throw new Error(`startCloudJob failed: ${res.status} ${msg}`)
+  }
   return (await res.json()) as StartJobResponse
 }
 
@@ -67,10 +72,11 @@ export async function presignGetByKey(key: string): Promise<string> {
 // Best-effort deletion of remote artifacts via orchestrator helper endpoints.
 // - keys: R2 object keys to delete
 // - artifactJobIds: orchestrator artifact job ids to purge
-export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJobIds?: string[] }): Promise<void> {
+export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJobIds?: string[]; prefixes?: string[] }): Promise<void> {
   const base = requireOrchestratorUrl()
   const keys = (input.keys ?? []).filter(Boolean)
   const jobIds = (input.artifactJobIds ?? []).filter(Boolean)
+  const prefixes = (input.prefixes ?? []).filter(Boolean)
 
   // 1) Batch delete objects by key (if any)
   if (keys.length > 0) {
@@ -88,6 +94,14 @@ export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJob
       throw new Error(`deleteCloudArtifacts: delete artifact ${id} failed: ${r.status} ${await r.text()}`)
     }
   }
+
+  // 3) Delete by prefixes (list + bulk delete)
+  if (prefixes.length > 0) {
+    const url = `${base.replace(/\/$/, '')}/debug/delete-prefixes`
+    const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+    const res = await postSignedJson(url, secret, { prefixes })
+    if (!res.ok) throw new Error(`deleteCloudArtifacts: delete prefixes failed: ${res.status} ${await res.text()}`)
+  }
 }
 
 // Request both PUT/GET presigned URLs for an arbitrary key
@@ -104,13 +118,14 @@ export async function presignPutAndGetByKey(key: string, contentType: string): P
 // Upload small object via presigned PUT
 export async function putObjectByKey(key: string, contentType: string, body: string | Uint8Array | Buffer): Promise<void> {
   const { putUrl } = await presignPutAndGetByKey(key, contentType)
+  const payload: BodyInit = typeof body === 'string' ? body : (body as unknown as BodyInit)
   const init: RequestInit = {
     method: 'PUT',
     headers: {
       'content-type': contentType,
       'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
     },
-    body: typeof body === 'string' ? body : (body as Uint8Array | Buffer),
+    body: payload,
   }
   const res = await fetch(putUrl, init)
   if (!res.ok) throw new Error(`putObjectByKey failed: ${res.status} ${await res.text()}`)

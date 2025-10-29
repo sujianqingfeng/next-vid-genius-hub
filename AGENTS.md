@@ -1,37 +1,37 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `app/` holds Next.js routes and layouts; `app/(workspace)/` packages the core media workflows and server actions.
-- `components/business/` contains feature-level widgets, while `components/ui/` keeps primitives; share only through explicit exports.
-- `lib/` centralizes AI/media utilities and shared hooks, and `orpc/` stores RPC definitions consumed by React Query clients.
-- `drizzle/` is migration output, `public/` serves static assets, and `scripts/` hosts operational helpers such as ingestion jobs.
+- `app/` holds Next.js routes/layouts; `app/(workspace)/` contains core media workflows and server actions.
+- `components/business/` hosts feature-level widgets; `components/ui/` contains primitives. Share only via explicit exports.
+- `lib/` centralizes AI/media utilities and shared hooks; `orpc/` stores RPC definitions consumed by React Query clients.
+- `drizzle/` is generated migration output (do not hand-edit); `public/` serves static assets; `scripts/` contains operational helpers (e.g., ingestion jobs, ffmpeg/yt-dlp wrappers).
 
 ## Build, Test, and Development Commands
-- `pnpm dev` starts the Turbopack dev server; run from repo root during feature work.
-- `pnpm build` + `pnpm start` validate the production bundle before releases.
-- `pnpm lint` runs the Next.js ESLint suite; fix or annotate any warnings.
-- `pnpm test` executes Vitest; use `--watch` for local loops and `--coverage` on persistence-heavy changes.
-- `pnpm db:generate`, `pnpm db:migrate`, and `pnpm db:studio` manage Drizzle schema changes.
-- `pnpm rebuild:native` rebuilds native deps (`yt-dlp-wrap`) after Node or OS upgrades.
+- `pnpm dev` — start Turbopack dev server during feature work.
+- `pnpm build` then `pnpm start` — create and validate the production bundle locally.
+- `pnpm lint` — run the Next.js ESLint suite; fix or annotate warnings.
+- `pnpm test` — run Vitest; add `--watch` for local loops and `--coverage` on persistence‑heavy changes.
+- `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:studio` — manage Drizzle schema changes and inspect state.
+- `pnpm rebuild:native` — rebuild native deps (e.g., `yt-dlp-wrap`) after Node/OS upgrades.
 
 ## Coding Style & Naming Conventions
-- Default to TypeScript and server components; mark files with `'use client'` only when interactivity is required.
-- Biome enforces tab indentation, single quotes, and minimal semicolons; run the formatter before commits.
-- Components use `PascalCase`, hooks/utilities use `camelCase`, environment variables use `UPPER_SNAKE_CASE`.
+- Prefer TypeScript and server components; add `'use client'` only when interactivity is required.
+- Biome formatting: tab indentation, single quotes, minimal semicolons. Run the formatter before commits.
+- Naming: components `PascalCase`; hooks/utilities `camelCase`; environment variables `UPPER_SNAKE_CASE`.
 - Group new features under `app/(workspace)` and colocate reusable UI logic in `components/business`.
 
 ## Testing Guidelines
-- Place tests in `**/__tests__/**/*.test.{ts,tsx}` mirroring the source tree so Vitest auto-discovers them.
+- Vitest auto-discovers tests in `**/__tests__/**/*.test.{ts,tsx}` mirroring the source tree.
 - Stub AI providers, network fetches, and download pipelines with local fixtures for deterministic runs.
-- Cover success, error, and cancellation paths for media pipelines and database adapters prior to merging.
+- Cover success, error, and cancellation paths for media pipelines and database adapters.
 - Capture `pnpm test` (and coverage when used) output in the PR description.
 
 ## Commit & Pull Request Guidelines
-- Use Conventional Commits (`feat:`, `refactor:`, `fix:`) with imperative, scoped summaries and context in the body.
-- Reference issues or tasks when available and squash exploratory commits before review.
-- PRs must outline problem, solution, verification steps, and include screenshots or clips for UI adjustments.
-- Flag schema migrations or long-running media jobs so reviewers can plan rollouts.
+- Use Conventional Commits (e.g., `feat:`, `fix:`, `refactor:`) with imperative, scoped summaries; link issues and squash exploratory commits.
+- PRs must outline problem, solution, and verification steps; include screenshots or clips for UI changes.
+- Flag schema migrations or long‑running media jobs so reviewers can plan rollouts.
 
 ## Database & Media Tooling Notes
-- Update schema types, run `pnpm db:generate`, inspect SQL, then apply with `pnpm db:migrate`; never hand-edit `drizzle/`.
-- Keep ffmpeg, yt-dlp, and similar helpers in `scripts/` and document required binaries in the PR when usage changes.
+- Update schema types → `pnpm db:generate` → inspect SQL → apply with `pnpm db:migrate`; never hand‑edit `drizzle/`.
+- Keep `ffmpeg`, `yt-dlp`, and similar helpers in `scripts/`; document required binaries in PRs when usage changes.
+
