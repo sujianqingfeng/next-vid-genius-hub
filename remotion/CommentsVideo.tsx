@@ -11,7 +11,7 @@ import {
   useCurrentFrame,
 } from "remotion";
 import type { CommentVideoInputProps } from "./types";
-import { VIDEO_WIDTH, VIDEO_HEIGHT } from "./layout-constants";
+import { VIDEO_WIDTH, VIDEO_HEIGHT } from "@app/media-comments";
 // Use relative import to avoid Next.js path alias in Remotion bundler
 import { formatCount } from "./utils/format";
 

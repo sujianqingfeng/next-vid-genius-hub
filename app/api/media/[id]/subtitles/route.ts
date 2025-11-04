@@ -6,7 +6,7 @@ import { logger } from '~/lib/logger'
 // Internal VTT provider for cloud rendering pipeline
 // Note: UI 下载已移除，但云端 burner 仍需要拉取 VTT 文本
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -44,4 +44,3 @@ export async function GET(
     )
   }
 }
-

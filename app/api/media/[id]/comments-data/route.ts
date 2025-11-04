@@ -6,7 +6,7 @@ import { logger } from '~/lib/logger'
 // Provides JSON needed by the Remotion renderer container.
 // Shape aligns with lib/media/types: { videoInfo, comments }
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {

@@ -126,8 +126,14 @@ async function handleCloudDownloadCallback(
 ) {
   const where = eq(schema.media.id, payload.mediaId)
 
-  // Detect comments-only task: no video output but has metadata output
-  const isCommentsOnly = !payload.outputs?.video?.url && Boolean(payload.outputs?.metadata?.url)
+	// Detect comments-only task: remote metadata exists but no video object was uploaded
+	const hasVideoArtifact = Boolean(
+		payload.outputs?.video?.url || payload.outputs?.video?.key,
+	)
+	const hasMetadataOutput = Boolean(
+		payload.outputs?.metadata?.url || payload.outputs?.metadata?.key,
+	)
+	const isCommentsOnly = hasMetadataOutput && !hasVideoArtifact
 
   
 

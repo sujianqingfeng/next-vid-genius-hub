@@ -35,5 +35,3 @@ export const RemotionRoot: React.FC = () => {
     </>
   )
 }
-
-export default RemotionRoot

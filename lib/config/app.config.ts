@@ -192,7 +192,3 @@ export const ASR_SAMPLE_RATE = Number(process.env.ASR_SAMPLE_RATE || 16000);
 export const CF_ORCHESTRATOR_URL = process.env.CF_ORCHESTRATOR_URL;
 export const JOB_CALLBACK_HMAC_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET;
 export const R2_PUBLIC_BASE_URL = process.env.R2_PUBLIC_BASE_URL;
-
-// Default artifact filenames
-export const RENDERED_VIDEO_FILENAME = "video-with-subtitles.mp4";
-export const VIDEO_WITH_INFO_FILENAME = "video-with-info-and-comments.mp4";
