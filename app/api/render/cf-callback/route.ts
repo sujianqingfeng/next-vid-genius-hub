@@ -10,7 +10,7 @@ import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
 import { readMetadataSummary } from '@app/media-core'
 import { logger } from '~/lib/logger'
-import { upsertMediaManifest } from '~/lib/cloudflare'
+import { presignGetByKey, upsertMediaManifest } from '~/lib/cloudflare'
 
 type CallbackPayload = {
   jobId: string
@@ -59,8 +59,9 @@ export async function POST(req: NextRequest) {
 
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, payload.mediaId) })
     if (!media) {
-      // Gracefully ignore callbacks that aren't tied to a media row (e.g. channel-list or comments-only tasks)
-      const hasMetadataOnly = !!(payload.outputs as any)?.metadata && !(payload.outputs as any)?.video
+	  // Gracefully ignore callbacks that aren't tied to a media row (e.g. channel-list or comments-only tasks)
+	  const outputs = payload.outputs
+	  const hasMetadataOnly = Boolean(outputs?.metadata) && !outputs?.video
       if (payload.engine === 'media-downloader' && hasMetadataOnly) {
         logger.info('api', `[cf-callback] non-media job callback ignored mediaId=${payload.mediaId}`)
         return NextResponse.json({ ok: true, ignored: true })
@@ -126,14 +127,53 @@ async function handleCloudDownloadCallback(
 ) {
   const where = eq(schema.media.id, payload.mediaId)
 
+	async function remoteObjectExists(key: string | null | undefined): Promise<boolean> {
+		if (!key) return false
+		try {
+			const url = await presignGetByKey(key)
+			const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+			const timeout = setTimeout(() => controller?.abort(), 5000)
+			try {
+				const res = await fetch(url, {
+					method: 'GET',
+					headers: { range: 'bytes=0-0' },
+					signal: controller?.signal,
+				})
+				if (res.ok || res.status === 206) return true
+				if (res.status === 404) return false
+				logger.warn(
+					'api',
+					`[cf-callback] remoteObjectExists unexpected status ${res.status} for key=${key}`,
+				)
+				return false
+			} finally {
+				clearTimeout(timeout)
+			}
+		} catch (error) {
+			logger.warn(
+				'api',
+				`[cf-callback] remoteObjectExists failed for key=${key}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+			return false
+		}
+	}
+
 	// Detect comments-only task: remote metadata exists but no video object was uploaded
-	const hasVideoArtifact = Boolean(
-		payload.outputs?.video?.url || payload.outputs?.video?.key,
-	)
-	const hasMetadataOutput = Boolean(
-		payload.outputs?.metadata?.url || payload.outputs?.metadata?.key,
-	)
-	const isCommentsOnly = hasMetadataOutput && !hasVideoArtifact
+	const rawVideoKey = payload.outputs?.video?.key ?? null
+	const fallbackVideoKey = (payload as Partial<CallbackPayload>)?.outputKey ?? null
+	const resolvedVideoKey = rawVideoKey ?? fallbackVideoKey ?? null
+	const audioKey = payload.outputs?.audio?.key ?? null
+	const metadataKey = payload.outputs?.metadata?.key ?? null
+	const videoUrl = payload.outputs?.video?.url ?? null
+	const audioUrl = payload.outputs?.audio?.url ?? null
+	const metadataUrl = payload.outputs?.metadata?.url ?? null
+
+	const videoExists = Boolean(videoUrl) || (await remoteObjectExists(resolvedVideoKey))
+	const audioExists = Boolean(audioUrl) || (await remoteObjectExists(audioKey))
+	const hasMetadataOutput = Boolean(metadataUrl || metadataKey)
+	const isCommentsOnly = hasMetadataOutput && !videoExists && !audioExists
 
   
 
@@ -162,9 +202,7 @@ async function handleCloudDownloadCallback(
   // Some orchestrator/container versions may omit outputs.video in progress payloads
   // but still provide the final outputKey. In such cases, we should not fail the job
   // when ENABLE_LOCAL_HYDRATE=false.
-  const videoUrl = payload.outputs?.video?.url
-  const videoKey = payload.outputs?.video?.key || (payload as any).outputKey || null
-  if (!videoUrl && !videoKey) {
+  if (!videoUrl && !resolvedVideoKey) {
     await db
       .update(schema.media)
       .set({
@@ -180,9 +218,8 @@ async function handleCloudDownloadCallback(
   const operationDir = path.join(OPERATIONS_DIR, payload.mediaId)
   await fs.mkdir(operationDir, { recursive: true })
 
-  const audioUrl = payload.outputs?.audio?.url
-  const metadataUrl = payload.outputs?.metadata?.url
-  const metadataKey = payload.outputs?.metadata?.key ?? null
+  const audioExistsWithSource = audioExists
+  const metadataExistsWithSource = Boolean(metadataUrl) || (await remoteObjectExists(metadataKey))
 
   const videoPath = path.join(operationDir, `${payload.mediaId}.mp4`)
   const audioPath = audioUrl ? path.join(operationDir, `${payload.mediaId}.mp3`) : null
@@ -221,9 +258,9 @@ async function handleCloudDownloadCallback(
     downloadJobId: payload.jobId,
     downloadCompletedAt: new Date(),
     // Prefer outputs.video.key; fall back to outputKey for backward compatibility
-    remoteVideoKey: payload.outputs?.video?.key ?? (videoKey ?? null),
-    remoteAudioKey: payload.outputs?.audio?.key ?? null,
-    remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
+    remoteVideoKey: videoExists ? (resolvedVideoKey ?? media.remoteVideoKey ?? null) : media.remoteVideoKey ?? null,
+    remoteAudioKey: audioExistsWithSource ? (audioKey ?? media.remoteAudioKey ?? null) : media.remoteAudioKey ?? null,
+    remoteMetadataKey: metadataExistsWithSource ? (metadataKey ?? media.remoteMetadataKey ?? null) : media.remoteMetadataKey ?? null,
     // hydrate 到本地时才写入本地路径
     ...(ENABLE_LOCAL_HYDRATE
       ? {
