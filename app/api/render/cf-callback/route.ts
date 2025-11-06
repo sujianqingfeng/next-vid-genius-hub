@@ -127,10 +127,14 @@ async function handleCloudDownloadCallback(
 ) {
   const where = eq(schema.media.id, payload.mediaId)
 
-	async function remoteObjectExists(key: string | null | undefined): Promise<boolean> {
-		if (!key) return false
-		try {
-			const url = await presignGetByKey(key)
+	async function remoteObjectExists({
+		key,
+		directUrl,
+	}: {
+		key?: string | null
+		directUrl?: string | null
+	}): Promise<boolean> {
+		const checkUrl = async (url: string, { label, logOnFailure }: { label: string; logOnFailure: boolean }) => {
 			const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
 			const timeout = setTimeout(() => controller?.abort(), 5000)
 			try {
@@ -141,14 +145,37 @@ async function handleCloudDownloadCallback(
 				})
 				if (res.ok || res.status === 206) return true
 				if (res.status === 404) return false
-				logger.warn(
-					'api',
-					`[cf-callback] remoteObjectExists unexpected status ${res.status} for key=${key}`,
-				)
+				if (logOnFailure) {
+					logger.warn('api', `[cf-callback] remoteObjectExists unexpected status ${res.status} for ${label}`)
+				}
+				return false
+			} catch (error) {
+				if (logOnFailure) {
+					logger.warn(
+						'api',
+						`[cf-callback] remoteObjectExists failed for ${label}: ${
+							error instanceof Error ? error.message : String(error)
+						}`,
+					)
+				}
 				return false
 			} finally {
 				clearTimeout(timeout)
 			}
+		}
+
+		if (directUrl) {
+			const directLabel = `url=${directUrl.split('?')[0]}`
+			if (await checkUrl(directUrl, { label: directLabel, logOnFailure: false })) {
+				return true
+			}
+		}
+
+		if (!key) return false
+
+		try {
+			const url = await presignGetByKey(key)
+			return await checkUrl(url, { label: `key=${key}`, logOnFailure: true })
 		} catch (error) {
 			logger.warn(
 				'api',
@@ -170,8 +197,9 @@ async function handleCloudDownloadCallback(
 	const audioUrl = payload.outputs?.audio?.url ?? null
 	const metadataUrl = payload.outputs?.metadata?.url ?? null
 
-	const videoExists = Boolean(videoUrl) || (await remoteObjectExists(resolvedVideoKey))
-	const audioExists = Boolean(audioUrl) || (await remoteObjectExists(audioKey))
+	const videoExists = await remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
+	const audioExists = await remoteObjectExists({ key: audioKey, directUrl: audioUrl })
+	const metadataExistsWithSource = await remoteObjectExists({ key: metadataKey, directUrl: metadataUrl })
 	const hasMetadataOutput = Boolean(metadataUrl || metadataKey)
 	const isCommentsOnly = hasMetadataOutput && !videoExists && !audioExists
 
@@ -219,7 +247,6 @@ async function handleCloudDownloadCallback(
   await fs.mkdir(operationDir, { recursive: true })
 
   const audioExistsWithSource = audioExists
-  const metadataExistsWithSource = Boolean(metadataUrl) || (await remoteObjectExists(metadataKey))
 
   const videoPath = path.join(operationDir, `${payload.mediaId}.mp4`)
   const audioPath = audioUrl ? path.join(operationDir, `${payload.mediaId}.mp3`) : null
@@ -301,14 +328,23 @@ async function handleCloudDownloadCallback(
   await db.update(schema.media).set(updates).where(where)
 
   // Update manifest with remote object keys (best-effort)
-  try {
-    await upsertMediaManifest(payload.mediaId, {
-      remoteVideoKey: payload.outputs?.video?.key ?? null,
-      remoteAudioKey: payload.outputs?.audio?.key ?? null,
-      remoteMetadataKey: payload.outputs?.metadata?.key ?? null,
-    })
-  } catch (err) {
-    logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
+  const manifestPatch: Parameters<typeof upsertMediaManifest>[1] = {}
+  const manifestVideoKey = rawVideoKey ?? resolvedVideoKey ?? null
+  if (videoExists && manifestVideoKey) {
+    manifestPatch.remoteVideoKey = manifestVideoKey
+  }
+  if (audioExistsWithSource && audioKey) {
+    manifestPatch.remoteAudioKey = audioKey
+  }
+  if (metadataExistsWithSource && metadataKey) {
+    manifestPatch.remoteMetadataKey = metadataKey
+  }
+  if (Object.keys(manifestPatch).length > 0) {
+    try {
+      await upsertMediaManifest(payload.mediaId, manifestPatch)
+    } catch (err) {
+      logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
 }
 
