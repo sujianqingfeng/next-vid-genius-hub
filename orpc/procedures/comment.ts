@@ -107,6 +107,7 @@ export const startCloudRender = os
             mediaId: z.string(),
             proxyId: z.string().optional(),
             sourcePolicy: z.enum(['auto', 'original', 'subtitles']).optional().default('auto'),
+            templateId: z.string().optional(),
         }),
     )
     .handler(async ({ input }) => {
@@ -173,6 +174,7 @@ export const startCloudRender = os
                 defaultProxyUrl: PROXY_URL,
                 proxy: proxyPayload,
                 sourcePolicy: input.sourcePolicy || 'auto',
+                templateId: input.templateId || media.commentsTemplate || 'comments-default',
             },
         })
         return { jobId: job.jobId }

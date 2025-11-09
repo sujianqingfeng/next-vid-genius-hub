@@ -39,6 +39,7 @@ import { Progress } from '~/components/ui/progress'
 import { Switch } from '~/components/ui/switch'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
+import { listTemplates, DEFAULT_TEMPLATE_ID, type RemotionTemplateId } from '~/remotion/templates'
 
 export default function CommentsPage() {
 	const params = useParams()
@@ -53,6 +54,7 @@ export default function CommentsPage() {
 
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
 	const [renderProxyId, setRenderProxyId] = useState<string>('none')
+    const [templateId, setTemplateId] = useState<RemotionTemplateId>(DEFAULT_TEMPLATE_ID)
 
 	// Edit titles dialog
 	const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -83,6 +85,23 @@ export default function CommentsPage() {
 			input: { id },
 		}),
 	)
+
+    // Hydrate selected template from server record
+    useEffect(() => {
+        const tid = (mediaQuery.data?.commentsTemplate as RemotionTemplateId | undefined) || DEFAULT_TEMPLATE_ID
+        setTemplateId(tid)
+    }, [mediaQuery.data?.commentsTemplate])
+
+    const updateRenderSettingsMutation = useEnhancedMutation(
+        queryOrpc.media.updateRenderSettings.mutationOptions(),
+        {
+            invalidateQueries: {
+                queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+            },
+            successToast: 'Template saved!',
+            errorToast: ({ error }) => `Failed to save template: ${error.message}`,
+        },
+    )
 
 	const updateTitlesMutation = useEnhancedMutation(
 		queryOrpc.media.updateTitles.mutationOptions({
@@ -395,6 +414,7 @@ export default function CommentsPage() {
 					videoInfo={previewVideoInfo}
 					comments={comments}
 					isLoading={mediaQuery.isLoading}
+					templateId={templateId}
 				/>
 
 				{/* Actions & Comments Grid */}
@@ -479,6 +499,29 @@ export default function CommentsPage() {
 												<h4 className="font-medium text-sm">Download Comments</h4>
 											</div>
 											<div className="space-y-2">
+												<div>
+													<Label className="text-xs text-muted-foreground">Template:</Label>
+													<Select value={templateId} onValueChange={(v) => setTemplateId(v as RemotionTemplateId)}>
+														<SelectTrigger className="w-full">
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{listTemplates().map((t) => (
+																<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+													<div className="mt-2 flex justify-end">
+														<Button
+															variant="outline"
+															size="sm"
+															onClick={() => updateRenderSettingsMutation.mutate({ id, commentsTemplate: templateId })}
+															disabled={updateRenderSettingsMutation.isPending}
+														>
+															{updateRenderSettingsMutation.isPending ? 'Saving…' : 'Save Template'}
+														</Button>
+													</div>
+												</div>
 												<div>
 													<Label className="text-xs text-muted-foreground">Pages:</Label>
 													<Select value={pages} onValueChange={setPages}>
@@ -666,11 +709,12 @@ export default function CommentsPage() {
 											</div>
 											<Button
 												onClick={() => {
-													startCloudRenderMutation.mutate({
-														mediaId: id,
-														proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
-														sourcePolicy,
-													})
+														startCloudRenderMutation.mutate({
+															mediaId: id,
+															proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
+															sourcePolicy,
+															templateId,
+														})
 												}}
 												disabled={startCloudRenderMutation.isPending}
 												className="w-full"

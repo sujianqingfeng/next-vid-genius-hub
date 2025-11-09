@@ -478,30 +478,39 @@ async function handleStart(env: Env, req: Request) {
     }
   }
 
-  let res: Response
+  let res: Response | undefined
   const preferExternal = (env as any).PREFER_EXTERNAL_CONTAINERS === 'true' || (env as any).NO_CF_CONTAINERS === 'true'
   const contBinding = preferExternal ? undefined : bindingForEngine(body.engine)
-  if (contBinding) {
-    // Use jobId as the container session key so each job gets its own instance
-    const inst = getContainer(contBinding, jobId)
-    const reqToContainer = new Request('http://container/render', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    res = await inst.fetch(reqToContainer)
-    console.log('[orchestrator] start job', jobId, 'container=cloudflare-containers', 'status=', res.status)
-  } else {
-    // Fire-and-forget HTTP call to external container host
-    res = await fetch(`${containerBase}/render`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    console.log('[orchestrator] start job', jobId, 'container=', containerBase, 'status=', res.status)
+  try {
+    if (contBinding) {
+      // Use jobId as the container session key so each job gets its own instance
+      const inst = getContainer(contBinding, jobId)
+      const reqToContainer = new Request('http://container/render', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      res = await inst.fetch(reqToContainer)
+      console.log('[orchestrator] start job', jobId, 'container=cloudflare-containers', 'status=', res.status)
+    } else {
+      // Fire-and-forget HTTP call to external container host
+      res = await fetch(`${containerBase}/render`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      console.log('[orchestrator] start job', jobId, 'container=', containerBase, 'status=', res.status)
+    }
+  } catch (e) {
+    const msg = (e as any)?.message || String(e)
+    console.error('[orchestrator] container start error', { jobId, engine: body.engine, base: contBinding ? 'cloudflare-containers' : containerBase, msg })
+    return json(
+      { jobId, error: 'container_unreachable', message: msg, engine: body.engine, containerBase: contBinding ? undefined : containerBase },
+      { status: 502 },
+    )
   }
-  if (!res.ok) {
-    return json({ jobId, error: 'container_start_failed' }, { status: 502 })
+  if (!res || !res.ok) {
+    return json({ jobId, error: 'container_start_failed', status: res?.status || 0 }, { status: 502 })
   }
 
   // Initialize Durable Object

@@ -162,9 +162,11 @@ export function buildComposeArgs({
   args.push(
     '-pix_fmt', pixFmt,
     '-movflags', movFlags,
+    // Hard stop at the expected total duration to avoid edge cases where
+    // filter graphs or looping sources keep ffmpeg alive beyond the overlay length.
+    '-t', String(totalDurationSeconds),
     '-shortest',
     outputPath,
   )
   return args
 }
-

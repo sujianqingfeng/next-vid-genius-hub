@@ -67,12 +67,28 @@ export const updateTitles = os
 
 		await db.update(schema.media).set(updateData).where(eq(schema.media.id, id))
 
-		const updated = await db.query.media.findFirst({
-			where: eq(schema.media.id, id),
-		})
+        const updated = await db.query.media.findFirst({
+            where: eq(schema.media.id, id),
+        })
+        return updated
+    })
 
-		return updated
-	})
+// 更新渲染相关设置（目前仅支持评论模板）
+export const updateRenderSettings = os
+  .input(
+    z.object({
+      id: z.string(),
+      commentsTemplate: z.string().optional(),
+    }),
+  )
+  .handler(async ({ input }) => {
+    const { id, commentsTemplate } = input
+    const updates: Record<string, unknown> = {}
+    if (typeof commentsTemplate !== 'undefined') updates.commentsTemplate = commentsTemplate
+    await db.update(schema.media).set(updates).where(eq(schema.media.id, id))
+    const updated = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
+    return updated
+  })
 
 export const deleteById = os
 	.input(z.object({ id: z.string() }))

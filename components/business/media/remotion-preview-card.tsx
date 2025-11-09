@@ -8,6 +8,7 @@ import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardFooter } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import type { Comment, VideoInfo } from '~/lib/media/types'
+import { DEFAULT_TEMPLATE_ID, getTemplate, type RemotionTemplateId } from '~/remotion/templates'
 
 import { buildCommentTimeline, REMOTION_FPS } from '~/lib/media/remotion/durations'
 import type { CommentVideoInputProps } from '~/remotion/types'
@@ -32,6 +33,7 @@ interface RemotionPreviewCardProps {
 	onRender?: () => void
 	onRenderLabel?: string
 	isRenderPending?: boolean
+  templateId?: RemotionTemplateId
 }
 
 function mapVideoInfo(
@@ -59,6 +61,7 @@ export function RemotionPreviewCard({
 	onRender,
 	onRenderLabel = 'Render',
 	isRenderPending,
+  templateId = DEFAULT_TEMPLATE_ID,
 }: RemotionPreviewCardProps) {
 	const mediaInfo = useMemo(() => mapVideoInfo(videoInfo), [videoInfo])
 	const timeline = useMemo(
@@ -79,6 +82,9 @@ export function RemotionPreviewCard({
 			fps: REMOTION_FPS,
 		}
 	}, [comments, mediaInfo, timeline])
+
+	const template = getTemplate(templateId)
+	const TemplateComponent = template.component
 
 	return (
 		<Card className="shadow-sm">
@@ -104,19 +110,34 @@ export function RemotionPreviewCard({
 					</div>
 				) : inputProps ? (
 					<div className="space-y-3">
-						<div className="relative aspect-video w-full overflow-hidden rounded-lg border">
+						{(() => {
+							const ratio = template.compositionHeight / template.compositionWidth
+							const wrapperStyle: React.CSSProperties = {
+								position: 'relative',
+								width: '100%',
+								paddingBottom: `${ratio * 100}%`,
+								overflow: 'hidden',
+								borderRadius: '0.5rem',
+								border: '1px solid hsl(var(--border))',
+							}
+							return (
+								<div style={wrapperStyle}>
+									<div style={{ position: 'absolute', inset: 0 }}>
 							<Player
-								component={CommentsVideo}
+								component={TemplateComponent}
 								inputProps={inputProps}
 								durationInFrames={timeline.totalDurationInFrames}
-							compositionWidth={1920}
-							compositionHeight={1080}
+							compositionWidth={template.compositionWidth}
+							compositionHeight={template.compositionHeight}
 							fps={REMOTION_FPS}
 								controls
 								loop
 								style={{ width: '100%', height: '100%', backgroundColor: '#0b1120' }}
 							/>
-						</div>
+								</div>
+								</div>
+							)
+						})()}
 						
 					</div>
 				) : null}
