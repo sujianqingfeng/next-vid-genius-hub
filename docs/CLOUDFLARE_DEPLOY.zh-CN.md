@@ -96,8 +96,7 @@ Cache-Control: public,max-age=31536000,immutable
   // 环境变量（根据生产环境调整）
   "vars": {
     "NODE_ENV": "production",
-    // Cloudflare 环境不支持本地文件写入，必须关闭本地落盘
-    "ENABLE_LOCAL_HYDRATE": "false",
+    // Cloudflare 环境默认只记录远端 Key，无需本地磁盘写入
 
     // 应用 URL（用于生成回调链接等）
     "NEXT_PUBLIC_APP_URL": "https://<your-domain>",
@@ -366,20 +365,9 @@ Cloudflare Workers 的 Node.js 兼容层不等同于完整 Node 环境。常见�
 
 因此，本仓库的重度媒体处理（ffmpeg、yt-dlp、Remotion 渲染等）已通过“编排 Worker + 外部容器/服务 + R2”解耦，Next.js 仅负责业务路由与数据库。
 
-### 5.2 关闭本地落盘（务必设置）
+### 5.2 远端产物持久化
 
-`app/api/render/cf-callback/route.ts` 在 `ENABLE_LOCAL_HYDRATE=true` 时会尝试将云端产物回传落地到本地磁盘（使用 Node `fs`）。
-
-在 Cloudflare 环境必须关闭：
-
-```json
-// wrangler.jsonc
-{
-  "vars": { "ENABLE_LOCAL_HYDRATE": "false" }
-}
-```
-
-这样数据库仅保存 R2 Key/URL 等远端引用，不会触发本地写入。
+`app/api/render/cf-callback/route.ts` 现在默认只记录云端产物的 Key/URL 与 `downloadJobId`，不再尝试写入 `OPERATIONS_DIR`。在 Cloudflare 环境无需额外变量，只要确保 Worker 回调提供可用的远端引用即可。
 
 ### 5.3 图片优化与远程图片
 
@@ -388,7 +376,7 @@ OpenNext Cloudflare 支持 Next.js 图片优化。项目已在 `next.config.ts` 
 ## 6. 验证 Checklist
 
 - 部署 Next.js 应用：`pnpm deploy` 输出成功，域名可访问
-- 校验数据库绑定：`wrangler.jsonc` 已配置 D1 绑定，`ENABLE_LOCAL_HYDRATE=false`
+- 校验数据库绑定：`wrangler.jsonc` 已配置 D1 绑定
 - 创建 R2 存储桶：`next-inc-cache` 用于 ISR/SSG 缓存（`public/_headers` 已设置）
 - 部署媒体编排 Worker：`wrangler deploy` 成功；`NEXT_BASE_URL` 与 `JOB_CALLBACK_HMAC_SECRET` 与 Next 保持一致
 - 触发一次媒体下载/渲染流程：
@@ -397,7 +385,7 @@ OpenNext Cloudflare 支持 Next.js 图片优化。项目已在 `next.config.ts` 
 
 ## 7. 常见问题（Troubleshooting）
 
-- 报错 “fs not supported”：未关闭本地落盘 → 设置 `ENABLE_LOCAL_HYDRATE=false`
+- 报错 “fs not supported”：确认部署版本已包含远端存储逻辑，或排查是否有其他代码在 Worker 环境尝试写入磁盘
 - D1 连接报错：检查 `wrangler.jsonc` 的数据库绑定与绑定名是否与代码一致（如 `env.DB`）
 - D1 迁移失败：在本地或 CI 执行 `wrangler d1 migrations apply`，并确认 SQL 与表结构一致
 - ISR/SSG 不生效：检查 `open-next.config.ts` 与 R2 绑定（`NEXT_INC_CACHE_R2_BUCKET`）是否配置正确

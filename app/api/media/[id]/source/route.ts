@@ -91,7 +91,7 @@ export async function GET(
     }
 
     // 1.5) If no local source, but a rendered artifact exists, serve it as source.
-    // This keeps cloud-only flows working when ENABLE_LOCAL_HYDRATE=false.
+    // This keeps pure cloud flows working even when artifacts never hydrate locally.
     // Prefer "with info" > "with subtitles" if available.
     // 优先使用“带字幕”的渲染产物作为回退源；避免对“已含信息/评论叠加”的成品再次叠加。
     const preferRendered = media.videoWithSubtitlesPath || media.videoWithInfoPath

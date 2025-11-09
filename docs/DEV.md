@@ -129,10 +129,10 @@ pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中
   - 评论数据（Remotion 渲染时需要）：`inputs/comments/<mediaId>.json` 或 `commentsKey`
   - 带字幕视频（若源策略选择 subtitles）：`inputs/videos/subtitles/<mediaId>.mp4` 或 `subtitlesInputKey`
 
-### 本地是否回传大文件（ENABLE_LOCAL_HYDRATE）
+### 云端产物存储
 
-- 默认：`ENABLE_LOCAL_HYDRATE=true`，回调后会把云端下载/渲染产物（视频/音频/metadata）落到 `OPERATIONS_DIR/<mediaId>/`，方便后续本地处理与调试。
-- 若磁盘紧张或希望完全走 R2 播放链路，可在 `.env` 设置 `ENABLE_LOCAL_HYDRATE=false`，此时仅保存远端 Key；预览/播放通过 Worker 预签 URL 或 `/artifacts/:jobId` 进行。
+- 云端下载/渲染完成后不再将视频/音频/metadata 落地到 `OPERATIONS_DIR/<mediaId>/`，统一只记录远端 Key。
+- 预览/播放通过 Worker 预签 URL 或 `/artifacts/:jobId` 进行，如需本地副本可手动下载对应对象。
 
 ## 流程验证
 

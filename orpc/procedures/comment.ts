@@ -114,7 +114,7 @@ export const startCloudRender = os
 		const where = eq(schema.media.id, mediaId)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
-		// 允许在未本地落盘（ENABLE_LOCAL_HYDRATE=false）的情况下走云端渲染。
+		// 允许在未本地落盘的情况下走云端渲染。
 		// 需要存在一个可用的源：本地文件、已完成的云下载（downloadStatus=completed）、已存在的远端 key，或已有渲染成品。
 	const hasAnySource = Boolean(
 		media.filePath ||
