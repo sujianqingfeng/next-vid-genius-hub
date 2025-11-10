@@ -498,34 +498,11 @@ export default function CommentsPage() {
 												<Download className="w-4 h-4 text-muted-foreground" />
 												<h4 className="font-medium text-sm">Download Comments</h4>
 											</div>
-											<div className="space-y-2">
-												<div>
-													<Label className="text-xs text-muted-foreground">Template:</Label>
-													<Select value={templateId} onValueChange={(v) => setTemplateId(v as RemotionTemplateId)}>
-														<SelectTrigger className="w-full">
-															<SelectValue />
-														</SelectTrigger>
-														<SelectContent>
-															{listTemplates().map((t) => (
-																<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-													<div className="mt-2 flex justify-end">
-														<Button
-															variant="outline"
-															size="sm"
-															onClick={() => updateRenderSettingsMutation.mutate({ id, commentsTemplate: templateId })}
-															disabled={updateRenderSettingsMutation.isPending}
-														>
-															{updateRenderSettingsMutation.isPending ? 'Saving…' : 'Save Template'}
-														</Button>
-													</div>
-												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">Pages:</Label>
-													<Select value={pages} onValueChange={setPages}>
-														<SelectTrigger className="w-full">
+										<div className="space-y-2">
+											<div>
+												<Label className="text-xs text-muted-foreground">Pages:</Label>
+												<Select value={pages} onValueChange={setPages}>
+													<SelectTrigger className="w-full">
 															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
@@ -684,9 +661,32 @@ export default function CommentsPage() {
 												<Film className="w-4 h-4 text-muted-foreground" />
 												<h4 className="font-medium text-sm">Render Video</h4>
 											</div>
-											<div className="space-y-2">
-												<div>
-													<Label className="text-xs text-muted-foreground">Source:</Label>
+										<div className="space-y-2">
+											<div>
+												<Label className="text-xs text-muted-foreground">Template:</Label>
+												<Select value={templateId} onValueChange={(v) => setTemplateId(v as RemotionTemplateId)}>
+													<SelectTrigger className="w-full">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{listTemplates().map((t) => (
+															<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												<div className="mt-2 flex justify-end">
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => updateRenderSettingsMutation.mutate({ id, commentsTemplate: templateId })}
+														disabled={updateRenderSettingsMutation.isPending}
+													>
+														{updateRenderSettingsMutation.isPending ? 'Saving…' : 'Save Template'}
+													</Button>
+												</div>
+											</div>
+											<div>
+												<Label className="text-xs text-muted-foreground">Source:</Label>
 													<Select value={sourcePolicy} onValueChange={(v) => setSourcePolicy(v as SourcePolicy)}>
 														<SelectTrigger className="w-full">
 															<SelectValue />
