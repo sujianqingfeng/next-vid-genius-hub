@@ -41,7 +41,6 @@ interface Step1TranscribeProps {
   selectedAIModel?: ChatModelId
   onOptimizeModelChange?: (model: ChatModelId) => void
   onOptimize?: (params: { pauseThresholdMs: number; maxSentenceMs: number; maxChars: number; lightCleanup?: boolean; textCorrect?: boolean }) => void
-  // new
   // spelling/grammar correction without changing VTT structure
   // (server will strictly preserve cues and timestamps)
   textCorrectDefault?: boolean

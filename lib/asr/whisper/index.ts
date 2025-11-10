@@ -139,7 +139,6 @@ async function transcribeWithLocalWhisper(
 
 	const vttPath = `${audioPath}.vtt`
 	const vttContent = await fs.readFile(vttPath, 'utf-8')
-	// await fs.unlink(vttPath) // Temporarily keep VTT file for inspection
 
 	// Local runs lack per-word timing, so surface an empty list and let callers clear prior data
 	const words: TranscriptionWord[] = []

@@ -283,7 +283,6 @@ function ChannelCard({
 	})
 
 	// Only propagate status changes when the value actually changes to avoid update loops.
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	React.useEffect(() => {
 		const s = (statusQuery?.data as { status?: string } | null)?.status
 		// Guard: update parent status map only when it differs from current prop

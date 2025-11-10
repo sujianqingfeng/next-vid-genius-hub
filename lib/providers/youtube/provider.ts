@@ -4,7 +4,6 @@ import type { BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchYouTubeMetadata } from './metadata'
 import { logger } from '~/lib/logger'
 import { extractVideoId } from '@app/media-providers'
-// import { getYouTubeClient } from './client'
 
 const clientCache = new Map<string, Promise<Innertube>>()
 
