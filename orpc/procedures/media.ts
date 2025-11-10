@@ -7,6 +7,8 @@ import { OPERATIONS_DIR } from '~/lib/config/app.config'
 import { deleteCloudArtifacts } from '~/lib/cloudflare'
 import { db, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
+import { generatePublishTitles } from '~/lib/ai/titles'
+import { AIModelIds, type AIModelId } from '~/lib/ai/models'
 
 export const list = os
 	.input(
@@ -86,6 +88,50 @@ export const updateRenderSettings = os
     const updates: Record<string, unknown> = {}
     if (typeof commentsTemplate !== 'undefined') updates.commentsTemplate = commentsTemplate
     await db.update(schema.media).set(updates).where(eq(schema.media.id, id))
+    const updated = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
+    return updated
+  })
+
+// 生成吸睛发布标题（基于原标题/字幕/评论；字幕可为空时自动降级）
+export const generatePublishTitle = os
+  .input(
+    z.object({
+      mediaId: z.string(),
+      model: z.enum(AIModelIds).optional().default('openai/gpt-4.1-mini' as AIModelId),
+      count: z.number().min(3).max(5).optional().default(5),
+      maxTranscriptChars: z.number().min(500).max(6000).optional().default(2000),
+      maxComments: z.number().min(5).max(100).optional().default(30),
+    }),
+  )
+  .handler(async ({ input }) => {
+    const { mediaId, model, count, maxTranscriptChars, maxComments } = input
+    const record = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
+    if (!record) throw new Error('Media not found')
+
+    const candidates = await generatePublishTitles({
+      model,
+      title: record.title ?? undefined,
+      translatedTitle: record.translatedTitle ?? undefined,
+      transcript: record.optimizedTranscription || record.transcription || undefined,
+      comments: record.comments || [],
+      count,
+      maxTranscriptChars,
+      maxComments,
+    })
+    return { candidates }
+  })
+
+// 保存选中的发布标题
+export const updatePublishTitle = os
+  .input(
+    z.object({
+      id: z.string(),
+      publishTitle: z.string().min(3).max(120),
+    }),
+  )
+  .handler(async ({ input }) => {
+    const { id, publishTitle } = input
+    await db.update(schema.media).set({ publishTitle }).where(eq(schema.media.id, id))
     const updated = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
     return updated
   })

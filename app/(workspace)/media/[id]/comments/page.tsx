@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CommentCard } from '~/components/business/media/comment-card'
 import { RemotionPreviewCard } from '~/components/business/media/remotion-preview-card'
+import { PublishTitleGenerator } from '~/components/business/media/publish-title-generator'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -512,6 +513,14 @@ export default function CommentsPage() {
 														Copy English Title
 													</Button>
 												</div>
+
+											{/* Publish Title Generator */}
+											<div className="pt-2">
+												<PublishTitleGenerator
+													mediaId={id}
+													initialPublishTitle={mediaQuery.data.publishTitle}
+												/>
+											</div>
 												<div className="space-y-2">
 													<p className="text-xs uppercase text-muted-foreground">
 														Original Title

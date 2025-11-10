@@ -43,6 +43,13 @@
       "when": 1762690597146,
       "tag": "0005_quick_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1762763911148,
+      "tag": "0006_illegal_jane_foster",
+      "breakpoints": true
     }
   ]
 }
