@@ -10,7 +10,7 @@ import { Skeleton } from '~/components/ui/skeleton'
 import type { Comment, VideoInfo } from '~/lib/media/types'
 import { DEFAULT_TEMPLATE_ID, getTemplate, type RemotionTemplateId } from '~/remotion/templates'
 
-import { buildCommentTimeline, REMOTION_FPS } from '~/lib/media/remotion/durations'
+import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
 import type { CommentVideoInputProps } from '~/remotion/types'
 import { CommentsVideo } from '~/remotion/CommentsVideo'
 

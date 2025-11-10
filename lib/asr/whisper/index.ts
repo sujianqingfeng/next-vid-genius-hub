@@ -155,5 +155,4 @@ async function transcribeWithLocalWhisper(
 	return { vtt: vttContent, words }
 }
 
-// 重新导出新配置中的函数
-export { getAvailableModels, getModelLabel, getModelDescription, getDefaultModel }
+// Note: model config helpers are available from '~/lib/subtitle/config/models'

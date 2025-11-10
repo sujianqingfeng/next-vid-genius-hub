@@ -64,16 +64,7 @@ export function formatVttTimestamp(seconds: number): string {
 /**
  * 解析时间字符串 "MM:SS.mmm" 为秒数
  */
-export function parseTimeToSeconds(timeStr: string): number {
-	const [minutes, secondsWithMs] = timeStr.split(':')
-	const [seconds, milliseconds] = secondsWithMs.split('.')
-
-	return (
-		parseInt(minutes, 10) * 60 +
-		parseInt(seconds, 10) +
-		parseInt(milliseconds || '0', 10) / 1000
-	)
-}
+// Removed: parseTimeToSeconds (unused)
 
 /**
  * 格式化秒数为可读时间字符串
@@ -87,17 +78,7 @@ export function formatTimeForDisplay(seconds: number): string {
 /**
  * 格式化秒数为详细时间字符串（包含小时）
  */
-export function formatDetailedTime(seconds: number): string {
-	const hours = Math.floor(seconds / 3600)
-	const mins = Math.floor((seconds % 3600) / 60)
-	const secs = Math.floor(seconds % 60)
-
-	if (hours > 0) {
-		return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-	}
-
-	return `${mins}:${secs.toString().padStart(2, '0')}`
-}
+// Removed: formatDetailedTime (unused)
 
 /**
  * 检查时间范围是否有效
@@ -115,14 +96,9 @@ export function isValidTimeRange(startTime: number, endTime: number): boolean {
 /**
  * 获取时间范围的持续时间
  */
-export function getTimeRangeDuration(startTime: number, endTime: number): number {
-	if (!isValidTimeRange(startTime, endTime)) return 0
-	return endTime - startTime
-}
+// Removed: getTimeRangeDuration (unused)
 
 /**
  * 检查时间点是否在范围内
  */
-export function isTimeInRange(time: number, startTime: number, endTime: number): boolean {
-	return time >= startTime && time <= endTime
-}
+// Removed: isTimeInRange (unused)

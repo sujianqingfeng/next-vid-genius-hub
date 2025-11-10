@@ -8,7 +8,7 @@ This directory contains the media pipeline for Next Vid Genius Hub. It now prior
 lib/media/
 ├── (no index barrel)     # Re-exports removed; import concrete modules
 ├── processing/           # FFmpeg utilities (audio extraction, subtitle muxing)
-├── remotion/             # Remotion duration helpers
+├── remotion/             # (migrated) Use @app/media-comments for duration helpers
 ├── types/                # Shared data contracts (VideoInfo, Comment, ...)
 └── README.md             # This file
 ```
@@ -21,8 +21,7 @@ lib/media/
 - `convertWebVttToAss()` – Converts WebVTT captions into ASS format for FFmpeg.
 
 ### `remotion/`
-- `buildCommentTimeline()` – Calculates shot-by-shot durations for comments.
-- `durations.ts` constants – Keep component previews aligned with production Remotion renders.
+- Duration helpers have been moved to the shared package `@app/media-comments` to ensure the Next preview与容器渲染逻辑一致。
 
 ### `types/`
 - `VideoInfo` – Title, author, counts, and thumbnail metadata required by the renderer.
@@ -30,10 +29,10 @@ lib/media/
 
 ## Usage
 
-Import from submodules directly:
+Prefer importing from the shared package:
 
 ```ts
-import { buildCommentTimeline, REMOTION_FPS } from '~/lib/media/remotion/durations'
+import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
 import type { Comment, VideoInfo } from '~/lib/media/types'
 ```
 
