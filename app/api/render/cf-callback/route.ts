@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
 import { verifyHmacSHA256 } from '@app/callback-utils'
 import { logger } from '~/lib/logger'
@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
 
     const payload = JSON.parse(bodyText) as CallbackPayload
 
+    const db = await getDb()
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, payload.mediaId) })
     if (!media) {
 	  // Gracefully ignore callbacks that aren't tied to a media row (e.g. channel-list or comments-only tasks)
@@ -200,6 +201,7 @@ async function handleCloudDownloadCallback(
   
 
   if (payload.status !== 'completed') {
+    const db = await getDb()
     await db
       .update(schema.media)
       .set({

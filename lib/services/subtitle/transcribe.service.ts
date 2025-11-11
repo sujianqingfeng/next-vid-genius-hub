@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 import { eq } from 'drizzle-orm'
-import { db, schema, type TranscriptionWord } from '~/lib/db'
+import { getDb, schema, type TranscriptionWord } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { transcribeWithWhisper } from '~/lib/asr/whisper'
 
@@ -24,6 +24,7 @@ export async function transcribe(input: {
 
   logger.info('transcription', `Starting transcription for media ${mediaId} with ${provider}/${model}`)
 
+  const db = await getDb()
   const mediaRecord = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
   if (!mediaRecord) {
     logger.error('transcription', 'Media not found')

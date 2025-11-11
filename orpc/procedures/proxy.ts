@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { os } from '@orpc/server'
 import { eq, desc, sql } from 'drizzle-orm'
 import { logger } from '~/lib/logger'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { ProxyNodeUrlSchema, ProxyProtocolEnum, parseSSRSubscription } from '~/lib/proxy/parser'
 
 // Schemas
@@ -44,6 +44,7 @@ export const getActiveProxiesForDownload = os
 	.input(z.void())
 	.handler(async () => {
 		try {
+			const db = await getDb()
 			// Return a simple list: "No Proxy" + all stored proxies (no test status)
 			const proxyList = await db.query.proxies.findMany({
 				columns: {
@@ -73,6 +74,7 @@ export const getSSRSubscriptions = os
 	.input(z.void())
 	.handler(async () => {
 		try {
+			const db = await getDb()
 			// Get subscriptions without relations first
 			const subscriptions = await db.query.ssrSubscriptions.findMany({
 				orderBy: [desc(schema.ssrSubscriptions.createdAt)],
@@ -110,6 +112,7 @@ export const getSSRSubscriptions = os
 export const getSSRSubscription = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const where = eq(schema.ssrSubscriptions.id, input.id)
 		const subscription = await db.query.ssrSubscriptions.findFirst({
 			where,
@@ -131,6 +134,7 @@ export const getSSRSubscription = os
 export const createSSRSubscription = os
 	.input(CreateSSRSubscriptionSchema)
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const [subscription] = await db
 			.insert(schema.ssrSubscriptions)
 			.values(input)
@@ -142,6 +146,7 @@ export const createSSRSubscription = os
 export const updateSSRSubscription = os
 	.input(UpdateSSRSubscriptionSchema)
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const where = eq(schema.ssrSubscriptions.id, input.id)
 		const updateData: Record<string, unknown> = {}
 
@@ -168,6 +173,7 @@ export const updateSSRSubscription = os
 export const deleteSSRSubscription = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const where = eq(schema.ssrSubscriptions.id, input.id)
 		
 		// First, delete all proxies associated with this subscription
@@ -198,6 +204,7 @@ export const getProxies = os
 		limit: z.number().default(20),
 	}))
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const offset = (input.page - 1) * input.limit
 
 		let whereCondition = undefined
@@ -234,6 +241,7 @@ export const getProxies = os
 export const getProxy = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const where = eq(schema.proxies.id, input.id)
 		const proxy = await db.query.proxies.findFirst({
 			where,
@@ -250,6 +258,7 @@ export const getProxy = os
 export const createProxy = os
 	.input(CreateProxySchema)
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const [proxy] = await db
 			.insert(schema.proxies)
 			.values(input)
@@ -261,6 +270,7 @@ export const createProxy = os
 export const updateProxy = os
 	.input(UpdateProxySchema)
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const where = eq(schema.proxies.id, input.id)
 		const updateData: Record<string, unknown> = {}
 
@@ -288,6 +298,7 @@ export const updateProxy = os
 export const deleteProxy = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const where = eq(schema.proxies.id, input.id)
 		const [deletedProxy] = await db
 			.delete(schema.proxies)
@@ -308,6 +319,7 @@ export const importSSRFromSubscription = os
 		subscriptionId: z.string(),
 	}))
 	.handler(async ({ input }) => {
+		const db = await getDb()
 		const where = eq(schema.ssrSubscriptions.id, input.subscriptionId)
 		const subscription = await db.query.ssrSubscriptions.findFirst({
 			where,
@@ -327,39 +339,47 @@ export const importSSRFromSubscription = os
 				throw new Error('No proxy servers found in the subscription. The URL may be invalid or the subscription may be empty.')
 			}
 			
-			// Delete existing proxies for this subscription
-			await db
-				.delete(schema.proxies)
-				.where(eq(schema.proxies.subscriptionId, input.subscriptionId))
+    // Delete existing proxies for this subscription
+    await db
+        .delete(schema.proxies)
+        .where(eq(schema.proxies.subscriptionId, input.subscriptionId))
 
-			// Insert new proxies (preserve original SSR URL so we can identify SSR nodes later)
-			const insertedProxies = await db
-				.insert(schema.proxies)
-				.values(
-					parsedProxies.map(proxy => ({
-						id: proxy.id,
-						name: proxy.name,
-						server: proxy.server,
-						port: proxy.port,
-						protocol: proxy.protocol,
-						username: proxy.username,
-						password: proxy.password,
-						subscriptionId: input.subscriptionId,
-						nodeUrl: proxy.nodeUrl ?? '',
-					}))
-				)
-				.returning()
+    // Insert in chunks to avoid oversized statements/parameter limits on D1
+    const rows = parsedProxies.map((proxy) => ({
+        id: proxy.id,
+        name: proxy.name,
+        server: proxy.server,
+        port: proxy.port,
+        protocol: proxy.protocol,
+        username: proxy.username ?? null,
+        password: proxy.password ?? null,
+        subscriptionId: input.subscriptionId,
+        nodeUrl: proxy.nodeUrl ?? '',
+    }))
 
-			// Update subscription last updated time
-			await db
-				.update(schema.ssrSubscriptions)
-				.set({ lastUpdated: new Date() })
-				.where(where)
+    const CHUNK = 25
+    for (let i = 0; i < rows.length; i += CHUNK) {
+        const slice = rows.slice(i, i + CHUNK)
+        // drizzle/d1 supports multi-row inserts; avoid returning for large batches
+        await db.insert(schema.proxies).values(slice)
+    }
 
-			return { 
-				proxies: insertedProxies,
-				count: insertedProxies.length,
-			}
+    // Update subscription last updated time
+    await db
+        .update(schema.ssrSubscriptions)
+        .set({ lastUpdated: new Date() })
+        .where(where)
+
+    // Read back rows for this subscription (lightweight and consistent)
+    const inserted = await db.query.proxies.findMany({
+        where: eq(schema.proxies.subscriptionId, input.subscriptionId),
+        orderBy: [desc(schema.proxies.createdAt)],
+    })
+
+    return { 
+        proxies: inserted,
+        count: inserted.length,
+    }
 		} catch (error) {
 			logger.error('proxy', `SSR import error: ${error}`)
 			throw new Error(`Failed to import from SSR subscription: ${error instanceof Error ? error.message : 'Unknown error'}`)

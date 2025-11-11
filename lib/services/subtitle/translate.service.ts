@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { parseVttCues, serializeVttCues, validateVttContent } from '~/lib/subtitle/utils/vtt'
 import { generateObject } from '~/lib/ai/chat'
@@ -11,6 +11,7 @@ import type { AIModelId } from '~/lib/ai/models'
 export async function translate(input: { mediaId: string; model: AIModelId; promptId?: string }): Promise<{ translation: string }> {
   const { mediaId, model, promptId } = input
   const where = eq(schema.media.id, mediaId)
+  const db = await getDb()
   const media = await db.query.media.findFirst({ where })
   if (!media?.transcription && !media?.optimizedTranscription) throw new Error('Transcription not found')
 

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/master/wrangler.schema.json",
+  "name": "next-vid-genius",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vidgen_app",
+      "database_id": "local-vidgen-app",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}

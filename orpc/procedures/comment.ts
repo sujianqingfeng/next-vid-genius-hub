@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { PROXY_URL } from '~/lib/config/app.config'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { startCloudJob, getJobStatus, presignGetByKey, upsertMediaManifest, type MediaManifestPatch } from '~/lib/cloudflare'
 import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
@@ -22,6 +22,7 @@ export const translateComments = os
 	)
 	.handler(async ({ input }) => {
 		const { mediaId, model: modelId, force } = input
+		const db = await getDb()
 		const media = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),
 		})
@@ -76,6 +77,7 @@ export const deleteComment = os
 	.handler(async ({ input }) => {
 		const { mediaId, commentId } = input
 
+		const db = await getDb()
 		const media = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),
 		})
@@ -112,6 +114,7 @@ export const startCloudRender = os
     )
     .handler(async ({ input }) => {
         const { mediaId, proxyId } = input
+        const db = await getDb()
 		const where = eq(schema.media.id, mediaId)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
@@ -197,8 +200,9 @@ export const startCloudCommentsDownload = os
 			proxyId: z.string().optional(),
 		}),
 	)
-	.handler(async ({ input }) => {
-		const { mediaId, pages, proxyId } = input
+    .handler(async ({ input }) => {
+        const { mediaId, pages, proxyId } = input
+        const db = await getDb()
 		const where = eq(schema.media.id, mediaId)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
@@ -236,6 +240,7 @@ export const finalizeCloudCommentsDownload = os
 	.input(z.object({ mediaId: z.string(), jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
 		const { mediaId, jobId } = input
+		const db = await getDb()
 		const status = await getJobStatus(jobId)
 		if (status.status !== 'completed') {
 			throw new Error(`Job not completed: ${status.status}`)
@@ -354,7 +359,7 @@ export const moderateComments = os
   )
   .handler(async ({ input }) => {
     const { mediaId, model: modelId, overwrite } = input
-
+    const db = await getDb()
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
     if (!media) throw new Error('Media not found')
     const comments = media.comments || []

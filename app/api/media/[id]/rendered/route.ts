@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
+export const runtime = 'nodejs'
 import { logger } from '~/lib/logger'
 import {
 	buildDownloadFilename,
@@ -11,11 +12,12 @@ import {
 } from '~/lib/media/stream'
 
 export async function GET(
-	request: NextRequest,
-	context: { params: Promise<{ id: string }> },
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
 ) {
-	try {
-		const { id: mediaId } = await context.params
+  try {
+    const db = await getDb()
+    const { id: mediaId } = await context.params
 
 		const media = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),

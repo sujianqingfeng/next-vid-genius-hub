@@ -5,7 +5,7 @@ import { desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { OPERATIONS_DIR } from '~/lib/config/app.config'
 import { deleteCloudArtifacts } from '~/lib/cloudflare'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { generatePublishTitles } from '~/lib/ai/titles'
 import { AIModelIds, type AIModelId } from '~/lib/ai/models'
@@ -22,6 +22,7 @@ export const list = os
 		const offset = (page - 1) * limit
 
 		// Fetch paginated items with stable ordering
+		const db = await getDb()
 		const items = await db
 			.select()
 			.from(schema.media)
@@ -46,6 +47,7 @@ export const byId = os
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
 		const { id } = input
+		const db = await getDb()
 		const item = await db.query.media.findFirst({
 			where: eq(schema.media.id, id),
 		})
@@ -67,6 +69,7 @@ export const updateTitles = os
 		if (title !== undefined) updateData.title = title
 		if (translatedTitle !== undefined) updateData.translatedTitle = translatedTitle
 
+		const db = await getDb()
 		await db.update(schema.media).set(updateData).where(eq(schema.media.id, id))
 
         const updated = await db.query.media.findFirst({
@@ -87,6 +90,7 @@ export const updateRenderSettings = os
     const { id, commentsTemplate } = input
     const updates: Record<string, unknown> = {}
     if (typeof commentsTemplate !== 'undefined') updates.commentsTemplate = commentsTemplate
+    const db = await getDb()
     await db.update(schema.media).set(updates).where(eq(schema.media.id, id))
     const updated = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
     return updated
@@ -105,6 +109,7 @@ export const generatePublishTitle = os
   )
   .handler(async ({ input }) => {
     const { mediaId, model, count, maxTranscriptChars, maxComments } = input
+    const db = await getDb()
     const record = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
     if (!record) throw new Error('Media not found')
 
@@ -131,6 +136,7 @@ export const updatePublishTitle = os
   )
   .handler(async ({ input }) => {
     const { id, publishTitle } = input
+    const db = await getDb()
     await db.update(schema.media).set({ publishTitle }).where(eq(schema.media.id, id))
     const updated = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
     return updated
@@ -142,6 +148,7 @@ export const deleteById = os
 		const { id } = input
 
 		// 1) Load record to gather cloud references (best-effort)
+		const db = await getDb()
 		const record = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
 
 		// 2) Best-effort cloud cleanup (remote keys + orchestrator artifacts)

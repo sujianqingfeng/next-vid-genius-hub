@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { NextRequest, NextResponse } from 'next/server'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
+export const runtime = 'nodejs'
 import { logger } from '~/lib/logger'
 
 // Internal VTT provider for cloud rendering pipeline
@@ -10,6 +11,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const db = await getDb()
     const { id: mediaId } = await context.params
 
     const media = await db.query.media.findFirst({

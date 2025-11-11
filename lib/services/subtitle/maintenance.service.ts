@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { AIModelId } from '~/lib/ai/models'
 import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import {
 	applyOrphanGuard,
@@ -21,6 +21,7 @@ export async function updateTranslation(input: {
 	translation: string
 }): Promise<{ success: true }> {
 	const where = eq(schema.media.id, input.mediaId)
+	const db = await getDb()
 	await db
 		.update(schema.media)
 		.set({ translation: input.translation })
@@ -47,6 +48,7 @@ export async function deleteTranslationCue(input: {
 	index: number
 }): Promise<{ success: true; translation: string }> {
 	const where = eq(schema.media.id, input.mediaId)
+	const db = await getDb()
 	const media = await db.query.media.findFirst({ where })
 	if (!media?.translation) throw new Error('Translation not found')
 	const cues = parseVttCues(media.translation)
@@ -77,6 +79,7 @@ export async function optimizeTranscription(input: {
 		textCorrect,
 	} = input
 	const where = eq(schema.media.id, mediaId)
+	const db = await getDb()
 	const media = await db.query.media.findFirst({ where })
 	if (!media) throw new Error('Media not found')
 	if (!media.transcription) throw new Error('Transcription not found')
@@ -159,6 +162,7 @@ export async function clearOptimizedTranscription(input: {
 	mediaId: string
 }): Promise<{ success: true }> {
 	const where = eq(schema.media.id, input.mediaId)
+	const db = await getDb()
 	await db
 		.update(schema.media)
 		.set({ optimizedTranscription: null })

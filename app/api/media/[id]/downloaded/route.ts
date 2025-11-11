@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
+export const runtime = 'nodejs'
 import { logger } from '~/lib/logger'
 import { proxyRemoteWithRange, resolveRemoteVideoUrl, serveLocalFileWithRange } from '~/lib/media/stream'
 
@@ -12,6 +13,7 @@ export async function GET(
   try {
     const { id: mediaId } = await context.params
 
+    const db = await getDb()
     const media = await db.query.media.findFirst({
       where: eq(schema.media.id, mediaId),
     })

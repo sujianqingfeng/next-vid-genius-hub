@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
+export const runtime = 'nodejs'
 import { logger } from '~/lib/logger'
 
 // Provides JSON needed by the Remotion renderer container.
@@ -12,6 +13,7 @@ export async function GET(
   try {
     const { id: mediaId } = await context.params
 
+    const db = await getDb()
     const media = await db.query.media.findFirst({
       where: eq(schema.media.id, mediaId),
     })

@@ -1,4 +1,8 @@
 import type { NextConfig } from 'next'
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare'
+// Initialize Cloudflare bindings for Next dev as early as possible
+// Use the D1 binding defined in wrangler.json and the "local" env
+initOpenNextCloudflareForDev({ environment: 'local', configPath: './wrangler.json' })
 
 
 const nextConfig: NextConfig = {
