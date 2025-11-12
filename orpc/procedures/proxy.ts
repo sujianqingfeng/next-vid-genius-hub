@@ -357,11 +357,16 @@ export const importSSRFromSubscription = os
         nodeUrl: proxy.nodeUrl ?? '',
     }))
 
-    const CHUNK = 25
-    for (let i = 0; i < rows.length; i += CHUNK) {
-        const slice = rows.slice(i, i + CHUNK)
-        // drizzle/d1 supports multi-row inserts; avoid returning for large batches
-        await db.insert(schema.proxies).values(slice)
+    // Insert one-by-one to avoid occasional D1 multi-row binding issues
+    // Keep it simple and reliable; 50-100 rows is fast enough in dev
+    for (const row of rows) {
+      try {
+        await db.insert(schema.proxies).values(row)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        logger.error('proxy', `Failed to insert proxy ${row.name} (${row.server}:${row.port}): ${msg}`)
+        throw err
+      }
     }
 
     // Update subscription last updated time

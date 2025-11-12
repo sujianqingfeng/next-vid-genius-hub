@@ -120,6 +120,8 @@ async function handleCloudDownloadCallback(
   media: MediaRecord,
   payload: CallbackPayload & { engine: 'media-downloader' },
 ) {
+  // Ensure a DB handle is available for all branches
+  const db = await getDb()
   const where = eq(schema.media.id, payload.mediaId)
 
 	async function remoteObjectExists({
@@ -201,7 +203,6 @@ async function handleCloudDownloadCallback(
   
 
   if (payload.status !== 'completed') {
-    const db = await getDb()
     await db
       .update(schema.media)
       .set({
