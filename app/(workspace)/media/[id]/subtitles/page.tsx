@@ -26,7 +26,11 @@ import {
 	CardHeader,
 	CardTitle,
 } from '~/components/ui/card'
-import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
+import {
+	ChatModelIds,
+	DEFAULT_CHAT_MODEL_ID,
+	type ChatModelId,
+} from '~/lib/ai/models'
 import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { getDefaultModel } from '~/lib/subtitle/config/models'
@@ -77,7 +81,7 @@ export default function SubtitlesPage() {
 			? 'whisper-tiny-en'
 			: getDefaultModel(selectedProvider))
 	const selectedAIModel =
-		(workflowState.selectedAIModel as ChatModelId) || ChatModelIds[0]
+		(workflowState.selectedAIModel as ChatModelId) || DEFAULT_CHAT_MODEL_ID
 	const downsampleBackend =
 		((workflowState.downsampleBackend as ('auto' | 'local' | 'cloud')) ||
 			'cloud')

@@ -43,7 +43,11 @@ import {
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { ChatModelId, ChatModelIds } from '~/lib/ai/models'
+import {
+	ChatModelIds,
+	DEFAULT_CHAT_MODEL_ID,
+	type ChatModelId,
+} from '~/lib/ai/models'
 import { extractVideoId } from '@app/media-providers'
 import { STATUS_LABELS } from '~/lib/config/media-status.config'
 import { queryOrpc } from '~/lib/orpc/query-client'
@@ -63,12 +67,10 @@ export default function CommentsPage() {
 	const id = params.id as string
 	const queryClient = useQueryClient()
 	const [pages, setPages] = useState('3')
-	const [model, setModel] = useState<ChatModelId>(
-		ChatModelIds[0] as ChatModelId,
-	)
+	const [model, setModel] = useState<ChatModelId>(DEFAULT_CHAT_MODEL_ID)
 	const [forceTranslate, setForceTranslate] = useState(false)
 	const [modModel, setModModel] = useState<ChatModelId>(
-		ChatModelIds[0] as ChatModelId,
+		DEFAULT_CHAT_MODEL_ID,
 	)
 	const [overwriteModeration, setOverwriteModeration] = useState(false)
 	const [onlyFlagged, setOnlyFlagged] = useState(false)

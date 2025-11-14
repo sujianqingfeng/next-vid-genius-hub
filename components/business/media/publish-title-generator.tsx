@@ -12,8 +12,11 @@ import { queryOrpc } from '~/lib/orpc/query-client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { RefreshCw, Sparkles, Save, Copy } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
-import type { ChatModelId } from '~/lib/ai/models'
-import { ChatModelIds } from '~/lib/ai/models'
+import {
+  ChatModelIds,
+  DEFAULT_CHAT_MODEL_ID,
+  type ChatModelId,
+} from '~/lib/ai/models'
 
 interface PublishTitleGeneratorProps {
   mediaId: string
@@ -24,7 +27,7 @@ export function PublishTitleGenerator({ mediaId, initialPublishTitle }: PublishT
   const qc = useQueryClient()
   const [value, setValue] = useState<string>(initialPublishTitle || '')
   const [candidates, setCandidates] = useState<string[] | null>(null)
-  const [selectedModel, setSelectedModel] = useState<ChatModelId>(ChatModelIds[0] as ChatModelId)
+  const [selectedModel, setSelectedModel] = useState<ChatModelId>(DEFAULT_CHAT_MODEL_ID)
 
   // Persist selected model (global)
   useEffect(() => {

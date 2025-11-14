@@ -9,7 +9,11 @@ import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModel
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
+import {
+	ChatModelIds,
+	DEFAULT_CHAT_MODEL_ID,
+	type ChatModelId,
+} from '~/lib/ai/models'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
@@ -23,10 +27,10 @@ export default function ChannelsPage() {
 	>({})
 	const [expanded, setExpanded] = React.useState<Record<string, boolean>>({})
 	const defaultChannelModel = React.useMemo<ChatModelId>(() => {
-		const fallback = 'openai/gpt-4o-mini'
 		const configured =
-			ChatModelIds.find((id) => id === fallback) ?? ChatModelIds[0]
-		return (configured ?? fallback) as ChatModelId
+			ChatModelIds.find((id) => id === DEFAULT_CHAT_MODEL_ID) ??
+			ChatModelIds[0]
+		return (configured ?? DEFAULT_CHAT_MODEL_ID) as ChatModelId
 	}, [])
 	const [selectedModelByChannel, setSelectedModelByChannel] = React.useState<
 		Record<string, ChatModelId>
