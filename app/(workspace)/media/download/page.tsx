@@ -102,7 +102,20 @@ export default function NewDownloadPage() {
 		: null
 	const isSubmitting = cloudDownloadMutation.isPending
 
+	const availableProxyOptions = proxiesQuery.data?.proxies?.filter((proxy) => proxy.id !== 'none') ?? []
+	const hasAvailableProxies = availableProxyOptions.length > 0
+	const hasSelectedProxy = Boolean(selectedProxyId && selectedProxyId !== 'none')
+
 	const formAction = async (formData: FormData) => {
+		if (!hasSelectedProxy) {
+			const proxyMessage = hasAvailableProxies
+				? '请先选择一个代理后再开始下载。'
+				: '当前没有可用代理，请先添加代理节点。'
+			setError(proxyMessage)
+			toast.error(proxyMessage)
+			return
+		}
+
 		const url = (urlValue || (formData.get('url') as string) || '').trim()
 		const quality = formData.get('quality') as '1080p' | '720p'
 
@@ -238,12 +251,13 @@ export default function NewDownloadPage() {
 							</Select>
 						</div>
 
-						{/* Proxy Selection */}
-						<ProxySelector
-							value={selectedProxyId}
-							onValueChange={setSelectedProxyId}
-							disabled={isSubmitting}
-						/>
+					{/* Proxy Selection */}
+					<ProxySelector
+						value={selectedProxyId}
+						onValueChange={setSelectedProxyId}
+						disabled={isSubmitting}
+						allowDirect={false}
+					/>
 
 						{/* Auto Rotate (Cloud only) */}
 						<div className="space-y-2 border rounded-lg p-3">
@@ -297,12 +311,12 @@ export default function NewDownloadPage() {
 							</div>
 						)}
 
-						{/* Submit Button */}
-						<Button
-							type="submit"
-							disabled={isSubmitting}
-							className="w-full h-12 text-base font-medium"
-						>
+					{/* Submit Button */}
+					<Button
+						type="submit"
+						disabled={isSubmitting || !hasSelectedProxy}
+						className="w-full h-12 text-base font-medium"
+					>
 							{isSubmitting ? (
 								<>
 									<Loader2 className="w-5 h-5 mr-2 animate-spin" />

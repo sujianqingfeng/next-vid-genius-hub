@@ -106,6 +106,10 @@ export default function CommentsPage() {
 			}),
 	})
 
+	const proxiesQuery = useQuery({
+		...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
+	})
+
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
 			input: { id },
@@ -330,6 +334,13 @@ export default function CommentsPage() {
 	const visibleComments = onlyFlagged
 		? comments.filter((c) => c?.moderation?.flagged)
 		: comments
+
+	const availableProxies = proxiesQuery.data?.proxies?.filter((proxy) => proxy.id !== 'none') ?? []
+	const hasAvailableProxies = availableProxies.length > 0
+	const hasDownloadProxySelected = Boolean(selectedProxyId && selectedProxyId !== 'none')
+	const hasRenderProxySelected = Boolean(renderProxyId && renderProxyId !== 'none')
+	const canQueueCommentsDownload = hasAvailableProxies && hasDownloadProxySelected
+	const canQueueRender = hasAvailableProxies && hasRenderProxySelected
 
 	// Persist render proxy selection for cloud renders
 	useEffect(() => {
@@ -587,32 +598,40 @@ export default function CommentsPage() {
 														</SelectContent>
 													</Select>
 												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">
-														Proxy:
-													</Label>
-													<ProxySelector
-														value={selectedProxyId}
-														onValueChange={setSelectedProxyId}
-														disabled={startCloudCommentsMutation.isPending}
-													/>
-												</div>
-											</div>
-											<Button
-												onClick={() => {
-													const p = parseInt(pages, 10)
-													startCloudCommentsMutation.mutate({
-														mediaId: id,
-														pages: p,
-														proxyId:
-															selectedProxyId === 'none'
-																? undefined
-																: selectedProxyId,
-													})
-												}}
-												disabled={startCloudCommentsMutation.isPending}
-												className="w-full"
-											>
+							<div>
+								<Label className="text-xs text-muted-foreground">
+									Proxy:
+								</Label>
+								<ProxySelector
+									value={selectedProxyId}
+									onValueChange={setSelectedProxyId}
+									disabled={startCloudCommentsMutation.isPending}
+									allowDirect={false}
+								/>
+							</div>
+						</div>
+						<Button
+							onClick={() => {
+								if (!canQueueCommentsDownload) {
+									const message = hasAvailableProxies
+										? '请先选择一个代理后再开始下载评论。'
+										: '当前没有可用代理，请先添加代理节点。'
+									toast.error(message)
+									return
+								}
+								const p = parseInt(pages, 10)
+								startCloudCommentsMutation.mutate({
+									mediaId: id,
+									pages: p,
+									proxyId:
+										selectedProxyId === 'none'
+											? undefined
+											: selectedProxyId,
+								})
+							}}
+							disabled={startCloudCommentsMutation.isPending || !canQueueCommentsDownload}
+							className="w-full"
+						>
 												{startCloudCommentsMutation.isPending
 													? 'Queuing...'
 													: 'Start Download'}
@@ -847,32 +866,40 @@ export default function CommentsPage() {
 														</SelectContent>
 													</Select>
 												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">
-														Proxy:
-													</Label>
-													<ProxySelector
-														value={renderProxyId}
-														onValueChange={setRenderProxyId}
-														disabled={startCloudRenderMutation.isPending}
-													/>
-												</div>
-											</div>
-											<Button
-												onClick={() => {
-													startCloudRenderMutation.mutate({
-														mediaId: id,
-														proxyId:
-															renderProxyId === 'none'
-																? undefined
-																: renderProxyId,
-														sourcePolicy,
-														templateId,
-													})
-												}}
-												disabled={startCloudRenderMutation.isPending}
-												className="w-full"
-											>
+						<div>
+							<Label className="text-xs text-muted-foreground">
+								Proxy:
+							</Label>
+							<ProxySelector
+								value={renderProxyId}
+								onValueChange={setRenderProxyId}
+								disabled={startCloudRenderMutation.isPending}
+								allowDirect={false}
+							/>
+						</div>
+					</div>
+					<Button
+						onClick={() => {
+							if (!canQueueRender) {
+								const message = hasAvailableProxies
+									? '请先选择一个代理后再开始渲染视频。'
+									: '当前没有可用代理，请先添加代理节点。'
+								toast.error(message)
+								return
+							}
+							startCloudRenderMutation.mutate({
+								mediaId: id,
+								proxyId:
+									renderProxyId === 'none'
+										? undefined
+										: renderProxyId,
+								sourcePolicy,
+								templateId,
+							})
+						}}
+						disabled={startCloudRenderMutation.isPending || !canQueueRender}
+						className="w-full"
+					>
 												{startCloudRenderMutation.isPending
 													? 'Queuing...'
 													: 'Start Render'}
