@@ -5,8 +5,17 @@ import { Download, Link, Loader2, Cloud } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
+import { Progress } from '~/components/ui/progress'
 import { Switch } from '~/components/ui/switch'
 import {
 	Select,
@@ -105,12 +114,33 @@ export default function NewDownloadPage() {
 	const availableProxyOptions = proxiesQuery.data?.proxies?.filter((proxy) => proxy.id !== 'none') ?? []
 	const hasAvailableProxies = availableProxyOptions.length > 0
 	const hasSelectedProxy = Boolean(selectedProxyId && selectedProxyId !== 'none')
+	const progressPercent = typeof cloudStatusQuery.data?.progress === 'number'
+		? Math.round(cloudStatusQuery.data.progress * 100)
+		: null
+	const jobActive = Boolean(cloudJobId)
+	const rotationActive = autoRotate && !autoRetryStopped
+	const rotationSummary = rotationActive
+		? `Attempt ${Math.min(attempt, maxAttempts)} / ${maxAttempts}`
+		: 'Disabled'
+
+	const handleReset = () => {
+		setUrlValue('')
+		setSelectedProxyId('none')
+		setAutoRotate(false)
+		setMaxAttempts(20)
+		setRotationScope('selectedFirst')
+		setAttempt(0)
+		setRotationQueue([])
+		setLastInput(null)
+		setAutoRetryStopped(false)
+		setError(null)
+	}
 
 	const formAction = async (formData: FormData) => {
 		if (!hasSelectedProxy) {
 			const proxyMessage = hasAvailableProxies
-				? '请先选择一个代理后再开始下载。'
-				: '当前没有可用代理，请先添加代理节点。'
+				? 'Pick a proxy before starting the download.'
+				: 'No proxies available. Please add one first.'
 			setError(proxyMessage)
 			toast.error(proxyMessage)
 			return
@@ -149,7 +179,7 @@ export default function NewDownloadPage() {
 
 		if (status === 'completed') {
 			toast.success('Cloud download completed!')
-			// 云端下载成功后清空 URL
+			// Clear the URL field after a successful cloud job
 			setUrlValue('')
 			return
 		}
@@ -190,222 +220,228 @@ export default function NewDownloadPage() {
 				}
 			}
 		}
-	}, [autoRotate, autoRetryStopped, attempt, maxAttempts, rotationQueue, cloudStatusQuery.data?.status, cloudStatusQuery.data?.message, cloudJobId, lastCloudStatus, cloudDownloadMutation, lastInput])
+	}, [
+		autoRotate,
+		autoRetryStopped,
+		attempt,
+		maxAttempts,
+		rotationQueue,
+		cloudStatusQuery.data?.status,
+		cloudStatusQuery.data?.message,
+		cloudJobId,
+		lastCloudStatus,
+		cloudDownloadMutation,
+		lastInput,
+	])
 
 	return (
-		<div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background to-muted/20 p-4">
-			<div className="w-full max-w-lg">
-				{/* Header */}
-				<div className="text-center mb-8">
-					<div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4">
-						<Download className="w-8 h-8 text-primary" />
+		<div className="min-h-screen bg-muted/20 px-4 py-10">
+			<div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+				<div className="text-center">
+					<div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+						<Download className="h-7 w-7" />
 					</div>
-					<h1 className="text-3xl font-bold mb-2">Download Video</h1>
-					<p className="text-muted-foreground">
-						YouTube and TikTok videos
-					</p>
+					<h1 className="text-3xl font-semibold">Cloud Video Download</h1>
+					<p className="text-muted-foreground">Paste a link, choose a proxy, and let the cloud queue handle the rest.</p>
 				</div>
 
-				{/* Main Card */}
-				<div className="bg-card border rounded-2xl shadow-sm p-6 space-y-6">
-					{/* Form */}
-					<form action={formAction} className="space-y-4">
-						{/* URL Input */}
-						<div>
-							<label htmlFor="url" className="text-sm font-medium mb-2 block">
-								Video URL
-							</label>
-							<div className="relative">
-								<Link className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-								<Input
-									id="url"
-									name="url"
-									type="url"
-									placeholder="https://youtube.com/watch?v=..."
-									required
-									disabled={isSubmitting}
-									value={urlValue}
-									onChange={(e) => setUrlValue(e.target.value)}
-									className="pl-10 h-12"
-								/>
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2 text-lg">
+							<Cloud className="h-4 w-4" /> Job Status
+						</CardTitle>
+						<CardDescription>Shows progress for your latest cloud job</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="grid gap-4 text-sm sm:grid-cols-2">
+							<div className="rounded-lg bg-muted/50 p-3">
+								<p className="text-xs text-muted-foreground">Job ID</p>
+								<p className="font-mono text-sm">
+									{cloudJobId ? `${cloudJobId.slice(0, 10)}...` : 'None yet'}
+								</p>
+							</div>
+							<div className="rounded-lg bg-muted/50 p-3">
+								<p className="text-xs text-muted-foreground">Media ID</p>
+								<p className="font-mono text-sm">
+									{cloudMediaId ? `${cloudMediaId.slice(0, 10)}...` : 'Pending'}
+								</p>
 							</div>
 						</div>
-
-						{/* Quality Selection */}
-						<div>
-							<label htmlFor="quality" className="text-sm font-medium mb-2 block">
-								Quality
-							</label>
-							<Select
-								name="quality"
-								defaultValue="1080p"
-								disabled={isSubmitting}
-							>
-								<SelectTrigger className="h-10">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="1080p">1080p</SelectItem>
-									<SelectItem value="720p">720p</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-
-					{/* Proxy Selection */}
-					<ProxySelector
-						value={selectedProxyId}
-						onValueChange={setSelectedProxyId}
-						disabled={isSubmitting}
-						allowDirect={false}
-					/>
-
-						{/* Auto Rotate (Cloud only) */}
-						<div className="space-y-2 border rounded-lg p-3">
-							<div className="flex items-center justify-between">
-								<div className="flex flex-col">
-									<span className="text-sm font-medium">自动切换代理（仅云端）</span>
-									<span className="text-xs text-muted-foreground">下载失败后自动尝试下一个代理</span>
-								</div>
-								<Switch
-									checked={autoRotate}
-									onCheckedChange={(v) => setAutoRotate(Boolean(v))}
-									disabled={isSubmitting}
-								/>
+						<div className="space-y-2">
+							<div className="flex items-center justify-between text-sm">
+								<span className="text-muted-foreground">Status</span>
+								<span className="font-medium">{jobActive ? statusLabel ?? 'Queued' : 'Idle'}</span>
 							</div>
-							<div className="grid grid-cols-2 gap-3">
-								<div>
-									<label className="text-sm font-medium mb-2 block">最大尝试次数</label>
-									<Input
-										type="number"
-										min={1}
-										max={50}
-										value={maxAttempts}
-										onChange={(e) => setMaxAttempts(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
-										disabled={isSubmitting || !autoRotate}
-										className="h-10"
-									/>
+							<Progress value={progressPercent ?? 0} srLabel="Download progress" />
+							{phaseLabel && (
+								<div className="flex items-center justify-between text-xs text-muted-foreground">
+									<span>Current phase</span>
+									<span className="text-foreground">{phaseLabel}</span>
 								</div>
-								<div>
-									<label className="text-sm font-medium mb-2 block">轮换顺序</label>
-									<Select
-										value={rotationScope}
-										onValueChange={(v) => setRotationScope((v as 'selectedFirst' | 'all') || 'selectedFirst')}
-										disabled={isSubmitting || !autoRotate}
-									>
-										<SelectTrigger className="h-10">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="selectedFirst">已选优先</SelectItem>
-											<SelectItem value="all">全部</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-							</div>
-						</div>
-
-						{/* Error */}
-						{error && (
-							<div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
-								{error}
-							</div>
-						)}
-
-					{/* Submit Button */}
-					<Button
-						type="submit"
-						disabled={isSubmitting || !hasSelectedProxy}
-						className="w-full h-12 text-base font-medium"
-					>
-							{isSubmitting ? (
-								<>
-									<Loader2 className="w-5 h-5 mr-2 animate-spin" />
-									Queueing...
-								</>
-							) : (
-								<>
-									<Download className="w-5 h-5 mr-2" />
-									Start Cloud Download
-								</>
 							)}
-						</Button>
-					</form>
-
-					{/* Cloud Status */}
-					{cloudJobId && (
-						<div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
-							<div className="font-medium flex items-center gap-2">
-								<Cloud className="w-4 h-4" />
-								Cloud Download Status
-							</div>
-							<div className="grid grid-cols-2 gap-2 text-xs">
-								<div>
-									<span className="text-muted-foreground">Job ID:</span>
-									<span className="ml-1 font-mono">{cloudJobId.slice(0, 8)}...</span>
-								</div>
-								{cloudMediaId && (
-									<div>
-										<span className="text-muted-foreground">Media ID:</span>
-										<span className="ml-1 font-mono">{cloudMediaId.slice(0, 8)}...</span>
-									</div>
-								)}
-							</div>
+						</div>
+						<div className="rounded-lg border bg-background/80 p-3 text-xs">
 							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Status:</span>
-								<span className="font-medium">
-									{cloudStatusQuery.isLoading
-										? 'Loading...'
-										: statusLabel ?? cloudStatusQuery.data?.status ?? 'queued'}
-									{typeof cloudStatusQuery.data?.progress === 'number'
-										? ` (${Math.round(cloudStatusQuery.data.progress * 100)}%)`
-										: ''}
-								</span>
-							</div>
-							<div className="flex items-center justify-between text-xs">
-								<span className="text-muted-foreground">Proxy:</span>
-								<span className="truncate max-w-[70%]" title={renderProxyLabel(selectedProxyId)}>
+								<span className="text-muted-foreground">Proxy</span>
+								<span className="max-w-[70%] truncate text-foreground" title={renderProxyLabel(selectedProxyId)}>
 									{renderProxyLabel(selectedProxyId)}
 								</span>
 							</div>
-							{autoRotate && (
-								<div className="flex items-center justify-between text-xs">
-									<span className="text-muted-foreground">自动重试:</span>
-									<span>
-										尝试 {Math.min(attempt, maxAttempts)} / {maxAttempts}
-									</span>
-								</div>
-							)}
-							{phaseLabel && (
-								<div className="flex items-center justify-between">
-									<span className="text-muted-foreground">Phase:</span>
-									<span>{phaseLabel}</span>
-								</div>
-							)}
-							{cloudStatusQuery.data?.message && (
-								<div className="text-destructive text-xs mt-2">
-									{cloudStatusQuery.data.message}
-								</div>
-							)}
-							{autoRotate && (
-								<div className="pt-2">
-									<Button
-										variant="secondary"
-										size="sm"
-										disabled={autoRetryStopped || isSubmitting}
-										onClick={() => setAutoRetryStopped(true)}
-									>
-										停止自动重试
-									</Button>
-								</div>
-							)}
+							<div className="mt-2 flex items-center justify-between">
+								<span className="text-muted-foreground">Auto retry</span>
+								<span className="text-foreground">{rotationSummary}</span>
+							</div>
 						</div>
-					)}
+						{cloudStatusQuery.data?.message && (
+							<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+								{cloudStatusQuery.data.message}
+							</div>
+						)}
+					</CardContent>
+					<CardFooter className="flex justify-end">
+						{rotationActive && (
+							<Button
+								variant="secondary"
+								size="sm"
+								disabled={autoRetryStopped || isSubmitting}
+								onClick={() => setAutoRetryStopped(true)}
+							>
+								Stop auto retry
+							</Button>
+						)}
+					</CardFooter>
+				</Card>
 
-					{/* Help Text */}
-					<p className="text-xs text-muted-foreground text-center">
-						Max duration: 2 hours • File size: 2GB
-					</p>
-				</div>
+				<form action={formAction} className="space-y-4">
+					<Card>
+						<CardHeader>
+							<CardTitle>Download settings</CardTitle>
+							<CardDescription>Enter the link, proxy, and auto-rotation preferences</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-6">
+							<div className="space-y-2">
+								<p className="text-sm font-medium">Video link</p>
+								<div className="relative">
+									<Link className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+									<Input
+										id="url"
+										name="url"
+										type="url"
+										placeholder="https://youtube.com/watch?v=..."
+										required
+										disabled={isSubmitting}
+										value={urlValue}
+										onChange={(e) => setUrlValue(e.target.value)}
+										className="h-12 pl-10"
+									/>
+								</div>
+							</div>
+							<div className="space-y-2">
+								<p className="text-sm font-medium">Output quality</p>
+								<Select name="quality" defaultValue="1080p" disabled={isSubmitting}>
+									<SelectTrigger className="h-10">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="1080p">1080p</SelectItem>
+										<SelectItem value="720p">720p</SelectItem>
+									</SelectContent>
+								</Select>
+								<p className="text-xs text-muted-foreground">Switch to 720p only if throttling occurs.</p>
+							</div>
+							<div className="space-y-2">
+								<p className="text-sm font-medium">Proxy</p>
+								<ProxySelector
+									value={selectedProxyId}
+									onValueChange={setSelectedProxyId}
+									disabled={isSubmitting}
+									allowDirect={false}
+								/>
+								{!hasSelectedProxy && (
+									<p className="text-xs text-destructive">Select a proxy before submitting.</p>
+								)}
+							</div>
+							<div className="rounded-lg border bg-muted/20 p-4">
+								<div className="flex items-center justify-between">
+									<div>
+										<p className="text-sm font-medium">Auto rotate proxies</p>
+										<p className="text-xs text-muted-foreground">If a download fails, try the next proxy automatically.</p>
+									</div>
+									<Switch
+										checked={autoRotate}
+										onCheckedChange={(v) => setAutoRotate(Boolean(v))}
+										disabled={isSubmitting}
+									/>
+								</div>
+								<div className="mt-4 grid gap-4 sm:grid-cols-2">
+									<div className="space-y-2">
+										<p className="text-sm font-medium">Max attempts</p>
+										<Input
+											type="number"
+											min={1}
+											max={50}
+											value={maxAttempts}
+											onChange={(e) =>
+												setMaxAttempts(Math.max(1, Math.min(50, Number(e.target.value) || 1)))
+											}
+											disabled={isSubmitting || !autoRotate}
+											className="h-10"
+										/>
+										<p className="text-xs text-muted-foreground">Keep it within roughly twice your proxy count.</p>
+									</div>
+									<div className="space-y-2">
+										<p className="text-sm font-medium">Rotation order</p>
+										<Select
+											value={rotationScope}
+											onValueChange={(v) => setRotationScope((v as 'selectedFirst' | 'all') || 'selectedFirst')}
+											disabled={isSubmitting || !autoRotate}
+										>
+											<SelectTrigger className="h-10">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="selectedFirst">Prioritize selected proxy</SelectItem>
+												<SelectItem value="all">Use list order</SelectItem>
+											</SelectContent>
+										</Select>
+										<p className="text-xs text-muted-foreground">"List order" ignores the manually selected first proxy.</p>
+									</div>
+								</div>
+							</div>
+							{error && (
+								<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+									{error}
+								</div>
+							)}
+						</CardContent>
+						<CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center">
+							<Button
+								type="submit"
+								className="flex-1 h-12 text-base"
+								disabled={isSubmitting || !hasSelectedProxy}
+							>
+								{isSubmitting ? (
+									<>
+										<Loader2 className="mr-2 h-5 w-5 animate-spin" />
+										Queueing...
+									</>
+								) : (
+									<>
+										<Download className="mr-2 h-5 w-5" />
+										Start cloud download
+									</>
+								)}
+							</Button>
+							<Button type="button" variant="ghost" className="h-12 sm:w-auto" onClick={handleReset}>
+								Reset form
+							</Button>
+						</CardFooter>
+					</Card>
+				</form>
+
+				<p className="text-center text-xs text-muted-foreground">
+					Up to 2 hours per job · 2GB per file · special media may wait longer in the cloud.
+				</p>
 			</div>
 		</div>
 	)
