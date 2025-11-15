@@ -236,212 +236,226 @@ export default function NewDownloadPage() {
 
 	return (
 		<div className="min-h-screen bg-muted/20 px-4 py-10">
-			<div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-				<div className="text-center">
-					<div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-						<Download className="h-7 w-7" />
+			<div className="mx-auto w-full max-w-5xl space-y-8">
+				<header className="flex flex-col items-center gap-3 text-center">
+					<div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+						<Cloud className="h-6 w-6" />
 					</div>
-					<h1 className="text-3xl font-semibold">Cloud Video Download</h1>
-					<p className="text-muted-foreground">Paste a link, choose a proxy, and let the cloud queue handle the rest.</p>
-				</div>
+					<div>
+						<h1 className="text-3xl font-semibold">Cloud video download</h1>
+						<p className="text-sm text-muted-foreground">Queue HD downloads in the worker cluster and monitor them live.</p>
+					</div>
+				</header>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2 text-lg">
-							<Cloud className="h-4 w-4" /> Job Status
-						</CardTitle>
-						<CardDescription>Shows progress for your latest cloud job</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="grid gap-4 text-sm sm:grid-cols-2">
-							<div className="rounded-lg bg-muted/50 p-3">
-								<p className="text-xs text-muted-foreground">Job ID</p>
-								<p className="font-mono text-sm">
-									{cloudJobId ? `${cloudJobId.slice(0, 10)}...` : 'None yet'}
-								</p>
-							</div>
-							<div className="rounded-lg bg-muted/50 p-3">
-								<p className="text-xs text-muted-foreground">Media ID</p>
-								<p className="font-mono text-sm">
-									{cloudMediaId ? `${cloudMediaId.slice(0, 10)}...` : 'Pending'}
-								</p>
-							</div>
-						</div>
-						<div className="space-y-2">
-							<div className="flex items-center justify-between text-sm">
-								<span className="text-muted-foreground">Status</span>
-								<span className="font-medium">{jobActive ? statusLabel ?? 'Queued' : 'Idle'}</span>
-							</div>
-							<Progress value={progressPercent ?? 0} srLabel="Download progress" />
-							{phaseLabel && (
-								<div className="flex items-center justify-between text-xs text-muted-foreground">
-									<span>Current phase</span>
-									<span className="text-foreground">{phaseLabel}</span>
-								</div>
-							)}
-						</div>
-						<div className="rounded-lg border bg-background/80 p-3 text-xs">
-							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Proxy</span>
-								<span className="max-w-[70%] truncate text-foreground" title={renderProxyLabel(selectedProxyId)}>
-									{renderProxyLabel(selectedProxyId)}
-								</span>
-							</div>
-							<div className="mt-2 flex items-center justify-between">
-								<span className="text-muted-foreground">Auto retry</span>
-								<span className="text-foreground">{rotationSummary}</span>
-							</div>
-						</div>
-						{cloudStatusQuery.data?.message && (
-							<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-								{cloudStatusQuery.data.message}
-							</div>
-						)}
-					</CardContent>
-					<CardFooter className="flex justify-end">
-						{rotationActive && (
-							<Button
-								variant="secondary"
-								size="sm"
-								disabled={autoRetryStopped || isSubmitting}
-								onClick={() => setAutoRetryStopped(true)}
-							>
-								Stop auto retry
-							</Button>
-						)}
-					</CardFooter>
-				</Card>
-
-				<form action={formAction} className="space-y-4">
-					<Card>
-						<CardHeader>
-							<CardTitle>Download settings</CardTitle>
-							<CardDescription>Enter the link, proxy, and auto-rotation preferences</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-6">
-							<div className="space-y-2">
-								<p className="text-sm font-medium">Video link</p>
-								<div className="relative">
-									<Link className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-									<Input
-										id="url"
-										name="url"
-										type="url"
-										placeholder="https://youtube.com/watch?v=..."
-										required
-										disabled={isSubmitting}
-										value={urlValue}
-										onChange={(e) => setUrlValue(e.target.value)}
-										className="h-12 pl-10"
-									/>
-								</div>
-							</div>
-							<div className="space-y-2">
-								<p className="text-sm font-medium">Output quality</p>
-								<Select name="quality" defaultValue="1080p" disabled={isSubmitting}>
-									<SelectTrigger className="h-10">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="1080p">1080p</SelectItem>
-										<SelectItem value="720p">720p</SelectItem>
-									</SelectContent>
-								</Select>
-								<p className="text-xs text-muted-foreground">Switch to 720p only if throttling occurs.</p>
-							</div>
-							<div className="space-y-2">
-								<p className="text-sm font-medium">Proxy</p>
-								<ProxySelector
-									value={selectedProxyId}
-									onValueChange={setSelectedProxyId}
-									disabled={isSubmitting}
-									allowDirect={false}
-								/>
-								{!hasSelectedProxy && (
-									<p className="text-xs text-destructive">Select a proxy before submitting.</p>
-								)}
-							</div>
-							<div className="rounded-lg border bg-muted/20 p-4">
-								<div className="flex items-center justify-between">
-									<div>
-										<p className="text-sm font-medium">Auto rotate proxies</p>
-										<p className="text-xs text-muted-foreground">If a download fails, try the next proxy automatically.</p>
-									</div>
-									<Switch
-										checked={autoRotate}
-										onCheckedChange={(v) => setAutoRotate(Boolean(v))}
-										disabled={isSubmitting}
-									/>
-								</div>
-								<div className="mt-4 grid gap-4 sm:grid-cols-2">
-									<div className="space-y-2">
-										<p className="text-sm font-medium">Max attempts</p>
+				<div className="grid gap-6 lg:grid-cols-[minmax(0,1fr),320px]">
+					<form action={formAction} className="space-y-4">
+						<Card>
+							<CardHeader className="space-y-1">
+								<CardTitle>New job</CardTitle>
+								<CardDescription>Paste a link, select quality, and pick a proxy.</CardDescription>
+							</CardHeader>
+							<CardContent className="space-y-6">
+								<div className="space-y-2">
+									<label htmlFor="url" className="text-sm font-medium">
+										Video link
+									</label>
+									<div className="relative">
+										<Link className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 										<Input
-											type="number"
-											min={1}
-											max={50}
-											value={maxAttempts}
-											onChange={(e) =>
-												setMaxAttempts(Math.max(1, Math.min(50, Number(e.target.value) || 1)))
-											}
-											disabled={isSubmitting || !autoRotate}
-											className="h-10"
+											id="url"
+											name="url"
+											type="url"
+											placeholder="https://youtube.com/watch?v=..."
+											required
+											disabled={isSubmitting}
+											value={urlValue}
+											onChange={(e) => setUrlValue(e.target.value)}
+											className="h-12 pl-10"
 										/>
-										<p className="text-xs text-muted-foreground">Keep it within roughly twice your proxy count.</p>
-									</div>
-									<div className="space-y-2">
-										<p className="text-sm font-medium">Rotation order</p>
-										<Select
-											value={rotationScope}
-											onValueChange={(v) => setRotationScope((v as 'selectedFirst' | 'all') || 'selectedFirst')}
-											disabled={isSubmitting || !autoRotate}
-										>
-											<SelectTrigger className="h-10">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="selectedFirst">Prioritize selected proxy</SelectItem>
-												<SelectItem value="all">Use list order</SelectItem>
-											</SelectContent>
-										</Select>
-										<p className="text-xs text-muted-foreground">"List order" ignores the manually selected first proxy.</p>
 									</div>
 								</div>
-							</div>
-							{error && (
-								<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-									{error}
-								</div>
-							)}
-						</CardContent>
-						<CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center">
-							<Button
-								type="submit"
-								className="flex-1 h-12 text-base"
-								disabled={isSubmitting || !hasSelectedProxy}
-							>
-								{isSubmitting ? (
-									<>
-										<Loader2 className="mr-2 h-5 w-5 animate-spin" />
-										Queueing...
-									</>
-								) : (
-									<>
-										<Download className="mr-2 h-5 w-5" />
-										Start cloud download
-									</>
-								)}
-							</Button>
-							<Button type="button" variant="ghost" className="h-12 sm:w-auto" onClick={handleReset}>
-								Reset form
-							</Button>
-						</CardFooter>
-					</Card>
-				</form>
 
-				<p className="text-center text-xs text-muted-foreground">
-					Up to 2 hours per job · 2GB per file · special media may wait longer in the cloud.
-				</p>
+								<div className="space-y-2">
+									<label htmlFor="quality" className="text-sm font-medium">
+										Output quality
+									</label>
+									<Select name="quality" defaultValue="1080p" disabled={isSubmitting}>
+										<SelectTrigger id="quality" className="h-10">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="1080p">1080p</SelectItem>
+											<SelectItem value="720p">720p</SelectItem>
+										</SelectContent>
+									</Select>
+									<p className="text-xs text-muted-foreground">Use 720p only if throttling occurs.</p>
+								</div>
+
+								<div className="space-y-2">
+									<label className="text-sm font-medium">Proxy</label>
+									<ProxySelector
+										value={selectedProxyId}
+										onValueChange={setSelectedProxyId}
+										disabled={isSubmitting}
+										allowDirect={false}
+									/>
+									{!hasSelectedProxy && (
+										<p className="text-xs text-destructive">Choose a proxy before submitting.</p>
+									)}
+								</div>
+
+								<div className="rounded-lg border border-dashed border-border/70 p-4">
+									<div className="flex items-start justify-between gap-3">
+										<div>
+											<p className="text-sm font-medium">Auto rotate proxies</p>
+											<p className="text-xs text-muted-foreground">Retry with the next proxy when a job fails.</p>
+										</div>
+										<Switch
+											checked={autoRotate}
+											onCheckedChange={(v) => setAutoRotate(Boolean(v))}
+											disabled={isSubmitting}
+										/>
+									</div>
+									{autoRotate && (
+										<div className="mt-4 grid gap-4 sm:grid-cols-2">
+											<div className="space-y-2">
+												<label htmlFor="maxAttempts" className="text-xs font-medium uppercase text-muted-foreground">
+													Max attempts
+												</label>
+												<Input
+													id="maxAttempts"
+													type="number"
+													min={1}
+													max={50}
+													value={maxAttempts}
+													onChange={(e) =>
+														setMaxAttempts(Math.max(1, Math.min(50, Number(e.target.value) || 1)))
+													}
+													disabled={isSubmitting || !autoRotate}
+													className="h-10"
+												/>
+											</div>
+											<div className="space-y-2">
+												<label className="text-xs font-medium uppercase text-muted-foreground">
+													Rotation order
+												</label>
+												<Select
+													value={rotationScope}
+													onValueChange={(v) =>
+														setRotationScope((v as 'selectedFirst' | 'all') || 'selectedFirst')
+													}
+													disabled={isSubmitting || !autoRotate}
+												>
+													<SelectTrigger className="h-10">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="selectedFirst">Selected proxy first</SelectItem>
+														<SelectItem value="all">List order</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
+										</div>
+									)}
+								</div>
+
+								{error && (
+									<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+										{error}
+									</div>
+								)}
+							</CardContent>
+							<CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center">
+								<Button type="submit" className="flex-1 h-12 text-base" disabled={isSubmitting || !hasSelectedProxy}>
+									{isSubmitting ? (
+										<>
+											<Loader2 className="mr-2 h-5 w-5 animate-spin" />
+											Queueing...
+										</>
+									) : (
+										<>
+											<Download className="mr-2 h-5 w-5" />
+											Queue download
+										</>
+									)}
+								</Button>
+								<Button type="button" variant="ghost" className="h-12 sm:w-auto" onClick={handleReset}>
+									Reset
+								</Button>
+							</CardFooter>
+						</Card>
+					</form>
+
+					<div className="space-y-4">
+						<Card>
+							<CardHeader className="space-y-1">
+								<CardTitle className="flex items-center gap-2 text-base font-semibold">
+									<Download className="h-4 w-4" />
+									Job status
+								</CardTitle>
+								<CardDescription>Updated roughly every five seconds.</CardDescription>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<div className="space-y-2">
+									<div className="flex items-center justify-between text-sm">
+										<span className="text-muted-foreground">Status</span>
+										<span className="font-medium">{jobActive ? statusLabel ?? 'Queued' : 'Idle'}</span>
+									</div>
+									<Progress value={progressPercent ?? 0} srLabel="Download progress" />
+									{phaseLabel && (
+										<div className="flex items-center justify-between text-xs text-muted-foreground">
+											<span>Phase</span>
+											<span className="text-foreground">{phaseLabel}</span>
+										</div>
+									)}
+								</div>
+
+								<dl className="grid gap-3 text-xs text-muted-foreground">
+									<div className="flex items-center justify-between gap-2">
+										<dt>Job ID</dt>
+										<dd className="font-mono text-foreground">{cloudJobId ? `${cloudJobId.slice(0, 10)}...` : '—'}</dd>
+									</div>
+									<div className="flex items-center justify-between gap-2">
+										<dt>Media ID</dt>
+										<dd className="font-mono text-foreground">{cloudMediaId ? `${cloudMediaId.slice(0, 10)}...` : '—'}</dd>
+									</div>
+									<div className="flex items-center justify-between gap-2">
+										<dt>Proxy</dt>
+										<dd className="max-w-[70%] truncate text-foreground" title={renderProxyLabel(selectedProxyId)}>
+											{renderProxyLabel(selectedProxyId)}
+										</dd>
+									</div>
+									<div className="flex items-center justify-between gap-2">
+										<dt>Auto retry</dt>
+										<dd className="text-foreground">{rotationSummary}</dd>
+									</div>
+								</dl>
+
+								{cloudStatusQuery.data?.message && (
+									<div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+										{cloudStatusQuery.data.message}
+									</div>
+								)}
+							</CardContent>
+							{rotationActive && (
+								<CardFooter className="flex justify-end">
+									<Button
+										variant="secondary"
+										size="sm"
+										disabled={autoRetryStopped || isSubmitting}
+										onClick={() => setAutoRetryStopped(true)}
+									>
+										Stop auto retry
+									</Button>
+								</CardFooter>
+							)}
+						</Card>
+
+						<p className="text-xs text-muted-foreground">
+							Jobs run up to two hours with a 2GB cap. Larger or protected media may take longer in the queue.
+						</p>
+					</div>
+				</div>
 			</div>
 		</div>
 	)
