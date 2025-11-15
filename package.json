@@ -15,7 +15,7 @@
     "db:d1:list:local": "wrangler --config wrangler.json d1 migrations list DB --local",
     "test": "vitest run",
     "remotion:ensure": "pnpm exec remotion browser ensure --log=info",
-    "cf:dev": "wrangler dev --config wrangler.toml --port 8787 --env local",
+    "cf:dev": "wrangler dev --config wrangler.toml --port 8787",
     "cf:deploy": "wrangler deploy --config wrangler.toml --env production",
     "dev:stack": "docker compose -f docker-compose.dev.yml up -d",
     "dev:stack:down": "docker compose -f docker-compose.dev.yml down -v",
