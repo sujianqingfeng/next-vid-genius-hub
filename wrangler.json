@@ -8,5 +8,17 @@
       "database_id": "local-vidgen-app",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "env": {
+    "local": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "vidgen_app",
+          "database_id": "local-vidgen-app",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 }
