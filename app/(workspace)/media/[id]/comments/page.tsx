@@ -957,19 +957,19 @@ export default function CommentsPage() {
 											variant="ghost"
 											size="sm"
 											onClick={() => {
-											const disclaimerText = `Content Notice
+											const disclaimerText = `内容声明
 
-This video is for entertainment purposes only, and the referenced comments do not represent this platform's views.
-Please watch responsibly and avoid spreading misinformation.
+本视频仅用于娱乐用途，所引用的评论不代表本平台的立场或观点。
+请理性观看，避免传播不实信息。
 
-Source Video: ${getVideoSourceId()}
+原始视频：${getVideoSourceId()}
 ${
 	mediaQuery.data?.comments &&
 	mediaQuery.data.comments.length > 0 &&
 	mediaQuery.data.commentsDownloadedAt
-		? `Comments Collected At: ${new Date(
+		? `评论采集时间：${new Date(
 				mediaQuery.data.commentsDownloadedAt,
-			).toLocaleString('en-US', {
+			).toLocaleString('zh-CN', {
 				year: 'numeric',
 				month: '2-digit',
 				day: '2-digit',
