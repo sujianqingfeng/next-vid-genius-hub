@@ -1,24 +1,26 @@
 {
-  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/master/wrangler.schema.json",
-  "name": "next-vid-genius",
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "vidgen_app",
-      "database_id": "local-vidgen-app",
-      "migrations_dir": "drizzle"
-    }
-  ],
-  "env": {
-    "local": {
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "vidgen_app",
-          "database_id": "local-vidgen-app",
-          "migrations_dir": "drizzle"
-        }
-      ]
-    }
-  }
+	"$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/master/wrangler.schema.json",
+	"name": "next-vid-genius",
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "vidgen_app_dev",
+			"database_id": "0cf8a955-f260-4274-98c8-beb3ee62a45a",
+			"migrations_dir": "drizzle",
+			"remote": true
+		}
+	],
+	"env": {
+		"local": {
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "vidgen_app_dev",
+					"database_id": "0cf8a955-f260-4274-98c8-beb3ee62a45a",
+					"migrations_dir": "drizzle",
+					"remote": true
+				}
+			]
+		}
+	}
 }

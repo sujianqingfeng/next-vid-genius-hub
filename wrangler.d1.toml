@@ -2,5 +2,6 @@ name = "next-app-d1"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "vidgen_app"
+database_name = "vidgen_app_dev"
+migrations_table = "_cfdev_migrations"
 migrations_dir = "drizzle"

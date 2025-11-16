@@ -4,8 +4,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "vidgen_app",
-      "database_id": "local-vidgen-app",
+      "database_id": "0cf8a955-f260-4274-98c8-beb3ee62a45a",
+      "database_name": "vidgen_app_dev",
       "migrations_dir": "drizzle"
     }
   ]

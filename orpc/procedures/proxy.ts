@@ -104,7 +104,13 @@ export const getSSRSubscriptions = os
 			logger.info('proxy', `Fetched subscriptions: ${subscriptionsWithProxies.length}`)
 			return { subscriptions: subscriptionsWithProxies }
 		} catch (error) {
-			logger.error('proxy', `Error in getSSRSubscriptions: ${error}`)
+			const err = error as any
+			const baseMessage = err instanceof Error ? err.message : String(err)
+			const causeMessage =
+				err && typeof err === 'object' && 'cause' in err && err.cause
+					? `; cause: ${err.cause instanceof Error ? err.cause.message : String(err.cause)}`
+					: ''
+			logger.error('proxy', `Error in getSSRSubscriptions: ${baseMessage}${causeMessage}`)
 			throw new Error(`Failed to fetch SSR subscriptions: ${error instanceof Error ? error.message : 'Unknown error'}`)
 		}
 	})
