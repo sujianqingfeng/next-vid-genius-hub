@@ -3,12 +3,14 @@ import path from 'node:path'
 import { os } from '@orpc/server'
 import { desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { OPERATIONS_DIR } from '~/lib/config/app.config'
-import { deleteCloudArtifacts } from '~/lib/cloudflare'
+import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
+import { deleteCloudArtifacts, getJobStatus, startCloudJob } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { generatePublishTitles } from '~/lib/ai/titles'
 import { AIModelIds, type AIModelId } from '~/lib/ai/models'
+import { ProviderFactory } from '~/lib/providers/provider-factory'
+import { toProxyJobPayload } from '~/lib/proxy/utils'
 
 export const list = os
 	.input(
@@ -52,6 +54,94 @@ export const byId = os
 			where: eq(schema.media.id, id),
 		})
 		return item
+	})
+
+// Refresh metadata from upstream provider via cloud downloader (no video re-download)
+export const refreshMetadata = os
+	.input(
+		z.object({
+			id: z.string(),
+			proxyId: z.string().optional(),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+		const record = await db.query.media.findFirst({
+			where: eq(schema.media.id, input.id),
+		})
+		if (!record) {
+			throw new Error('Media not found')
+		}
+		if (!record.url) {
+			throw new Error('Media URL is missing; cannot refresh metadata')
+		}
+
+		const provider = ProviderFactory.resolveProvider(record.url)
+		const source = provider.id === 'tiktok' ? 'tiktok' : 'youtube'
+
+		const proxyRecord =
+			input.proxyId && input.proxyId !== 'none'
+				? await db.query.proxies.findFirst({
+						where: eq(schema.proxies.id, input.proxyId),
+					})
+				: null
+
+		const proxyPayload = toProxyJobPayload(proxyRecord)
+
+		const job = await startCloudJob({
+			mediaId: record.id,
+			engine: 'media-downloader',
+			options: {
+				task: 'metadata-only',
+				url: record.url,
+				quality: (record.quality || '1080p') as '720p' | '1080p',
+				source,
+				proxy: proxyPayload,
+				defaultProxyUrl: PROXY_URL,
+			},
+		})
+
+		const terminal = new Set(['completed', 'failed', 'canceled'] as const)
+		const startedAt = Date.now()
+		let lastStatus = await getJobStatus(job.jobId)
+
+		while (!terminal.has(lastStatus.status)) {
+			if (Date.now() - startedAt > 60_000) {
+				throw new Error(`Metadata refresh timed out: ${lastStatus.status}`)
+			}
+			await new Promise((resolve) => setTimeout(resolve, 1500))
+			lastStatus = await getJobStatus(job.jobId)
+		}
+
+		if (lastStatus.status !== 'completed') {
+			const msg = lastStatus.message || `Metadata job not completed: ${lastStatus.status}`
+			throw new Error(msg)
+		}
+
+		const meta = (lastStatus.metadata ?? {}) as Record<string, unknown>
+		const updates: Record<string, unknown> = {}
+
+		const title = typeof meta.title === 'string' ? meta.title : undefined
+		const author = typeof meta.author === 'string' ? meta.author : undefined
+		const thumbnail = typeof meta.thumbnail === 'string' ? meta.thumbnail : undefined
+		const viewCount = typeof meta.viewCount === 'number' ? meta.viewCount : undefined
+		const likeCount = typeof meta.likeCount === 'number' ? meta.likeCount : undefined
+
+		if (title) updates.title = title
+		if (author) updates.author = author
+		if (thumbnail) updates.thumbnail = thumbnail
+		if (typeof viewCount === 'number') updates.viewCount = viewCount
+		if (typeof likeCount === 'number') updates.likeCount = likeCount
+
+		if (Object.keys(updates).length === 0) {
+			return record
+		}
+
+		await db.update(schema.media).set(updates).where(eq(schema.media.id, input.id))
+		const updated = await db.query.media.findFirst({
+			where: eq(schema.media.id, input.id),
+		})
+		return updated
 	})
 
 export const updateTitles = os

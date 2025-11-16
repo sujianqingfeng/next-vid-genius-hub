@@ -18,9 +18,13 @@ import {
 	getAvailableModels,
 	getModelLabel,
 } from '~/lib/subtitle/config/models'
-import type { TranscriptionProvider, WhisperModel } from '~/lib/subtitle/config/models'
+import type {
+	TranscriptionProvider,
+	WhisperModel,
+} from '~/lib/subtitle/config/models'
 import { type ChatModelId } from '~/lib/ai/models'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
+import type { DownsampleBackend } from '~/lib/subtitle/types'
 import { useEffect, useMemo, useState } from 'react'
 
 interface Step1TranscribeProps {
@@ -46,8 +50,8 @@ interface Step1TranscribeProps {
   textCorrectDefault?: boolean
   onRestoreOriginal?: () => void
   // Downsample backend selection
-  downsampleBackend?: 'auto' | 'local' | 'cloud'
-  onDownsampleBackendChange?: (v: 'auto' | 'local' | 'cloud') => void
+  downsampleBackend?: DownsampleBackend
+  onDownsampleBackendChange?: (v: DownsampleBackend) => void
 }
 
 	export function Step1Transcribe(props: Step1TranscribeProps) {
@@ -95,7 +99,7 @@ interface Step1TranscribeProps {
   const [maxChars, setMaxChars] = useState<number>(68)
   const [lightCleanup, setLightCleanup] = useState<boolean>(false)
   const [textCorrect, setTextCorrect] = useState<boolean>(false)
-  const [downBackend, setDownBackend] = useState<'auto'|'local'|'cloud'>(downsampleBackend || 'auto')
+  const [downBackend, setDownBackend] = useState<DownsampleBackend>(downsampleBackend || 'auto')
 
   useEffect(() => {
     if (!storageKey) return
@@ -201,7 +205,7 @@ interface Step1TranscribeProps {
               <Select
                 value={downBackend}
                 onValueChange={(v) => {
-                  const val = v as 'auto'|'local'|'cloud'
+                  const val = v as DownsampleBackend
                   setDownBackend(val)
                   onDownsampleBackendChange?.(val)
                 }}

@@ -69,6 +69,34 @@ export async function downloadVideo(
   return { rawMetadata: undefined }
 }
 
+export async function fetchVideoMetadata(
+  url: string,
+  options: { proxy?: string } = {},
+): Promise<unknown | undefined> {
+  const args = [url, '--skip-download', '--print-json', '--no-playlist']
+  if (options.proxy) {
+    args.push('--proxy', options.proxy)
+  }
+
+  if (!(await hasBinary('yt-dlp'))) {
+    throw new Error('yt-dlp binary not found on PATH')
+  }
+
+  const { stdout } = await run('yt-dlp', args)
+  const lines = String(stdout || '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    try {
+      return JSON.parse(lines[i]!)
+    } catch {}
+  }
+
+  return undefined
+}
+
 export async function extractAudio(videoPath: string, audioPath: string): Promise<void> {
   const args = [
     '-y',
@@ -89,5 +117,5 @@ export async function extractAudio(videoPath: string, audioPath: string): Promis
   await run('ffmpeg', args)
 }
 
-export default { downloadVideo, extractAudio }
+export default { downloadVideo, fetchVideoMetadata, extractAudio }
 

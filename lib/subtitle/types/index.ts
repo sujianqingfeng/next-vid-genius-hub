@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
+import type { TranscriptionProvider, WhisperModel } from '~/lib/subtitle/config/models'
+import type { ChatModelId } from '~/lib/ai/models'
 
 export interface TimeSegmentEffect {
 	id: string
@@ -43,16 +45,19 @@ export interface SubtitleRenderPreset {
 
 export type SubtitleStepId = 'step1' | 'step2' | 'step3' | 'step4'
 
+export const DOWNSAMPLE_BACKEND_VALUES = ['auto', 'local', 'cloud'] as const
+export type DownsampleBackend = (typeof DOWNSAMPLE_BACKEND_VALUES)[number]
+
 export interface SubtitleWorkflowState {
 	activeStep: SubtitleStepId
 	transcription?: string
 	translation?: string
 	renderedVideoPath?: string
-	selectedModel?: string
-	selectedProvider?: string
-	selectedAIModel?: string
+	selectedModel?: WhisperModel
+	selectedProvider?: TranscriptionProvider
+	selectedAIModel?: ChatModelId
 	subtitleConfig?: SubtitleRenderConfig
-	downsampleBackend?: 'auto' | 'local' | 'cloud'
+	downsampleBackend?: DownsampleBackend
 }
 
 export interface StepState {
@@ -98,5 +103,7 @@ export const subtitleRenderConfigSchema = z.object({
 	timeSegmentEffects: z.array(timeSegmentEffectSchema).default([]),
 	hintTextConfig: hintTextConfigSchema.optional(),
 })
+
+export const downsampleBackendSchema = z.enum(DOWNSAMPLE_BACKEND_VALUES)
 
 export type { VttCue } from '~/lib/subtitle/utils/vtt'

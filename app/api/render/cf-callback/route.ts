@@ -184,7 +184,7 @@ async function handleCloudDownloadCallback(
 		}
 	}
 
-	// Detect comments-only task: remote metadata exists but no video object was uploaded
+	// Detect comments-only task based on outputs: metadata only, no video/audio keys.
 	const rawVideoKey = payload.outputs?.video?.key ?? null
 	const fallbackVideoKey = (payload as Partial<CallbackPayload>)?.outputKey ?? null
 	const resolvedVideoKey = rawVideoKey ?? fallbackVideoKey ?? null
@@ -194,11 +194,14 @@ async function handleCloudDownloadCallback(
 	const audioUrl = payload.outputs?.audio?.url ?? null
 	const metadataUrl = payload.outputs?.metadata?.url ?? null
 
+	const hasMetadataOutput = Boolean(metadataUrl || metadataKey)
+	const hasVideoKey = Boolean(resolvedVideoKey)
+	const hasAudioKey = Boolean(audioKey)
+	const isCommentsOnly = hasMetadataOutput && !hasVideoKey && !hasAudioKey
+
 	const videoExists = await remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
 	const audioExists = await remoteObjectExists({ key: audioKey, directUrl: audioUrl })
 	const metadataExistsWithSource = await remoteObjectExists({ key: metadataKey, directUrl: metadataUrl })
-	const hasMetadataOutput = Boolean(metadataUrl || metadataKey)
-	const isCommentsOnly = hasMetadataOutput && !videoExists && !audioExists
 
   
 

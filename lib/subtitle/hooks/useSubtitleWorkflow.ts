@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import type {
@@ -13,8 +13,6 @@ import type {
 	StepState
 } from '~/lib/subtitle/types'
 import { DEFAULT_SUBTITLE_RENDER_CONFIG, findMatchingPreset } from '~/lib/subtitle/config/presets'
-import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
-import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
 
 interface UseSubtitleWorkflowOptions {
 	mediaId: string
@@ -25,8 +23,6 @@ interface UseSubtitleWorkflowOptions {
  * 字幕工作流管理 Hook
  */
 export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkflowOptions) {
-	const queryClient = useQueryClient()
-
 	// 工作流状态
 	const [workflowState, setWorkflowState] = useState<SubtitleWorkflowState>(() => ({
 		activeStep: 'step1',
@@ -42,10 +38,9 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 	})
 
 	// 媒体数据查询
-    const mediaQuery = useQuery(
-        queryOrpc.media.byId.queryOptions({ input: { id: mediaId } })
-    )
-    const isVisible = usePageVisibility()
+	const mediaQuery = useQuery(
+		queryOrpc.media.byId.queryOptions({ input: { id: mediaId } }),
+	)
 
 	// 更新步骤状态
 	const updateStepState = useCallback((
@@ -74,20 +69,20 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 		setWorkflowState(prev => ({ ...prev, ...updates }))
 	}, [])
 
-    // 根据媒体数据更新状态（优先使用 optimizedTranscription）
-    useEffect(() => {
-        if (!mediaQuery.data) return
+	// 根据媒体数据更新状态（优先使用 optimizedTranscription）
+	useEffect(() => {
+		if (!mediaQuery.data) return
 
-        const media = mediaQuery.data
+		const media = mediaQuery.data
 
-        // 更新转录状态
-        const preferredTranscription = media?.optimizedTranscription || media?.transcription
-        if (preferredTranscription && !workflowState.transcription) {
-            updateWorkflowState({ transcription: preferredTranscription })
-            updateStepState('step1', { isCompleted: true })
-            updateStepState('step2', { isEnabled: true })
-            // 保持在 step1，让用户可在转录后先进行“优化”
-        }
+		// 更新转录状态
+		const preferredTranscription = media?.optimizedTranscription || media?.transcription
+		if (preferredTranscription && !workflowState.transcription) {
+			updateWorkflowState({ transcription: preferredTranscription })
+			updateStepState('step1', { isCompleted: true })
+			updateStepState('step2', { isEnabled: true })
+			// 保持在 step1，让用户可在转录后先进行“优化”
+		}
 
 		// 更新翻译状态
 		if (media.translation && !workflowState.translation) {
@@ -111,23 +106,6 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 			}
 		}
 	}, [mediaQuery.data, workflowState, updateWorkflowState, updateStepState, setActiveStep])
-
-	// 轮询渲染状态
-    useEffect(() => {
-        if (
-            workflowState.activeStep === 'step3' &&
-            workflowState.translation &&
-            !workflowState.renderedVideoPath &&
-            isVisible
-        ) {
-            const interval = setInterval(() => {
-                queryClient.invalidateQueries({
-                    queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-                })
-            }, TIME_CONSTANTS.MEDIA_REFRESH_POLL_INTERVAL)
-            return () => clearInterval(interval)
-        }
-    }, [workflowState.activeStep, workflowState.translation, workflowState.renderedVideoPath, mediaId, queryClient, isVisible])
 
 	// 重置工作流
 	const resetWorkflow = useCallback(() => {

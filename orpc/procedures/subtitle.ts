@@ -1,24 +1,17 @@
 import { os } from "@orpc/server";
 import { z } from "zod";
 import { AIModelIds } from "~/lib/ai/models";
-import { subtitleRenderConfigSchema } from "~/lib/subtitle/types";
+import { subtitleRenderConfigSchema, downsampleBackendSchema } from "~/lib/subtitle/types";
 import { subtitleService } from "~/lib/services/subtitle/subtitle.service";
+import { transcriptionProviderSchema, whisperModelSchema } from "~/lib/subtitle/config/models";
 
 export const transcribe = os
   .input(
     z.object({
       mediaId: z.string(),
-      model: z.enum([
-        "whisper-large",
-        "whisper-medium",
-        "whisper-tiny-en",
-        "whisper-large-v3-turbo",
-      ]),
-      provider: z.enum(["local", "cloudflare"]).default("local"),
-      downsampleBackend: z
-        .enum(["auto", "local", "cloud"])
-        .default("auto")
-        .optional(),
+      model: whisperModelSchema,
+      provider: transcriptionProviderSchema.default("local"),
+      downsampleBackend: downsampleBackendSchema.default("auto").optional(),
     }),
   )
   .handler(async ({ input }) => {
