@@ -242,6 +242,7 @@ export const finalizeCloudCommentsDownload = os
 		const { mediaId, jobId } = input
 		const db = await getDb()
 		const status = await getJobStatus(jobId)
+
 		if (status.status !== 'completed') {
 			throw new Error(`Job not completed: ${status.status}`)
 		}
