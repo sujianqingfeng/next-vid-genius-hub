@@ -345,8 +345,8 @@ export { schema, db }
 # 创建数据库（可在控制台或 CLI）
 npx wrangler d1 create vidgen_app
 
-# 生成迁移（建议使用 wrangler d1 的迁移目录，或基于 drizzle 生成 SQL 后导入）
-# 将 SQL 放入 migrations 目录后：
+#  使用 drizzle-kit 在 drizzle 目录生成迁移 SQL（本仓库已配置 drizzle.config.ts）
+#  确保 wrangler 配置中的 migrations_dir 指向 drizzle 目录后：
 npx wrangler d1 migrations apply vidgen_app
 
 # 也可在 CI 中执行 apply，再部署 Worker

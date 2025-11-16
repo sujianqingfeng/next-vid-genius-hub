@@ -1,1 +1,0 @@
-ALTER TABLE `media` ADD `comments_template` text;

@@ -1,1 +1,0 @@
-ALTER TABLE `media` ADD `optimized_transcription` text;

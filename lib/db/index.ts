@@ -15,10 +15,8 @@ async function ensureLocalD1Migrations(d1: any) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require('node:path') as typeof import('node:path')
 
-    // Prefer migrations/ if present; otherwise fall back to drizzle/
-    const baseDir = fs.existsSync(path.join(process.cwd(), 'migrations'))
-      ? path.join(process.cwd(), 'migrations')
-      : path.join(process.cwd(), 'drizzle')
+    // Use drizzle/ as the single source of truth for SQL migrations
+    const baseDir = path.join(process.cwd(), 'drizzle')
 
     // Tracking table to avoid reapplying
     await d1.exec('CREATE TABLE IF NOT EXISTS _cfdev_migrations (id TEXT PRIMARY KEY)')

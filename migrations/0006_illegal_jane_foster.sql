@@ -1,1 +1,0 @@
-ALTER TABLE `media` ADD `publish_title` text;
