@@ -7,6 +7,7 @@ import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
 import { getTranslationPrompt, DEFAULT_TRANSLATION_PROMPT_ID } from '~/lib/subtitle/config/prompts'
 import { z } from 'zod'
 import type { AIModelId } from '~/lib/ai/models'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 export async function translate(input: { mediaId: string; model: AIModelId; promptId?: string }): Promise<{ translation: string }> {
   const { mediaId, model, promptId } = input
@@ -71,7 +72,7 @@ Strict rules:
 
   await db.update(schema.media).set({ translation: vtt }).where(where)
   try {
-    const vttKey = `inputs/subtitles/${mediaId}.vtt`
+    const vttKey = bucketPaths.inputs.subtitles(mediaId)
     await putObjectByKey(vttKey, 'text/vtt', vtt)
     await upsertMediaManifest(mediaId, { vttKey })
     logger.info('translation', `Translated VTT materialized: ${vttKey}`)

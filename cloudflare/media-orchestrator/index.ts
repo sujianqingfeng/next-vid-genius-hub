@@ -1,4 +1,5 @@
 import { getContainer } from '@cloudflare/containers'
+import { bucketPaths, type InputVideoVariant } from '../../lib/storage/bucket-paths'
 export interface Env {
   JOBS: KVNamespace
   RENDER_BUCKET?: R2Bucket
@@ -214,7 +215,7 @@ async function getSigningKey(secret: string, date: string, region: string, servi
 }
 
 async function readManifest(env: Env, bucket: string, mediaId: string): Promise<MediaManifest | null> {
-  const key = `manifests/media/${mediaId}.json`
+  const key = bucketPaths.manifests.media(mediaId)
   // Prefer R2 binding if available
   try {
     if (env.RENDER_BUCKET) {
@@ -249,7 +250,7 @@ async function presignGetForContainer(
 }
 
 async function writeManifestPatch(env: Env, bucket: string, mediaId: string, patch: Partial<MediaManifest>): Promise<void> {
-  const key = `manifests/media/${mediaId}.json`
+  const key = bucketPaths.manifests.media(mediaId)
   const merge = (base: any, add: any) => ({ ...base, ...Object.fromEntries(Object.entries(add).filter(([, v]) => v !== undefined)) })
   // Prefer R2 binding
   if (env.RENDER_BUCKET) {
@@ -323,19 +324,18 @@ async function handleStart(env: Env, req: Request) {
   const isAsrPipeline = body.engine === 'asr-pipeline'
   const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
   const sourcePolicy = ((body.options || {}) as any).sourcePolicy as 'auto' | 'original' | 'subtitles' | undefined
-  const inputVariant = sourcePolicy === 'original' ? 'raw' : sourcePolicy === 'subtitles' ? 'subtitles' : undefined
-  const inputVideoKey = inputVariant
-    ? `inputs/videos/${inputVariant}/${body.mediaId}.mp4`
-    : `inputs/videos/${body.mediaId}.mp4`
-  const inputVttKey = `inputs/subtitles/${body.mediaId}.vtt`
-  const inputDataKey = `inputs/comments/${body.mediaId}.json`
+  const inputVariant: InputVideoVariant | undefined =
+    sourcePolicy === 'original' ? 'raw' : sourcePolicy === 'subtitles' ? 'subtitles' : undefined
+  const inputVideoKey = bucketPaths.inputs.videoVariant(body.mediaId, inputVariant)
+  const inputVttKey = bucketPaths.inputs.subtitles(body.mediaId)
+  const inputDataKey = bucketPaths.inputs.comments(body.mediaId)
   const outputVideoKey = isDownloader
-    ? `downloads/${body.mediaId}/${jobId}/video.mp4`
-    : `outputs/by-media/${body.mediaId}/${jobId}/video.mp4`
+    ? bucketPaths.downloads.video(body.mediaId, jobId)
+    : bucketPaths.outputs.video(body.mediaId, jobId)
   const outputAudioKey = isDownloader
-    ? `downloads/${body.mediaId}/${jobId}/audio.mp3`
-    : ((isAudioTranscoder || isAsrPipeline) ? `asr/processed/${body.mediaId}/${jobId}/audio.mp3` : undefined)
-  const outputMetadataKey = isDownloader ? `downloads/${body.mediaId}/${jobId}/metadata.json` : undefined
+    ? bucketPaths.downloads.audio(body.mediaId, jobId)
+    : ((isAudioTranscoder || isAsrPipeline) ? bucketPaths.asr.processedAudio(body.mediaId, jobId) : undefined)
+  const outputMetadataKey = isDownloader ? bucketPaths.downloads.metadata(body.mediaId, jobId) : undefined
 
   let inputVideoUrl: string | undefined
   let inputVttUrl: string | undefined
@@ -710,7 +710,7 @@ async function materializeSubtitlesInput(env: Env, doc: any) {
   const mediaId: string | undefined = doc?.mediaId
   const sourceKey: string | undefined = doc?.outputKey
   if (!mediaId || !sourceKey) return
-  const targetKey = `inputs/videos/subtitles/${mediaId}.mp4`
+  const targetKey = bucketPaths.inputs.subtitledVideo(mediaId)
   // Skip if already materialized
   const exists = await s3Head(env, bucket, targetKey)
   if (exists) return
@@ -799,12 +799,13 @@ async function runAsrForPipeline(env: Env, doc: any) {
   }
 
   // Store into R2
-  const vttKey = `asr/results/by-media/${doc.mediaId || 'unknown'}/${jobId}/transcript.vtt`
+  const mediaKey = doc.mediaId || 'unknown'
+  const vttKey = bucketPaths.asr.results.transcript(mediaKey, jobId)
   await s3Put(env, bucket, vttKey, 'text/vtt', String(vtt))
 
   let wordsKey: string | undefined
   if (words && (Array.isArray(words) ? words.length > 0 : true)) {
-    wordsKey = `asr/results/by-media/${doc.mediaId || 'unknown'}/${jobId}/words.json`
+    wordsKey = bucketPaths.asr.results.words(mediaKey, jobId)
     await s3Put(env, bucket, wordsKey, 'application/json', JSON.stringify(words))
   }
 
@@ -825,7 +826,7 @@ async function runAsrForPipeline(env: Env, doc: any) {
 
 async function handleUpload(env: Env, req: Request, jobId: string) {
   // 依据 DO/KV 中的 outputKey 决定最终存储路径（包含 mediaId）
-  let outputKey = `outputs/${jobId}/video.mp4`
+  let outputKey = bucketPaths.outputs.fallbackVideo(jobId)
   try {
     const stub = jobStub(env, jobId)
     if (stub) {
@@ -864,7 +865,7 @@ async function handleUpload(env: Env, req: Request, jobId: string) {
 
 async function handleArtifactGet(env: Env, req: Request, jobId: string) {
   // 优先从 DO/KV 获取 outputKey（包含 mediaId 的归属路径）
-  let key = `outputs/${jobId}/video.mp4`
+  let key = bucketPaths.outputs.fallbackVideo(jobId)
   try {
     const stub = jobStub(env, jobId)
     if (stub) {
@@ -1164,17 +1165,17 @@ function collectKeysFromDoc(doc: any, jobId: string): string[] {
     }
     const mediaId = typeof doc.mediaId === 'string' ? doc.mediaId : undefined
     if (mediaId) {
-      push(`outputs/by-media/${mediaId}/${jobId}/video.mp4`)
-      push(`downloads/${mediaId}/${jobId}/video.mp4`)
-      push(`downloads/${mediaId}/${jobId}/audio.mp3`)
-      push(`downloads/${mediaId}/${jobId}/metadata.json`)
-      push(`asr/results/by-media/${mediaId}/${jobId}/transcript.vtt`)
-      push(`asr/results/by-media/${mediaId}/${jobId}/words.json`)
+      push(bucketPaths.outputs.video(mediaId, jobId))
+      push(bucketPaths.downloads.video(mediaId, jobId))
+      push(bucketPaths.downloads.audio(mediaId, jobId))
+      push(bucketPaths.downloads.metadata(mediaId, jobId))
+      push(bucketPaths.asr.results.transcript(mediaId, jobId))
+      push(bucketPaths.asr.results.words(mediaId, jobId))
     }
   }
 
   // Fallback canonical location
-  push(`outputs/${jobId}/video.mp4`)
+  push(bucketPaths.outputs.fallbackVideo(jobId))
 
   return Array.from(collected)
 }

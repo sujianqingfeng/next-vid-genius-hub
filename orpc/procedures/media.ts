@@ -11,6 +11,7 @@ import { generatePublishTitles } from '~/lib/ai/titles'
 import { AIModelIds, type AIModelId } from '~/lib/ai/models'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 export const list = os
 	.input(
@@ -250,15 +251,14 @@ export const deleteById = os
 				if (record.remoteAudioKey) keys.push(record.remoteAudioKey)
 				if (record.remoteMetadataKey) keys.push(record.remoteMetadataKey)
 				// Well-known per-media objects that we materialize into the bucket
-					keys.push(
-						`manifests/media/${id}.json`,
-						`inputs/subtitles/${id}.vtt`,
-						`inputs/videos/subtitles/${id}.mp4`,
-						// Include all possible input video variants to avoid leftovers
-						`inputs/videos/${id}.mp4`,
-						`inputs/videos/raw/${id}.mp4`,
-						`inputs/comments/${id}.json`,
-					)
+				keys.push(
+					bucketPaths.manifests.media(id),
+					bucketPaths.inputs.subtitles(id),
+					bucketPaths.inputs.subtitledVideo(id),
+					bucketPaths.inputs.video(id),
+					bucketPaths.inputs.rawVideo(id),
+					bucketPaths.inputs.comments(id),
+				)
 
 				const artifactJobIds: string[] = []
 				// videoWithSubtitlesPath or videoWithInfoPath might store remote orchestrator artifact refs: "remote:orchestrator:<jobId>"
@@ -272,20 +272,20 @@ export const deleteById = os
 				if (record.downloadJobId) artifactJobIds.push(record.downloadJobId)
 
 				// Known per-media prefixes that may contain multiple artifacts
-					const prefixes = [
-						`outputs/by-media/${id}/`,
-						`downloads/${id}/`,
-						`asr/results/by-media/${id}/`,
-						// Also delete audio produced by audio-transcoder/ASR pipeline
-						`asr/processed/${id}/`,
-					]
+				const prefixes = [
+					bucketPaths.outputs.byMediaPrefix(id),
+					bucketPaths.downloads.prefix(id),
+					bucketPaths.asr.results.prefix(id),
+					// Also delete audio produced by audio-transcoder/ASR pipeline
+					bucketPaths.asr.processedPrefix(id),
+				]
 
-					await deleteCloudArtifacts({ keys, artifactJobIds, prefixes })
-				}
-	    } catch (err) {
-	        const msg = err instanceof Error ? err.message : String(err)
-	        logger.warn('media', `[media.deleteById] cloud cleanup failed (continuing): ${msg}`)
-	    }
+				await deleteCloudArtifacts({ keys, artifactJobIds, prefixes })
+			}
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err)
+			logger.warn('media', `[media.deleteById] cloud cleanup failed (continuing): ${msg}`)
+		}
 
 		// 3) Delete DB record
 		await db.delete(schema.media).where(eq(schema.media.id, id))
@@ -294,5 +294,5 @@ export const deleteById = os
 		const operationDir = path.join(OPERATIONS_DIR, id)
 		await fs.rm(operationDir, { recursive: true, force: true })
 
-			return { success: true }
-		})
+		return { success: true }
+	})

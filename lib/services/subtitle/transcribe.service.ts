@@ -13,6 +13,7 @@ import {
 } from '~/lib/config/app.config'
 import { validateVttContent, normalizeVttContent } from '~/lib/subtitle/utils/vtt'
 import { putObjectByKey, upsertMediaManifest, presignGetByKey, startCloudJob, getJobStatus } from '~/lib/cloudflare'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 export async function transcribe(input: {
   mediaId: string
@@ -177,7 +178,7 @@ export async function transcribe(input: {
 
   await db.update(schema.media).set({ transcription: vttContent, transcriptionWords }).where(eq(schema.media.id, mediaId))
   try {
-    const vttKey = `inputs/subtitles/${mediaId}.vtt`
+    const vttKey = bucketPaths.inputs.subtitles(mediaId)
     await putObjectByKey(vttKey, 'text/vtt', vttContent)
     await upsertMediaManifest(mediaId, { vttKey })
     logger.info('transcription', `VTT materialized to bucket: ${vttKey}`)

@@ -15,6 +15,7 @@ import {
 	serializeVttCues,
 	validateVttContent,
 } from '~/lib/subtitle/utils/vtt'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 export async function updateTranslation(input: {
 	mediaId: string
@@ -27,7 +28,7 @@ export async function updateTranslation(input: {
 		.set({ translation: input.translation })
 		.where(where)
 	try {
-		const vttKey = `inputs/subtitles/${input.mediaId}.vtt`
+		const vttKey = bucketPaths.inputs.subtitles(input.mediaId)
 		await putObjectByKey(vttKey, 'text/vtt', input.translation)
 		await upsertMediaManifest(input.mediaId, { vttKey })
 		logger.info(

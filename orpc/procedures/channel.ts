@@ -7,6 +7,7 @@ import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { startCloudJob, getJobStatus, presignGetByKey, putObjectByKey } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 const CreateChannelInput = z.object({
   channelUrlOrId: z.string().min(1),
@@ -202,7 +203,7 @@ export const finalizeCloudSync = os
 
     // Optional: materialize snap to bucket for auditing
     try {
-      const key = `inputs/channel-videos/${channel.id}/${input.jobId}.json`
+      const key = bucketPaths.inputs.channelVideos(channel.id, input.jobId)
       await putObjectByKey(key, 'application/json', JSON.stringify({ channel: { id: channel.id, url: channel.channelUrl }, videos: list }, null, 2))
     } catch {}
 

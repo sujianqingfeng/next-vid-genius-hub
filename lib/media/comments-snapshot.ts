@@ -2,6 +2,7 @@ import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
 import { schema } from '~/lib/db'
 import type { Comment } from '~/lib/db/schema'
 import type { VideoInfo } from '~/lib/media/types'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 const COMMENTS_SERIES_TITLE = '外网真实评论'
 
@@ -25,7 +26,7 @@ export async function buildCommentsSnapshot(
 	media: MediaRecord,
 	options: BuildCommentsSnapshotOptions,
 ): Promise<BuildCommentsSnapshotResult> {
-	const key = `inputs/comments/${media.id}.json`
+	const key = bucketPaths.inputs.comments(media.id)
 
 	const translatedTitle = (options.translatedTitle ?? media.translatedTitle) || undefined
 
