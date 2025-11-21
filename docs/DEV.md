@@ -1,10 +1,10 @@
-# 本地开发同生产的同构方案（MinIO + S3 预签名）
+# 本地开发同生产的同构方案（Cloudflare R2 直连）
 
 目标：让本地开发与生产路径一致，容器仅访问对象存储（S3 兼容）与编排（Worker），不依赖 `localhost/host.docker.internal`。
 
 ## 组件
 
-- MinIO（S3 兼容）作为本地对象存储
+- Cloudflare R2（S3 兼容）作为统一对象存储（本地/线上同桶）
 - 渲染容器 `burner-ffmpeg`（仅访问 S3）
 - Worker（wrangler dev）负责（桶优先）：
   - 直接从桶读取/检测输入（`inputs/...` 或 manifest 指针），不再从 Next 拉取源数据
@@ -13,17 +13,13 @@
   - 轮询时通过 HEAD 检测桶内产物；完成后回调 Next 落库
   - 当字幕渲染完成时，自动将成品物化到 `inputs/videos/subtitles/<mediaId>.mp4`，并写入 `manifest.subtitlesInputKey`
 
-## 启动 MinIO 与容器
+## 启动容器
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d burner-ffmpeg renderer-remotion media-downloader audio-transcoder
 ```
 
-Docker Compose 会同时编译/启动下列服务：MinIO、burner-ffmpeg、renderer-remotion、media-downloader。
-
-MinIO 控制台：`http://localhost:9001`（账号/密码：`minioadmin`/`minioadmin`）
-
-首次登录后创建桶：`vidgen-render`
+Compose 只负责拉起各类媒体容器；对象存储直接指向 Cloudflare R2，无需再运行 MinIO。
 
 ### 本地代理（Clash / Mihomo）
 
@@ -36,20 +32,7 @@ MinIO 控制台：`http://localhost:9001`（账号/密码：`minioadmin`/`minioa
 
 ## Worker 本地配置
 
-编辑 `cloudflare/media-orchestrator/wrangler.toml`，在 `[vars]` 中设置：
-
-```toml
-S3_ENDPOINT = "http://127.0.0.1:9000"   # MinIO API
-S3_INTERNAL_ENDPOINT = "http://minio:9000" # 容器内部访问 MinIO
-S3_STYLE = "path"                        # 路径风格
-S3_ACCESS_KEY_ID = "minioadmin"
-S3_SECRET_ACCESS_KEY = "minioadmin"
-S3_BUCKET_NAME = "vidgen-render"
-NEXT_BASE_URL = "http://localhost:3000"
-CONTAINER_BASE_URL = "http://localhost:8080"        # 字幕烧录容器
-CONTAINER_BASE_URL_REMOTION = "http://localhost:8090"  # 评论渲染容器
-CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100" # Cloud 下载容器
-```
+`cloudflare/media-orchestrator/wrangler.toml` 已默认将 `S3_ENDPOINT/S3_INTERNAL_ENDPOINT` 指向 Cloudflare R2（`https://<account>.r2.cloudflarestorage.com`，`S3_STYLE=vhost`）。确保 `.env` 中提供 `S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY`（使用 `wrangler secret put` 注入生产环境）即可。若短暂离线需要回退 MinIO，可临时改成 MinIO 端点并自行运行 MinIO。
 
 运行 Worker：
 
@@ -151,7 +134,6 @@ pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中
 
 ## 注意事项
 
-- 若 MinIO 与 Worker 不在同一网络（wrangler dev 在宿主机），将 `S3_ENDPOINT` 设置为 `http://127.0.0.1:9000`。
-- 若使用 compose 内网络，则把 `S3_ENDPOINT` 设为 `http://minio:9000` 并在容器中运行 wrangler。
+- 如需在离线环境临时改用 MinIO，可把 `S3_ENDPOINT` 切换回 `http://127.0.0.1:9000`（或 compose 网络内的 `http://minio:9000`），并手动运行 MinIO；恢复网络后改回 R2 端点即可。
 - 不建议在本地模式下再使用 `/upload` 或容器回调；S3 直连路径更稳、更贴近生产。
  - 新逻辑将 jobId 持久化在浏览器（`subtitleCloudJob:<mediaId>`），刷新后自动恢复轮询；页面失焦会暂停轮询、聚焦恢复。

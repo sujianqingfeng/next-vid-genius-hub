@@ -1,6 +1,19 @@
 {
   "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/master/wrangler.schema.json",
   "name": "next-vid-genius",
+  "compatibility_date": "2024-05-01",
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "next-vid-genius"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "vidgen-render"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -9,8 +22,26 @@
       "migrations_dir": "drizzle"
     }
   ],
+  "vars": {
+    "NODE_ENV": "production",
+    "NEXT_PUBLIC_APP_URL": "https://app.example.com",
+    "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret",
+    "R2_PUBLIC_BASE_URL": ""
+  },
   "env": {
     "local": {
+      "services": [
+        {
+          "binding": "WORKER_SELF_REFERENCE",
+          "service": "next-vid-genius"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "NEXT_INC_CACHE_R2_BUCKET",
+          "bucket_name": "vidgen-render"
+        }
+      ],
       "d1_databases": [
         {
           "binding": "DB",
@@ -18,7 +49,13 @@
           "database_id": "cb3d8c21-4b76-4bdf-b02d-eea938db23c8",
           "migrations_dir": "drizzle"
         }
-      ]
+      ],
+      "vars": {
+        "NODE_ENV": "development",
+        "NEXT_PUBLIC_APP_URL": "http://localhost:3000",
+        "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret",
+        "R2_PUBLIC_BASE_URL": ""
+      }
     }
   }
 }

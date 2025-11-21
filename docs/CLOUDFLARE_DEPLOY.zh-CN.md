@@ -56,7 +56,7 @@ initOpenNextCloudflareForDev()
 
 ### 2.3 OpenNext 配置（增量缓存）
 
-在项目根目录新增 `open-next.config.ts`（若不存在）：
+仓库已内置 `open-next.config.ts`，直接启用了基于 R2 的增量缓存：
 
 ```ts
 import { defineCloudflareConfig } from '@opennextjs/cloudflare'
@@ -67,7 +67,7 @@ export default defineCloudflareConfig({
 })
 ```
 
-并在 `public/_headers` 增加静态资源缓存头，匹配 Next.js 默认约定：
+`public/_headers` 也已经加入以下静态资源缓存头，匹配 Next.js 默认约定（如有定制可在该文件里调整）：
 
 ```text
 /_next/static/*
@@ -76,16 +76,16 @@ Cache-Control: public,max-age=31536000,immutable
 
 ### 2.4 Wrangler 配置（Next.js 应用）
 
-在项目根目录新增 `wrangler.json`（Wrangler 也支持 `.jsonc`，但仓库里的 Next Dev 初始化会读取 `wrangler.json`），用于定义 Worker 名称、R2 绑定与环境变量。下方示例使用 JSONC 语法方便展示注释，实际文件请移除注释：
+根目录的 `wrangler.json` 已配置 D1、R2 与必要变量，你只需把 `bucket_name`、`NEXT_PUBLIC_APP_URL` 以及 `JOB_CALLBACK_HMAC_SECRET` 等值改成自己的环境即可。核心结构如下：
 
 ```jsonc
 {
-  "name": "next-vid-genius-hub",
+  "name": "next-vid-genius",
   "compatibility_date": "2024-05-01",
 
   // 自引用用于部分缓存/队列优化（按需开启）
   "services": [
-    { "binding": "WORKER_SELF_REFERENCE", "service": "next-vid-genius-hub" }
+    { "binding": "WORKER_SELF_REFERENCE", "service": "next-vid-genius" }
   ],
 
   // R2：用于 Next.js 增量缓存（ISR/SSG 数据）

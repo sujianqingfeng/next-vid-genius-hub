@@ -1,16 +1,4 @@
 services:
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
-    container_name: minio
-    command: server /data --console-address ":9001"
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - ./.dev/minio:/data
 
   burner-ffmpeg:
     build:
@@ -25,8 +13,6 @@ services:
       - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
     ports:
       - "8080:8080"
-    depends_on:
-      - minio
 
   renderer-remotion:
     build:
@@ -41,8 +27,6 @@ services:
       - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
     ports:
       - "8090:8090"
-    depends_on:
-      - minio
 
   media-downloader:
     build:
@@ -60,8 +44,6 @@ services:
       - MIHOMO_PORT=${MIHOMO_PORT:-7890}
     ports:
       - "8100:8080"
-    depends_on:
-      - minio
 
   audio-transcoder:
     build:
@@ -75,5 +57,3 @@ services:
       - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
     ports:
       - "8110:8080"
-    depends_on:
-      - minio
