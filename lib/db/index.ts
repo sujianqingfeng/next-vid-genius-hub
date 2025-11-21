@@ -5,7 +5,10 @@ import * as schema from './schema'
 // Prefer Cloudflare D1 when available (wrangler dev / OpenNext Cloudflare)
 // Fallback to libsql (file/turso) when no CF binding is present.
 async function ensureLocalD1Migrations(d1: any) {
-  if (process.env.NODE_ENV !== 'development') return
+  // Explicit opt-in avoids mutating the shared remote D1 when running local dev servers.
+  const shouldAutoApply =
+    process.env.NODE_ENV === 'development' && process.env.D1_AUTO_APPLY_MIGRATIONS === 'true'
+  if (!shouldAutoApply) return
   // Only run when Node APIs are available (not in Cloudflare runtime)
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
