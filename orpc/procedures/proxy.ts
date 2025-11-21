@@ -344,7 +344,6 @@ export const importSSRFromSubscription = os
         .delete(schema.proxies)
         .where(eq(schema.proxies.subscriptionId, input.subscriptionId))
 
-    // Insert in chunks to avoid oversized statements/parameter limits on D1
     const rows = parsedProxies.map((proxy) => ({
         id: proxy.id,
         name: proxy.name,
@@ -357,14 +356,12 @@ export const importSSRFromSubscription = os
         nodeUrl: proxy.nodeUrl ?? '',
     }))
 
-    // Insert one-by-one to avoid occasional D1 multi-row binding issues
-    // Keep it simple and reliable; 50-100 rows is fast enough in dev
     for (const row of rows) {
       try {
         await db.insert(schema.proxies).values(row)
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
-        logger.error('proxy', `Failed to insert proxy ${row.name} (${row.server}:${row.port}): ${msg}`)
+        logger.error('proxy', `Failed to insert proxy ${row.name ?? row.server}:${row.port} — ${msg}`)
         throw err
       }
     }
