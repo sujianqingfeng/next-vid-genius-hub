@@ -1,4 +1,5 @@
 'use client'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	AlertCircle,
 	FileText,
@@ -27,11 +28,16 @@ import { logger } from '~/lib/logger'
 import { useSubtitleWorkflow } from '~/lib/subtitle/hooks/useSubtitleWorkflow'
 import { useSubtitleActions } from '~/lib/subtitle/hooks/useSubtitleActions'
 import type { SubtitleStepId } from '~/lib/subtitle/types'
+import { parseVttCues } from '~/lib/subtitle/utils/vtt'
+import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
 import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
 
 export default function SubtitlesPage() {
 	const params = useParams()
 	const mediaId = params.id as string
+	const previewVideoRef = useRef<HTMLVideoElement | null>(null)
+	const [previewDuration, setPreviewDuration] = useState(0)
+	const [previewCurrentTime, setPreviewCurrentTime] = useState(0)
 
 	// 使用工作流 Hook 管理状态
 	const {
@@ -53,6 +59,42 @@ export default function SubtitlesPage() {
 			logger.info('media', `Step changed to: ${step}`)
 		}
 	})
+
+	useEffect(() => {
+		if (typeof media?.duration === 'number' && media.duration > 0) {
+			setPreviewDuration((prev) => (prev > 0 ? prev : media.duration ?? 0))
+		}
+	}, [media?.duration])
+
+	useEffect(() => {
+		if (previewDuration > 0) return
+
+		let derivedDuration = 0
+
+		if (Array.isArray(media?.transcriptionWords) && media.transcriptionWords.length > 0) {
+			for (const word of media.transcriptionWords) {
+				const endTime = typeof word?.end === 'number' ? word.end : 0
+				if (endTime > derivedDuration) {
+					derivedDuration = endTime
+				}
+			}
+		}
+
+		if (derivedDuration <= 0 && workflowState.translation) {
+			const cues = parseVttCues(workflowState.translation)
+			if (cues.length > 0) {
+				const lastCue = cues[cues.length - 1]
+				const endTime = parseVttTimestamp(lastCue.end)
+				if (Number.isFinite(endTime) && endTime > 0) {
+					derivedDuration = endTime
+				}
+			}
+		}
+
+		if (derivedDuration > 0) {
+			setPreviewDuration(derivedDuration)
+		}
+	}, [media?.transcriptionWords, previewDuration, workflowState.translation])
 	const {
 		selectedProvider,
 		selectedModel,
@@ -66,7 +108,6 @@ export default function SubtitlesPage() {
 		optimizeMutation,
 		clearOptimizedMutation,
 		translateMutation,
-		deleteCueMutation,
 		handleStartTranscription,
 		handleStartTranslation,
 		handleDeleteCue,
@@ -79,6 +120,29 @@ export default function SubtitlesPage() {
 		updateWorkflowState,
 		setActiveStep,
 	})
+
+	const handleDurationChange = useCallback((duration: number) => {
+		if (Number.isFinite(duration) && duration > 0) {
+			setPreviewDuration(duration)
+		}
+	}, [])
+
+	const handleCurrentTimeChange = useCallback((time: number) => {
+		if (Number.isFinite(time)) {
+			setPreviewCurrentTime(time)
+		}
+	}, [])
+
+	const handleVideoRefChange = useCallback((ref: HTMLVideoElement | null) => {
+		previewVideoRef.current = ref
+	}, [])
+
+	const handlePlayPreview = useCallback((time: number) => {
+		if (previewVideoRef.current) {
+			previewVideoRef.current.currentTime = Math.max(0, time)
+			previewVideoRef.current.play?.()
+		}
+	}, [])
 
 	// 加载状态
 	if (isLoading) {
@@ -128,6 +192,9 @@ export default function SubtitlesPage() {
 					startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
 				}
 				cloudStatus={previewCloudStatus}
+				onDurationChange={handleDurationChange}
+				onCurrentTimeChange={handleCurrentTimeChange}
+				onVideoRefChange={handleVideoRefChange}
 			/>
 
 			{/* Step Navigation under preview (Tabs) */}
@@ -253,6 +320,9 @@ export default function SubtitlesPage() {
 								translationAvailable={!!workflowState.translation}
 								config={subtitleConfig}
 								onConfigChange={handleConfigChange}
+								mediaDuration={previewDuration}
+								currentPreviewTime={previewCurrentTime}
+								onPreviewSeek={handlePlayPreview}
 							/>
 
 

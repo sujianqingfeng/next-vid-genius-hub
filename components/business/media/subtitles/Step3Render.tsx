@@ -4,7 +4,6 @@ import {
 	type ChangeEvent,
 	useState,
 	useEffect,
-	useRef,
 } from 'react'
 import {
 	AlertCircle,
@@ -37,6 +36,9 @@ interface Step3RenderProps {
 	translationAvailable: boolean
 	config: SubtitleRenderConfig
 	onConfigChange: (config: SubtitleRenderConfig) => void
+	mediaDuration?: number
+	currentPreviewTime?: number
+	onPreviewSeek?: (time: number) => void
 
 }
 
@@ -52,6 +54,9 @@ export function Step3Render(props: Step3RenderProps) {
 		translationAvailable,
 		config,
 		onConfigChange,
+		mediaDuration,
+		currentPreviewTime,
+		onPreviewSeek,
 	} = props
 
 	// 预设状态管理
@@ -72,9 +77,6 @@ export function Step3Render(props: Step3RenderProps) {
 	}, [config])
 
 	const selectedPreset = SUBTITLE_RENDER_PRESETS.find((preset) => preset.id === selectedPresetId)
-
-	// 视频状态管理
-	const videoRef = useRef<HTMLVideoElement>(null)
 
 	// 预设点击处理
 	const handlePresetClick = (preset: SubtitleRenderPreset) => {
@@ -134,9 +136,7 @@ export function Step3Render(props: Step3RenderProps) {
 
 	// 预览时间点播放
 	const handlePlayPreview = (time: number) => {
-		if (videoRef.current) {
-			videoRef.current.currentTime = time
-		}
+		onPreviewSeek?.(time)
 	}
 
 
@@ -186,6 +186,8 @@ export function Step3Render(props: Step3RenderProps) {
 						<TimeSegmentEffectsManager
 							effects={config.timeSegmentEffects}
 							onChange={handleTimeSegmentEffectsChange}
+							mediaDuration={mediaDuration}
+							currentTime={currentPreviewTime}
 							onPlayPreview={handlePlayPreview}
 						/>
 					</div>
