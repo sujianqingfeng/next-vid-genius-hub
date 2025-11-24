@@ -80,22 +80,22 @@ class_name = "RenderJobDO"
 
 [[env.local.containers]]
 class_name = "MediaDownloaderContainer"
-image = "Dockerfile.media-downloader"
+image = "containers/media-downloader/Dockerfile"
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "AudioTranscoderContainer"
-image = "Dockerfile.audio-transcoder"
+image = "containers/audio-transcoder/Dockerfile"
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "BurnerFfmpegContainer"
-image = "Dockerfile.burner-ffmpeg"
+image = "containers/burner-ffmpeg/Dockerfile"
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "RendererRemotionContainer"
-image = "Dockerfile.renderer-remotion"
+image = "containers/renderer-remotion/Dockerfile"
 max_instances = 5
 
 [[env.local.durable_objects.bindings]]
@@ -134,22 +134,22 @@ new_classes = ["RenderJobDO"]
 # Requires Workers Paid plan + Containers beta access.
 [[containers]]
 class_name = "MediaDownloaderContainer"
-image = "Dockerfile.media-downloader"
+image = "containers/media-downloader/Dockerfile"
 max_instances = 10
 
 [[containers]]
 class_name = "AudioTranscoderContainer"
-image = "Dockerfile.audio-transcoder"
+image = "containers/audio-transcoder/Dockerfile"
 max_instances = 10
 
 [[containers]]
 class_name = "BurnerFfmpegContainer"
-image = "Dockerfile.burner-ffmpeg"
+image = "containers/burner-ffmpeg/Dockerfile"
 max_instances = 10
 
 [[containers]]
 class_name = "RendererRemotionContainer"
-image = "Dockerfile.renderer-remotion"
+image = "containers/renderer-remotion/Dockerfile"
 max_instances = 5
 
 [[durable_objects.bindings]]
