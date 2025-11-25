@@ -293,25 +293,25 @@ async function handleStart(env: Env, req: Request) {
     containerBase =
       (env as any).CONTAINER_BASE_URL_REMOTION ||
       env.CONTAINER_BASE_URL ||
-      'http://localhost:8080'
+      'http://localhost:8090'
   } else if (body.engine === 'media-downloader') {
     containerBase =
       env.CONTAINER_BASE_URL_DOWNLOADER ||
       env.CONTAINER_BASE_URL ||
-      'http://localhost:8080'
+      'http://localhost:8100'
   } else if (body.engine === 'audio-transcoder') {
     containerBase =
       (env as any).CONTAINER_BASE_URL_AUDIO ||
       env.CONTAINER_BASE_URL ||
-      'http://localhost:8080'
+      'http://localhost:8110'
   } else if (body.engine === 'asr-pipeline') {
     // Phase 2: chain audio-transcoder + Workers AI inside worker
     containerBase =
       (env as any).CONTAINER_BASE_URL_AUDIO ||
       env.CONTAINER_BASE_URL ||
-      'http://localhost:8080'
+      'http://localhost:8110'
   } else {
-    containerBase = env.CONTAINER_BASE_URL || 'http://localhost:8080'
+    containerBase = env.CONTAINER_BASE_URL || 'http://localhost:9080'
   }
   containerBase = containerBase.replace(/\/$/, '')
   const baseSelfForContainer = (env.ORCHESTRATOR_BASE_URL_CONTAINER || new URL(req.url).origin).replace(/\/$/, '')
@@ -769,15 +769,38 @@ async function runAsrForPipeline(env: Env, doc: any) {
   // Call Workers AI Whisper via REST
   // Workers AI run endpoint requires raw slug path (do not encode slashes)
   const runUrl = `https://api.cloudflare.com/client/v4/accounts/${aiAccountId}/ai/run/${model}`
-  console.log('[asr-pipeline] calling Workers AI', { jobId, model })
+  const jobLanguage = typeof doc?.metadata?.language === 'string' ? doc.metadata.language : undefined
+  const normalizedLanguage = jobLanguage && jobLanguage !== 'auto' ? jobLanguage : undefined
+  const inputFormat = doc?.metadata?.inputFormat === 'base64'
+    ? 'base64'
+    : doc?.metadata?.inputFormat === 'array'
+      ? 'array'
+      : 'binary'
+  console.log('[asr-pipeline] calling Workers AI', { jobId, model, language: normalizedLanguage, inputFormat })
+  let body: BodyInit
+  let contentType = 'application/octet-stream'
+  if (inputFormat === 'base64') {
+    contentType = 'application/json'
+    body = JSON.stringify({
+      audio: arrayBufferToBase64(audioBuf),
+      ...(normalizedLanguage ? { language: normalizedLanguage } : {}),
+    })
+  } else if (inputFormat === 'array') {
+    contentType = 'application/json'
+    body = JSON.stringify({
+      audio: Array.from(new Uint8Array(audioBuf)),
+    })
+  } else {
+    body = audioBuf
+  }
   const r = await fetch(runUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${aiApiToken}`,
-      'Content-Type': 'application/octet-stream',
+      'Content-Type': contentType,
       Accept: 'application/json',
     },
-    body: audioBuf,
+    body,
   })
   if (!r.ok) {
     const t = await r.text().catch(() => '')
@@ -861,6 +884,16 @@ async function handleUpload(env: Env, req: Request, jobId: string) {
   }
   await env.JOBS.put(jobId, JSON.stringify({ ...doc, mediaId: prior?.mediaId }), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
   return json({ ok: true, outputKey, outputUrl: `/artifacts/${jobId}` })
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
 }
 
 async function handleArtifactGet(env: Env, req: Request, jobId: string) {

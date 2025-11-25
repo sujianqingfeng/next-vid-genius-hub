@@ -13,6 +13,7 @@ import type {
 	StepState
 } from '~/lib/subtitle/types'
 import { DEFAULT_SUBTITLE_RENDER_CONFIG, findMatchingPreset } from '~/lib/subtitle/config/presets'
+import { DEFAULT_TRANSCRIPTION_LANGUAGE } from '~/lib/subtitle/config/languages'
 
 interface UseSubtitleWorkflowOptions {
 	mediaId: string
@@ -26,6 +27,7 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 	// 工作流状态
 	const [workflowState, setWorkflowState] = useState<SubtitleWorkflowState>(() => ({
 		activeStep: 'step1',
+		transcriptionLanguage: DEFAULT_TRANSCRIPTION_LANGUAGE,
 		subtitleConfig: { ...DEFAULT_SUBTITLE_RENDER_CONFIG },
 	}))
 
@@ -111,6 +113,7 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 	const resetWorkflow = useCallback(() => {
 		setWorkflowState({
 			activeStep: 'step1',
+			transcriptionLanguage: DEFAULT_TRANSCRIPTION_LANGUAGE,
 			subtitleConfig: { ...DEFAULT_SUBTITLE_RENDER_CONFIG },
 		})
 		setStepStates({

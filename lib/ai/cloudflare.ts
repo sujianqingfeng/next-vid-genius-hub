@@ -3,11 +3,13 @@ import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici'
 import { PROXY_URL, ASR_TARGET_BITRATES, ASR_SAMPLE_RATE } from '~/lib/config/app.config'
 import { prepareAudioForCloudflare } from '~/lib/asr/prepare'
 import { logger } from '~/lib/logger'
+import { Buffer } from 'node:buffer'
 
 export interface CloudflareWhisperConfig {
 	accountId: string
 	apiToken: string
 	model: '@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo' | '@cf/openai/whisper'
+	inputFormat?: 'binary' | 'array' | 'base64'
 }
 
 export interface CloudflareTranscriptionData {
@@ -44,8 +46,10 @@ export type CloudflareApiResponse = CloudflareTranscriptionResponse | Cloudflare
 export async function transcribeWithCloudflareWhisper(
 	audioBuffer: ArrayBuffer,
 	config: CloudflareWhisperConfig,
+	language?: string,
 ): Promise<{ vtt: string; words?: TranscriptionWord[] }> {
-	const { accountId, apiToken, model } = config
+	const { accountId, apiToken, model, inputFormat = 'binary' } = config
+	const normalizedLanguage = language && language !== 'auto' ? language : undefined
 
 	try {
 		// Log the payload size prior to upload
@@ -73,19 +77,31 @@ export async function transcribeWithCloudflareWhisper(
 
 		const fetchImpl = undiciFetch
 
+		const cloudflareUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`
+
 		async function runOnce(body: ArrayBuffer) {
-			// Cloudflare expects the model slug as path segments (e.g., /ai/run/@cf/openai/whisper-tiny-en)
-			// Do NOT URL-encode slashes here, otherwise the API returns 7000 "No route for that URI".
-			const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`
-			const resp = await fetchImpl(url, {
+			const headers: Record<string, string> = {
+				Authorization: `Bearer ${apiToken}`,
+				Accept: 'application/json',
+			}
+			let requestBody: BodyInit
+			if (inputFormat === 'base64') {
+				headers['Content-Type'] = 'application/json'
+				requestBody = JSON.stringify({
+					audio: Buffer.from(body).toString('base64'),
+					...(normalizedLanguage ? { language: normalizedLanguage } : {}),
+				})
+			} else if (inputFormat === 'array') {
+				headers['Content-Type'] = 'application/json'
+				requestBody = JSON.stringify({ audio: Array.from(new Uint8Array(body)) })
+			} else {
+				headers['Content-Type'] = 'application/octet-stream'
+				requestBody = Buffer.from(body) as BodyInit
+			}
+			const resp = await fetchImpl(cloudflareUrl, {
 				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${apiToken}`,
-					// Binary audio upload; octet-stream is accepted by Workers AI
-					'Content-Type': 'application/octet-stream',
-					Accept: 'application/json',
-				},
-				body,
+				headers,
+				body: requestBody,
 				dispatcher,
 			})
             if (!resp.ok) {
@@ -128,25 +144,28 @@ export async function transcribeWithCloudflareWhisper(
 		let result: CloudflareApiResponse | undefined
 		let lastErr: unknown
 		for (const cand of candidates) {
-			for (let attempt = 0; attempt < 3; attempt++) {
-				try {
-					result = await runOnce(cand.body)
-					break
-				} catch (e) {
-					lastErr = e
-					const msg = e instanceof Error ? e.message : String(e)
-					// If size-related (413 or code 3006), switch to next smaller candidate
-					if (/\b413\b|code\":\s*3006|Request is too large/i.test(msg)) {
-						// Move to next candidate (smaller)
+			const modes: Array<{ useJson: boolean }> = allowJson
+				? [{ useJson: true }]
+				: [{ useJson: false }]
+			for (const mode of modes) {
+				for (let attempt = 0; attempt < 3; attempt++) {
+					try {
+						result = await runOnce(cand.body, mode)
 						break
+					} catch (e) {
+						lastErr = e
+						const msg = e instanceof Error ? e.message : String(e)
+						if (/\b413\b|code\":\s*3006|Request is too large/i.test(msg)) {
+							break
+						}
+						if (/6001|Network connection lost|ECONNRESET|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/i.test(msg) && attempt < 2) {
+							await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
+							continue
+						}
+						throw e
 					}
-					// Backoff on likely transient network failures
-					if (/6001|Network connection lost|ECONNRESET|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/i.test(msg) && attempt < 2) {
-						await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
-						continue
-					}
-					throw e
 				}
+				if (result) break
 			}
 			if (result) break
 		}

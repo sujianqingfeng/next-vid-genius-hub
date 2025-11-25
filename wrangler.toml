@@ -18,7 +18,7 @@ JOB_TTL_SECONDS = 86400
 # Prefer external Docker Compose containers in local dev
 PREFER_EXTERNAL_CONTAINERS = "false"
 # Default container base; specific engines can override below
-CONTAINER_BASE_URL = "http://localhost:8080"
+CONTAINER_BASE_URL = "http://localhost:9080"
 # Audio transcoder engine (dev)
 CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
 # Workers AI (REST credentials) for ASR pipeline - set in your environment
@@ -51,7 +51,7 @@ name = "media-orchestrator-local"
 # In local dev, prefer hitting Docker Compose services directly; R2 still uses the same endpoint
 PREFER_EXTERNAL_CONTAINERS = "true"
 JOB_TTL_SECONDS = 86400
-CONTAINER_BASE_URL = "http://localhost:8080"
+CONTAINER_BASE_URL = "http://localhost:9080"
 CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8090"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
@@ -81,21 +81,25 @@ class_name = "RenderJobDO"
 [[env.local.containers]]
 class_name = "MediaDownloaderContainer"
 image = "containers/media-downloader/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "AudioTranscoderContainer"
 image = "containers/audio-transcoder/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "BurnerFfmpegContainer"
 image = "containers/burner-ffmpeg/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "RendererRemotionContainer"
 image = "containers/renderer-remotion/Dockerfile"
+image_build_context = "."
 max_instances = 5
 
 [[env.local.durable_objects.bindings]]
@@ -135,21 +139,25 @@ new_classes = ["RenderJobDO"]
 [[containers]]
 class_name = "MediaDownloaderContainer"
 image = "containers/media-downloader/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[containers]]
 class_name = "AudioTranscoderContainer"
 image = "containers/audio-transcoder/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[containers]]
 class_name = "BurnerFfmpegContainer"
 image = "containers/burner-ffmpeg/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[containers]]
 class_name = "RendererRemotionContainer"
 image = "containers/renderer-remotion/Dockerfile"
+image_build_context = "."
 max_instances = 5
 
 [[durable_objects.bindings]]

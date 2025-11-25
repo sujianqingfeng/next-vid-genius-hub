@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
 import type { TranscriptionProvider, WhisperModel } from '~/lib/subtitle/config/models'
+import type { TranscriptionLanguage } from '~/lib/subtitle/config/languages'
 import type { ChatModelId } from '~/lib/ai/models'
 
 export interface TimeSegmentEffect {
@@ -58,6 +59,7 @@ export interface SubtitleWorkflowState {
 	selectedAIModel?: ChatModelId
 	subtitleConfig?: SubtitleRenderConfig
 	downsampleBackend?: DownsampleBackend
+	transcriptionLanguage?: TranscriptionLanguage
 }
 
 export interface StepState {

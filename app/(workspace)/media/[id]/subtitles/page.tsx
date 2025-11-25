@@ -31,6 +31,7 @@ import type { SubtitleStepId } from '~/lib/subtitle/types'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
 import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
+import { DEFAULT_TRANSCRIPTION_LANGUAGE } from '~/lib/subtitle/config/languages'
 
 export default function SubtitlesPage() {
 	const params = useParams()
@@ -99,6 +100,7 @@ export default function SubtitlesPage() {
 		selectedProvider,
 		selectedModel,
 		selectedAIModel,
+		selectedLanguage,
 		downsampleBackend,
 		cloudStatusQuery,
 		previewCloudStatus,
@@ -238,8 +240,10 @@ export default function SubtitlesPage() {
                             <Step1Transcribe
                                 selectedModel={selectedModel}
                                 selectedProvider={selectedProvider}
+                                selectedLanguage={workflowState.transcriptionLanguage ?? selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
                                 onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
                                 onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
+                                onLanguageChange={(language) => updateWorkflowState({ transcriptionLanguage: language })}
                                 isPending={transcribeMutation.isPending}
                                 onStart={handleStartTranscription}
                                 transcription={(media?.transcription ?? '')}

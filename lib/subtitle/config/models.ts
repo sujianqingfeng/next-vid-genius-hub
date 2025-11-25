@@ -17,12 +17,16 @@ export const WHISPER_MODEL_IDS = [
 
 export type WhisperModel = (typeof WHISPER_MODEL_IDS)[number]
 
+export type CloudflareInputFormat = 'binary' | 'array' | 'base64'
+
 export interface WhisperModelConfig {
 	id: WhisperModel
 	label: string
 	description: string
 	providers: TranscriptionProvider[]
 	isDefault?: boolean
+	supportsLanguageHint?: boolean
+	cloudflareInputFormat?: CloudflareInputFormat
 }
 
 /**
@@ -41,18 +45,22 @@ export const WHISPER_MODELS: Record<WhisperModel, WhisperModelConfig> = {
 		description: 'Balanced quality and speed',
 		providers: ['local', 'cloudflare'],
 		isDefault: true,
+		cloudflareInputFormat: 'binary',
 	},
 	'whisper-tiny-en': {
 		id: 'whisper-tiny-en',
 		label: 'Whisper Tiny (EN)',
 		description: 'Fast, English only',
 		providers: ['cloudflare'],
+		cloudflareInputFormat: 'binary',
 	},
 	'whisper-large-v3-turbo': {
 		id: 'whisper-large-v3-turbo',
 		label: 'Whisper Large v3 Turbo',
 		description: 'High quality, faster processing',
 		providers: ['cloudflare'],
+		supportsLanguageHint: true,
+		cloudflareInputFormat: 'base64',
 	},
 } as const
 
@@ -62,6 +70,8 @@ export const WHISPER_MODELS: Record<WhisperModel, WhisperModelConfig> = {
 export const transcriptionProviderSchema = z.enum(TRANSCRIPTION_PROVIDERS)
 
 export const whisperModelSchema = z.enum(WHISPER_MODEL_IDS)
+export const CLOUDFLARE_INPUT_FORMAT_VALUES = ['binary', 'array', 'base64'] as const
+export const cloudflareInputFormatSchema = z.enum(CLOUDFLARE_INPUT_FORMAT_VALUES)
 
 /**
  * 根据提供商获取可用模型

@@ -9,7 +9,8 @@ import {
 	getAvailableModels,
 	getModelLabel,
 	getModelDescription,
-	getDefaultModel
+	getDefaultModel,
+	type CloudflareInputFormat,
 } from '~/lib/subtitle/config/models'
 import type {
 	TranscriptionProvider,
@@ -19,6 +20,7 @@ import type {
 export interface CloudflareConfig {
 	accountId: string
 	apiToken: string
+	inputFormat?: CloudflareInputFormat
 }
 
 interface TranscribeWithWhisperOptions {
@@ -29,6 +31,7 @@ interface TranscribeWithWhisperOptions {
     provider: TranscriptionProvider
     whisperProjectPath?: string
     cloudflareConfig?: CloudflareConfig
+    language?: string
 }
 
 export interface TranscriptionResult {
@@ -46,6 +49,7 @@ export async function transcribeWithWhisper({
     provider,
     whisperProjectPath,
     cloudflareConfig,
+    language,
 }: TranscribeWithWhisperOptions): Promise<TranscriptionResult> {
     if (provider === 'cloudflare') {
         if (!cloudflareConfig) {
@@ -68,7 +72,7 @@ export async function transcribeWithWhisper({
                 logger.info('transcription', `Cloudflare upload (buffer): ${size} bytes (~${mb} MB)`) 
             } catch {}
             const prepared = await prepareAudioForCloudflare(audioBuffer)
-            return transcribeWithCloudflareWhisper(prepared, { ...cloudflareConfig, model: modelId })
+            return transcribeWithCloudflareWhisper(prepared, { ...cloudflareConfig, model: modelId }, language)
         }
         if (!audioPath) throw new Error('Either audioBuffer or audioPath is required for cloudflare provider')
         // Read file to buffer for Cloudflare
@@ -81,7 +85,7 @@ export async function transcribeWithWhisper({
         } catch {}
         const arrayBuffer = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer
         const prepared = await prepareAudioForCloudflare(arrayBuffer)
-        return transcribeWithCloudflareWhisper(prepared, { ...cloudflareConfig, model: modelId })
+        return transcribeWithCloudflareWhisper(prepared, { ...cloudflareConfig, model: modelId }, language)
     } else {
         if (!whisperProjectPath) {
             throw new Error('Whisper project path is required for local provider')

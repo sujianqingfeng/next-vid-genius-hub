@@ -3,7 +3,7 @@ import { z } from "zod";
 import { AIModelIds } from "~/lib/ai/models";
 import { subtitleRenderConfigSchema, downsampleBackendSchema } from "~/lib/subtitle/types";
 import { subtitleService } from "~/lib/services/subtitle/subtitle.service";
-import { transcriptionProviderSchema, whisperModelSchema } from "~/lib/subtitle/config/models";
+import { cloudflareInputFormatSchema, transcriptionProviderSchema, whisperModelSchema } from "~/lib/subtitle/config/models";
 
 export const transcribe = os
   .input(
@@ -12,6 +12,8 @@ export const transcribe = os
       model: whisperModelSchema,
       provider: transcriptionProviderSchema.default("local"),
       downsampleBackend: downsampleBackendSchema.default("auto").optional(),
+      language: z.string().min(2).max(16).optional(),
+      inputFormat: cloudflareInputFormatSchema.optional(),
     }),
   )
   .handler(async ({ input }) => {

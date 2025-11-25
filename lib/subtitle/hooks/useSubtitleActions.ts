@@ -11,6 +11,7 @@ import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import {
 	getDefaultModel,
+	WHISPER_MODELS,
 	type TranscriptionProvider,
 	type WhisperModel,
 } from '~/lib/subtitle/config/models'
@@ -24,6 +25,10 @@ import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
+import {
+	DEFAULT_TRANSCRIPTION_LANGUAGE,
+	type TranscriptionLanguage,
+} from '~/lib/subtitle/config/languages'
 
 interface UseSubtitleActionsOptions {
 	mediaId: string
@@ -50,6 +55,7 @@ export function useSubtitleActions({
 		(selectedProvider === 'cloudflare'
 			? 'whisper-tiny-en'
 			: getDefaultModel(selectedProvider))
+	const selectedModelConfig = WHISPER_MODELS[selectedModel]
 
 	const initialChatModel = useMemo<ChatModelId>(() => {
 		const configured =
@@ -64,6 +70,8 @@ export function useSubtitleActions({
 
 	const downsampleBackend: DownsampleBackend =
 		workflowState.downsampleBackend ?? 'cloud'
+	const selectedLanguage: TranscriptionLanguage =
+		workflowState.transcriptionLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE
 
 	const [previewVersion, setPreviewVersion] = useState<number | undefined>(
 		undefined,
@@ -113,6 +121,7 @@ export function useSubtitleActions({
 						transcription: data.transcription,
 						selectedModel,
 						selectedProvider,
+						transcriptionLanguage: selectedLanguage,
 					})
 				}
 			},
@@ -187,16 +196,30 @@ export function useSubtitleActions({
 		: null
 
 	const handleStartTranscription = () => {
+		const canHintLanguage =
+			selectedProvider === 'cloudflare' &&
+			Boolean(WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
+		const cloudflareInputFormat = selectedModelConfig?.cloudflareInputFormat ?? 'binary'
 		logger.info(
 			'transcription',
 			`User started transcription: ${selectedProvider}/${selectedModel} for media ${mediaId}`,
 		)
-		updateWorkflowState({ selectedModel, selectedProvider, downsampleBackend })
+		updateWorkflowState({
+			selectedModel,
+			selectedProvider,
+			downsampleBackend,
+			transcriptionLanguage: selectedLanguage,
+		})
 		transcribeMutation.mutate({
 			mediaId,
 			model: selectedModel,
 			provider: selectedProvider,
 			downsampleBackend,
+			inputFormat: selectedProvider === 'cloudflare' ? cloudflareInputFormat : undefined,
+			language:
+				canHintLanguage && selectedLanguage && selectedLanguage !== DEFAULT_TRANSCRIPTION_LANGUAGE
+					? selectedLanguage
+					: undefined,
 		})
 	}
 
@@ -231,6 +254,7 @@ export function useSubtitleActions({
 		selectedProvider,
 		selectedModel,
 		selectedAIModel,
+		selectedLanguage,
 		downsampleBackend,
 
 		// cloud render + preview
@@ -254,4 +278,3 @@ export function useSubtitleActions({
 		handleConfigChange,
 	}
 }
-

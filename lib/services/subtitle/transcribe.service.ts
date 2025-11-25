@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { getDb, schema, type TranscriptionWord } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { transcribeWithWhisper } from '~/lib/asr/whisper'
+import { type CloudflareInputFormat, WHISPER_MODELS } from '~/lib/subtitle/config/models'
 
 import {
   CLOUDFLARE_ACCOUNT_ID,
@@ -20,8 +21,18 @@ export async function transcribe(input: {
   model: 'whisper-large' | 'whisper-medium' | 'whisper-tiny-en' | 'whisper-large-v3-turbo'
   provider: 'local' | 'cloudflare'
   downsampleBackend?: 'auto' | 'local' | 'cloud'
+  language?: string
+  inputFormat?: CloudflareInputFormat
 }): Promise<{ success: true; transcription: string; words?: TranscriptionWord[] }> {
   const { mediaId, model, provider } = input
+  const normalizedLanguage = input.language && input.language !== 'auto' ? input.language : undefined
+  const modelConfig = WHISPER_MODELS[model]
+  const supportsLanguageHint = provider === 'cloudflare' && Boolean(modelConfig?.supportsLanguageHint)
+  const languageForCloud = supportsLanguageHint ? normalizedLanguage : undefined
+  const cloudflareInputFormat: CloudflareInputFormat =
+    provider === 'cloudflare'
+      ? input.inputFormat ?? modelConfig?.cloudflareInputFormat ?? 'binary'
+      : 'binary'
 
   logger.info('transcription', `Starting transcription for media ${mediaId} with ${provider}/${model}`)
 
@@ -105,7 +116,15 @@ export async function transcribe(input: {
       const job = await startCloudJob({
         mediaId,
         engine: 'asr-pipeline',
-        options: { sourceKey: mediaRecord.remoteAudioKey, maxBytes: targetBytes, targetBitrates, sampleRate, model: modelId },
+        options: {
+          sourceKey: mediaRecord.remoteAudioKey,
+          maxBytes: targetBytes,
+          targetBitrates,
+          sampleRate,
+          model: modelId,
+          inputFormat: cloudflareInputFormat,
+          ...(languageForCloud ? { language: languageForCloud } : {}),
+        },
       })
       logger.info('transcription', `Cloud ASR job started: ${job.jobId} (maxBytes=${targetBytes}, bitrates=[${targetBitrates.join(',')}], sr=${sampleRate})`)
       const startedAt = Date.now()
@@ -143,7 +162,12 @@ export async function transcribe(input: {
         audioBuffer: remoteAudioBuffer,
         model,
         provider: 'cloudflare',
-        cloudflareConfig: { accountId: CLOUDFLARE_ACCOUNT_ID as string, apiToken: CLOUDFLARE_API_TOKEN as string },
+        cloudflareConfig: {
+          accountId: CLOUDFLARE_ACCOUNT_ID as string,
+          apiToken: CLOUDFLARE_API_TOKEN as string,
+          inputFormat: cloudflareInputFormat,
+        },
+        language: languageForCloud,
       })
       vttContent = transcriptionResult.vtt
       transcriptionWords = transcriptionResult.words
