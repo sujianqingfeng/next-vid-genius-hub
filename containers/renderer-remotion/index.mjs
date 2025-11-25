@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { spawn } from "node:child_process";
-import { startJsonServer, createStatusHelpers, sanitizeEngineOptions } from "./shared.mjs";
+import { startJsonServer, createStatusHelpers, sanitizeEngineOptions, sendJson } from "./shared.mjs";
 import { fetch as undiciFetch } from "undici";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia } from "@remotion/renderer";
@@ -43,30 +43,41 @@ async function execFFmpegWithProgress(args, totalDurationSeconds) {
       }
     }, 10000);
 
-    p.stderr.on("data", (d) => {
-      const s = d.toString();
-      err += s;
-      buf += s;
-      let idx;
-      while ((idx = buf.indexOf("\n")) !== -1) {
-        const line = buf.slice(0, idx).trim();
-        buf = buf.slice(idx + 1);
-        // Parse -progress key=value output
-        if (line.startsWith("out_time_us=")) {
-          const us = parseInt(line.split("=")[1] || "0", 10);
-          const ratio = Math.max(0, Math.min(1, us / totalUs));
-          const pct = Math.round(ratio * 1000) / 10;
-          if (pct !== lastPct) {
-            lastPct = pct;
-            lastTick = Date.now();
-            console.log(`[ffmpeg] compose progress=${pct}%`); // coarse-grained compose progress
-          }
-        }
-        if (line === "progress=end") {
+  p.stderr.on("data", (d) => {
+    const s = d.toString();
+    // Any stderr activity from ffmpeg indicates the process is alive; reset watchdog.
+    lastTick = Date.now();
+    err += s;
+    buf += s;
+    let idx;
+    while ((idx = buf.indexOf("\n")) !== -1) {
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      // Parse -progress key=value output
+      if (line.startsWith("out_time_us=")) {
+        const us = parseInt(line.split("=")[1] || "0", 10);
+        const ratio = Math.max(0, Math.min(1, us / totalUs));
+        const pct = Math.round(ratio * 1000) / 10;
+        if (pct !== lastPct) {
+          lastPct = pct;
           lastTick = Date.now();
+          console.log(`[ffmpeg] compose progress=${pct}%`); // coarse-grained compose progress
         }
       }
-    });
+      // Additional keep-alive: common keys from -progress output
+      if (
+        line.startsWith("frame=") ||
+        line.startsWith("out_time_ms=") ||
+        line.startsWith("out_time=") ||
+        line.startsWith("progress=")
+      ) {
+        lastTick = Date.now();
+      }
+      if (line === "progress=end") {
+        lastTick = Date.now();
+      }
+    }
+  });
     p.on("exit", (code, signal) => {
       if (code !== 0) {
         console.error(
@@ -273,9 +284,12 @@ async function handleRender(req, res) {
     };
     console.log("[remotion] getting compositions...");
     const compositions = await getCompositions(serveUrl, { inputProps });
-    const composition = compositions.find((c) => c.id === "CommentsVideo");
+    // Pick composition by templateId when provided
+    const templateId = (engineOptions && engineOptions.templateId) || 'comments-default';
+    const compositionId = templateId === 'comments-vertical' ? 'CommentsVideoVertical' : 'CommentsVideo';
+    const composition = compositions.find((c) => c.id === compositionId);
     if (!composition)
-      throw new Error('Remotion composition "CommentsVideo" not found');
+      throw new Error(`Remotion composition "${compositionId}" not found`);
     console.log(
       "[remotion] composition ready. frames=",
       totalDurationInFrames,
@@ -322,6 +336,13 @@ async function handleRender(req, res) {
     // Compose overlay with source video via FFmpeg
     await progress("running", 0.8);
     console.log("[remotion] starting FFmpeg composition...");
+    // Optionally override source video slot for specific templates (e.g., vertical source on left)
+    let overrideLayout = undefined;
+    if (templateId === 'comments-vertical') {
+      // Match left video box in CommentsVideoVertical overlay: paddingX=48, column width=560, inner box=540x960 centered -> x = 48 + 10
+      overrideLayout = { x: 58, y: 36, width: 540, height: 960 };
+    }
+
     const ffArgs = buildComposeArgs({
       overlayPath: overlayOut,
       sourceVideoPath: inFile,
@@ -329,6 +350,7 @@ async function handleRender(req, res) {
       fps: REMOTION_FPS,
       coverDurationSeconds,
       totalDurationSeconds,
+      layout: overrideLayout,
       preset: "veryfast",
     });
     await execFFmpegWithProgress(ffArgs, totalDurationSeconds);

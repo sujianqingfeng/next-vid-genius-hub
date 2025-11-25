@@ -134,30 +134,6 @@ function MediaMetadata({ media }: { media: typeof schema.media.$inferSelect }) {
 	)
 }
 
-// 删除按钮组件
-function DeleteButton({
-	media,
-	onDelete,
-}: {
-	media: typeof schema.media.$inferSelect
-	onDelete: (id: string) => void
-}) {
-	return (
-		<div className="p-4 pt-0">
-			<Button
-				variant="outline"
-				size="sm"
-				className="w-full flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-				onClick={() => onDelete(media.id)}
-				aria-label={`Delete ${media.title}`}
-			>
-				<Trash2 className="w-3 h-3" />
-				Delete
-			</Button>
-		</div>
-	)
-}
-
 export function MediaCard({ media }: MediaCardProps) {
 	const queryClient = useQueryClient()
 
@@ -189,7 +165,19 @@ export function MediaCard({ media }: MediaCardProps) {
 				<MediaInfo media={media} />
 				<MediaMetadata media={media} />
 			</Link>
-			<DeleteButton media={media} onDelete={handleDelete} />
+			<div className="p-4 pt-0">
+				<Button
+					variant="outline"
+					size="sm"
+					className="w-full flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+					onClick={() => handleDelete(media.id)}
+					disabled={deleteMediaMutation.isPending}
+					aria-label={`Delete ${media.title}`}
+				>
+					<Trash2 className="w-3 h-3" />
+					Delete
+				</Button>
+			</div>
 		</Card>
 	)
 }

@@ -11,10 +11,12 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
+    "db:d1:migrate:remote": "wrangler --config wrangler.json d1 migrations apply vidgen_app --remote",
+    "db:d1:list:remote": "wrangler --config wrangler.json d1 migrations list vidgen_app --remote",
     "test": "vitest run",
     "remotion:ensure": "pnpm exec remotion browser ensure --log=info",
-    "cf:dev": "wrangler dev --port 8787 --env local",
-    "cf:deploy": "wrangler deploy --env production",
+    "cf:dev": "wrangler dev --config wrangler.toml --env local --port 8787",
+    "cf:deploy": "wrangler deploy --config wrangler.toml --env production",
     "dev:stack": "docker compose -f docker-compose.dev.yml up -d",
     "dev:stack:down": "docker compose -f docker-compose.dev.yml down -v",
     "dev:stack:rebuild-burner": "docker compose -f docker-compose.dev.yml build burner-ffmpeg",
@@ -38,7 +40,6 @@
     "@app/media-node": "workspace:*",
     "@app/media-providers": "workspace:*",
     "@app/media-subtitles": "workspace:*",
-    "@libsql/client": "^0.15.15",
     "@orpc/client": "^1.9.3",
     "@orpc/openapi": "^1.9.3",
     "@orpc/server": "^1.9.3",
@@ -76,6 +77,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.2.5",
     "@eslint/eslintrc": "^3",
+    "@opennextjs/cloudflare": "^1.12.0",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/node": "^24.6.2",
     "@types/react": "^19.2.0",
@@ -89,7 +91,7 @@
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4",
-    "wrangler": "^4.45.1"
+    "wrangler": "^4.47.0"
   },
   "dependenciesOverrides": {},
   "pnpm": {

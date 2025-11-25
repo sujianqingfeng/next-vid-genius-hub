@@ -95,23 +95,6 @@ export const SUBTITLE_RENDER_PRESETS: readonly SubtitleRenderPreset[] = [
 /**
  * 获取预设配置
  */
-export function getSubtitleRenderPreset(presetId: SubtitleRenderPreset['id']): SubtitleRenderPreset | undefined {
-	return SUBTITLE_RENDER_PRESETS.find(preset => preset.id === presetId)
-}
-
-/**
- * 获取所有预设标签
- */
-export function getSubtitleRenderPresetLabels(): Record<SubtitleRenderPreset['id'], string> {
-	return SUBTITLE_RENDER_PRESETS.reduce((acc, preset) => {
-		acc[preset.id] = preset.label
-		return acc
-	}, {} as Record<SubtitleRenderPreset['id'], string>)
-}
-
-/**
- * 检查配置是否匹配预设
- */
 export function findMatchingPreset(config: SubtitleRenderConfig): SubtitleRenderPreset | undefined {
 	return SUBTITLE_RENDER_PRESETS.find(preset => areConfigsEqual(preset.config, config))
 }

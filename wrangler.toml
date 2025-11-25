@@ -18,7 +18,7 @@ JOB_TTL_SECONDS = 86400
 # Prefer external Docker Compose containers in local dev
 PREFER_EXTERNAL_CONTAINERS = "false"
 # Default container base; specific engines can override below
-CONTAINER_BASE_URL = "http://localhost:8080"
+CONTAINER_BASE_URL = "http://localhost:9080"
 # Audio transcoder engine (dev)
 CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
 # Workers AI (REST credentials) for ASR pipeline - set in your environment
@@ -33,19 +33,12 @@ JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 # 预签名 PUT 有效期（秒）：开发 600，生产可提升（如 1800）
 PUT_EXPIRES = 600
 
-# S3-compatible storage for both prod (R2 S3 endpoint) and dev (MinIO)
-# For production with R2, set:
-#   S3_ENDPOINT = "https://<accountid>.r2.cloudflarestorage.com"
-#   S3_STYLE = "vhost"  # virtual host style
-# For dev with MinIO, set:
-#   S3_ENDPOINT = "http://127.0.0.1:9000"  (in docker network) or http://127.0.0.1:9000
-#   S3_STYLE = "path"   # path style
-S3_ENDPOINT = "http://127.0.0.1:9000"
-S3_INTERNAL_ENDPOINT = "http://minio:9000"
-S3_ACCESS_KEY_ID = "minioadmin"
-S3_SECRET_ACCESS_KEY = "minioadmin"
+# S3-compatible storage direct to Cloudflare R2 (shared by dev & prod)
+# Provide S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY via `wrangler secret put ...`
+S3_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
+S3_INTERNAL_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
 S3_BUCKET_NAME = "vidgen-render"
-S3_STYLE = "path"
+S3_STYLE = "vhost"
 S3_REGION = "us-east-1"
 ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
 
@@ -55,22 +48,20 @@ ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
 name = "media-orchestrator-local"
 
 [env.local.vars]
-# In local dev, prefer hitting Docker Compose services directly
+# In local dev, prefer hitting Docker Compose services directly; R2 still uses the same endpoint
 PREFER_EXTERNAL_CONTAINERS = "true"
 JOB_TTL_SECONDS = 86400
-CONTAINER_BASE_URL = "http://localhost:8080"
+CONTAINER_BASE_URL = "http://localhost:9080"
 CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8090"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
 NEXT_BASE_URL = "http://localhost:3000"
 JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 PUT_EXPIRES = 600
-S3_ENDPOINT = "http://127.0.0.1:9000"
-S3_INTERNAL_ENDPOINT = "http://minio:9000"
-S3_ACCESS_KEY_ID = "minioadmin"
-S3_SECRET_ACCESS_KEY = "minioadmin"
+S3_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
+S3_INTERNAL_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
 S3_BUCKET_NAME = "vidgen-render"
-S3_STYLE = "path"
+S3_STYLE = "vhost"
 S3_REGION = "us-east-1"
 ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
 
@@ -89,22 +80,26 @@ class_name = "RenderJobDO"
 
 [[env.local.containers]]
 class_name = "MediaDownloaderContainer"
-image = "Dockerfile.media-downloader"
+image = "containers/media-downloader/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "AudioTranscoderContainer"
-image = "Dockerfile.audio-transcoder"
+image = "containers/audio-transcoder/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "BurnerFfmpegContainer"
-image = "Dockerfile.burner-ffmpeg"
+image = "containers/burner-ffmpeg/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[env.local.containers]]
 class_name = "RendererRemotionContainer"
-image = "Dockerfile.renderer-remotion"
+image = "containers/renderer-remotion/Dockerfile"
+image_build_context = "."
 max_instances = 5
 
 [[env.local.durable_objects.bindings]]
@@ -143,22 +138,26 @@ new_classes = ["RenderJobDO"]
 # Requires Workers Paid plan + Containers beta access.
 [[containers]]
 class_name = "MediaDownloaderContainer"
-image = "Dockerfile.media-downloader"
+image = "containers/media-downloader/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[containers]]
 class_name = "AudioTranscoderContainer"
-image = "Dockerfile.audio-transcoder"
+image = "containers/audio-transcoder/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[containers]]
 class_name = "BurnerFfmpegContainer"
-image = "Dockerfile.burner-ffmpeg"
+image = "containers/burner-ffmpeg/Dockerfile"
+image_build_context = "."
 max_instances = 10
 
 [[containers]]
 class_name = "RendererRemotionContainer"
-image = "Dockerfile.renderer-remotion"
+image = "containers/renderer-remotion/Dockerfile"
+image_build_context = "."
 max_instances = 5
 
 [[durable_objects.bindings]]

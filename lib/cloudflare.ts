@@ -1,5 +1,6 @@
 import { CF_ORCHESTRATOR_URL, JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
 import { postSignedJson } from '@app/callback-utils'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'
 
@@ -143,7 +144,7 @@ export interface MediaManifestPatch {
 }
 
 export async function upsertMediaManifest(mediaId: string, patch: MediaManifestPatch): Promise<void> {
-  const key = `manifests/media/${mediaId}.json`
+  const key = bucketPaths.manifests.media(mediaId)
   const base = requireOrchestratorUrl()
   const presignUrl = `${base.replace(/\/$/, '')}/debug/presign?key=${encodeURIComponent(key)}&contentType=${encodeURIComponent('application/json')}`
   const presignResp = await fetch(presignUrl)

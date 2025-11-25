@@ -1,7 +1,5 @@
 'use client'
-
-import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	AlertCircle,
 	FileText,
@@ -26,33 +24,26 @@ import {
 	CardHeader,
 	CardTitle,
 } from '~/components/ui/card'
-import { type ChatModelId, ChatModelIds } from '~/lib/ai/models'
 import { logger } from '~/lib/logger'
-import { queryOrpc } from '~/lib/orpc/query-client'
-import { getDefaultModel } from '~/lib/subtitle/config/models'
 import { useSubtitleWorkflow } from '~/lib/subtitle/hooks/useSubtitleWorkflow'
-import type {
-	TranscriptionProvider,
-	WhisperModel
-} from '~/lib/subtitle/config/models'
-import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
-import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
-import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { useCloudJob } from '~/lib/hooks/useCloudJob'
-import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
+import { useSubtitleActions } from '~/lib/subtitle/hooks/useSubtitleActions'
 import type { SubtitleStepId } from '~/lib/subtitle/types'
+import { parseVttCues } from '~/lib/subtitle/utils/vtt'
+import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
+import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
+import { DEFAULT_TRANSCRIPTION_LANGUAGE } from '~/lib/subtitle/config/languages'
 
 export default function SubtitlesPage() {
 	const params = useParams()
 	const mediaId = params.id as string
+	const previewVideoRef = useRef<HTMLVideoElement | null>(null)
+	const [previewDuration, setPreviewDuration] = useState(0)
+	const [previewCurrentTime, setPreviewCurrentTime] = useState(0)
 
-	// 使用新的工作流Hook管理状态
+	// 使用工作流 Hook 管理状态
 	const {
 		workflowState,
 		activeStep,
-		hasTranscription,
-		hasTranslation,
 		hasRenderedVideo,
 		subtitleConfig,
 		setActiveStep,
@@ -68,180 +59,90 @@ export default function SubtitlesPage() {
 		}
 	})
 
-	// 设置默认值
-	const selectedProvider =
-		(workflowState.selectedProvider as TranscriptionProvider) || 'cloudflare'
-	const selectedModel =
-		(workflowState.selectedModel as WhisperModel) ||
-		(selectedProvider === 'cloudflare'
-			? 'whisper-tiny-en'
-			: getDefaultModel(selectedProvider))
-	const selectedAIModel =
-		(workflowState.selectedAIModel as ChatModelId) || ChatModelIds[0]
-	const downsampleBackend =
-		((workflowState.downsampleBackend as ('auto' | 'local' | 'cloud')) ||
-			'cloud')
-
-	// 渲染默认使用云端
-	const [previewVersion, setPreviewVersion] = useState<number | undefined>(undefined)
-	const queryClient = useQueryClient()
-  const isVisible = usePageVisibility()
-
-  const handleCloudRenderComplete = useCallback(() => {
-		queryClient.invalidateQueries({
-			queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-		})
-		if (activeStep === 'step3') {
-			setActiveStep('step4')
+	useEffect(() => {
+		if (typeof media?.duration === 'number' && media.duration > 0) {
+			setPreviewDuration((prev) => (prev > 0 ? prev : media.duration ?? 0))
 		}
-		setPreviewVersion((v) => v ?? Date.now())
-  }, [activeStep, mediaId, queryClient, setActiveStep])
+	}, [media?.duration])
 
+	useEffect(() => {
+		if (previewDuration > 0) return
+
+		let derivedDuration = 0
+
+		if (Array.isArray(media?.transcriptionWords) && media.transcriptionWords.length > 0) {
+			for (const word of media.transcriptionWords) {
+				const endTime = typeof word?.end === 'number' ? word.end : 0
+				if (endTime > derivedDuration) {
+					derivedDuration = endTime
+				}
+			}
+		}
+
+		if (derivedDuration <= 0 && workflowState.translation) {
+			const cues = parseVttCues(workflowState.translation)
+			if (cues.length > 0) {
+				const lastCue = cues[cues.length - 1]
+				const endTime = parseVttTimestamp(lastCue.end)
+				if (Number.isFinite(endTime) && endTime > 0) {
+					derivedDuration = endTime
+				}
+			}
+		}
+
+		if (derivedDuration > 0) {
+			setPreviewDuration(derivedDuration)
+		}
+	}, [media?.transcriptionWords, previewDuration, workflowState.translation])
 	const {
-		setJobId: setCloudJobId,
-		statusQuery: cloudStatusQuery,
-	} = useCloudJob({
-		storageKey: `subtitleCloudJob:${mediaId}`,
-		enabled: isVisible && activeStep === 'step3',
-		completeStatuses: ['completed'],
-		onCompleted: handleCloudRenderComplete,
-		createQueryOptions: (jobId) =>
-			queryOrpc.subtitle.getRenderStatus.queryOptions({
-				input: { jobId },
-				enabled: !!jobId,
-				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
-					const s = q.state.data?.status
-					return s && ['completed', 'failed', 'canceled'].includes(s)
-						? false
-						: TIME_CONSTANTS.RENDERING_POLL_INTERVAL
-				},
-			}),
+		selectedProvider,
+		selectedModel,
+		selectedAIModel,
+		selectedLanguage,
+		downsampleBackend,
+		cloudStatusQuery,
+		previewCloudStatus,
+		previewVersion,
+		startCloudRenderMutation,
+		transcribeMutation,
+		optimizeMutation,
+		clearOptimizedMutation,
+		translateMutation,
+		handleStartTranscription,
+		handleStartTranslation,
+		handleDeleteCue,
+		handleRenderStart,
+		handleConfigChange,
+	} = useSubtitleActions({
+		mediaId,
+		activeStep,
+		workflowState,
+		updateWorkflowState,
+		setActiveStep,
 	})
 
-	// 转录mutation
-	const transcribeMutation = useEnhancedMutation(
-		queryOrpc.subtitle.transcribe.mutationOptions({
-			onSuccess: (data) => {
-				if (data.transcription) {
-					logger.info('transcription', 'Transcription completed successfully on client')
-					updateWorkflowState({
-						transcription: data.transcription,
-						selectedModel,
-						selectedProvider
-					})
-				}
-			},
-			onError: (error) => {
-				logger.error('transcription', `Transcription failed: ${error.message}`)
-			},
-		}),
-		{
-			invalidateQueries: {
-				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-			},
-		},
-	)
-
-	// 优化转录 mutation（覆盖 transcription）
-	const optimizeMutation = useEnhancedMutation(
-		queryOrpc.subtitle.optimizeTranscription.mutationOptions(),
-		{
-			invalidateQueries: {
-				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-			},
-		},
-	)
-
-
-	// 清除优化后的转录
-	const clearOptimizedMutation = useEnhancedMutation(
-		queryOrpc.subtitle.clearOptimizedTranscription.mutationOptions(),
-		{
-			invalidateQueries: {
-				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
-			},
-		},
-	)
-
-	// 翻译mutation
-	const translateMutation = useEnhancedMutation(
-		queryOrpc.subtitle.translate.mutationOptions({
-			onSuccess: (data) => {
-				if (data.translation) {
-					updateWorkflowState({
-						translation: data.translation,
-						selectedAIModel
-					})
-				}
-			},
-		}),
-	)
-
-	// 删除字幕片段mutation
-	const deleteCueMutation = useEnhancedMutation(
-		queryOrpc.subtitle.deleteTranslationCue.mutationOptions({
-			onSuccess: (data) => {
-				if (data.translation) {
-					updateWorkflowState({ translation: data.translation })
-				}
-			},
-		}),
-	)
-
-	// 云端渲染：启动
-	const startCloudRenderMutation = useEnhancedMutation(
-		queryOrpc.subtitle.startCloudRender.mutationOptions({
-			onSuccess: (data) => {
-				setCloudJobId(data.jobId)
-			},
-		}),
-	)
-
-	// 预览用的云端渲染状态（避免 any）
-	const previewCloudStatus = cloudStatusQuery.data
-		? {
-				status: (cloudStatusQuery.data as { status?: string }).status,
-				progress: (cloudStatusQuery.data as { progress?: number }).progress,
-			}
-		: null
-
-	// 事件处理器
-	const handleStartTranscription = () => {
-		logger.info('transcription', `User started transcription: ${selectedProvider}/${selectedModel} for media ${mediaId}`)
-		updateWorkflowState({ selectedModel, selectedProvider })
-        transcribeMutation.mutate({
-            mediaId,
-            model: selectedModel,
-            provider: selectedProvider,
-            downsampleBackend,
-        })
-    }
-
-	const handleStartTranslation = () => {
-		if (workflowState.transcription) {
-			updateWorkflowState({ selectedAIModel })
-			translateMutation.mutate({
-				mediaId,
-				model: selectedAIModel,
-				promptId: 'bilingual-zh' // 使用配置化的提示词ID
-			})
+	const handleDurationChange = useCallback((duration: number) => {
+		if (Number.isFinite(duration) && duration > 0) {
+			setPreviewDuration(duration)
 		}
-	}
+	}, [])
 
-	const handleDeleteCue = (index: number) => {
-		if (workflowState.translation) {
-			deleteCueMutation.mutate({ mediaId, index })
+	const handleCurrentTimeChange = useCallback((time: number) => {
+		if (Number.isFinite(time)) {
+			setPreviewCurrentTime(time)
 		}
-	}
+	}, [])
 
-	const handleRenderStart = (config: SubtitleRenderConfig) => {
-		updateWorkflowState({ subtitleConfig: config })
-		startCloudRenderMutation.mutate({ mediaId, subtitleConfig: config })
-	}
+	const handleVideoRefChange = useCallback((ref: HTMLVideoElement | null) => {
+		previewVideoRef.current = ref
+	}, [])
 
-	const handleConfigChange = (config: SubtitleRenderConfig) => {
-		updateWorkflowState({ subtitleConfig: config })
-	}
+	const handlePlayPreview = useCallback((time: number) => {
+		if (previewVideoRef.current) {
+			previewVideoRef.current.currentTime = Math.max(0, time)
+			previewVideoRef.current.play?.()
+		}
+	}, [])
 
 	// 加载状态
 	if (isLoading) {
@@ -291,6 +192,9 @@ export default function SubtitlesPage() {
 					startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes(cloudStatusQuery.data?.status ?? '')
 				}
 				cloudStatus={previewCloudStatus}
+				onDurationChange={handleDurationChange}
+				onCurrentTimeChange={handleCurrentTimeChange}
+				onVideoRefChange={handleVideoRefChange}
 			/>
 
 			{/* Step Navigation under preview (Tabs) */}
@@ -304,15 +208,15 @@ export default function SubtitlesPage() {
 						<FileText className="h-4 w-4" />
 						<span className="ml-1">Transcribe</span>
 					</TabsTrigger>
-					<TabsTrigger value="step2" disabled={!hasTranscription}>
+					<TabsTrigger value="step2">
 						<Languages className="h-4 w-4" />
 						<span className="ml-1">Translate</span>
 					</TabsTrigger>
-					<TabsTrigger value="step3" disabled={!hasTranslation}>
+					<TabsTrigger value="step3">
 						<Video className="h-4 w-4" />
 						<span className="ml-1">Render</span>
 					</TabsTrigger>
-					<TabsTrigger value="step4" disabled={!hasRenderedVideo}>
+					<TabsTrigger value="step4">
 						<Play className="h-4 w-4" />
 						<span className="ml-1">Export</span>
 					</TabsTrigger>
@@ -334,8 +238,10 @@ export default function SubtitlesPage() {
                             <Step1Transcribe
                                 selectedModel={selectedModel}
                                 selectedProvider={selectedProvider}
+                                selectedLanguage={workflowState.transcriptionLanguage ?? selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
                                 onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
                                 onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
+                                onLanguageChange={(language) => updateWorkflowState({ transcriptionLanguage: language })}
                                 isPending={transcribeMutation.isPending}
                                 onStart={handleStartTranscription}
                                 transcription={(media?.transcription ?? '')}
@@ -416,6 +322,9 @@ export default function SubtitlesPage() {
 								translationAvailable={!!workflowState.translation}
 								config={subtitleConfig}
 								onConfigChange={handleConfigChange}
+								mediaDuration={previewDuration}
+								currentPreviewTime={previewCurrentTime}
+								onPreviewSeek={handlePlayPreview}
 							/>
 
 

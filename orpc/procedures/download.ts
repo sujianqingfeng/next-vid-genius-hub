@@ -2,7 +2,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { os } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
@@ -23,6 +23,7 @@ export const startCloudDownload = os
 		const source = provider.id === 'tiktok' ? 'tiktok' : 'youtube'
 		const now = new Date()
 
+		const db = await getDb()
 		const existing = await db.query.media.findFirst({
 			where: eq(schema.media.url, url),
 		})

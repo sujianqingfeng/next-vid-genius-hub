@@ -1,13 +1,26 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Copy, Download, Edit, Film, LanguagesIcon, MessageCircle, Settings, Play, ShieldAlert, Filter } from 'lucide-react'
+import {
+	ArrowLeft,
+	Copy,
+	Download,
+	Edit,
+	Film,
+	LanguagesIcon,
+	MessageCircle,
+	Settings,
+	Play,
+	ShieldAlert,
+	Filter,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { CommentCard } from '~/components/business/media/comment-card'
 import { RemotionPreviewCard } from '~/components/business/media/remotion-preview-card'
+import { PublishTitleGenerator } from '~/components/business/media/publish-title-generator'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -30,7 +43,11 @@ import {
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { ChatModelId, ChatModelIds } from '~/lib/ai/models'
+import {
+	ChatModelIds,
+	DEFAULT_CHAT_MODEL_ID,
+	type ChatModelId,
+} from '~/lib/ai/models'
 import { extractVideoId } from '@app/media-providers'
 import { STATUS_LABELS } from '~/lib/config/media-status.config'
 import { queryOrpc } from '~/lib/orpc/query-client'
@@ -39,20 +56,29 @@ import { Progress } from '~/components/ui/progress'
 import { Switch } from '~/components/ui/switch'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
+import {
+	listTemplates,
+	DEFAULT_TEMPLATE_ID,
+	type RemotionTemplateId,
+} from '~/remotion/templates'
 
 export default function CommentsPage() {
 	const params = useParams()
 	const id = params.id as string
 	const queryClient = useQueryClient()
 	const [pages, setPages] = useState('3')
-	const [model, setModel] = useState<ChatModelId>(ChatModelIds[0] as ChatModelId)
+	const [model, setModel] = useState<ChatModelId>(DEFAULT_CHAT_MODEL_ID)
 	const [forceTranslate, setForceTranslate] = useState(false)
-    const [modModel, setModModel] = useState<ChatModelId>(ChatModelIds[0] as ChatModelId)
-    const [overwriteModeration, setOverwriteModeration] = useState(false)
-    const [onlyFlagged, setOnlyFlagged] = useState(false)
+	const [modModel, setModModel] = useState<ChatModelId>(
+		DEFAULT_CHAT_MODEL_ID,
+	)
+	const [overwriteModeration, setOverwriteModeration] = useState(false)
+	const [onlyFlagged, setOnlyFlagged] = useState(false)
 
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
 	const [renderProxyId, setRenderProxyId] = useState<string>('none')
+	const [templateId, setTemplateId] =
+		useState<RemotionTemplateId>(DEFAULT_TEMPLATE_ID)
 
 	// Edit titles dialog
 	const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -73,15 +99,40 @@ export default function CommentsPage() {
 				enabled: !!jobId,
 				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
 					const s = q.state.data?.status
-					return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
+					return s && ['completed', 'failed', 'canceled'].includes(s)
+						? false
+						: 2000
 				},
 			}),
+	})
+
+	const proxiesQuery = useQuery({
+		...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	})
 
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
 			input: { id },
 		}),
+	)
+
+	// Hydrate selected template from server record
+	useEffect(() => {
+		const tid =
+			(mediaQuery.data?.commentsTemplate as RemotionTemplateId | undefined) ||
+			DEFAULT_TEMPLATE_ID
+		setTemplateId(tid)
+	}, [mediaQuery.data?.commentsTemplate])
+
+	const updateRenderSettingsMutation = useEnhancedMutation(
+		queryOrpc.media.updateRenderSettings.mutationOptions(),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+			},
+			successToast: 'Template saved!',
+			errorToast: ({ error }) => `Failed to save template: ${error.message}`,
+		},
 	)
 
 	const updateTitlesMutation = useEnhancedMutation(
@@ -115,20 +166,20 @@ export default function CommentsPage() {
 
 	const copyTitleValue = (value: string | null | undefined, label: string) => {
 		if (!value) {
-			toast.error(`${label}不存在`)
+			toast.error(`${label} does not exist`)
 			return
 		}
 		if (typeof navigator === 'undefined' || !navigator.clipboard) {
-			toast.error('无法访问剪贴板')
+			toast.error('Unable to access clipboard')
 			return
 		}
 		navigator.clipboard
 			.writeText(value)
 			.then(() => {
-				toast.success(`${label}已复制到剪贴板`)
+				toast.success(`${label} copied to clipboard`)
 			})
 			.catch(() => {
-				toast.error(`复制${label}失败`)
+				toast.error(`Failed to copy ${label}`)
 			})
 	}
 
@@ -169,7 +220,10 @@ export default function CommentsPage() {
 		) {
 			if (!finalizeAttemptedJobIdsRef.current.has(commentsCloudJobId)) {
 				finalizeAttemptedJobIdsRef.current.add(commentsCloudJobId)
-				finalizeCloudCommentsMutation.mutate({ mediaId: id, jobId: commentsCloudJobId })
+				finalizeCloudCommentsMutation.mutate({
+					mediaId: id,
+					jobId: commentsCloudJobId,
+				})
 			}
 		}
 	}, [
@@ -187,20 +241,22 @@ export default function CommentsPage() {
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			},
 			successToast: 'Comments translated!',
-			errorToast: ({ error }) => `Failed to translate comments: ${error.message}`,
+			errorToast: ({ error }) =>
+				`Failed to translate comments: ${error.message}`,
 		},
 	)
 
-    const moderateCommentsMutation = useEnhancedMutation(
-        queryOrpc.comment.moderateComments.mutationOptions(),
-        {
-            invalidateQueries: {
-                queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-            },
-            successToast: ({ data }) => `Moderation done: ${data?.flaggedCount ?? 0} flagged`,
-            errorToast: ({ error }) => `Failed to moderate: ${error.message}`,
-        },
-    )
+	const moderateCommentsMutation = useEnhancedMutation(
+		queryOrpc.comment.moderateComments.mutationOptions(),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+			},
+			successToast: ({ data }) =>
+				`Moderation done: ${data?.flaggedCount ?? 0} flagged`,
+			errorToast: ({ error }) => `Failed to moderate: ${error.message}`,
+		},
+	)
 
 	const previewVideoInfo = mediaQuery.data
 		? {
@@ -209,7 +265,7 @@ export default function CommentsPage() {
 				viewCount: mediaQuery.data.viewCount ?? undefined,
 				author: mediaQuery.data.author ?? undefined,
 				thumbnail: mediaQuery.data.thumbnail ?? undefined,
-		  }
+			}
 		: null
 
 	// Cloud rendering (Remotion) — start
@@ -233,7 +289,9 @@ export default function CommentsPage() {
 				enabled: !!jobId,
 				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
 					const s = q.state.data?.status
-					return s && ['completed', 'failed', 'canceled'].includes(s) ? false : 2000
+					return s && ['completed', 'failed', 'canceled'].includes(s)
+						? false
+						: 2000
 				},
 			}),
 	})
@@ -273,7 +331,16 @@ export default function CommentsPage() {
 	}, [id, sourcePolicy])
 
 	const comments = mediaQuery.data?.comments || []
-    const visibleComments = onlyFlagged ? comments.filter((c) => c?.moderation?.flagged) : comments
+	const visibleComments = onlyFlagged
+		? comments.filter((c) => c?.moderation?.flagged)
+		: comments
+
+	const availableProxies = proxiesQuery.data?.proxies?.filter((proxy) => proxy.id !== 'none') ?? []
+	const hasAvailableProxies = availableProxies.length > 0
+	const hasDownloadProxySelected = Boolean(selectedProxyId && selectedProxyId !== 'none')
+	const hasRenderProxySelected = Boolean(renderProxyId && renderProxyId !== 'none')
+	const canQueueCommentsDownload = hasAvailableProxies && hasDownloadProxySelected
+	const canQueueRender = hasAvailableProxies && hasRenderProxySelected
 
 	// Persist render proxy selection for cloud renders
 	useEffect(() => {
@@ -313,34 +380,34 @@ export default function CommentsPage() {
 		<div className="min-h-screen bg-background">
 			{/* Compact Header */}
 			<div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-					<div className="max-w-7xl mx-auto px-4 py-3">
-						<div className="flex items-center justify-between gap-4">
-							<div className="flex items-center gap-3">
-								<Link
-									href={`/media/${id}`}
-									className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-								>
-									<ArrowLeft className="w-4 h-4" />
-									<span className="hidden sm:inline">Back to Media</span>
-									<span className="sm:hidden">Back</span>
-								</Link>
-								<div className="h-4 w-px bg-border" />
-								<h1 className="text-lg font-semibold">Comments</h1>
-							</div>
-							{mediaQuery.data?.translatedTitle && (
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-8 px-2"
-									onClick={handleEditClick}
-									title="Edit titles"
-								>
-									<Edit className="w-3.5 h-3.5" />
-								</Button>
-							)}
+				<div className="max-w-7xl mx-auto px-4 py-3">
+					<div className="flex items-center justify-between gap-4">
+						<div className="flex items-center gap-3">
+							<Link
+								href={`/media/${id}`}
+								className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+							>
+								<ArrowLeft className="w-4 h-4" />
+								<span className="hidden sm:inline">Back to Media</span>
+								<span className="sm:hidden">Back</span>
+							</Link>
+							<div className="h-4 w-px bg-border" />
+							<h1 className="text-lg font-semibold">Comments</h1>
 						</div>
+						{mediaQuery.data?.translatedTitle && (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-8 px-2"
+								onClick={handleEditClick}
+								title="Edit titles"
+							>
+								<Edit className="w-3.5 h-3.5" />
+							</Button>
+						)}
 					</div>
 				</div>
+			</div>
 
 			{/* Edit Dialog */}
 			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -362,7 +429,9 @@ export default function CommentsPage() {
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="translatedTitle">Translated Title (English)</Label>
+							<Label htmlFor="translatedTitle">
+								Translated Title (English)
+							</Label>
 							<Input
 								id="translatedTitle"
 								value={editTranslatedTitle}
@@ -372,10 +441,7 @@ export default function CommentsPage() {
 						</div>
 					</div>
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setEditDialogOpen(false)}
-						>
+						<Button variant="outline" onClick={() => setEditDialogOpen(false)}>
 							Cancel
 						</Button>
 						<Button
@@ -395,6 +461,7 @@ export default function CommentsPage() {
 					videoInfo={previewVideoInfo}
 					comments={comments}
 					isLoading={mediaQuery.isLoading}
+					templateId={templateId}
 				/>
 
 				{/* Actions & Comments Grid */}
@@ -410,13 +477,23 @@ export default function CommentsPage() {
 							</CardHeader>
 							<CardContent className="space-y-4">
 								<Tabs defaultValue="download" className="w-full">
-										<TabsList className="grid w-full grid-cols-5">
-											<TabsTrigger value="basics" className="text-xs">Base Data</TabsTrigger>
-											<TabsTrigger value="download" className="text-xs">Download</TabsTrigger>
-											<TabsTrigger value="translate" className="text-xs">Translate</TabsTrigger>
-											<TabsTrigger value="moderate" className="text-xs">Moderate</TabsTrigger>
-											<TabsTrigger value="render" className="text-xs">Render</TabsTrigger>
-										</TabsList>
+									<TabsList className="grid w-full grid-cols-5">
+										<TabsTrigger value="basics" className="text-xs">
+											Base Data
+										</TabsTrigger>
+										<TabsTrigger value="download" className="text-xs">
+											Download
+										</TabsTrigger>
+										<TabsTrigger value="translate" className="text-xs">
+											Translate
+										</TabsTrigger>
+										<TabsTrigger value="moderate" className="text-xs">
+											Moderate
+										</TabsTrigger>
+										<TabsTrigger value="render" className="text-xs">
+											Render
+										</TabsTrigger>
+									</TabsList>
 
 									<TabsContent value="basics" className="space-y-4 mt-4">
 										<div className="space-y-3">
@@ -426,48 +503,71 @@ export default function CommentsPage() {
 											</div>
 											<div className="space-y-3 text-sm">
 												<div className="space-y-2">
-													<p className="text-xs uppercase text-muted-foreground">Translated Title</p>
+													<p className="text-xs uppercase text-muted-foreground">
+														Translated Title
+													</p>
 													<p className="font-medium break-words">
-														{mediaQuery.data.translatedTitle ?? '暂无翻译标题'}
+														{mediaQuery.data.translatedTitle ??
+															'No translated title'}
 													</p>
 													<Button
 														variant="outline"
 														size="sm"
 														className="h-8 px-2 text-xs"
 														disabled={!mediaQuery.data.translatedTitle}
-														onClick={() => copyTitleValue(mediaQuery.data?.translatedTitle, '英文标题')}
+														onClick={() =>
+															copyTitleValue(
+																mediaQuery.data?.translatedTitle,
+																'English title',
+															)
+														}
 													>
 														<Copy className="w-3 h-3 mr-2" />
-														复制英文标题
+														Copy English Title
 													</Button>
 												</div>
+
+											{/* Publish Title Generator */}
+											<div className="pt-2">
+												<PublishTitleGenerator
+													mediaId={id}
+													initialPublishTitle={mediaQuery.data.publishTitle}
+												/>
+											</div>
 												<div className="space-y-2">
-													<p className="text-xs uppercase text-muted-foreground">Original Title</p>
+													<p className="text-xs uppercase text-muted-foreground">
+														Original Title
+													</p>
 													<p className="break-words text-muted-foreground">
-														{mediaQuery.data.title ?? '暂无原始标题'}
+														{mediaQuery.data.title ?? 'No original title'}
 													</p>
 													<Button
 														variant="outline"
 														size="sm"
 														className="h-8 px-2 text-xs"
 														disabled={!mediaQuery.data.title}
-														onClick={() => copyTitleValue(mediaQuery.data?.title, '原始标题')}
+														onClick={() =>
+															copyTitleValue(
+																mediaQuery.data?.title,
+																'Original title',
+															)
+														}
 													>
 														<Copy className="w-3 h-3 mr-2" />
-														复制原始标题
+														Copy Original Title
 													</Button>
 												</div>
-											</div>
-											<div className="border-t pt-3">
-												<Button
-													variant="default"
-													size="sm"
-													className="w-full text-xs"
-													onClick={handleEditClick}
-												>
-													<Edit className="w-3 h-3 mr-2" />
-													编辑标题
-												</Button>
+												<div className="border-t pt-3">
+													<Button
+														variant="default"
+														size="sm"
+														className="w-full text-xs"
+														onClick={handleEditClick}
+													>
+														<Edit className="w-3 h-3 mr-2" />
+														Edit Titles
+													</Button>
+												</div>
 											</div>
 										</div>
 									</TabsContent>
@@ -476,11 +576,15 @@ export default function CommentsPage() {
 										<div className="space-y-3">
 											<div className="flex items-center gap-2">
 												<Download className="w-4 h-4 text-muted-foreground" />
-												<h4 className="font-medium text-sm">Download Comments</h4>
+												<h4 className="font-medium text-sm">
+													Download Comments
+												</h4>
 											</div>
 											<div className="space-y-2">
 												<div>
-													<Label className="text-xs text-muted-foreground">Pages:</Label>
+													<Label className="text-xs text-muted-foreground">
+														Pages:
+													</Label>
 													<Select value={pages} onValueChange={setPages}>
 														<SelectTrigger className="w-full">
 															<SelectValue />
@@ -494,35 +598,54 @@ export default function CommentsPage() {
 														</SelectContent>
 													</Select>
 												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">Proxy:</Label>
-													<ProxySelector
-														value={selectedProxyId}
-														onValueChange={setSelectedProxyId}
-														disabled={startCloudCommentsMutation.isPending}
-													/>
-												</div>
-											</div>
-											<Button
-												onClick={() => {
-													const p = parseInt(pages, 10)
-													startCloudCommentsMutation.mutate({
-														mediaId: id,
-														pages: p,
-														proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
-													})
-												}}
-												disabled={startCloudCommentsMutation.isPending}
-												className="w-full"
-											>
-												{startCloudCommentsMutation.isPending ? 'Queuing...' : 'Start Download'}
+							<div>
+								<Label className="text-xs text-muted-foreground">
+									Proxy:
+								</Label>
+								<ProxySelector
+									value={selectedProxyId}
+									onValueChange={setSelectedProxyId}
+									disabled={startCloudCommentsMutation.isPending}
+									allowDirect={false}
+								/>
+							</div>
+						</div>
+						<Button
+							onClick={() => {
+								if (!canQueueCommentsDownload) {
+									const message = hasAvailableProxies
+										? '请先选择一个代理后再开始下载评论。'
+										: '当前没有可用代理，请先添加代理节点。'
+									toast.error(message)
+									return
+								}
+								const p = parseInt(pages, 10)
+								startCloudCommentsMutation.mutate({
+									mediaId: id,
+									pages: p,
+									proxyId:
+										selectedProxyId === 'none'
+											? undefined
+											: selectedProxyId,
+								})
+							}}
+							disabled={startCloudCommentsMutation.isPending || !canQueueCommentsDownload}
+							className="w-full"
+						>
+												{startCloudCommentsMutation.isPending
+													? 'Queuing...'
+													: 'Start Download'}
 											</Button>
 											{commentsCloudJobId && (
 												<div className="space-y-2 pt-2 border-t">
 													<Progress
 														value={
-															typeof cloudCommentsStatusQuery.data?.progress === 'number'
-																? Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)
+															typeof cloudCommentsStatusQuery.data?.progress ===
+															'number'
+																? Math.round(
+																		(cloudCommentsStatusQuery.data?.progress ??
+																			0) * 100,
+																	)
 																: 0
 														}
 														className="h-2"
@@ -530,11 +653,22 @@ export default function CommentsPage() {
 													<div className="text-xs text-muted-foreground text-center">
 														{(() => {
 															const s = cloudCommentsStatusQuery.data?.status
-															const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'Starting'
-															const pct = typeof cloudCommentsStatusQuery.data?.progress === 'number'
-																? `${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%`
-																: '0%'
-															return <span title={`Job ${commentsCloudJobId}`}>{label} • {pct}</span>
+															const label =
+																s && s in STATUS_LABELS
+																	? STATUS_LABELS[
+																			s as keyof typeof STATUS_LABELS
+																		]
+																	: (s ?? 'Starting')
+															const pct =
+																typeof cloudCommentsStatusQuery.data
+																	?.progress === 'number'
+																	? `${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%`
+																	: '0%'
+															return (
+																<span title={`Job ${commentsCloudJobId}`}>
+																	{label} • {pct}
+																</span>
+															)
 														})()}
 													</div>
 												</div>
@@ -546,10 +680,15 @@ export default function CommentsPage() {
 										<div className="space-y-3">
 											<div className="flex items-center gap-2">
 												<LanguagesIcon className="w-4 h-4 text-muted-foreground" />
-												<h4 className="font-medium text-sm">Translate Comments</h4>
+												<h4 className="font-medium text-sm">
+													Translate Comments
+												</h4>
 											</div>
 											<div className="space-y-2">
-												<Select value={model} onValueChange={(v) => setModel(v as ChatModelId)}>
+												<Select
+													value={model}
+													onValueChange={(v) => setModel(v as ChatModelId)}
+												>
 													<SelectTrigger className="w-full">
 														<SelectValue />
 													</SelectTrigger>
@@ -568,7 +707,10 @@ export default function CommentsPage() {
 														onCheckedChange={setForceTranslate}
 														disabled={translateCommentsMutation.isPending}
 													/>
-													<Label htmlFor="force-translate" className="text-xs text-muted-foreground">
+													<Label
+														htmlFor="force-translate"
+														className="text-xs text-muted-foreground"
+													>
 														Overwrite existing
 													</Label>
 												</div>
@@ -583,7 +725,9 @@ export default function CommentsPage() {
 													disabled={translateCommentsMutation.isPending}
 													className="w-full"
 												>
-													{translateCommentsMutation.isPending ? 'Translating...' : 'Translate'}
+													{translateCommentsMutation.isPending
+														? 'Translating...'
+														: 'Translate'}
 												</Button>
 											</div>
 										</div>
@@ -593,11 +737,16 @@ export default function CommentsPage() {
 										<div className="space-y-3">
 											<div className="flex items-center gap-2">
 												<ShieldAlert className="w-4 h-4 text-muted-foreground" />
-												<h4 className="font-medium text-sm">Moderate Comments</h4>
+												<h4 className="font-medium text-sm">
+													Moderate Comments
+												</h4>
 											</div>
 
 											<div className="space-y-2">
-												<Select value={modModel} onValueChange={(v) => setModModel(v as ChatModelId)}>
+												<Select
+													value={modModel}
+													onValueChange={(v) => setModModel(v as ChatModelId)}
+												>
 													<SelectTrigger className="w-full">
 														<SelectValue />
 													</SelectTrigger>
@@ -610,32 +759,41 @@ export default function CommentsPage() {
 													</SelectContent>
 												</Select>
 
-											<div className="flex items-center gap-2">
-												<Switch
-													id="overwrite-moderation"
-													checked={overwriteModeration}
-													onCheckedChange={setOverwriteModeration}
+												<div className="flex items-center gap-2">
+													<Switch
+														id="overwrite-moderation"
+														checked={overwriteModeration}
+														onCheckedChange={setOverwriteModeration}
+														disabled={moderateCommentsMutation.isPending}
+													/>
+													<Label
+														htmlFor="overwrite-moderation"
+														className="text-xs text-muted-foreground"
+													>
+														Overwrite existing
+													</Label>
+												</div>
+
+												<Button
+													onClick={() =>
+														moderateCommentsMutation.mutate({
+															mediaId: id,
+															model: modModel,
+															overwrite: overwriteModeration,
+														})
+													}
 													disabled={moderateCommentsMutation.isPending}
-												/>
-												<Label htmlFor="overwrite-moderation" className="text-xs text-muted-foreground">
-													Overwrite existing
-												</Label>
+													className="w-full"
+												>
+													{moderateCommentsMutation.isPending
+														? 'Moderating...'
+														: 'Run Moderation'}
+												</Button>
 											</div>
-
-											<Button
-												onClick={() =>
-													moderateCommentsMutation.mutate({ mediaId: id, model: modModel, overwrite: overwriteModeration })
-												}
-												disabled={moderateCommentsMutation.isPending}
-												className="w-full"
-											>
-												{moderateCommentsMutation.isPending ? 'Moderating...' : 'Run Moderation'}
-											</Button>
 										</div>
-									</div>
-								</TabsContent>
+									</TabsContent>
 
-								<TabsContent value="render" className="space-y-4 mt-4">
+									<TabsContent value="render" className="space-y-4 mt-4">
 										<div className="space-y-3">
 											<div className="flex items-center gap-2">
 												<Film className="w-4 h-4 text-muted-foreground" />
@@ -643,46 +801,119 @@ export default function CommentsPage() {
 											</div>
 											<div className="space-y-2">
 												<div>
-													<Label className="text-xs text-muted-foreground">Source:</Label>
-													<Select value={sourcePolicy} onValueChange={(v) => setSourcePolicy(v as SourcePolicy)}>
+													<Label className="text-xs text-muted-foreground">
+														Template:
+													</Label>
+													<Select
+														value={templateId}
+														onValueChange={(v) =>
+															setTemplateId(v as RemotionTemplateId)
+														}
+													>
+														<SelectTrigger className="w-full">
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{listTemplates().map((t) => (
+																<SelectItem key={t.id} value={t.id}>
+																	{t.name}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+													<div className="mt-2 flex justify-end">
+														<Button
+															variant="outline"
+															size="sm"
+															onClick={() =>
+																updateRenderSettingsMutation.mutate({
+																	id,
+																	commentsTemplate: templateId,
+																})
+															}
+															disabled={updateRenderSettingsMutation.isPending}
+														>
+															{updateRenderSettingsMutation.isPending
+																? 'Saving…'
+																: 'Save Template'}
+														</Button>
+													</div>
+												</div>
+												<div>
+													<Label className="text-xs text-muted-foreground">
+														Source:
+													</Label>
+													<Select
+														value={sourcePolicy}
+														onValueChange={(v) =>
+															setSourcePolicy(v as SourcePolicy)
+														}
+													>
 														<SelectTrigger className="w-full">
 															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
 															<SelectItem value="auto">Auto</SelectItem>
 															<SelectItem value="original">Original</SelectItem>
-															<SelectItem value="subtitles" disabled={!mediaQuery.data?.videoWithSubtitlesPath}>With Subtitles</SelectItem>
+															<SelectItem
+																value="subtitles"
+																disabled={
+																	!mediaQuery.data?.videoWithSubtitlesPath
+																}
+															>
+																With Subtitles
+															</SelectItem>
 														</SelectContent>
 													</Select>
 												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">Proxy:</Label>
-													<ProxySelector
-														value={renderProxyId}
-														onValueChange={setRenderProxyId}
-														disabled={startCloudRenderMutation.isPending}
-													/>
-												</div>
-											</div>
-											<Button
-												onClick={() => {
-													startCloudRenderMutation.mutate({
-														mediaId: id,
-														proxyId: renderProxyId === 'none' ? undefined : renderProxyId,
-														sourcePolicy,
-													})
-												}}
-												disabled={startCloudRenderMutation.isPending}
-												className="w-full"
-											>
-												{startCloudRenderMutation.isPending ? 'Queuing...' : 'Start Render'}
+						<div>
+							<Label className="text-xs text-muted-foreground">
+								Proxy:
+							</Label>
+							<ProxySelector
+								value={renderProxyId}
+								onValueChange={setRenderProxyId}
+								disabled={startCloudRenderMutation.isPending}
+								allowDirect={false}
+							/>
+						</div>
+					</div>
+					<Button
+						onClick={() => {
+							if (!canQueueRender) {
+								const message = hasAvailableProxies
+									? '请先选择一个代理后再开始渲染视频。'
+									: '当前没有可用代理，请先添加代理节点。'
+								toast.error(message)
+								return
+							}
+							startCloudRenderMutation.mutate({
+								mediaId: id,
+								proxyId:
+									renderProxyId === 'none'
+										? undefined
+										: renderProxyId,
+								sourcePolicy,
+								templateId,
+							})
+						}}
+						disabled={startCloudRenderMutation.isPending || !canQueueRender}
+						className="w-full"
+					>
+												{startCloudRenderMutation.isPending
+													? 'Queuing...'
+													: 'Start Render'}
 											</Button>
 											{cloudJobId && (
 												<div className="space-y-2 pt-2 border-t">
 													<Progress
 														value={
-															typeof cloudStatusQuery.data?.progress === 'number'
-																? Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)
+															typeof cloudStatusQuery.data?.progress ===
+															'number'
+																? Math.round(
+																		(cloudStatusQuery.data?.progress ?? 0) *
+																			100,
+																	)
 																: 0
 														}
 														className="h-2"
@@ -690,11 +921,22 @@ export default function CommentsPage() {
 													<div className="text-xs text-muted-foreground text-center">
 														{(() => {
 															const s = cloudStatusQuery.data?.status
-															const label = s && s in STATUS_LABELS ? STATUS_LABELS[s as keyof typeof STATUS_LABELS] : s ?? 'Starting'
-															const pct = typeof cloudStatusQuery.data?.progress === 'number'
-																? `${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%`
-																: '0%'
-															return <span title={`Job ${cloudJobId}`}>{label} • {pct}</span>
+															const label =
+																s && s in STATUS_LABELS
+																	? STATUS_LABELS[
+																			s as keyof typeof STATUS_LABELS
+																		]
+																	: (s ?? 'Starting')
+															const pct =
+																typeof cloudStatusQuery.data?.progress ===
+																'number'
+																	? `${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%`
+																	: '0%'
+															return (
+																<span title={`Job ${cloudJobId}`}>
+																	{label} • {pct}
+																</span>
+															)
 														})()}
 													</div>
 												</div>
@@ -706,23 +948,28 @@ export default function CommentsPage() {
 								<div className="border-t pt-4">
 									<div className="space-y-2">
 										<p className="text-xs text-muted-foreground">
-											Source: <code className="bg-muted px-1 rounded text-xs">{getVideoSourceId()}</code>
+											Source:{' '}
+											<code className="bg-muted px-1 rounded text-xs">
+												{getVideoSourceId()}
+											</code>
 										</p>
 										<Button
 											variant="ghost"
 											size="sm"
 											onClick={() => {
-												const disclaimerText = `内容声明
+											const disclaimerText = `内容声明
 
-本视频仅用于娱乐目的，相关评论内容不代表本平台观点。
-请理性观看，请勿过度解读或传播不实信息。
+本视频仅用于娱乐用途，所引用的评论不代表本平台的立场或观点。
+请理性观看，避免传播不实信息。
 
-来源视频: ${getVideoSourceId()}
+原始视频：${getVideoSourceId()}
 ${
 	mediaQuery.data?.comments &&
 	mediaQuery.data.comments.length > 0 &&
 	mediaQuery.data.commentsDownloadedAt
-		? `评论采集时间: ${new Date(mediaQuery.data.commentsDownloadedAt).toLocaleString('zh-CN', {
+		? `评论采集时间：${new Date(
+				mediaQuery.data.commentsDownloadedAt,
+			).toLocaleString('zh-CN', {
 				year: 'numeric',
 				month: '2-digit',
 				day: '2-digit',
@@ -732,12 +979,12 @@ ${
 		: ''
 }`;
 												navigator.clipboard.writeText(disclaimerText)
-												toast.success('声明已复制到剪贴板')
+												toast.success('Disclaimer copied to clipboard')
 											}}
 											className="w-full text-xs"
 										>
 											<Copy className="w-3 h-3 mr-2" />
-											复制声明
+											Copy Disclaimer
 										</Button>
 									</div>
 								</div>
@@ -745,31 +992,31 @@ ${
 						</Card>
 					)}
 
-						{/* Right: Comments List */}
-						<Card className="lg:col-span-2">
-							<CardHeader className="pb-3">
-								<div className="flex items-center justify-between gap-3">
-									<CardTitle className="text-base flex items-center gap-2">
-										<MessageCircle className="w-4 h-4" />
-										Comments
-									</CardTitle>
-										<div className="flex items-center gap-2">
-											<Badge variant="secondary" className="text-xs">
-												{visibleComments.length} / {comments.length}
-											</Badge>
-											<Button
-												variant={onlyFlagged ? 'default' : 'outline'}
-												size="sm"
-												onClick={() => setOnlyFlagged((v) => !v)}
-												className="h-7 px-2 text-xs"
-												title="Toggle only flagged"
-											>
-												<Filter className="w-3 h-3 mr-1" />
-												{onlyFlagged ? 'Only flagged' : 'All comments'}
-											</Button>
-										</div>
+					{/* Right: Comments List */}
+					<Card className="lg:col-span-2">
+						<CardHeader className="pb-3">
+							<div className="flex items-center justify-between gap-3">
+								<CardTitle className="text-base flex items-center gap-2">
+									<MessageCircle className="w-4 h-4" />
+									Comments
+								</CardTitle>
+								<div className="flex items-center gap-2">
+									<Badge variant="secondary" className="text-xs">
+										{visibleComments.length} / {comments.length}
+									</Badge>
+									<Button
+										variant={onlyFlagged ? 'default' : 'outline'}
+										size="sm"
+										onClick={() => setOnlyFlagged((v) => !v)}
+										className="h-7 px-2 text-xs"
+										title="Toggle only flagged"
+									>
+										<Filter className="w-3 h-3 mr-1" />
+										{onlyFlagged ? 'Only flagged' : 'All comments'}
+									</Button>
 								</div>
-							</CardHeader>
+							</div>
+						</CardHeader>
 						<CardContent className="p-0">
 							<div className="max-h-[600px] overflow-y-auto">
 								{mediaQuery.isLoading && (
@@ -812,7 +1059,9 @@ ${
 										<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
 											<MessageCircle className="w-8 h-8 text-muted-foreground" />
 										</div>
-										<h3 className="text-lg font-semibold mb-2">No comments yet</h3>
+										<h3 className="text-lg font-semibold mb-2">
+											No comments yet
+										</h3>
 										<p className="text-sm text-muted-foreground">
 											Use the Download Comments action to get started.
 										</p>
@@ -844,11 +1093,7 @@ ${
 									<Play className="w-4 h-4" />
 									Rendered Video
 								</CardTitle>
-								<Button
-									variant="outline"
-									size="sm"
-									asChild
-								>
+								<Button variant="outline" size="sm" asChild>
 									<a
 										href={`/api/media/${id}/rendered-info`}
 										download={`${mediaQuery.data.title || id}-rendered.mp4`}
@@ -861,11 +1106,15 @@ ${
 							</div>
 						</CardHeader>
 						<CardContent>
-							<video controls className="w-full rounded-md" src={`/api/media/${id}/rendered-info`} />
+							<video
+								controls
+								className="w-full rounded-md"
+								src={`/api/media/${id}/rendered-info`}
+							/>
 						</CardContent>
 					</Card>
 				)}
 			</div>
-        </div>
-    )
+		</div>
+	)
 }

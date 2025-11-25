@@ -56,7 +56,7 @@ initOpenNextCloudflareForDev()
 
 ### 2.3 OpenNext 配置（增量缓存）
 
-在项目根目录新增 `open-next.config.ts`（若不存在）：
+仓库已内置 `open-next.config.ts`，直接启用了基于 R2 的增量缓存：
 
 ```ts
 import { defineCloudflareConfig } from '@opennextjs/cloudflare'
@@ -67,7 +67,7 @@ export default defineCloudflareConfig({
 })
 ```
 
-并在 `public/_headers` 增加静态资源缓存头，匹配 Next.js 默认约定：
+`public/_headers` 也已经加入以下静态资源缓存头，匹配 Next.js 默认约定（如有定制可在该文件里调整）：
 
 ```text
 /_next/static/*
@@ -76,16 +76,16 @@ Cache-Control: public,max-age=31536000,immutable
 
 ### 2.4 Wrangler 配置（Next.js 应用）
 
-在项目根目录新增 `wrangler.jsonc`，用于定义 Worker 名称、R2 绑定与环境变量：
+根目录的 `wrangler.json` 已配置 D1、R2 与必要变量，你只需把 `bucket_name`、`NEXT_PUBLIC_APP_URL` 以及 `JOB_CALLBACK_HMAC_SECRET` 等值改成自己的环境即可。核心结构如下：
 
 ```jsonc
 {
-  "name": "next-vid-genius-hub",
+  "name": "next-vid-genius",
   "compatibility_date": "2024-05-01",
 
   // 自引用用于部分缓存/队列优化（按需开启）
   "services": [
-    { "binding": "WORKER_SELF_REFERENCE", "service": "next-vid-genius-hub" }
+    { "binding": "WORKER_SELF_REFERENCE", "service": "next-vid-genius" }
   ],
 
   // R2：用于 Next.js 增量缓存（ISR/SSG 数据）
@@ -96,8 +96,7 @@ Cache-Control: public,max-age=31536000,immutable
   // 环境变量（根据生产环境调整）
   "vars": {
     "NODE_ENV": "production",
-    // Cloudflare 环境不支持本地文件写入，必须关闭本地落盘
-    "ENABLE_LOCAL_HYDRATE": "false",
+    // Cloudflare 环境默认只记录远端 Key，无需本地磁盘写入
 
     // 应用 URL（用于生成回调链接等）
     "NEXT_PUBLIC_APP_URL": "https://<your-domain>",
@@ -301,7 +300,7 @@ wrangler deploy
 
 ### 4.1 在 wrangler 中绑定数据库
 
-在 Next.js Worker 的 `wrangler.jsonc`（根目录）中新增 D1 绑定（示例绑定名 `DB`）：
+在 Next.js Worker 的 `wrangler.json`（根目录）中新增 D1 绑定（示例绑定名 `DB`）。本仓库已将开发 / 预发 / 生产统一配置为访问同一个远程实例：
 
 ```jsonc
 {
@@ -310,19 +309,21 @@ wrangler deploy
     {
       "binding": "DB",
       "database_name": "vidgen_app",
-      "database_id": "<从 Cloudflare 控制台复制>"
+      "database_id": "<从 Cloudflare 控制台复制的 REMOTE_VIDGEN_APP_ID>"
     }
   ]
 }
 ```
 
+> `database_id` 必须填写 Cloudflare 控制台中 **D1 → Database ID**。仓库中的占位符 `REMOTE_VIDGEN_APP_ID` 记得替换成真实值；一旦替换后，本地运行 `wrangler dev --remote`、`pnpm dev` 等命令就会直接连到该远程库。
+
+提示：由于本地与远程共用同一实例，需要为 `wrangler` 提供 `CLOUDFLARE_ACCOUNT_ID` 与 `CLOUDFLARE_API_TOKEN`，并通过 `wrangler login` 或 `wrangler config` 写入；否则 `pnpm db:d1:*` 无法针对远端执行。为了避免 `wrangler dev --env local` 报「缺少 env.local」的警告，`wrangler.json` 中保留了一个 `env.local` 节，并将它也指向同一个远程数据库。
+
 （如后续需要其他数据库产品，请以官方文档为准替换绑定键与命令。）
 
 ### 4.2 代码适配（Drizzle + Cloudflare 绑定）
 
-本仓库当前使用 `@libsql/client` + `drizzle-orm/libsql` 直连方式。在 Cloudflare 线上改为 D1 时，建议切换为 Cloudflare 绑定：
-
-示例（D1）：将 `lib/db/index.ts` 改造成使用 `drizzle-orm/d1` 与 `getCloudflareContext`：
+本仓库已默认使用 `drizzle-orm/d1` 通过 Cloudflare 绑定访问 D1，入口位于 `lib/db/index.ts`：
 
 ```ts
 // lib/db/index.ts（示例片段）
@@ -336,25 +337,54 @@ export { schema, db }
 
 说明：
 - 访问方式为 `getCloudflareContext().env.<绑定名>`；上例绑定名为 `DB`
-- 本地 `next dev` 时，请确保在 `next.config.ts` 末尾调用 `initOpenNextCloudflareForDev()` 以获得本地绑定模拟
+- 开发环境建议使用 `wrangler dev --remote` + `pnpm dev`，并在 `next.config.ts` 末尾继续调用 `initOpenNextCloudflareForDev()` 以获取 Cloudflare context
+- 若需要在 dev server 启动时自动 apply 迁移，请在 shell 中设置 `D1_AUTO_APPLY_MIGRATIONS=true`；默认关闭，避免本地误改远程 D1
 
-若暂不想改代码，也可在过渡期继续使用 LibSQL/Turso，但正式线上运行在 Workers 环境时，推荐使用 D1/D2 绑定，以获得最佳兼容性与更低时延。
 
-### 4.3 迁移与管理
+
+### 4.3 迁移与管理（共享远程实例）
+
+标准顺序：
+
+```bash
+pnpm db:generate              # 基于 schema 输出 /drizzle/*.sql
+pnpm db:d1:migrate:remote     # 通过 wrangler d1 migrations apply vidgen_app（脚本内置 --remote）
+pnpm cf:deploy                # 或自定义部署脚本
+```
+
+Wrangler 原生命令仍可直接使用：
 
 ```bash
 # 创建数据库（可在控制台或 CLI）
-npx wrangler d1 create vidgen_app
+pnpm wrangler d1 create vidgen_app
 
-# 生成迁移（建议使用 wrangler d1 的迁移目录，或基于 drizzle 生成 SQL 后导入）
-# 将 SQL 放入 migrations 目录后：
-npx wrangler d1 migrations apply vidgen_app
-
-# 也可在 CI 中执行 apply，再部署 Worker
+# 手动 apply（与脚本效果一致）
+pnpm wrangler d1 migrations apply vidgen_app
 ```
 
+> `pnpm db:d1:list:remote` 也会强制 `--remote`，可以直接在本地查看迁移状态而不担心落入 `.wrangler/state` 的本地副本。
+
 注意：
-- 不要在 Worker 运行时做迁移；请在 CI/本地对目标库完成迁移
+- 不要在 Worker 运行时做迁移；请在 CI 或本地对目标库完成迁移
+- 当需要临时禁用 dev server 自动作迁移时，保持 `D1_AUTO_APPLY_MIGRATIONS` 未设置或设为 `false`
+
+### 4.4 本地 / CI 共用远程 D1
+
+- 环境凭证：配置 `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN`（D1 写权限），执行一次 `wrangler login`/`wrangler config`。
+- 启动开发：`wrangler dev --remote` + `pnpm dev`，或直接 `pnpm dev`（OpenNext 会读取远程绑定）；若需自动迁移，请手动导出 `D1_AUTO_APPLY_MIGRATIONS=true`。
+- 巡检：`pnpm db:d1:list:remote` 查看远程迁移状态，必要时 `pnpm wrangler d1 execute vidgen_app --command "SELECT COUNT(*) FROM ..."` 进行 Spot Check。
+- CI 流程：在部署 job 中插入 `pnpm db:d1:migrate:remote`，并为 job 注入 Cloudflare Token；失败时阻断后续部署，保持 schema 与代码一致。
+
+### 4.5 常用 wrangler d1 命令
+
+| 目的 | 命令 |
+| --- | --- |
+| 即席查询 | `pnpm wrangler d1 execute vidgen_app --command "SELECT * FROM jobs LIMIT 10"` |
+| 查看迁移 | `pnpm db:d1:list:remote`（内部调用 `wrangler d1 migrations list vidgen_app`） |
+| 备份 | `pnpm wrangler d1 backups create vidgen_app` + `pnpm wrangler d1 backups download vidgen_app --backup-id <id>` |
+| 回滚 | `pnpm wrangler d1 migrations rollback vidgen_app --to <migration_id>` |
+
+所有命令都会命中同一个远程实例，务必在执行前确认 SQL 内容与目标环境。
 
 ## 5. 运行时限制与配置要点
 
@@ -366,20 +396,9 @@ Cloudflare Workers 的 Node.js 兼容层不等同于完整 Node 环境。常见�
 
 因此，本仓库的重度媒体处理（ffmpeg、yt-dlp、Remotion 渲染等）已通过“编排 Worker + 外部容器/服务 + R2”解耦，Next.js 仅负责业务路由与数据库。
 
-### 5.2 关闭本地落盘（务必设置）
+### 5.2 远端产物持久化
 
-`app/api/render/cf-callback/route.ts` 在 `ENABLE_LOCAL_HYDRATE=true` 时会尝试将云端产物回传落地到本地磁盘（使用 Node `fs`）。
-
-在 Cloudflare 环境必须关闭：
-
-```json
-// wrangler.jsonc
-{
-  "vars": { "ENABLE_LOCAL_HYDRATE": "false" }
-}
-```
-
-这样数据库仅保存 R2 Key/URL 等远端引用，不会触发本地写入。
+`app/api/render/cf-callback/route.ts` 现在默认只记录云端产物的 Key/URL 与 `downloadJobId`，不再尝试写入 `OPERATIONS_DIR`。在 Cloudflare 环境无需额外变量，只要确保 Worker 回调提供可用的远端引用即可。
 
 ### 5.3 图片优化与远程图片
 
@@ -388,7 +407,7 @@ OpenNext Cloudflare 支持 Next.js 图片优化。项目已在 `next.config.ts` 
 ## 6. 验证 Checklist
 
 - 部署 Next.js 应用：`pnpm deploy` 输出成功，域名可访问
-- 校验数据库绑定：`wrangler.jsonc` 已配置 D1 绑定，`ENABLE_LOCAL_HYDRATE=false`
+- 校验数据库绑定：`wrangler.json` 已配置远程 D1 绑定且 `pnpm db:d1:list:remote` 输出最新迁移
 - 创建 R2 存储桶：`next-inc-cache` 用于 ISR/SSG 缓存（`public/_headers` 已设置）
 - 部署媒体编排 Worker：`wrangler deploy` 成功；`NEXT_BASE_URL` 与 `JOB_CALLBACK_HMAC_SECRET` 与 Next 保持一致
 - 触发一次媒体下载/渲染流程：
@@ -397,9 +416,10 @@ OpenNext Cloudflare 支持 Next.js 图片优化。项目已在 `next.config.ts` 
 
 ## 7. 常见问题（Troubleshooting）
 
-- 报错 “fs not supported”：未关闭本地落盘 → 设置 `ENABLE_LOCAL_HYDRATE=false`
-- D1 连接报错：检查 `wrangler.jsonc` 的数据库绑定与绑定名是否与代码一致（如 `env.DB`）
-- D1 迁移失败：在本地或 CI 执行 `wrangler d1 migrations apply`，并确认 SQL 与表结构一致
+- 报错 “fs not supported”：确认部署版本已包含远端存储逻辑，或排查是否有其他代码在 Worker 环境尝试写入磁盘
+- D1 连接报错：检查 `wrangler.json` 的数据库绑定与绑定名是否与代码一致（如 `env.DB`）
+- D1 迁移失败：在本地或 CI 执行 `pnpm db:d1:migrate:remote`（内部调用 `wrangler d1 migrations apply`），并确认 SQL 与表结构一致
+- Dev server 启动即尝试迁移远程库：确认没有设置 `D1_AUTO_APPLY_MIGRATIONS=true`，或只在单次操作前导出该变量
 - ISR/SSG 不生效：检查 `open-next.config.ts` 与 R2 绑定（`NEXT_INC_CACHE_R2_BUCKET`）是否配置正确
 - 图片 403/外链失败：补充 `next.config.ts` 的 `images.remotePatterns`，或使用 Cloudflare Images
 

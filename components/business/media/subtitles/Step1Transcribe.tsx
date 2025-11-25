@@ -17,11 +17,21 @@ import { Label } from '~/components/ui/label'
 import {
 	getAvailableModels,
 	getModelLabel,
+	WHISPER_MODELS,
 } from '~/lib/subtitle/config/models'
-import type { TranscriptionProvider, WhisperModel } from '~/lib/subtitle/config/models'
+import type {
+	TranscriptionProvider,
+	WhisperModel,
+} from '~/lib/subtitle/config/models'
 import { type ChatModelId } from '~/lib/ai/models'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
+import type { DownsampleBackend } from '~/lib/subtitle/types'
 import { useEffect, useMemo, useState } from 'react'
+import {
+	DEFAULT_TRANSCRIPTION_LANGUAGE,
+	TRANSCRIPTION_LANGUAGE_OPTIONS,
+	type TranscriptionLanguage,
+} from '~/lib/subtitle/config/languages'
 
 interface Step1TranscribeProps {
 	selectedModel: WhisperModel
@@ -41,14 +51,15 @@ interface Step1TranscribeProps {
   selectedAIModel?: ChatModelId
   onOptimizeModelChange?: (model: ChatModelId) => void
   onOptimize?: (params: { pauseThresholdMs: number; maxSentenceMs: number; maxChars: number; lightCleanup?: boolean; textCorrect?: boolean }) => void
-  // new
   // spelling/grammar correction without changing VTT structure
   // (server will strictly preserve cues and timestamps)
   textCorrectDefault?: boolean
   onRestoreOriginal?: () => void
   // Downsample backend selection
-  downsampleBackend?: 'auto' | 'local' | 'cloud'
-  onDownsampleBackendChange?: (v: 'auto' | 'local' | 'cloud') => void
+  downsampleBackend?: DownsampleBackend
+  onDownsampleBackendChange?: (v: DownsampleBackend) => void
+  selectedLanguage?: TranscriptionLanguage
+  onLanguageChange?: (lang: TranscriptionLanguage) => void
 }
 
 	export function Step1Transcribe(props: Step1TranscribeProps) {
@@ -71,6 +82,8 @@ interface Step1TranscribeProps {
       onRestoreOriginal,
       downsampleBackend,
       onDownsampleBackendChange,
+      selectedLanguage,
+      onLanguageChange,
 		} = props
 
 	const availableModels = getAvailableModels(selectedProvider)
@@ -96,7 +109,7 @@ interface Step1TranscribeProps {
   const [maxChars, setMaxChars] = useState<number>(68)
   const [lightCleanup, setLightCleanup] = useState<boolean>(false)
   const [textCorrect, setTextCorrect] = useState<boolean>(false)
-  const [downBackend, setDownBackend] = useState<'auto'|'local'|'cloud'>(downsampleBackend || 'auto')
+  const [downBackend, setDownBackend] = useState<DownsampleBackend>(downsampleBackend || 'auto')
 
   useEffect(() => {
     if (!storageKey) return
@@ -202,7 +215,7 @@ interface Step1TranscribeProps {
               <Select
                 value={downBackend}
                 onValueChange={(v) => {
-                  const val = v as 'auto'|'local'|'cloud'
+                  const val = v as DownsampleBackend
                   setDownBackend(val)
                   onDownsampleBackendChange?.(val)
                 }}
@@ -218,6 +231,43 @@ interface Step1TranscribeProps {
                 </SelectContent>
               </Select>
             </div>
+
+					<div className="min-w-[160px]">
+						<label className="text-sm font-medium mb-2 block">
+							Language{' '}
+							{selectedProvider === 'cloudflare' &&
+								selectedModel &&
+								!WHISPER_MODELS[selectedModel]?.supportsLanguageHint && (
+									<span className="text-xs text-muted-foreground">(仅 Large v3 Turbo 支持)</span>
+								)}
+						</label>
+						<Select
+							value={selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
+							onValueChange={(value) =>
+								onLanguageChange?.((value as TranscriptionLanguage) ?? DEFAULT_TRANSCRIPTION_LANGUAGE)
+							}
+							disabled={
+								isPending ||
+								(selectedProvider === 'cloudflare' &&
+									selectedModel &&
+									!WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
+							}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Auto detect" />
+							</SelectTrigger>
+							<SelectContent>
+								{TRANSCRIPTION_LANGUAGE_OPTIONS.map((opt) => (
+									<SelectItem key={opt.value} value={opt.value}>
+										{opt.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground mt-1">
+							Workers AI 需要单一语言音频；若混用多语言，请显式指定语言或改用 Local Whisper。
+						</p>
+					</div>
 
 					<Button
 						onClick={onStart}
@@ -374,6 +424,7 @@ interface Step1TranscribeProps {
 							</div>
 						)}
 					</div>
+
 				</div>
 			)}
 		</div>

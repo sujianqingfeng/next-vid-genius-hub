@@ -1,12 +1,13 @@
 import { os } from '@orpc/server'
 import { z } from 'zod'
-import { and, desc, eq } from 'drizzle-orm'
-import { db, schema } from '~/lib/db'
+import { desc, eq } from 'drizzle-orm'
+import { getDb, schema } from '~/lib/db'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { startCloudJob, getJobStatus, presignGetByKey, putObjectByKey } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 const CreateChannelInput = z.object({
   channelUrlOrId: z.string().min(1),
@@ -21,6 +22,7 @@ export const createChannel = os
     const channelUrl = input.channelUrlOrId
     const provider: 'youtube' = 'youtube'
 
+    const db = await getDb()
     await db
       .insert(schema.channels)
       .values({
@@ -40,6 +42,7 @@ export const createChannel = os
 export const listChannels = os
   .input(z.object({ query: z.string().optional(), limit: z.number().min(1).max(100).default(50) }).optional())
   .handler(async ({ input }) => {
+    const db = await getDb()
     const rows = await db.query.channels.findMany({
       orderBy: (t, { desc }) => [desc(t.updatedAt ?? t.createdAt)],
       limit: input?.limit ?? 50,
@@ -50,6 +53,7 @@ export const listChannels = os
 export const deleteChannel = os
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ input }) => {
+    const db = await getDb()
     // delete videos then channel
     await db.delete(schema.channelVideos).where(eq(schema.channelVideos.channelId, input.id))
     await db.delete(schema.channels).where(eq(schema.channels.id, input.id))
@@ -65,6 +69,7 @@ const StartCloudSyncInput = z.object({
 export const startCloudSync = os
   .input(StartCloudSyncInput)
   .handler(async ({ input }) => {
+    const db = await getDb()
     const channel = await db.query.channels.findFirst({ where: eq(schema.channels.id, input.id) })
     if (!channel) throw new Error('Channel not found')
     const channelUrlOrId = channel.channelUrl || channel.channelId || input.id
@@ -106,6 +111,7 @@ export const getCloudSyncStatus = os
 export const finalizeCloudSync = os
   .input(z.object({ id: z.string().min(1), jobId: z.string().min(1) }))
   .handler(async ({ input }) => {
+    const db = await getDb()
     const channel = await db.query.channels.findFirst({ where: eq(schema.channels.id, input.id) })
     if (!channel) throw new Error('Channel not found')
 
@@ -197,7 +203,7 @@ export const finalizeCloudSync = os
 
     // Optional: materialize snap to bucket for auditing
     try {
-      const key = `inputs/channel-videos/${channel.id}/${input.jobId}.json`
+      const key = bucketPaths.inputs.channelVideos(channel.id, input.jobId)
       await putObjectByKey(key, 'application/json', JSON.stringify({ channel: { id: channel.id, url: channel.channelUrl }, videos: list }, null, 2))
     } catch {}
 
@@ -207,6 +213,7 @@ export const finalizeCloudSync = os
 export const getChannel = os
   .input(z.object({ id: z.string().min(1) }))
   .handler(async ({ input }) => {
+    const db = await getDb()
     const ch = await db.query.channels.findFirst({ where: eq(schema.channels.id, input.id) })
     if (!ch) throw new Error('Channel not found')
     const videos = await db

@@ -82,6 +82,32 @@ export async function downloadYoutubeComments({ url, pages = 3, proxy }: Comment
   return comments
 }
 
+function extractAwemeIdFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url)
+    const host = u.hostname || ''
+    const path = u.pathname || ''
+
+    // tiktok.com/@user/video/7570655553911901458
+    const directMatch = path.match(/\/video\/(\d+)/)
+    if (directMatch?.[1]) return directMatch[1]
+
+    // douyin.com/video/7570655553911901458
+    const douyinMatch = path.match(/\/video\/(\d+)/)
+    if (douyinMatch?.[1]) return douyinMatch[1]
+
+    // Fallback: last numeric segment in path
+    const segments = path.split('/').filter(Boolean)
+    for (let i = segments.length - 1; i >= 0; i--) {
+      if (/^\d+$/.test(segments[i])) return segments[i]
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
 async function resolveAwemeIdViaTikwm(url: string, proxyUrl?: string): Promise<string | null> {
   try {
     const _fetch = makeFetchWithProxy(proxyUrl)
@@ -101,9 +127,14 @@ async function resolveAwemeIdViaTikwm(url: string, proxyUrl?: string): Promise<s
   }
 }
 
-async function fetchTikwmComments(awemeId: string, cursor: number, proxyUrl?: string): Promise<any> {
+async function fetchTikwmComments(awemeId: string, url: string, cursor: number, proxyUrl?: string): Promise<any> {
   const _fetch = makeFetchWithProxy(proxyUrl)
-  const endpoint = `https://www.tikwm.com/api/comment/list/?aweme_id=${encodeURIComponent(awemeId)}&count=50&cursor=${cursor}`
+  const qs = new URLSearchParams()
+  if (awemeId) qs.set('aweme_id', awemeId)
+  qs.set('url', url)
+  qs.set('count', '50')
+  qs.set('cursor', String(cursor))
+  const endpoint = `https://www.tikwm.com/api/comment/list/?${qs.toString()}`
   const r = await _fetch(endpoint, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Safari/537.36',
@@ -119,12 +150,17 @@ async function fetchTikwmComments(awemeId: string, cursor: number, proxyUrl?: st
 }
 
 export async function downloadTikTokCommentsByUrl({ url, pages = 3, proxy }: CommentsDownloadParams): Promise<BasicComment[]> {
-  const awemeId = await resolveAwemeIdViaTikwm(url, proxy)
-  if (!awemeId) return []
+  let awemeId = extractAwemeIdFromUrl(url)
+  if (!awemeId) {
+    awemeId = await resolveAwemeIdViaTikwm(url, proxy)
+  }
+  if (!awemeId) {
+    return []
+  }
   const results: BasicComment[] = []
   let cursor = 0
   for (let i = 0; i < pages; i++) {
-    const data: any = await fetchTikwmComments(awemeId, cursor, proxy)
+    const data: any = await fetchTikwmComments(awemeId, url, cursor, proxy)
     const list = Array.isArray(data?.data?.comments) ? data.data.comments : []
     for (const c of list) {
       const id = String((c as any)?.cid ?? (c as any)?.comment_id ?? (c as any)?.id ?? '')

@@ -2,6 +2,7 @@ import { onError } from '@orpc/server'
 import { RPCHandler } from '@orpc/server/fetch'
 import { appRouter } from '~/orpc/router'
 import { logger } from '~/lib/logger'
+export const runtime = 'nodejs'
 
 const handler = new RPCHandler(appRouter, {
 	interceptors: [

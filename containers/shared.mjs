@@ -23,6 +23,7 @@ export function sanitizeEngineOptions(engineOptions = {}) {
     url: eo.url,
     quality: eo.quality,
     source: eo.source,
+    templateId: eo.templateId,
     hasDefaultProxy: Boolean(eo.defaultProxyUrl),
     proxy: eo.proxy
       ? {
@@ -85,4 +86,3 @@ export function startJsonServer(port, handler, label = 'service') {
   server.listen(port, () => console.log(`[${label}] listening on ${port}`))
   return server
 }
-

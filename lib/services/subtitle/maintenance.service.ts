@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { AIModelId } from '~/lib/ai/models'
 import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import {
 	applyOrphanGuard,
@@ -15,18 +15,20 @@ import {
 	serializeVttCues,
 	validateVttContent,
 } from '~/lib/subtitle/utils/vtt'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 export async function updateTranslation(input: {
 	mediaId: string
 	translation: string
 }): Promise<{ success: true }> {
 	const where = eq(schema.media.id, input.mediaId)
+	const db = await getDb()
 	await db
 		.update(schema.media)
 		.set({ translation: input.translation })
 		.where(where)
 	try {
-		const vttKey = `inputs/subtitles/${input.mediaId}.vtt`
+		const vttKey = bucketPaths.inputs.subtitles(input.mediaId)
 		await putObjectByKey(vttKey, 'text/vtt', input.translation)
 		await upsertMediaManifest(input.mediaId, { vttKey })
 		logger.info(
@@ -47,6 +49,7 @@ export async function deleteTranslationCue(input: {
 	index: number
 }): Promise<{ success: true; translation: string }> {
 	const where = eq(schema.media.id, input.mediaId)
+	const db = await getDb()
 	const media = await db.query.media.findFirst({ where })
 	if (!media?.translation) throw new Error('Translation not found')
 	const cues = parseVttCues(media.translation)
@@ -77,6 +80,7 @@ export async function optimizeTranscription(input: {
 		textCorrect,
 	} = input
 	const where = eq(schema.media.id, mediaId)
+	const db = await getDb()
 	const media = await db.query.media.findFirst({ where })
 	if (!media) throw new Error('Media not found')
 	if (!media.transcription) throw new Error('Transcription not found')
@@ -159,6 +163,7 @@ export async function clearOptimizedTranscription(input: {
 	mediaId: string
 }): Promise<{ success: true }> {
 	const where = eq(schema.media.id, input.mediaId)
+	const db = await getDb()
 	await db
 		.update(schema.media)
 		.set({ optimizedTranscription: null })

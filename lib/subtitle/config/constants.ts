@@ -48,22 +48,6 @@ export const TIME_CONSTANTS = {
 } as const
 
 /**
- * 字符串长度限制
- */
-export const LIMIT_CONSTANTS = {
-	HINT_TEXT_MAX_LENGTH: 200,
-	MAX_VTT_CUES_PER_PAGE: 100,
-} as const
-
-/**
- * 文件和路径常量
- */
-export const FILE_CONSTANTS = {
-	VTT_EXTENSION: '.vtt',
-	RENDERED_VIDEO_FILENAME: 'rendered.mp4',
-} as const
-
-/**
  * UI相关常量
  */
 export const UI_CONSTANTS = {

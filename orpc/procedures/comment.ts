@@ -4,8 +4,8 @@ import { z } from 'zod'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { PROXY_URL } from '~/lib/config/app.config'
-import { db, schema } from '~/lib/db'
-import { startCloudJob, getJobStatus, presignGetByKey } from '~/lib/cloudflare'
+import { getDb, schema } from '~/lib/db'
+import { startCloudJob, getJobStatus, presignGetByKey, upsertMediaManifest, type MediaManifestPatch } from '~/lib/cloudflare'
 import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { logger } from '~/lib/logger'
@@ -22,6 +22,7 @@ export const translateComments = os
 	)
 	.handler(async ({ input }) => {
 		const { mediaId, model: modelId, force } = input
+		const db = await getDb()
 		const media = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),
 		})
@@ -76,6 +77,7 @@ export const deleteComment = os
 	.handler(async ({ input }) => {
 		const { mediaId, commentId } = input
 
+		const db = await getDb()
 		const media = await db.query.media.findFirst({
 			where: eq(schema.media.id, mediaId),
 		})
@@ -107,21 +109,23 @@ export const startCloudRender = os
             mediaId: z.string(),
             proxyId: z.string().optional(),
             sourcePolicy: z.enum(['auto', 'original', 'subtitles']).optional().default('auto'),
+            templateId: z.string().optional(),
         }),
     )
     .handler(async ({ input }) => {
         const { mediaId, proxyId } = input
+        const db = await getDb()
 		const where = eq(schema.media.id, mediaId)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
-		// 允许在未本地落盘（ENABLE_LOCAL_HYDRATE=false）的情况下走云端渲染。
+		// 允许在未本地落盘的情况下走云端渲染。
 		// 需要存在一个可用的源：本地文件、已完成的云下载（downloadStatus=completed）、已存在的远端 key，或已有渲染成品。
-		const hasAnySource = Boolean(
-			media.filePath ||
-			media.videoWithSubtitlesPath ||
-			media.remoteVideoKey ||
-			(media.downloadJobId && media.downloadStatus === 'completed'),
-		)
+	const hasAnySource = Boolean(
+		media.filePath ||
+		media.videoWithSubtitlesPath ||
+		media.remoteVideoKey ||
+		(media.downloadJobId && media.downloadStatus === 'completed'),
+	)
 		if (!hasAnySource) {
 			throw new Error('No source video available (need local file, rendered artifact, remote key, or a completed cloud download).')
 		}
@@ -129,7 +133,23 @@ export const startCloudRender = os
 			throw new Error('No comments found for this media')
 		}
 
-		const comments = media.comments
+	const comments = media.comments
+
+	// Ensure manifest references latest remote assets before kicking off render
+	const manifestPatch: MediaManifestPatch = {}
+	if (media.remoteVideoKey) manifestPatch.remoteVideoKey = media.remoteVideoKey
+	if (media.remoteAudioKey) manifestPatch.remoteAudioKey = media.remoteAudioKey
+	if (media.remoteMetadataKey) manifestPatch.remoteMetadataKey = media.remoteMetadataKey
+	if (Object.keys(manifestPatch).length > 0) {
+		try {
+			await upsertMediaManifest(media.id, manifestPatch)
+		} catch (err) {
+			logger.warn(
+				'comments',
+				`[startCloudRender] manifest sync skipped: ${err instanceof Error ? err.message : String(err)}`,
+			)
+		}
+	}
 
 		let snapshotKey: string | undefined
 		try {
@@ -157,6 +177,7 @@ export const startCloudRender = os
                 defaultProxyUrl: PROXY_URL,
                 proxy: proxyPayload,
                 sourcePolicy: input.sourcePolicy || 'auto',
+                templateId: input.templateId || media.commentsTemplate || 'comments-default',
             },
         })
         return { jobId: job.jobId }
@@ -179,8 +200,9 @@ export const startCloudCommentsDownload = os
 			proxyId: z.string().optional(),
 		}),
 	)
-	.handler(async ({ input }) => {
-		const { mediaId, pages, proxyId } = input
+    .handler(async ({ input }) => {
+        const { mediaId, pages, proxyId } = input
+        const db = await getDb()
 		const where = eq(schema.media.id, mediaId)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
@@ -218,7 +240,9 @@ export const finalizeCloudCommentsDownload = os
 	.input(z.object({ mediaId: z.string(), jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
 		const { mediaId, jobId } = input
+		const db = await getDb()
 		const status = await getJobStatus(jobId)
+
 		if (status.status !== 'completed') {
 			throw new Error(`Job not completed: ${status.status}`)
 		}
@@ -336,7 +360,7 @@ export const moderateComments = os
   )
   .handler(async ({ input }) => {
     const { mediaId, model: modelId, overwrite } = input
-
+    const db = await getDb()
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
     if (!media) throw new Error('Media not found')
     const comments = media.comments || []

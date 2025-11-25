@@ -59,13 +59,14 @@ export type AIModelId = (typeof models)[number]['id']
 
 export const AIModelIds = models.map((m) => m.id)
 
-export const ChatModelIds = [
+const chatModelProviders = [
+	...packycodeModels,
 	...openaiModels,
 	...deepseekModels,
-	...packycodeModels,
-].map((m) => m.id)
+] as const
 
-export type ChatModelId =
-	| (typeof openaiModels)[number]['id']
-	| (typeof deepseekModels)[number]['id']
-	| (typeof packycodeModels)[number]['id']
+export const ChatModelIds = chatModelProviders.map((m) => m.id)
+
+export type ChatModelId = (typeof chatModelProviders)[number]['id']
+
+export const DEFAULT_CHAT_MODEL_ID: ChatModelId = 'packycode/gpt-5.1'

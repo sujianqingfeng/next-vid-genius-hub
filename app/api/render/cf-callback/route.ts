@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
-import { OPERATIONS_DIR, ENABLE_LOCAL_HYDRATE } from '~/lib/config/app.config'
 import { verifyHmacSHA256 } from '@app/callback-utils'
-import { promises as fs, createWriteStream } from 'node:fs'
-import { Readable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
-import path from 'node:path'
-import { readMetadataSummary } from '@app/media-core'
 import { logger } from '~/lib/logger'
-import { upsertMediaManifest } from '~/lib/cloudflare'
+import { presignGetByKey, upsertMediaManifest } from '~/lib/cloudflare'
 
 type CallbackPayload = {
   jobId: string
@@ -57,10 +51,12 @@ export async function POST(req: NextRequest) {
 
     const payload = JSON.parse(bodyText) as CallbackPayload
 
+    const db = await getDb()
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, payload.mediaId) })
     if (!media) {
-      // Gracefully ignore callbacks that aren't tied to a media row (e.g. channel-list or comments-only tasks)
-      const hasMetadataOnly = !!(payload.outputs as any)?.metadata && !(payload.outputs as any)?.video
+	  // Gracefully ignore callbacks that aren't tied to a media row (e.g. channel-list or comments-only tasks)
+	  const outputs = payload.outputs
+	  const hasMetadataOnly = Boolean(outputs?.metadata) && !outputs?.video
       if (payload.engine === 'media-downloader' && hasMetadataOnly) {
         logger.info('api', `[cf-callback] non-media job callback ignored mediaId=${payload.mediaId}`)
         return NextResponse.json({ ok: true, ignored: true })
@@ -124,10 +120,88 @@ async function handleCloudDownloadCallback(
   media: MediaRecord,
   payload: CallbackPayload & { engine: 'media-downloader' },
 ) {
+  // Ensure a DB handle is available for all branches
+  const db = await getDb()
   const where = eq(schema.media.id, payload.mediaId)
 
-  // Detect comments-only task: no video output but has metadata output
-  const isCommentsOnly = !payload.outputs?.video?.url && Boolean(payload.outputs?.metadata?.url)
+	async function remoteObjectExists({
+		key,
+		directUrl,
+	}: {
+		key?: string | null
+		directUrl?: string | null
+	}): Promise<boolean> {
+		const checkUrl = async (url: string, { label, logOnFailure }: { label: string; logOnFailure: boolean }) => {
+			const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+			const timeout = setTimeout(() => controller?.abort(), 5000)
+			try {
+				const res = await fetch(url, {
+					method: 'GET',
+					headers: { range: 'bytes=0-0' },
+					signal: controller?.signal,
+				})
+				if (res.ok || res.status === 206) return true
+				if (res.status === 404) return false
+				if (logOnFailure) {
+					logger.warn('api', `[cf-callback] remoteObjectExists unexpected status ${res.status} for ${label}`)
+				}
+				return false
+			} catch (error) {
+				if (logOnFailure) {
+					logger.warn(
+						'api',
+						`[cf-callback] remoteObjectExists failed for ${label}: ${
+							error instanceof Error ? error.message : String(error)
+						}`,
+					)
+				}
+				return false
+			} finally {
+				clearTimeout(timeout)
+			}
+		}
+
+		if (directUrl) {
+			const directLabel = `url=${directUrl.split('?')[0]}`
+			if (await checkUrl(directUrl, { label: directLabel, logOnFailure: false })) {
+				return true
+			}
+		}
+
+		if (!key) return false
+
+		try {
+			const url = await presignGetByKey(key)
+			return await checkUrl(url, { label: `key=${key}`, logOnFailure: true })
+		} catch (error) {
+			logger.warn(
+				'api',
+				`[cf-callback] remoteObjectExists failed for key=${key}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+			return false
+		}
+	}
+
+	// Detect comments-only task based on outputs: metadata only, no video/audio keys.
+	const rawVideoKey = payload.outputs?.video?.key ?? null
+	const fallbackVideoKey = (payload as Partial<CallbackPayload>)?.outputKey ?? null
+	const resolvedVideoKey = rawVideoKey ?? fallbackVideoKey ?? null
+	const audioKey = payload.outputs?.audio?.key ?? null
+	const metadataKey = payload.outputs?.metadata?.key ?? null
+	const videoUrl = payload.outputs?.video?.url ?? null
+	const audioUrl = payload.outputs?.audio?.url ?? null
+	const metadataUrl = payload.outputs?.metadata?.url ?? null
+
+	const hasMetadataOutput = Boolean(metadataUrl || metadataKey)
+	const hasVideoKey = Boolean(resolvedVideoKey)
+	const hasAudioKey = Boolean(audioKey)
+	const isCommentsOnly = hasMetadataOutput && !hasVideoKey && !hasAudioKey
+
+	const videoExists = await remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
+	const audioExists = await remoteObjectExists({ key: audioKey, directUrl: audioUrl })
+	const metadataExistsWithSource = await remoteObjectExists({ key: metadataKey, directUrl: metadataUrl })
 
   
 
@@ -152,13 +226,10 @@ async function handleCloudDownloadCallback(
 
   
 
-  // Accept either a presigned URL (preferred) or just the key when not hydrating locally.
+  // Accept either a presigned URL (preferred) or just the key when persisting remote-only downloads.
   // Some orchestrator/container versions may omit outputs.video in progress payloads
-  // but still provide the final outputKey. In such cases, we should not fail the job
-  // when ENABLE_LOCAL_HYDRATE=false.
-  const videoUrl = payload.outputs?.video?.url
-  const videoKey = payload.outputs?.video?.key || (payload as any).outputKey || null
-  if (!videoUrl && !videoKey) {
+  // but still provide the final outputKey.
+  if (!videoUrl && !resolvedVideoKey) {
     await db
       .update(schema.media)
       .set({
@@ -171,42 +242,7 @@ async function handleCloudDownloadCallback(
     return
   }
 
-  const operationDir = path.join(OPERATIONS_DIR, payload.mediaId)
-  await fs.mkdir(operationDir, { recursive: true })
-
-  const audioUrl = payload.outputs?.audio?.url
-  const metadataUrl = payload.outputs?.metadata?.url
-  const metadataKey = payload.outputs?.metadata?.key ?? null
-
-  const videoPath = path.join(operationDir, `${payload.mediaId}.mp4`)
-  const audioPath = audioUrl ? path.join(operationDir, `${payload.mediaId}.mp3`) : null
-  const metadataPath = path.join(operationDir, 'metadata.json')
-  let metadataDownloaded = false
-
-  if (ENABLE_LOCAL_HYDRATE && videoUrl) {
-    try {
-      await downloadArtifact(videoUrl, videoPath)
-      if (audioUrl && audioPath) {
-        await downloadArtifact(audioUrl, audioPath)
-      }
-      if (metadataUrl) {
-        await downloadArtifact(metadataUrl, metadataPath)
-        metadataDownloaded = true
-      }
-    } catch (error) {
-      logger.error('api', `[cf-callback] failed to persist cloud download: ${error instanceof Error ? error.message : String(error)}`)
-      await db
-        .update(schema.media)
-        .set({
-          downloadBackend: 'cloud',
-          downloadStatus: 'failed',
-          downloadError: error instanceof Error ? error.message : 'Failed to persist cloud artifacts',
-          downloadJobId: payload.jobId,
-        })
-        .where(where)
-      return
-    }
-  }
+  const audioExistsWithSource = audioExists
 
   const updates: Record<string, unknown> = {
     downloadBackend: 'cloud',
@@ -215,37 +251,17 @@ async function handleCloudDownloadCallback(
     downloadJobId: payload.jobId,
     downloadCompletedAt: new Date(),
     // Prefer outputs.video.key; fall back to outputKey for backward compatibility
-    remoteVideoKey: payload.outputs?.video?.key ?? (videoKey ?? null),
-    remoteAudioKey: payload.outputs?.audio?.key ?? null,
-    remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
-    // hydrate 到本地时才写入本地路径
-    ...(ENABLE_LOCAL_HYDRATE
-      ? {
-          filePath: videoPath,
-          audioFilePath: audioPath ?? null,
-          rawMetadataPath: metadataDownloaded ? metadataPath : media.rawMetadataPath ?? null,
-          rawMetadataDownloadedAt: metadataDownloaded ? new Date() : media.rawMetadataDownloadedAt ?? null,
-        }
-      : {
-          filePath: media.filePath ?? null,
-          audioFilePath: media.audioFilePath ?? null,
-          rawMetadataPath: media.rawMetadataPath ?? null,
-          rawMetadataDownloadedAt: media.rawMetadataDownloadedAt ?? null,
-        }),
+    remoteVideoKey: videoExists ? (resolvedVideoKey ?? media.remoteVideoKey ?? null) : media.remoteVideoKey ?? null,
+    remoteAudioKey: audioExistsWithSource ? (audioKey ?? media.remoteAudioKey ?? null) : media.remoteAudioKey ?? null,
+    remoteMetadataKey: metadataExistsWithSource ? (metadataKey ?? media.remoteMetadataKey ?? null) : media.remoteMetadataKey ?? null,
   }
 
   const metadataFromPayload = payload.metadata
-  const metadataFromFile = metadataDownloaded ? await readMetadataSummary(metadataPath) : null
-
-  const title = metadataFromPayload?.title ?? metadataFromFile?.title
-  const author = metadataFromPayload?.author ?? metadataFromFile?.author
-  const thumbnail = metadataFromPayload?.thumbnail ?? metadataFromFile?.thumbnail
-  const viewCount =
-    metadataFromPayload?.viewCount ??
-    (metadataFromFile?.viewCount ?? undefined)
-  const likeCount =
-    metadataFromPayload?.likeCount ??
-    (metadataFromFile?.likeCount ?? undefined)
+  const title = metadataFromPayload?.title
+  const author = metadataFromPayload?.author
+  const thumbnail = metadataFromPayload?.thumbnail
+  const viewCount = metadataFromPayload?.viewCount
+  const likeCount = metadataFromPayload?.likeCount
 
   if (title) updates.title = title
   if (author) updates.author = author
@@ -258,39 +274,22 @@ async function handleCloudDownloadCallback(
   await db.update(schema.media).set(updates).where(where)
 
   // Update manifest with remote object keys (best-effort)
-  try {
-    await upsertMediaManifest(payload.mediaId, {
-      remoteVideoKey: payload.outputs?.video?.key ?? null,
-      remoteAudioKey: payload.outputs?.audio?.key ?? null,
-      remoteMetadataKey: payload.outputs?.metadata?.key ?? null,
-    })
-  } catch (err) {
-    logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
+  const manifestPatch: Parameters<typeof upsertMediaManifest>[1] = {}
+  const manifestVideoKey = rawVideoKey ?? resolvedVideoKey ?? null
+  if (videoExists && manifestVideoKey) {
+    manifestPatch.remoteVideoKey = manifestVideoKey
+  }
+  if (audioExistsWithSource && audioKey) {
+    manifestPatch.remoteAudioKey = audioKey
+  }
+  if (metadataExistsWithSource && metadataKey) {
+    manifestPatch.remoteMetadataKey = metadataKey
+  }
+  if (Object.keys(manifestPatch).length > 0) {
+    try {
+      await upsertMediaManifest(payload.mediaId, manifestPatch)
+    } catch (err) {
+      logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
 }
-
-async function downloadArtifact(url: string, filePath: string) {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Failed to download artifact: ${response.status} ${response.statusText}`)
-  }
-  const body = response.body
-  if (!body) {
-    throw new Error('Failed to download artifact: response body is empty')
-  }
-
-  const fileStream = createWriteStream(filePath)
-  try {
-    // Stream directly to disk to avoid buffering large artifacts in memory
-    // Casts are safe here: Node's Readable.fromWeb returns a Node stream compatible with pipeline.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await pipeline(Readable.fromWeb(body as any) as any, fileStream as any)
-  } catch (error) {
-    fileStream.destroy()
-    await fs.rm(filePath, { force: true }).catch(() => {})
-    if (error instanceof Error) throw error
-    throw new Error('Failed to stream artifact to disk')
-  }
-}
-
-// summariseMetadata is provided by @app/media-core and used internally by readMetadataSummary

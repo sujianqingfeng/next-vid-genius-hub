@@ -176,8 +176,6 @@ docker push <registry>/<project>/burner-ffmpeg:<tag>
 CF_ORCHESTRATOR_URL=https://orchestrator.example.com
 JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 # 可选：R2_PUBLIC_BASE_URL=
-# 可选：关闭本地落盘以减少出网/磁盘成本（仅保存远端 R2 Key）
-ENABLE_LOCAL_HYDRATE=false
 ```
 
 2) 部署方式
@@ -188,11 +186,10 @@ ENABLE_LOCAL_HYDRATE=false
 
 - 生产/开发统一：设置 `R2_S3_*`（或使用 R2 绑定），容器仅与 R2 交互，Worker 检测 R2 输出完成 → 回调 Next 落库；无 Next 中转。
 
-### 关于 ENABLE_LOCAL_HYDRATE
+### 产物回传策略
 
-- 为默认 `true`：Next 在回调时会把视频/音频/metadata 拉取到本地 `OPERATIONS_DIR/<mediaId>/` 并落库，适合本地处理或需要本地副本的部署。
-- 设置为 `false`：Next 仅记录 `remoteVideoKey/remoteAudioKey/remoteMetadataKey`，不回传大文件；前端播放应通过 Worker 的 `/artifacts/:jobId` 或直接使用 R2 预签名 URL（已由 Worker 在回调中提供）。
-- 切换该开关不影响已存在的本地文件；仅对新回调生效。
+- 云端下载/渲染完成后默认只记录 `remoteVideoKey/remoteAudioKey/remoteMetadataKey` 与 `downloadJobId`，不再尝试写入本地磁盘。
+- 前端播放通过 Worker 的 `/artifacts/:jobId` 或 R2 预签 URL 完成；如需本地副本可手动下载对应对象。
 
 ## 安全建议
 

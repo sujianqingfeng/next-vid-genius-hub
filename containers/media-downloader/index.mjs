@@ -608,19 +608,21 @@ async function handleRender(req, res) {
   const task = (engineOptions.task || "").toString().toLowerCase();
   const isCommentsOnly = task === "comments";
   const isChannelList = task === "channel-list";
+  const isMetadataOnly = task === "metadata-only";
 
-  if (
-    (!isChannelList && (!url || (!isCommentsOnly && !outputVideoPutUrl))) ||
-    (isCommentsOnly && !outputMetadataPutUrl) ||
-    (isChannelList && !outputMetadataPutUrl)
-  ) {
-    await postUpdate("failed", {
-      error: isCommentsOnly
-        ? "missing url or outputMetadataPutUrl"
-        : isChannelList
-          ? "missing outputMetadataPutUrl"
-          : "missing url or outputVideoPutUrl",
-    });
+  if (!url) {
+    await postUpdate("failed", { error: "missing url" });
+    return;
+  }
+
+  // For full downloads, require video output; for comments/channel-list/metadata-only, require metadata output.
+  if (!isChannelList && !isCommentsOnly && !isMetadataOnly && !outputVideoPutUrl) {
+    await postUpdate("failed", { error: "missing outputVideoPutUrl" });
+    return;
+  }
+  if ((isCommentsOnly || isChannelList || isMetadataOnly) && !outputMetadataPutUrl) {
+    const taskLabel = isChannelList ? "channel-list" : isCommentsOnly ? "comments" : "metadata-only";
+    await postUpdate("failed", { error: `missing outputMetadataPutUrl for ${taskLabel}` });
     return;
   }
 
@@ -866,6 +868,37 @@ async function handleRender(req, res) {
         "comments=",
         resPipeline?.count || 0,
       );
+    } else if (isMetadataOnly) {
+      const { fetchVideoMetadata } = await import("@app/media-node");
+      console.log("[media-downloader] metadata-only: fetching", {
+        jobId,
+        viaMihomo: Boolean(clashController),
+        proxy,
+      });
+      const rawMetadata = await fetchVideoMetadata(url, { proxy });
+      const finalMetadata = summariseMetadata(
+        rawMetadata && typeof rawMetadata === "object" ? rawMetadata : null,
+      );
+
+      if (outputMetadataPutUrl && rawMetadata) {
+        const buf = Buffer.from(JSON.stringify(rawMetadata, null, 2), "utf8");
+        await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
+      }
+
+      const outputs = {};
+      if (outputMetadataKey) outputs.metadata = { key: outputMetadataKey };
+
+      await postUpdate("completed", {
+        phase: "completed",
+        progress: 1,
+        outputMetadataKey,
+        outputs,
+        metadata: {
+          ...finalMetadata,
+          source: engineOptions.source || "youtube",
+        },
+      });
+      console.log("[media-downloader] job completed", jobId, "metadata-only");
     } else {
       const { runDownloadPipeline } = await import("@app/media-core");
       const pipelineRes = await runDownloadPipeline(

@@ -23,6 +23,9 @@ interface PreviewPaneProps {
   // Rendering state hints
   isRendering?: boolean
   cloudStatus?: { status?: string; progress?: number } | null
+  onDurationChange?: (duration: number) => void
+  onCurrentTimeChange?: (time: number) => void
+  onVideoRefChange?: (ref: HTMLVideoElement | null) => void
 }
 
 export function PreviewPane(props: PreviewPaneProps) {
@@ -35,6 +38,9 @@ export function PreviewPane(props: PreviewPaneProps) {
     cacheBuster,
     isRendering,
     cloudStatus,
+    onDurationChange,
+    onCurrentTimeChange,
+    onVideoRefChange,
   } = props
 
   const storageKey = useMemo(() => `subtitlePreviewMode:${mediaId}`, [mediaId])
@@ -61,6 +67,7 @@ export function PreviewPane(props: PreviewPaneProps) {
 
   const effectiveMode: PreviewMode = useMemo(() => {
     if (mode === 'auto') return hasRenderedVideo ? 'rendered' : 'overlay'
+    if (mode === 'rendered' && !hasRenderedVideo) return 'overlay'
     return mode
   }, [mode, hasRenderedVideo])
 
@@ -79,6 +86,8 @@ export function PreviewPane(props: PreviewPaneProps) {
 
   const renderedRef = useRef<HTMLVideoElement | null>(null)
   const overlayRef = useRef<HTMLVideoElement | null>(null)
+  const [renderedVideoEl, setRenderedVideoEl] = useState<HTMLVideoElement | null>(null)
+  const [overlayVideoEl, setOverlayVideoEl] = useState<HTMLVideoElement | null>(null)
 
   const handleJump = (startTs: string) => {
     const t = parseVttTimestamp(startTs)
@@ -91,6 +100,40 @@ export function PreviewPane(props: PreviewPaneProps) {
       } catch {}
     }
   }
+
+  useEffect(() => {
+    if (effectiveMode === 'rendered') {
+      onVideoRefChange?.(renderedVideoEl ?? null)
+    } else {
+      onVideoRefChange?.(overlayVideoEl ?? null)
+    }
+  }, [effectiveMode, onVideoRefChange, renderedVideoEl, overlayVideoEl])
+
+  useEffect(() => {
+    if (effectiveMode !== 'rendered' || !renderedVideoEl) return
+
+    const handleTimeUpdate = () => {
+      if (typeof renderedVideoEl.currentTime === 'number') {
+        onCurrentTimeChange?.(renderedVideoEl.currentTime)
+      }
+    }
+
+    const handleLoaded = () => {
+      if (Number.isFinite(renderedVideoEl.duration) && renderedVideoEl.duration > 0) {
+        onDurationChange?.(renderedVideoEl.duration)
+      }
+    }
+
+    renderedVideoEl.addEventListener('timeupdate', handleTimeUpdate)
+    renderedVideoEl.addEventListener('loadedmetadata', handleLoaded)
+
+    handleLoaded()
+
+    return () => {
+      renderedVideoEl.removeEventListener('timeupdate', handleTimeUpdate)
+      renderedVideoEl.removeEventListener('loadedmetadata', handleLoaded)
+    }
+  }, [effectiveMode, renderedVideoEl, onCurrentTimeChange, onDurationChange])
 
   return (
     <div className="space-y-3">
@@ -144,7 +187,13 @@ export function PreviewPane(props: PreviewPaneProps) {
         <div className="lg:col-span-2 w-full rounded-lg border bg-black overflow-hidden" style={{ minHeight: '300px', maxHeight: '80vh' }}>
           {effectiveMode === 'rendered' ? (
             <video
-              ref={(el) => { renderedRef.current = el }}
+              ref={(el) => {
+                renderedRef.current = el
+                setRenderedVideoEl(el)
+                if (effectiveMode === 'rendered') {
+                  onVideoRefChange?.(el)
+                }
+              }}
               controls
               preload="metadata"
               className="w-full h-full object-contain"
@@ -160,7 +209,15 @@ export function PreviewPane(props: PreviewPaneProps) {
               translation={translation ?? undefined}
               config={config}
               isRendering={isRendering}
-              onVideoRef={(ref) => { overlayRef.current = ref }}
+              onVideoRef={(ref) => {
+                overlayRef.current = ref
+                setOverlayVideoEl(ref)
+                if (effectiveMode !== 'rendered') {
+                  onVideoRefChange?.(ref)
+                }
+              }}
+              onTimeUpdate={onCurrentTimeChange}
+              onDurationChange={onDurationChange}
             />
           )}
         </div>

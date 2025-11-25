@@ -1,7 +1,7 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Calendar, Download, Eye, FileText, Heart, MessageSquare, User, Play } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, Calendar, Download, Eye, FileText, Heart, MessageSquare, RefreshCw, User, Play } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -13,6 +13,8 @@ import { queryOrpc } from '~/lib/orpc/query-client'
 import { formatNumber } from '~/lib/utils/format/format'
 import { getTimeAgo as formatTimeAgo } from '~/lib/utils/time'
 import type { MediaItem } from '~/lib/types/media.types'
+import { toast } from 'sonner'
+import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 
 // Clean media thumbnail component
 function MediaThumbnail({ media }: { media: MediaItem }) {
@@ -129,6 +131,9 @@ function MediaVideoPreview({ media, id }: { media: MediaItem; id: string }) {
 }
 
 export function MediaDetailPageClient({ id }: { id: string }) {
+	const queryClient = useQueryClient()
+	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
+
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({
 			input: { id },
@@ -136,6 +141,23 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 	)
 
 	const { data: media, isLoading, isError } = mediaQuery
+
+	const refreshMetadataMutation = useMutation(
+		queryOrpc.media.refreshMetadata.mutationOptions({
+			onSuccess: async () => {
+				toast.success('Metadata synced from source.')
+				await queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+				})
+				await queryClient.invalidateQueries({
+					queryKey: queryOrpc.media.list.key(),
+				})
+			},
+			onError: (error) => {
+				toast.error(`Failed to sync metadata: ${error.message}`)
+			},
+		}),
+	)
 
 	return (
 		<div className="min-h-screen bg-background">
@@ -221,6 +243,30 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 								Download
 							</Button>
 						</Link>
+
+						<div className="flex flex-col gap-2 min-w-[260px]">
+							<ProxySelector
+								value={selectedProxyId}
+								onValueChange={setSelectedProxyId}
+								disabled={refreshMetadataMutation.isPending}
+								allowDirect={true}
+							/>
+							<Button
+								variant="outline"
+								size="lg"
+								className="flex items-center gap-2"
+								onClick={() =>
+									refreshMetadataMutation.mutate({
+										id,
+										proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
+									})
+								}
+								disabled={refreshMetadataMutation.isPending || !media?.url}
+							>
+								<RefreshCw className="w-4 h-4" />
+								{refreshMetadataMutation.isPending ? 'Syncing…' : 'Sync info'}
+							</Button>
+						</div>
 					</div>
 				</div>
 			)}

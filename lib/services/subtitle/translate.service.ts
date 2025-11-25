@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { parseVttCues, serializeVttCues, validateVttContent } from '~/lib/subtitle/utils/vtt'
 import { generateObject } from '~/lib/ai/chat'
@@ -7,10 +7,12 @@ import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
 import { getTranslationPrompt, DEFAULT_TRANSLATION_PROMPT_ID } from '~/lib/subtitle/config/prompts'
 import { z } from 'zod'
 import type { AIModelId } from '~/lib/ai/models'
+import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 export async function translate(input: { mediaId: string; model: AIModelId; promptId?: string }): Promise<{ translation: string }> {
   const { mediaId, model, promptId } = input
   const where = eq(schema.media.id, mediaId)
+  const db = await getDb()
   const media = await db.query.media.findFirst({ where })
   if (!media?.transcription && !media?.optimizedTranscription) throw new Error('Transcription not found')
 
@@ -70,7 +72,7 @@ Strict rules:
 
   await db.update(schema.media).set({ translation: vtt }).where(where)
   try {
-    const vttKey = `inputs/subtitles/${mediaId}.vtt`
+    const vttKey = bucketPaths.inputs.subtitles(mediaId)
     await putObjectByKey(vttKey, 'text/vtt', vtt)
     await upsertMediaManifest(mediaId, { vttKey })
     logger.info('translation', `Translated VTT materialized: ${vttKey}`)

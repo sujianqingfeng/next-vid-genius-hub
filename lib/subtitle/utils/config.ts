@@ -1,4 +1,4 @@
-import type { SubtitleRenderConfig } from "~/lib/media/types"
+import type { SubtitleRenderConfig } from "~/lib/subtitle/types"
 
 /**
  * Compare two subtitle render configs for semantic equality
@@ -31,4 +31,3 @@ export function areConfigsEqual(configA: SubtitleRenderConfig, configB: Subtitle
     hintConfigA.animation === hintConfigB.animation
   )
 }
-
