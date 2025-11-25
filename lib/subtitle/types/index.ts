@@ -62,13 +62,6 @@ export interface SubtitleWorkflowState {
 	transcriptionLanguage?: TranscriptionLanguage
 }
 
-export interface StepState {
-	isCompleted: boolean
-	isEnabled: boolean
-	isLoading: boolean
-	error?: string
-}
-
 export const timeSegmentEffectSchema = z.object({
 	id: z.string().min(1, 'Effect ID is required'),
 	startTime: z.number().min(0, 'Start time must be non-negative'),

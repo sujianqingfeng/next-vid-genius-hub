@@ -44,8 +44,6 @@ export default function SubtitlesPage() {
 	const {
 		workflowState,
 		activeStep,
-		hasTranscription,
-		hasTranslation,
 		hasRenderedVideo,
 		subtitleConfig,
 		setActiveStep,
@@ -210,15 +208,15 @@ export default function SubtitlesPage() {
 						<FileText className="h-4 w-4" />
 						<span className="ml-1">Transcribe</span>
 					</TabsTrigger>
-					<TabsTrigger value="step2" disabled={!hasTranscription}>
+					<TabsTrigger value="step2">
 						<Languages className="h-4 w-4" />
 						<span className="ml-1">Translate</span>
 					</TabsTrigger>
-					<TabsTrigger value="step3" disabled={!hasTranslation}>
+					<TabsTrigger value="step3">
 						<Video className="h-4 w-4" />
 						<span className="ml-1">Render</span>
 					</TabsTrigger>
-					<TabsTrigger value="step4" disabled={!hasRenderedVideo}>
+					<TabsTrigger value="step4">
 						<Play className="h-4 w-4" />
 						<span className="ml-1">Export</span>
 					</TabsTrigger>
