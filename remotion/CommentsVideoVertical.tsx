@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { AbsoluteFill, Easing, Sequence, interpolate, useCurrentFrame, Img } from "remotion";
 import { ThumbsUp } from "lucide-react";
 import type { CommentVideoInputProps } from "./types";
@@ -106,8 +106,10 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
               flex: 1,
               display: "grid",
               gridTemplateColumns: "560px 1fr",
+              gridTemplateRows: "1fr",
               gap: 28,
               alignItems: "stretch",
+              minHeight: 0,
             }}
           >
             {/* 左侧竖屏视频占位（9:16） */}
@@ -151,6 +153,8 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
                 flexDirection: "column",
                 gap: 16,
                 overflow: "hidden",
+                height: "100%",
+                minHeight: 0,
               }}
             >
               {sequences.map(({ startFrame, durationInFrames, comment }) => (
@@ -263,7 +267,7 @@ const VerticalCommentSlide: React.FC<{
   const needsScroll = totalTextLength > 100
 
   return (
-    <div style={{ opacity, display: "flex", flexDirection: "column", gap: 20, height: "100%", position: "relative" }}>
+    <div style={{ opacity, display: "flex", flexDirection: "column", gap: 20, height: "100%", minHeight: 0, position: "relative" }}>
       {/* 倒计时 */}
       <div
         style={{
@@ -307,12 +311,14 @@ const VerticalCommentSlide: React.FC<{
       </div>
 
       {needsScroll ? (
-        <ScrollingCommentWithTranslation
-          comment={comment}
-          displayCommentStyle={displayCommentStyle}
-          durationInFrames={durationInFrames}
-          fps={fps}
-        />
+        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+          <ScrollingCommentWithTranslation
+            comment={comment}
+            displayCommentStyle={displayCommentStyle}
+            durationInFrames={durationInFrames}
+            fps={fps}
+          />
+        </div>
       ) : (
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <p style={{ ...commentBodyStyle, ...displayCommentStyle }}>{comment.content}</p>
@@ -351,6 +357,24 @@ const ScrollingCommentWithTranslation: React.FC<{
   fps: number
 }> = ({ comment, displayCommentStyle, durationInFrames, fps }) => {
   const frame = useCurrentFrame()
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [containerHeight, setContainerHeight] = useState<number | null>(null)
+
+  useLayoutEffect(() => {
+    const node = containerRef.current
+    if (!node) return
+
+    const measure = () => setContainerHeight(node.getBoundingClientRect().height)
+    measure()
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(measure)
+      observer.observe(node)
+      return () => observer.disconnect()
+    }
+
+    return undefined
+  }, [])
 
   const fadeTime = Math.min(fps * 0.8, 12)
   const minDwellFrames = Math.round(0.2 * fps)
@@ -385,10 +409,9 @@ const ScrollingCommentWithTranslation: React.FC<{
     }
   }
 
-  const CONTAINER_HEIGHT = 320
-  const containerH = CONTAINER_HEIGHT
+  const viewportHeight = containerHeight ?? 320
   const effectiveContentH = estimatedTotalHeight
-  const maxScroll = Math.max(0, effectiveContentH - containerH)
+  const maxScroll = Math.max(0, effectiveContentH - viewportHeight)
 
   const availableForScroll = Math.max(durationInFrames - fadeTime - minDwellFrames, 0)
   const minScrollFrames = Math.round(fps * 0.6)
@@ -402,7 +425,18 @@ const ScrollingCommentWithTranslation: React.FC<{
     : 0
 
   return (
-    <div style={{ height: CONTAINER_HEIGHT, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flex: 1,
+        minHeight: 0,
+        flexDirection: 'column',
+        gap: 0,
+      }}
+    >
       <div style={{ transform: `translateY(-${currentScroll}px)`, display: 'flex', flexDirection: 'column', gap: 0 }}>
         <div style={{ ...displayCommentStyle, whiteSpace: 'pre-wrap', marginBottom: 0 }}>{comment.content}</div>
         {comment.translatedContent && comment.translatedContent !== comment.content ? (
