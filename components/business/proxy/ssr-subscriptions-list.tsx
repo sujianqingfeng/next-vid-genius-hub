@@ -46,12 +46,9 @@ export function SSRSubscriptionsList() {
 
 	if (isLoading) {
 		return (
-			<div className="space-y-2">
+			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-pulse">
 				{[1, 2, 3].map((i) => (
-					<div key={i} className="animate-pulse">
-						<div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
-						<div className="h-3 bg-muted rounded w-2/3"></div>
-					</div>
+					<div key={i} className="h-40 rounded-2xl bg-secondary/30"></div>
 				))}
 			</div>
 		)
@@ -59,57 +56,66 @@ export function SSRSubscriptionsList() {
 
 	if (!subscriptionsData?.subscriptions?.length) {
 		return (
-			<div className="text-center py-8 text-muted-foreground">
-				<Link className="h-8 w-8 mx-auto mb-3 opacity-50" />
-				<div className="font-medium">No subscriptions yet</div>
-				<div className="text-sm mt-1">Add your first subscription to start</div>
+			<div className="rounded-2xl border border-dashed border-border/50 bg-background/30 py-20 text-center backdrop-blur-sm">
+				<div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-secondary/50 flex items-center justify-center">
+					<Link className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.5} />
+				</div>
+				<h3 className="mb-2 text-lg font-semibold text-foreground">No subscriptions yet</h3>
+				<p className="text-muted-foreground font-light max-w-sm mx-auto">
+					Add your first subscription to start managing proxies.
+				</p>
 			</div>
 		)
 	}
 
 	return (
-		<div className="space-y-3">
+		<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{subscriptionsData.subscriptions.map((subscription) => (
-				<div key={subscription.id} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
-					<div className="flex items-center justify-between mb-2">
-						<div className="flex items-center gap-2">
-							<Link className="h-4 w-4 text-muted-foreground" />
-							<span className="font-medium">{subscription.name}</span>
-							<span className="text-xs text-muted-foreground">
-								({subscription.proxies?.length || 0} proxies)
-							</span>
+				<div key={subscription.id} className="group relative overflow-hidden rounded-2xl border border-white/20 bg-white/40 p-5 shadow-sm backdrop-blur-md transition-all hover:bg-white/60 hover:shadow-md">
+					<div className="mb-4 flex items-start justify-between gap-4">
+						<div className="flex items-center gap-3">
+							<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+								<Link className="h-5 w-5" strokeWidth={1.5} />
+							</div>
+							<div>
+								<h3 className="font-semibold leading-none text-foreground">{subscription.name}</h3>
+								<p className="mt-1 text-xs text-muted-foreground font-light">
+									{subscription.proxies?.length || 0} proxies
+								</p>
+							</div>
 						</div>
 						
 						<Button
 							variant="ghost"
-							size="sm"
+							size="icon"
 							onClick={() => handleDeleteSubscription(subscription.id)}
-							className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+							className="h-8 w-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
 						>
-							<Trash2 className="h-4 w-4" />
+							<Trash2 className="h-4 w-4" strokeWidth={1.5} />
 						</Button>
 					</div>
 					
-					<div className="text-xs text-muted-foreground mb-3">
-						{subscription.url}
+					<div className="mb-4 space-y-1">
+						<p className="truncate text-xs text-muted-foreground font-mono bg-secondary/30 px-2 py-1 rounded-md">
+							{subscription.url}
+						</p>
 						{subscription.lastUpdated && (
-							<span className="ml-2">
+							<p className="text-[10px] text-muted-foreground font-light px-1">
 								Updated {new Date(subscription.lastUpdated).toLocaleDateString()}
-							</span>
+							</p>
 						)}
 					</div>
 
-					<div className="flex gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => handleImportFromSubscription(subscription.id)}
-							disabled={importFromSubscriptionMutation.isPending}
-						>
-							<RefreshCw className="h-3 w-3 mr-1" />
-							{importFromSubscriptionMutation.isPending ? 'Importing...' : 'Import'}
-						</Button>
-					</div>
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => handleImportFromSubscription(subscription.id)}
+						disabled={importFromSubscriptionMutation.isPending}
+						className="w-full bg-secondary/80 hover:bg-secondary shadow-sm"
+					>
+						<RefreshCw className={`h-3.5 w-3.5 mr-2 ${importFromSubscriptionMutation.isPending ? 'animate-spin' : ''}`} strokeWidth={1.5} />
+						{importFromSubscriptionMutation.isPending ? 'Importing...' : 'Sync Proxies'}
+					</Button>
 				</div>
 			))}
 		</div>

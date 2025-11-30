@@ -160,44 +160,45 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 	)
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="min-h-screen space-y-8">
 			{/* Back navigation */}
-			<div className="px-4 py-6">
+			<div className="px-6 py-6 animate-in fade-in slide-in-from-top-2 duration-500">
 				<Link
 					href="/media"
-					className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+					className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
 				>
-					<ArrowLeft className="w-4 h-4" />
+					<ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" strokeWidth={1.5} />
 					Back to Media Library
 				</Link>
 			</div>
 
 			{/* Loading State */}
 			{isLoading && (
-				<div className="px-4 grid gap-6 lg:grid-cols-2">
-					<div className="space-y-4">
-						<Skeleton className="aspect-[16/9] rounded-lg" />
-						<Skeleton className="h-7 w-3/4" />
-						<Skeleton className="h-4 w-1/2" />
-						<div className="flex gap-4">
-							<Skeleton className="h-4 w-20" />
-							<Skeleton className="h-4 w-16" />
-						</div>
+				<div className="px-6 grid gap-8 lg:grid-cols-2 max-w-6xl mx-auto animate-pulse">
+					<div className="space-y-6">
+						<Skeleton className="aspect-[16/9] rounded-2xl bg-secondary/50" />
 					</div>
-					<div className="flex gap-3">
-						{Array.from({ length: 3 }).map((_, i) => (
-							<Skeleton key={i} className="h-10 flex-1" />
-						))}
+					<div className="space-y-6">
+						<Skeleton className="h-10 w-3/4 bg-secondary/50" />
+						<Skeleton className="h-6 w-1/2 bg-secondary/50" />
+						<div className="flex gap-4">
+							<Skeleton className="h-8 w-24 bg-secondary/50" />
+							<Skeleton className="h-8 w-24 bg-secondary/50" />
+						</div>
+						<div className="flex gap-4 pt-4">
+							<Skeleton className="h-12 flex-1 bg-secondary/50" />
+							<Skeleton className="h-12 flex-1 bg-secondary/50" />
+						</div>
 					</div>
 				</div>
 			)}
 
 			{/* Error State */}
 			{isError && (
-				<div className="px-4">
-					<Card className="border-destructive/50 bg-destructive/5">
-						<CardContent className="p-8 text-center">
-							<p className="text-destructive font-medium">
+				<div className="px-6 max-w-2xl mx-auto">
+					<Card className="glass border-destructive/20 bg-destructive/5">
+						<CardContent className="p-12 text-center">
+							<p className="text-destructive font-medium text-lg">
 								Failed to load media details. Please try again.
 							</p>
 						</CardContent>
@@ -207,65 +208,72 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 
 			{/* Media Content */}
 			{media && (
-				<div className="px-4 pb-8 space-y-8">
+				<div className="px-6 pb-12 space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
 					{/* Header Section */}
-					<div className="grid gap-6 lg:grid-cols-2 max-w-5xl mx-auto">
+					<div className="grid gap-8 lg:grid-cols-2 max-w-6xl mx-auto">
             {/* Preview (fallbacks to thumbnail) */}
-            <div>
+            <div className="rounded-2xl overflow-hidden shadow-lg ring-1 ring-border/50">
               <MediaVideoPreview media={media} id={id} />
             </div>
 
 						{/* Metadata */}
-						<div className="flex flex-col justify-center">
+						<div className="flex flex-col justify-center p-6 glass rounded-3xl">
 							<MediaMetadata media={media} />
 						</div>
 					</div>
 
 					{/* Actions Section */}
-					<div className="flex flex-wrap gap-3 max-w-5xl mx-auto">
-						<Link href={`/media/${id}/subtitles`}>
-							<Button variant="default" size="lg" className="flex items-center gap-2">
-								<FileText className="w-4 h-4" />
-								Generate Subtitles
-							</Button>
-						</Link>
+					<div className="max-w-6xl mx-auto">
+						<div className="glass rounded-3xl p-8">
+							<h3 className="text-lg font-semibold mb-6 text-foreground">Actions</h3>
+							<div className="flex flex-wrap gap-4">
+								<Link href={`/media/${id}/subtitles`}>
+									<Button variant="default" size="lg" className="h-12 px-6 shadow-sm hover:shadow-md transition-all">
+										<FileText className="w-4 h-4 mr-2" strokeWidth={1.5} />
+										Generate Subtitles
+									</Button>
+								</Link>
 
-						<Link href={`/media/${id}/comments`}>
-							<Button variant="outline" size="lg" className="flex items-center gap-2">
-								<MessageSquare className="w-4 h-4" />
-								View Comments
-							</Button>
-						</Link>
+								<Link href={`/media/${id}/comments`}>
+									<Button variant="outline" size="lg" className="h-12 px-6 bg-transparent border-border/50 hover:bg-secondary/50 transition-all">
+										<MessageSquare className="w-4 h-4 mr-2" strokeWidth={1.5} />
+										View Comments
+									</Button>
+								</Link>
 
-						<Link href={`/media/download?id=${id}`}>
-							<Button variant="secondary" size="lg" className="flex items-center gap-2">
-								<Download className="w-4 h-4" />
-								Download
-							</Button>
-						</Link>
+								<Link href={`/media/download?id=${id}`}>
+									<Button variant="secondary" size="lg" className="h-12 px-6 bg-secondary/80 hover:bg-secondary transition-all">
+										<Download className="w-4 h-4 mr-2" strokeWidth={1.5} />
+										Download
+									</Button>
+								</Link>
 
-						<div className="flex flex-col gap-2 min-w-[260px]">
-							<ProxySelector
-								value={selectedProxyId}
-								onValueChange={setSelectedProxyId}
-								disabled={refreshMetadataMutation.isPending}
-								allowDirect={true}
-							/>
-							<Button
-								variant="outline"
-								size="lg"
-								className="flex items-center gap-2"
-								onClick={() =>
-									refreshMetadataMutation.mutate({
-										id,
-										proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
-									})
-								}
-								disabled={refreshMetadataMutation.isPending || !media?.url}
-							>
-								<RefreshCw className="w-4 h-4" />
-								{refreshMetadataMutation.isPending ? 'Syncing…' : 'Sync info'}
-							</Button>
+								<div className="flex flex-col sm:flex-row gap-3 ml-auto w-full sm:w-auto">
+									<div className="w-full sm:w-[200px]">
+										<ProxySelector
+											value={selectedProxyId}
+											onValueChange={setSelectedProxyId}
+											disabled={refreshMetadataMutation.isPending}
+											allowDirect={true}
+										/>
+									</div>
+									<Button
+										variant="outline"
+										size="lg"
+										className="h-12 px-6 bg-transparent border-border/50 hover:bg-secondary/50 transition-all"
+										onClick={() =>
+											refreshMetadataMutation.mutate({
+												id,
+												proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
+											})
+										}
+										disabled={refreshMetadataMutation.isPending || !media?.url}
+									>
+										<RefreshCw className={`w-4 h-4 mr-2 ${refreshMetadataMutation.isPending ? 'animate-spin' : ''}`} strokeWidth={1.5} />
+										{refreshMetadataMutation.isPending ? 'Syncing…' : 'Sync info'}
+									</Button>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>

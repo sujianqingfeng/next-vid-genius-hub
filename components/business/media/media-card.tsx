@@ -150,34 +150,108 @@ export function MediaCard({ media }: MediaCardProps) {
 		},
 	})
 
-	const handleDelete = (id: string) => {
-		deleteMediaMutation.mutate({ id })
+	const handleDelete = (e: React.MouseEvent, id: string) => {
+		e.preventDefault() // Prevent navigation
+		e.stopPropagation()
+		if (confirm('Are you sure you want to delete this media?')) {
+			deleteMediaMutation.mutate({ id })
+		}
 	}
 
 	return (
-		<Card className="overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm pt-0">
+		<Card className="group relative overflow-hidden glass border-none shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
 			<Link
 				href={`/media/${media.id}`}
-				className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg"
+				className="block h-full focus-visible:outline-none"
 				aria-label={`View details for ${media.title}`}
 			>
-				<MediaThumbnail media={media} />
-				<MediaInfo media={media} />
-				<MediaMetadata media={media} />
+				<div className="relative aspect-video overflow-hidden bg-secondary/20">
+					{media.thumbnail ? (
+						<Image
+							src={media.thumbnail}
+							alt={media.title}
+							fill
+							className="object-cover transition-transform duration-500 group-hover:scale-105"
+							loading="lazy"
+							unoptimized
+							sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+						/>
+					) : (
+						<div className="flex h-full items-center justify-center">
+							<Video className="h-10 w-10 text-muted-foreground/30" strokeWidth={1.5} />
+						</div>
+					)}
+					
+					{/* Overlay Gradient */}
+					<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+					{/* Quality Badge */}
+					{media.quality && (
+						<div className="absolute top-3 right-3">
+							<Badge variant="secondary" className="glass border-none text-xs font-medium backdrop-blur-md bg-black/30 text-white hover:bg-black/40">
+								{media.quality}
+							</Badge>
+						</div>
+					)}
+
+					{/* Delete Button (Visible on Hover) */}
+					<div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+						<Button
+							variant="destructive"
+							size="icon"
+							className="h-8 w-8 rounded-full shadow-sm"
+							onClick={(e) => handleDelete(e, media.id)}
+							disabled={deleteMediaMutation.isPending}
+							aria-label={`Delete ${media.title}`}
+						>
+							<Trash2 className="w-4 h-4" strokeWidth={1.5} />
+						</Button>
+					</div>
+				</div>
+
+				<div className="p-5 space-y-4">
+					<div className="space-y-1.5">
+						<h3 className="text-base font-semibold leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+							{media.title}
+						</h3>
+						{media.translatedTitle && (
+							<p className="text-sm text-muted-foreground line-clamp-1 font-light">
+								{media.translatedTitle}
+							</p>
+						)}
+					</div>
+
+					<div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+						<div className="flex items-center gap-2">
+							<User className="h-3.5 w-3.5" strokeWidth={1.5} />
+							<span className="line-clamp-1 max-w-[100px]">{media.author}</span>
+						</div>
+						<div className="flex items-center gap-1.5">
+							<Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />
+							<span>{formatTimeAgo(media.createdAt)}</span>
+						</div>
+					</div>
+
+					<div className="flex items-center gap-4 pt-2 border-t border-border/40 text-xs text-muted-foreground/80">
+						<div className="flex items-center gap-1.5">
+							<Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+							<span>{formatNumber(media.viewCount ?? 0)}</span>
+						</div>
+						{(media.likeCount ?? 0) > 0 && (
+							<div className="flex items-center gap-1.5">
+								<ThumbsUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+								<span>{formatNumber(media.likeCount ?? 0)}</span>
+							</div>
+						)}
+						{(media.commentCount ?? 0) > 0 && (
+							<div className="flex items-center gap-1.5">
+								<MessageCircle className="h-3.5 w-3.5" strokeWidth={1.5} />
+								<span>{formatNumber(media.commentCount ?? 0)}</span>
+							</div>
+						)}
+					</div>
+				</div>
 			</Link>
-			<div className="p-4 pt-0">
-				<Button
-					variant="outline"
-					size="sm"
-					className="w-full flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-					onClick={() => handleDelete(media.id)}
-					disabled={deleteMediaMutation.isPending}
-					aria-label={`Delete ${media.title}`}
-				>
-					<Trash2 className="w-3 h-3" />
-					Delete
-				</Button>
-			</div>
 		</Card>
 	)
 }

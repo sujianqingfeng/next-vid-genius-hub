@@ -42,36 +42,38 @@ export function MediaListPage() {
 	const totalPages = Math.ceil(total / PAGE_SIZE)
 
 	return (
-		<div className="min-h-full bg-background">
-			<PageHeader
-				backHref="/"
-				showBackButton={false}
-				title="Media Library"
-				withBackground
-				rightContent={
+		<div className="min-h-full space-y-8">
+			<div className="px-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+				<div className="flex items-end justify-between">
+					<div className="space-y-2">
+						<h1 className="text-4xl font-bold tracking-tight text-foreground">Media Library</h1>
+						<p className="text-lg text-muted-foreground font-light">
+							Manage and organize your video content.
+						</p>
+					</div>
 					<Link href="/media/download">
-						<Button className="flex items-center gap-2 shadow-sm">
-							<Plus className="w-4 h-4" />
+						<Button className="flex items-center gap-2 shadow-sm hover:shadow-md transition-all h-10 px-6">
+							<Plus className="w-4 h-4" strokeWidth={1.5} />
 							Download Media
 						</Button>
 					</Link>
-				}
-			/>
+				</div>
+			</div>
 
 			{/* Main Content */}
-			<div className="px-4 py-8">
+			<div className="px-6 pb-12">
 				{/* Loading state */}
 				{mediaQuery.isLoading && (
-					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
 						{Array.from({ length: PAGE_SIZE }).map((_, idx) => (
-							<Card key={idx} className="overflow-hidden">
-								<Skeleton className="h-48 w-full" />
-								<CardHeader className="p-4">
-									<Skeleton className="h-4 w-3/4" />
-									<Skeleton className="h-3 w-1/2" />
+							<Card key={idx} className="overflow-hidden border-none shadow-none bg-secondary/30">
+								<Skeleton className="h-48 w-full bg-secondary/50" />
+								<CardHeader className="p-4 space-y-2">
+									<Skeleton className="h-4 w-3/4 bg-secondary/50" />
+									<Skeleton className="h-3 w-1/2 bg-secondary/50" />
 								</CardHeader>
 								<CardContent className="p-4 pt-0">
-									<Skeleton className="h-3 w-1/3" />
+									<Skeleton className="h-3 w-1/3 bg-secondary/50" />
 								</CardContent>
 							</Card>
 						))}
@@ -80,20 +82,20 @@ export function MediaListPage() {
 
 				{/* Error state */}
 				{mediaQuery.isError && (
-					<Card className="border-destructive/50 bg-destructive/5">
-						<CardContent className="p-6 text-center">
-							<div className="mx-auto mb-4 h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-								<Video className="h-6 w-6 text-destructive" />
+					<Card className="glass border-destructive/20 bg-destructive/5">
+						<CardContent className="p-12 text-center">
+							<div className="mx-auto mb-6 h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
+								<Video className="h-8 w-8 text-destructive" strokeWidth={1.5} />
 							</div>
-							<h3 className="mb-2 text-lg font-semibold text-destructive">
+							<h3 className="mb-2 text-xl font-semibold text-destructive">
 								Failed to load media
 							</h3>
-							<p className="text-muted-foreground">
+							<p className="text-muted-foreground font-light max-w-md mx-auto">
 								There was an error loading your media library. Please try again.
 							</p>
 							<Button
 								variant="outline"
-								className="mt-4"
+								className="mt-6 border-destructive/20 hover:bg-destructive/10"
 								onClick={() => mediaQuery.refetch()}
 							>
 								Try Again
@@ -104,13 +106,13 @@ export function MediaListPage() {
 
 				{/* Empty state (without CTA button) */}
 				{mediaQuery.isSuccess && mediaQuery.data.items.length === 0 && (
-					<Card className="border-dashed">
-						<CardContent className="p-12 text-center">
-							<div className="mx-auto mb-4 h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-								<Video className="h-8 w-8 text-muted-foreground" />
+					<Card className="glass border-dashed border-border/50">
+						<CardContent className="p-20 text-center">
+							<div className="mx-auto mb-6 h-20 w-20 rounded-3xl bg-secondary/50 flex items-center justify-center">
+								<Video className="h-10 w-10 text-muted-foreground/50" strokeWidth={1.5} />
 							</div>
-							<h3 className="mb-2 text-lg font-semibold">No media files yet</h3>
-							<p className="text-muted-foreground max-w-sm mx-auto">
+							<h3 className="mb-3 text-xl font-semibold text-foreground">No media files yet</h3>
+							<p className="text-muted-foreground font-light max-w-sm mx-auto">
 								Get started by downloading your first video to begin building your media library.
 							</p>
 						</CardContent>
@@ -119,7 +121,7 @@ export function MediaListPage() {
 
 				{/* Media Grid */}
 				{mediaQuery.isSuccess && mediaQuery.data.items.length > 0 && (
-					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
 						{mediaQuery.data.items.map((media) => (
 							<MediaCard key={media.id} media={media} />
 						))}
@@ -128,8 +130,8 @@ export function MediaListPage() {
 
 				{/* Pagination */}
 				{mediaQuery.isSuccess && totalPages > 1 && (
-					<div className="mt-12 flex justify-center">
-						<Pagination>
+					<div className="mt-16 flex justify-center">
+						<Pagination className="glass inline-flex w-auto rounded-full px-4 py-2 shadow-sm">
 							<PaginationContent>
 								<PaginationItem>
 									<PaginationPrevious
@@ -139,7 +141,7 @@ export function MediaListPage() {
 											setPage((p) => Math.max(1, p - 1))
 										}}
 										className={
-											page === 1 ? 'pointer-events-none opacity-50' : ''
+											page === 1 ? 'pointer-events-none opacity-50' : 'hover:bg-secondary/50'
 										}
 									/>
 								</PaginationItem>
@@ -152,6 +154,7 @@ export function MediaListPage() {
 												e.preventDefault()
 												setPage(idx + 1)
 											}}
+											className={idx + 1 === page ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-secondary/50'}
 										>
 											{idx + 1}
 										</PaginationLink>
@@ -167,7 +170,7 @@ export function MediaListPage() {
 										className={
 											page === totalPages
 												? 'pointer-events-none opacity-50'
-												: ''
+												: 'hover:bg-secondary/50'
 										}
 									/>
 								</PaginationItem>

@@ -13,6 +13,8 @@ import {
 	Play,
 	ShieldAlert,
 	Filter,
+	Loader2,
+	Info,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -97,7 +99,7 @@ export default function CommentsPage() {
 			queryOrpc.comment.getCloudCommentsStatus.queryOptions({
 				input: { jobId },
 				enabled: !!jobId,
-				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+				refetchInterval: (q: { state: { data?: any } }) => {
 					const s = q.state.data?.status
 					return s && ['completed', 'failed', 'canceled'].includes(s)
 						? false
@@ -215,7 +217,7 @@ export default function CommentsPage() {
 	useEffect(() => {
 		if (
 			commentsCloudJobId &&
-			cloudCommentsStatusQuery.data?.status === 'completed' &&
+			(cloudCommentsStatusQuery.data as any)?.status === 'completed' &&
 			!finalizeCloudCommentsMutation.isPending
 		) {
 			if (!finalizeAttemptedJobIdsRef.current.has(commentsCloudJobId)) {
@@ -228,7 +230,7 @@ export default function CommentsPage() {
 		}
 	}, [
 		commentsCloudJobId,
-		cloudCommentsStatusQuery.data?.status,
+		(cloudCommentsStatusQuery.data as any)?.status,
 		finalizeCloudCommentsMutation,
 		finalizeCloudCommentsMutation.isPending,
 		id,
@@ -287,7 +289,7 @@ export default function CommentsPage() {
 			queryOrpc.comment.getRenderStatus.queryOptions({
 				input: { jobId },
 				enabled: !!jobId,
-				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+				refetchInterval: (q: { state: { data?: any } }) => {
 					const s = q.state.data?.status
 					return s && ['completed', 'failed', 'canceled'].includes(s)
 						? false
@@ -332,7 +334,7 @@ export default function CommentsPage() {
 
 	const comments = mediaQuery.data?.comments || []
 	const visibleComments = onlyFlagged
-		? comments.filter((c) => c?.moderation?.flagged)
+		? comments.filter((c: any) => c?.moderation?.flagged)
 		: comments
 
 	const availableProxies = proxiesQuery.data?.proxies?.filter((proxy) => proxy.id !== 'none') ?? []
@@ -377,41 +379,41 @@ export default function CommentsPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background">
-			{/* Compact Header */}
-			<div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-				<div className="max-w-7xl mx-auto px-4 py-3">
-					<div className="flex items-center justify-between gap-4">
-						<div className="flex items-center gap-3">
-							<Link
-								href={`/media/${id}`}
-								className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-							>
-								<ArrowLeft className="w-4 h-4" />
-								<span className="hidden sm:inline">Back to Media</span>
-								<span className="sm:hidden">Back</span>
-							</Link>
-							<div className="h-4 w-px bg-border" />
-							<h1 className="text-lg font-semibold">Comments</h1>
+		<div className="min-h-screen space-y-8">
+			{/* Header */}
+			<div className="px-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-4">
+						<Link
+							href={`/media/${id}`}
+							className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+						>
+							<ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
+						</Link>
+						<div className="space-y-1">
+							<h1 className="text-2xl font-bold tracking-tight text-foreground">Comments</h1>
+							<p className="text-sm text-muted-foreground font-light">
+								Manage, translate, and render comments for this video.
+							</p>
 						</div>
-						{mediaQuery.data?.translatedTitle && (
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-8 px-2"
-								onClick={handleEditClick}
-								title="Edit titles"
-							>
-								<Edit className="w-3.5 h-3.5" />
-							</Button>
-						)}
 					</div>
+					{mediaQuery.data?.translatedTitle && (
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-9 gap-2 shadow-sm"
+							onClick={handleEditClick}
+						>
+							<Edit className="h-4 w-4" strokeWidth={1.5} />
+							Edit Titles
+						</Button>
+					)}
 				</div>
 			</div>
 
 			{/* Edit Dialog */}
 			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-				<DialogContent>
+				<DialogContent className="glass border-white/20">
 					<DialogHeader>
 						<DialogTitle>Edit Titles</DialogTitle>
 						<DialogDescription>
@@ -426,6 +428,7 @@ export default function CommentsPage() {
 								value={editTitle}
 								onChange={(e) => setEditTitle(e.target.value)}
 								placeholder="Enter original title"
+								className="bg-white/50 border-white/20"
 							/>
 						</div>
 						<div className="space-y-2">
@@ -437,11 +440,12 @@ export default function CommentsPage() {
 								value={editTranslatedTitle}
 								onChange={(e) => setEditTranslatedTitle(e.target.value)}
 								placeholder="Enter translated title"
+								className="bg-white/50 border-white/20"
 							/>
 						</div>
 					</div>
 					<DialogFooter>
-						<Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+						<Button variant="ghost" onClick={() => setEditDialogOpen(false)}>
 							Cancel
 						</Button>
 						<Button
@@ -455,65 +459,62 @@ export default function CommentsPage() {
 			</Dialog>
 
 			{/* Main Content */}
-			<div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
+			<div className="px-6 pb-12">
 				{/* Preview - Compact Top */}
-				<RemotionPreviewCard
-					videoInfo={previewVideoInfo}
-					comments={comments}
-					isLoading={mediaQuery.isLoading}
-					templateId={templateId}
-				/>
+				<div className="mb-8">
+					<RemotionPreviewCard
+						videoInfo={previewVideoInfo}
+						comments={comments}
+						isLoading={mediaQuery.isLoading}
+						templateId={templateId}
+					/>
+				</div>
 
 				{/* Actions & Comments Grid */}
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 					{/* Left: Workflow Actions */}
 					{mediaQuery.data && (
-						<Card className="lg:col-span-1">
-							<CardHeader className="pb-3">
-								<CardTitle className="text-base flex items-center gap-2">
-									<Settings className="w-4 h-4" />
-									Workflow
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<Tabs defaultValue="download" className="w-full">
-									<TabsList className="grid w-full grid-cols-5">
-										<TabsTrigger value="basics" className="text-xs">
-											Base Data
-										</TabsTrigger>
-										<TabsTrigger value="download" className="text-xs">
-											Download
-										</TabsTrigger>
-										<TabsTrigger value="translate" className="text-xs">
-											Translate
-										</TabsTrigger>
-										<TabsTrigger value="moderate" className="text-xs">
-											Moderate
-										</TabsTrigger>
-										<TabsTrigger value="render" className="text-xs">
-											Render
-										</TabsTrigger>
-									</TabsList>
+						<div className="lg:col-span-1 space-y-6">
+							<Card className="glass border-none shadow-sm">
+								<CardHeader className="pb-4 border-b border-border/40">
+									<CardTitle className="text-lg flex items-center gap-2">
+										<Settings className="h-5 w-5 text-primary" strokeWidth={1.5} />
+										Workflow
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="pt-6">
+									<Tabs defaultValue="download" className="w-full">
+										<TabsList className="grid w-full grid-cols-5 bg-secondary/30 p-1 rounded-xl">
+											<TabsTrigger value="basics" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+												Base
+											</TabsTrigger>
+											<TabsTrigger value="download" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+												Get
+											</TabsTrigger>
+											<TabsTrigger value="translate" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+												Trans
+											</TabsTrigger>
+											<TabsTrigger value="moderate" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+												Mod
+											</TabsTrigger>
+											<TabsTrigger value="render" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+												Render
+											</TabsTrigger>
+										</TabsList>
 
-									<TabsContent value="basics" className="space-y-4 mt-4">
-										<div className="space-y-3">
-											<div className="flex items-center gap-2">
-												<Film className="w-4 h-4 text-muted-foreground" />
-												<h4 className="font-medium text-sm">Base Data</h4>
-											</div>
-											<div className="space-y-3 text-sm">
+										<TabsContent value="basics" className="space-y-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
+											<div className="space-y-4">
 												<div className="space-y-2">
-													<p className="text-xs uppercase text-muted-foreground">
+													<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 														Translated Title
 													</p>
-													<p className="font-medium break-words">
-														{mediaQuery.data.translatedTitle ??
-															'No translated title'}
-													</p>
+													<div className="rounded-lg bg-white/50 p-3 text-sm font-medium shadow-sm border border-white/20">
+														{mediaQuery.data.translatedTitle ?? 'No translated title'}
+													</div>
 													<Button
-														variant="outline"
+														variant="ghost"
 														size="sm"
-														className="h-8 px-2 text-xs"
+														className="h-8 w-full justify-start text-xs text-muted-foreground hover:text-foreground"
 														disabled={!mediaQuery.data.translatedTitle}
 														onClick={() =>
 															copyTitleValue(
@@ -522,29 +523,30 @@ export default function CommentsPage() {
 															)
 														}
 													>
-														<Copy className="w-3 h-3 mr-2" />
+														<Copy className="h-3 w-3 mr-2" strokeWidth={1.5} />
 														Copy English Title
 													</Button>
 												</div>
 
-											{/* Publish Title Generator */}
-											<div className="pt-2">
-												<PublishTitleGenerator
-													mediaId={id}
-													initialPublishTitle={mediaQuery.data.publishTitle}
-												/>
-											</div>
-												<div className="space-y-2">
-													<p className="text-xs uppercase text-muted-foreground">
+												{/* Publish Title Generator */}
+												<div className="pt-2 border-t border-border/40">
+													<PublishTitleGenerator
+														mediaId={id}
+														initialPublishTitle={mediaQuery.data.publishTitle}
+													/>
+												</div>
+
+												<div className="space-y-2 pt-2 border-t border-border/40">
+													<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 														Original Title
 													</p>
-													<p className="break-words text-muted-foreground">
+													<div className="rounded-lg bg-white/50 p-3 text-sm text-muted-foreground shadow-sm border border-white/20">
 														{mediaQuery.data.title ?? 'No original title'}
-													</p>
+													</div>
 													<Button
-														variant="outline"
+														variant="ghost"
 														size="sm"
-														className="h-8 px-2 text-xs"
+														className="h-8 w-full justify-start text-xs text-muted-foreground hover:text-foreground"
 														disabled={!mediaQuery.data.title}
 														onClick={() =>
 															copyTitleValue(
@@ -553,40 +555,21 @@ export default function CommentsPage() {
 															)
 														}
 													>
-														<Copy className="w-3 h-3 mr-2" />
+														<Copy className="h-3 w-3 mr-2" strokeWidth={1.5} />
 														Copy Original Title
 													</Button>
 												</div>
-												<div className="border-t pt-3">
-													<Button
-														variant="default"
-														size="sm"
-														className="w-full text-xs"
-														onClick={handleEditClick}
-													>
-														<Edit className="w-3 h-3 mr-2" />
-														Edit Titles
-													</Button>
-												</div>
 											</div>
-										</div>
-									</TabsContent>
+										</TabsContent>
 
-									<TabsContent value="download" className="space-y-4 mt-4">
-										<div className="space-y-3">
-											<div className="flex items-center gap-2">
-												<Download className="w-4 h-4 text-muted-foreground" />
-												<h4 className="font-medium text-sm">
-													Download Comments
-												</h4>
-											</div>
-											<div className="space-y-2">
-												<div>
-													<Label className="text-xs text-muted-foreground">
-														Pages:
+										<TabsContent value="download" className="space-y-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
+											<div className="space-y-4">
+												<div className="space-y-2">
+													<Label className="text-xs font-medium text-muted-foreground">
+														Pages to fetch
 													</Label>
 													<Select value={pages} onValueChange={setPages}>
-														<SelectTrigger className="w-full">
+														<SelectTrigger className="w-full bg-white/50 border-white/20">
 															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
@@ -598,121 +581,108 @@ export default function CommentsPage() {
 														</SelectContent>
 													</Select>
 												</div>
-							<div>
-								<Label className="text-xs text-muted-foreground">
-									Proxy:
-								</Label>
-								<ProxySelector
-									value={selectedProxyId}
-									onValueChange={setSelectedProxyId}
-									disabled={startCloudCommentsMutation.isPending}
-									allowDirect={false}
-								/>
-							</div>
-						</div>
-						<Button
-							onClick={() => {
-								if (!canQueueCommentsDownload) {
-									const message = hasAvailableProxies
-										? '请先选择一个代理后再开始下载评论。'
-										: '当前没有可用代理，请先添加代理节点。'
-									toast.error(message)
-									return
-								}
-								const p = parseInt(pages, 10)
-								startCloudCommentsMutation.mutate({
-									mediaId: id,
-									pages: p,
-									proxyId:
-										selectedProxyId === 'none'
-											? undefined
-											: selectedProxyId,
-								})
-							}}
-							disabled={startCloudCommentsMutation.isPending || !canQueueCommentsDownload}
-							className="w-full"
-						>
-												{startCloudCommentsMutation.isPending
-													? 'Queuing...'
-													: 'Start Download'}
-											</Button>
-											{commentsCloudJobId && (
-												<div className="space-y-2 pt-2 border-t">
-													<Progress
-														value={
-															typeof cloudCommentsStatusQuery.data?.progress ===
-															'number'
-																? Math.round(
-																		(cloudCommentsStatusQuery.data?.progress ??
-																			0) * 100,
-																	)
-																: 0
-														}
-														className="h-2"
+												<div className="space-y-2">
+													<Label className="text-xs font-medium text-muted-foreground">
+														Proxy
+													</Label>
+													<ProxySelector
+														value={selectedProxyId}
+														onValueChange={setSelectedProxyId}
+														disabled={startCloudCommentsMutation.isPending}
+														allowDirect={false}
 													/>
-													<div className="text-xs text-muted-foreground text-center">
-														{(() => {
-															const s = cloudCommentsStatusQuery.data?.status
-															const label =
-																s && s in STATUS_LABELS
-																	? STATUS_LABELS[
-																			s as keyof typeof STATUS_LABELS
-																		]
-																	: (s ?? 'Starting')
-															const pct =
-																typeof cloudCommentsStatusQuery.data
-																	?.progress === 'number'
-																	? `${Math.round((cloudCommentsStatusQuery.data?.progress ?? 0) * 100)}%`
-																	: '0%'
-															return (
-																<span title={`Job ${commentsCloudJobId}`}>
-																	{label} • {pct}
-																</span>
-															)
-														})()}
-													</div>
 												</div>
-											)}
-										</div>
-									</TabsContent>
-
-									<TabsContent value="translate" className="space-y-4 mt-4">
-										<div className="space-y-3">
-											<div className="flex items-center gap-2">
-												<LanguagesIcon className="w-4 h-4 text-muted-foreground" />
-												<h4 className="font-medium text-sm">
-													Translate Comments
-												</h4>
-											</div>
-											<div className="space-y-2">
-												<Select
-													value={model}
-													onValueChange={(v) => setModel(v as ChatModelId)}
+												<Button
+													onClick={() => {
+														if (!canQueueCommentsDownload) {
+															const message = hasAvailableProxies
+																? 'Please select a proxy first.'
+																: 'No proxies available.'
+															toast.error(message)
+															return
+														}
+														const p = parseInt(pages, 10)
+														startCloudCommentsMutation.mutate({
+															mediaId: id,
+															pages: p,
+															proxyId:
+																selectedProxyId === 'none'
+																	? undefined
+																	: selectedProxyId,
+														})
+													}}
+													disabled={startCloudCommentsMutation.isPending || !canQueueCommentsDownload}
+													className="w-full shadow-sm"
 												>
-													<SelectTrigger className="w-full">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														{ChatModelIds.map((modelId) => (
-															<SelectItem key={modelId} value={modelId}>
-																{modelId}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-												<div className="flex items-center gap-2">
+													{startCloudCommentsMutation.isPending ? (
+														<>
+															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+															Queuing...
+														</>
+													) : (
+														<>
+															<Download className="mr-2 h-4 w-4" strokeWidth={1.5} />
+															Start Download
+														</>
+													)}
+												</Button>
+												
+												{commentsCloudJobId && (
+													<div className="rounded-lg bg-secondary/30 p-3 space-y-2">
+														<div className="flex items-center justify-between text-xs">
+															<span className="text-muted-foreground">Status</span>
+															<span className="font-medium">
+																{(cloudCommentsStatusQuery.data as any)?.status 
+																	? STATUS_LABELS[(cloudCommentsStatusQuery.data as any).status as keyof typeof STATUS_LABELS] ?? (cloudCommentsStatusQuery.data as any).status
+																	: 'Starting...'}
+															</span>
+														</div>
+														<Progress
+															value={
+																typeof (cloudCommentsStatusQuery.data as any)?.progress === 'number'
+																	? Math.round(((cloudCommentsStatusQuery.data as any)?.progress ?? 0) * 100)
+																	: 0
+															}
+															className="h-1.5"
+														/>
+													</div>
+												)}
+											</div>
+										</TabsContent>
+
+										<TabsContent value="translate" className="space-y-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
+											<div className="space-y-4">
+												<div className="space-y-2">
+													<Label className="text-xs font-medium text-muted-foreground">AI Model</Label>
+													<Select
+														value={model}
+														onValueChange={(v) => setModel(v as ChatModelId)}
+													>
+														<SelectTrigger className="w-full bg-white/50 border-white/20">
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{ChatModelIds.map((modelId) => (
+																<SelectItem key={modelId} value={modelId}>
+																	{modelId}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</div>
+												<div className="flex items-center justify-between rounded-lg border border-border/40 p-3 bg-white/30">
+													<Label
+														htmlFor="force-translate"
+														className="text-sm font-medium"
+													>
+														Overwrite existing
+													</Label>
 													<Switch
 														id="force-translate"
 														checked={forceTranslate}
 														onCheckedChange={setForceTranslate}
 														disabled={translateCommentsMutation.isPending}
 													/>
-													<Label
-														htmlFor="force-translate"
-														className="text-xs text-muted-foreground"
-													>
-														Overwrite existing
-													</Label>
 												</div>
 												<Button
 													onClick={() =>
@@ -723,55 +693,57 @@ export default function CommentsPage() {
 														})
 													}
 													disabled={translateCommentsMutation.isPending}
-													className="w-full"
+													className="w-full shadow-sm"
 												>
-													{translateCommentsMutation.isPending
-														? 'Translating...'
-														: 'Translate'}
+													{translateCommentsMutation.isPending ? (
+														<>
+															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+															Translating...
+														</>
+													) : (
+														<>
+															<LanguagesIcon className="mr-2 h-4 w-4" strokeWidth={1.5} />
+															Translate
+														</>
+													)}
 												</Button>
 											</div>
-										</div>
-									</TabsContent>
+										</TabsContent>
 
-									<TabsContent value="moderate" className="space-y-4 mt-4">
-										<div className="space-y-3">
-											<div className="flex items-center gap-2">
-												<ShieldAlert className="w-4 h-4 text-muted-foreground" />
-												<h4 className="font-medium text-sm">
-													Moderate Comments
-												</h4>
-											</div>
+										<TabsContent value="moderate" className="space-y-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
+											<div className="space-y-4">
+												<div className="space-y-2">
+													<Label className="text-xs font-medium text-muted-foreground">AI Model</Label>
+													<Select
+														value={modModel}
+														onValueChange={(v) => setModModel(v as ChatModelId)}
+													>
+														<SelectTrigger className="w-full bg-white/50 border-white/20">
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{ChatModelIds.map((modelId) => (
+																<SelectItem key={modelId} value={modelId}>
+																	{modelId}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</div>
 
-											<div className="space-y-2">
-												<Select
-													value={modModel}
-													onValueChange={(v) => setModModel(v as ChatModelId)}
-												>
-													<SelectTrigger className="w-full">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														{ChatModelIds.map((modelId) => (
-															<SelectItem key={modelId} value={modelId}>
-																{modelId}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-
-												<div className="flex items-center gap-2">
+												<div className="flex items-center justify-between rounded-lg border border-border/40 p-3 bg-white/30">
+													<Label
+														htmlFor="overwrite-moderation"
+														className="text-sm font-medium"
+													>
+														Overwrite existing
+													</Label>
 													<Switch
 														id="overwrite-moderation"
 														checked={overwriteModeration}
 														onCheckedChange={setOverwriteModeration}
 														disabled={moderateCommentsMutation.isPending}
 													/>
-													<Label
-														htmlFor="overwrite-moderation"
-														className="text-xs text-muted-foreground"
-													>
-														Overwrite existing
-													</Label>
 												</div>
 
 												<Button
@@ -783,34 +755,39 @@ export default function CommentsPage() {
 														})
 													}
 													disabled={moderateCommentsMutation.isPending}
-													className="w-full"
+													className="w-full shadow-sm"
 												>
-													{moderateCommentsMutation.isPending
-														? 'Moderating...'
-														: 'Run Moderation'}
+													{moderateCommentsMutation.isPending ? (
+														<>
+															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+															Moderating...
+														</>
+													) : (
+														<>
+															<ShieldAlert className="mr-2 h-4 w-4" strokeWidth={1.5} />
+															Run Moderation
+														</>
+													)}
 												</Button>
 											</div>
-										</div>
-									</TabsContent>
+										</TabsContent>
 
-									<TabsContent value="render" className="space-y-4 mt-4">
-										<div className="space-y-3">
-											<div className="flex items-center gap-2">
-												<Film className="w-4 h-4 text-muted-foreground" />
-												<h4 className="font-medium text-sm">Render Video</h4>
-											</div>
-											<div className="space-y-2">
-												<div>
-													<Label className="text-xs text-muted-foreground">
-														Template:
-													</Label>
+										<TabsContent value="render" className="space-y-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
+											<div className="space-y-4">
+												<div className="space-y-2">
+													<Label className="text-xs font-medium text-muted-foreground">Template</Label>
 													<Select
 														value={templateId}
-														onValueChange={(v) =>
-															setTemplateId(v as RemotionTemplateId)
-														}
+														onValueChange={(v) => {
+															const tid = v as RemotionTemplateId
+															setTemplateId(tid)
+															updateRenderSettingsMutation.mutate({
+																id,
+																commentsTemplate: tid,
+															})
+														}}
 													>
-														<SelectTrigger className="w-full">
+														<SelectTrigger className="w-full bg-white/50 border-white/20">
 															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
@@ -821,142 +798,111 @@ export default function CommentsPage() {
 															))}
 														</SelectContent>
 													</Select>
-													<div className="mt-2 flex justify-end">
-														<Button
-															variant="outline"
-															size="sm"
-															onClick={() =>
-																updateRenderSettingsMutation.mutate({
-																	id,
-																	commentsTemplate: templateId,
-																})
-															}
-															disabled={updateRenderSettingsMutation.isPending}
-														>
-															{updateRenderSettingsMutation.isPending
-																? 'Saving…'
-																: 'Save Template'}
-														</Button>
-													</div>
 												</div>
-												<div>
-													<Label className="text-xs text-muted-foreground">
-														Source:
-													</Label>
+
+												<div className="space-y-2">
+													<Label className="text-xs font-medium text-muted-foreground">Source Policy</Label>
 													<Select
 														value={sourcePolicy}
-														onValueChange={(v) =>
-															setSourcePolicy(v as SourcePolicy)
-														}
+														onValueChange={(v) => setSourcePolicy(v as SourcePolicy)}
 													>
-														<SelectTrigger className="w-full">
+														<SelectTrigger className="w-full bg-white/50 border-white/20">
 															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
-															<SelectItem value="auto">Auto</SelectItem>
-															<SelectItem value="original">Original</SelectItem>
-															<SelectItem
-																value="subtitles"
-																disabled={
-																	!mediaQuery.data?.videoWithSubtitlesPath
-																}
-															>
-																With Subtitles
-															</SelectItem>
+															<SelectItem value="auto">Auto (Best available)</SelectItem>
+															<SelectItem value="original">Original Video</SelectItem>
+															<SelectItem value="subtitles">Subtitle Render</SelectItem>
 														</SelectContent>
 													</Select>
 												</div>
-						<div>
-							<Label className="text-xs text-muted-foreground">
-								Proxy:
-							</Label>
-							<ProxySelector
-								value={renderProxyId}
-								onValueChange={setRenderProxyId}
-								disabled={startCloudRenderMutation.isPending}
-								allowDirect={false}
-							/>
-						</div>
-					</div>
-					<Button
-						onClick={() => {
-							if (!canQueueRender) {
-								const message = hasAvailableProxies
-									? '请先选择一个代理后再开始渲染视频。'
-									: '当前没有可用代理，请先添加代理节点。'
-								toast.error(message)
-								return
-							}
-							startCloudRenderMutation.mutate({
-								mediaId: id,
-								proxyId:
-									renderProxyId === 'none'
-										? undefined
-										: renderProxyId,
-								sourcePolicy,
-								templateId,
-							})
-						}}
-						disabled={startCloudRenderMutation.isPending || !canQueueRender}
-						className="w-full"
-					>
-												{startCloudRenderMutation.isPending
-													? 'Queuing...'
-													: 'Start Render'}
-											</Button>
-											{cloudJobId && (
-												<div className="space-y-2 pt-2 border-t">
-													<Progress
-														value={
-															typeof cloudStatusQuery.data?.progress ===
-															'number'
-																? Math.round(
-																		(cloudStatusQuery.data?.progress ?? 0) *
-																			100,
-																	)
-																: 0
-														}
-														className="h-2"
-													/>
-													<div className="text-xs text-muted-foreground text-center">
-														{(() => {
-															const s = cloudStatusQuery.data?.status
-															const label =
-																s && s in STATUS_LABELS
-																	? STATUS_LABELS[
-																			s as keyof typeof STATUS_LABELS
-																		]
-																	: (s ?? 'Starting')
-															const pct =
-																typeof cloudStatusQuery.data?.progress ===
-																'number'
-																	? `${Math.round((cloudStatusQuery.data?.progress ?? 0) * 100)}%`
-																	: '0%'
-															return (
-																<span title={`Job ${cloudJobId}`}>
-																	{label} • {pct}
-																</span>
-															)
-														})()}
-													</div>
-												</div>
-											)}
-										</div>
-									</TabsContent>
-								</Tabs>
 
-								<div className="border-t pt-4">
+												<div className="space-y-2">
+													<Label className="text-xs font-medium text-muted-foreground">Proxy</Label>
+													<ProxySelector
+														value={renderProxyId}
+														onValueChange={setRenderProxyId}
+														disabled={startCloudRenderMutation.isPending}
+														allowDirect={false}
+													/>
+												</div>
+
+												<Button
+													onClick={() => {
+														if (!canQueueRender) {
+															const message = hasAvailableProxies
+																? 'Please select a proxy first.'
+																: 'No proxies available.'
+															toast.error(message)
+															return
+														}
+														startCloudRenderMutation.mutate({
+															mediaId: id,
+															templateId,
+															proxyId:
+																renderProxyId === 'none' ? undefined : renderProxyId,
+															sourcePolicy,
+														})
+													}}
+													disabled={startCloudRenderMutation.isPending || !canQueueRender}
+													className="w-full shadow-sm"
+												>
+													{startCloudRenderMutation.isPending ? (
+														<>
+															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+															Queuing...
+														</>
+													) : (
+														<>
+															<Film className="mr-2 h-4 w-4" strokeWidth={1.5} />
+															Start Render
+														</>
+													)}
+												</Button>
+
+												{cloudJobId && (
+													<div className="rounded-lg bg-secondary/30 p-3 space-y-2">
+														<div className="flex items-center justify-between text-xs">
+															<span className="text-muted-foreground">Status</span>
+															<span className="font-medium">
+																{(cloudStatusQuery.data as any)?.status ?? 'Starting...'}
+															</span>
+														</div>
+														<Progress
+															value={
+																typeof (cloudStatusQuery.data as any)?.progress === 'number'
+																	? Math.round(((cloudStatusQuery.data as any)?.progress ?? 0) * 100)
+																	: 0
+															}
+															className="h-1.5"
+														/>
+													</div>
+												)}
+											</div>
+										</TabsContent>
+									</Tabs>
+								</CardContent>
+							</Card>
+							<Card className="glass border-none shadow-sm">
+								<CardHeader className="pb-4 border-b border-border/40">
+									<CardTitle className="text-lg flex items-center gap-2">
+										<Info className="h-5 w-5 text-primary" strokeWidth={1.5} />
+										Video Info
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="pt-6 space-y-4">
 									<div className="space-y-2">
-										<p className="text-xs text-muted-foreground">
-											Source:{' '}
-											<code className="bg-muted px-1 rounded text-xs">
-												{getVideoSourceId()}
-											</code>
+										<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+											Source ID
 										</p>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => {
+										<div className="rounded-lg bg-white/50 p-3 text-sm font-mono shadow-sm border border-white/20 break-all">
+											{getVideoSourceId()}
+										</div>
+									</div>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => {
 											const disclaimerText = `内容声明
 
 本视频仅用于娱乐用途，所引用的评论不代表本平台的立场或观点。
@@ -978,142 +924,75 @@ ${
 			})}`
 		: ''
 }`;
+											if (navigator.clipboard) {
 												navigator.clipboard.writeText(disclaimerText)
 												toast.success('Disclaimer copied to clipboard')
-											}}
-											className="w-full text-xs"
-										>
-											<Copy className="w-3 h-3 mr-2" />
-											Copy Disclaimer
-										</Button>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+											}
+										}}
+										className="w-full justify-start text-xs text-muted-foreground hover:text-foreground"
+									>
+										<Copy className="mr-2 h-3 w-3" strokeWidth={1.5} />
+										Copy Disclaimer
+									</Button>
+								</CardContent>
+							</Card>
+						</div>
 					)}
 
 					{/* Right: Comments List */}
-					<Card className="lg:col-span-2">
-						<CardHeader className="pb-3">
-							<div className="flex items-center justify-between gap-3">
-								<CardTitle className="text-base flex items-center gap-2">
-									<MessageCircle className="w-4 h-4" />
-									Comments
-								</CardTitle>
-								<div className="flex items-center gap-2">
-									<Badge variant="secondary" className="text-xs">
-										{visibleComments.length} / {comments.length}
-									</Badge>
-									<Button
-										variant={onlyFlagged ? 'default' : 'outline'}
-										size="sm"
-										onClick={() => setOnlyFlagged((v) => !v)}
-										className="h-7 px-2 text-xs"
-										title="Toggle only flagged"
+					<div className="lg:col-span-2 space-y-6">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<MessageCircle className="h-5 w-5 text-primary" strokeWidth={1.5} />
+								<h2 className="text-lg font-semibold">
+									Comments ({comments.length})
+								</h2>
+							</div>
+							<div className="flex items-center gap-2">
+								<div className="flex items-center gap-2 rounded-full bg-white/40 px-3 py-1.5 border border-white/20 shadow-sm">
+									<Switch
+										id="show-flagged"
+										checked={onlyFlagged}
+										onCheckedChange={setOnlyFlagged}
+										className="scale-75"
+									/>
+									<Label
+										htmlFor="show-flagged"
+										className="text-xs font-medium cursor-pointer"
 									>
-										<Filter className="w-3 h-3 mr-1" />
-										{onlyFlagged ? 'Only flagged' : 'All comments'}
-									</Button>
+										Flagged Only
+									</Label>
 								</div>
 							</div>
-						</CardHeader>
-						<CardContent className="p-0">
-							<div className="max-h-[600px] overflow-y-auto">
-								{mediaQuery.isLoading && (
-									<div className="space-y-1 px-4 py-3">
-										{[...Array(3)].map((_, i) => (
-											<div
-												key={`skeleton-${i}`}
-												className="flex items-start gap-3 p-3 rounded-lg"
-											>
-												<Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
-												<div className="flex-1 space-y-2">
-													<div className="flex items-center gap-2">
-														<Skeleton className="h-3 w-24" />
-														<Skeleton className="h-3 w-12" />
-													</div>
-													<Skeleton className="h-3 w-full" />
-													<Skeleton className="h-3 w-3/4" />
-												</div>
-											</div>
-										))}
-									</div>
-								)}
-								{mediaQuery.isError && (
-									<div className="text-center py-16 px-6">
-										<div className="max-w-md mx-auto">
-											<div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-												<MessageCircle className="w-8 h-8 text-destructive" />
-											</div>
-											<h3 className="text-lg font-semibold mb-2 text-destructive">
-												Failed to load comments
-											</h3>
-											<p className="text-muted-foreground text-sm leading-relaxed">
-												Please try refreshing the page or check your connection.
-											</p>
-										</div>
-									</div>
-								)}
-								{comments.length === 0 && !mediaQuery.isLoading && (
-									<div className="text-center py-20 px-6">
-										<div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-											<MessageCircle className="w-8 h-8 text-muted-foreground" />
-										</div>
-										<h3 className="text-lg font-semibold mb-2">
-											No comments yet
-										</h3>
-										<p className="text-sm text-muted-foreground">
-											Use the Download Comments action to get started.
-										</p>
-									</div>
-								)}
-								{visibleComments.length > 0 && (
-									<div>
-										{visibleComments.map((comment, index) => (
-											<div key={comment.id}>
-												<CommentCard comment={comment} mediaId={id} />
-												{index < visibleComments.length - 1 && (
-													<div className="border-b mx-4" />
-												)}
-											</div>
-										))}
-									</div>
-								)}
-							</div>
-						</CardContent>
-					</Card>
-				</div>
+						</div>
 
-				{/* Rendered Video Preview - Full Width Bottom */}
-				{mediaQuery.data?.videoWithInfoPath && (
-					<Card>
-						<CardHeader className="pb-3">
-							<div className="flex items-center justify-between">
-								<CardTitle className="text-base flex items-center gap-2">
-									<Play className="w-4 h-4" />
-									Rendered Video
-								</CardTitle>
-								<Button variant="outline" size="sm" asChild>
-									<a
-										href={`/api/media/${id}/rendered-info`}
-										download={`${mediaQuery.data.title || id}-rendered.mp4`}
-										className="flex items-center gap-2"
-									>
-										<Download className="w-4 h-4" />
-										Download
-									</a>
-								</Button>
+						{mediaQuery.isLoading ? (
+							<div className="grid gap-4 sm:grid-cols-2">
+								{[1, 2, 3, 4].map((i) => (
+									<div key={i} className="h-40 rounded-2xl bg-secondary/30 animate-pulse" />
+								))}
 							</div>
-						</CardHeader>
-						<CardContent>
-							<video
-								controls
-								className="w-full rounded-md"
-								src={`/api/media/${id}/rendered-info`}
-							/>
-						</CardContent>
-					</Card>
-				)}
+						) : visibleComments.length > 0 ? (
+							<div className="grid gap-4 sm:grid-cols-2">
+								{visibleComments.map((comment: any, idx: number) => (
+									<CommentCard key={idx} comment={comment} mediaId={id} />
+								))}
+							</div>
+						) : (
+							<div className="rounded-2xl border border-dashed border-border/50 bg-background/30 py-20 text-center backdrop-blur-sm">
+								<div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-secondary/50 flex items-center justify-center">
+									<MessageCircle className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.5} />
+								</div>
+								<h3 className="mb-2 text-lg font-semibold text-foreground">No comments found</h3>
+								<p className="text-muted-foreground font-light max-w-sm mx-auto">
+									{onlyFlagged
+										? 'No flagged comments found.'
+										: 'Download comments to get started.'}
+								</p>
+							</div>
+						)}
+					</div>
+				</div>
 			</div>
 		</div>
 	)

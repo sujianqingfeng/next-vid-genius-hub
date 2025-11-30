@@ -121,28 +121,29 @@ export default function ChannelsPage() {
 	)
 
 	return (
-		<div className="mx-auto max-w-6xl px-4 py-10">
-			<header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-				<div className="space-y-1">
-					<h1 className="text-3xl font-semibold tracking-tight">Channels</h1>
-					<p className="text-sm text-muted-foreground">
+		<div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
+			<header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
+				<div className="space-y-2">
+					<h1 className="text-4xl font-bold tracking-tight text-foreground">Channels</h1>
+					<p className="text-lg text-muted-foreground font-light max-w-2xl">
 						Collect the creators you follow, keep their feeds in sync, and
 						translate titles in one place.
 					</p>
 				</div>
 				<form
 					onSubmit={handleAddChannel}
-					className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center"
+					className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center"
 				>
 					<Input
 						value={newInput}
 						onChange={(e) => setNewInput(e.target.value)}
 						placeholder="Paste a YouTube channel URL or ID"
-						className="w-full min-w-0 sm:w-80"
+						className="w-full min-w-0 sm:w-80 h-10 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-all"
 					/>
 					<Button
 						type="submit"
 						disabled={!newInput.trim() || createMutation.isPending}
+						className="h-10 px-6 shadow-sm hover:shadow-md transition-all"
 					>
 						{createMutation.isPending ? 'Adding…' : 'Add Channel'}
 					</Button>
@@ -151,13 +152,13 @@ export default function ChannelsPage() {
 
 			<main className="space-y-6">
 				{listQuery.isLoading && (
-					<div className="py-10 text-center text-muted-foreground">
+					<div className="py-20 text-center text-muted-foreground animate-pulse">
 						Loading your channels…
 					</div>
 				)}
 
 				{!!listQuery.data?.channels?.length && (
-					<div className="grid gap-4">
+					<div className="grid gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
 						{listQuery.data.channels.map((ch) => (
 							<ChannelCard
 								key={ch.id}
@@ -213,7 +214,7 @@ export default function ChannelsPage() {
 				)}
 
 				{!listQuery.isLoading && !listQuery.data?.channels?.length && (
-					<div className="rounded-lg border border-dashed py-12 text-center text-muted-foreground">
+					<div className="rounded-2xl border border-dashed border-border/50 bg-background/30 py-20 text-center text-muted-foreground backdrop-blur-sm">
 						Add a channel to start tracking new uploads.
 					</div>
 				)}
@@ -324,72 +325,82 @@ function ChannelCard({
 	const isSyncing = status === 'running' || status === 'queued'
 
 	return (
-		<article className="rounded-xl border bg-background/60 p-6 shadow-sm transition-colors hover:border-primary/40">
-			<div className="flex flex-col gap-6">
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="flex min-w-0 items-center gap-3">
+		<article className="glass rounded-2xl p-6 transition-all duration-300 hover:shadow-lg hover:bg-white/60 group">
+			<div className="flex flex-col gap-8">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div className="flex min-w-0 items-center gap-4">
 						{ch.thumbnail ? (
 							// eslint-disable-next-line @next/next/no-img-element
 							<img
 								src={ch.thumbnail}
 								alt="Channel thumbnail"
-								className="h-12 w-12 rounded-lg object-cover"
+								className="h-14 w-14 rounded-xl object-cover shadow-sm ring-1 ring-border/50"
 							/>
 						) : (
 							<div
-								className="h-12 w-12 rounded-lg bg-muted"
+								className="h-14 w-14 rounded-xl bg-secondary/50 ring-1 ring-border/50 flex items-center justify-center"
 								aria-hidden="true"
-							/>
+							>
+								<span className="text-2xl font-bold text-muted-foreground/30">
+									{(ch.title || ch.id).charAt(0).toUpperCase()}
+								</span>
+							</div>
 						)}
 						<div className="min-w-0 space-y-1">
-							<p className="truncate text-base font-semibold">
+							<p className="truncate text-lg font-semibold tracking-tight text-foreground">
 								{ch.title || ch.channelUrl || ch.channelId || ch.id}
 							</p>
-							<p className="truncate text-xs text-muted-foreground">
+							<p className="truncate text-sm text-muted-foreground font-light">
 								{ch.channelUrl}
 							</p>
 						</div>
 					</div>
-					<div className="flex items-center gap-2">
-						<Button size="sm" variant="outline" onClick={onToggleExpanded}>
+					<div className="flex items-center gap-3">
+						<Button 
+							size="sm" 
+							variant="outline" 
+							onClick={onToggleExpanded}
+							className="bg-transparent border-border/50 hover:bg-secondary/50 transition-colors"
+						>
 							{expanded ? 'Hide videos' : 'View videos'}
 						</Button>
 						<Button
 							size="sm"
-							variant="destructive"
+							variant="ghost"
 							onClick={onDelete}
 							disabled={deleting}
+							className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
 							title="Delete this channel and its local videos"
 						>
-							<Trash2 className="h-4 w-4" />
-							{deleting ? 'Deleting…' : 'Delete'}
+							<Trash2 className="h-4 w-4" strokeWidth={1.5} />
+							<span className="sr-only">Delete</span>
 						</Button>
 					</div>
 				</div>
 
-				<div className="grid gap-4 md:grid-cols-2">
-					<section className="rounded-lg border bg-muted/10 p-4">
-						<div className="flex items-center justify-between gap-3">
+				<div className="grid gap-6 md:grid-cols-2">
+					<section className="rounded-xl border border-border/40 bg-white/30 p-5 backdrop-blur-sm transition-colors hover:bg-white/50">
+						<div className="flex items-center justify-between gap-3 mb-4">
 							<div className="space-y-1">
 								<h3 className="text-sm font-semibold leading-none text-foreground">
 									Sync
 								</h3>
-								<p className="text-xs text-muted-foreground">
+								<p className="text-xs text-muted-foreground font-light">
 									Select a proxy and fetch the newest uploads.
 								</p>
 							</div>
-							<span className="rounded-full border border-border px-3 py-1 text-xs font-medium capitalize text-foreground">
+							<span className="rounded-full border border-border/50 bg-background/50 px-3 py-1 text-xs font-medium capitalize text-foreground shadow-sm">
 								{statusLabel}
 							</span>
 						</div>
-						<div className="mt-4 space-y-4">
+						<div className="space-y-4">
 							<ProxySelector
 								value={selectedProxyId}
 								onValueChange={onSelectProxy}
 							/>
 							<Button
 								size="sm"
-								className="w-full sm:w-auto"
+								className="w-full sm:w-auto shadow-sm"
 								onClick={onSync}
 								disabled={isSyncing}
 							>
@@ -398,25 +409,25 @@ function ChannelCard({
 						</div>
 					</section>
 
-					<section className="rounded-lg border bg-muted/10 p-4">
-						<div className="space-y-1">
+					<section className="rounded-xl border border-border/40 bg-white/30 p-5 backdrop-blur-sm transition-colors hover:bg-white/50">
+						<div className="space-y-1 mb-4">
 							<h3 className="text-sm font-semibold leading-none text-foreground">
 								Translate
 							</h3>
-							<p className="text-xs text-muted-foreground">
+							<p className="text-xs text-muted-foreground font-light">
 								Choose a model to localize the latest video titles.
 							</p>
 						</div>
-						<div className="mt-4 space-y-3">
+						<div className="space-y-4">
 							<div className="space-y-2">
-								<span className="text-sm font-medium text-muted-foreground">
+								<span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
 									Model
 								</span>
 								<ChatModelSelect
 									value={selectedModel}
 									onChange={onSelectModel}
 									disabled={translateMutation.isPending}
-									triggerClassName="w-full"
+									triggerClassName="w-full bg-background/50 border-border/50"
 								/>
 							</div>
 							<div className="flex flex-wrap gap-2">
@@ -431,6 +442,7 @@ function ChannelCard({
 										})
 									}
 									disabled={translateMutation.isPending}
+									className="bg-secondary/80 hover:bg-secondary shadow-sm"
 									title="Translate the latest video titles to Chinese"
 								>
 									{translateMutation.isPending
@@ -442,6 +454,7 @@ function ChannelCard({
 										size="sm"
 										variant="ghost"
 										onClick={() => setShowTranslated((v) => !v)}
+										className="hover:bg-secondary/50"
 										title={
 											showTranslated
 												? 'Hide translated titles'
@@ -457,7 +470,7 @@ function ChannelCard({
 				</div>
 
 				{expanded && (
-					<div className="rounded-lg border bg-muted/30 p-4">
+					<div className="rounded-xl border border-border/40 bg-white/20 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
 						<ChannelVideoList
 							channelId={ch.id}
 							limit={20}

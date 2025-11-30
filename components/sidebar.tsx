@@ -77,20 +77,21 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 			key={item.href}
 			href={item.href}
 			className={cn(
-				'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-				'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+				'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-300',
+				'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:backdrop-blur-sm',
 				isActive
-					? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-					: 'text-sidebar-foreground',
+					? 'bg-sidebar-primary/10 text-sidebar-primary shadow-none ring-1 ring-sidebar-primary/20'
+					: 'text-sidebar-foreground/80 hover:text-sidebar-foreground',
 				collapsed && 'justify-center',
 			)}
 			aria-current={isActive ? 'page' : undefined}
 			aria-label={item.title}
 		>
 			<item.icon
+				strokeWidth={1.5}
 				className={cn(
-					'h-5 w-5 flex-shrink-0 transition-transform duration-200',
-					isActive && 'scale-110',
+					'h-5 w-5 flex-shrink-0 transition-transform duration-300',
+					isActive && 'scale-105',
 				)}
 			/>
 			{!collapsed && (
@@ -109,7 +110,7 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 					<TooltipTrigger asChild>
 						{renderMenuItem(item, isActive)}
 					</TooltipTrigger>
-					<TooltipContent side="right" className="max-w-xs">
+					<TooltipContent side="right" className="glass border-none shadow-lg">
 						<div>
 							<p className="font-medium">{item.title}</p>
 							<p className="text-xs text-muted-foreground">
@@ -126,21 +127,21 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 	return (
 		<div
 			className={cn(
-				'relative bg-sidebar text-sidebar-foreground border-r border-sidebar-border',
-				'transition-all duration-300 ease-in-out',
-				collapsed ? 'w-16' : 'w-64',
+				'relative glass border-r border-sidebar-border/50',
+				'transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+				collapsed ? 'w-20' : 'w-72',
 				className,
 			)}
 		>
 			<div className="flex h-full flex-col">
 				{/* Header */}
-				<div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+				<div className="flex h-20 items-center justify-between px-6">
 					{!collapsed && (
-						<div className="flex items-center gap-2">
-							<div className="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-								<FileVideo className="h-4 w-4 text-sidebar-primary-foreground" />
+						<div className="flex items-center gap-3 animate-in fade-in duration-500">
+							<div className="h-9 w-9 rounded-xl bg-sidebar-primary/10 flex items-center justify-center ring-1 ring-sidebar-primary/20">
+								<FileVideo strokeWidth={1.5} className="h-5 w-5 text-sidebar-primary" />
 							</div>
-							<span className="text-lg font-bold">Video Genius</span>
+							<span className="text-lg font-semibold tracking-tight">Video Genius</span>
 						</div>
 					)}
 					<Tooltip>
@@ -148,51 +149,51 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 							<Button
 								variant="ghost"
 								size="icon"
-								className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+								className="h-8 w-8 text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors rounded-full"
 								onClick={() => setCollapsed(!collapsed)}
 							>
 								{collapsed ? (
-									<ChevronRight className="h-4 w-4" />
+									<ChevronRight strokeWidth={1.5} className="h-4 w-4" />
 								) : (
-									<ChevronLeft className="h-4 w-4" />
+									<ChevronLeft strokeWidth={1.5} className="h-4 w-4" />
 								)}
 							</Button>
 						</TooltipTrigger>
-						<TooltipContent side="right">
+						<TooltipContent side="right" className="glass">
 							{collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 						</TooltipContent>
 					</Tooltip>
 				</div>
 
 				{/* Navigation */}
-				<nav className="flex-1 space-y-1 p-3">
+				<nav className="flex-1 space-y-2 px-4 py-4">
 					{renderMenuSection(menuItems)}
 				</nav>
 
 				{/* Bottom Navigation */}
 				{bottomMenuItems.length > 0 && (
-					<nav className="space-y-1 p-3 border-t border-sidebar-border">
+					<nav className="space-y-2 px-4 py-4 border-t border-sidebar-border/30">
 						{renderMenuSection(bottomMenuItems)}
 					</nav>
 				)}
 
 				{/* Footer */}
-				<div className="border-t border-sidebar-border p-3">
+				<div className="p-4">
 					<div
 						className={cn(
-							'flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-sidebar-accent',
+							'flex items-center gap-3 rounded-xl p-3 transition-all duration-300 hover:bg-sidebar-accent/40 cursor-pointer group',
 							collapsed && 'justify-center',
 						)}
 					>
-						<div className="h-8 w-8 rounded-full bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 flex items-center justify-center">
-							<span className="text-xs font-semibold text-sidebar-primary-foreground">
+						<div className="h-9 w-9 rounded-full bg-gradient-to-br from-sidebar-primary/10 to-sidebar-primary/5 ring-1 ring-sidebar-primary/20 flex items-center justify-center group-hover:ring-sidebar-primary/40 transition-all">
+							<span className="text-xs font-semibold text-sidebar-primary">
 								U
 							</span>
 						</div>
 						{!collapsed && (
-							<div className="flex-1 min-w-0">
-								<p className="text-sm font-medium truncate">User</p>
-								<p className="text-xs text-sidebar-foreground/70 truncate">
+							<div className="flex-1 min-w-0 animate-in fade-in duration-300">
+								<p className="text-sm font-medium truncate text-sidebar-foreground/90">User</p>
+								<p className="text-xs text-sidebar-foreground/50 truncate">
 									user@example.com
 								</p>
 							</div>
