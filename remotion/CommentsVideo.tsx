@@ -16,24 +16,25 @@ import { VIDEO_WIDTH, VIDEO_HEIGHT } from "@app/media-comments";
 import { formatCount } from "./utils/format";
 
 const layout = {
-  paddingX: 64,
-  paddingY: 48,
-  columnGap: 24,
-  rowGap: 36,
-  infoPanelWidth: 600,
-  cardRadius: 24,
-  cardPaddingX: 24,
-  cardPaddingY: 24,
+  paddingX: 80,
+  paddingY: 60,
+  columnGap: 40,
+  rowGap: 48,
+  infoPanelWidth: 680,
+  cardRadius: 0,
+  cardPaddingX: 32,
+  cardPaddingY: 32,
 };
 
 const palette = {
-  background: "#ffffff",
-  surface: "#f8fafc",
-  border: "rgba(226, 232, 240, 0.8)",
-  textPrimary: "#0f172a",
-  textSecondary: "#334155",
-  textMuted: "#64748b",
-  accent: "#ef4444",
+  background: "#0a0a0a",
+  surface: "#141414",
+  border: "rgba(255, 255, 255, 0.08)",
+  textPrimary: "#ffffff",
+  textSecondary: "#e5e5e5",
+  textMuted: "#a3a3a3",
+  accent: "#ff3b30",
+  accentGlow: "rgba(255, 59, 48, 0.3)",
 };
 
 const baseFontStack = [
@@ -41,16 +42,14 @@ const baseFontStack = [
   '"Noto Sans SC"',
   '"Source Han Sans SC"',
   '"Noto Sans CJK"',
-  "Inter",
-  '"Noto Sans"',
+  '"Inter"',
+  '"Helvetica Neue"',
+  '"Arial Black"',
   "system-ui",
   "-apple-system",
-  "BlinkMacSystemFont",
   '"Segoe UI Emoji"',
   '"Apple Color Emoji"',
   '"Noto Color Emoji"',
-  '"Twemoji Mozilla"',
-  '"EmojiSymbols"',
   "sans-serif",
 ];
 
@@ -82,39 +81,37 @@ const topSectionStyle: CSSProperties = {
 // removed unused local style objects to reduce dead code
 
 const sectionLabelStyle: CSSProperties = {
-  fontSize: 18,
-  letterSpacing: "0.16em",
+  fontSize: 14,
+  letterSpacing: "0.24em",
   textTransform: "uppercase",
-  color: palette.textMuted,
+  color: palette.accent,
+  fontWeight: 900,
+  textShadow: `0 0 20px ${palette.accentGlow}`,
 };
 
-const metaListStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 16,
-  fontSize: 18,
-  color: palette.textMuted,
-};
+// Removed metaListStyle - now using inline compact horizontal layout
 
 const commentBodyStyle: CSSProperties = {
-  fontSize: 26,
-  lineHeight: 1.52,
+  fontSize: 28,
+  lineHeight: 1.6,
   color: palette.textPrimary,
   whiteSpace: "pre-wrap",
   margin: 0,
   width: "100%",
+  fontWeight: 400,
 };
 
 const translatedStyle: CSSProperties = {
-  marginTop: 18,
-  padding: "16px 20px",
-  borderRadius: 16,
-  backgroundColor: "rgba(239, 68, 68, 0.08)",
+  marginTop: 24,
+  padding: "24px 0 24px 24px",
+  borderRadius: 0,
+  backgroundColor: "transparent",
   color: palette.textSecondary,
-  borderLeft: "4px solid rgba(239, 68, 68, 0.3)",
+  borderLeft: `3px solid ${palette.accent}`,
   whiteSpace: "pre-wrap",
-  fontSize: 24,
-  lineHeight: 1.48,
+  fontSize: 26,
+  lineHeight: 1.6,
+  fontWeight: 300,
 };
 
 const chineseCharRegex = /[\u4e00-\u9fff]/;
@@ -193,10 +190,53 @@ const MainLayout: React.FC<{
     <AbsoluteFill
       style={{
         ...containerStyle,
-        background:
-          "linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f8fafc 100%)",
+        background: palette.background,
+        position: "relative",
       }}
     >
+      {/* Cinematic grid overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(0deg, ${palette.border} 1px, transparent 1px),
+            linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
+          `,
+          backgroundSize: "40px 40px",
+          opacity: 0.15,
+          pointerEvents: "none",
+        }}
+      />
+      
+      {/* Accent glow effects */}
+      <div
+        style={{
+          position: "absolute",
+          top: "20%",
+          left: "-10%",
+          width: "400px",
+          height: "400px",
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          filter: "blur(80px)",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: "10%",
+          right: "-5%",
+          width: "500px",
+          height: "500px",
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          filter: "blur(100px)",
+          pointerEvents: "none",
+        }}
+      />
+
       <div style={topSectionStyle}>
         <InfoPanel videoInfo={videoInfo} commentCount={comments.length} />
         <VideoPanel />
@@ -206,11 +246,23 @@ const MainLayout: React.FC<{
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          gap: 24,
+          gap: 32,
           minHeight: 420,
+          position: "relative",
+          zIndex: 1,
         }}
       >
-        <span style={sectionLabelStyle}>Comment Highlights</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div
+            style={{
+              width: 4,
+              height: 24,
+              backgroundColor: palette.accent,
+              boxShadow: `0 0 20px ${palette.accentGlow}`,
+            }}
+          />
+          <span style={sectionLabelStyle}>AUDIENCE VOICE</span>
+        </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {sequences.map(({ startFrame, durationInFrames, comment }) => (
             <Sequence
@@ -243,34 +295,166 @@ const InfoPanel: React.FC<{
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        gap: 24,
+        gap: 20,
+        position: "relative",
       }}
     >
+      {/* Decorative corner frame */}
+      <div
+        style={{
+          position: "absolute",
+          top: -20,
+          left: -20,
+          width: 50,
+          height: 50,
+          borderTop: `3px solid ${palette.accent}`,
+          borderLeft: `3px solid ${palette.accent}`,
+          opacity: 0.5,
+        }}
+      />
+      
       <div>
-        <div style={{ ...sectionLabelStyle, color: palette.accent }}>
-          Creator Digest
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <div
+            style={{
+              width: 3,
+              height: 16,
+              backgroundColor: palette.accent,
+              boxShadow: `0 0 15px ${palette.accentGlow}`,
+            }}
+          />
+          <span style={{ ...sectionLabelStyle, fontSize: 11 }}>CREATOR SPOTLIGHT</span>
         </div>
         <h1
           style={{
-            margin: "16px 0 0",
-            fontSize: 40,
-            fontWeight: 700,
-            letterSpacing: "-0.01em",
+            margin: 0,
+            fontSize: 36,
+            fontWeight: 900,
+            letterSpacing: "-0.02em",
             color: palette.textPrimary,
+            lineHeight: 1.15,
+            textTransform: "uppercase",
+            textShadow: "0 2px 30px rgba(0, 0, 0, 0.8)",
           }}
         >
           {videoInfo.translatedTitle ?? videoInfo.title}
         </h1>
-        <p
-          style={{ margin: "12px 0 0", fontSize: 20, color: palette.textMuted }}
+        <div
+          style={{
+            margin: "14px 0 0",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
         >
-          @{videoInfo.author ?? "unknown"} · 外网真实评论
-        </p>
+          <div
+            style={{
+              padding: "6px 12px",
+              backgroundColor: palette.surface,
+              border: `1px solid ${palette.border}`,
+              fontSize: 14,
+              color: palette.textSecondary,
+              fontWeight: 600,
+              letterSpacing: "0.03em",
+            }}
+          >
+            @{videoInfo.author ?? "unknown"}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: palette.textMuted,
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              fontWeight: 700,
+            }}
+          >
+            外网真实评论
+          </div>
+        </div>
       </div>
-      <div style={metaListStyle}>
-        <MetaItem label="观看量" value={formatCount(videoInfo.viewCount)} />
-        <MetaItem label="评论数" value={String(commentCount)} />
-        <MetaItem label="视频制作者" value="真实评论-TubeTweet" />
+      
+      {/* Compact meta info - horizontal layout */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 20,
+          paddingTop: 12,
+          borderTop: `1px solid ${palette.border}`,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              color: palette.textMuted,
+              fontWeight: 700,
+            }}
+          >
+            观看
+          </span>
+          <span
+            style={{
+              fontSize: 18,
+              color: palette.accent,
+              fontWeight: 800,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {formatCount(videoInfo.viewCount)}
+          </span>
+        </div>
+        <div
+          style={{
+            width: 1,
+            height: 16,
+            backgroundColor: palette.border,
+          }}
+        />
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              color: palette.textMuted,
+              fontWeight: 700,
+            }}
+          >
+            评论
+          </span>
+          <span
+            style={{
+              fontSize: 18,
+              color: palette.accent,
+              fontWeight: 800,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {String(commentCount)}
+          </span>
+        </div>
+        <div
+          style={{
+            width: 1,
+            height: 16,
+            backgroundColor: palette.border,
+          }}
+        />
+        <div
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            color: palette.textMuted,
+            fontWeight: 700,
+          }}
+        >
+          TubeTweet Studio
+        </div>
       </div>
     </div>
   );
@@ -297,96 +481,175 @@ const CoverSlide: React.FC<{
   fps: number;
 }> = ({ videoInfo, commentCount, fps }) => {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, fps], [0, 1], {
+  const opacity = interpolate(frame, [0, fps * 0.5], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
+  });
+  
+  const titleSlide = interpolate(frame, [fps * 0.3, fps * 0.8], [-50, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
   });
 
   return (
     <AbsoluteFill
       style={{
-        background:
-          "linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f8fafc 100%)",
+        background: palette.background,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         color: palette.textPrimary,
         fontFamily: baseFont,
-        padding: "0 80px",
+        padding: "0 100px",
         boxSizing: "border-box",
         opacity,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      {/* Decorative background elements */}
+      {/* Cinematic grid overlay */}
       <div
         style={{
           position: "absolute",
-          top: "10%",
-          left: "5%",
-          width: "200px",
-          height: "200px",
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(0deg, ${palette.border} 1px, transparent 1px),
+            linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
+          `,
+          backgroundSize: "50px 50px",
+          opacity: 0.2,
+        }}
+      />
+      
+      {/* Dramatic accent glows */}
+      <div
+        style={{
+          position: "absolute",
+          top: "15%",
+          left: "-5%",
+          width: "500px",
+          height: "500px",
           borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%)",
-          filter: "blur(40px)",
+          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          filter: "blur(100px)",
         }}
       />
       <div
         style={{
           position: "absolute",
-          bottom: "15%",
-          right: "8%",
-          width: "250px",
-          height: "250px",
+          bottom: "10%",
+          right: "-10%",
+          width: "600px",
+          height: "600px",
           borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, transparent 70%)",
-          filter: "blur(50px)",
+          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          filter: "blur(120px)",
+        }}
+      />
+      
+      {/* Film frame corners */}
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          left: 60,
+          width: 100,
+          height: 100,
+          borderTop: `4px solid ${palette.accent}`,
+          borderLeft: `4px solid ${palette.accent}`,
+          opacity: 0.4,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          right: 60,
+          width: 100,
+          height: 100,
+          borderTop: `4px solid ${palette.accent}`,
+          borderRight: `4px solid ${palette.accent}`,
+          opacity: 0.4,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 60,
+          left: 60,
+          width: 100,
+          height: 100,
+          borderBottom: `4px solid ${palette.accent}`,
+          borderLeft: `4px solid ${palette.accent}`,
+          opacity: 0.4,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 60,
+          right: 60,
+          width: 100,
+          height: 100,
+          borderBottom: `4px solid ${palette.accent}`,
+          borderRight: `4px solid ${palette.accent}`,
+          opacity: 0.4,
         }}
       />
 
       <div
         style={{
-          maxWidth: 1200,
+          maxWidth: 1400,
           width: "100%",
-          textAlign: "center",
+          textAlign: "left",
           position: "relative",
           zIndex: 1,
+          transform: `translateY(${titleSlide}px)`,
         }}
       >
         {/* Category badge */}
         <div
           style={{
-            display: "inline-block",
-            padding: "8px 20px",
-            borderRadius: "20px",
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            border: "1px solid rgba(239, 68, 68, 0.2)",
-            marginBottom: "32px",
-            fontSize: 16,
-            fontWeight: 500,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 0",
+            marginBottom: 40,
+            fontSize: 13,
+            fontWeight: 900,
             color: palette.accent,
-            letterSpacing: "0.08em",
+            letterSpacing: "0.3em",
             textTransform: "uppercase",
+            textShadow: `0 0 30px ${palette.accentGlow}`,
           }}
         >
+          <div
+            style={{
+              width: 4,
+              height: 16,
+              backgroundColor: palette.accent,
+              boxShadow: `0 0 20px ${palette.accentGlow}`,
+            }}
+          />
           外网真实评论
         </div>
 
         {/* Main Title */}
         <h1
           style={{
-            margin: "0 0 40px 0",
-            fontSize: 72,
-            fontWeight: 700,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.1,
-            background:
-              "linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            textShadow: "0 4px 20px rgba(239, 68, 68, 0.15)",
+            margin: "0 0 50px 0",
+            fontSize: 92,
+            fontWeight: 900,
+            letterSpacing: "-0.04em",
+            lineHeight: 0.95,
+            color: palette.textPrimary,
+            textTransform: "uppercase",
+            textShadow: `
+              0 0 40px ${palette.accentGlow},
+              0 4px 60px rgba(0, 0, 0, 0.9)
+            `,
+            maxWidth: "90%",
           }}
         >
           {videoInfo.translatedTitle ?? videoInfo.title}
@@ -397,54 +660,50 @@ const CoverSlide: React.FC<{
           videoInfo.translatedTitle !== videoInfo.title && (
             <p
               style={{
-                margin: "0 0 60px 0",
-                fontSize: 24,
-                color: "#6b7280",
-                fontWeight: 400,
+                margin: "0 0 70px 0",
+                fontSize: 26,
+                color: palette.textMuted,
+                fontWeight: 300,
                 lineHeight: 1.5,
                 fontStyle: "italic",
-                maxWidth: "800px",
-                marginLeft: "auto",
-                marginRight: "auto",
+                maxWidth: "85%",
+                paddingLeft: 4,
               }}
             >
               {videoInfo.title}
             </p>
           )}
 
-        {/* Enhanced divider */}
+        {/* Dramatic divider */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: "16px",
-            margin: "0 auto 60px",
-            width: "fit-content",
+            gap: 20,
+            margin: "0 0 70px 0",
           }}
         >
           <div
             style={{
-              width: "60px",
-              height: "2px",
-              background:
-                "linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.3))",
-            }}
-          />
-          <div
-            style={{
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
+              width: 120,
+              height: 3,
               backgroundColor: palette.accent,
+              boxShadow: `0 0 20px ${palette.accentGlow}`,
             }}
           />
           <div
             style={{
-              width: "60px",
-              height: "2px",
-              background:
-                "linear-gradient(90deg, rgba(239, 68, 68, 0.3), transparent)",
+              width: 12,
+              height: 12,
+              backgroundColor: palette.accent,
+              boxShadow: `0 0 30px ${palette.accentGlow}`,
+            }}
+          />
+          <div
+            style={{
+              flex: 1,
+              height: 1,
+              background: `linear-gradient(90deg, ${palette.border}, transparent)`,
             }}
           />
         </div>
@@ -453,45 +712,76 @@ const CoverSlide: React.FC<{
         <div
           style={{
             display: "flex",
-            justifyContent: "center",
             alignItems: "center",
-            gap: 40,
-            fontSize: 22,
+            gap: 48,
+            fontSize: 18,
             color: palette.textSecondary,
-            marginBottom: "32px",
+            marginBottom: 50,
           }}
         >
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "12px 20px",
-              borderRadius: "12px",
-              backgroundColor: "rgba(248, 250, 252, 0.8)",
-              border: "1px solid rgba(226, 232, 240, 0.6)",
+              flexDirection: "column",
+              gap: 8,
+              padding: "20px 28px",
+              backgroundColor: palette.surface,
+              border: `1px solid ${palette.border}`,
             }}
           >
-            <span style={{ fontWeight: 600, color: palette.accent }}>
+            <span
+              style={{
+                fontSize: 12,
+                color: palette.textMuted,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                fontWeight: 700,
+              }}
+            >
+              观看量
+            </span>
+            <span
+              style={{
+                fontSize: 32,
+                fontWeight: 900,
+                color: palette.accent,
+                textShadow: `0 0 20px ${palette.accentGlow}`,
+              }}
+            >
               {formatCount(videoInfo.viewCount)}
             </span>
-            <span>观看</span>
           </div>
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "12px 20px",
-              borderRadius: "12px",
-              backgroundColor: "rgba(248, 250, 252, 0.8)",
-              border: "1px solid rgba(226, 232, 240, 0.6)",
+              flexDirection: "column",
+              gap: 8,
+              padding: "20px 28px",
+              backgroundColor: palette.surface,
+              border: `1px solid ${palette.border}`,
             }}
           >
-            <span style={{ fontWeight: 600, color: palette.accent }}>
+            <span
+              style={{
+                fontSize: 12,
+                color: palette.textMuted,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                fontWeight: 700,
+              }}
+            >
+              评论数
+            </span>
+            <span
+              style={{
+                fontSize: 32,
+                fontWeight: 900,
+                color: palette.accent,
+                textShadow: `0 0 20px ${palette.accentGlow}`,
+              }}
+            >
               {commentCount}
             </span>
-            <span>评论</span>
           </div>
         </div>
 
@@ -500,8 +790,7 @@ const CoverSlide: React.FC<{
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: "20px",
+            gap: 24,
             fontSize: 18,
           }}
         >
@@ -509,26 +798,33 @@ const CoverSlide: React.FC<{
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              padding: "8px 16px",
-              borderRadius: "20px",
-              backgroundColor: "rgba(239, 68, 68, 0.05)",
-              border: "1px solid rgba(239, 68, 68, 0.15)",
+              gap: 12,
+              padding: "14px 24px",
+              backgroundColor: palette.surface,
+              border: `1px solid ${palette.border}`,
             }}
           >
-            <span style={{ fontWeight: 500 }}>
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: palette.textPrimary,
+                letterSpacing: "0.05em",
+              }}
+            >
               @{videoInfo.author ?? "未知创作者"}
             </span>
           </div>
           <div
             style={{
-              fontSize: 16,
+              fontSize: 13,
               color: palette.textMuted,
-              fontWeight: 500,
-              letterSpacing: "0.05em",
+              fontWeight: 700,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
             }}
           >
-            TubeTweet 独家整理
+            TubeTweet Studio
           </div>
         </div>
       </div>
@@ -563,26 +859,26 @@ const ScrollingCommentWithTranslation: React.FC<{
     comment.translatedContent &&
     comment.translatedContent !== comment.content
   ) {
-    const translationFontSize = isChineseTranslation ? 52 : 24;
-    const translationLineHeight = isChineseTranslation ? 1.4 : 1.48;
+    const translationFontSize = isChineseTranslation ? 56 : 26;
+    const translationLineHeight = isChineseTranslation ? 1.4 : 1.6;
     const translationLineHeightPx = translationFontSize * translationLineHeight;
     const translationLines = Math.ceil(comment.translatedContent.length / 50);
-    estimatedTotalHeight += 20 + translationLines * translationLineHeightPx;
+    estimatedTotalHeight += 28 + translationLines * translationLineHeightPx;
 
     translationStyle = {
-      marginTop: 20,
-      padding: "16px 20px",
-      borderRadius: 16,
-      backgroundColor: isChineseTranslation
-        ? "transparent"
-        : "rgba(239, 68, 68, 0.08)",
+      marginTop: 28,
+      padding: isChineseTranslation ? "0 0 0 24px" : "0 0 0 24px",
+      borderRadius: 0,
+      backgroundColor: "transparent",
       color: isChineseTranslation ? palette.accent : palette.textSecondary,
-      borderLeft: isChineseTranslation
-        ? "none"
-        : "4px solid rgba(239, 68, 68, 0.3)",
+      borderLeft: `3px solid ${palette.accent}`,
       fontSize: translationFontSize,
       lineHeight: translationLineHeight,
-      letterSpacing: isChineseTranslation ? "0.024em" : "normal",
+      letterSpacing: isChineseTranslation ? "0.02em" : "normal",
+      fontWeight: isChineseTranslation ? 700 : 300,
+      textShadow: isChineseTranslation
+        ? `0 0 20px ${palette.accentGlow}`
+        : "none",
     };
   }
 
@@ -729,10 +1025,12 @@ const CommentSlide: React.FC<{
   const isChinesePrimary = isLikelyChinese(comment.content);
   const isChineseTranslation = isLikelyChinese(comment.translatedContent);
   const displayCommentStyle: CSSProperties = {
-    fontSize: isChinesePrimary ? 52 : 26,
-    lineHeight: isChinesePrimary ? 1.4 : 1.52,
-    letterSpacing: isChinesePrimary ? "0.024em" : "normal",
+    fontSize: isChinesePrimary ? 56 : 28,
+    lineHeight: isChinesePrimary ? 1.4 : 1.6,
+    letterSpacing: isChinesePrimary ? "0.02em" : "normal",
     color: isChinesePrimary ? palette.accent : palette.textPrimary,
+    fontWeight: isChinesePrimary ? 700 : 400,
+    textShadow: isChinesePrimary ? `0 0 20px ${palette.accentGlow}` : "none",
   };
 
   const commentText = comment.content;
@@ -746,60 +1044,93 @@ const CommentSlide: React.FC<{
         opacity,
         display: "flex",
         flexDirection: "column",
-        gap: 20,
+        gap: 28,
         height: "100%",
         position: "relative",
+        padding: "32px 40px",
+        backgroundColor: palette.surface,
+        border: `2px solid ${palette.border}`,
       }}
     >
+      {/* Decorative corner frame */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 40,
+          height: 40,
+          borderTop: `3px solid ${palette.accent}`,
+          borderLeft: `3px solid ${palette.accent}`,
+          opacity: 0.6,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          right: 0,
+          width: 40,
+          height: 40,
+          borderBottom: `3px solid ${palette.accent}`,
+          borderRight: `3px solid ${palette.accent}`,
+          opacity: 0.6,
+        }}
+      />
+      
       {/* Countdown Timer */}
       <div
         style={{
           position: "absolute",
-          top: 12,
-          right: 12,
+          top: 20,
+          right: 20,
           opacity: countdownOpacity,
           display: "flex",
           alignItems: "center",
-          gap: 6,
-          fontSize: 16,
+          gap: 8,
+          fontSize: 14,
           color: palette.textMuted,
-          backgroundColor: "rgba(248, 250, 252, 0.8)",
-          padding: "6px 10px",
-          borderRadius: 8,
+          backgroundColor: palette.background,
+          padding: "8px 14px",
           border: `1px solid ${palette.border}`,
+          fontWeight: 700,
+          letterSpacing: "0.1em",
         }}
       >
         <div
           style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
+            width: 10,
+            height: 10,
             backgroundColor:
               remainingSeconds <= 2 ? palette.accent : palette.textMuted,
-            transition: "background-color 0.3s ease",
+            boxShadow:
+              remainingSeconds <= 2
+                ? `0 0 15px ${palette.accentGlow}`
+                : "none",
           }}
         />
-        <span>{remainingSeconds}s</span>
+        <span>{remainingSeconds}S</span>
       </div>
 
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 16,
+          gap: 20,
           flexShrink: 0,
         }}
       >
         <Avatar name={comment.author} src={comment.authorThumbnail} />
         <div
-          style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}
+          style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}
         >
           <p
             style={{
               margin: 0,
-              fontSize: 24,
-              fontWeight: 600,
+              fontSize: 26,
+              fontWeight: 800,
               color: palette.textPrimary,
+              letterSpacing: "-0.01em",
             }}
           >
             {comment.author}
@@ -808,13 +1139,15 @@ const CommentSlide: React.FC<{
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 10,
               color: palette.textMuted,
-              fontSize: 18,
+              fontSize: 16,
             }}
           >
-            <ThumbsUp size={18} strokeWidth={2} />
-            <span>{formatCount(comment.likes)}</span>
+            <ThumbsUp size={18} strokeWidth={2.5} />
+            <span style={{ fontWeight: 700, letterSpacing: "0.05em" }}>
+              {formatCount(comment.likes)}
+            </span>
           </div>
         </div>
       </div>
@@ -839,13 +1172,15 @@ const CommentSlide: React.FC<{
                 ...(isChineseTranslation
                   ? {
                       backgroundColor: "transparent",
-                      borderLeft: "none",
+                      borderLeft: `3px solid ${palette.accent}`,
                       color: palette.accent,
-                      padding: 0,
-                      marginTop: 12,
-                      fontSize: 52,
+                      padding: "0 0 0 24px",
+                      marginTop: 28,
+                      fontSize: 56,
                       lineHeight: 1.4,
-                      letterSpacing: "0.024em",
+                      letterSpacing: "0.02em",
+                      fontWeight: 700,
+                      textShadow: `0 0 20px ${palette.accentGlow}`,
                     }
                   : {}),
               }}
@@ -867,16 +1202,28 @@ const Avatar: React.FC<{ name: string; src?: string | null }> = ({
     return (
       <div
         style={{
-          width: 72,
-          height: 72,
-          borderRadius: "50%",
+          width: 80,
+          height: 80,
           overflow: "hidden",
-          border: `2px solid ${palette.border}`,
+          border: `3px solid ${palette.border}`,
+          position: "relative",
         }}
       >
         <Img
           src={src}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        {/* Corner accent */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: 20,
+            height: 20,
+            borderTop: `2px solid ${palette.accent}`,
+            borderLeft: `2px solid ${palette.accent}`,
+          }}
         />
       </div>
     );
@@ -885,19 +1232,33 @@ const Avatar: React.FC<{ name: string; src?: string | null }> = ({
   return (
     <div
       style={{
-        width: 72,
-        height: 72,
-        borderRadius: "50%",
-        backgroundColor: "rgba(239, 68, 68, 0.12)",
+        width: 80,
+        height: 80,
+        backgroundColor: palette.surface,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: 28,
+        fontSize: 32,
         color: palette.accent,
-        border: `2px solid ${palette.border}`,
+        border: `3px solid ${palette.border}`,
+        fontWeight: 900,
+        textShadow: `0 0 20px ${palette.accentGlow}`,
+        position: "relative",
       }}
     >
       {name.charAt(0).toUpperCase()}
+      {/* Corner accent */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 20,
+          height: 20,
+          borderTop: `2px solid ${palette.accent}`,
+          borderLeft: `2px solid ${palette.accent}`,
+        }}
+      />
     </div>
   );
 };
@@ -911,49 +1272,66 @@ const VideoPlaceholder: React.FC = () => {
       style={{
         width: VIDEO_WIDTH,
         alignSelf: "center",
-        borderRadius: 20,
-        border: `1px solid ${palette.border}`,
-        backgroundColor: "#f1f5f9",
+        border: `2px solid ${palette.border}`,
+        backgroundColor: palette.surface,
         overflow: "hidden",
+        position: "relative",
       }}
     >
+      {/* Film frame perforations */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 8,
+          backgroundColor: palette.border,
+          zIndex: 2,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 8,
+          backgroundColor: palette.border,
+          zIndex: 2,
+        }}
+      />
+      
       <div
         style={{
           position: "relative",
           width: "100%",
           paddingTop: `${(VIDEO_HEIGHT / VIDEO_WIDTH) * 100}%`,
-          backgroundImage:
-            "linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02))",
-          borderTop: `1px solid ${palette.border}`,
-          borderBottom: `1px solid ${palette.border}`,
-        }}
-      />
-    </div>
-  );
-};
-
-const MetaItem: React.FC<{ label: string; value: string }> = ({
-  label,
-  value,
-}) => {
-  return (
-    <div>
-      <span
-        style={{
-          display: "block",
-          fontSize: 14,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: palette.textMuted,
+          backgroundImage: `
+            linear-gradient(135deg, ${palette.surface} 0%, ${palette.background} 100%)
+          `,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        {label}
-      </span>
-      <span
-        style={{ display: "block", fontSize: 20, color: palette.textPrimary }}
-      >
-        {value}
-      </span>
+        {/* Cinematic aspect ratio indicator */}
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            fontSize: 14,
+            color: palette.textMuted,
+            letterSpacing: "0.3em",
+            fontWeight: 700,
+            textTransform: "uppercase",
+          }}
+        >
+          16:9
+        </div>
+      </div>
     </div>
   );
 };

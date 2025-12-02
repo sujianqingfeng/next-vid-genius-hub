@@ -39,19 +39,19 @@ function isChinese(text?: string | null) { return Boolean(text && chineseCharReg
 function estimateCommentHeight(comment: Comment) {
   const isPrimaryChinese = isChinese(comment?.content)
   const isTranslationChinese = isChinese(comment?.translatedContent)
-  const mainFontSize = isPrimaryChinese ? 52 : 26
-  const mainLineHeight = isPrimaryChinese ? 1.4 : 1.52
+  const mainFontSize = isPrimaryChinese ? 56 : 28
+  const mainLineHeight = isPrimaryChinese ? 1.4 : 1.6
   const mainLineHeightPx = mainFontSize * mainLineHeight
   const mainLines = String(comment?.content || '').split('\n').length
   const mainHeight = mainLines * mainLineHeightPx
   let totalHeight = mainHeight
   if (comment?.translatedContent && comment.translatedContent !== comment.content) {
-    const translationFontSize = isTranslationChinese ? 52 : 24
-    const translationLineHeight = isTranslationChinese ? 1.4 : 1.48
+    const translationFontSize = isTranslationChinese ? 56 : 26
+    const translationLineHeight = isTranslationChinese ? 1.4 : 1.6
     const translationLineHeightPx = translationFontSize * translationLineHeight
     const translationLines = String(comment?.translatedContent || '').split('\n').length
     const translationHeight = translationLines * translationLineHeightPx
-    const spacingBetweenSections = 36
+    const spacingBetweenSections = 28
     totalHeight += spacingBetweenSections + translationHeight
   }
   return totalHeight
@@ -88,11 +88,11 @@ export const VIDEO_WIDTH = 720
 export const VIDEO_HEIGHT = 405
 
 const layout = {
-  paddingX: 64,
-  paddingY: 48,
-  columnGap: 24,
-  infoPanelWidth: 600,
-  cardPaddingX: 24,
+  paddingX: 80,
+  paddingY: 60,
+  columnGap: 40,
+  infoPanelWidth: 680,
+  cardPaddingX: 32,
 }
 
 // Remotion base canvas is 1920x1080; compute slot position consistent with remotion/layout-constants.ts
