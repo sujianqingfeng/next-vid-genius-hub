@@ -337,6 +337,8 @@ export default function CommentsPage() {
 		? comments.filter((c: any) => c?.moderation?.flagged)
 		: comments
 
+	const hasRenderedCommentsVideo = Boolean(mediaQuery.data?.videoWithInfoPath)
+	const renderedDownloadUrl = `/api/media/${encodeURIComponent(id)}/rendered-info?download=1`
 	const availableProxies = proxiesQuery.data?.proxies?.filter((proxy) => proxy.id !== 'none') ?? []
 	const hasAvailableProxies = availableProxies.length > 0
 	const hasDownloadProxySelected = Boolean(selectedProxyId && selectedProxyId !== 'none')
@@ -878,6 +880,22 @@ export default function CommentsPage() {
 														/>
 													</div>
 												)}
+
+												<div className="space-y-2">
+													<Label className="text-xs font-medium text-muted-foreground">Rendered Output</Label>
+													{hasRenderedCommentsVideo ? (
+														<Button asChild variant="outline" className="w-full shadow-sm">
+															<a href={renderedDownloadUrl}>
+																<Download className="mr-2 h-4 w-4" strokeWidth={1.5} />
+																Download Rendered Video
+															</a>
+														</Button>
+													) : (
+														<div className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/50 bg-secondary/30 px-3 py-2">
+															Render completes here to enable download.
+														</div>
+													)}
+												</div>
 											</div>
 										</TabsContent>
 									</Tabs>
