@@ -40,19 +40,27 @@ export function useEnhancedMutation<TData, TError, TVariables, TContext>(
 
 	return useMutation({
 		...baseOptions,
-		onSuccess: (data, variables, context) => {
-			baseOptions.onSuccess?.(data, variables, context)
+		onSuccess: (data, variables, context, mutation) => {
+			baseOptions.onSuccess?.(data, variables, context, mutation)
 			sideEffects.onSuccess?.({ data, variables, context })
 			if (sideEffects.invalidateQueries) {
-				queryClient.invalidateQueries(sideEffects.invalidateQueries)
+				if (Array.isArray(sideEffects.invalidateQueries)) {
+					queryClient.invalidateQueries({
+						queryKey: sideEffects.invalidateQueries,
+					})
+				} else {
+					queryClient.invalidateQueries(
+						sideEffects.invalidateQueries as InvalidateQueryFilters,
+					)
+				}
 			}
 			const message = resolveMessage(sideEffects.successToast, { data, variables, context })
 			if (message) {
 				toast.success(message)
 			}
 		},
-		onError: (error, variables, context) => {
-			baseOptions.onError?.(error, variables, context)
+		onError: (error, variables, context, mutation) => {
+			baseOptions.onError?.(error, variables, context, mutation)
 			sideEffects.onError?.({ error, variables, context })
 			const message = resolveMessage(sideEffects.errorToast, { error, variables, context })
 			if (message) {

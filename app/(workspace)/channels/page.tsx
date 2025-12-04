@@ -159,7 +159,7 @@ export default function ChannelsPage() {
 
 				{!!listQuery.data?.channels?.length && (
 					<div className="grid gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-						{listQuery.data.channels.map((ch) => (
+						{listQuery.data.channels.map((ch: ChannelCardProps['ch']) => (
 							<ChannelCard
 								key={ch.id}
 								ch={ch}
@@ -286,10 +286,11 @@ function ChannelCard({
 			return ['completed', 'failed', 'canceled'].includes(s) ? false : 1500
 		},
 	})
+	const statusValue = (statusQuery?.data as { status?: string } | null)?.status
 
 	// Only propagate status changes when the value actually changes to avoid update loops.
 	React.useEffect(() => {
-		const s = (statusQuery?.data as { status?: string } | null)?.status
+		const s = statusValue
 		// Guard: update parent status map only when it differs from current prop
 		if (s && s !== status) {
 			setStatus(s)
@@ -298,13 +299,15 @@ function ChannelCard({
 			finalizeAttemptedRef.current = true
 			onFinalize()
 		}
-	}, [statusQuery?.data?.status, jobId, status, setStatus, onFinalize])
+	}, [statusValue, jobId, status, setStatus, onFinalize])
 
 	const translateMutation = useEnhancedMutation(
 		queryOrpc.channel.translateVideoTitles.mutationOptions({
 			onSuccess: (res) => {
 				const map = Object.fromEntries(
-					(res.items ?? []).map((i) => [i.id, i.translation]),
+					(res.items ?? []).map(
+						(i: { id: string; translation: string }) => [i.id, i.translation],
+					),
 				)
 				setTranslatedMap(map)
 				// auto show translated when finished

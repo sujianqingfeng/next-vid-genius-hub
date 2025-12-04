@@ -4,7 +4,7 @@ import { bucketPaths } from '~/lib/storage/bucket-paths'
 
 type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'
 
-export interface StartJobInput {
+export interface StartJobInput extends Record<string, unknown> {
   mediaId: string
   engine: EngineId
   options?: Record<string, unknown>

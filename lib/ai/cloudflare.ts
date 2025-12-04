@@ -84,7 +84,7 @@ export async function transcribeWithCloudflareWhisper(
 				Authorization: `Bearer ${apiToken}`,
 				Accept: 'application/json',
 			}
-			let requestBody: BodyInit
+			let requestBody: import('undici').BodyInit
 			if (inputFormat === 'base64') {
 				headers['Content-Type'] = 'application/json'
 				requestBody = JSON.stringify({
@@ -96,7 +96,7 @@ export async function transcribeWithCloudflareWhisper(
 				requestBody = JSON.stringify({ audio: Array.from(new Uint8Array(body)) })
 			} else {
 				headers['Content-Type'] = 'application/octet-stream'
-				requestBody = Buffer.from(body) as BodyInit
+				requestBody = Buffer.from(body)
 			}
 			const resp = await fetchImpl(cloudflareUrl, {
 				method: 'POST',
@@ -144,28 +144,22 @@ export async function transcribeWithCloudflareWhisper(
 		let result: CloudflareApiResponse | undefined
 		let lastErr: unknown
 		for (const cand of candidates) {
-			const modes: Array<{ useJson: boolean }> = allowJson
-				? [{ useJson: true }]
-				: [{ useJson: false }]
-			for (const mode of modes) {
-				for (let attempt = 0; attempt < 3; attempt++) {
-					try {
-						result = await runOnce(cand.body, mode)
+			for (let attempt = 0; attempt < 3; attempt++) {
+				try {
+					result = await runOnce(cand.body)
+					break
+				} catch (e) {
+					lastErr = e
+					const msg = e instanceof Error ? e.message : String(e)
+					if (/\b413\b|code\":\s*3006|Request is too large/i.test(msg)) {
 						break
-					} catch (e) {
-						lastErr = e
-						const msg = e instanceof Error ? e.message : String(e)
-						if (/\b413\b|code\":\s*3006|Request is too large/i.test(msg)) {
-							break
-						}
-						if (/6001|Network connection lost|ECONNRESET|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/i.test(msg) && attempt < 2) {
-							await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
-							continue
-						}
-						throw e
 					}
+					if (/6001|Network connection lost|ECONNRESET|ETIMEDOUT|UND_ERR_CONNECT_TIMEOUT/i.test(msg) && attempt < 2) {
+						await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
+						continue
+					}
+					throw e
 				}
-				if (result) break
 			}
 			if (result) break
 		}

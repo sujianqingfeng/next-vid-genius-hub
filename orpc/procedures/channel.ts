@@ -228,6 +228,7 @@ export const getChannel = os
 export const listChannelVideos = os
   .input(z.object({ id: z.string().min(1), limit: z.number().min(1).max(100).default(50) }))
   .handler(async ({ input }) => {
+    const db = await getDb()
     const rows = await db
       .select()
       .from(schema.channelVideos)
@@ -247,6 +248,7 @@ export const translateVideoTitles = os
     }),
   )
   .handler(async ({ input }) => {
+    const db = await getDb()
     const rows = await db
       .select()
       .from(schema.channelVideos)

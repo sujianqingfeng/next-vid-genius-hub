@@ -23,7 +23,7 @@ import type {
 	TranscriptionProvider,
 	WhisperModel,
 } from '~/lib/subtitle/config/models'
-import { type ChatModelId } from '~/lib/ai/models'
+import { DEFAULT_CHAT_MODEL_ID, type ChatModelId } from '~/lib/ai/models'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
 import type { DownsampleBackend } from '~/lib/subtitle/types'
 import { useEffect, useMemo, useState } from 'react'
@@ -85,6 +85,7 @@ interface Step1TranscribeProps {
       selectedLanguage,
       onLanguageChange,
 		} = props
+	const effectiveAIModel = selectedAIModel ?? DEFAULT_CHAT_MODEL_ID
 
 	const availableModels = getAvailableModels(selectedProvider)
 
@@ -323,7 +324,7 @@ interface Step1TranscribeProps {
 					<div>
 						<label className="text-sm font-medium mb-1 block">AI Model</label>
 						<ChatModelSelect
-							value={selectedAIModel}
+							value={effectiveAIModel}
 							onChange={(model) => onOptimizeModelChange?.(model)}
 							disabled={isOptimizing}
 						/>

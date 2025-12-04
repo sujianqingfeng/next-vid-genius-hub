@@ -8,7 +8,7 @@ export default function DashboardPage() {
 			<div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
 				<h1 className="text-4xl font-bold tracking-tight text-foreground">Dashboard</h1>
 				<p className="text-muted-foreground text-lg font-light">
-					Welcome back. Here's an overview of your creative space.
+					Welcome back. Here&apos;s an overview of your creative space.
 				</p>
 			</div>
 

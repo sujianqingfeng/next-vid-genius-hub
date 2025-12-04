@@ -9,10 +9,9 @@ import {
 	Film,
 	LanguagesIcon,
 	MessageCircle,
+	Trash2,
 	Settings,
-	Play,
 	ShieldAlert,
-	Filter,
 	Loader2,
 	Info,
 } from 'lucide-react'
@@ -43,7 +42,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { Skeleton } from '~/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import {
 	ChatModelIds,
@@ -63,6 +61,12 @@ import {
 	DEFAULT_TEMPLATE_ID,
 	type RemotionTemplateId,
 } from '~/remotion/templates'
+import type { Comment } from '~/lib/db/schema'
+
+type SourceStatus = {
+	status?: string
+	progress?: number
+}
 
 export default function CommentsPage() {
 	const params = useParams()
@@ -76,6 +80,9 @@ export default function CommentsPage() {
 	)
 	const [overwriteModeration, setOverwriteModeration] = useState(false)
 	const [onlyFlagged, setOnlyFlagged] = useState(false)
+	const [selectedCommentIds, setSelectedCommentIds] = useState<Set<string>>(
+		new Set(),
+	)
 
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
 	const [renderProxyId, setRenderProxyId] = useState<string>('none')
@@ -99,7 +106,7 @@ export default function CommentsPage() {
 			queryOrpc.comment.getCloudCommentsStatus.queryOptions({
 				input: { jobId },
 				enabled: !!jobId,
-				refetchInterval: (q: { state: { data?: any } }) => {
+				refetchInterval: (q: { state: { data?: SourceStatus } }) => {
 					const s = q.state.data?.status
 					return s && ['completed', 'failed', 'canceled'].includes(s)
 						? false
@@ -213,16 +220,22 @@ export default function CommentsPage() {
 	)
 
 	const finalizeAttemptedJobIdsRef = useRef<Set<string>>(new Set())
+	const { mutate: finalizeCommentsJob, isPending: finalizeIsPending } =
+		finalizeCloudCommentsMutation
+	const cloudCommentsStatus = cloudCommentsStatusQuery.data as
+		| SourceStatus
+		| undefined
+	const cloudCommentsState = cloudCommentsStatus?.status
 
 	useEffect(() => {
 		if (
 			commentsCloudJobId &&
-			(cloudCommentsStatusQuery.data as any)?.status === 'completed' &&
-			!finalizeCloudCommentsMutation.isPending
+			cloudCommentsState === 'completed' &&
+			!finalizeIsPending
 		) {
 			if (!finalizeAttemptedJobIdsRef.current.has(commentsCloudJobId)) {
 				finalizeAttemptedJobIdsRef.current.add(commentsCloudJobId)
-				finalizeCloudCommentsMutation.mutate({
+				finalizeCommentsJob({
 					mediaId: id,
 					jobId: commentsCloudJobId,
 				})
@@ -230,9 +243,9 @@ export default function CommentsPage() {
 		}
 	}, [
 		commentsCloudJobId,
-		(cloudCommentsStatusQuery.data as any)?.status,
-		finalizeCloudCommentsMutation,
-		finalizeCloudCommentsMutation.isPending,
+		cloudCommentsState,
+		finalizeCommentsJob,
+		finalizeIsPending,
 		id,
 	])
 
@@ -257,6 +270,25 @@ export default function CommentsPage() {
 			successToast: ({ data }) =>
 				`Moderation done: ${data?.flaggedCount ?? 0} flagged`,
 			errorToast: ({ error }) => `Failed to moderate: ${error.message}`,
+		},
+	)
+
+	const deleteCommentsMutation = useEnhancedMutation(
+		queryOrpc.comment.deleteComments.mutationOptions({
+			onSuccess: () => {
+				setSelectedCommentIds(new Set())
+			},
+		}),
+		{
+			invalidateQueries: {
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+			},
+			successToast: ({ variables }) => {
+				const count = variables.commentIds.length
+				return `Deleted ${count} comment${count > 1 ? 's' : ''}`
+			},
+			errorToast: ({ error }) =>
+				`Failed to delete comments: ${error.message}`,
 		},
 	)
 
@@ -289,7 +321,7 @@ export default function CommentsPage() {
 			queryOrpc.comment.getRenderStatus.queryOptions({
 				input: { jobId },
 				enabled: !!jobId,
-				refetchInterval: (q: { state: { data?: any } }) => {
+				refetchInterval: (q: { state: { data?: SourceStatus } }) => {
 					const s = q.state.data?.status
 					return s && ['completed', 'failed', 'canceled'].includes(s)
 						? false
@@ -332,10 +364,34 @@ export default function CommentsPage() {
 		} catch {}
 	}, [id, sourcePolicy])
 
-	const comments = mediaQuery.data?.comments || []
+	const comments: Comment[] = mediaQuery.data?.comments || []
 	const visibleComments = onlyFlagged
-		? comments.filter((c: any) => c?.moderation?.flagged)
+		? comments.filter((c) => c?.moderation?.flagged)
 		: comments
+	const allVisibleSelected =
+		visibleComments.length > 0 &&
+		selectedCommentIds.size === visibleComments.length
+	const hasSelection = selectedCommentIds.size > 0
+	const selectedCount = selectedCommentIds.size
+
+	useEffect(() => {
+		setSelectedCommentIds((prev) => {
+			const visibleIds = new Set(
+				visibleComments.map((comment) => comment.id),
+			)
+			const next = new Set<string>()
+			let changed = false
+			for (const id of prev) {
+				if (visibleIds.has(id)) {
+					next.add(id)
+				} else {
+					changed = true
+				}
+			}
+			if (!changed && next.size === prev.size) return prev
+			return next
+		})
+	}, [visibleComments])
 
 	const hasRenderedCommentsVideo = Boolean(mediaQuery.data?.videoWithInfoPath)
 	const renderedDownloadUrl = `/api/media/${encodeURIComponent(id)}/rendered-info?download=1`
@@ -378,6 +434,61 @@ export default function CommentsPage() {
 
 		// For TikTok or other sources, return the URL or a processed identifier
 		return mediaQuery.data.url
+	}
+
+	const cloudRenderStatus = cloudStatusQuery.data as SourceStatus | undefined
+	const commentsStatusLabel = cloudCommentsStatus?.status
+		? STATUS_LABELS[
+				cloudCommentsStatus.status as keyof typeof STATUS_LABELS
+			] ?? cloudCommentsStatus.status
+		: 'Starting...'
+	const commentsProgressValue =
+		typeof cloudCommentsStatus?.progress === 'number'
+			? Math.round((cloudCommentsStatus.progress ?? 0) * 100)
+			: 0
+	const renderStatusLabel = cloudRenderStatus?.status ?? 'Starting...'
+	const renderProgressValue =
+		typeof cloudRenderStatus?.progress === 'number'
+			? Math.round((cloudRenderStatus.progress ?? 0) * 100)
+			: 0
+
+	const toggleSelectAll = () => {
+		if (visibleComments.length === 0) return
+		setSelectedCommentIds(
+			allVisibleSelected
+					? new Set()
+					: new Set(
+							visibleComments.map((comment) => comment.id),
+						),
+		)
+	}
+
+	const handleSelectComment = (commentId: string, checked: boolean) => {
+		setSelectedCommentIds((prev) => {
+			const next = new Set(prev)
+			if (checked) {
+				next.add(commentId)
+			} else {
+				next.delete(commentId)
+			}
+			return next
+		})
+	}
+
+	const handleBulkDelete = () => {
+		if (!hasSelection) return
+		const ids = Array.from(selectedCommentIds)
+		const confirmed =
+			typeof window === 'undefined'
+				? true
+				: window.confirm(
+						`Delete ${ids.length} selected comment${ids.length > 1 ? 's' : ''}?`,
+					)
+		if (!confirmed) return
+		deleteCommentsMutation.mutate({
+			mediaId: id,
+			commentIds: ids,
+		})
 	}
 
 	return (
@@ -634,17 +745,11 @@ export default function CommentsPage() {
 														<div className="flex items-center justify-between text-xs">
 															<span className="text-muted-foreground">Status</span>
 															<span className="font-medium">
-																{(cloudCommentsStatusQuery.data as any)?.status 
-																	? STATUS_LABELS[(cloudCommentsStatusQuery.data as any).status as keyof typeof STATUS_LABELS] ?? (cloudCommentsStatusQuery.data as any).status
-																	: 'Starting...'}
+																{commentsStatusLabel}
 															</span>
 														</div>
 														<Progress
-															value={
-																typeof (cloudCommentsStatusQuery.data as any)?.progress === 'number'
-																	? Math.round(((cloudCommentsStatusQuery.data as any)?.progress ?? 0) * 100)
-																	: 0
-															}
+															value={commentsProgressValue}
 															className="h-1.5"
 														/>
 													</div>
@@ -867,15 +972,11 @@ export default function CommentsPage() {
 														<div className="flex items-center justify-between text-xs">
 															<span className="text-muted-foreground">Status</span>
 															<span className="font-medium">
-																{(cloudStatusQuery.data as any)?.status ?? 'Starting...'}
+																{renderStatusLabel}
 															</span>
 														</div>
 														<Progress
-															value={
-																typeof (cloudStatusQuery.data as any)?.progress === 'number'
-																	? Math.round(((cloudStatusQuery.data as any)?.progress ?? 0) * 100)
-																	: 0
-															}
+															value={renderProgressValue}
 															className="h-1.5"
 														/>
 													</div>
@@ -959,15 +1060,20 @@ ${
 
 					{/* Right: Comments List */}
 					<div className="lg:col-span-2 space-y-6">
-						<div className="flex items-center justify-between">
+						<div className="flex flex-wrap items-center justify-between gap-3">
 							<div className="flex items-center gap-2">
 								<MessageCircle className="h-5 w-5 text-primary" strokeWidth={1.5} />
 								<h2 className="text-lg font-semibold">
 									Comments ({comments.length})
 								</h2>
 							</div>
-							<div className="flex items-center gap-2">
-								<div className="flex items-center gap-2 rounded-full bg-white/40 px-3 py-1.5 border border-white/20 shadow-sm">
+							<div className="flex flex-wrap items-center gap-2">
+								{hasSelection ? (
+									<Badge variant="secondary" className="h-7 rounded-full px-3 text-xs">
+										{selectedCount} selected
+									</Badge>
+								) : null}
+								<div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/40 px-3 py-1.5 shadow-sm">
 									<Switch
 										id="show-flagged"
 										checked={onlyFlagged}
@@ -981,19 +1087,55 @@ ${
 										Flagged Only
 									</Label>
 								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={toggleSelectAll}
+									disabled={visibleComments.length === 0}
+									className="h-8"
+								>
+									{allVisibleSelected ? 'Clear selection' : 'Select all'}
+								</Button>
+								<Button
+									variant="destructive"
+									size="sm"
+									onClick={handleBulkDelete}
+									disabled={!hasSelection || deleteCommentsMutation.isPending}
+									className="h-8 gap-2"
+								>
+									{deleteCommentsMutation.isPending ? (
+										<>
+											<Loader2 className="h-4 w-4 animate-spin" />
+											Deleting...
+										</>
+									) : (
+										<>
+											<Trash2 className="h-4 w-4" />
+											Delete Selected
+										</>
+									)}
+								</Button>
 							</div>
 						</div>
 
-						{mediaQuery.isLoading ? (
-							<div className="grid gap-4 sm:grid-cols-2">
-								{[1, 2, 3, 4].map((i) => (
-									<div key={i} className="h-40 rounded-2xl bg-secondary/30 animate-pulse" />
-								))}
-							</div>
-						) : visibleComments.length > 0 ? (
-							<div className="grid gap-4 sm:grid-cols-2">
-								{visibleComments.map((comment: any, idx: number) => (
-									<CommentCard key={idx} comment={comment} mediaId={id} />
+							{mediaQuery.isLoading ? (
+								<div className="space-y-3">
+									{[1, 2, 3, 4].map((i) => (
+										<div key={i} className="h-40 rounded-2xl bg-secondary/30 animate-pulse" />
+									))}
+								</div>
+							) : visibleComments.length > 0 ? (
+								<div className="space-y-3">
+									{visibleComments.map((comment) => (
+										<CommentCard
+											key={comment.id}
+											comment={comment}
+											mediaId={id}
+											selected={selectedCommentIds.has(comment.id)}
+											onSelectChange={(checked) =>
+												handleSelectComment(comment.id, checked)
+										}
+									/>
 								))}
 							</div>
 						) : (

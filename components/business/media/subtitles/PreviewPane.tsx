@@ -212,9 +212,7 @@ export function PreviewPane(props: PreviewPaneProps) {
               onVideoRef={(ref) => {
                 overlayRef.current = ref
                 setOverlayVideoEl(ref)
-                if (effectiveMode !== 'rendered') {
-                  onVideoRefChange?.(ref)
-                }
+                onVideoRefChange?.(ref)
               }}
               onTimeUpdate={onCurrentTimeChange}
               onDurationChange={onDurationChange}

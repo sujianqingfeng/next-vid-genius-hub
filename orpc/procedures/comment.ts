@@ -102,6 +102,40 @@ export const deleteComment = os
 		return { success: true }
 	})
 
+export const deleteComments = os
+	.input(
+		z.object({
+			mediaId: z.string(),
+			commentIds: z.array(z.string()).min(1),
+		}),
+	)
+	.handler(async ({ input }) => {
+		const { mediaId, commentIds } = input
+		const ids = new Set(commentIds)
+
+		const db = await getDb()
+		const media = await db.query.media.findFirst({
+			where: eq(schema.media.id, mediaId),
+		})
+
+		if (!media || !media.comments) {
+			throw new Error('Media or comments not found')
+		}
+
+		const updatedComments = media.comments.filter((comment) => !ids.has(comment.id))
+		const deletedCount = media.comments.length - updatedComments.length
+
+		await db
+			.update(schema.media)
+			.set({
+				comments: updatedComments,
+				commentCount: updatedComments.length,
+			})
+			.where(eq(schema.media.id, mediaId))
+
+		return { success: true, deleted: deletedCount }
+	})
+
 // Cloud rendering: start job explicitly (Remotion renderer)
 export const startCloudRender = os
     .input(

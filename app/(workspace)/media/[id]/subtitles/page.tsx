@@ -58,12 +58,16 @@ export default function SubtitlesPage() {
 			logger.info('media', `Step changed to: ${step}`)
 		}
 	})
+	const mediaDuration =
+		typeof media === 'object' && media && 'duration' in media
+			? (media as { duration?: number }).duration
+			: undefined
 
 	useEffect(() => {
-		if (typeof media?.duration === 'number' && media.duration > 0) {
-			setPreviewDuration((prev) => (prev > 0 ? prev : media.duration ?? 0))
+		if (typeof mediaDuration === 'number' && mediaDuration > 0) {
+			setPreviewDuration((prev) => (prev > 0 ? prev : mediaDuration ?? 0))
 		}
-	}, [media?.duration])
+	}, [mediaDuration])
 
 	useEffect(() => {
 		if (previewDuration > 0) return
@@ -120,6 +124,14 @@ export default function SubtitlesPage() {
 		updateWorkflowState,
 		setActiveStep,
 	})
+	const renderStatusValue =
+		(cloudStatusQuery.data as { status?: string } | undefined)?.status ?? ''
+	const renderActiveStatuses = ['queued', 'preparing', 'running', 'uploading'] as const
+	const isRenderBusy =
+		startCloudRenderMutation.isPending ||
+		renderActiveStatuses.includes(
+			renderStatusValue as (typeof renderActiveStatuses)[number],
+		)
 
 	const handleDurationChange = useCallback((duration: number) => {
 		if (Number.isFinite(duration) && duration > 0) {
@@ -203,9 +215,7 @@ export default function SubtitlesPage() {
 						hasRenderedVideo={hasRenderedVideo}
 						thumbnail={media?.thumbnail ?? undefined}
 						cacheBuster={previewVersion}
-						isRendering={
-							startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes((cloudStatusQuery.data as any)?.status ?? '')
-						}
+						isRendering={isRenderBusy}
 						cloudStatus={previewCloudStatus}
 						onDurationChange={handleDurationChange}
 						onCurrentTimeChange={handleCurrentTimeChange}
@@ -331,9 +341,7 @@ export default function SubtitlesPage() {
 								</CardHeader>
 								<CardContent className="pt-6">
 									<Step3Render
-										isRendering={
-											startCloudRenderMutation.isPending || (['queued','preparing','running','uploading'] as readonly string[]).includes((cloudStatusQuery.data as any)?.status ?? '')
-										}
+										isRendering={isRenderBusy}
 										onStart={handleRenderStart}
 										errorMessage={startCloudRenderMutation.error?.message}
 										translationAvailable={!!workflowState.translation}

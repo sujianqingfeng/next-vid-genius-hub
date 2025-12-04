@@ -33,7 +33,7 @@ export function ChannelVideoList({ channelId, limit = 20, translatedTitleMap }: 
 
   return (
     <div className="divide-y">
-      {list.map((v) => {
+      {list.map((v: { id: string; title: string; thumbnail?: string | null; url: string }) => {
         const translated = translatedTitleMap?.[v.id]
         return (
           <div key={v.id} className="flex items-center gap-3 py-2">

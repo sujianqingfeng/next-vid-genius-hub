@@ -5,10 +5,11 @@ import { desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { deleteCloudArtifacts, getJobStatus, startCloudJob } from '~/lib/cloudflare'
+import type { JobStatusResponse } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { generatePublishTitles } from '~/lib/ai/titles'
-import { AIModelIds, type AIModelId } from '~/lib/ai/models'
+import { ChatModelIds, type ChatModelId } from '~/lib/ai/models'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
@@ -102,7 +103,11 @@ export const refreshMetadata = os
 			},
 		})
 
-		const terminal = new Set(['completed', 'failed', 'canceled'] as const)
+		const terminal: ReadonlySet<JobStatusResponse['status']> = new Set([
+			'completed',
+			'failed',
+			'canceled',
+		])
 		const startedAt = Date.now()
 		let lastStatus = await getJobStatus(job.jobId)
 
@@ -192,7 +197,7 @@ export const generatePublishTitle = os
   .input(
     z.object({
       mediaId: z.string(),
-      model: z.enum(AIModelIds).optional().default('openai/gpt-4.1-mini' as AIModelId),
+      model: z.enum(ChatModelIds).optional().default('openai/gpt-4.1-mini' as ChatModelId),
       count: z.number().min(3).max(5).optional().default(5),
       maxTranscriptChars: z.number().min(500).max(6000).optional().default(2000),
       maxComments: z.number().min(5).max(100).optional().default(30),
