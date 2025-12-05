@@ -27,14 +27,15 @@ const layout = {
 };
 
 const palette = {
-  background: "#0a0a0a",
-  surface: "#141414",
-  border: "rgba(255, 255, 255, 0.08)",
-  textPrimary: "#ffffff",
-  textSecondary: "#e5e5e5",
-  textMuted: "#a3a3a3",
-  accent: "#ff3b30",
-  accentGlow: "rgba(255, 59, 48, 0.3)",
+  // Airbnb Warm Minimal theme
+  background: "#F7F3EF",
+  surface: "#FFFFFF",
+  border: "rgba(31, 42, 53, 0.08)",
+  textPrimary: "#1F2A35",
+  textSecondary: "#2C3A4A",
+  textMuted: "#6B7280",
+  accent: "#FF5A5F", // Airbnb coral
+  accentGlow: "rgba(255, 90, 95, 0.2)",
 };
 
 const baseFontStack = [
@@ -204,7 +205,7 @@ const MainLayout: React.FC<{
             linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
           `,
           backgroundSize: "40px 40px",
-          opacity: 0.15,
+          opacity: 0.1,
           pointerEvents: "none",
         }}
       />
@@ -215,11 +216,11 @@ const MainLayout: React.FC<{
           position: "absolute",
           top: "20%",
           left: "-10%",
-          width: "400px",
-          height: "400px",
+          width: "340px",
+          height: "340px",
           borderRadius: "50%",
           background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
-          filter: "blur(80px)",
+          filter: "blur(70px)",
           pointerEvents: "none",
         }}
       />
@@ -228,11 +229,11 @@ const MainLayout: React.FC<{
           position: "absolute",
           bottom: "10%",
           right: "-5%",
-          width: "500px",
-          height: "500px",
+          width: "420px",
+          height: "420px",
           borderRadius: "50%",
           background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
-          filter: "blur(100px)",
+          filter: "blur(90px)",
           pointerEvents: "none",
         }}
       />
@@ -325,20 +326,20 @@ const InfoPanel: React.FC<{
           />
           <span style={{ ...sectionLabelStyle, fontSize: 11 }}>CREATOR SPOTLIGHT</span>
         </div>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 36,
-            fontWeight: 900,
-            letterSpacing: "-0.02em",
-            color: palette.textPrimary,
-            lineHeight: 1.15,
-            textTransform: "uppercase",
-            textShadow: "0 2px 30px rgba(0, 0, 0, 0.8)",
-          }}
-        >
-          {videoInfo.translatedTitle ?? videoInfo.title}
-        </h1>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 36,
+              fontWeight: 900,
+              letterSpacing: "-0.02em",
+              color: palette.accent,
+              lineHeight: 1.15,
+              textTransform: "uppercase",
+              textShadow: `0 4px 30px ${palette.accentGlow}`,
+            }}
+          >
+            {videoInfo.translatedTitle ?? videoInfo.title}
+          </h1>
         <div
           style={{
             margin: "14px 0 0",
@@ -518,7 +519,7 @@ const CoverSlide: React.FC<{
             linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
           `,
           backgroundSize: "50px 50px",
-          opacity: 0.2,
+          opacity: 0.12,
         }}
       />
       
@@ -528,11 +529,11 @@ const CoverSlide: React.FC<{
           position: "absolute",
           top: "15%",
           left: "-5%",
-          width: "500px",
-          height: "500px",
+          width: "430px",
+          height: "430px",
           borderRadius: "50%",
           background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
-          filter: "blur(100px)",
+          filter: "blur(80px)",
         }}
       />
       <div
@@ -540,11 +541,11 @@ const CoverSlide: React.FC<{
           position: "absolute",
           bottom: "10%",
           right: "-10%",
-          width: "600px",
-          height: "600px",
+          width: "520px",
+          height: "520px",
           borderRadius: "50%",
           background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
-          filter: "blur(120px)",
+          filter: "blur(95px)",
         }}
       />
       
@@ -643,11 +644,11 @@ const CoverSlide: React.FC<{
             fontWeight: 900,
             letterSpacing: "-0.04em",
             lineHeight: 0.95,
-            color: palette.textPrimary,
+            color: palette.accent,
             textTransform: "uppercase",
             textShadow: `
-              0 0 40px ${palette.accentGlow},
-              0 4px 60px rgba(0, 0, 0, 0.9)
+              0 0 32px ${palette.accentGlow},
+              0 6px 50px ${palette.accentGlow}
             `,
             maxWidth: "90%",
           }}
@@ -877,7 +878,7 @@ const ScrollingCommentWithTranslation: React.FC<{
       letterSpacing: isChineseTranslation ? "0.02em" : "normal",
       fontWeight: isChineseTranslation ? 700 : 300,
       textShadow: isChineseTranslation
-        ? `0 0 20px ${palette.accentGlow}`
+        ? `0 0 10px ${palette.accentGlow}`
         : "none",
     };
   }
@@ -1030,7 +1031,7 @@ const CommentSlide: React.FC<{
     letterSpacing: isChinesePrimary ? "0.02em" : "normal",
     color: isChinesePrimary ? palette.accent : palette.textPrimary,
     fontWeight: isChinesePrimary ? 700 : 400,
-    textShadow: isChinesePrimary ? `0 0 20px ${palette.accentGlow}` : "none",
+    textShadow: isChinesePrimary ? `0 0 12px ${palette.accentGlow}` : "none",
   };
 
   const commentText = comment.content;
@@ -1180,7 +1181,7 @@ const CommentSlide: React.FC<{
                       lineHeight: 1.4,
                       letterSpacing: "0.02em",
                       fontWeight: 700,
-                      textShadow: `0 0 20px ${palette.accentGlow}`,
+                      textShadow: `0 0 12px ${palette.accentGlow}`,
                     }
                   : {}),
               }}
