@@ -19,7 +19,7 @@ export interface TimelineDurations {
 export interface SlotLayout { x: number; y: number; width: number; height: number }
 
 // ---------------- Timeline constants & helpers ----------------
-export const REMOTION_FPS = 30
+export const REMOTION_FPS = 40
 export const COVER_DURATION_SECONDS = 3
 export const MIN_COMMENT_DURATION_SECONDS = 3
 export const MAX_COMMENT_DURATION_SECONDS = 8

@@ -3,7 +3,7 @@ import { CommentsVideo } from './CommentsVideo'
 import { CommentsVideoVertical } from './CommentsVideoVertical'
 import type { CommentVideoInputProps } from './types'
 
-const fps = 30
+const fps = 40
 const width = 1920
 const height = 1080
 
