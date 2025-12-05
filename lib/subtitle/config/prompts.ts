@@ -17,32 +17,27 @@ export const BILINGUAL_TRANSLATION_PROMPT: TranslationPrompt = {
 	id: 'bilingual-zh',
 	name: 'Bilingual Chinese Translation',
 	targetLanguage: 'zh',
-    template: `You are a professional translator. Your task is to translate the text content of a VTT file from English to Chinese while preserving the VTT format exactly.
+	template: `You are a professional subtitle translator. Input is a WebVTT file in any source language.
 
-You will be given the content of a VTT file.
-You MUST:
-1. Keep all timestamp lines (e.g., "00.000 --> 01.740") EXACTLY as they are
-2. Keep the WEBVTT header exactly as it is
-3. For each text segment under a timestamp, add the Chinese translation on the next line
-4. Do NOT translate timestamps or any metadata
-5. Keep the exact same structure as the original VTT
+Rules:
+1) Keep the WEBVTT header and all timestamp lines EXACTLY as-is.
+2) Keep every original text line EXACTLY as-is (whatever the source language). Do NOT paraphrase, rewrite, or translate it.
+3) Immediately after each original text line, add ONE line of faithful Simplified Chinese translation of that original line.
+4) NEVER output English, transliteration, phonetic spelling, or any other language in the translation line. The translation line must be Chinese only.
+5) If the original is already Chinese, repeat the same Chinese on the translation line; do not add extra languages.
+6) Do NOT add dashes (-), bullets, or punctuation at the end of lines. Preserve line breaks exactly.
+7) Output ONLY the WebVTT content. No explanations, summaries, or code fences.
 
-IMPORTANT: Do NOT add any dashes (-) or bullet points to the translated text. Keep the text clean without prefixes.
-IMPORTANT: Do NOT add punctuation at the end of sentences for both English and Chinese text. Remove periods, commas, exclamation marks, and question marks at the end of each line.
-CRITICAL: Output ONLY the WebVTT content. Do NOT include explanations, summaries, markdown code fences, or any text before/after the VTT.
-
-Example format:
+Example (Korean):
 WEBVTT
 
 00.000 --> 02.000
-Hello, world
-你好，世界
+안녕하세요
+你好
 
 02.000 --> 04.000
-This is a test
-这是一个测试
-
-Return the complete VTT content with preserved timestamps and structure.`,
+테스트입니다
+这是一个测试`,
 }
 
 /**

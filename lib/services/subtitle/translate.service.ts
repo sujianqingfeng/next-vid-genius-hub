@@ -28,15 +28,26 @@ export async function translate(input: { mediaId: string; model: AIModelId; prom
   const compact = originalCues.map((c) => ({ start: c.start, end: c.end, text: c.lines.join(' ').replace(/\s+/g, ' ').trim() }))
 
   const Schema = z.object({
-    cues: z.array(z.object({ start: z.string(), end: z.string(), en: z.string().optional().default(''), zh: z.string() })).min(1),
+    cues: z
+      .array(
+        z.object({
+          start: z.string(),
+          end: z.string(),
+          // Keep original text as-is; translator must not rewrite it
+          en: z.string().optional().default(''),
+          zh: z.string(),
+        }),
+      )
+      .min(1),
   })
 
-  const system = `You are a subtitle translator that outputs JSON only. Translate English to Chinese.
+  const system = `You are a subtitle translator that outputs JSON only. The source text can be ANY language (Korean, Japanese, English, etc.).
 Strict rules:
 - Keep timestamps (start, end) EXACTLY as provided
 - Produce the SAME number of cues, same order
-- For each cue: keep 'en' as concise English (optionally identical to input, without trailing punctuation), and 'zh' as natural Chinese
-- Do NOT add bullets, dashes, or extra commentary
+- For each cue: 'en' MUST copy the original text EXACTLY (no paraphrasing, no translating, no romanization)
+- For each cue: 'zh' MUST be a faithful Simplified Chinese translation of the original text (no other languages)
+- Do NOT add bullets, dashes, phonetics, or extra commentary
 - Remove trailing sentence-ending punctuation in both languages
 - Output strictly valid JSON matching the provided schema`
 
@@ -57,11 +68,11 @@ Strict rules:
 
   const pairs = originalCues.map((c, i) => {
     const enFallback = c.lines.join(' ').trim()
-    const rawEn = (objectCues[i]?.en ?? enFallback).trim()
     const rawZh = (objectCues[i]?.zh ?? '').trim()
     const clean = (s: string) => s.replace(/^[-•\s]+/, '').replace(/[.,!?，。！？]$/g, '').trim()
-    const enText = clean(rawEn || enFallback)
-    const zhText = clean(rawZh || rawEn || enFallback)
+    // Force first line to remain the original text (no AI rewrite)
+    const enText = clean(enFallback)
+    const zhText = clean(rawZh || enFallback)
     const lines = [enText, zhText]
     return { start: c.start, end: c.end, lines }
   })
