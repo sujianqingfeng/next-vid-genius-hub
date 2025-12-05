@@ -598,6 +598,19 @@ async function handleRender(req, res) {
     jobId,
     engineOptions: safeEngineOptions,
   });
+  const maskUrl = (u) => (u ? String(u).split("?")[0] : null);
+  console.log("[media-downloader] outputs summary", {
+    jobId,
+    outputVideoKey,
+    outputAudioKey,
+    outputMetadataKey,
+    hasVideoPutUrl: Boolean(outputVideoPutUrl),
+    hasAudioPutUrl: Boolean(outputAudioPutUrl),
+    hasMetadataPutUrl: Boolean(outputMetadataPutUrl),
+    videoPutUrl: maskUrl(outputVideoPutUrl),
+    audioPutUrl: maskUrl(outputAudioPutUrl),
+    metadataPutUrl: maskUrl(outputMetadataPutUrl),
+  });
 
   sendJson(res, 202, { jobId });
 
@@ -926,13 +939,57 @@ async function handleRender(req, res) {
               );
             },
             uploadVideo: async (path) => {
+              const stat = await fsPromises.stat(path);
+              console.log("[media-downloader] upload video start", {
+                jobId,
+                path,
+                bytes: stat.size,
+                outputVideoKey,
+                videoPutUrl: maskUrl(outputVideoPutUrl),
+              });
               const buf = readFileSync(path);
-              await uploadArtifact(outputVideoPutUrl, buf, "video/mp4");
+              try {
+                await uploadArtifact(outputVideoPutUrl, buf, "video/mp4");
+                console.log("[media-downloader] upload video success", {
+                  jobId,
+                  bytes: buf.length,
+                  outputVideoKey,
+                });
+              } catch (err) {
+                console.error("[media-downloader] upload video failed", {
+                  jobId,
+                  outputVideoKey,
+                  error: err?.message || String(err),
+                });
+                throw err;
+              }
             },
             uploadAudio: async (path) => {
               if (!outputAudioPutUrl) return;
+              const stat = await fsPromises.stat(path);
+              console.log("[media-downloader] upload audio start", {
+                jobId,
+                path,
+                bytes: stat.size,
+                outputAudioKey,
+                audioPutUrl: maskUrl(outputAudioPutUrl),
+              });
               const buf = readFileSync(path);
-              await uploadArtifact(outputAudioPutUrl, buf, "audio/mpeg");
+              try {
+                await uploadArtifact(outputAudioPutUrl, buf, "audio/mpeg");
+                console.log("[media-downloader] upload audio success", {
+                  jobId,
+                  bytes: buf.length,
+                  outputAudioKey,
+                });
+              } catch (err) {
+                console.error("[media-downloader] upload audio failed", {
+                  jobId,
+                  outputAudioKey,
+                  error: err?.message || String(err),
+                });
+                throw err;
+              }
             },
           },
         },
