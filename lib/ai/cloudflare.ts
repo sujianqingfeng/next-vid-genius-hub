@@ -36,6 +36,38 @@ export interface CloudflareErrorResponse {
 
 export type CloudflareApiResponse = CloudflareTranscriptionResponse | CloudflareErrorResponse
 
+function extractWords(payload: unknown): TranscriptionWord[] | undefined {
+	if (!payload || typeof payload !== 'object') return undefined
+	const obj = payload as { words?: unknown; segments?: unknown }
+	if (Array.isArray(obj.words) && obj.words.length > 0) {
+		return obj.words as TranscriptionWord[]
+	}
+	if (Array.isArray(obj.segments)) {
+		const collected: TranscriptionWord[] = []
+		for (const seg of obj.segments as Array<{ words?: unknown }>) {
+			if (seg && Array.isArray(seg.words)) {
+				for (const w of seg.words) {
+					if (
+						w &&
+						typeof w === 'object' &&
+						typeof (w as any).word === 'string' &&
+						typeof (w as any).start === 'number' &&
+						typeof (w as any).end === 'number'
+					) {
+						collected.push({
+							word: (w as any).word,
+							start: (w as any).start,
+							end: (w as any).end,
+						})
+					}
+				}
+			}
+		}
+		return collected.length > 0 ? collected : undefined
+	}
+	return undefined
+}
+
 /**
  * Transcribe audio using Cloudflare Workers AI Whisper model
  *
@@ -165,8 +197,6 @@ export async function transcribeWithCloudflareWhisper(
 		}
 		if (!result) throw lastErr ?? new Error('Unknown Cloudflare error')
 
-		
-
 		// Check for error response
 		if ('success' in result && !result.success) {
 			throw new Error(result.errors?.map(e => e.message).join(', ') || 'Transcription failed')
@@ -175,9 +205,10 @@ export async function transcribeWithCloudflareWhisper(
 		// Check for successful response with text in result object
 		if ('result' in result && result.result && result.result.text) {
 			const transcriptionData = result.result
+			const words = extractWords(transcriptionData)
 			return {
 				vtt: transcriptionData.vtt || convertToVTT(transcriptionData.text),
-				words: transcriptionData.words
+				words,
 			}
 		}
 
@@ -185,25 +216,29 @@ export async function transcribeWithCloudflareWhisper(
 		if ('text' in result && result.text) {
 			// Type assertion for direct format
 			const directResult = result as CloudflareTranscriptionData
+			const words = extractWords(directResult)
 			return {
 				vtt: directResult.vtt || convertToVTT(directResult.text),
-				words: directResult.words
+				words,
 			}
 		}
 
-        logger.error('transcription', 'Unexpected response format from Cloudflare API')
-        throw new Error('Transcription failed - unexpected response format')
-    } catch (error) {
-        logger.error('transcription', `Cloudflare Whisper transcription error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-        const baseMsg = error instanceof Error ? error.message : 'Unknown error'
-        // Offer actionable guidance on common network issues
+		logger.error('transcription', 'Unexpected response format from Cloudflare API')
+		throw new Error('Transcription failed - unexpected response format')
+	} catch (error) {
+		logger.error(
+			'transcription',
+			`Cloudflare Whisper transcription error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+		)
+		const baseMsg = error instanceof Error ? error.message : 'Unknown error'
+		// Offer actionable guidance on common network issues
 		if (typeof baseMsg === 'string' && /UND_ERR_CONNECT_TIMEOUT|ECONNRESET|ENETUNREACH|ETIMEDOUT/i.test(baseMsg)) {
 			const hint = `
-		Cannot reach api.cloudflare.com within the configured connect timeout.
-		- If you are behind a corporate proxy or egress is restricted, set CF_PROXY_URL/HTTPS_PROXY/HTTP_PROXY.
-		- You can increase timeouts via CF_CONNECT_TIMEOUT_MS/CF_HEADERS_TIMEOUT_MS/CF_BODY_TIMEOUT_MS.
-		- As a fallback, try provider 'local' (WHISPER_CPP_PATH required) or use downsampleBackend='cloud' to route via orchestrator.
-		`.trim()
+	Cannot reach api.cloudflare.com within the configured connect timeout.
+	- If you are behind a corporate proxy or egress is restricted, set CF_PROXY_URL/HTTPS_PROXY/HTTP_PROXY.
+	- You can increase timeouts via CF_CONNECT_TIMEOUT_MS/CF_HEADERS_TIMEOUT_MS/CF_BODY_TIMEOUT_MS.
+	- As a fallback, try provider 'local' (WHISPER_CPP_PATH required) or use downsampleBackend='cloud' to route via orchestrator.
+	`.trim()
 			throw new Error(`Cloudflare transcription failed: ${baseMsg}. ${hint}`)
 		}
 		throw new Error(`Cloudflare transcription failed: ${baseMsg}`)
