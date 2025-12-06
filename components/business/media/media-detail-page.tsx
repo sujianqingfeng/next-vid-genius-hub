@@ -241,13 +241,6 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 									</Button>
 								</Link>
 
-								<Link href={`/media/download?id=${id}`}>
-									<Button variant="secondary" size="lg" className="h-12 px-6 bg-secondary/80 hover:bg-secondary transition-all">
-										<Download className="w-4 h-4 mr-2" strokeWidth={1.5} />
-										Download
-									</Button>
-								</Link>
-
 								<div className="flex flex-col sm:flex-row gap-3 ml-auto w-full sm:w-auto">
 									<div className="w-full sm:w-[200px]">
 										<ProxySelector

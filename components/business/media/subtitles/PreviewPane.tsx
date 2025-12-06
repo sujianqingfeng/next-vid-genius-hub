@@ -2,16 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '~/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Progress } from '~/components/ui/progress'
-import { Video, Layers, MonitorPlay, Film } from 'lucide-react'
+import { Video, Film } from 'lucide-react'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { VideoPreview } from './VideoPreview/VideoPreview'
 import { STATUS_LABELS } from '~/lib/config/media-status.config'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
-
-type PreviewMode = 'auto' | 'overlay' | 'rendered'
 
 interface PreviewPaneProps {
   mediaId: string
@@ -43,33 +40,7 @@ export function PreviewPane(props: PreviewPaneProps) {
     onVideoRefChange,
   } = props
 
-  const storageKey = useMemo(() => `subtitlePreviewMode:${mediaId}`, [mediaId])
-  const [mode, setMode] = useState<PreviewMode>('auto')
-
-  useEffect(() => {
-    try {
-      const val = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
-      if (val === 'overlay' || val === 'rendered' || val === 'auto') setMode(val)
-    } catch {}
-  }, [storageKey])
-
-  useEffect(() => {
-    if (!hasRenderedVideo && mode === 'rendered') {
-      setMode('auto')
-    }
-  }, [hasRenderedVideo, mode])
-
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') window.localStorage.setItem(storageKey, mode)
-    } catch {}
-  }, [mode, storageKey])
-
-  const effectiveMode: PreviewMode = useMemo(() => {
-    if (mode === 'auto') return hasRenderedVideo ? 'rendered' : 'overlay'
-    if (mode === 'rendered' && !hasRenderedVideo) return 'overlay'
-    return mode
-  }, [mode, hasRenderedVideo])
+  const effectiveMode: 'overlay' | 'rendered' = hasRenderedVideo ? 'rendered' : 'overlay'
 
   const renderedUrlBase = `/api/media/${mediaId}/rendered`
   const renderedSrc = cacheBuster ? `${renderedUrlBase}?v=${cacheBuster}` : renderedUrlBase
@@ -143,43 +114,13 @@ export function PreviewPane(props: PreviewPaneProps) {
           <h3 className="text-lg font-semibold">Preview</h3>
           {hasRenderedVideo && <Badge variant="secondary">Rendered</Badge>}
         </div>
-        <div className="flex items-center gap-3">
-          {(isRendering || cloudStatus?.status) && (
-            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-              <Film className="h-4 w-4" />
-              <span>{statusLabel ?? 'Rendering…'}</span>
-              {typeof progressPct === 'number' && <span className="tabular-nums">• {progressPct}%</span>}
-            </div>
-          )}
-          <Select
-            value={mode}
-            onValueChange={(v) => setMode(v as PreviewMode)}
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="auto">
-                <div className="flex items-center gap-2">
-                  <MonitorPlay className="h-4 w-4" />
-                  Auto
-                </div>
-              </SelectItem>
-              <SelectItem value="overlay">
-                <div className="flex items-center gap-2">
-                  <Layers className="h-4 w-4" />
-                  Source + Overlay
-                </div>
-              </SelectItem>
-              <SelectItem value="rendered" disabled={!hasRenderedVideo}>
-                <div className="flex items-center gap-2">
-                  <Film className="h-4 w-4" />
-                  Rendered
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {(isRendering || cloudStatus?.status) && (
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <Film className="h-4 w-4" />
+            <span>{statusLabel ?? 'Rendering…'}</span>
+            {typeof progressPct === 'number' && <span className="tabular-nums">• {progressPct}%</span>}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
