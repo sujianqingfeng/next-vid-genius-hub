@@ -102,7 +102,6 @@ export default function SubtitlesPage() {
 		selectedModel,
 		selectedAIModel,
 		selectedLanguage,
-		downsampleBackend,
 		cloudStatusQuery,
 		previewCloudStatus,
 		previewVersion,
@@ -288,8 +287,6 @@ export default function SubtitlesPage() {
 												? transcribeMutation.error.message
 												: undefined
 										}
-										downsampleBackend={downsampleBackend}
-										onDownsampleBackendChange={(v) => updateWorkflowState({ downsampleBackend: v })}
 									/>
 								</CardContent>
 							</Card>

@@ -22,7 +22,6 @@ import {
 import type { WhisperModel } from '~/lib/subtitle/config/models'
 import { DEFAULT_CHAT_MODEL_ID, type ChatModelId } from '~/lib/ai/models'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
-import type { DownsampleBackend } from '~/lib/subtitle/types'
 import { useEffect, useMemo, useState } from 'react'
 import {
 	DEFAULT_TRANSCRIPTION_LANGUAGE,
@@ -50,9 +49,6 @@ interface Step1TranscribeProps {
   // (server will strictly preserve cues and timestamps)
   textCorrectDefault?: boolean
   onRestoreOriginal?: () => void
-  // Downsample backend selection
-  downsampleBackend?: DownsampleBackend
-  onDownsampleBackendChange?: (v: DownsampleBackend) => void
   selectedLanguage?: TranscriptionLanguage
   onLanguageChange?: (lang: TranscriptionLanguage) => void
 }
@@ -73,8 +69,6 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 		onOptimize,
 		isClearingOptimized,
 		onRestoreOriginal,
-		downsampleBackend,
-		onDownsampleBackendChange,
 		selectedLanguage,
 		onLanguageChange,
 	} = props
@@ -91,7 +85,6 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 	const [maxChars, setMaxChars] = useState<number>(68)
 	const [lightCleanup, setLightCleanup] = useState<boolean>(false)
 	const [textCorrect, setTextCorrect] = useState<boolean>(false)
-	const [downBackend, setDownBackend] = useState<DownsampleBackend>(downsampleBackend || 'auto')
 
 	useEffect(() => {
 		if (!storageKey) return
@@ -104,9 +97,6 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 				if (typeof obj.maxChars === 'number') setMaxChars(obj.maxChars)
 				if (typeof obj.lightCleanup === 'boolean') setLightCleanup(obj.lightCleanup)
 				if (typeof obj.textCorrect === 'boolean') setTextCorrect(obj.textCorrect)
-				if (obj.downsampleBackend === 'auto' || obj.downsampleBackend === 'local' || obj.downsampleBackend === 'cloud') {
-					setDownBackend(obj.downsampleBackend)
-				}
 			}
 		} catch {}
 	}, [storageKey])
@@ -115,17 +105,13 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 		if (!storageKey) return
 		try {
 			if (typeof window !== 'undefined') {
-				window.localStorage.setItem(
-					storageKey,
-					JSON.stringify({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect, downsampleBackend: downBackend }),
-				)
-			}
-		} catch {}
-	}, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect, downBackend])
-
-	useEffect(() => {
-		if (downsampleBackend && downsampleBackend !== downBackend) setDownBackend(downsampleBackend)
-	}, [downsampleBackend, downBackend])
+					window.localStorage.setItem(
+						storageKey,
+						JSON.stringify({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect }),
+					)
+				}
+			} catch {}
+		}, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect])
 
 	return (
 		<div className="space-y-6">
@@ -134,11 +120,11 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 				<div className="flex flex-col sm:flex-row gap-3 items-end">
 					<div className="min-w-[140px]">
 						<label className="text-sm font-medium mb-2 block">Provider</label>
-						<div className="flex items-center gap-2 text-sm text-muted-foreground">
-							<Cloud className="h-4 w-4 text-primary" />
-							<span>Cloudflare Whisper</span>
-						</div>
-					</div>
+				<div className="flex items-center gap-2 text-sm text-muted-foreground">
+					<Cloud className="h-4 w-4 text-primary" />
+					<span>Cloudflare Whisper</span>
+				</div>
+			</div>
 
 					<div className="min-w-[140px]">
 						<label className="text-sm font-medium mb-2 block">Model</label>
@@ -160,34 +146,11 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 						</Select>
 					</div>
 
-            {/* Downsample backend selector */}
-            <div className="min-w-[160px]">
-              <label className="text-sm font-medium mb-2 block">Downsample</label>
-              <Select
-                value={downBackend}
-                onValueChange={(v) => {
-                  const val = v as DownsampleBackend
-                  setDownBackend(val)
-                  onDownsampleBackendChange?.(val)
-                }}
-                disabled={isPending}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select downsample backend" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Auto</SelectItem>
-                  <SelectItem value="local">Local</SelectItem>
-                  <SelectItem value="cloud">Cloud</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-					<div className="min-w-[160px]">
-							<label className="text-sm font-medium mb-2 block">
-								Language{' '}
-								{selectedModel &&
-									!WHISPER_MODELS[selectedModel]?.supportsLanguageHint && (
+						<div className="min-w-[160px]">
+								<label className="text-sm font-medium mb-2 block">
+									Language{' '}
+									{selectedModel &&
+										!WHISPER_MODELS[selectedModel]?.supportsLanguageHint && (
 										<span className="text-xs text-muted-foreground">(仅 Large v3 Turbo 支持)</span>
 									)}
 							</label>
@@ -230,22 +193,8 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 
 				{/* Pipeline indicator */}
 					<div className="text-xs text-muted-foreground flex items-center gap-2">
-						{downBackend === 'cloud' ? (
-							<>
-								<Badge variant="secondary">ASR Pipeline: Cloud</Badge>
-								<span>转写在 Cloudflare Worker 侧完成（降采样 + Whisper）。</span>
-							</>
-						) : downBackend === 'local' ? (
-							<>
-								<Badge variant="outline">ASR Pipeline: Next</Badge>
-								<span>由 Next 直连 Workers AI（需要本地 CLOUDFLARE_* 令牌）。</span>
-							</>
-						) : (
-							<>
-								<Badge variant="secondary">ASR Pipeline: Auto</Badge>
-								<span>Serverless 环境将走 Cloud；本地可能走 Next。</span>
-							</>
-						)}
+						<Badge variant="secondary">ASR Pipeline: Cloud</Badge>
+						<span>降采样与转写均在 Cloudflare Worker 侧完成。</span>
 					</div>
 
 				{/* Optimization Controls - Shown when transcription exists */}

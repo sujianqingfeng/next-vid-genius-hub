@@ -11,7 +11,6 @@ import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { getDefaultModel, WHISPER_MODELS, type WhisperModel } from '~/lib/subtitle/config/models'
 import type {
-	DownsampleBackend,
 	SubtitleRenderConfig,
 	SubtitleStepId,
 	SubtitleWorkflowState,
@@ -57,8 +56,6 @@ export function useSubtitleActions({
 	const selectedAIModel: ChatModelId =
 		workflowState.selectedAIModel ?? initialChatModel
 
-	const downsampleBackend: DownsampleBackend =
-		workflowState.downsampleBackend ?? 'cloud'
 	const selectedLanguage: TranscriptionLanguage =
 		workflowState.transcriptionLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE
 
@@ -192,13 +189,11 @@ export function useSubtitleActions({
 			)
 			updateWorkflowState({
 				selectedModel,
-				downsampleBackend,
 				transcriptionLanguage: selectedLanguage,
 			})
 			transcribeMutation.mutate({
 				mediaId,
 				model: selectedModel,
-				downsampleBackend,
 				inputFormat: cloudflareInputFormat,
 				language:
 					canHintLanguage && selectedLanguage && selectedLanguage !== DEFAULT_TRANSCRIPTION_LANGUAGE
@@ -238,7 +233,6 @@ export function useSubtitleActions({
 			selectedModel,
 			selectedAIModel,
 			selectedLanguage,
-			downsampleBackend,
 
 		// cloud render + preview
 		cloudStatusQuery,
