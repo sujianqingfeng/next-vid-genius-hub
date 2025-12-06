@@ -118,6 +118,41 @@ class_name = "BurnerFfmpegContainer"
 name = "RENDERER_REMOTION"
 class_name = "RendererRemotionContainer"
 
+# Lightweight local env without Cloudflare Containers (uses external Docker services and skips remote container builds)
+[env.local-lite]
+name = "media-orchestrator-local-lite"
+
+[env.local-lite.vars]
+PREFER_EXTERNAL_CONTAINERS = "true"
+NO_CF_CONTAINERS = "true"
+JOB_TTL_SECONDS = 86400
+CONTAINER_BASE_URL = "http://localhost:9080"
+CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
+CONTAINER_BASE_URL_REMOTION = "http://localhost:8090"
+CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
+NEXT_BASE_URL = "http://localhost:3000"
+JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
+PUT_EXPIRES = 600
+S3_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
+S3_INTERNAL_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
+S3_BUCKET_NAME = "vidgen-render"
+S3_STYLE = "vhost"
+S3_REGION = "us-east-1"
+ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
+
+[[env.local-lite.kv_namespaces]]
+binding = "JOBS"
+id = "local-jobs-namespace"
+preview_id = "local-jobs-namespace"
+
+[[env.local-lite.r2_buckets]]
+binding = "RENDER_BUCKET"
+bucket_name = "vidgen-render"
+
+[[env.local-lite.durable_objects.bindings]]
+name = "RENDER_JOB_DO"
+class_name = "RenderJobDO"
+
 ## Production environment bindings (replace with real IDs before deploy)
 [env.production]
 
