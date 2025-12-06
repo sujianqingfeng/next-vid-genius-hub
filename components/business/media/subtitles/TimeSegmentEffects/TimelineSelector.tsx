@@ -29,12 +29,13 @@ export function TimelineSelector({
 	onChange,
 	onPlayPreview,
 }: TimelineSelectorProps) {
-	
 	const [isDragging, setIsDragging] = useState<'start' | 'end' | 'segment' | null>(null)
 	const [dragStartX, setDragStartX] = useState(0)
 	const [dragStartTime, setDragStartTime] = useState(0)
 	const [dragEndTime, setDragEndTime] = useState(0)
 	const timelineRef = useRef<HTMLDivElement>(null)
+	// 当前选中时间段元素，用来判断点击是否发生在选区内部
+	const segmentRef = useRef<HTMLDivElement>(null)
 
 	// 将时间转换为像素位置
 	const timeToPosition = (time: number) => {
@@ -98,15 +99,21 @@ export function TimelineSelector({
 		document.addEventListener('mousemove', handleMouseMove)
 		document.addEventListener('mouseup', handleMouseUp)
 
-		return () => {
-			document.removeEventListener('mousemove', handleMouseMove)
-			document.removeEventListener('mouseup', handleMouseUp)
-		}
-	}, [isDragging, dragStartX, dragStartTime, dragEndTime, duration, onChange])
+			return () => {
+				document.removeEventListener('mousemove', handleMouseMove)
+				document.removeEventListener('mouseup', handleMouseUp)
+			}
+		}, [isDragging, dragStartX, dragStartTime, dragEndTime, duration, onChange])
 
 	// 处理时间轴点击事件
 	const handleTimelineClick = (e: React.MouseEvent) => {
 		if (isDragging || duration <= 0) return
+
+		// 如果点击发生在当前选中的蓝色时间段内部（包括两侧手柄），交互完全由拖动负责，
+		// 此处不再触发“点击移动整个时间段”的逻辑，避免拖动结束时出现突然位移
+		if (segmentRef.current && segmentRef.current.contains(e.target as Node)) {
+			return
+		}
 
 		const rect = timelineRef.current?.getBoundingClientRect()
 		if (!rect) return
@@ -248,6 +255,7 @@ const renderPreciseInput = (kind: 'start' | 'end') => {
 							className={`absolute top-1 bottom-1 bg-blue-500 rounded transition-opacity ${
 								conflicts.length > 0 ? 'opacity-70' : 'opacity-90'
 							} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+							ref={segmentRef}
 							style={{
 								left: `${timeToPosition(startTime)}%`,
 								width: `${timeToPosition(endTime - startTime)}%`,
