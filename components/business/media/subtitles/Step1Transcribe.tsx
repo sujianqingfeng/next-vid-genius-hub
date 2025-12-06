@@ -111,80 +111,82 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 					)
 				}
 			} catch {}
-		}, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect])
+	}, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect])
 
 	return (
 		<div className="space-y-6">
 			{/* Transcription Controls */}
 			<div className="space-y-4">
-				<div className="flex flex-col sm:flex-row gap-3 items-end">
-					<div className="min-w-[140px]">
-						<label className="text-sm font-medium mb-2 block">Provider</label>
-				<div className="flex items-center gap-2 text-sm text-muted-foreground">
-					<Cloud className="h-4 w-4 text-primary" />
-					<span>Cloudflare Whisper</span>
-				</div>
-			</div>
+				<div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+					<div className="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-3">
+						<div className="space-y-2">
+							<label className="text-sm font-medium block">Provider</label>
+							<div className="flex items-center gap-2 text-sm text-muted-foreground">
+								<Cloud className="h-4 w-4 text-primary" />
+								<span>Cloudflare Whisper</span>
+							</div>
+						</div>
 
-					<div className="min-w-[140px]">
-						<label className="text-sm font-medium mb-2 block">Model</label>
-						<Select
-							value={selectedModel}
-							onValueChange={(value) => onModelChange(value as WhisperModel)}
-							disabled={isPending}
-						>
-							<SelectTrigger>
-								<SelectValue placeholder="Select model" />
-							</SelectTrigger>
-							<SelectContent>
-								{availableModels.map((model) => (
-									<SelectItem key={model} value={model}>
-										{getModelLabel(model)}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
+						<div className="space-y-2">
+							<label className="text-sm font-medium block">Model</label>
+							<Select
+								value={selectedModel}
+								onValueChange={(value) => onModelChange(value as WhisperModel)}
+								disabled={isPending}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Select model" />
+								</SelectTrigger>
+								<SelectContent>
+									{availableModels.map((model) => (
+										<SelectItem key={model} value={model}>
+											{getModelLabel(model)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
 
-						<div className="min-w-[160px]">
-								<label className="text-sm font-medium mb-2 block">
-									Language{' '}
-									{selectedModel &&
-										!WHISPER_MODELS[selectedModel]?.supportsLanguageHint && (
+						<div className="space-y-2">
+							<label className="text-sm font-medium block">
+								Language{' '}
+								{selectedModel &&
+									!WHISPER_MODELS[selectedModel]?.supportsLanguageHint && (
 										<span className="text-xs text-muted-foreground">(仅 Large v3 Turbo 支持)</span>
 									)}
 							</label>
-						<Select
-							value={selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
-							onValueChange={(value) =>
-								onLanguageChange?.((value as TranscriptionLanguage) ?? DEFAULT_TRANSCRIPTION_LANGUAGE)
-							}
-							disabled={
-								isPending ||
-								(selectedModel &&
-									!WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
-							}
-						>
-							<SelectTrigger>
-								<SelectValue placeholder="Auto detect" />
-							</SelectTrigger>
-							<SelectContent>
-								{TRANSCRIPTION_LANGUAGE_OPTIONS.map((opt) => (
-									<SelectItem key={opt.value} value={opt.value}>
-										{opt.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<p className="text-xs text-muted-foreground mt-1">
+							<Select
+								value={selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
+								onValueChange={(value) =>
+									onLanguageChange?.((value as TranscriptionLanguage) ?? DEFAULT_TRANSCRIPTION_LANGUAGE)
+								}
+								disabled={
+									isPending ||
+									(selectedModel &&
+										!WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
+								}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Auto detect" />
+								</SelectTrigger>
+								<SelectContent>
+									{TRANSCRIPTION_LANGUAGE_OPTIONS.map((opt) => (
+										<SelectItem key={opt.value} value={opt.value}>
+											{opt.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<p className="text-xs text-muted-foreground">
 								Workers AI 需要单一语言音频；若混用多语言，请显式指定语言。
 							</p>
 						</div>
+					</div>
 
 					<Button
 						onClick={onStart}
 						disabled={isPending}
-						className="min-w-[140px]"
+						className="w-full min-w-[160px] lg:w-auto"
 					>
 						{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
 						{isPending ? 'Processing...' : 'Generate'}
@@ -192,15 +194,15 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 				</div>
 
 				{/* Pipeline indicator */}
-					<div className="text-xs text-muted-foreground flex items-center gap-2">
-						<Badge variant="secondary">ASR Pipeline: Cloud</Badge>
-						<span>降采样与转写均在 Cloudflare Worker 侧完成。</span>
-					</div>
+				<div className="text-xs text-muted-foreground flex items-center gap-2">
+					<Badge variant="secondary">ASR Pipeline: Cloud</Badge>
+					<span>降采样与转写均在 Cloudflare Worker 侧完成。</span>
+				</div>
 
 				{/* Optimization Controls - Shown when transcription exists */}
 				{transcription && canOptimize && (
-					<div className="border rounded-lg p-4 bg-muted/30 space-y-3">
-						<div className="flex items-center justify-between">
+					<div className="border rounded-lg p-4 bg-muted/30 space-y-4">
+						<div className="flex items-center justify-between gap-2">
 							<h4 className="font-medium">Optimize Transcription</h4>
 							{onRestoreOriginal && props.optimizedTranscription && (
 								<Button
@@ -288,8 +290,8 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 
 			{/* Error Message */}
 			{errorMessage && (
-				<div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-					<AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
+				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+					<AlertCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
 					<p className="text-sm text-red-700">{errorMessage}</p>
 				</div>
 			)}
@@ -298,7 +300,7 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 			{transcription && (
 				<div className="space-y-3">
 					<div className="flex items-center gap-2">
-						<h3 className="font-semibold text-gray-900">Result</h3>
+						<h3 className="text-lg font-semibold text-foreground">Result</h3>
 					</div>
 
 					<div className={`grid gap-3 ${props.optimizedTranscription ? 'md:grid-cols-2' : 'grid-cols-1'}`}>

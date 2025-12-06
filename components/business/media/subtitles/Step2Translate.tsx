@@ -37,18 +37,18 @@ export function Step2Translate(props: Step2TranslateProps) {
 	)
 
 	return (
-		<div className="flex flex-col h-full gap-6">
-		<div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-			<ChatModelSelect
-				value={selectedAIModel}
-				onChange={onModelChange}
-				disabled={isPending}
-				triggerClassName="w-full sm:w-[200px]"
-			/>
+		<div className="space-y-6">
+			<div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+				<ChatModelSelect
+					value={selectedAIModel}
+					onChange={onModelChange}
+					disabled={isPending}
+					triggerClassName="w-full lg:w-[240px]"
+				/>
 				<Button
 					onClick={onStart}
 					disabled={isPending || !canStart}
-					className="w-full sm:w-auto"
+					className="w-full min-w-[160px] lg:w-auto"
 				>
 					{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
 					{isPending ? 'Translating...' : 'Start Translation'}
@@ -56,14 +56,14 @@ export function Step2Translate(props: Step2TranslateProps) {
 			</div>
 
 			{translation && (
-				<div className="flex flex-col flex-1 gap-3 min-h-0">
+				<div className="space-y-3">
 					<div className="flex items-center gap-2">
 						<h3 className="text-lg font-semibold">Translation Result</h3>
 						<Badge variant="secondary" className="text-xs">
 							{cues.length} cues
 						</Badge>
 					</div>
-					<div className="flex-1 overflow-y-auto rounded-md border bg-background">
+					<div className="rounded-md border bg-background">
 						{cues.map((cue, idx) => (
 							<div
 								key={`${cue.start}-${cue.end}-${idx}`}
@@ -99,8 +99,8 @@ export function Step2Translate(props: Step2TranslateProps) {
 			)}
 
 			{errorMessage && (
-				<div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-					<AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+					<AlertCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
 					<div>
 						<h3 className="font-semibold text-red-800">Translation Error</h3>
 						<p className="text-red-700 text-sm">{errorMessage}</p>

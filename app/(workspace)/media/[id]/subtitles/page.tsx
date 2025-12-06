@@ -248,8 +248,8 @@ export default function SubtitlesPage() {
 						</TabsList>
 					</div>
 
-					{/* Main Content */}
-					<div className="max-w-5xl mx-auto">
+					{/* Main Content - full width under preview */}
+					<div className="w-full">
 						<TabsContent value="step1" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
 							<Card className="glass border-none shadow-sm">
 								<CardHeader className="border-b border-border/40 pb-4">

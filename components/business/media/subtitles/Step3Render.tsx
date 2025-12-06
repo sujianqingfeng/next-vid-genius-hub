@@ -143,32 +143,58 @@ export function Step3Render(props: Step3RenderProps) {
 
 	return (
 		<div className="space-y-6">
-		{/* 视频预览与字幕列表由顶部 PreviewPane 接管，此处不再重复渲染 */}
+			{/* 顶部操作栏，按钮位置与其他步骤对齐 */}
+			<div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+				<div className="space-y-1">
+					<h3 className="text-base font-semibold text-foreground">Render Video</h3>
+					<p className="text-sm text-muted-foreground">
+						调整字幕样式、时间效果，然后启动渲染。
+					</p>
+				</div>
+				<div className="flex items-center gap-3">
+					<span
+						className={`text-xs px-2 py-1 rounded-full ${
+							translationAvailable
+								? 'text-green-700 bg-green-50'
+								: 'text-orange-700 bg-orange-50'
+						}`}
+					>
+						{translationAvailable ? 'Ready' : 'Need Translation'}
+					</span>
+					<Button
+						onClick={() => onStart({ ...config })}
+						disabled={isRendering || !translationAvailable}
+						size="lg"
+						className="min-w-[160px] h-11"
+					>
+						{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+						{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
+					</Button>
+				</div>
+			</div>
 
 			{/* 配置控制区域 - 下方紧凑布局 */}
 			<div className="grid gap-6 md:grid-cols-2">
 				{/* 左列：基础配置 */}
 				<div className="space-y-4">
-					{/* 预设选择器 */}
 					<div className="rounded-lg border bg-card p-4">
 						<h3 className="text-sm font-medium mb-3">Quick Presets</h3>
-                        <SubtitleConfigControls
-                            presets={SUBTITLE_RENDER_PRESETS}
-                            selectedPresetId={selectedPresetId}
-                            selectedPreset={selectedPreset}
-                            onPresetClick={handlePresetClick}
-                            config={config}
-                            onNumericChange={handleNumericChange}
-                            onOpacityChange={handleOpacityChange}
-                            onColorChange={handleColorChange}
-                            onSetOpacity={(v) => {
-                                const value = Math.min(Math.max(v, COLOR_CONSTANTS.OPACITY_MIN), COLOR_CONSTANTS.OPACITY_MAX)
-                                onConfigChange({ ...config, backgroundOpacity: value })
-                            }}
-                        />
+						<SubtitleConfigControls
+							presets={SUBTITLE_RENDER_PRESETS}
+							selectedPresetId={selectedPresetId}
+							selectedPreset={selectedPreset}
+							onPresetClick={handlePresetClick}
+							config={config}
+							onNumericChange={handleNumericChange}
+							onOpacityChange={handleOpacityChange}
+							onColorChange={handleColorChange}
+							onSetOpacity={(v) => {
+								const value = Math.min(Math.max(v, COLOR_CONSTANTS.OPACITY_MIN), COLOR_CONSTANTS.OPACITY_MAX)
+								onConfigChange({ ...config, backgroundOpacity: value })
+							}}
+						/>
 					</div>
 
-					{/* 提示文本配置 */}
 					<div className="rounded-lg border bg-card p-4">
 						<h3 className="text-sm font-medium mb-3">Hint Text</h3>
 						<HintTextConfigControls
@@ -180,7 +206,6 @@ export function Step3Render(props: Step3RenderProps) {
 
 				{/* 右列：高级配置 */}
 				<div className="space-y-4">
-					{/* 时间段效果管理 */}
 					<div className="rounded-lg border bg-card p-4">
 						<h3 className="text-sm font-medium mb-3">Time Effects</h3>
 						<TimeSegmentEffectsManager
@@ -190,33 +215,6 @@ export function Step3Render(props: Step3RenderProps) {
 							currentTime={currentPreviewTime}
 							onPlayPreview={handlePlayPreview}
 						/>
-					</div>
-
-					{/* 渲染控制 */}
-					<div className="rounded-lg border bg-card p-4">
-						<div className="flex flex-col gap-4">
-							<div className="flex items-center justify-between">
-								<h3 className="text-sm font-medium">Render Settings</h3>
-								{translationAvailable ? (
-									<span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
-										Ready
-									</span>
-								) : (
-									<span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
-										Need Translation
-									</span>
-								)}
-							</div>
-								<Button
-									onClick={() => onStart({ ...config })}
-									disabled={isRendering || !translationAvailable}
-									size="lg"
-									className="w-full h-11"
-								>
-									{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-									{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
-								</Button>
-						</div>
 					</div>
 				</div>
 			</div>
