@@ -2,6 +2,19 @@ import { ProxyAgent, fetch as undiciFetch } from 'undici'
 import { Innertube, UniversalCache } from 'youtubei.js'
 import { extractVideoId, type BasicComment, type CommentsDownloadParams } from './core/shared'
 
+export type ChannelListItem = {
+  id: string
+  title: string
+  url: string
+  thumbnail?: string
+  publishedAt?: string
+}
+
+export type ChannelListResult = {
+  channelId: string | null
+  videos: ChannelListItem[]
+}
+
 function makeFetchWithProxy(proxyUrl?: string) {
   const agent = proxyUrl ? new ProxyAgent(proxyUrl) : undefined
   return async (input: any, init: any = {}) => {
@@ -188,8 +201,95 @@ export async function downloadTikTokCommentsByUrl({ url, pages = 3, proxy }: Com
   return results
 }
 
+function extractChannelIdFromInput(input: string): string | null {
+  if (!input) return null
+  if (input.startsWith('UC')) return input
+  try {
+    const u = new URL(input)
+    const parts = u.pathname.split('/').filter(Boolean)
+    const idx = parts.findIndex((p) => p.toLowerCase() === 'channel')
+    if (idx >= 0 && parts[idx + 1] && parts[idx + 1].startsWith('UC')) return parts[idx + 1]
+  } catch {}
+  return null
+}
+
+export async function listChannelVideos(params: {
+  channelUrlOrId: string
+  limit?: number
+  proxyUrl?: string
+  logger?: { log?: (...args: any[]) => void; warn?: (...args: any[]) => void }
+}): Promise<ChannelListResult> {
+  const { channelUrlOrId, proxyUrl, logger } = params
+  const limit = params.limit && params.limit > 0 ? params.limit : 20
+  const youtube = await getYouTubeClient(proxyUrl)
+
+  let resolvedChannelId = extractChannelIdFromInput(channelUrlOrId)
+  if (!resolvedChannelId) {
+    try {
+      const searchRes = await youtube.search(channelUrlOrId, { type: 'channel' })
+      const first = (searchRes?.results || searchRes?.items || []).find((x: any) => x?.type === 'channel' || Boolean(x?.id))
+      const cand = (first && (first.id || first.channel_id || first.channelId)) as string | undefined
+      if (cand && cand.startsWith('UC')) resolvedChannelId = cand
+    } catch (e) {
+      logger?.warn?.('[media-providers] channel-list: search resolve failed', e)
+    }
+  }
+
+  const results: ChannelListItem[] = []
+
+  // uploads playlist traversal
+  try {
+    if (resolvedChannelId) {
+      const uploadsId = `UU${resolvedChannelId.slice(2)}`
+      const playlist = await youtube.getPlaylist(uploadsId)
+      if (playlist && typeof (playlist as any).getVideos === 'function') {
+        const page = await (playlist as any).getVideos()
+        const items = (page?.videos || page?.items || page?.contents || []).slice(0, limit)
+        for (const it of items) {
+          const v: any = it?.short_view_video_renderer || it?.video || it || {}
+          const id = String(v?.id || v?.videoId || v?.video_id || v?.compact_video_renderer?.video_id || '')
+          if (!id) continue
+          const title = String(v?.title?.text || v?.title || '')
+          const thumb = v?.thumbnail?.thumbnails?.[0]?.url || v?.thumbnails?.[0]?.url
+          const published = v?.published || v?.publishedTimeText || v?.date
+          results.push({ id, title, url: `https://www.youtube.com/watch?v=${id}`, thumbnail: thumb, publishedAt: published })
+          if (results.length >= limit) break
+        }
+      }
+    }
+  } catch (e) {
+    logger?.warn?.('[media-providers] channel-list: uploads traversal failed', e)
+  }
+
+  // fallback channel.getVideos
+  if (results.length < limit) {
+    try {
+      const ch = await youtube.getChannel(resolvedChannelId || channelUrlOrId)
+      if (ch && typeof (ch as any).getVideos === 'function') {
+        const page = await (ch as any).getVideos()
+        const items = (page?.videos || page?.items || page?.contents || []).slice(0, limit - results.length)
+        for (const it of items) {
+          const v: any = it?.video || it || {}
+          const id = String(v?.id || v?.videoId || v?.video_id || '')
+          if (!id) continue
+          const title = String(v?.title?.text || v?.title || '')
+          const thumb = v?.thumbnails?.[0]?.url || v?.thumbnail?.thumbnails?.[0]?.url
+          const published = v?.published || v?.publishedTimeText || v?.date
+          results.push({ id, title, url: `https://www.youtube.com/watch?v=${id}`, thumbnail: thumb, publishedAt: published })
+          if (results.length >= limit) break
+        }
+      }
+    } catch (e) {
+      logger?.warn?.('[media-providers] channel-list: channel.getVideos fallback failed', e)
+    }
+  }
+
+  return { channelId: resolvedChannelId, videos: results }
+}
+
 export default {
   extractVideoId,
   downloadYoutubeComments,
   downloadTikTokCommentsByUrl,
+  listChannelVideos,
 }

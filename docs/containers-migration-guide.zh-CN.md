@@ -16,9 +16,11 @@
 - `@app/media-node`
   - `downloadVideo(url, quality, out, { proxy?, captureJson? })`（yt-dlp/yt-dlp-wrap）
   - `extractAudio(videoPath, audioPath)`（ffmpeg）
+  - `transcodeToTargetSize(input, output, { maxBytes?, bitrates?, sampleRate?, ffmpegBin? })`
 - `@app/media-providers`
   - `downloadYoutubeComments({ url, pages?, proxy? })`
   - `downloadTikTokCommentsByUrl({ url, pages?, proxy? })`
+  - `listChannelVideos({ channelUrlOrId, limit?, proxyUrl? })`
   - `extractVideoId(url)`
   
 ### 字幕渲染复用（新）
@@ -138,7 +140,7 @@ await runDownloadPipeline(
 
 ```js
 import { runCommentsPipeline } from '@app/media-core'
-import { downloadYoutubeComments, downloadTikTokCommentsByUrl } from '@app/media-providers'
+import { downloadYoutubeComments, downloadTikTokCommentsByUrl, listChannelVideos } from '@app/media-providers'
 
 await runCommentsPipeline(
   { url, source, pages, proxy },
@@ -152,6 +154,14 @@ await runCommentsPipeline(
   },
   onProgress
 )
+
+// Channel list 示例
+const { channelId, videos } = await listChannelVideos({
+  channelUrlOrId,
+  limit: 20,
+  proxyUrl,
+})
+await uploadArtifact(outputMetadataPutUrl, JSON.stringify({ channelId, count: videos.length, videos }), 'application/json')
 ```
 
 4) 清理容器内冗余代码
@@ -161,9 +171,9 @@ await runCommentsPipeline(
   - 本地代理 fetch 包装（provider 包负责 Request 正常化 + 代理）
 
 5) 收缩容器依赖
-- 容器不再直接引入 `undici` / `youtubei.js`，它们在 `@app/media-providers` 中。
-- `yt-dlp-wrap` 放在 `@app/media-node`（容器不再显式依赖）。
-- 仅保留容器自身依赖（如 `yaml` 生成 Clash 配置）。
+- 容器不再直接引入 `undici` / `youtubei.js`，它们在 `@app/media-providers` 中（包含 channel-list）。
+- `yt-dlp-wrap` 与 ffmpeg helper 放在 `@app/media-node`（容器不再显式依赖）。
+- audio-transcoder 复用 `transcodeToTargetSize`，容器只保留 HTTP/回调/上传等自身依赖（如 `yaml` 生成 Clash 配置）。
 
 6) 验证
 - 仓库根执行：

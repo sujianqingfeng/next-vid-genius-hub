@@ -1,4 +1,5 @@
 import { spawn, type SpawnOptions } from 'node:child_process'
+import { promises as fs } from 'node:fs'
 
 type RunResult = { stdout: string; stderr: string }
 
@@ -117,5 +118,59 @@ export async function extractAudio(videoPath: string, audioPath: string): Promis
   await run('ffmpeg', args)
 }
 
-export default { downloadVideo, fetchVideoMetadata, extractAudio }
+export async function transcodeToTargetSize(
+  inputPath: string,
+  outputPath: string,
+  options: {
+    maxBytes?: number
+    bitrates?: Array<number>
+    sampleRate?: number
+    ffmpegBin?: string
+    onPass?: (info: { pass: number; total: number; bitrate: number }) => void
+  } = {},
+): Promise<{ size: number; bitrate: number }> {
+  const maxBytes = options.maxBytes ?? 4 * 1024 * 1024
+  const sampleRate = Number(options.sampleRate ?? 16000)
+  const ffmpegBin = options.ffmpegBin || 'ffmpeg'
+  const bitrates = (options.bitrates && options.bitrates.length ? options.bitrates : [48, 24]).map((b) => {
+    const n = Number(b) || 48
+    return Math.max(16, Math.min(256, n))
+  })
 
+  let lastSize = 0
+  let lastBr = bitrates[bitrates.length - 1] || 48
+
+  for (let i = 0; i < bitrates.length; i++) {
+    const br = bitrates[i]!
+    options.onPass?.({ pass: i + 1, total: bitrates.length, bitrate: br })
+
+    const args = [
+      '-y',
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-i',
+      inputPath,
+      '-vn',
+      '-ac',
+      '1',
+      '-ar',
+      String(sampleRate),
+      '-b:a',
+      `${br}k`,
+      outputPath,
+    ]
+    await run(ffmpegBin, args)
+
+    const stat = await fs.stat(outputPath)
+    lastSize = stat.size
+    lastBr = br
+    if (lastSize <= maxBytes || i === bitrates.length - 1) {
+      break
+    }
+  }
+
+  return { size: lastSize, bitrate: lastBr }
+}
+
+export default { downloadVideo, fetchVideoMetadata, extractAudio, transcodeToTargetSize }

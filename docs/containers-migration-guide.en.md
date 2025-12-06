@@ -16,9 +16,11 @@ Containers compose these packages via simple adapters. The goal remains: elimina
 - `@app/media-node`
   - `downloadVideo(url, quality, out, { proxy?, captureJson? })` via yt-dlp / yt-dlp-wrap
   - `extractAudio(videoPath, audioPath)` via ffmpeg
+  - `transcodeToTargetSize(input, output, { maxBytes?, bitrates?, sampleRate?, ffmpegBin? })`
 - `@app/media-providers`
   - `downloadYoutubeComments({ url, pages?, proxy? })`
   - `downloadTikTokCommentsByUrl({ url, pages?, proxy? })`
+  - `listChannelVideos({ channelUrlOrId, limit?, proxyUrl? })`
   - `extractVideoId(url)`
 - Containers assemble:
   - Parse request → prepare temp paths
@@ -100,10 +102,10 @@ await runDownloadPipeline(
 )
 ```
 
-- Comments-only:
+- Comments-only / Channel list:
 ```js
 import { runCommentsPipeline } from '@app/media-core'
-import { downloadYoutubeComments, downloadTikTokCommentsByUrl } from '@app/media-providers'
+import { downloadYoutubeComments, downloadTikTokCommentsByUrl, listChannelVideos } from '@app/media-providers'
 
 await runCommentsPipeline(
   { url, source, pages, proxy },
@@ -117,6 +119,14 @@ await runCommentsPipeline(
   },
   onProgress
 )
+
+// Channel list
+const { channelId, videos } = await listChannelVideos({
+  channelUrlOrId,
+  limit: 20,
+  proxyUrl,
+})
+await uploadArtifact(outputMetadataPutUrl, JSON.stringify({ channelId, count: videos.length, videos }), 'application/json')
 ```
 
 4) Remove redundant code from containers
@@ -126,9 +136,9 @@ await runCommentsPipeline(
   - local proxy fetch wrappers (provider package handles Request normalization + proxy)
 
 5) Trim container dependencies
-- Containers should not import `undici` / `youtubei.js` directly; they now live in `@app/media-providers`.
-- `yt-dlp-wrap` should live in `@app/media-node` (not in containers).
-- Keep only container-specific deps (e.g., `yaml` for Clash configuration).
+- Containers should not import `undici` / `youtubei.js` directly; they now live in `@app/media-providers` (including channel list).
+- `yt-dlp-wrap` and ffmpeg helpers stay in `@app/media-node` (containers should not depend on them directly).
+- Audio transcoder should reuse `transcodeToTargetSize` from `@app/media-node`; keep only container-specific deps (e.g., `yaml` for Clash configuration).
 
 6) Validate
 - From repo root:

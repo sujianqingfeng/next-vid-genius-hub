@@ -1,10 +1,10 @@
 import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { readFileSync, writeFileSync, statSync, unlinkSync } from 'node:fs'
-import { execa } from 'execa'
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { makeStatusCallback } from '@app/callback-utils'
 import { sendJson, startJsonServer } from './shared.mjs'
+import { transcodeToTargetSize } from '@app/media-node'
 
 const PORT = process.env.PORT || 8080
 
@@ -52,40 +52,29 @@ async function handleRender(req, res) {
     )
     writeFileSync(inFile, buf)
 
-    let done = false
-    for (let i = 0; i < bitrates.length; i++) {
-      const br = Math.max(16, Math.min(256, Number(bitrates[i]) || 48))
-      console.log(`[audio-transcoder] ${jobId} ffmpeg pass ${i + 1}: ${br}kbps/${sampleRate}Hz`)
-      await postUpdate('running', { phase: 'running', progress: 0.2 + i * 0.3 })
-      const args = [
-        '-y', '-hide_banner', '-loglevel', 'error',
-        '-i', inFile,
-        '-vn', '-ac', '1', '-ar', String(sampleRate), '-b:a', `${br}k`, outFile,
-      ]
-      console.log('[audio-transcoder] ffmpeg command:', 'ffmpeg', args.join(' '))
-      await execa('ffmpeg', args)
-      const size = statSync(outFile).size
-      console.log(`[audio-transcoder] size after ${br}kbps: ${size} bytes`)
-      if (size <= maxBytes || i === bitrates.length - 1) {
-        // Upload
-        await postUpdate('uploading', { phase: 'uploading', progress: 0.95 })
-        const outBuf = readFileSync(outFile)
-        const headers = { 'content-type': 'audio/mpeg', 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' }
-        const up = await fetch(outputAudioPutUrl, { method: 'PUT', headers, body: outBuf })
-        if (!up.ok) {
-          const errorText = await up.text().catch(() => '')
-          throw new Error(`upload failed: ${up.status} ${errorText}`)
-        }
-        console.log(
-          `[audio-transcoder] ${jobId} uploaded processed audio: ${size} bytes (<= ${maxBytes} target: ${size <= maxBytes})`,
-        )
-        done = true
-        break
-      }
+    await postUpdate('running', { phase: 'running', progress: 0.2 })
+    const { size, bitrate: usedBitrate } = await transcodeToTargetSize(inFile, outFile, {
+      maxBytes,
+      bitrates,
+      sampleRate,
+      onPass: ({ pass, total, bitrate }) => {
+        console.log(`[audio-transcoder] ${jobId} ffmpeg pass ${pass}/${total}: ${bitrate}kbps/${sampleRate}Hz`)
+      },
+    })
+
+    await postUpdate('uploading', { phase: 'uploading', progress: 0.95 })
+    const outBuf = readFileSync(outFile)
+    const headers = { 'content-type': 'audio/mpeg', 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' }
+    const up = await fetch(outputAudioPutUrl, { method: 'PUT', headers, body: outBuf })
+    if (!up.ok) {
+      const errorText = await up.text().catch(() => '')
+      throw new Error(`upload failed: ${up.status} ${errorText}`)
     }
+    console.log(
+      `[audio-transcoder] ${jobId} uploaded processed audio: ${size} bytes @${usedBitrate}kbps (<= ${maxBytes} target: ${size <= maxBytes})`,
+    )
     try { unlinkSync(inFile) } catch {}
     try { unlinkSync(outFile) } catch {}
-    if (!done) throw new Error('transcode failed to meet size limit')
     await postUpdate('completed', { outputs: { audio: {} } })
   } catch (e) {
     console.error('[audio-transcoder] failed', e)
