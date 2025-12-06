@@ -18,7 +18,7 @@ import {
   startMihomo as startMihomoProxy,
 } from "@app/media-core";
 
-const PORT = process.env.PORT || 8090;
+const PORT = process.env.PORT || 8190;
 
 async function execFFmpegWithProgress(args, totalDurationSeconds) {
   return new Promise((resolve, reject) => {

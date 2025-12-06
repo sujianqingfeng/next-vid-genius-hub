@@ -20,7 +20,6 @@ export class BurnerFfmpegContainer extends Container {
 }
 
 export class RendererRemotionContainer extends Container {
-  defaultPort = 8090
+  defaultPort = 8190
   sleepAfter = '10m'
 }
-

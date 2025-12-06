@@ -24,6 +24,25 @@ const DEFAULT_HEADERS = {
 } satisfies LocalServeOptions
 
 const PROXY_HEADER_KEYS = ['content-type', 'accept-ranges', 'content-length', 'content-range', 'cache-control', 'etag', 'last-modified'] as const
+const DEFAULT_DOWNLOAD_FALLBACK_NAME = 'download'
+
+function encodeRFC5987Value(value: string): string {
+  return encodeURIComponent(value)
+    .replace(/['()]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/\*/g, '%2A')
+    .replace(/%(7C|60|5E)/g, '%25$1')
+}
+
+function buildAttachmentDisposition(filename: string): string {
+  const asciiFallback =
+    filename
+      .normalize('NFKD')
+      .replace(/[^\x20-\x7E]+/g, '_')
+      .replace(/["\\]/g, '')
+      .trim() || DEFAULT_DOWNLOAD_FALLBACK_NAME
+  const encoded = encodeRFC5987Value(filename)
+  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`
+}
 
 export function buildDownloadFilename(
   title: string | null | undefined,
@@ -105,7 +124,7 @@ export async function serveLocalFileWithRange(
       'Content-Range': `bytes ${start}-${end}/${fileSize}`,
       'Content-Length': chunkSize.toString(),
     }
-    if (downloadName) headers['Content-Disposition'] = `attachment; filename="${downloadName}"`
+    if (downloadName) headers['Content-Disposition'] = buildAttachmentDisposition(downloadName)
     return new NextResponse(stream as unknown as ReadableStream, { status: 206, headers })
   }
 
@@ -114,7 +133,7 @@ export async function serveLocalFileWithRange(
     ...baseHeaders,
     'Content-Length': fileSize.toString(),
   }
-  if (downloadName) headers['Content-Disposition'] = `attachment; filename="${downloadName}"`
+  if (downloadName) headers['Content-Disposition'] = buildAttachmentDisposition(downloadName)
   return new NextResponse(stream as unknown as ReadableStream, { headers })
 }
 
@@ -131,7 +150,7 @@ export function createProxyResponse(
     respHeaders.set('cache-control', `private, max-age=${options?.defaultCacheSeconds ?? 60}`)
   }
   if (options?.forceDownloadName) {
-    respHeaders.set('Content-Disposition', `attachment; filename="${options.forceDownloadName}"`)
+    respHeaders.set('Content-Disposition', buildAttachmentDisposition(options.forceDownloadName))
   }
   const body = upstream.body ?? null
   return new NextResponse(body as unknown as BodyInit | null, {

@@ -64,5 +64,5 @@ ENV XDG_CACHE_HOME=/opt/.cache \
 RUN mkdir -p "$XDG_CACHE_HOME" "$PUPPETEER_CACHE_DIR" "$REMOTION_BROWSER_DOWNLOADS_DIR" \
   && npm exec -- remotion browser ensure --log=verbose
 
-EXPOSE 8090
+EXPOSE 8190
 CMD ["node", "index.mjs"]

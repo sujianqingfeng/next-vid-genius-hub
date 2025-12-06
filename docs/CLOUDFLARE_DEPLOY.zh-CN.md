@@ -169,7 +169,7 @@ Cloudflare Containers 允许在 Workers 应用中按需拉起并调用容器镜�
 - `media-downloader`（EXPOSE 8080）
 - `audio-transcoder`（EXPOSE 8080）
 - `burner-ffmpeg`（EXPOSE 8080）
-- `renderer-remotion`（EXPOSE 8090）
+- `renderer-remotion`（EXPOSE 8190）
 
 推荐将容器随“编排 Worker”一起管理：
 
@@ -196,7 +196,7 @@ export class BurnerFfmpegContainer extends Container {
 }
 
 export class RendererRemotionContainer extends Container {
-  defaultPort = 8090
+  defaultPort = 8190
   sleepAfter = '10m'
 }
 ```
