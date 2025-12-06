@@ -9,12 +9,7 @@ import {
 } from '~/lib/ai/models'
 import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
-import {
-	getDefaultModel,
-	WHISPER_MODELS,
-	type TranscriptionProvider,
-	type WhisperModel,
-} from '~/lib/subtitle/config/models'
+import { getDefaultModel, WHISPER_MODELS, type WhisperModel } from '~/lib/subtitle/config/models'
 import type {
 	DownsampleBackend,
 	SubtitleRenderConfig,
@@ -47,14 +42,8 @@ export function useSubtitleActions({
 }: UseSubtitleActionsOptions) {
 	const queryClient = useQueryClient()
 
-	const selectedProvider: TranscriptionProvider =
-		workflowState.selectedProvider ?? 'cloudflare'
-
 	const selectedModel: WhisperModel =
-		workflowState.selectedModel ??
-		(selectedProvider === 'cloudflare'
-			? 'whisper-tiny-en'
-			: getDefaultModel(selectedProvider))
+		workflowState.selectedModel ?? getDefaultModel('cloudflare')
 	const selectedModelConfig = WHISPER_MODELS[selectedModel]
 
 	const initialChatModel = useMemo<ChatModelId>(() => {
@@ -120,7 +109,6 @@ export function useSubtitleActions({
 					updateWorkflowState({
 						transcription: data.transcription,
 						selectedModel,
-						selectedProvider,
 						transcriptionLanguage: selectedLanguage,
 					})
 				}
@@ -196,31 +184,27 @@ export function useSubtitleActions({
 		: null
 
 	const handleStartTranscription = () => {
-		const canHintLanguage =
-			selectedProvider === 'cloudflare' &&
-			Boolean(WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
-		const cloudflareInputFormat = selectedModelConfig?.cloudflareInputFormat ?? 'binary'
-		logger.info(
-			'transcription',
-			`User started transcription: ${selectedProvider}/${selectedModel} for media ${mediaId}`,
-		)
-		updateWorkflowState({
-			selectedModel,
-			selectedProvider,
-			downsampleBackend,
-			transcriptionLanguage: selectedLanguage,
-		})
-		transcribeMutation.mutate({
-			mediaId,
-			model: selectedModel,
-			provider: selectedProvider,
-			downsampleBackend,
-			inputFormat: selectedProvider === 'cloudflare' ? cloudflareInputFormat : undefined,
-			language:
-				canHintLanguage && selectedLanguage && selectedLanguage !== DEFAULT_TRANSCRIPTION_LANGUAGE
-					? selectedLanguage
-					: undefined,
-		})
+			const canHintLanguage = Boolean(WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
+			const cloudflareInputFormat = selectedModelConfig?.cloudflareInputFormat ?? 'binary'
+			logger.info(
+				'transcription',
+				`User started transcription: cloudflare/${selectedModel} for media ${mediaId}`,
+			)
+			updateWorkflowState({
+				selectedModel,
+				downsampleBackend,
+				transcriptionLanguage: selectedLanguage,
+			})
+			transcribeMutation.mutate({
+				mediaId,
+				model: selectedModel,
+				downsampleBackend,
+				inputFormat: cloudflareInputFormat,
+				language:
+					canHintLanguage && selectedLanguage && selectedLanguage !== DEFAULT_TRANSCRIPTION_LANGUAGE
+						? selectedLanguage
+						: undefined,
+			})
 	}
 
 	const handleStartTranslation = () => {
@@ -249,13 +233,12 @@ export function useSubtitleActions({
 		updateWorkflowState({ subtitleConfig: config })
 	}
 
-	return {
-		// derived selections
-		selectedProvider,
-		selectedModel,
-		selectedAIModel,
-		selectedLanguage,
-		downsampleBackend,
+		return {
+			// derived selections
+			selectedModel,
+			selectedAIModel,
+			selectedLanguage,
+			downsampleBackend,
 
 		// cloud render + preview
 		cloudStatusQuery,

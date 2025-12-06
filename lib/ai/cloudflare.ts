@@ -226,23 +226,23 @@ export async function transcribeWithCloudflareWhisper(
 		logger.error('transcription', 'Unexpected response format from Cloudflare API')
 		throw new Error('Transcription failed - unexpected response format')
 	} catch (error) {
-		logger.error(
-			'transcription',
-			`Cloudflare Whisper transcription error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-		)
-		const baseMsg = error instanceof Error ? error.message : 'Unknown error'
-		// Offer actionable guidance on common network issues
-		if (typeof baseMsg === 'string' && /UND_ERR_CONNECT_TIMEOUT|ECONNRESET|ENETUNREACH|ETIMEDOUT/i.test(baseMsg)) {
-			const hint = `
+			logger.error(
+				'transcription',
+				`Cloudflare Whisper transcription error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			)
+			const baseMsg = error instanceof Error ? error.message : 'Unknown error'
+			// Offer actionable guidance on common network issues
+			if (typeof baseMsg === 'string' && /UND_ERR_CONNECT_TIMEOUT|ECONNRESET|ENETUNREACH|ETIMEDOUT/i.test(baseMsg)) {
+				const hint = `
 	Cannot reach api.cloudflare.com within the configured connect timeout.
 	- If you are behind a corporate proxy or egress is restricted, set CF_PROXY_URL/HTTPS_PROXY/HTTP_PROXY.
 	- You can increase timeouts via CF_CONNECT_TIMEOUT_MS/CF_HEADERS_TIMEOUT_MS/CF_BODY_TIMEOUT_MS.
-	- As a fallback, try provider 'local' (WHISPER_CPP_PATH required) or use downsampleBackend='cloud' to route via orchestrator.
+	- As a fallback, try downsampleBackend='cloud' to route via orchestrator.
 	`.trim()
-			throw new Error(`Cloudflare transcription failed: ${baseMsg}. ${hint}`)
+				throw new Error(`Cloudflare transcription failed: ${baseMsg}. ${hint}`)
+			}
+			throw new Error(`Cloudflare transcription failed: ${baseMsg}`)
 		}
-		throw new Error(`Cloudflare transcription failed: ${baseMsg}`)
-	}
 }
 
 /**

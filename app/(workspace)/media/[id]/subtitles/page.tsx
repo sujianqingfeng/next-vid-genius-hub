@@ -99,7 +99,6 @@ export default function SubtitlesPage() {
 		}
 	}, [media?.transcriptionWords, previewDuration, workflowState.translation])
 	const {
-		selectedProvider,
 		selectedModel,
 		selectedAIModel,
 		selectedLanguage,
@@ -266,10 +265,8 @@ export default function SubtitlesPage() {
 								<CardContent className="pt-6">
 									<Step1Transcribe
 										selectedModel={selectedModel}
-										selectedProvider={selectedProvider}
 										selectedLanguage={workflowState.transcriptionLanguage ?? selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
 										onModelChange={(model) => updateWorkflowState({ selectedModel: model })}
-										onProviderChange={(provider) => updateWorkflowState({ selectedProvider: provider })}
 										onLanguageChange={(language) => updateWorkflowState({ transcriptionLanguage: language })}
 										isPending={transcribeMutation.isPending}
 										onStart={handleStartTranscription}

@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, Cloud, Loader2, Server } from 'lucide-react'
+import { AlertCircle, Cloud, Loader2 } from 'lucide-react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import {
@@ -19,10 +19,7 @@ import {
 	getModelLabel,
 	WHISPER_MODELS,
 } from '~/lib/subtitle/config/models'
-import type {
-	TranscriptionProvider,
-	WhisperModel,
-} from '~/lib/subtitle/config/models'
+import type { WhisperModel } from '~/lib/subtitle/config/models'
 import { DEFAULT_CHAT_MODEL_ID, type ChatModelId } from '~/lib/ai/models'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
 import type { DownsampleBackend } from '~/lib/subtitle/types'
@@ -35,9 +32,7 @@ import {
 
 interface Step1TranscribeProps {
 	selectedModel: WhisperModel
-	selectedProvider: TranscriptionProvider
 	onModelChange: (model: WhisperModel) => void
-	onProviderChange: (provider: TranscriptionProvider) => void
 	isPending: boolean
 	onStart: () => void
 	transcription: string
@@ -62,89 +57,75 @@ interface Step1TranscribeProps {
   onLanguageChange?: (lang: TranscriptionLanguage) => void
 }
 
-	export function Step1Transcribe(props: Step1TranscribeProps) {
-		const {
-			selectedModel,
-			selectedProvider,
-			onModelChange,
-			onProviderChange,
-			isPending,
-			onStart,
-			transcription,
-			errorMessage,
-      mediaId,
-      canOptimize,
-      isOptimizing,
-      selectedAIModel,
-      onOptimizeModelChange,
-      onOptimize,
-      isClearingOptimized,
-      onRestoreOriginal,
-      downsampleBackend,
-      onDownsampleBackendChange,
-      selectedLanguage,
-      onLanguageChange,
-		} = props
+export function Step1Transcribe(props: Step1TranscribeProps) {
+	const {
+		selectedModel,
+		onModelChange,
+		isPending,
+		onStart,
+		transcription,
+		errorMessage,
+		mediaId,
+		canOptimize,
+		isOptimizing,
+		selectedAIModel,
+		onOptimizeModelChange,
+		onOptimize,
+		isClearingOptimized,
+		onRestoreOriginal,
+		downsampleBackend,
+		onDownsampleBackendChange,
+		selectedLanguage,
+		onLanguageChange,
+	} = props
 	const effectiveAIModel = selectedAIModel ?? DEFAULT_CHAT_MODEL_ID
 
-	const availableModels = getAvailableModels(selectedProvider)
-
-	const getProviderIcon = (provider: TranscriptionProvider) => {
-		return provider === 'cloudflare' ? (
-			<Cloud className="h-4 w-4" />
-		) : (
-			<Server className="h-4 w-4" />
-		)
-	}
-
-	const getProviderLabel = (provider: TranscriptionProvider) => {
-		return provider === 'cloudflare' ? 'Cloudflare API' : 'Local Whisper'
-	}
+	const availableModels = getAvailableModels('cloudflare')
 
 	// 使用配置化的模型信息，移除硬编码
 
-  // Optimization params with per-media persistence
-  const storageKey = useMemo(() => (mediaId ? `subtitleOptimizeParams:${mediaId}` : null), [mediaId])
-  const [pauseThresholdMs, setPauseThresholdMs] = useState<number>(480)
-  const [maxSentenceMs, setMaxSentenceMs] = useState<number>(8000)
-  const [maxChars, setMaxChars] = useState<number>(68)
-  const [lightCleanup, setLightCleanup] = useState<boolean>(false)
-  const [textCorrect, setTextCorrect] = useState<boolean>(false)
-  const [downBackend, setDownBackend] = useState<DownsampleBackend>(downsampleBackend || 'auto')
+	// Optimization params with per-media persistence
+	const storageKey = useMemo(() => (mediaId ? `subtitleOptimizeParams:${mediaId}` : null), [mediaId])
+	const [pauseThresholdMs, setPauseThresholdMs] = useState<number>(480)
+	const [maxSentenceMs, setMaxSentenceMs] = useState<number>(8000)
+	const [maxChars, setMaxChars] = useState<number>(68)
+	const [lightCleanup, setLightCleanup] = useState<boolean>(false)
+	const [textCorrect, setTextCorrect] = useState<boolean>(false)
+	const [downBackend, setDownBackend] = useState<DownsampleBackend>(downsampleBackend || 'auto')
 
-  useEffect(() => {
-    if (!storageKey) return
-    try {
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
-      if (raw) {
-        const obj = JSON.parse(raw)
-        if (typeof obj.pauseThresholdMs === 'number') setPauseThresholdMs(obj.pauseThresholdMs)
-        if (typeof obj.maxSentenceMs === 'number') setMaxSentenceMs(obj.maxSentenceMs)
-        if (typeof obj.maxChars === 'number') setMaxChars(obj.maxChars)
-        if (typeof obj.lightCleanup === 'boolean') setLightCleanup(obj.lightCleanup)
-        if (typeof obj.textCorrect === 'boolean') setTextCorrect(obj.textCorrect)
-        if (obj.downsampleBackend === 'auto' || obj.downsampleBackend === 'local' || obj.downsampleBackend === 'cloud') {
-          setDownBackend(obj.downsampleBackend)
-        }
-      }
-    } catch {}
-  }, [storageKey])
+	useEffect(() => {
+		if (!storageKey) return
+		try {
+			const raw = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
+			if (raw) {
+				const obj = JSON.parse(raw)
+				if (typeof obj.pauseThresholdMs === 'number') setPauseThresholdMs(obj.pauseThresholdMs)
+				if (typeof obj.maxSentenceMs === 'number') setMaxSentenceMs(obj.maxSentenceMs)
+				if (typeof obj.maxChars === 'number') setMaxChars(obj.maxChars)
+				if (typeof obj.lightCleanup === 'boolean') setLightCleanup(obj.lightCleanup)
+				if (typeof obj.textCorrect === 'boolean') setTextCorrect(obj.textCorrect)
+				if (obj.downsampleBackend === 'auto' || obj.downsampleBackend === 'local' || obj.downsampleBackend === 'cloud') {
+					setDownBackend(obj.downsampleBackend)
+				}
+			}
+		} catch {}
+	}, [storageKey])
 
-  useEffect(() => {
-    if (!storageKey) return
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(
-          storageKey,
-          JSON.stringify({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect, downsampleBackend: downBackend }),
-        )
-      }
-    } catch {}
-  }, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect, downBackend])
+	useEffect(() => {
+		if (!storageKey) return
+		try {
+			if (typeof window !== 'undefined') {
+				window.localStorage.setItem(
+					storageKey,
+					JSON.stringify({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect, downsampleBackend: downBackend }),
+				)
+			}
+		} catch {}
+	}, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect, downBackend])
 
-  useEffect(() => {
-    if (downsampleBackend && downsampleBackend !== downBackend) setDownBackend(downsampleBackend)
-  }, [downsampleBackend, downBackend])
+	useEffect(() => {
+		if (downsampleBackend && downsampleBackend !== downBackend) setDownBackend(downsampleBackend)
+	}, [downsampleBackend, downBackend])
 
 	return (
 		<div className="space-y-6">
@@ -153,42 +134,11 @@ interface Step1TranscribeProps {
 				<div className="flex flex-col sm:flex-row gap-3 items-end">
 					<div className="min-w-[140px]">
 						<label className="text-sm font-medium mb-2 block">Provider</label>
-						<Select
-							value={selectedProvider}
-							onValueChange={(value) => {
-								const newProvider = value as TranscriptionProvider
-								onProviderChange(newProvider)
-								const newModels = getAvailableModels(newProvider)
-								if (newModels.length > 0 && !newModels.includes(selectedModel)) {
-									onModelChange(newModels[0])
-								}
-							}}
-							disabled={isPending}
-						>
-							<SelectTrigger>
-								<SelectValue>
-									<div className="flex items-center gap-2">
-										{getProviderIcon(selectedProvider)}
-										{getProviderLabel(selectedProvider)}
-									</div>
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="local">
-									<div className="flex items-center gap-2">
-										<Server className="h-4 w-4" />
-										Local
-									</div>
-								</SelectItem>
-								<SelectItem value="cloudflare">
-									<div className="flex items-center gap-2">
-										<Cloud className="h-4 w-4" />
-										Cloudflare
-									</div>
-								</SelectItem>
-							</SelectContent>
-						</Select>
-            </div>
+						<div className="flex items-center gap-2 text-sm text-muted-foreground">
+							<Cloud className="h-4 w-4 text-primary" />
+							<span>Cloudflare Whisper</span>
+						</div>
+					</div>
 
 					<div className="min-w-[140px]">
 						<label className="text-sm font-medium mb-2 block">Model</label>
@@ -234,14 +184,13 @@ interface Step1TranscribeProps {
             </div>
 
 					<div className="min-w-[160px]">
-						<label className="text-sm font-medium mb-2 block">
-							Language{' '}
-							{selectedProvider === 'cloudflare' &&
-								selectedModel &&
-								!WHISPER_MODELS[selectedModel]?.supportsLanguageHint && (
-									<span className="text-xs text-muted-foreground">(仅 Large v3 Turbo 支持)</span>
-								)}
-						</label>
+							<label className="text-sm font-medium mb-2 block">
+								Language{' '}
+								{selectedModel &&
+									!WHISPER_MODELS[selectedModel]?.supportsLanguageHint && (
+										<span className="text-xs text-muted-foreground">(仅 Large v3 Turbo 支持)</span>
+									)}
+							</label>
 						<Select
 							value={selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
 							onValueChange={(value) =>
@@ -249,8 +198,7 @@ interface Step1TranscribeProps {
 							}
 							disabled={
 								isPending ||
-								(selectedProvider === 'cloudflare' &&
-									selectedModel &&
+								(selectedModel &&
 									!WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
 							}
 						>
@@ -266,9 +214,9 @@ interface Step1TranscribeProps {
 							</SelectContent>
 						</Select>
 						<p className="text-xs text-muted-foreground mt-1">
-							Workers AI 需要单一语言音频；若混用多语言，请显式指定语言或改用 Local Whisper。
-						</p>
-					</div>
+								Workers AI 需要单一语言音频；若混用多语言，请显式指定语言。
+							</p>
+						</div>
 
 					<Button
 						onClick={onStart}
@@ -281,7 +229,6 @@ interface Step1TranscribeProps {
 				</div>
 
 				{/* Pipeline indicator */}
-				{selectedProvider === 'cloudflare' && (
 					<div className="text-xs text-muted-foreground flex items-center gap-2">
 						{downBackend === 'cloud' ? (
 							<>
@@ -300,7 +247,6 @@ interface Step1TranscribeProps {
 							</>
 						)}
 					</div>
-				)}
 
 				{/* Optimization Controls - Shown when transcription exists */}
 				{transcription && canOptimize && (

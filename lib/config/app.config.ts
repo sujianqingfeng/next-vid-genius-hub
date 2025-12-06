@@ -171,7 +171,6 @@ export const { features, ui, monitoring } = APP_CONFIG;
 // Centralized environment-backed app constants (migrated from constants/app.constants.ts)
 export const DATABASE_URL = APP_CONFIG.database.url;
 // PROXY_URL and OPERATIONS_DIR already exported above for backward-compat
-export const WHISPER_CPP_PATH = process.env.WHISPER_CPP_PATH;
 
 // Cloudflare Workers/Orchestrator configuration
 export const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;

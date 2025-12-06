@@ -5,11 +5,10 @@ import { z } from 'zod'
  * 统一管理所有转录相关的模型定义和配置（包括 Zod Schema）
  */
 
-export const TRANSCRIPTION_PROVIDERS = ['local', 'cloudflare'] as const
+export const TRANSCRIPTION_PROVIDERS = ['cloudflare'] as const
 export type TranscriptionProvider = (typeof TRANSCRIPTION_PROVIDERS)[number]
 
 export const WHISPER_MODEL_IDS = [
-	'whisper-large',
 	'whisper-medium',
 	'whisper-tiny-en',
 	'whisper-large-v3-turbo',
@@ -33,17 +32,11 @@ export interface WhisperModelConfig {
  * 所有支持的Whisper模型配置
  */
 export const WHISPER_MODELS: Record<WhisperModel, WhisperModelConfig> = {
-	'whisper-large': {
-		id: 'whisper-large',
-		label: 'Whisper Large',
-		description: 'Best quality, slower processing',
-		providers: ['local'],
-	},
 	'whisper-medium': {
 		id: 'whisper-medium',
 		label: 'Whisper Medium',
 		description: 'Balanced quality and speed',
-		providers: ['local', 'cloudflare'],
+		providers: ['cloudflare'],
 		isDefault: true,
 		cloudflareInputFormat: 'binary',
 	},
