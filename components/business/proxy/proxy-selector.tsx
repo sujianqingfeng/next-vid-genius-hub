@@ -24,6 +24,8 @@ export function ProxySelector({ value, onValueChange, disabled, allowDirect = tr
 		...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	})
 
+	const defaultProxyId = proxyData?.defaultProxyId ?? null
+
 	type SimpleProxy = {
 		id: string
 		name?: string | null
@@ -53,13 +55,16 @@ export function ProxySelector({ value, onValueChange, disabled, allowDirect = tr
 		return allowDirect ? list : list.filter((proxy) => proxy.id !== 'none')
 	}, [allowDirect, proxyData?.proxies])
 
-	const firstProxyId = availableProxies[0]?.id
-
 	useEffect(() => {
-		if (!allowDirect && firstProxyId && (!value || value === 'none')) {
-			onValueChange(firstProxyId)
-		}
-	}, [allowDirect, firstProxyId, onValueChange, value])
+		// Prefer persisted default; otherwise fall back to first available when proxy is required.
+		if (value && value !== 'none') return
+		const preferred = defaultProxyId && availableProxies.find((p) => p.id === defaultProxyId)?.id
+		const fallback = !allowDirect
+			? availableProxies.find((p) => p.id !== 'none')?.id
+			: undefined
+		const next = preferred ?? fallback
+		if (next) onValueChange(next)
+	}, [allowDirect, availableProxies, defaultProxyId, onValueChange, value])
 
 	if (error) {
 		console.error('Failed to load proxies:', error)
@@ -79,19 +84,25 @@ export function ProxySelector({ value, onValueChange, disabled, allowDirect = tr
 					<SelectValue placeholder="Select proxy" />
 				</SelectTrigger>
 				<SelectContent>
-					{availableProxies.map((proxy) => (
-						<SelectItem key={proxy.id} value={proxy.id}>
-							<div className="flex items-center gap-2 py-1">
-								{renderProxyIcon(proxy)}
-								<div className="flex flex-col min-w-0 flex-1">
-									<span className="truncate text-sm font-medium">
-										{renderProxyLabel(proxy)}
-									</span>
-									{/* status text removed */}
+					{availableProxies.map((proxy) => {
+						const isDefault = defaultProxyId && proxy.id === defaultProxyId
+						return (
+							<SelectItem key={proxy.id} value={proxy.id}>
+								<div className="flex items-center gap-2 py-1">
+									{renderProxyIcon(proxy)}
+									<div className="flex flex-col min-w-0 flex-1">
+										<span className="truncate text-sm font-medium flex items-center gap-2">
+											{renderProxyLabel(proxy)}
+											{isDefault && (
+												<span className="text-[10px] font-semibold uppercase tracking-wide text-primary">Default</span>
+											)}
+										</span>
+										{/* status text removed */}
+									</div>
 								</div>
-							</div>
-						</SelectItem>
-					))}
+							</SelectItem>
+						)
+					})}
 				</SelectContent>
 			</Select>
 			{isLoading && (

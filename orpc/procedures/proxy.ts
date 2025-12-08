@@ -4,6 +4,7 @@ import { eq, desc, sql } from 'drizzle-orm'
 import { logger } from '~/lib/logger'
 import { getDb, schema } from '~/lib/db'
 import { ProxyNodeUrlSchema, ProxyProtocolEnum, parseSSRSubscription } from '~/lib/proxy/parser'
+import { getDefaultProxyId, setDefaultProxyId } from '~/lib/proxy/default-proxy'
 
 // Schemas
 const CreateSSRSubscriptionSchema = z.object({
@@ -46,18 +47,22 @@ export const getActiveProxiesForDownload = os
 		try {
 			const db = await getDb()
 			// Return a simple list: "No Proxy" + all stored proxies (no test status)
-			const proxyList = await db.query.proxies.findMany({
-				columns: {
-					id: true,
-					name: true,
-					server: true,
-					port: true,
-					protocol: true,
-				},
-				orderBy: [desc(schema.proxies.createdAt)],
-			})
+			const [proxyList, defaultProxyId] = await Promise.all([
+				db.query.proxies.findMany({
+					columns: {
+						id: true,
+						name: true,
+						server: true,
+						port: true,
+						protocol: true,
+					},
+					orderBy: [desc(schema.proxies.createdAt)],
+				}),
+				getDefaultProxyId(db),
+			])
 
 			return {
+				defaultProxyId,
 				proxies: [
 					{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const },
 					...proxyList,
@@ -65,8 +70,30 @@ export const getActiveProxiesForDownload = os
 			}
 		} catch (error) {
 			logger.error('proxy', `Error in getActiveProxiesForDownload: ${error}`)
-			return { proxies: [{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const }] }
+			return { defaultProxyId: null, proxies: [{ id: 'none', name: 'No Proxy', server: '', port: 0, protocol: 'http' as const }] }
 		}
+	})
+
+export const getDefaultProxy = os
+	.input(z.void())
+	.handler(async () => {
+		const db = await getDb()
+		const defaultProxyId = await getDefaultProxyId(db)
+		return { defaultProxyId }
+	})
+
+export const setDefaultProxy = os
+	.input(z.object({ proxyId: z.string().nullable() }))
+	.handler(async ({ input }) => {
+		const db = await getDb()
+		if (input.proxyId) {
+			const proxy = await db.query.proxies.findFirst({ where: eq(schema.proxies.id, input.proxyId) })
+			if (!proxy) throw new Error('Proxy not found')
+		}
+
+		const defaultProxyId = await setDefaultProxyId(input.proxyId, db)
+		logger.info('proxy', `Updated default proxy to ${defaultProxyId ?? 'null'}`)
+		return { defaultProxyId }
 	})
 
 // SSR Subscription Operations
@@ -308,6 +335,11 @@ export const deleteProxy = os
 		if (!deletedProxy) {
 			logger.error('proxy', 'Proxy not found')
 			throw new Error('Proxy not found')
+		}
+
+		const currentDefault = await getDefaultProxyId(db)
+		if (currentDefault === deletedProxy.id) {
+			await setDefaultProxyId(null, db)
 		}
 
 		return { success: true }

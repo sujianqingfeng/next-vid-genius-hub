@@ -19,16 +19,40 @@ export function ProxyList() {
 		queryOrpc.proxy.getProxies.queryOptions({ input: { page } }),
 	)
 
+	const { data: defaultProxyData } = useQuery(
+		queryOrpc.proxy.getDefaultProxy.queryOptions(),
+	)
+
+	const defaultProxyId = defaultProxyData?.defaultProxyId ?? null
+
 	const deleteProxyMutation = useMutation({
 		...queryOrpc.proxy.deleteProxy.mutationOptions(),
 		onSuccess: () => {
 			queryClient.invalidateQueries({
 				queryKey: queryOrpc.proxy.getProxies.key(),
 			})
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.proxy.getActiveProxiesForDownload.key(),
+			})
+			queryClient.invalidateQueries({
+				queryKey: queryOrpc.proxy.getDefaultProxy.key(),
+			})
 			toast.success('Proxy deleted successfully')
 		},
 		onError: (error) => {
 			toast.error(`Failed to delete proxy: ${error.message}`)
+		},
+	})
+
+	const setDefaultProxyMutation = useMutation({
+		...queryOrpc.proxy.setDefaultProxy.mutationOptions(),
+		onSuccess: ({ defaultProxyId: nextDefault }) => {
+			queryClient.invalidateQueries({ queryKey: queryOrpc.proxy.getDefaultProxy.key() })
+			queryClient.invalidateQueries({ queryKey: queryOrpc.proxy.getActiveProxiesForDownload.key() })
+			toast.success(nextDefault ? 'Default proxy updated' : 'Default proxy cleared')
+		},
+		onError: (error) => {
+			toast.error(`Failed to set default proxy: ${error.message}`)
 		},
 	})
 
@@ -83,34 +107,64 @@ export function ProxyList() {
 
 			{/* Proxy List */}
 			<div className="space-y-2">
-				{filteredProxies.map((proxy) => (
-					<div key={proxy.id} className="group flex items-center justify-between p-4 rounded-xl border border-white/20 bg-white/40 shadow-sm backdrop-blur-md transition-all hover:bg-white/60 hover:shadow-md">
-						<div className="flex items-center gap-4">
-							<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary font-mono text-xs font-bold">
-								{proxy.protocol.toUpperCase().slice(0, 3)}
+				{filteredProxies.map((proxy) => {
+					const isDefault = proxy.id === defaultProxyId
+					return (
+						<div key={proxy.id} className="group flex items-center justify-between p-4 rounded-xl border border-white/20 bg-white/40 shadow-sm backdrop-blur-md transition-all hover:bg-white/60 hover:shadow-md">
+							<div className="flex items-center gap-4">
+								<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary font-mono text-xs font-bold">
+									{proxy.protocol.toUpperCase().slice(0, 3)}
+								</div>
+								<div>
+									<div className="flex items-center gap-2">
+										<span className="font-medium text-foreground">
+											{proxy.name || `${proxy.server}:${proxy.port}`}
+										</span>
+										{isDefault && (
+											<span className="text-[11px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-2 py-0.5 rounded-full">Default</span>
+										)}
+									</div>
+									<div className="text-xs text-muted-foreground font-light font-mono mt-0.5">
+										{proxy.server}:{proxy.port}
+									</div>
+								</div>
 							</div>
-							<div>
-								<div className="flex items-center gap-2">
-									<span className="font-medium text-foreground">
-										{proxy.name || `${proxy.server}:${proxy.port}`}
-									</span>
-								</div>
-								<div className="text-xs text-muted-foreground font-light font-mono mt-0.5">
-									{proxy.server}:{proxy.port}
-								</div>
+
+							<div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+								{!isDefault ? (
+									<Button
+										variant="secondary"
+										size="sm"
+										onClick={() => setDefaultProxyMutation.mutate({ proxyId: proxy.id })}
+										disabled={setDefaultProxyMutation.isPending}
+										className="h-8"
+									>
+										Set default
+									</Button>
+								) : (
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => setDefaultProxyMutation.mutate({ proxyId: null })}
+										disabled={setDefaultProxyMutation.isPending}
+										className="h-8 text-muted-foreground hover:text-foreground"
+									>
+										Clear default
+									</Button>
+								)}
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => handleDeleteProxy(proxy.id)}
+									disabled={deleteProxyMutation.isPending}
+									className="h-8 w-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+								>
+									<Trash2 className="h-4 w-4" strokeWidth={1.5} />
+								</Button>
 							</div>
 						</div>
-
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => handleDeleteProxy(proxy.id)}
-							className="h-8 w-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
-						>
-							<Trash2 className="h-4 w-4" strokeWidth={1.5} />
-						</Button>
-					</div>
-				))}
+					)
+				})}
 			</div>
 
 			{/* Pagination */}

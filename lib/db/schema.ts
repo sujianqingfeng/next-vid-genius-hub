@@ -187,6 +187,16 @@ export const proxies = sqliteTable('proxies', {
 		.$defaultFn(() => new Date()),
 })
 
+export const userSettings = sqliteTable('user_settings', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => 'default'),
+	defaultProxyId: text('default_proxy_id'),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
+
 // ---------------- Channels & Channel Videos ----------------
 export const channels = sqliteTable('channels', {
   id: text('id')
