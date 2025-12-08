@@ -52,6 +52,23 @@ export async function POST(req: NextRequest) {
     const payload = JSON.parse(bodyText) as CallbackPayload
 
     const db = await getDb()
+    try {
+      const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, payload.jobId) })
+      if (task) {
+        await db
+          .update(schema.tasks)
+          .set({
+            status: payload.status,
+            progress: payload.status === 'completed' ? 100 : task.progress,
+            error: payload.error ?? null,
+            finishedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.tasks.id, task.id))
+      }
+    } catch (err) {
+      logger.warn('api', `[cf-callback] task sync skipped: ${err instanceof Error ? err.message : String(err)}`)
+    }
     const media = await db.query.media.findFirst({ where: eq(schema.media.id, payload.mediaId) })
     if (!media) {
 	  // Gracefully ignore callbacks that aren't tied to a media row (e.g. channel-list or comments-only tasks)

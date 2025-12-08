@@ -7,6 +7,7 @@ import {
 	FileVideo,
 	ListVideo,
 	Globe,
+	ListChecks,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -47,6 +48,12 @@ const menuItems = [
 		href: '/proxy',
 		icon: Globe,
 		description: 'Manage proxy servers',
+	},
+	{
+		title: 'Tasks',
+		href: '/tasks',
+		icon: ListChecks,
+		description: 'View cloud job history',
 	},
 ]
 

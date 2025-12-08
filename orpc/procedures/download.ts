@@ -68,19 +68,33 @@ export const startCloudDownload = os
 				.where(eq(schema.media.id, existing.id))
 		}
 
-		const proxyConfig = proxyId
-			? await db.query.proxies.findFirst({
-					where: eq(schema.proxies.id, proxyId),
-				})
-			: null
-		const proxyPayload = toProxyJobPayload(proxyConfig)
+			const proxyConfig = proxyId
+				? await db.query.proxies.findFirst({
+						where: eq(schema.proxies.id, proxyId),
+					})
+				: null
+			const proxyPayload = toProxyJobPayload(proxyConfig)
+			const taskId = createId()
 
-		try {
-			const job = await startCloudJob({
-				mediaId,
-				engine: 'media-downloader',
-				options: {
-					url,
+			try {
+				await db.insert(schema.tasks).values({
+					id: taskId,
+					kind: 'download',
+					engine: 'media-downloader',
+					targetType: 'media',
+					targetId: mediaId,
+					status: 'queued',
+					progress: 0,
+					payload: { url, quality, source, proxyId: proxyId ?? null },
+					createdAt: now,
+					updatedAt: now,
+				})
+
+				const job = await startCloudJob({
+					mediaId,
+					engine: 'media-downloader',
+					options: {
+						url,
 					quality,
 					source,
 					proxy: proxyPayload,
@@ -88,33 +102,71 @@ export const startCloudDownload = os
 				},
 			})
 
-			await db
-				.update(schema.media)
-				.set({
-					downloadJobId: job.jobId,
-				})
-				.where(eq(schema.media.id, mediaId))
+				await db
+					.update(schema.media)
+					.set({
+						downloadJobId: job.jobId,
+					})
+					.where(eq(schema.media.id, mediaId))
 
-			return {
-				mediaId,
-				jobId: job.jobId,
+				await db
+					.update(schema.tasks)
+					.set({
+						jobId: job.jobId,
+						status: 'queued',
+						startedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(eq(schema.tasks.id, taskId))
+
+				return {
+					mediaId,
+					jobId: job.jobId,
+					taskId,
+				}
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Failed to start cloud download'
+				await db
+					.update(schema.media)
+					.set({
+						downloadStatus: 'failed',
+						downloadError: message,
+					})
+					.where(eq(schema.media.id, mediaId))
+				await db
+					.update(schema.tasks)
+					.set({
+						status: 'failed',
+						error: message,
+						finishedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(eq(schema.tasks.id, taskId))
+				throw error
 			}
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to start cloud download'
-			await db
-				.update(schema.media)
-				.set({
-					downloadStatus: 'failed',
-					downloadError: message,
-				})
-				.where(eq(schema.media.id, mediaId))
-			throw error
-		}
-	})
+		})
 
 export const getCloudDownloadStatus = os
 	.input(z.object({ jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
 		const status = await getJobStatus(input.jobId)
+		try {
+			const db = await getDb()
+			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
+			if (task) {
+				await db
+					.update(schema.tasks)
+					.set({
+						status: status.status,
+						progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
+						jobStatusSnapshot: status,
+						updatedAt: new Date(),
+						finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
+					})
+					.where(eq(schema.tasks.id, task.id))
+			}
+		} catch {
+			// Best-effort; ignore task sync errors
+		}
 		return status
 	})

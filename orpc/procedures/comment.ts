@@ -204,17 +204,58 @@ export const startCloudRender = os
 			proxyPayload = toProxyJobPayload(proxy)
 		}
 
-        const job = await startCloudJob({
-            mediaId: media.id,
+        const taskId = createId()
+        await db.insert(schema.tasks).values({
+            id: taskId,
+            kind: 'render-comments',
             engine: 'renderer-remotion',
-            options: {
-                defaultProxyUrl: PROXY_URL,
-                proxy: proxyPayload,
-                sourcePolicy: input.sourcePolicy || 'auto',
+            targetType: 'media',
+            targetId: media.id,
+            status: 'queued',
+            progress: 0,
+            payload: {
                 templateId: input.templateId || media.commentsTemplate || 'comments-default',
+                sourcePolicy: input.sourcePolicy || 'auto',
+                proxyId: proxyId ?? null,
             },
+            createdAt: new Date(),
+            updatedAt: new Date(),
         })
-        return { jobId: job.jobId }
+
+        try {
+            const job = await startCloudJob({
+                mediaId: media.id,
+                engine: 'renderer-remotion',
+                options: {
+                    defaultProxyUrl: PROXY_URL,
+                    proxy: proxyPayload,
+                    sourcePolicy: input.sourcePolicy || 'auto',
+                    templateId: input.templateId || media.commentsTemplate || 'comments-default',
+                },
+            })
+
+            await db
+                .update(schema.tasks)
+                .set({
+                    jobId: job.jobId,
+                    startedAt: new Date(),
+                    updatedAt: new Date(),
+                })
+                .where(eq(schema.tasks.id, taskId))
+            return { jobId: job.jobId, taskId }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to start render task'
+            await db
+                .update(schema.tasks)
+                .set({
+                    status: 'failed',
+                    error: message,
+                    finishedAt: new Date(),
+                    updatedAt: new Date(),
+                })
+                .where(eq(schema.tasks.id, taskId))
+            throw error
+        }
     })
 
 // Cloud rendering: get status
@@ -222,6 +263,24 @@ export const getRenderStatus = os
 	.input(z.object({ jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
 		const status = await getJobStatus(input.jobId)
+		try {
+			const db = await getDb()
+			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
+			if (task) {
+				await db
+					.update(schema.tasks)
+					.set({
+						status: status.status,
+						progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
+						jobStatusSnapshot: status,
+						updatedAt: new Date(),
+						finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
+					})
+					.where(eq(schema.tasks.id, task.id))
+			}
+		} catch {
+			// best-effort
+		}
 		return status
 	})
 
@@ -248,26 +307,86 @@ export const startCloudCommentsDownload = os
 			proxyPayload = toProxyJobPayload(proxy)
 		}
 
-		const job = await startCloudJob({
-			mediaId,
-			engine: 'media-downloader',
-			options: {
-				url: media.url,
-				source: media.source,
-				task: 'comments',
-				commentsPages: pages,
-				defaultProxyUrl: PROXY_URL,
-				proxy: proxyPayload,
-			},
-		})
+			const taskId = createId()
+			await db.insert(schema.tasks).values({
+				id: taskId,
+				kind: 'comments-download',
+				engine: 'media-downloader',
+				targetType: 'media',
+				targetId: mediaId,
+				status: 'queued',
+				progress: 0,
+				payload: {
+					pages,
+					proxyId: proxyId ?? null,
+					source: media.source,
+				},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			})
 
-		return { jobId: job.jobId }
-	})
+			try {
+				const job = await startCloudJob({
+					mediaId,
+					engine: 'media-downloader',
+					options: {
+						url: media.url,
+						source: media.source,
+						task: 'comments',
+						commentsPages: pages,
+						defaultProxyUrl: PROXY_URL,
+						proxy: proxyPayload,
+					},
+				})
+
+				await db
+					.update(schema.tasks)
+					.set({
+						jobId: job.jobId,
+						startedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(eq(schema.tasks.id, taskId))
+
+				return { jobId: job.jobId, taskId }
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Failed to start comments download'
+				await db
+					.update(schema.tasks)
+					.set({
+						status: 'failed',
+						error: message,
+						finishedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(eq(schema.tasks.id, taskId))
+				throw error
+			}
+		})
 
 export const getCloudCommentsStatus = os
 	.input(z.object({ jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
-		return getJobStatus(input.jobId)
+		const status = await getJobStatus(input.jobId)
+		try {
+			const db = await getDb()
+			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
+			if (task) {
+				await db
+					.update(schema.tasks)
+					.set({
+						status: status.status,
+						progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
+						jobStatusSnapshot: status,
+						updatedAt: new Date(),
+						finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
+					})
+					.where(eq(schema.tasks.id, task.id))
+			}
+		} catch {
+			// best-effort
+		}
+		return status
 	})
 
 export const finalizeCloudCommentsDownload = os

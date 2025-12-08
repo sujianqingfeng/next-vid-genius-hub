@@ -30,6 +30,68 @@ export interface TranscriptionWord {
 	end: number
 }
 
+export type TaskKind =
+	| 'download'
+	| 'metadata-refresh'
+	| 'comments-download'
+	| 'render-comments'
+	| 'render-subtitles'
+	| 'channel-sync'
+	| 'asr'
+
+export type TaskEngine =
+	| 'media-downloader'
+	| 'renderer-remotion'
+	| 'burner-ffmpeg'
+	| 'audio-transcoder'
+	| 'asr-pipeline'
+
+export const tasks = sqliteTable('tasks', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	kind: text('kind', {
+		enum: [
+			'download',
+			'metadata-refresh',
+			'comments-download',
+			'render-comments',
+			'render-subtitles',
+			'channel-sync',
+			'asr',
+		],
+	}).notNull(),
+	engine: text('engine', {
+		enum: ['media-downloader', 'renderer-remotion', 'burner-ffmpeg', 'audio-transcoder', 'asr-pipeline'],
+	}).notNull(),
+	targetType: text('target_type', { enum: ['media', 'channel', 'system'] }).notNull(),
+	targetId: text('target_id').notNull(),
+	jobId: text('job_id'),
+	status: text('status', {
+		enum: [
+			'queued',
+			'fetching_metadata',
+			'preparing',
+			'running',
+			'uploading',
+			'completed',
+			'failed',
+			'canceled',
+		],
+	}),
+	progress: integer('progress'),
+	error: text('error'),
+	jobStatusSnapshot: text('job_status_snapshot', { mode: 'json' }),
+	payload: text('payload', { mode: 'json' }),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	startedAt: integer('started_at', { mode: 'timestamp' }),
+	finishedAt: integer('finished_at', { mode: 'timestamp' }),
+	updatedAt: integer('updated_at', { mode: 'timestamp' }),
+})
+
 export const media = sqliteTable('media', {
 	id: text('id')
 		.unique()

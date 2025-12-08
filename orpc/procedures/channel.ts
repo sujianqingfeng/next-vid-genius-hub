@@ -1,6 +1,7 @@
 import { os } from '@orpc/server'
 import { z } from 'zod'
 import { desc, eq } from 'drizzle-orm'
+import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
@@ -76,36 +77,88 @@ export const startCloudSync = os
 
     let proxyPayload = undefined
     const proxyId = input.proxyId || channel.defaultProxyId || undefined
-    if (proxyId) {
-      const proxy = await db.query.proxies.findFirst({ where: eq(schema.proxies.id, proxyId) })
-      proxyPayload = toProxyJobPayload(proxy)
-    }
+	    if (proxyId) {
+	      const proxy = await db.query.proxies.findFirst({ where: eq(schema.proxies.id, proxyId) })
+	      proxyPayload = toProxyJobPayload(proxy)
+	    }
 
-    const job = await startCloudJob({
-      mediaId: channel.id,
-      engine: 'media-downloader',
-      options: {
-        task: 'channel-list',
-        source: 'youtube',
-        channelUrlOrId,
-        limit: input.limit,
-        defaultProxyUrl: PROXY_URL,
-        proxy: proxyPayload,
-      },
-    })
+	    const taskId = createId()
+	    await db.insert(schema.tasks).values({
+	      id: taskId,
+	      kind: 'channel-sync',
+	      engine: 'media-downloader',
+	      targetType: 'channel',
+	      targetId: channel.id,
+	      status: 'queued',
+	      progress: 0,
+	      payload: { limit: input.limit, proxyId: proxyId ?? null, channelUrlOrId },
+	      createdAt: new Date(),
+	      updatedAt: new Date(),
+	    })
 
-    await db
-      .update(schema.channels)
-      .set({ lastJobId: job.jobId, lastSyncStatus: 'queued', updatedAt: new Date() })
-      .where(eq(schema.channels.id, channel.id))
+	    try {
+	      const job = await startCloudJob({
+	        mediaId: channel.id,
+	        engine: 'media-downloader',
+	        options: {
+	          task: 'channel-list',
+	          source: 'youtube',
+	          channelUrlOrId,
+	          limit: input.limit,
+	          defaultProxyUrl: PROXY_URL,
+	          proxy: proxyPayload,
+	        },
+	      })
 
-    return { jobId: job.jobId }
-  })
+	      await db
+	        .update(schema.channels)
+	        .set({ lastJobId: job.jobId, lastSyncStatus: 'queued', updatedAt: new Date() })
+	        .where(eq(schema.channels.id, channel.id))
+
+	      await db
+	        .update(schema.tasks)
+	        .set({ jobId: job.jobId, startedAt: new Date(), updatedAt: new Date() })
+	        .where(eq(schema.tasks.id, taskId))
+
+	      return { jobId: job.jobId, taskId }
+	    } catch (error) {
+	      const message = error instanceof Error ? error.message : 'Failed to start channel sync'
+	      await db
+	        .update(schema.tasks)
+	        .set({
+	          status: 'failed',
+	          error: message,
+	          finishedAt: new Date(),
+	          updatedAt: new Date(),
+	        })
+	        .where(eq(schema.tasks.id, taskId))
+	      throw error
+	    }
+	  })
 
 export const getCloudSyncStatus = os
   .input(z.object({ jobId: z.string().min(1) }))
   .handler(async ({ input }) => {
-    return getJobStatus(input.jobId)
+    const status = await getJobStatus(input.jobId)
+    try {
+      const db = await getDb()
+      const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
+      if (task) {
+        await db
+          .update(schema.tasks)
+          .set({
+            status: status.status,
+            progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
+            jobStatusSnapshot: status,
+            updatedAt: new Date(),
+            finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
+          })
+          .where(eq(schema.tasks.id, task.id))
+      }
+    } catch {
+      // best-effort
+    }
+    return status
   })
 
 export const finalizeCloudSync = os
@@ -115,15 +168,32 @@ export const finalizeCloudSync = os
     const channel = await db.query.channels.findFirst({ where: eq(schema.channels.id, input.id) })
     if (!channel) throw new Error('Channel not found')
 
-    const status = await getJobStatus(input.jobId)
-    if (status.status !== 'completed') {
-      throw new Error(`Job not completed: ${status.status}`)
-    }
+	    const status = await getJobStatus(input.jobId)
+	    if (status.status !== 'completed') {
+	      throw new Error(`Job not completed: ${status.status}`)
+	    }
+	    try {
+	      const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
+	      if (task) {
+	        await db
+	          .update(schema.tasks)
+	          .set({
+	            status: status.status,
+	            progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
+	            jobStatusSnapshot: status,
+	            updatedAt: new Date(),
+	            finishedAt: new Date(),
+	          })
+	          .where(eq(schema.tasks.id, task.id))
+	      }
+	    } catch {
+	      // ignore
+	    }
 
-    const urlFromStatus = status.outputs?.metadata?.url
-    const keyFromStatus = status.outputs?.metadata?.key ?? status.outputMetadataKey
-    let metadataUrl = urlFromStatus
-    if (!metadataUrl && keyFromStatus) {
+	    const urlFromStatus = status.outputs?.metadata?.url
+	    const keyFromStatus = status.outputs?.metadata?.key ?? status.outputMetadataKey
+	    let metadataUrl = urlFromStatus
+	    if (!metadataUrl && keyFromStatus) {
       metadataUrl = await presignGetByKey(keyFromStatus)
     }
     if (!metadataUrl) throw new Error('Missing metadata output from job')

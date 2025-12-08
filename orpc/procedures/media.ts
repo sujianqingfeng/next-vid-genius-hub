@@ -13,6 +13,7 @@ import { ChatModelIds, type ChatModelId } from '~/lib/ai/models'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
+import { createId } from '@paralleldrive/cuid2'
 
 export const list = os
 	.input(
@@ -81,48 +82,133 @@ export const refreshMetadata = os
 		const provider = ProviderFactory.resolveProvider(record.url)
 		const source = provider.id === 'tiktok' ? 'tiktok' : 'youtube'
 
-		const proxyRecord =
-			input.proxyId && input.proxyId !== 'none'
-				? await db.query.proxies.findFirst({
-						where: eq(schema.proxies.id, input.proxyId),
+			const proxyRecord =
+				input.proxyId && input.proxyId !== 'none'
+					? await db.query.proxies.findFirst({
+							where: eq(schema.proxies.id, input.proxyId),
+						})
+					: null
+
+			const proxyPayload = toProxyJobPayload(proxyRecord)
+
+			const taskId = createId()
+			await db.insert(schema.tasks).values({
+				id: taskId,
+				kind: 'metadata-refresh',
+				engine: 'media-downloader',
+				targetType: 'media',
+				targetId: record.id,
+				status: 'queued',
+				progress: 0,
+				payload: {
+					url: record.url,
+					quality: record.quality || '1080p',
+					source,
+					proxyId: input.proxyId ?? null,
+				},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			})
+
+			let lastStatus: JobStatusResponse | null = null
+			try {
+				const job = await startCloudJob({
+					mediaId: record.id,
+					engine: 'media-downloader',
+					options: {
+						task: 'metadata-only',
+						url: record.url,
+						quality: (record.quality || '1080p') as '720p' | '1080p',
+						source,
+						proxy: proxyPayload,
+						defaultProxyUrl: PROXY_URL,
+					},
+				})
+
+				await db
+					.update(schema.tasks)
+					.set({
+						jobId: job.jobId,
+						startedAt: new Date(),
+						updatedAt: new Date(),
 					})
-				: null
+					.where(eq(schema.tasks.id, taskId))
 
-		const proxyPayload = toProxyJobPayload(proxyRecord)
+				const terminal: ReadonlySet<JobStatusResponse['status']> = new Set([
+					'completed',
+					'failed',
+					'canceled',
+				])
+				const startedAt = Date.now()
+				lastStatus = await getJobStatus(job.jobId)
 
-		const job = await startCloudJob({
-			mediaId: record.id,
-			engine: 'media-downloader',
-			options: {
-				task: 'metadata-only',
-				url: record.url,
-				quality: (record.quality || '1080p') as '720p' | '1080p',
-				source,
-				proxy: proxyPayload,
-				defaultProxyUrl: PROXY_URL,
-			},
-		})
+				while (!terminal.has(lastStatus.status)) {
+					try {
+						await db
+							.update(schema.tasks)
+							.set({
+								status: lastStatus.status,
+								progress: typeof lastStatus.progress === 'number' ? Math.round(lastStatus.progress * 100) : null,
+								jobStatusSnapshot: lastStatus,
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.tasks.id, taskId))
+					} catch {
+						// best-effort
+					}
+					if (Date.now() - startedAt > 60_000) {
+						await db
+							.update(schema.tasks)
+							.set({
+								status: 'failed',
+								error: `timeout:${lastStatus.status}`,
+								finishedAt: new Date(),
+								updatedAt: new Date(),
+							})
+							.where(eq(schema.tasks.id, taskId))
+						throw new Error(`Metadata refresh timed out: ${lastStatus.status}`)
+					}
+					await new Promise((resolve) => setTimeout(resolve, 1500))
+					lastStatus = await getJobStatus(job.jobId)
+				}
 
-		const terminal: ReadonlySet<JobStatusResponse['status']> = new Set([
-			'completed',
-			'failed',
-			'canceled',
-		])
-		const startedAt = Date.now()
-		let lastStatus = await getJobStatus(job.jobId)
-
-		while (!terminal.has(lastStatus.status)) {
-			if (Date.now() - startedAt > 60_000) {
-				throw new Error(`Metadata refresh timed out: ${lastStatus.status}`)
+				try {
+					await db
+						.update(schema.tasks)
+						.set({
+							status: lastStatus.status,
+							progress: typeof lastStatus.progress === 'number' ? Math.round(lastStatus.progress * 100) : null,
+							jobStatusSnapshot: lastStatus,
+							finishedAt: new Date(),
+							updatedAt: new Date(),
+							error: lastStatus.status === 'completed' ? null : lastStatus.message || null,
+						})
+						.where(eq(schema.tasks.id, taskId))
+				} catch {
+					// best-effort
+				}
+			} catch (err) {
+				const message = err instanceof Error ? err.message : 'Failed to refresh metadata'
+				await db
+					.update(schema.tasks)
+					.set({
+						status: 'failed',
+						error: message,
+						finishedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(eq(schema.tasks.id, taskId))
+				throw err
 			}
-			await new Promise((resolve) => setTimeout(resolve, 1500))
-			lastStatus = await getJobStatus(job.jobId)
-		}
 
-		if (lastStatus.status !== 'completed') {
-			const msg = lastStatus.message || `Metadata job not completed: ${lastStatus.status}`
-			throw new Error(msg)
-		}
+			if (!lastStatus) {
+				throw new Error('Metadata job did not start')
+			}
+
+			if (lastStatus.status !== 'completed') {
+				const msg = lastStatus.message || `Metadata job not completed: ${lastStatus.status}`
+				throw new Error(msg)
+			}
 
 		const meta = (lastStatus.metadata ?? {}) as Record<string, unknown>
 		const updates: Record<string, unknown> = {}

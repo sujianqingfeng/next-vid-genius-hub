@@ -5,6 +5,7 @@ import * as media from './procedures/media'
 import * as subtitle from './procedures/subtitle'
 import * as proxy from './procedures/proxy'
 import * as channel from './procedures/channel'
+import * as task from './procedures/task'
 
 export const appRouter = os.router({
 	comment,
@@ -13,6 +14,7 @@ export const appRouter = os.router({
 	subtitle,
 	proxy,
 	channel,
+	task,
 })
 
 export type AppRouter = typeof appRouter

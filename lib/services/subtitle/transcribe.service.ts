@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema, type TranscriptionWord } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { type CloudflareInputFormat, type WhisperModel, WHISPER_MODELS } from '~/lib/subtitle/config/models'
@@ -62,10 +63,17 @@ export async function transcribe(input: {
 	const modelId = cloudflareModelMap[model]
 	if (!modelId) throw new Error(`Model ${model} is not supported by Cloudflare provider`)
 
-	const job = await startCloudJob({
-		mediaId,
+	const taskId = createId()
+	const now = new Date()
+	await db.insert(schema.tasks).values({
+		id: taskId,
+		kind: 'asr',
 		engine: 'asr-pipeline',
-		options: {
+		targetType: 'media',
+		targetId: mediaId,
+		status: 'queued',
+		progress: 0,
+		payload: {
 			sourceKey: remoteAudioKey,
 			maxBytes: targetBytes,
 			targetBitrates,
@@ -74,22 +82,80 @@ export async function transcribe(input: {
 			inputFormat: cloudflareInputFormat,
 			...(languageForCloud ? { language: languageForCloud } : {}),
 		},
+		createdAt: now,
+		updatedAt: now,
 	})
+
+	let jobId: string | null = null
+	try {
+		const job = await startCloudJob({
+			mediaId,
+			engine: 'asr-pipeline',
+			options: {
+				sourceKey: remoteAudioKey,
+				maxBytes: targetBytes,
+				targetBitrates,
+				sampleRate,
+				model: modelId,
+				inputFormat: cloudflareInputFormat,
+				...(languageForCloud ? { language: languageForCloud } : {}),
+			},
+		})
+		jobId = job.jobId
+		await db
+			.update(schema.tasks)
+			.set({
+				jobId: job.jobId,
+				startedAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.where(eq(schema.tasks.id, taskId))
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to start ASR pipeline'
+		await db
+			.update(schema.tasks)
+			.set({
+				status: 'failed',
+				error: message,
+				finishedAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.where(eq(schema.tasks.id, taskId))
+		throw error
+	}
+
 	logger.info(
 		'transcription',
-		`Cloud ASR job started: ${job.jobId} (maxBytes=${targetBytes}, bitrates=[${targetBitrates.join(',')}], sr=${sampleRate})`,
+		`Cloud ASR job started: ${jobId} (maxBytes=${targetBytes}, bitrates=[${targetBitrates.join(',')}], sr=${sampleRate})`,
 	)
 	const startedAt = Date.now()
 	let lastStatus = 'queued'
 	let vttUrl: string | undefined
 	let wordsUrl: string | undefined
 	while (Date.now() - startedAt < 180_000) {
-		const st = await getJobStatus(job.jobId)
+		const st = await getJobStatus(jobId!)
 		lastStatus = st.status
 		logger.debug(
 			'transcription',
-			`Cloud ASR status for ${job.jobId}: ${st.status} phase=${st.phase ?? '-'} progress=${st.progress ?? '-'}`,
+			`Cloud ASR status for ${jobId}: ${st.status} phase=${st.phase ?? '-'} progress=${st.progress ?? '-'}`,
 		)
+		try {
+			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, jobId!) })
+			if (task) {
+				await db
+					.update(schema.tasks)
+					.set({
+						status: st.status,
+						progress: typeof st.progress === 'number' ? Math.round(st.progress * 100) : task.progress,
+						jobStatusSnapshot: st,
+						updatedAt: new Date(),
+						finishedAt: ['completed', 'failed', 'canceled'].includes(st.status) ? new Date() : task.finishedAt,
+					})
+					.where(eq(schema.tasks.id, task.id))
+			}
+		} catch {
+			// best-effort
+		}
 		if (st.status === 'completed') {
 			vttUrl = st.outputs?.vtt?.url
 			wordsUrl = st.outputs?.words?.url
@@ -97,11 +163,31 @@ export async function transcribe(input: {
 		}
 		if (st.status === 'failed' || st.status === 'canceled') {
 			const msg = st.message || 'Cloud ASR pipeline failed'
-			throw new Error(`job ${job.jobId}: ${msg}`)
+			await db
+				.update(schema.tasks)
+				.set({
+					status: st.status,
+					error: msg,
+					finishedAt: new Date(),
+					updatedAt: new Date(),
+				})
+				.where(eq(schema.tasks.jobId, jobId!))
+			throw new Error(`job ${jobId}: ${msg}`)
 		}
 		await new Promise((r) => setTimeout(r, 1200))
 	}
-	if (!vttUrl) throw new Error(`Cloud ASR pipeline timeout for ${job.jobId}; last status=${lastStatus}`)
+	if (!vttUrl) {
+		await db
+			.update(schema.tasks)
+			.set({
+				status: 'failed',
+				error: `timeout:${lastStatus}`,
+				finishedAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.where(eq(schema.tasks.jobId, jobId!))
+		throw new Error(`Cloud ASR pipeline timeout for ${jobId}; last status=${lastStatus}`)
+	}
 	const vttResp = await fetch(vttUrl)
 	if (!vttResp.ok) throw new Error(`fetch vtt failed: ${vttResp.status}`)
 	vttContent = await vttResp.text()
@@ -149,5 +235,18 @@ export async function transcribe(input: {
 	}
 
 	logger.info('transcription', `Transcription completed successfully for media ${mediaId}`)
+	try {
+		await db
+			.update(schema.tasks)
+			.set({
+				status: 'completed',
+				progress: 100,
+				finishedAt: new Date(),
+				updatedAt: new Date(),
+			})
+			.where(eq(schema.tasks.jobId, jobId!))
+	} catch {
+		// ignore
+	}
 	return { success: true, transcription: vttContent, words: transcriptionWords }
 }
