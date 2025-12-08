@@ -79,7 +79,6 @@ export default function CommentsPage() {
 		DEFAULT_CHAT_MODEL_ID,
 	)
 	const [overwriteModeration, setOverwriteModeration] = useState(false)
-	const [onlyFlagged, setOnlyFlagged] = useState(false)
 	const [selectedCommentIds, setSelectedCommentIds] = useState<Set<string>>(
 		new Set(),
 	)
@@ -365,9 +364,7 @@ export default function CommentsPage() {
 	}, [id, sourcePolicy])
 
 	const comments: Comment[] = mediaQuery.data?.comments || []
-	const visibleComments = onlyFlagged
-		? comments.filter((c) => c?.moderation?.flagged)
-		: comments
+	const visibleComments = comments
 	const allVisibleSelected =
 		visibleComments.length > 0 &&
 		selectedCommentIds.size === visibleComments.length
@@ -1073,20 +1070,6 @@ ${
 										{selectedCount} selected
 									</Badge>
 								) : null}
-								<div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/40 px-3 py-1.5 shadow-sm">
-									<Switch
-										id="show-flagged"
-										checked={onlyFlagged}
-										onCheckedChange={setOnlyFlagged}
-										className="scale-75"
-									/>
-									<Label
-										htmlFor="show-flagged"
-										className="text-xs font-medium cursor-pointer"
-									>
-										Flagged Only
-									</Label>
-								</div>
 								<Button
 									variant="outline"
 									size="sm"
@@ -1145,9 +1128,7 @@ ${
 								</div>
 								<h3 className="mb-2 text-lg font-semibold text-foreground">No comments found</h3>
 								<p className="text-muted-foreground font-light max-w-sm mx-auto">
-									{onlyFlagged
-										? 'No flagged comments found.'
-										: 'Download comments to get started.'}
+									Download comments to get started.
 								</p>
 							</div>
 						)}
