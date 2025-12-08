@@ -36,10 +36,17 @@ function requireOrchestratorUrl(): string {
   return CF_ORCHESTRATOR_URL
 }
 
+function requireJobCallbackSecret(): string {
+  if (!JOB_CALLBACK_HMAC_SECRET) {
+    throw new Error('JOB_CALLBACK_HMAC_SECRET is not configured')
+  }
+  return JOB_CALLBACK_HMAC_SECRET
+}
+
 export async function startCloudJob(input: StartJobInput): Promise<StartJobResponse> {
   const base = requireOrchestratorUrl()
   const url = `${base.replace(/\/$/, '')}/jobs`
-  const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+  const secret = requireJobCallbackSecret()
   const res = await postSignedJson(url, secret, input)
   if (!res.ok) {
     // Body may have been read already by postSignedJson for logging; use clone() defensively.
@@ -82,7 +89,7 @@ export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJob
   // 1) Batch delete objects by key (if any)
   if (keys.length > 0) {
     const url = `${base.replace(/\/$/, '')}/debug/delete`
-    const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+    const secret = requireJobCallbackSecret()
     const res = await postSignedJson(url, secret, { keys })
     if (!res.ok) throw new Error(`deleteCloudArtifacts: delete keys failed: ${res.status} ${await res.text()}`)
   }
@@ -99,7 +106,7 @@ export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJob
   // 3) Delete by prefixes (list + bulk delete)
   if (prefixes.length > 0) {
     const url = `${base.replace(/\/$/, '')}/debug/delete-prefixes`
-    const secret = JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+    const secret = requireJobCallbackSecret()
     const res = await postSignedJson(url, secret, { prefixes })
     if (!res.ok) throw new Error(`deleteCloudArtifacts: delete prefixes failed: ${res.status} ${await res.text()}`)
   }

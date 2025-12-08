@@ -95,6 +95,13 @@ function jobStub(env: Env, jobId: string) {
   return env.RENDER_JOB_DO.get(id)
 }
 
+function requireJobCallbackSecret(env: Env): string {
+  if (!env.JOB_CALLBACK_HMAC_SECRET) {
+    throw new Error('JOB_CALLBACK_HMAC_SECRET is not configured')
+  }
+  return env.JOB_CALLBACK_HMAC_SECRET
+}
+
 // Re-export container classes so the runtime can locate them by class_name
 export { MediaDownloaderContainer, AudioTranscoderContainer, BurnerFfmpegContainer, RendererRemotionContainer } from './containers'
 
@@ -280,7 +287,8 @@ async function writeManifestPatch(env: Env, bucket: string, mediaId: string, pat
 async function handleStart(env: Env, req: Request) {
   const raw = await req.text()
   const sig = req.headers.get('x-signature') || ''
-  if (!(await verifyHmac(env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret', raw, sig))) {
+  const secret = requireJobCallbackSecret(env)
+  if (!(await verifyHmac(secret, raw, sig))) {
     return json({ error: 'unauthorized' }, { status: 401 })
   }
   const body = JSON.parse(raw) as StartBody
@@ -418,7 +426,6 @@ async function handleStart(env: Env, req: Request) {
   ;(doc as any).outputKey = outputVideoKey
   if (outputAudioKey) (doc as any).outputAudioKey = outputAudioKey
   if (outputMetadataKey) (doc as any).outputMetadataKey = outputMetadataKey
-  await env.JOBS.put(jobId, JSON.stringify(doc), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
 
   const payload: any = {
     jobId,
@@ -556,20 +563,16 @@ async function handleStart(env: Env, req: Request) {
 async function handleGetStatus(env: Env, jobId: string) {
   if (!jobId) return json({ error: 'jobId required' }, { status: 400 })
   const stub = jobStub(env, jobId)
-  if (stub) {
-    const r = await stub.fetch('https://do/')
-    return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json' } })
-  }
-  // fallback to KV
-  const raw = await env.JOBS.get(jobId)
-  if (!raw) return json({ error: 'not found' }, { status: 404 })
-  return new Response(raw, { headers: { 'content-type': 'application/json' } })
+  if (!stub) return json({ error: 'not found' }, { status: 404 })
+  const r = await stub.fetch('https://do/')
+  return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json' } })
 }
 
 async function handleDebugDelete(env: Env, req: Request) {
   const raw = await req.text()
   const sig = req.headers.get('x-signature') || ''
-  if (!(await verifyHmac(env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret', raw, sig))) {
+  const secret = requireJobCallbackSecret(env)
+  if (!(await verifyHmac(secret, raw, sig))) {
     return json({ error: 'unauthorized' }, { status: 401 })
   }
 
@@ -639,7 +642,8 @@ async function handleArtifactDelete(env: Env, jobId: string) {
 async function handleContainerCallback(env: Env, req: Request) {
   const raw = await req.text()
   const sig = req.headers.get('x-signature') || ''
-  if (!(await verifyHmac(env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret', raw, sig))) {
+  const secret = requireJobCallbackSecret(env)
+  if (!(await verifyHmac(secret, raw, sig))) {
     return json({ error: 'unauthorized' }, { status: 401 })
   }
   const body = JSON.parse(raw) as (Partial<StatusDoc> & {
@@ -740,10 +744,11 @@ async function runAsrForPipeline(env: Env, doc: any) {
   const jobId = doc.jobId
   const audioKey: string | undefined = doc.outputAudioKey || doc.outputs?.audio?.key
   if (!audioKey) throw new Error('asr-pipeline: missing outputAudioKey')
-  // Allow fallback to CLOUDFLARE_* for local/dev convenience
-  const aiAccountId = env.CF_AI_ACCOUNT_ID || (env as any).CLOUDFLARE_ACCOUNT_ID
-  const aiApiToken = env.CF_AI_API_TOKEN || (env as any).CLOUDFLARE_API_TOKEN
-  if (!aiAccountId || !aiApiToken) throw new Error('asr-pipeline: Workers AI credentials not configured')
+  const aiAccountId = env.CF_AI_ACCOUNT_ID
+  const aiApiToken = env.CF_AI_API_TOKEN
+  if (!aiAccountId || !aiApiToken) {
+    throw new Error('asr-pipeline: Workers AI credentials not configured')
+  }
 
   // Fetch downsampled audio bytes via presigned GET (with small retries)
   const audioUrl = await presignS3(env, 'GET', bucket, audioKey, 600)
@@ -867,7 +872,7 @@ async function runAsrForPipeline(env: Env, doc: any) {
 }
 
 async function handleUpload(env: Env, req: Request, jobId: string) {
-  // 依据 DO/KV 中的 outputKey 决定最终存储路径（包含 mediaId）
+  // 依据 DO 中的 outputKey 决定最终存储路径（包含 mediaId）
   let outputKey = bucketPaths.outputs.fallbackVideo(jobId)
   try {
     const stub = jobStub(env, jobId)
@@ -877,12 +882,6 @@ async function handleUpload(env: Env, req: Request, jobId: string) {
         const doc = (await r.json()) as any
         if (doc?.outputKey) outputKey = doc.outputKey
       }
-    } else {
-      const raw = await env.JOBS.get(jobId)
-      if (raw) {
-        const doc = JSON.parse(raw) as any
-        if (doc?.outputKey) outputKey = doc.outputKey
-      }
     }
   } catch {}
 
@@ -890,18 +889,6 @@ async function handleUpload(env: Env, req: Request, jobId: string) {
   await env.RENDER_BUCKET.put(outputKey, req.body as ReadableStream, {
     httpMetadata: { contentType: 'video/mp4' },
   })
-  // Update KV with outputKey
-  const existing = await env.JOBS.get(jobId)
-  const prior = existing ? (JSON.parse(existing) as StatusDoc & { mediaId?: string }) : undefined
-  const doc: StatusDoc = {
-    jobId,
-    status: prior?.status || 'uploading',
-    phase: 'uploading',
-    progress: 1,
-    outputKey,
-    ts: Date.now(),
-  }
-  await env.JOBS.put(jobId, JSON.stringify({ ...doc, mediaId: prior?.mediaId }), { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) })
   return json({ ok: true, outputKey, outputUrl: `/artifacts/${jobId}` })
 }
 
@@ -916,7 +903,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 async function handleArtifactGet(env: Env, req: Request, jobId: string) {
-  // 优先从 DO/KV 获取 outputKey（包含 mediaId 的归属路径）
+  // 优先从 DO 获取 outputKey（包含 mediaId 的归属路径）
   let key = bucketPaths.outputs.fallbackVideo(jobId)
   try {
     const stub = jobStub(env, jobId)
@@ -924,12 +911,6 @@ async function handleArtifactGet(env: Env, req: Request, jobId: string) {
       const r = await stub.fetch('https://do/')
       if (r.ok) {
         const doc = (await r.json()) as any
-        if (doc?.outputKey) key = doc.outputKey
-      }
-    } else {
-      const raw = await env.JOBS.get(jobId)
-      if (raw) {
-        const doc = JSON.parse(raw) as any
         if (doc?.outputKey) key = doc.outputKey
       }
     }
@@ -1140,7 +1121,8 @@ async function listKeysByPrefix(env: Env, prefix: string): Promise<string[]> {
 async function handleDebugDeletePrefixes(env: Env, req: Request) {
   const raw = await req.text()
   const sig = req.headers.get('x-signature') || ''
-  if (!(await verifyHmac(env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret', raw, sig))) {
+  const secret = requireJobCallbackSecret(env)
+  if (!(await verifyHmac(secret, raw, sig))) {
     return json({ error: 'unauthorized' }, { status: 401 })
   }
   let body: any
@@ -1171,21 +1153,13 @@ async function handleDebugDeletePrefixes(env: Env, req: Request) {
   return json({ ok: !hasErrors, deleted, errors }, { status: hasErrors ? 500 : 200 })
 }
 
-async function loadJobDoc(env: Env, jobId: string, stub?: any): Promise<any | undefined> {
-  let doc: any | undefined
-  if (stub) {
-    try {
-      const r = await stub.fetch('https://do/')
-      if (r.ok) doc = await r.json()
-    } catch {}
-  }
-  if (!doc) {
-    try {
-      const raw = await env.JOBS.get(jobId)
-      if (raw) doc = JSON.parse(raw)
-    } catch {}
-  }
-  return doc
+async function loadJobDoc(_env: Env, _jobId: string, stub?: any): Promise<any | undefined> {
+  if (!stub) return undefined
+  try {
+    const r = await stub.fetch('https://do/')
+    if (r.ok) return (await r.json()) as any
+  } catch {}
+  return undefined
 }
 
 function collectKeysFromDoc(doc: any, jobId: string): string[] {
@@ -1490,7 +1464,7 @@ export class RenderJobDO {
       payload.outputUrl = await presignS3(this.env, 'GET', bucket, doc.outputKey, 600)
     }
 
-    const secret = this.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+    const secret = requireJobCallbackSecret(this.env)
     const signature = await hmacHex(secret, JSON.stringify(payload))
     await fetch(cbUrl, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': signature }, body: JSON.stringify(payload) }).catch(() => {})
   }
