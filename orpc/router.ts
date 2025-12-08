@@ -6,6 +6,8 @@ import * as subtitle from './procedures/subtitle'
 import * as proxy from './procedures/proxy'
 import * as channel from './procedures/channel'
 import * as task from './procedures/task'
+import * as auth from './procedures/auth'
+import * as points from './procedures/points'
 
 export const appRouter = os.router({
 	comment,
@@ -15,6 +17,8 @@ export const appRouter = os.router({
 	proxy,
 	channel,
 	task,
+	auth,
+	points,
 })
 
 export type AppRouter = typeof appRouter

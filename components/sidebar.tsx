@@ -8,6 +8,8 @@ import {
 	ListVideo,
 	Globe,
 	ListChecks,
+	Coins,
+	LogOut,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -19,6 +21,8 @@ import {
 	TooltipTrigger,
 } from '~/components/ui/tooltip'
 import { cn } from '~/lib/utils'
+import { useAuthQuery, useLogoutMutation } from '~/lib/auth/hooks'
+import { Badge } from '~/components/ui/badge'
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 	defaultCollapsed?: boolean
@@ -50,6 +54,12 @@ const menuItems = [
 		description: 'Manage proxy servers',
 	},
 	{
+		title: '积分中心',
+		href: '/points',
+		icon: Coins,
+		description: '查看余额与流水',
+	},
+	{
 		title: 'Tasks',
 		href: '/tasks',
 		icon: ListChecks,
@@ -64,6 +74,8 @@ const bottomMenuItems: MenuItem[] = []
 export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 	const [collapsed, setCollapsed] = React.useState(defaultCollapsed)
 	const pathname = usePathname()
+	const { data: me } = useAuthQuery()
+	const logoutMutation = useLogoutMutation()
 
 	// Longest-prefix match to avoid multiple active items (e.g., /media vs /media/download)
 	const activeHref = React.useMemo(() => {
@@ -143,17 +155,17 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 			<div className="flex h-full flex-col">
 				{/* Header */}
 				<div className="flex h-20 items-center justify-between px-6">
-					{!collapsed && (
-						<div className="flex items-center gap-3 animate-in fade-in duration-500">
-							<div className="h-9 w-9 rounded-xl bg-sidebar-primary/10 flex items-center justify-center ring-1 ring-sidebar-primary/20">
-								<FileVideo strokeWidth={1.5} className="h-5 w-5 text-sidebar-primary" />
-							</div>
-							<span className="text-lg font-semibold tracking-tight">Video Genius</span>
+				{!collapsed && (
+					<div className="flex items-center gap-3 animate-in fade-in duration-500">
+						<div className="h-9 w-9 rounded-xl bg-sidebar-primary/10 flex items-center justify-center ring-1 ring-sidebar-primary/20">
+							<FileVideo strokeWidth={1.5} className="h-5 w-5 text-sidebar-primary" />
 						</div>
-					)}
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
+						<span className="text-lg font-semibold tracking-tight">Video Genius</span>
+					</div>
+				)}
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
 								variant="ghost"
 								size="icon"
 								className="h-8 w-8 text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors rounded-full"
@@ -188,21 +200,42 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 				<div className="p-4">
 					<div
 						className={cn(
-							'flex items-center gap-3 rounded-xl p-3 transition-all duration-300 hover:bg-sidebar-accent/40 cursor-pointer group',
+							'flex items-center gap-3 rounded-xl p-3 transition-all duration-300 hover:bg-sidebar-accent/40',
 							collapsed && 'justify-center',
 						)}
 					>
 						<div className="h-9 w-9 rounded-full bg-gradient-to-br from-sidebar-primary/10 to-sidebar-primary/5 ring-1 ring-sidebar-primary/20 flex items-center justify-center group-hover:ring-sidebar-primary/40 transition-all">
 							<span className="text-xs font-semibold text-sidebar-primary">
-								U
+								{me?.user?.nickname?.[0]?.toUpperCase() ||
+									me?.user?.email?.[0]?.toUpperCase() ||
+									'U'}
 							</span>
 						</div>
 						{!collapsed && (
-							<div className="flex-1 min-w-0 animate-in fade-in duration-300">
-								<p className="text-sm font-medium truncate text-sidebar-foreground/90">User</p>
+							<div className="flex-1 min-w-0 space-y-1 animate-in fade-in duration-300">
+								<div className="flex items-center gap-2">
+									<p className="text-sm font-medium truncate text-sidebar-foreground/90">
+										{me?.user?.nickname || me?.user?.email || '未登录'}
+									</p>
+									{typeof me?.balance === 'number' && (
+										<Badge variant="secondary" className="text-[11px]">
+											{me.balance} 分
+										</Badge>
+									)}
+								</div>
 								<p className="text-xs text-sidebar-foreground/50 truncate">
-									user@example.com
+									{me?.user?.email || '请登录'}
 								</p>
+								<Button
+									variant="outline"
+									size="sm"
+									className="h-8 px-2 text-xs"
+									onClick={() => logoutMutation.mutate()}
+									disabled={logoutMutation.isPending}
+								>
+									<LogOut className="h-3.5 w-3.5 mr-1" />
+									退出
+								</Button>
 							</div>
 						)}
 					</div>

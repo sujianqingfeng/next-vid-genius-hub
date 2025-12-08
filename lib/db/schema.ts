@@ -30,6 +30,16 @@ export interface TranscriptionWord {
 	end: number
 }
 
+export type UserRole = 'user' | 'admin'
+export type UserStatus = 'active' | 'banned'
+
+export type PointTransactionType =
+	| 'signup_bonus'
+	| 'task_cost'
+	| 'manual_adjust'
+	| 'recharge'
+	| 'refund'
+
 export type TaskKind =
 	| 'download'
 	| 'metadata-refresh'
@@ -45,6 +55,71 @@ export type TaskEngine =
 	| 'burner-ffmpeg'
 	| 'audio-transcoder'
 	| 'asr-pipeline'
+
+export const users = sqliteTable('users', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	email: text('email').notNull().unique(),
+	passwordHash: text('password_hash').notNull(),
+	nickname: text('nickname'),
+	role: text('role', { enum: ['user', 'admin'] }).notNull().default('user'),
+	status: text('status', { enum: ['active', 'banned'] }).notNull().default('active'),
+	lastLoginAt: integer('last_login_at', { mode: 'timestamp' }),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
+
+export const sessions = sqliteTable('sessions', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	userId: text('user_id').notNull(),
+	tokenHash: text('token_hash').notNull().unique(),
+	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	revokedAt: integer('revoked_at', { mode: 'timestamp' }),
+})
+
+export const pointAccounts = sqliteTable('point_accounts', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	userId: text('user_id').notNull().unique(),
+	balance: integer('balance').notNull().default(0),
+	frozenBalance: integer('frozen_balance').notNull().default(0),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
+
+export const pointTransactions = sqliteTable('point_transactions', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	userId: text('user_id').notNull(),
+	delta: integer('delta').notNull(),
+	balanceAfter: integer('balance_after').notNull(),
+	type: text('type', {
+		enum: ['signup_bonus', 'task_cost', 'manual_adjust', 'recharge', 'refund'],
+	}).notNull(),
+	refType: text('ref_type'),
+	refId: text('ref_id'),
+	remark: text('remark'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
 
 export const tasks = sqliteTable('tasks', {
 	id: text('id')

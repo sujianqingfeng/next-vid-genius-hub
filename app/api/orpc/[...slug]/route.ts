@@ -2,6 +2,7 @@ import { onError } from '@orpc/server'
 import { RPCHandler } from '@orpc/server/fetch'
 import { appRouter } from '~/orpc/router'
 import { logger } from '~/lib/logger'
+import { buildRequestContext } from '~/lib/auth/context'
 export const runtime = 'nodejs'
 
 const handler = new RPCHandler(appRouter, {
@@ -14,12 +15,18 @@ const handler = new RPCHandler(appRouter, {
 })
 
 async function handle(request: Request) {
+	const context = await buildRequestContext(request)
 	const { response, matched } = await handler.handle(request, {
 		prefix: '/api/orpc',
-		context: {},
+		context,
 	})
 	
 	if (matched) {
+		if (context.responseCookies.length > 0) {
+			for (const cookie of context.responseCookies) {
+				response.headers.append('Set-Cookie', cookie)
+			}
+		}
 		return response
 	}
 	
