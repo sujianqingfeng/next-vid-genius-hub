@@ -59,7 +59,8 @@ export function makeStatusCallback({
     if (!callbackUrl) return
     const body = { status, ts: Date.now(), nonce: defaultNonce(), ...baseFields, ...extra }
     const payload = JSON.stringify(body)
-    const signature = signHmacSHA256(secret || 'dev-secret', payload)
+    if (!secret) throw new Error('makeStatusCallback: secret is required')
+    const signature = signHmacSHA256(secret, payload)
     const headers = { 'content-type': 'application/json', 'x-signature': signature }
     const f = fetchImpl || (globalThis.fetch ? globalThis.fetch.bind(globalThis) : undefined)
     if (!f) return
@@ -98,7 +99,8 @@ export async function postSignedJson(
   { fetchImpl, headers = {}, logger = console }: { fetchImpl?: typeof fetch; headers?: Record<string, string>; logger?: { error?: (...args: any[]) => void } } = {},
 ) {
   const payload = JSON.stringify(body)
-  const signature = signHmacSHA256(secret || 'dev-secret', payload)
+  if (!secret) throw new Error('postSignedJson: secret is required')
+  const signature = signHmacSHA256(secret, payload)
   const f = fetchImpl || (globalThis.fetch ? globalThis.fetch.bind(globalThis) : undefined)
   if (!f) throw new Error('No fetch implementation available')
   const r = await f(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': signature, ...headers }, body: payload })
@@ -116,6 +118,7 @@ export async function postSignedJson(
 export function buildSignedBody(secret: string, body: Record<string, unknown>): { payload: string; signature: string; ts: number } {
   const ts = Date.now()
   const payload = JSON.stringify({ ...body, ts })
-  const signature = signHmacSHA256(secret || 'dev-secret', payload)
+  if (!secret) throw new Error('buildSignedBody: secret is required')
+  const signature = signHmacSHA256(secret, payload)
   return { payload, signature, ts }
 }

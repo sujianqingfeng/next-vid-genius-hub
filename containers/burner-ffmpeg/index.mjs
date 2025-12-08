@@ -18,7 +18,10 @@ async function handleRender(req, res) {
   sendJson(res, 202, { jobId })
 
   const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {}, callbackUrl } = payload
-  const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+  const secret = process.env.JOB_CALLBACK_HMAC_SECRET
+  if (!secret) {
+    throw new Error('JOB_CALLBACK_HMAC_SECRET is required')
+  }
   const { postUpdate, progress } = createStatusHelpers({ callbackUrl, secret, jobId })
 
   if (!inputVideoUrl || !inputVttUrl || !outputPutUrl) {

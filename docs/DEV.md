@@ -48,12 +48,8 @@ pnpm cf:dev
 
 ```bash
 cd cloudflare/media-orchestrator
-wrangler secret put CF_AI_ACCOUNT_ID   # 你的 Cloudflare Account ID
+wrangler secret put CF_AI_ACCOUNT_ID   # 你的 Cloudflare Account ID（供 Workers AI 使用）
 wrangler secret put CF_AI_API_TOKEN    # 具有 Workers AI 访问权限的 API Token
-
-# 可选：同时设置兼容命名（代码已做兜底）
-wrangler secret put CLOUDFLARE_ACCOUNT_ID
-wrangler secret put CLOUDFLARE_API_TOKEN
 ```
 
 设置完成后，重启本地 Worker：

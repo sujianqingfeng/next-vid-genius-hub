@@ -31,7 +31,10 @@ const dlog = (...args) => {
 };
 
 const PORT = process.env.PORT || 8080;
-const CALLBACK_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET || "dev-secret";
+const CALLBACK_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET;
+if (!CALLBACK_SECRET) {
+  throw new Error("JOB_CALLBACK_HMAC_SECRET is required");
+}
 function parseNumber(value, fallback) {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);

@@ -101,7 +101,10 @@ async function handleRender(req, res) {
   const payload = JSON.parse(body);
   const jobId =
     payload?.jobId || `job_${Math.random().toString(36).slice(2, 10)}`;
-  const secret = process.env.JOB_CALLBACK_HMAC_SECRET || "dev-secret";
+  const secret = process.env.JOB_CALLBACK_HMAC_SECRET;
+  if (!secret) {
+    throw new Error("JOB_CALLBACK_HMAC_SECRET is required");
+  }
   const cbUrl = payload?.callbackUrl;
   const engineOptions = payload?.engineOptions || {};
   const safeEngineOptions = sanitizeEngineOptions(engineOptions);

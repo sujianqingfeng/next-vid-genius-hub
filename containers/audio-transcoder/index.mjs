@@ -18,7 +18,10 @@ async function handleRender(req, res) {
   const { inputAudioUrl, outputAudioPutUrl, callbackUrl, engineOptions = {} } = payload
   sendJson(res, 202, { jobId })
 
-  const secret = process.env.JOB_CALLBACK_HMAC_SECRET || 'dev-secret'
+  const secret = process.env.JOB_CALLBACK_HMAC_SECRET
+  if (!secret) {
+    throw new Error('JOB_CALLBACK_HMAC_SECRET is required')
+  }
   const maxBytes = Number(engineOptions.maxBytes || 4 * 1024 * 1024)
   const bitrates = Array.isArray(engineOptions.targetBitrates) && engineOptions.targetBitrates.length
     ? engineOptions.targetBitrates

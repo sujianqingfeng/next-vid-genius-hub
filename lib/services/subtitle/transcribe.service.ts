@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm'
 import { getDb, schema, type TranscriptionWord } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { type CloudflareInputFormat, type WhisperModel, WHISPER_MODELS } from '~/lib/subtitle/config/models'
-import { CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN } from '~/lib/config/app.config'
 import { validateVttContent, normalizeVttContent } from '~/lib/subtitle/utils/vtt'
 import { putObjectByKey, upsertMediaManifest, startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
@@ -43,13 +42,6 @@ export async function transcribe(input: {
 		)
 		throw new Error(
 			'Remote audio is not available. Please upload audio to storage before transcribing.',
-		)
-	}
-
-	if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_API_TOKEN) {
-		logger.error('transcription', 'Cloudflare credentials are not configured')
-		throw new Error(
-			'Cloudflare credentials (CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN) are required.',
 		)
 	}
 

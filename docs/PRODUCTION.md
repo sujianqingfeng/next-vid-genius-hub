@@ -110,12 +110,8 @@ pnpm cf:deploy
 
 ```bash
 cd cloudflare/media-orchestrator
-wrangler secret put CF_AI_ACCOUNT_ID
-wrangler secret put CF_AI_API_TOKEN
-
-# 可选：兼容命名（代码兜底）
-wrangler secret put CLOUDFLARE_ACCOUNT_ID
-wrangler secret put CLOUDFLARE_API_TOKEN
+wrangler secret put CF_AI_ACCOUNT_ID   # 你的 Cloudflare Account ID（供 Workers AI 使用）
+wrangler secret put CF_AI_API_TOKEN    # 具有 Workers AI 访问权限的 API Token
 ```
 
 部署或重新发布后再验证字幕 Step 1（Cloud）是否能顺利产出 `vtt/words`。

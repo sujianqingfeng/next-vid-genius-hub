@@ -173,8 +173,12 @@ export const DATABASE_URL = APP_CONFIG.database.url;
 // PROXY_URL and OPERATIONS_DIR already exported above for backward-compat
 
 // Cloudflare Workers/Orchestrator configuration
+// D1 / 控制台相关凭据仍使用 CLOUDFLARE_* 命名（见 docs/CLOUDFLARE_DEPLOY.zh-CN.md）
 export const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 export const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+// Workers AI（Whisper / asr-pipeline）统一使用 CF_AI_* 命名，与 Worker 侧保持一致
+export const CF_AI_ACCOUNT_ID = process.env.CF_AI_ACCOUNT_ID;
+export const CF_AI_API_TOKEN = process.env.CF_AI_API_TOKEN;
 export const CLOUDFLARE_ASR_MAX_UPLOAD_BYTES =
   Number(process.env.CLOUDFLARE_ASR_MAX_UPLOAD_BYTES || "") || 4 * 1024 * 1024; // 4 MiB
 export const FORCE_CLOUD_DOWNSAMPLE =
