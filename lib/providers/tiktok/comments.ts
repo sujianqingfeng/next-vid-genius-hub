@@ -1,43 +1,25 @@
 'use server'
 
-import {
-  resolveAwemeIdViaTikwm,
-  fetchTikwmComments,
-  type TikwmComment,
-  mapTikwmCommentsToBasic,
-} from './utils'
+import { downloadTikTokCommentsByUrl as coreDownloadTikTokCommentsByUrl } from '@app/media-providers'
 import type { TikTokBasicComment } from './types'
 
+/**
+ * Thin adapter over the shared `@app/media-providers` TikTok comments downloader.
+ * Keeps the public signature local (TikTokBasicComment) while delegating all
+ * TikWM / network details to the package layer so we don't duplicate logic.
+ */
 export async function downloadTikTokCommentsByUrl(
 	videoUrl: string,
 	pages: number = 3,
 ): Promise<TikTokBasicComment[]> {
-	const awemeId = await resolveAwemeIdViaTikwm(videoUrl)
-	if (!awemeId) return []
+	const comments = await coreDownloadTikTokCommentsByUrl({ url: videoUrl, pages })
 
-	const results: TikTokBasicComment[] = []
-	let cursor = 0
-
-	for (let i = 0; i < pages; i++) {
-		try {
-			const data = await fetchTikwmComments(awemeId, cursor)
-			const list: TikwmComment[] = Array.isArray(data?.data?.comments)
-				? (data!.data!.comments as TikwmComment[])
-				: []
-
-			results.push(...mapTikwmCommentsToBasic(list))
-
-			const hasMore = Boolean(data?.data?.has_more)
-			const nextCursor = Number(data?.data?.cursor ?? 0)
-			if (hasMore) {
-				cursor = nextCursor
-			} else {
-				break
-			}
-		} catch {
-			break
-		}
-	}
-
-	return results
+	return comments.map((c) => ({
+		id: c.id,
+		author: c.author,
+		authorThumbnail: c.authorThumbnail,
+		content: c.content,
+		likes: c.likes,
+		replyCount: c.replyCount,
+	}))
 }
