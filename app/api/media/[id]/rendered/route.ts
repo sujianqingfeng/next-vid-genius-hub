@@ -5,11 +5,10 @@ import { getDb, schema } from '~/lib/db'
 export const runtime = 'nodejs'
 import { logger } from '~/lib/logger'
 import {
-	buildDownloadFilename,
-	extractOrchestratorUrlFromPath,
-	proxyRemoteWithRange,
-	serveLocalFileWithRange,
-} from '~/lib/media/stream'
+		buildDownloadFilename,
+		extractOrchestratorUrlFromPath,
+		proxyRemoteWithRange,
+	} from '~/lib/media/stream'
 
 export async function GET(
   request: NextRequest,
@@ -40,19 +39,17 @@ export async function GET(
 			)
 		}
 
-		const remoteUrl = extractOrchestratorUrlFromPath(media.videoWithSubtitlesPath)
-		if (remoteUrl) {
+			const remoteUrl = extractOrchestratorUrlFromPath(media.videoWithSubtitlesPath)
+			if (!remoteUrl) {
+				return NextResponse.json(
+					{ error: 'Orchestrator URL not configured' },
+					{ status: 500 },
+				)
+			}
 			return proxyRemoteWithRange(remoteUrl, request, {
 				defaultCacheSeconds: 60,
 				forceDownloadName: downloadName,
 			})
-		}
-
-		return serveLocalFileWithRange(media.videoWithSubtitlesPath, request, {
-			contentType: 'video/mp4',
-			cacheSeconds: 3600,
-			downloadName,
-		})
   } catch (error) {
     logger.error('api', `Error serving rendered video: ${error instanceof Error ? error.message : String(error)}`)
     return NextResponse.json(

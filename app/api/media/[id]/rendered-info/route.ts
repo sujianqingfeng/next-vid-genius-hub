@@ -5,11 +5,10 @@ import { getDb, schema } from '~/lib/db'
 export const runtime = 'nodejs'
 import { logger } from '~/lib/logger'
 import {
-	buildDownloadFilename,
-	extractOrchestratorUrlFromPath,
-	proxyRemoteWithRange,
-	serveLocalFileWithRange,
-} from '~/lib/media/stream'
+		buildDownloadFilename,
+		extractOrchestratorUrlFromPath,
+		proxyRemoteWithRange,
+	} from '~/lib/media/stream'
 
 export async function GET(
   request: NextRequest,
@@ -39,24 +38,22 @@ export async function GET(
       ? buildDownloadFilename(media.title, 'video-info', 'mp4')
       : null
 
-    // Remote artifact via orchestrator
-    if (media.videoWithInfoPath.startsWith('remote:orchestrator:')) {
-      const remoteUrl = extractOrchestratorUrlFromPath(media.videoWithInfoPath)
-      if (!remoteUrl) {
-        return NextResponse.json({ error: 'Orchestrator URL not configured' }, { status: 500 })
-      }
-      return proxyRemoteWithRange(remoteUrl, request, {
-        defaultCacheSeconds: 60,
-        forceDownloadName: downloadName,
-      })
-    }
+	    // Remote artifact via orchestrator
+	    if (media.videoWithInfoPath.startsWith('remote:orchestrator:')) {
+	      const remoteUrl = extractOrchestratorUrlFromPath(media.videoWithInfoPath)
+	      if (!remoteUrl) {
+	        return NextResponse.json({ error: 'Orchestrator URL not configured' }, { status: 500 })
+	      }
+	      return proxyRemoteWithRange(remoteUrl, request, {
+	        defaultCacheSeconds: 60,
+	        forceDownloadName: downloadName,
+	      })
+	    }
 
-    // Local file fallback
-    return serveLocalFileWithRange(media.videoWithInfoPath, request, {
-      contentType: 'video/mp4',
-      cacheSeconds: 3600,
-      downloadName,
-    })
+	    return NextResponse.json(
+	      { error: 'Rendered info video not available via orchestrator' },
+	      { status: 404 },
+	    )
   } catch (error) {
     logger.error('api', `Error serving rendered info video: ${error instanceof Error ? error.message : String(error)}`)
     return NextResponse.json(

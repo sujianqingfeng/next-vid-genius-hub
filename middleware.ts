@@ -8,14 +8,14 @@ import { NextResponse } from 'next/server'
 // - WORKSPACE_AUTH_PASSWORD
 
 function decodeBase64(input: string): string {
-  // Edge runtime has `atob`; Node fallback guards against build-time contexts.
-  try {
-    // @ts-ignore - atob exists in Edge/runtime
-    if (typeof atob === 'function') return atob(input)
-  } catch {}
-  // eslint-disable-next-line no-restricted-globals
-  // @ts-ignore - Buffer is not available on Edge, but fallback only runs in Node
-  return Buffer.from(input, 'base64').toString('utf-8')
+	// Edge runtime has `atob`; Node fallback guards against build-time contexts.
+	// @ts-ignore - atob exists in Edge/runtime
+	if (typeof atob === 'function') {
+		return atob(input)
+	}
+	// eslint-disable-next-line no-restricted-globals
+	// @ts-ignore - Buffer is not available on Edge, but fallback only runs in Node
+	return Buffer.from(input, 'base64').toString('utf-8')
 }
 
 const ALLOWLIST_PREFIXES = ['/api/render/cf-callback']

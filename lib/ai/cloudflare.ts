@@ -5,6 +5,12 @@ import { prepareAudioForCloudflare } from '~/lib/asr/prepare'
 import { logger } from '~/lib/logger'
 import { Buffer } from 'node:buffer'
 
+type RawTranscriptionWord = {
+	word: string
+	start: number
+	end: number
+}
+
 export interface CloudflareWhisperConfig {
 	accountId: string
 	apiToken: string
@@ -45,21 +51,20 @@ function extractWords(payload: unknown): TranscriptionWord[] | undefined {
 	if (Array.isArray(obj.segments)) {
 		const collected: TranscriptionWord[] = []
 		for (const seg of obj.segments as Array<{ words?: unknown }>) {
-			if (seg && Array.isArray(seg.words)) {
-				for (const w of seg.words) {
-					if (
-						w &&
-						typeof w === 'object' &&
-						typeof (w as any).word === 'string' &&
-						typeof (w as any).start === 'number' &&
-						typeof (w as any).end === 'number'
-					) {
-						collected.push({
-							word: (w as any).word,
-							start: (w as any).start,
-							end: (w as any).end,
-						})
-					}
+			if (!seg || !Array.isArray(seg.words)) continue
+			for (const w of seg.words) {
+				if (!w || typeof w !== 'object') continue
+				const candidate = w as Partial<RawTranscriptionWord>
+				if (
+					typeof candidate.word === 'string'
+					&& typeof candidate.start === 'number'
+					&& typeof candidate.end === 'number'
+				) {
+					collected.push({
+						word: candidate.word,
+						start: candidate.start,
+						end: candidate.end,
+					})
 				}
 			}
 		}
@@ -85,11 +90,9 @@ export async function transcribeWithCloudflareWhisper(
 
 	try {
 		// Log the payload size prior to upload
-		try {
-			const size = audioBuffer.byteLength
-			const mb = (size / (1024 * 1024)).toFixed(2)
-			console.info(`[Cloudflare Whisper] Upload size: ${size} bytes (~${mb} MB), model=${model}`)
-		} catch {}
+		const size = audioBuffer.byteLength
+		const mb = (size / (1024 * 1024)).toFixed(2)
+		console.info(`[Cloudflare Whisper] Upload size: ${size} bytes (~${mb} MB), model=${model}`)
 		// Candidate payloads: start with provided buffer, then smaller forced re-encodes if 413 occurs
 		const originalBody = audioBuffer
 
@@ -162,10 +165,10 @@ export async function transcribeWithCloudflareWhisper(
 					forceTranscode: true,
 				})
 				if (forced && forced.byteLength < (candidates[candidates.length - 1]?.body.byteLength || Infinity)) {
-					try {
-						const mb = (forced.byteLength / 1048576).toFixed(2)
-						console.info(`[Cloudflare Whisper] Fallback candidate: ${br}kbps -> ${forced.byteLength} bytes (~${mb} MB) @ ${ASR_SAMPLE_RATE}Hz`)
-					} catch {}
+					const mbFallback = (forced.byteLength / 1048576).toFixed(2)
+					console.info(
+						`[Cloudflare Whisper] Fallback candidate: ${br}kbps -> ${forced.byteLength} bytes (~${mbFallback} MB) @ ${ASR_SAMPLE_RATE}Hz`,
+					)
 					candidates.push({ body: forced, label: `force-${br}kbps` })
 				}
 			} catch {

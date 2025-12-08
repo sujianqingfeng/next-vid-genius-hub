@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb, schema } from '~/lib/db'
 export const runtime = 'nodejs'
 import { logger } from '~/lib/logger'
-import { proxyRemoteWithRange, resolveRemoteVideoUrl, serveLocalFileWithRange } from '~/lib/media/stream'
+import { proxyRemoteWithRange, resolveRemoteVideoUrl } from '~/lib/media/stream'
 
 export async function GET(
   request: NextRequest,
@@ -23,16 +23,7 @@ export async function GET(
     const wantDownload = request.nextUrl.searchParams.get('download') === '1'
     const downloadName = wantDownload ? `${(media.title || 'video').replace(/\s+/g, '_')}.mp4` : null
 
-    // 1) Local file directly
-    if (media.filePath && !media.filePath.startsWith('remote:orchestrator:')) {
-      return serveLocalFileWithRange(media.filePath, request, {
-        contentType: 'video/mp4',
-        cacheSeconds: 3600,
-        downloadName,
-      })
-    }
-
-    // 2) Remote fallbacks
+    // Remote fallbacks only (no local filesystem access)
     // Prefer presigned remoteVideoKey; otherwise try orchestrator artifact by downloadJobId even if DB status is stale.
     if (media.remoteVideoKey) {
       try {

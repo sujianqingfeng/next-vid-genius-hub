@@ -64,11 +64,9 @@ export function PreviewPane(props: PreviewPaneProps) {
     const t = parseVttTimestamp(startTs)
     const el = effectiveMode === 'rendered' ? renderedRef.current : overlayRef.current
     if (el && !Number.isNaN(t)) {
-      try {
-        el.currentTime = t
-        // optional: auto play to provide immediate feedback
-        el.play?.()
-      } catch {}
+      el.currentTime = t
+      // optional: auto play to provide immediate feedback
+      el.play?.()
     }
   }
 
