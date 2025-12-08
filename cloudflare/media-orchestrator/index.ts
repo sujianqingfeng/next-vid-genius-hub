@@ -353,7 +353,38 @@ async function handleStart(env: Env, req: Request) {
     const manifest = await readManifest(env, bucketName, body.mediaId)
 
     // 1) Video source
-    if (inputVariant === undefined || inputVariant === 'raw') {
+    if (sourcePolicy === 'auto') {
+      // Auto policy: prefer subtitles variant, then raw, then default/remote.
+      // 1a) Try subtitles variant input (bucket or manifest)
+      const subtitlesKey = bucketPaths.inputs.subtitledVideo(body.mediaId)
+      const hasSubVideo = await s3Head(env, bucketName, subtitlesKey)
+      if (hasSubVideo) {
+        inputVideoUrl = await presignGetForContainer(env, bucketName, subtitlesKey, jobS3Endpoint)
+      } else if (manifest?.subtitlesInputKey) {
+        inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.subtitlesInputKey, jobS3Endpoint)
+      }
+
+      // 1b) Fallback to raw variant if subtitles variant is not available
+      if (!inputVideoUrl) {
+        const rawKey = bucketPaths.inputs.rawVideo(body.mediaId)
+        const hasRawVideo = await s3Head(env, bucketName, rawKey)
+        if (hasRawVideo) {
+          inputVideoUrl = await presignGetForContainer(env, bucketName, rawKey, jobS3Endpoint)
+        }
+      }
+
+      // 1c) Final fallback: default input video or remoteVideoKey
+      if (!inputVideoUrl) {
+        const defaultKey = bucketPaths.inputs.video(body.mediaId)
+        const hasDefaultVideo = await s3Head(env, bucketName, defaultKey)
+        if (hasDefaultVideo) {
+          inputVideoUrl = await presignGetForContainer(env, bucketName, defaultKey, jobS3Endpoint)
+        } else if (manifest?.remoteVideoKey) {
+          // Use remote video directly without copying
+          inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.remoteVideoKey, jobS3Endpoint)
+        }
+      }
+    } else if (inputVariant === undefined || inputVariant === 'raw') {
       const hasInputVideo = await s3Head(env, bucketName, inputVideoKey)
       if (hasInputVideo) {
         inputVideoUrl = await presignGetForContainer(env, bucketName, inputVideoKey, jobS3Endpoint)

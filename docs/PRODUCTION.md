@@ -79,6 +79,21 @@ R2_BUCKET_NAME = "vidgen-render"
   - Worker：
     - 字幕渲染完成 → 物化 `inputs/videos/subtitles/<mediaId>.mp4` → 更新 `subtitlesInputKey`
 
+#### Source Policy（视频源策略）
+
+`renderer-remotion`（评论视频渲染）会根据 `sourcePolicy` 选择视频输入：
+
+- `auto`（推荐）：
+  1. 优先使用“带字幕视频”变体：`inputs/videos/subtitles/<mediaId>.mp4` 或 manifest.`subtitlesInputKey`；
+  2. 若没有字幕变体，则回退到原始 `raw` 变体：`inputs/videos/raw/<mediaId>.mp4`；
+  3. 若仍不存在，则使用默认/远程源：`inputs/videos/<mediaId>.mp4` 或 manifest.`remoteVideoKey`。
+- `original`：
+  - 使用 `raw` 变体：`inputs/videos/raw/<mediaId>.mp4`；
+  - 若缺失则仅允许回退到 manifest.`remoteVideoKey`。
+- `subtitles`：
+  - 只接受“带字幕视频”变体：`inputs/videos/subtitles/<mediaId>.mp4` 或 manifest.`subtitlesInputKey`；
+  - 若二者都不存在，在严格模式下直接返回 `missing_inputs`，不会再回退到原始视频。
+
 严格模式（无回退）：
 - Worker 启动任务仅依赖桶与 manifest；缺少输入直接报错。
 - 启动前请保证对应 inputs 或 manifest 指针存在。

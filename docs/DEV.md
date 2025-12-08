@@ -106,7 +106,32 @@ pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中
   - 原始视频：`inputs/videos/<mediaId>.mp4` 或存在 `remoteVideoKey`
   - 字幕文本（字幕烧录时需要）：`inputs/subtitles/<mediaId>.vtt` 或 `vttKey`
   - 评论数据（Remotion 渲染时需要）：`inputs/comments/<mediaId>.json` 或 `commentsKey`
-  - 带字幕视频（若源策略选择 subtitles）：`inputs/videos/subtitles/<mediaId>.mp4` 或 `subtitlesInputKey`
+  - 带字幕视频（若源策略选择 `subtitles` 或 `auto` 需要优先使用字幕版）：`inputs/videos/subtitles/<mediaId>.mp4` 或 `subtitlesInputKey`
+
+### Source Policy（视频源策略）
+
+`renderer-remotion` 引擎（目前用于“评论视频渲染”）支持通过 `sourcePolicy` 选择输入视频源，取值：
+
+- `auto`（默认）
+  - 优先使用“带字幕视频”变体：
+    - `inputs/videos/subtitles/<mediaId>.mp4`，或
+    - manifest 中的 `subtitlesInputKey`
+  - 若不存在字幕变体，则回退到原始 `raw` 变体：
+    - `inputs/videos/raw/<mediaId>.mp4`
+  - 若仍不存在，则再回退到默认/远程源：
+    - `inputs/videos/<mediaId>.mp4`，或
+    - manifest 中的 `remoteVideoKey`
+- `original`
+  - 只尝试原始 `raw` 变体：`inputs/videos/raw/<mediaId>.mp4`；
+  - 若不存在，则仅允许使用 manifest 的 `remoteVideoKey` 作为最后兜底；
+  - 若两者都缺失，在严格模式下返回 `missing_inputs`。
+- `subtitles`
+  - 只使用“带字幕视频”变体：
+    - `inputs/videos/subtitles/<mediaId>.mp4`，或
+    - manifest 中的 `subtitlesInputKey`；
+  - 若二者都缺失，在严格模式下返回 `missing_inputs`（不会再回退到原始视频）。
+
+字幕烧录容器 `burner-ffmpeg` 当前不读取 `sourcePolicy`，仍然只依赖 `inputs/videos/<mediaId>.mp4`/`remoteVideoKey` + `inputs/subtitles/<mediaId>.vtt`/`vttKey` 作为输入。
 
 ### 云端产物存储
 
