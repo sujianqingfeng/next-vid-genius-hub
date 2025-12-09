@@ -13,6 +13,16 @@ import { addPoints, getBalance } from '~/lib/points/service'
 
 const SIGNUP_BONUS_POINTS = 100
 
+function getAdminEmails() {
+	const raw = process.env.ADMIN_EMAILS || ''
+	return raw
+		.split(/[,;\s]+/)
+		.map((e) => e.trim().toLowerCase())
+		.filter(Boolean)
+}
+
+const ADMIN_EMAIL_SET = new Set(getAdminEmails())
+
 function normalizeEmail(email: string) {
 	return email.trim().toLowerCase()
 }
@@ -26,6 +36,10 @@ function toPublicUser(user: User) {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const { passwordHash, ...rest } = user
 	return rest
+}
+
+function shouldBeAdmin(email: string) {
+	return ADMIN_EMAIL_SET.has(normalizeEmail(email))
 }
 
 export async function signupUser(input: { email: string; password: string; nickname?: string | null }) {
@@ -50,7 +64,7 @@ export async function signupUser(input: { email: string; password: string; nickn
 				email,
 				passwordHash,
 				nickname: normalizeNickname(input.nickname),
-				role: 'user',
+				role: shouldBeAdmin(email) ? 'admin' : 'user',
 				status: 'active',
 				createdAt: now,
 				updatedAt: now,
@@ -96,7 +110,7 @@ export async function signupUser(input: { email: string; password: string; nickn
 export async function loginUser(input: { email: string; password: string }) {
 	const email = normalizeEmail(input.email)
 	const db = await getDb()
-	const user = await db.query.users.findFirst({ where: eq(schema.users.email, email) })
+	let user = await db.query.users.findFirst({ where: eq(schema.users.email, email) })
 	if (!user) {
 		throw new Error('INVALID_CREDENTIALS')
 	}
@@ -107,6 +121,15 @@ export async function loginUser(input: { email: string; password: string }) {
 	const isValid = await verifyPassword(input.password, user.passwordHash)
 	if (!isValid) {
 		throw new Error('INVALID_CREDENTIALS')
+	}
+
+	// Auto-promote to admin if email is in ADMIN_EMAILS
+	if (user.role !== 'admin' && shouldBeAdmin(email)) {
+		user = { ...user, role: 'admin' }
+		await db
+			.update(schema.users)
+			.set({ role: 'admin', updatedAt: new Date() })
+			.where(eq(schema.users.id, user.id))
 	}
 
 	const { token, session } = await createSession({ userId: user.id, db })

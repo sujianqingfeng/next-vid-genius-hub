@@ -8,6 +8,7 @@ import * as channel from './procedures/channel'
 import * as task from './procedures/task'
 import * as auth from './procedures/auth'
 import * as points from './procedures/points'
+import * as admin from './procedures/admin'
 
 // Public vs authenticated sub-routers:
 // - auth: signup/login/logout/me 等接口需要在未登录状态也可访问
@@ -23,6 +24,7 @@ export const appRouter = os.router({
 	task: authed.router(task),
 	points: authed.router(points),
 	proxy: authed.router(proxy),
+	admin: authed.router(admin),
 })
 
 export type AppRouter = typeof appRouter

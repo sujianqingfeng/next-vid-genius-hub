@@ -10,6 +10,7 @@ import {
 	ListChecks,
 	Coins,
 	LogOut,
+	Shield,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -69,13 +70,23 @@ const menuItems = [
 
 type MenuItem = (typeof menuItems)[number]
 
-const bottomMenuItems: MenuItem[] = []
-
 export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 	const [collapsed, setCollapsed] = React.useState(defaultCollapsed)
 	const pathname = usePathname()
 	const { data: me } = useAuthQuery()
 	const logoutMutation = useLogoutMutation()
+
+	const bottomMenuItems: MenuItem[] =
+		me?.user?.role === 'admin'
+			? [
+					{
+						title: 'Admin',
+						href: '/admin/users',
+						icon: Shield,
+						description: 'User management',
+					},
+				]
+			: []
 
 	// Longest-prefix match to avoid multiple active items (e.g., /media vs /media/download)
 	const activeHref = React.useMemo(() => {
