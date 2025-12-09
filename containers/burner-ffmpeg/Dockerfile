@@ -28,7 +28,7 @@ WORKDIR /app
 # Install container deps and local monorepo packages needed at runtime
 COPY containers/burner-ffmpeg/package.json ./package.json
 COPY packages/media-subtitles ./packages/media-subtitles
-COPY packages/callback-utils ./packages/callback-utils
+COPY packages/job-callbacks ./packages/job-callbacks
 RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev
 

@@ -9,7 +9,7 @@
     "@remotion/renderer": "^4.0.167",
     "@app/media-comments": "file:./packages/media-comments",
     "@app/media-core": "file:./packages/media-core",
-    "@app/callback-utils": "file:./packages/callback-utils",
+    "@app/job-callbacks": "file:./packages/job-callbacks",
     "lucide-react": "^0.474.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

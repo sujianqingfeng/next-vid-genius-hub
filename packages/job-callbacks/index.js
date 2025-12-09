@@ -46,11 +46,11 @@ export function makeStatusCallback({ callbackUrl, secret, fetchImpl, logger = co
         if (!r?.ok) {
           let msg = ''
           try { msg = await r.text() } catch {}
-          logger?.error?.('[callback-utils] callback non-2xx', r?.status, msg)
+          logger?.error?.('[job-callbacks] callback non-2xx', r?.status, msg)
         }
         return
       } catch (e) {
-        logger?.error?.('[callback-utils] callback error', e?.message || String(e))
+        logger?.error?.('[job-callbacks] callback error', e?.message || String(e))
         if (attempt >= maxAttempts) return
         await new Promise((res) => setTimeout(res, backoffMs * attempt))
       }
@@ -70,7 +70,7 @@ export async function postSignedJson(url, secret, body, { fetchImpl, headers = {
   if (!r.ok) {
     let msg = ''
     try { msg = await r.text() } catch {}
-    logger?.error?.('[callback-utils] postSignedJson non-2xx', r.status, msg)
+    logger?.error?.('[job-callbacks] postSignedJson non-2xx', r.status, msg)
   }
   return r
 }

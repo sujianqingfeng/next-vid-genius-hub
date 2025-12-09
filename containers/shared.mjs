@@ -1,6 +1,6 @@
 import http from 'node:http'
 import { promises as fs } from 'node:fs'
-import { makeStatusCallback } from '@app/callback-utils'
+import { makeStatusCallback } from '@app/job-callbacks'
 
 export function sendJson(res, code, data) {
   res.writeHead(code, { 'content-type': 'application/json' })

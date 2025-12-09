@@ -76,11 +76,11 @@ export function makeStatusCallback({
             // Clone before reading so callers can still read the body later.
             msg = await (r as any).clone?.().text?.()
           } catch {}
-          logger?.error?.('[callback-utils] callback non-2xx', (r as any)?.status, msg)
+          logger?.error?.('[job-callbacks] callback non-2xx', (r as any)?.status, msg)
         }
         return
       } catch (e: any) {
-        logger?.error?.('[callback-utils] callback error', e?.message || String(e))
+        logger?.error?.('[job-callbacks] callback error', e?.message || String(e))
         if (attempt >= maxAttempts) return
         await new Promise((res) => setTimeout(res, backoffMs * attempt))
       }
@@ -110,7 +110,7 @@ export async function postSignedJson(
       // Clone before reading so callers can still read the body later.
       msg = await (r as any).clone?.().text?.()
     } catch {}
-    logger?.error?.('[callback-utils] postSignedJson non-2xx', (r as any).status, msg)
+    logger?.error?.('[job-callbacks] postSignedJson non-2xx', (r as any).status, msg)
   }
   return r as Response
 }

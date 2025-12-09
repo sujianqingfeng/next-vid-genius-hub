@@ -1,4 +1,4 @@
-import { postSignedJson } from '@app/callback-utils'
+import { postSignedJson } from '@app/job-callbacks'
 import { requireJobCallbackSecret, requireOrchestratorUrl } from './utils'
 
 export async function presignGetByKey(key: string): Promise<string> {

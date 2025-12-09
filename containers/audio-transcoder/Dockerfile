@@ -25,7 +25,7 @@ RUN set -eux; \
 WORKDIR /app
 
 COPY containers/audio-transcoder/package.json ./package.json
-COPY packages/callback-utils ./packages/callback-utils
+COPY packages/job-callbacks ./packages/job-callbacks
 COPY packages/media-node ./packages/media-node
 RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev

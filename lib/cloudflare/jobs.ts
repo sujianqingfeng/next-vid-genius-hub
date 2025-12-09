@@ -1,4 +1,4 @@
-import { postSignedJson } from '@app/callback-utils'
+import { postSignedJson } from '@app/job-callbacks'
 import { requireJobCallbackSecret, requireOrchestratorUrl } from './utils'
 
 type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'

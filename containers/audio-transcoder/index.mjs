@@ -2,7 +2,7 @@ import http from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
-import { makeStatusCallback } from '@app/callback-utils'
+import { makeStatusCallback } from '@app/job-callbacks'
 import { sendJson, startJsonServer } from './shared.mjs'
 import { transcodeToTargetSize } from '@app/media-node'
 

@@ -35,7 +35,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",
     "@ai-sdk/openai-compatible": "^1.0.19",
-    "@app/callback-utils": "workspace:*",
+    "@app/job-callbacks": "workspace:*",
     "@app/media-comments": "workspace:*",
     "@app/media-core": "workspace:*",
     "@app/media-node": "workspace:*",

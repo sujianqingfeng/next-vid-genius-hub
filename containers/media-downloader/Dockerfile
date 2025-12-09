@@ -50,7 +50,7 @@ COPY containers/media-downloader/package.json ./package.json
 COPY packages/media-core ./packages/media-core
 COPY packages/media-node ./packages/media-node
 COPY packages/media-providers ./packages/media-providers
-COPY packages/callback-utils ./packages/callback-utils
+COPY packages/job-callbacks ./packages/job-callbacks
 RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev
 COPY containers/media-downloader/index.mjs ./index.mjs

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
-import { verifyHmacSHA256 } from '@app/callback-utils'
+import { verifyHmacSHA256 } from '@app/job-callbacks'
 import { logger } from '~/lib/logger'
 import { presignGetByKey, upsertMediaManifest } from '~/lib/cloudflare'
 

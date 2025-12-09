@@ -44,7 +44,7 @@ COPY containers/renderer-remotion/package.json ./package.json
 # Bring in local workspace package for installation via file: dependency
 COPY packages/media-comments ./packages/media-comments
 COPY packages/media-core ./packages/media-core
-COPY packages/callback-utils ./packages/callback-utils
+COPY packages/job-callbacks ./packages/job-callbacks
 RUN npm config set registry ${NPM_REGISTRY}
 RUN npm i --omit=dev
 

@@ -1,9 +1,9 @@
 {
-  "name": "@app/callback-utils",
+  "name": "@app/job-callbacks",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Shared HMAC signing and callback posting helpers for containers/workers",
+  "description": "Shared HMAC signing and job callback posting helpers for containers/workers",
   "main": "index.js",
   "types": "index.d.ts",
   "files": [

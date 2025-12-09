@@ -14,9 +14,9 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^1.0.19
         version: 1.0.19(zod@4.1.11)
-      '@app/callback-utils':
+      '@app/job-callbacks':
         specifier: workspace:*
-        version: link:packages/callback-utils
+        version: link:packages/job-callbacks
       '@app/media-comments':
         specifier: workspace:*
         version: link:packages/media-comments
@@ -187,7 +187,7 @@ importers:
         specifier: ^4.47.0
         version: 4.47.0
 
-  packages/callback-utils: {}
+  packages/job-callbacks: {}
 
   packages/media-comments:
     dependencies:
