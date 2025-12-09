@@ -322,6 +322,11 @@ async function handleCloudDownloadCallback(
             ? (metadataFromPayload as any).lengthSeconds
             : 0
 
+  const roundedDuration = Number.isFinite(durationSeconds) && durationSeconds > 0 ? Math.round(durationSeconds) : null
+  if (roundedDuration) {
+    updates.duration = roundedDuration
+  }
+
   if (media.userId && durationSeconds > 0) {
     try {
       await chargeDownloadUsage({

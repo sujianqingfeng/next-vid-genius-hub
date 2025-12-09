@@ -249,10 +249,8 @@ export async function transcribe(input: {
 	} catch {
 		// ignore
 	}
-	const durationSeconds =
-		Array.isArray(transcriptionWords) && transcriptionWords.length > 1
-			? Math.max(0, transcriptionWords[transcriptionWords.length - 1].end - transcriptionWords[0].start)
-			: 0
+
+	const durationSeconds = typeof mediaRecord.duration === 'number' && mediaRecord.duration > 0 ? mediaRecord.duration : 0
 
 	return { success: true, transcription: vttContent, words: transcriptionWords, durationSeconds }
 }

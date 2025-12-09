@@ -54,6 +54,7 @@ export interface MetadataSummary {
   thumbnail?: string
   viewCount?: number
   likeCount?: number
+  durationSeconds?: number
 }
 
 export interface ProxyRecord {
@@ -95,4 +96,3 @@ export type BuildForwardProxyArgs = {
   username?: string
   password?: string
 }
-

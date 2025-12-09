@@ -1,0 +1,1 @@
+ALTER TABLE `media` ADD `duration_seconds` integer;

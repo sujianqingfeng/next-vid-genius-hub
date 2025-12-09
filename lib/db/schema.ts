@@ -217,6 +217,7 @@ export const media = sqliteTable(
 		source: text('source', { enum: ['youtube', 'tiktok'] }).notNull(),
 		quality: text('quality', { enum: ['720p', '1080p'] }).notNull(),
 		thumbnail: text('thumbnail'),
+		duration: integer('duration_seconds'),
 		viewCount: integer('view_count').default(0),
 		likeCount: integer('like_count').default(0),
 		commentCount: integer('comment_count').default(0),

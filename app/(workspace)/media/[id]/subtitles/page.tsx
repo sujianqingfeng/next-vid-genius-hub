@@ -28,8 +28,6 @@ import { logger } from '~/lib/logger'
 import { useSubtitleWorkflow } from '~/lib/subtitle/hooks/useSubtitleWorkflow'
 import { useSubtitleActions } from '~/lib/subtitle/hooks/useSubtitleActions'
 import type { SubtitleStepId } from '~/lib/subtitle/types'
-import { parseVttCues } from '~/lib/subtitle/utils/vtt'
-import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
 import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
 import { DEFAULT_TRANSCRIPTION_LANGUAGE } from '~/lib/subtitle/config/languages'
 
@@ -68,36 +66,6 @@ export default function SubtitlesPage() {
 			setPreviewDuration((prev) => (prev > 0 ? prev : mediaDuration ?? 0))
 		}
 	}, [mediaDuration])
-
-	useEffect(() => {
-		if (previewDuration > 0) return
-
-		let derivedDuration = 0
-
-		if (Array.isArray(media?.transcriptionWords) && media.transcriptionWords.length > 0) {
-			for (const word of media.transcriptionWords) {
-				const endTime = typeof word?.end === 'number' ? word.end : 0
-				if (endTime > derivedDuration) {
-					derivedDuration = endTime
-				}
-			}
-		}
-
-		if (derivedDuration <= 0 && workflowState.translation) {
-			const cues = parseVttCues(workflowState.translation)
-			if (cues.length > 0) {
-				const lastCue = cues[cues.length - 1]
-				const endTime = parseVttTimestamp(lastCue.end)
-				if (Number.isFinite(endTime) && endTime > 0) {
-					derivedDuration = endTime
-				}
-			}
-		}
-
-		if (derivedDuration > 0) {
-			setPreviewDuration(derivedDuration)
-		}
-	}, [media?.transcriptionWords, previewDuration, workflowState.translation])
 	const {
 		selectedModel,
 		selectedAIModel,

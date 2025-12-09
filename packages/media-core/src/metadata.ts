@@ -55,12 +55,17 @@ export function summariseMetadata(raw: Record<string, unknown> | null | undefine
     asString((raw as any)?.owner) ??
     undefined
 
+  const durationSeconds =
+    asNumber((raw as any)?.durationSeconds) ??
+    asNumber((raw as any)?.duration) ??
+    asNumber((raw as any)?.length_seconds)
+
   return {
     title: asString((raw as any)?.title),
     author,
     thumbnail,
     viewCount: asNumber((raw as any)?.['view_count'] ?? (raw as any)?.['viewCount']),
     likeCount: asNumber((raw as any)?.['like_count'] ?? (raw as any)?.['likeCount']),
+    durationSeconds,
   }
 }
-
