@@ -67,3 +67,4 @@ export function PageHeader({
 
 	return <div className="mb-6 px-4">{headerContent}</div>
 }
+

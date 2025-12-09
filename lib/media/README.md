@@ -1,44 +1,83 @@
-# Media Processing Module
+# Media Module
 
-This directory contains the media pipeline for Next Vid Genius Hub. It now prioritizes a Remotion-driven renderer instead of the legacy Node Canvas implementation.
+This directory contains **application‑facing media helpers** for Next Vid Genius Hub.
+Heavy FFmpeg / yt‑dlp / Remotion logic lives in `packages/*`; `lib/media` stays
+focused on types, manifests, and orchestration helpers that the Next app
+directly consumes.
 
 ## Structure
 
 ```
 lib/media/
-├── (no index barrel)     # Re-exports removed; import concrete modules
-├── processing/           # FFmpeg utilities (audio extraction, subtitle muxing)
-├── remotion/             # (migrated) Use @app/media-comments for duration helpers
+├── comments-snapshot.ts  # Persist comments + videoInfo snapshot to object storage
+├── stream.ts             # Helpers for streaming/ proxying media via the orchestrator
 ├── types/                # Shared data contracts (VideoInfo, Comment, ...)
-└── README.md             # This file
+└── README.md
 ```
 
 ## Key Modules
 
-### `processing/`
-- `extractAudio()` – Pulls raw audio from the source video using FFmpeg.
-- `renderVideoWithSubtitles()` – Applies subtitles and outputs a muxed MP4.
-- `convertWebVttToAss()` – Converts WebVTT captions into ASS format for FFmpeg.
-
-### `remotion/`
-- Duration helpers have been moved to the shared package `@app/media-comments` to ensure the Next preview与容器渲染逻辑一致。
-
 ### `types/`
-- `VideoInfo` – Title, author, counts, and thumbnail metadata required by the renderer.
-- `Comment` – Structured comment payload consumed by the composition.
+- `VideoInfo` – Title, author, counts, thumbnail, and series metadata consumed by
+  Remotion and front‑end components.
+- `Comment` – Structured comment payload aligned with the Remotion composition
+  and `@app/media-comments` helpers.
 
-## Usage
+These types are used by:
+- Next API routes under `app/api/media/**`
+- Remotion compositions under `remotion/`
+- Cloudflare orchestrator callbacks (via manifest payloads)
 
-Prefer importing from the shared package:
+### `comments-snapshot.ts`
+- `buildCommentsSnapshot(media, { comments, translatedTitle? })`
+  - Builds a `videoInfo` object from the current `media` row
+  - Persists `{ videoInfo, comments }` JSON to object storage using a stable key
+    under `inputs/comments/<mediaId>.json`
+  - Updates the media manifest with `commentsKey`
 
-```ts
-import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
-import type { Comment, VideoInfo } from '~/lib/media/types'
-```
+Downstream consumers (Remotion containers, preview UI) treat this JSON shape as
+the single source of truth for comments‑driven renders.
+
+### `stream.ts`
+- `resolveRemoteVideoUrl(media)` – Resolve the best playback URL for a media item,
+  preferring:
+  1. Cloudflare orchestrator artifact URL (by `filePath`/`downloadJobId`)
+  2. R2 key via `presignGetByKey(remoteVideoKey)`
+- `proxyRemoteWithRange(url, request)` – Fetch a remote video (Worker proxy or
+  R2) while preserving `Range` headers and key caching headers.
+- `createProxyResponse(upstream, options)` – Normalize headers for `NextResponse`
+  and optionally force a download filename.
+- `buildDownloadFilename(title, fallbackBase, ext)` – Build a safe,
+  RFC‑5987‑compatible attachment filename.
+
+These helpers are used by `app/api/media/[id]/downloaded` / `rendered` routes to
+stream artifacts back to the browser.
+
+## Relationship to `packages/*`
+
+Runtime media processing has been pushed down into workspace packages:
+
+- `@app/media-core` – Pure pipeline orchestration and ports (no Node/binaries).
+- `@app/media-node` – Node‑only adapters for `ffmpeg`, `yt-dlp`, filesystem IO.
+- `@app/media-providers` – YouTube/TikTok provider adapters (comments, metadata,
+  channel listing).
+- `@app/media-comments` – Comment‑timeline and layout helpers for Remotion
+  compositions.
+- `@app/media-subtitles` – Subtitle burn‑in and ASS/WebVTT conversion built on
+  top of `ffmpeg`.
+
+`lib/media` should **not** grow new FFmpeg or yt‑dlp helpers. When you need new
+media functionality:
+
+1. Add or extend the appropriate package in `packages/*`.
+2. Expose any app‑specific glue or types here under `lib/media` (or via
+   `lib/types`) so Next routes / ORPC procedures can consume them.
 
 ## Maintenance Notes
 
-1. **Remotion First** – Runtime renders are handled by the standalone container (`containers/renderer-remotion`). Keep shared helpers light and focused.
-2. **FFmpeg Availability** – Ensure `ffmpeg` is installed in local and deployment environments (see `scripts/setup.sh`).
-3. **Binary Rebuilds** – Use `pnpm rebuild:native` when Node or OS upgrades occur to rebuild native pieces such as `yt-dlp-wrap`. Ensure a system `ffmpeg` binary is available on PATH.
-4. **Types Centralization** – Extend `lib/media/types` if additional renderer data is required so both Remotion and ORPC layers stay aligned.
+1. Keep `lib/media` small and focused on **types and orchestration helpers**.
+2. Prefer importing Remotion‑related helpers from `@app/media-comments` rather
+   than duplicating timeline logic here.
+3. When manifests or snapshot shapes change, update both:
+   - `lib/media/types`
+   - Any consumers under `app/api/**`, `remotion/**`, and `orpc/**`.

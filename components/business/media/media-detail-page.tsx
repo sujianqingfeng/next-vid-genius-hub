@@ -12,7 +12,7 @@ import { Skeleton } from '~/components/ui/skeleton'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { formatNumber } from '~/lib/utils/format/format'
 import { getTimeAgo as formatTimeAgo } from '~/lib/utils/time'
-import type { MediaItem } from '~/lib/types/media.types'
+import type { MediaItem } from '~/lib/media/types'
 import { toast } from 'sonner'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 

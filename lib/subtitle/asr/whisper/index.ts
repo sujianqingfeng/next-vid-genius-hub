@@ -1,5 +1,5 @@
 import { transcribeWithCloudflareWhisper } from '~/lib/ai/cloudflare'
-import { prepareAudioForCloudflare } from '~/lib/asr/prepare'
+import { prepareAudioForCloudflare } from '~/lib/subtitle/asr/prepare'
 import { logger } from '~/lib/logger'
 import { type TranscriptionWord } from '~/lib/db/schema'
 import type { CloudflareInputFormat, WhisperModel } from '~/lib/subtitle/config/models'
@@ -75,4 +75,3 @@ export async function transcribeWithWhisper({
 		language,
 	)
 }
-

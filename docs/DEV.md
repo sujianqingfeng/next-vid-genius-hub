@@ -13,6 +13,16 @@
   - 轮询时通过 HEAD 检测桶内产物；完成后回调 Next 落库
   - 当字幕渲染完成时，自动将成品物化到 `inputs/videos/subtitles/<mediaId>.mp4`，并写入 `manifest.subtitlesInputKey`
 
+### lib 目录约定（新增）
+
+- 领域模块：`auth` / `media` / `subtitle` / `asr` / `points` / `providers` / `ai`
+- 基础设施：`config` / `db` / `logger` / `storage` / `proxy` / `orpc` / `query`
+- 横切：`hooks` / `utils` / `types`
+- 规则：
+  - 领域内的 types/hooks/utils/server 均放在 `lib/<domain>/**`。
+  - `lib/types` 仅放跨领域类型（例如 provider 类型）；领域内类型放各自 `lib/<domain>/types`。
+  - `lib/utils`/`lib/hooks` 只放真正通用的工具；不要在这里新增领域特定逻辑。
+
 ## 启动容器
 
 ```bash
@@ -150,7 +160,7 @@ pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中
 4) 轮询 /jobs/:id：
    - 渲染：R2 出现 `outputs/by-media/<mediaId>/<jobId>/video.mp4` 即标记完成。
 - 下载：R2 出现 `downloads/<mediaId>/<jobId>/{video.mp4,audio.mp3,metadata.json}` 后标记完成。
-5) Next 日志打印 `[cf-callback] ... job <jobId>`，并将产物落库到 `.operations/<mediaId>/`。
+5) Next 日志打印 `[cf-callback] ... job <jobId>`，并将产物对应的远端 Key 写入 manifest（如 `remoteVideoKey/remoteAudioKey/remoteMetadataKey`、`subtitlesInputKey` 等）。
 6) 前端自动刷新：渲染流程跳到 Step 4 预览；下载页出现“Cloud download completed”并可继续字幕流程。
 
 ## 注意事项

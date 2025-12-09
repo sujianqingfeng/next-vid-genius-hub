@@ -1,7 +1,7 @@
 import { type TranscriptionWord } from '~/lib/db/schema'
 import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici'
 import { PROXY_URL, ASR_TARGET_BITRATES, ASR_SAMPLE_RATE } from '~/lib/config/app.config'
-import { prepareAudioForCloudflare } from '~/lib/asr/prepare'
+import { prepareAudioForCloudflare } from '~/lib/subtitle/asr/prepare'
 import { logger } from '~/lib/logger'
 import { Buffer } from 'node:buffer'
 

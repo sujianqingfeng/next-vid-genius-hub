@@ -5,7 +5,6 @@ import { Plus, Video } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { MediaCard } from '~/components/business/media/media-card'
-import { PageHeader } from '~/components/layout/page-header'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import {

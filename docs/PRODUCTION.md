@@ -226,7 +226,7 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 2) Worker 日志：`start job ...` → 无错误；容器日志：`inputs ready` → 若为长视频可见 `20%/30%/...` → `ffmpeg done`。
 3) 轮询 /jobs/:id：status 从 `queued`→`running`（或 `preparing`）→ 检测到 R2 `outputs/...` → `completed`。
 4) Next 日志出现 `[cf-callback] recorded remote artifact for job <jobId>`，页面自动跳到 Step 4 可播放（Next 代理 Worker `/artifacts/:jobId`，支持 Range）。
-5) 针对云端下载：在下载页选择 Cloud，确认 Worker /jobs/:id 状态从 `queued` → `running` → `completed`，Next 日志输出“Cloud download completed”并在 `operations/<mediaId>` 下生成 mp4/mp3/metadata.json。
+5) 针对云端下载：在下载页选择 Cloud，确认 Worker /jobs/:id 状态从 `queued` → `running` → `completed`，Next 日志输出“Cloud download completed”并在 R2 中看到 `downloads/<mediaId>/<jobId>/{video.mp4,audio.mp3,metadata.json}` 对象。
 
 ## 常见问题
 
