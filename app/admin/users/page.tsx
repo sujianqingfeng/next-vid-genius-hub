@@ -56,17 +56,6 @@ export default function AdminUsersPage() {
 		},
 	)
 
-	const users = listQuery.data?.items ?? []
-	const pageCount = listQuery.data?.pageCount ?? 1
-
-	const isUpdating = updateRole.isPending || updateStatus.isPending || addPointsMutation.isPending
-
-	const handleSearch = (e: React.FormEvent) => {
-		e.preventDefault()
-		setPage(1)
-		setAppliedSearch(search.trim())
-	}
-
 	const addPointsMutation = useEnhancedMutation(
 		queryOrpc.admin.addUserPoints.mutationOptions({
 			onSuccess: (_, variables) => {
@@ -82,6 +71,16 @@ export default function AdminUsersPage() {
 			errorToast: ({ error }) => (error as Error)?.message || '发放失败',
 		},
 	)
+
+	const users = listQuery.data?.items ?? []
+	const pageCount = listQuery.data?.pageCount ?? 1
+	const isUpdating = updateRole.isPending || updateStatus.isPending || addPointsMutation.isPending
+
+	const handleSearch = (e: React.FormEvent) => {
+		e.preventDefault()
+		setPage(1)
+		setAppliedSearch(search.trim())
+	}
 
 	const transactionsQuery = useQuery({
 		...queryOrpc.admin.listUserTransactions.queryOptions({
