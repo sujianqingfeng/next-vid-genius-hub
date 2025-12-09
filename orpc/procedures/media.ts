@@ -10,6 +10,7 @@ import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { generatePublishTitles } from '~/lib/ai/titles'
 import { ChatModelIds, type ChatModelId } from '~/lib/ai/models'
+import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
@@ -325,7 +326,7 @@ export const generatePublishTitle = os
     })
     if (!record) throw new Error('Media not found')
 
-    const candidates = await generatePublishTitles({
+    const { titles, usage } = await generatePublishTitles({
       model,
       title: record.title ?? undefined,
       translatedTitle: record.translatedTitle ?? undefined,
@@ -335,7 +336,27 @@ export const generatePublishTitle = os
       maxTranscriptChars,
       maxComments,
     })
-    return { candidates }
+
+    if (usage?.totalTokens) {
+      try {
+        await chargeLlmUsage({
+          userId,
+          modelId: model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          refType: 'ai:publish_title',
+          refId: mediaId,
+          remark: `publish_title tokens=${usage.totalTokens}`,
+        })
+      } catch (error) {
+        if (error instanceof InsufficientPointsError) {
+          throw new Error('INSUFFICIENT_POINTS')
+        }
+        throw error
+      }
+    }
+
+    return { candidates: titles }
   })
 
 // 保存选中的发布标题

@@ -39,6 +39,11 @@ export type PointTransactionType =
 	| 'manual_adjust'
 	| 'recharge'
 	| 'refund'
+	| 'ai_usage'
+	| 'asr_usage'
+	| 'download_usage'
+
+export type PointResourceType = 'llm' | 'asr' | 'download'
 
 export type TaskKind =
 	| 'download'
@@ -111,12 +116,40 @@ export const pointTransactions = sqliteTable('point_transactions', {
 	delta: integer('delta').notNull(),
 	balanceAfter: integer('balance_after').notNull(),
 	type: text('type', {
-		enum: ['signup_bonus', 'task_cost', 'manual_adjust', 'recharge', 'refund'],
+		enum: [
+			'signup_bonus',
+			'task_cost',
+			'manual_adjust',
+			'recharge',
+			'refund',
+			'ai_usage',
+			'asr_usage',
+			'download_usage',
+		],
 	}).notNull(),
 	refType: text('ref_type'),
 	refId: text('ref_id'),
 	remark: text('remark'),
+	metadata: text('metadata', { mode: 'json' }),
 	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
+
+export const pointPricingRules = sqliteTable('point_pricing_rules', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	resourceType: text('resource_type', { enum: ['llm', 'asr', 'download'] }).notNull(),
+	modelId: text('model_id'),
+	unit: text('unit', { enum: ['token', 'second', 'minute'] }).notNull(),
+	pricePerUnit: integer('price_per_unit').notNull(),
+	minCharge: integer('min_charge'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date()),
 })

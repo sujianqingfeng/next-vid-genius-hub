@@ -44,6 +44,7 @@ export async function addPoints(opts: {
 	refType?: string | null
 	refId?: string | null
 	remark?: string | null
+	metadata?: Record<string, unknown> | null
 	db?: DbClient
 }) {
 	if (opts.amount <= 0) throw new Error('amount must be positive')
@@ -67,6 +68,7 @@ export async function addPoints(opts: {
 			refType: opts.refType ?? null,
 			refId: opts.refId ?? null,
 			remark: opts.remark ?? null,
+			metadata: opts.metadata ?? null,
 			createdAt: now,
 		})
 
@@ -87,6 +89,7 @@ export async function spendPoints(opts: {
 	refType?: string | null
 	refId?: string | null
 	remark?: string | null
+	metadata?: Record<string, unknown> | null
 	db?: DbClient
 }) {
 	if (opts.amount <= 0) throw new Error('amount must be positive')
@@ -113,6 +116,7 @@ export async function spendPoints(opts: {
 			refType: opts.refType ?? null,
 			refId: opts.refId ?? null,
 			remark: opts.remark ?? null,
+			metadata: opts.metadata ?? null,
 			createdAt: now,
 		})
 

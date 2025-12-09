@@ -7,6 +7,7 @@ import { subtitleService } from "~/lib/subtitle/server/subtitle.service";
 import { cloudflareInputFormatSchema, whisperModelSchema } from "~/lib/subtitle/config/models";
 import { getDb, schema } from "~/lib/db";
 import type { RequestContext } from "~/lib/auth/types";
+import { chargeAsrUsage, InsufficientPointsError } from "~/lib/points/billing";
 
 export const transcribe = os
   .input(
@@ -28,6 +29,25 @@ export const transcribe = os
       throw new Error("Media not found")
     }
     const res = await subtitleService.transcribe(input)
+
+    if (res.durationSeconds > 0) {
+      try {
+        await chargeAsrUsage({
+          userId,
+          modelId: input.model,
+          durationSeconds: res.durationSeconds,
+          refType: "asr",
+          refId: input.mediaId,
+          remark: `asr ${input.model} ${res.durationSeconds.toFixed(1)}s`,
+        })
+      } catch (error) {
+        if (error instanceof InsufficientPointsError) {
+          throw new Error("INSUFFICIENT_POINTS")
+        }
+        throw error
+      }
+    }
+
     return { success: true, transcription: res.transcription }
   });
 

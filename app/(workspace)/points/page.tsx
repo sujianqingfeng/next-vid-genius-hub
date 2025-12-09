@@ -69,6 +69,7 @@ export default function PointsPage() {
 					</CardHeader>
 					<CardContent className="space-y-2 text-sm text-muted-foreground">
 						<p>· 生成/任务前先扣费，失败时可按策略返还。</p>
+				<p>· 不同模型/时长按规则动态扣费，详见定价表。</p>
 						<p>· 积分只在服务端修改，前端无法直接操作余额。</p>
 						<p>· 后续接入支付时可在这里跳转充值。</p>
 					</CardContent>

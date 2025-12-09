@@ -59,3 +59,43 @@ export async function generateObject<T>(options: {
 		output: 'object',
 	})
 }
+
+
+export async function generateTextWithUsage(options: {
+	model: AIModelId
+	system: string
+	prompt: string
+}) {
+	const result = await generateText(options)
+	const usageRaw: any = (result as any).usage || {}
+	const inputTokens = usageRaw.promptTokens ?? usageRaw.inputTokens ?? 0
+	const outputTokens = usageRaw.completionTokens ?? usageRaw.outputTokens ?? 0
+	return {
+		...result,
+		usage: {
+			inputTokens,
+			outputTokens,
+			totalTokens: inputTokens + outputTokens,
+		},
+	}
+}
+
+export async function generateObjectWithUsage<T>(options: {
+	model: AIModelId
+	system: string
+	prompt: string
+	schema: z.Schema<T>
+}) {
+	const result = await generateObject<T>(options)
+	const usageRaw: any = (result as any).usage || {}
+	const inputTokens = usageRaw.promptTokens ?? usageRaw.inputTokens ?? 0
+	const outputTokens = usageRaw.completionTokens ?? usageRaw.outputTokens ?? 0
+	return {
+		...result,
+		usage: {
+			inputTokens,
+			outputTokens,
+			totalTokens: inputTokens + outputTokens,
+		},
+	}
+}

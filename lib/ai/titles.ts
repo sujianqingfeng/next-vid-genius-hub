@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { generateObject } from './chat'
+import { generateObjectWithUsage } from './chat'
 import type { ChatModelId } from './models'
 
 export interface TitleSourceComment {
@@ -99,7 +99,7 @@ export async function generatePublishTitles(opts: GeneratePublishTitlesOptions) 
 
   const prompt = [instructions, '--- 素材 ---', parts.join('\n\n')].join('\n\n')
 
-  const { object } = await generateObject({
+  const { object, usage } = await generateObjectWithUsage({
     model,
     system,
     prompt,
@@ -109,5 +109,8 @@ export async function generatePublishTitles(opts: GeneratePublishTitlesOptions) 
   // Zod 再校验 + 去重/裁剪
   const parsed = titlesSchema.parse(object)
   const uniq = Array.from(new Set(parsed.map((s) => s.trim()).filter(Boolean)))
-  return uniq.slice(0, Math.min(Math.max(count, 3), 5))
+  return {
+    titles: uniq.slice(0, Math.min(Math.max(count, 3), 5)),
+    usage,
+  }
 }

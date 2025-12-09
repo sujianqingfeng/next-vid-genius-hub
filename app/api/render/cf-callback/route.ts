@@ -5,6 +5,7 @@ import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
 import { verifyHmacSHA256 } from '@app/job-callbacks'
 import { logger } from '~/lib/logger'
 import { presignGetByKey, upsertMediaManifest } from '~/lib/cloudflare'
+import { chargeDownloadUsage, InsufficientPointsError } from '~/lib/points/billing'
 
 type CallbackPayload = {
   jobId: string
@@ -307,6 +308,38 @@ async function handleCloudDownloadCallback(
       await upsertMediaManifest(payload.mediaId, manifestPatch)
     } catch (err) {
       logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  const durationSeconds =
+    typeof payload.durationMs === 'number'
+      ? payload.durationMs / 1000
+      : typeof metadataFromPayload?.durationSeconds === 'number'
+        ? metadataFromPayload.durationSeconds
+        : typeof metadataFromPayload?.duration === 'number'
+          ? metadataFromPayload.duration
+          : typeof (metadataFromPayload as any)?.lengthSeconds === 'number'
+            ? (metadataFromPayload as any).lengthSeconds
+            : 0
+
+  if (media.userId && durationSeconds > 0) {
+    try {
+      await chargeDownloadUsage({
+        userId: media.userId,
+        durationSeconds,
+        refType: 'download',
+        refId: media.id,
+        remark: `download dur=${durationSeconds.toFixed(1)}s`,
+      })
+    } catch (error) {
+      if (error instanceof InsufficientPointsError) {
+        logger.warn('api', `[cf-callback] download charge skipped (insufficient points) media=${media.id}`)
+      } else {
+        logger.warn(
+          'api',
+          `[cf-callback] download charge failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
     }
   }
 }

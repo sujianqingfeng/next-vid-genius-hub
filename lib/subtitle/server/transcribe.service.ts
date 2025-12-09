@@ -12,7 +12,7 @@ export async function transcribe(input: {
 	model: WhisperModel
 	language?: string
 	inputFormat?: CloudflareInputFormat
-}): Promise<{ success: true; transcription: string; words?: TranscriptionWord[] }> {
+}): Promise<{ success: true; transcription: string; words?: TranscriptionWord[]; durationSeconds: number }> {
 	const { mediaId, model } = input
 	const normalizedLanguage =
 		input.language && input.language !== 'auto' ? input.language : undefined
@@ -249,5 +249,10 @@ export async function transcribe(input: {
 	} catch {
 		// ignore
 	}
-	return { success: true, transcription: vttContent, words: transcriptionWords }
+	const durationSeconds =
+		Array.isArray(transcriptionWords) && transcriptionWords.length > 1
+			? Math.max(0, transcriptionWords[transcriptionWords.length - 1].end - transcriptionWords[0].start)
+			: 0
+
+	return { success: true, transcription: vttContent, words: transcriptionWords, durationSeconds }
 }
