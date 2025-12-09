@@ -11,7 +11,10 @@
       "types": "./index.d.ts"
     }
   },
-  "files": ["dist", "index.d.ts"],
+  "files": [
+    "dist",
+    "index.d.ts"
+  ],
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
@@ -19,6 +22,6 @@
     "clean": "tsdown --clean"
   },
   "dependencies": {
-    "execa": "^9.5.2"
+    "execa": "^9.6.1"
   }
 }

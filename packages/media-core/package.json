@@ -10,7 +10,7 @@
     "dist"
   ],
   "dependencies": {
-    "yaml": "^2.6.0"
+    "yaml": "^2.8.2"
   },
   "exports": {
     ".": {
