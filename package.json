@@ -9,7 +9,6 @@
     "start": "next start",
     "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:d1:migrate:remote": "wrangler --config wrangler.json d1 migrations apply vidgen_app --remote",
     "db:d1:list:remote": "wrangler --config wrangler.json d1 migrations list vidgen_app --remote",

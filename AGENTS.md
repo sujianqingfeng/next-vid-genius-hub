@@ -11,7 +11,7 @@
 - `pnpm build` then `pnpm start` — create and validate the production bundle locally.
 - `pnpm lint` — run the Next.js ESLint suite; fix or annotate warnings.
 - `pnpm test` — run Vitest; add `--watch` for local loops and `--coverage` on persistence‑heavy changes.
-- `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:studio` — manage Drizzle schema changes and inspect state.
+- `pnpm db:generate`, `pnpm db:studio`, `pnpm db:d1:migrate:remote` — manage Drizzle schema changes and inspect state against D1.
 - `pnpm rebuild:native` — rebuild native deps (e.g., `yt-dlp-wrap`) after Node/OS upgrades.
 
 ## Coding Style & Naming Conventions
@@ -32,5 +32,4 @@
 - Flag schema migrations or long‑running media jobs so reviewers can plan rollouts.
 
 ## Database & Media Tooling Notes
-- Update schema types → `pnpm db:generate` → inspect SQL → apply with `pnpm db:migrate`; never hand‑edit `drizzle/`.
-
+- Update schema types → `pnpm db:generate` → inspect SQL → apply to D1 with `pnpm db:d1:migrate:remote`; never hand‑edit `drizzle/`.
