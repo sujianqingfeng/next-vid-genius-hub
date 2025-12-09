@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { queryOrpc } from '~/lib/orpc/query-client'
@@ -20,6 +21,7 @@ interface AuthRedirectOptions {
 export function useLoginMutation(options?: AuthRedirectOptions) {
 	const qc = useQueryClient()
 	const router = useRouter()
+	const t = useTranslations('Auth')
 
 	return useEnhancedMutation(
 		queryOrpc.auth.login.mutationOptions({
@@ -29,8 +31,8 @@ export function useLoginMutation(options?: AuthRedirectOptions) {
 			},
 		}),
 		{
-			successToast: '登录成功',
-			errorToast: ({ error }) => error.message || '登录失败',
+			successToast: t('loginSuccess'),
+			errorToast: ({ error }) => error.message || t('loginError'),
 		},
 	)
 }
@@ -38,6 +40,7 @@ export function useLoginMutation(options?: AuthRedirectOptions) {
 export function useSignupMutation(options?: AuthRedirectOptions) {
 	const qc = useQueryClient()
 	const router = useRouter()
+	const t = useTranslations('Auth')
 
 	return useEnhancedMutation(
 		queryOrpc.auth.signup.mutationOptions({
@@ -47,8 +50,8 @@ export function useSignupMutation(options?: AuthRedirectOptions) {
 			},
 		}),
 		{
-			successToast: '注册成功',
-			errorToast: ({ error }) => error.message || '注册失败',
+			successToast: t('signupSuccess'),
+			errorToast: ({ error }) => error.message || t('signupError'),
 		},
 	)
 }
@@ -56,15 +59,16 @@ export function useSignupMutation(options?: AuthRedirectOptions) {
 export function useLogoutMutation() {
 	const qc = useQueryClient()
 	const router = useRouter()
+	const t = useTranslations('Auth')
 	return useMutation({
 		...queryOrpc.auth.logout.mutationOptions(),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: queryOrpc.auth.me.queryKey() })
 			router.replace('/login')
-			toast.success('已退出')
+			toast.success(t('logoutSuccess'))
 		},
 		onError: (error) => {
-			const message = error instanceof Error ? error.message : '退出失败'
+			const message = error instanceof Error ? error.message : t('logoutError')
 			toast.error(message)
 		},
 	})

@@ -3,11 +3,13 @@
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Trash2, RefreshCw } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '~/components/ui/button'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useProxySubscriptionMutation } from '~/lib/proxy/useProxySubscriptionMutation'
 
 export function SSRSubscriptionsList() {
+	const t = useTranslations('Proxy.subscription.list')
 	const { data: subscriptionsData, isLoading } = useQuery(
 		queryOrpc.proxy.getSSRSubscriptions.queryOptions(),
 	)
@@ -15,8 +17,8 @@ export function SSRSubscriptionsList() {
 	const deleteSubscriptionMutation = useProxySubscriptionMutation(
 		queryOrpc.proxy.deleteSSRSubscription.mutationOptions(),
 		{
-			successToast: 'SSR subscription deleted successfully',
-			errorToast: ({ error }) => `Failed to delete SSR subscription: ${error.message}`,
+			successToast: t('deleteSuccess'),
+			errorToast: ({ error }) => t('deleteError', { message: error.message }),
 		},
 	)
 
@@ -25,15 +27,19 @@ export function SSRSubscriptionsList() {
 		{
 			successToast: ({ data }) =>
 				data && typeof data === 'object' && 'count' in data
-					? `Successfully imported ${(data as { count?: number }).count ?? 0} proxies from subscription`
-					: 'Imported proxies from subscription',
-			errorToast: ({ error }) => `Failed to import from subscription: ${error.message}`,
+					? t('importSuccess', { count: (data as { count?: number }).count ?? 0 })
+					: t('importSuccessFallback'),
+			errorToast: ({ error }) => t('importError', { message: error.message }),
 		},
 	)
 
 
 	const handleDeleteSubscription = (subscriptionId: string) => {
-		if (confirm('Are you sure you want to delete this SSR subscription? This will also delete all associated proxies.')) {
+		if (
+			confirm(
+				t('deleteConfirm'),
+			)
+		) {
 			deleteSubscriptionMutation.mutate({ id: subscriptionId })
 		}
 	}
@@ -60,9 +66,9 @@ export function SSRSubscriptionsList() {
 				<div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-secondary/50 flex items-center justify-center">
 					<Link className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.5} />
 				</div>
-				<h3 className="mb-2 text-lg font-semibold text-foreground">No subscriptions yet</h3>
+				<h3 className="mb-2 text-lg font-semibold text-foreground">{t('emptyTitle')}</h3>
 				<p className="text-muted-foreground font-light max-w-sm mx-auto">
-					Add your first subscription to start managing proxies.
+					{t('emptyDesc')}
 				</p>
 			</div>
 		)
@@ -80,7 +86,7 @@ export function SSRSubscriptionsList() {
 							<div>
 								<h3 className="font-semibold leading-none text-foreground">{subscription.name}</h3>
 								<p className="mt-1 text-xs text-muted-foreground font-light">
-									{subscription.proxies?.length || 0} proxies
+									{t('proxiesCount', { count: subscription.proxies?.length || 0 })}
 								</p>
 							</div>
 						</div>
@@ -101,7 +107,7 @@ export function SSRSubscriptionsList() {
 						</p>
 						{subscription.lastUpdated && (
 							<p className="text-[10px] text-muted-foreground font-light px-1">
-								Updated {new Date(subscription.lastUpdated).toLocaleDateString()}
+								{t('updated', { date: new Date(subscription.lastUpdated).toLocaleDateString() })}
 							</p>
 						)}
 					</div>
@@ -114,7 +120,7 @@ export function SSRSubscriptionsList() {
 						className="w-full bg-secondary/80 hover:bg-secondary shadow-sm"
 					>
 						<RefreshCw className={`h-3.5 w-3.5 mr-2 ${importFromSubscriptionMutation.isPending ? 'animate-spin' : ''}`} strokeWidth={1.5} />
-						{importFromSubscriptionMutation.isPending ? 'Importing...' : 'Sync Proxies'}
+						{importFromSubscriptionMutation.isPending ? t('syncing') : t('sync')}
 					</Button>
 				</div>
 			))}

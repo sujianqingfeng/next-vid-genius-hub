@@ -1,7 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { Plus, Globe, Shield, Server } from 'lucide-react'
+import { Plus, Shield, Server } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '~/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { SSRSubscriptionsList } from '~/components/business/proxy/ssr-subscriptions-list'
@@ -9,6 +10,7 @@ import { AddSSRSubscriptionDialog } from '~/components/business/proxy/add-ssr-su
 import { ProxyList } from '~/components/business/proxy/proxy-list'
 
 export default function ProxyPage() {
+	const t = useTranslations('Proxy.page')
 	const [isAddSubscriptionDialogOpen, setIsAddSubscriptionDialogOpen] = React.useState(false)
 
 	return (
@@ -17,9 +19,11 @@ export default function ProxyPage() {
 			<div className="px-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 				<div className="flex items-end justify-between">
 					<div className="space-y-2">
-						<h1 className="text-4xl font-bold tracking-tight text-foreground">Proxy Manager</h1>
+						<h1 className="text-4xl font-bold tracking-tight text-foreground">
+							{t('title')}
+						</h1>
 						<p className="text-lg text-muted-foreground font-light">
-							Manage your proxy subscriptions and nodes.
+							{t('subtitle')}
 						</p>
 					</div>
 					<Button 
@@ -27,7 +31,7 @@ export default function ProxyPage() {
 						className="flex items-center gap-2 shadow-sm hover:shadow-md transition-all h-10 px-6"
 					>
 						<Plus className="h-4 w-4" strokeWidth={1.5} />
-						Add Subscription
+						{t('addSubscription')}
 					</Button>
 				</div>
 			</div>
@@ -42,7 +46,7 @@ export default function ProxyPage() {
 						>
 							<div className="flex items-center gap-2">
 								<Shield className="h-4 w-4" strokeWidth={1.5} />
-								Subscriptions
+								{t('tabs.subscriptions')}
 							</div>
 						</TabsTrigger>
 						<TabsTrigger 
@@ -51,7 +55,7 @@ export default function ProxyPage() {
 						>
 							<div className="flex items-center gap-2">
 								<Server className="h-4 w-4" strokeWidth={1.5} />
-								Proxies
+								{t('tabs.proxies')}
 							</div>
 						</TabsTrigger>
 					</TabsList>

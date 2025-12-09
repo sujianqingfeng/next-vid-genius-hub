@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Calendar, Eye, FileText, Heart, MessageSquare, RefreshCw, User, Play } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -19,6 +20,7 @@ import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 // Clean media thumbnail component
 function MediaThumbnail({ media }: { media: MediaItem }) {
 	const [thumbnailError, setThumbnailError] = useState(false)
+	const t = useTranslations('MediaDetail.video')
 
 	return (
 		<div className="relative group">
@@ -26,7 +28,7 @@ function MediaThumbnail({ media }: { media: MediaItem }) {
 				<div className="relative aspect-[16/9] rounded-xl overflow-hidden bg-gradient-to-br from-muted to-muted/50 shadow-sm">
 					<Image
 						src={media.thumbnail}
-						alt={media.title}
+						alt={media.title || t('thumbnailAlt')}
 						fill
 						className="object-cover transition-transform duration-300 group-hover:scale-105"
 						priority
@@ -51,6 +53,7 @@ function MediaThumbnail({ media }: { media: MediaItem }) {
 
 // Media metadata component
 function MediaMetadata({ media }: { media: MediaItem }) {
+	const t = useTranslations('MediaDetail')
 	return (
 		<div className="space-y-6">
 			{/* Title Section */}
@@ -132,6 +135,7 @@ function MediaVideoPreview({ media, id }: { media: MediaItem; id: string }) {
 
 export function MediaDetailPageClient({ id }: { id: string }) {
 	const queryClient = useQueryClient()
+	const t = useTranslations('MediaDetail')
 	const [selectedProxyId, setSelectedProxyId] = useState<string>('none')
 
 	const mediaQuery = useQuery(
@@ -145,7 +149,7 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 	const refreshMetadataMutation = useMutation(
 		queryOrpc.media.refreshMetadata.mutationOptions({
 			onSuccess: async () => {
-				toast.success('Metadata synced from source.')
+				toast.success(t('actions.syncSuccess'))
 				await queryClient.invalidateQueries({
 					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
@@ -154,7 +158,7 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 				})
 			},
 			onError: (error) => {
-				toast.error(`Failed to sync metadata: ${error.message}`)
+				toast.error(t('actions.syncError', { message: error.message }))
 			},
 		}),
 	)
@@ -167,10 +171,10 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 					href="/media"
 					className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
 				>
-					<ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" strokeWidth={1.5} />
-					Back to Media Library
-				</Link>
-			</div>
+						<ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" strokeWidth={1.5} />
+						{t('back')}
+					</Link>
+				</div>
 
 			{/* Loading State */}
 			{isLoading && (
@@ -199,7 +203,7 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 					<Card className="glass border-destructive/20 bg-destructive/5">
 						<CardContent className="p-12 text-center">
 							<p className="text-destructive font-medium text-lg">
-								Failed to load media details. Please try again.
+								{t('error')}
 							</p>
 						</CardContent>
 					</Card>
@@ -226,7 +230,7 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 					<div className="max-w-6xl mx-auto">
 						<div className="glass rounded-3xl p-6 space-y-6">
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-								<h3 className="text-lg font-semibold text-foreground">Actions</h3>
+								<h3 className="text-lg font-semibold text-foreground">{t('actions.title')}</h3>
 								<div className="grid w-full gap-3 sm:grid-flow-col sm:auto-cols-max sm:items-center sm:w-auto">
 									<div className="w-full sm:w-64">
 										<ProxySelector
@@ -249,7 +253,7 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 										disabled={refreshMetadataMutation.isPending || !media?.url}
 									>
 										<RefreshCw className={`w-4 h-4 mr-2 ${refreshMetadataMutation.isPending ? 'animate-spin' : ''}`} strokeWidth={1.5} />
-										{refreshMetadataMutation.isPending ? 'Syncing…' : 'Sync info'}
+										{refreshMetadataMutation.isPending ? t('actions.syncing') : t('actions.sync')}
 									</Button>
 								</div>
 							</div>
@@ -262,18 +266,18 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 										className="h-12 w-full justify-start gap-3 shadow-sm hover:shadow-md transition-all"
 									>
 										<FileText className="w-4 h-4" strokeWidth={1.5} />
-										<span className="font-semibold">Generate Subtitles</span>
+										<span className="font-semibold">{t('tabs.subtitlesAction')}</span>
 									</Button>
 								</Link>
 
 								<Link href={`/media/${id}/comments`} className="block">
 									<Button
-										variant="outline"
-										size="lg"
+									variant="outline"
+									size="lg"
 										className="h-12 w-full justify-start gap-3 bg-transparent border-border/50 hover:bg-secondary/50 transition-all"
 									>
 										<MessageSquare className="w-4 h-4" strokeWidth={1.5} />
-										<span className="font-semibold">View Comments</span>
+										<span className="font-semibold">{t('tabs.commentsAction')}</span>
 									</Button>
 								</Link>
 							</div>

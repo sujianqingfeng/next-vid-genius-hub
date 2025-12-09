@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Trash2 } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { ChannelVideoList } from '~/components/business/channels/channel-video-list'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
@@ -18,6 +19,7 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 export default function ChannelsPage() {
+	const t = useTranslations('Channels.page')
 	const qc = useQueryClient()
 	const [newInput, setNewInput] = React.useState('')
 	const [jobMap, setJobMap] = React.useState<Record<string, string>>({})
@@ -55,10 +57,10 @@ export default function ChannelsPage() {
 				await qc.invalidateQueries({
 					queryKey: queryOrpc.channel.listChannels.queryKey({}),
 				})
-				toast.success('Channel deleted successfully')
+				toast.success(t('deleteSuccess'))
 			},
 			onError: (error) => {
-				toast.error(`Failed to delete channel: ${error.message}`)
+				toast.error(t('deleteError', { message: error.message }))
 			},
 		}),
 	)
@@ -124,10 +126,11 @@ export default function ChannelsPage() {
 		<div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
 			<header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
 				<div className="space-y-2">
-					<h1 className="text-4xl font-bold tracking-tight text-foreground">Channels</h1>
+					<h1 className="text-4xl font-bold tracking-tight text-foreground">
+						{t('title')}
+					</h1>
 					<p className="text-lg text-muted-foreground font-light max-w-2xl">
-						Collect the creators you follow, keep their feeds in sync, and
-						translate titles in one place.
+						{t('subtitle')}
 					</p>
 				</div>
 				<form
@@ -137,7 +140,7 @@ export default function ChannelsPage() {
 					<Input
 						value={newInput}
 						onChange={(e) => setNewInput(e.target.value)}
-						placeholder="Paste a YouTube channel URL or ID"
+						placeholder={t('inputPlaceholder')}
 						className="w-full min-w-0 sm:w-80 h-10 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-all"
 					/>
 					<Button
@@ -145,7 +148,7 @@ export default function ChannelsPage() {
 						disabled={!newInput.trim() || createMutation.isPending}
 						className="h-10 px-6 shadow-sm hover:shadow-md transition-all"
 					>
-						{createMutation.isPending ? 'Adding…' : 'Add Channel'}
+						{createMutation.isPending ? t('adding') : t('add')}
 					</Button>
 				</form>
 			</header>
@@ -153,7 +156,7 @@ export default function ChannelsPage() {
 			<main className="space-y-6">
 				{listQuery.isLoading && (
 					<div className="py-20 text-center text-muted-foreground animate-pulse">
-						Loading your channels…
+						{t('loading')}
 					</div>
 				)}
 
@@ -195,18 +198,18 @@ export default function ChannelsPage() {
 									setExpanded((m) => ({
 										...m,
 										[ch.id]: !m[ch.id],
-									}))
-								}
-								onDelete={() => {
-									if (deleteMutation.isPending) return
-									if (
-										confirm(
-											'Are you sure you want to delete this channel? This will remove all its videos locally.',
-										)
-									) {
-										deleteMutation.mutate({ id: ch.id })
-									}
-								}}
+											}))
+										}
+										onDelete={() => {
+											if (deleteMutation.isPending) return
+											if (
+												confirm(
+													t('deleteConfirm'),
+												)
+											) {
+												deleteMutation.mutate({ id: ch.id })
+											}
+										}}
 								deleting={deleteMutation.isPending}
 							/>
 						))}
@@ -215,7 +218,7 @@ export default function ChannelsPage() {
 
 				{!listQuery.isLoading && !listQuery.data?.channels?.length && (
 					<div className="rounded-2xl border border-dashed border-border/50 bg-background/30 py-20 text-center text-muted-foreground backdrop-blur-sm">
-						Add a channel to start tracking new uploads.
+						{t('empty')}
 					</div>
 				)}
 			</main>
@@ -264,6 +267,7 @@ function ChannelCard({
 	onDelete,
 	deleting,
 }: ChannelCardProps) {
+	const t = useTranslations('Channels.page')
 	const finalizeAttemptedRef = React.useRef(false)
 	const [translatedMap, setTranslatedMap] = React.useState<Record<
 		string,
@@ -315,15 +319,19 @@ function ChannelCard({
 			},
 		}),
 		{
-			successToast: 'Titles translated!',
-			errorToast: ({ error }) => `Failed to translate titles: ${error.message}`,
+			successToast: t('actions.translateSuccess'),
+			errorToast: ({ error }) =>
+				t('actions.translateError', { message: error.message }),
 		},
 	)
 
 	const statusLabel = React.useMemo(() => {
-		if (!status) return 'Idle'
-		return status.replace(/_/g, ' ')
-	}, [status])
+		if (!status) return t('status.idle')
+		const key = status.replace(/_/g, ' ')
+		return t(`status.${status as keyof typeof STATUS_COLOR}`, {
+			defaultValue: key,
+		})
+	}, [status, t])
 
 	const isSyncing = status === 'running' || status === 'queued'
 
@@ -365,18 +373,18 @@ function ChannelCard({
 							onClick={onToggleExpanded}
 							className="bg-transparent border-border/50 hover:bg-secondary/50 transition-colors"
 						>
-							{expanded ? 'Hide videos' : 'View videos'}
+							{expanded ? t('actions.hide') : t('actions.view')}
 						</Button>
 						<Button
 							size="sm"
 							variant="ghost"
 							onClick={onDelete}
 							disabled={deleting}
-							className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-							title="Delete this channel and its local videos"
+									className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+							title={t('deleteConfirm')}
 						>
 							<Trash2 className="h-4 w-4" strokeWidth={1.5} />
-							<span className="sr-only">Delete</span>
+							<span className="sr-only">{t('deleteConfirm')}</span>
 						</Button>
 					</div>
 				</div>
@@ -386,10 +394,10 @@ function ChannelCard({
 						<div className="flex items-center justify-between gap-3 mb-4">
 							<div className="space-y-1">
 								<h3 className="text-sm font-semibold leading-none text-foreground">
-									Sync
+									{t('actions.syncTitle')}
 								</h3>
 								<p className="text-xs text-muted-foreground font-light">
-									Select a proxy and fetch the newest uploads.
+									{t('actions.syncDesc')}
 								</p>
 							</div>
 							<span className="rounded-full border border-border/50 bg-background/50 px-3 py-1 text-xs font-medium capitalize text-foreground shadow-sm">
@@ -407,7 +415,7 @@ function ChannelCard({
 								onClick={onSync}
 								disabled={isSyncing}
 							>
-								{isSyncing ? 'Syncing…' : 'Sync latest'}
+								{isSyncing ? t('actions.syncing') : t('actions.sync')}
 							</Button>
 						</div>
 					</section>
@@ -415,16 +423,16 @@ function ChannelCard({
 					<section className="rounded-xl border border-border/40 bg-white/30 p-5 backdrop-blur-sm transition-colors hover:bg-white/50">
 						<div className="space-y-1 mb-4">
 							<h3 className="text-sm font-semibold leading-none text-foreground">
-								Translate
+								{t('actions.translateTitle')}
 							</h3>
 							<p className="text-xs text-muted-foreground font-light">
-								Choose a model to localize the latest video titles.
+								{t('actions.translateDesc')}
 							</p>
 						</div>
 						<div className="space-y-4">
 							<div className="space-y-2">
 								<span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-									Model
+									{t('actions.model')}
 								</span>
 								<ChatModelSelect
 									value={selectedModel}
@@ -446,30 +454,32 @@ function ChannelCard({
 									}
 									disabled={translateMutation.isPending}
 									className="bg-secondary/80 hover:bg-secondary shadow-sm"
-									title="Translate the latest video titles to Chinese"
+									title={t('actions.translate')}
 								>
 									{translateMutation.isPending
-										? 'Translating…'
-										: 'Translate titles'}
+										? t('actions.translating')
+										: t('actions.translate')}
 								</Button>
 								{translatedMap && (
 									<Button
 										size="sm"
-										variant="ghost"
-										onClick={() => setShowTranslated((v) => !v)}
-										className="hover:bg-secondary/50"
-										title={
-											showTranslated
-												? 'Hide translated titles'
-												: 'Show translated titles'
-										}
-									>
-										{showTranslated ? 'Hide translation' : 'Show translation'}
-									</Button>
-								)}
-							</div>
+									variant="ghost"
+									onClick={() => setShowTranslated((v) => !v)}
+									className="hover:bg-secondary/50"
+									title={
+										showTranslated
+											? t('actions.hideTranslation')
+											: t('actions.showTranslation')
+									}
+								>
+									{showTranslated
+										? t('actions.hideTranslation')
+										: t('actions.showTranslation')}
+								</Button>
+							)}
 						</div>
-					</section>
+					</div>
+				</section>
 				</div>
 
 				{expanded && (

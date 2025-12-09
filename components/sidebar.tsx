@@ -15,6 +15,8 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
+import { useTranslations } from 'next-intl'
+import { LanguageSwitcher } from '~/components/business/layout/language-switcher'
 import { Button } from '~/components/ui/button'
 import {
 	Tooltip,
@@ -29,61 +31,74 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
 	defaultCollapsed?: boolean
 }
 
-const menuItems = [
+const baseMenuItems = [
 	{
-		title: 'Media Library',
+		key: 'media',
 		href: '/media',
 		icon: FileVideo,
-		description: 'Manage your videos',
 	},
 	{
-		title: 'Channels',
+		key: 'channels',
 		href: '/channels',
 		icon: ListVideo,
-		description: 'Track YouTube channels',
 	},
 	{
-		title: 'Downloads',
+		key: 'downloads',
 		href: '/media/download',
 		icon: Download,
-		description: 'Download new content',
 	},
 	{
-		title: 'Proxy Manager',
+		key: 'proxy',
 		href: '/proxy',
 		icon: Globe,
-		description: 'Manage proxy servers',
 	},
 	{
-		title: '积分中心',
+		key: 'points',
 		href: '/points',
 		icon: Coins,
-		description: '查看余额与流水',
 	},
 	{
-		title: 'Tasks',
+		key: 'tasks',
 		href: '/tasks',
 		icon: ListChecks,
-		description: 'View cloud job history',
 	},
-]
+] as const
 
-type MenuItem = (typeof menuItems)[number]
+type MenuItem = {
+	key: string
+	href: string
+	icon: (typeof baseMenuItems)[number]['icon']
+	title: string
+	description: string
+}
+type MenuKey = (typeof baseMenuItems)[number]['key'] | 'admin'
 
 export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
+	const t = useTranslations('Sidebar')
 	const [collapsed, setCollapsed] = React.useState(defaultCollapsed)
 	const pathname = usePathname()
 	const { data: me } = useAuthQuery()
 	const logoutMutation = useLogoutMutation()
 
+	const menuItems: MenuItem[] = React.useMemo(
+		() =>
+			baseMenuItems.map((item) => ({
+				...item,
+				title: t(`nav.${item.key}.title`),
+				description: t(`nav.${item.key}.desc`),
+			})),
+		[t],
+	)
+
 	const bottomMenuItems: MenuItem[] =
 		me?.user?.role === 'admin'
 			? [
 					{
-						title: 'Admin',
+						key: 'admin' as MenuKey,
 						href: '/admin/users',
 						icon: Shield,
-						description: 'User management',
+						title: t('nav.admin.title'),
+						description: t('nav.admin.desc'),
 					},
 				]
 			: []
@@ -100,7 +115,7 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 			}
 		}
 		return best
-	}, [pathname])
+	}, [pathname, menuItems, bottomMenuItems])
 
 	const renderMenuItem = (item: MenuItem, isActive: boolean) => (
 		<Link
@@ -166,17 +181,22 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 			<div className="flex h-full flex-col">
 				{/* Header */}
 				<div className="flex h-20 items-center justify-between px-6">
-				{!collapsed && (
-					<div className="flex items-center gap-3 animate-in fade-in duration-500">
-						<div className="h-9 w-9 rounded-xl bg-sidebar-primary/10 flex items-center justify-center ring-1 ring-sidebar-primary/20">
-							<FileVideo strokeWidth={1.5} className="h-5 w-5 text-sidebar-primary" />
+					{!collapsed && (
+						<div className="flex items-center gap-3 animate-in fade-in duration-500">
+							<div className="h-9 w-9 rounded-xl bg-sidebar-primary/10 flex items-center justify-center ring-1 ring-sidebar-primary/20">
+								<FileVideo
+									strokeWidth={1.5}
+									className="h-5 w-5 text-sidebar-primary"
+								/>
+							</div>
+							<span className="text-lg font-semibold tracking-tight">
+								{t('brand')}
+							</span>
 						</div>
-						<span className="text-lg font-semibold tracking-tight">Video Genius</span>
-					</div>
-				)}
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
+					)}
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
 								variant="ghost"
 								size="icon"
 								className="h-8 w-8 text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors rounded-full"
@@ -190,7 +210,7 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 							</Button>
 						</TooltipTrigger>
 						<TooltipContent side="right" className="glass">
-							{collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+							{collapsed ? t('toggle.expand') : t('toggle.collapse')}
 						</TooltipContent>
 					</Tooltip>
 				</div>
@@ -208,7 +228,8 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 				)}
 
 				{/* Footer */}
-				<div className="p-4">
+				<div className="p-4 space-y-3">
+					<LanguageSwitcher collapsed={collapsed} />
 					<div
 						className={cn(
 							'flex items-center gap-3 rounded-xl p-3 transition-all duration-300 hover:bg-sidebar-accent/40',
@@ -226,16 +247,16 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 							<div className="flex-1 min-w-0 space-y-1 animate-in fade-in duration-300">
 								<div className="flex items-center gap-2">
 									<p className="text-sm font-medium truncate text-sidebar-foreground/90">
-										{me?.user?.nickname || me?.user?.email || '未登录'}
+										{me?.user?.nickname || me?.user?.email || t('user.guest')}
 									</p>
 									{typeof me?.balance === 'number' && (
 										<Badge variant="secondary" className="text-[11px]">
-											{me.balance} 分
+											{me.balance} {t('user.pointsSuffix')}
 										</Badge>
 									)}
 								</div>
 								<p className="text-xs text-sidebar-foreground/50 truncate">
-									{me?.user?.email || '请登录'}
+									{me?.user?.email || t('user.loginPrompt')}
 								</p>
 								<Button
 									variant="outline"
@@ -245,7 +266,7 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 									disabled={logoutMutation.isPending}
 								>
 									<LogOut className="h-3.5 w-3.5 mr-1" />
-									退出
+									{t('user.logout')}
 								</Button>
 							</div>
 						)}

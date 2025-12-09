@@ -1,14 +1,19 @@
 import { BarChart3, Download, FileVideo, TrendingUp } from 'lucide-react'
+import { getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+	const t = await getTranslations('Dashboard')
+
 	return (
 		<div className="min-h-full p-6 space-y-8">
 			{/* Header Section */}
 			<div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
-				<h1 className="text-4xl font-bold tracking-tight text-foreground">Dashboard</h1>
+				<h1 className="text-4xl font-bold tracking-tight text-foreground">
+					{t('title')}
+				</h1>
 				<p className="text-muted-foreground text-lg font-light">
-					Welcome back. Here&apos;s an overview of your creative space.
+					{t('subtitle')}
 				</p>
 			</div>
 
@@ -17,47 +22,57 @@ export default function DashboardPage() {
 				<Card className="glass border-none shadow-sm hover:shadow-md transition-all duration-300">
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium text-muted-foreground">
-							Total Videos
+							{t('cards.totalVideos.title')}
 						</CardTitle>
 						<FileVideo className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
 					</CardHeader>
 					<CardContent>
 						<div className="text-3xl font-bold text-foreground">0</div>
 						<p className="text-xs text-muted-foreground mt-1">
-							+0% from last month
+							{t('cards.totalVideos.delta')}
 						</p>
 					</CardContent>
 				</Card>
 				<Card className="glass border-none shadow-sm hover:shadow-md transition-all duration-300">
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">Media Files</CardTitle>
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							{t('cards.media.title')}
+						</CardTitle>
 						<Download className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
 					</CardHeader>
 					<CardContent>
 						<div className="text-3xl font-bold text-foreground">0</div>
 						<p className="text-xs text-muted-foreground mt-1">
-							+0% from last month
+							{t('cards.media.delta')}
 						</p>
 					</CardContent>
 				</Card>
 				<Card className="glass border-none shadow-sm hover:shadow-md transition-all duration-300">
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">Processing</CardTitle>
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							{t('cards.processing.title')}
+						</CardTitle>
 						<TrendingUp className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
 					</CardHeader>
 					<CardContent>
 						<div className="text-3xl font-bold text-foreground">0</div>
-						<p className="text-xs text-muted-foreground mt-1">Active tasks</p>
+						<p className="text-xs text-muted-foreground mt-1">
+							{t('cards.processing.delta')}
+						</p>
 					</CardContent>
 				</Card>
 				<Card className="glass border-none shadow-sm hover:shadow-md transition-all duration-300">
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">Analytics</CardTitle>
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							{t('cards.analytics.title')}
+						</CardTitle>
 						<BarChart3 className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
 					</CardHeader>
 					<CardContent>
 						<div className="text-3xl font-bold text-foreground">0</div>
-						<p className="text-xs text-muted-foreground mt-1">Reports generated</p>
+						<p className="text-xs text-muted-foreground mt-1">
+							{t('cards.analytics.delta')}
+						</p>
 					</CardContent>
 				</Card>
 			</div>
@@ -71,9 +86,11 @@ export default function DashboardPage() {
 								<Download className="h-7 w-7 text-foreground group-hover:text-primary transition-colors" strokeWidth={1.5} />
 							</div>
 							<div>
-								<h3 className="font-semibold text-lg text-foreground">Download Video</h3>
+								<h3 className="font-semibold text-lg text-foreground">
+									{t('quickActions.download.title')}
+								</h3>
 								<p className="text-sm text-muted-foreground font-light">
-									Add a new video to your library
+									{t('quickActions.download.desc')}
 								</p>
 							</div>
 						</div>
@@ -86,9 +103,11 @@ export default function DashboardPage() {
 								<FileVideo className="h-7 w-7 text-foreground group-hover:text-primary transition-colors" strokeWidth={1.5} />
 							</div>
 							<div>
-								<h3 className="font-semibold text-lg text-foreground">Browse Media</h3>
+								<h3 className="font-semibold text-lg text-foreground">
+									{t('quickActions.browse.title')}
+								</h3>
 								<p className="text-sm text-muted-foreground font-light">
-									View and manage your videos
+									{t('quickActions.browse.desc')}
 								</p>
 							</div>
 						</div>
@@ -101,9 +120,11 @@ export default function DashboardPage() {
 								<BarChart3 className="h-7 w-7 text-foreground group-hover:text-primary transition-colors" strokeWidth={1.5} />
 							</div>
 							<div>
-								<h3 className="font-semibold text-lg text-foreground">View Analytics</h3>
+								<h3 className="font-semibold text-lg text-foreground">
+									{t('quickActions.analytics.title')}
+								</h3>
 								<p className="text-sm text-muted-foreground font-light">
-									Check your video statistics
+									{t('quickActions.analytics.desc')}
 								</p>
 							</div>
 						</div>

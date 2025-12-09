@@ -3,6 +3,7 @@
 import { History, Plus, Shield, UserCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
@@ -16,6 +17,7 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 const PAGE_SIZE = 20
 
 export default function AdminUsersPage() {
+	const t = useTranslations('Admin.users')
 	const qc = useQueryClient()
 	const [page, setPage] = useState(1)
 	const [search, setSearch] = useState('')
@@ -41,8 +43,8 @@ export default function AdminUsersPage() {
 			onSuccess: invalidateList,
 		}),
 		{
-			successToast: '角色已更新',
-			errorToast: ({ error }) => (error as Error)?.message || '更新角色失败',
+			successToast: t('toast.roleUpdated'),
+			errorToast: ({ error }) => (error as Error)?.message || t('toast.roleUpdateError'),
 		},
 	)
 
@@ -51,8 +53,9 @@ export default function AdminUsersPage() {
 			onSuccess: invalidateList,
 		}),
 		{
-			successToast: ({ variables }) => (variables.status === 'active' ? '已解封' : '已封禁'),
-			errorToast: ({ error }) => (error as Error)?.message || '更新状态失败',
+			successToast: ({ variables }) =>
+				variables.status === 'active' ? t('toast.statusUpdatedActive') : t('toast.statusUpdatedBanned'),
+			errorToast: ({ error }) => (error as Error)?.message || t('toast.statusUpdateError'),
 		},
 	)
 
@@ -67,8 +70,8 @@ export default function AdminUsersPage() {
 			},
 		}),
 		{
-			successToast: '积分已发放',
-			errorToast: ({ error }) => (error as Error)?.message || '发放失败',
+			successToast: t('toast.pointsAdded'),
+			errorToast: ({ error }) => (error as Error)?.message || t('toast.pointsAddError'),
 		},
 	)
 
@@ -100,27 +103,27 @@ export default function AdminUsersPage() {
 		<div className="space-y-6">
 			<div className="flex items-center justify-between gap-3">
 				<div>
-					<h1 className="text-2xl font-semibold tracking-tight">用户管理</h1>
+					<h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
 					<p className="text-sm text-muted-foreground">
-						查看、封禁或提升用户角色。当前用户数：{formattedStats.total}
+						{t('subtitle', { total: formattedStats.total })}
 					</p>
 				</div>
 				<Badge variant="secondary" className="gap-1">
-					<Shield className="h-3.5 w-3.5" /> Admin
+					<Shield className="h-3.5 w-3.5" /> {t('badge')}
 				</Badge>
 			</div>
 
 			<Card className="border-border/60 shadow-sm">
 				<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<CardTitle className="text-lg">用户列表</CardTitle>
+					<CardTitle className="text-lg">{t('table.actions')}</CardTitle>
 					<form onSubmit={handleSearch} className="flex w-full max-w-sm gap-2">
 						<Input
-							placeholder="搜索邮箱 / 昵称 / ID"
+							placeholder={t('searchPlaceholder')}
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
 						/>
 						<Button type="submit" variant="secondary">
-							搜索
+							{t('searchButton')}
 						</Button>
 					</form>
 				</CardHeader>
@@ -129,23 +132,23 @@ export default function AdminUsersPage() {
 						<table className="min-w-full text-sm">
 							<thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
 								<tr>
-									<th className="px-4 py-3 font-medium">Email</th>
-									<th className="px-4 py-3 font-medium">昵称</th>
-									<th className="px-4 py-3 font-medium">角色</th>
-									<th className="px-4 py-3 font-medium">状态</th>
-									<th className="px-4 py-3 font-medium">创建时间</th>
-									<th className="px-4 py-3 font-medium">上次登录</th>
-									<th className="px-4 py-3 font-medium text-right">操作</th>
+									<th className="px-4 py-3 font-medium">{t('table.email')}</th>
+									<th className="px-4 py-3 font-medium">{t('table.nickname')}</th>
+									<th className="px-4 py-3 font-medium">{t('table.role')}</th>
+									<th className="px-4 py-3 font-medium">{t('table.status')}</th>
+									<th className="px-4 py-3 font-medium">{t('table.createdAt')}</th>
+									<th className="px-4 py-3 font-medium">{t('table.lastLogin')}</th>
+									<th className="px-4 py-3 font-medium text-right">{t('table.actions')}</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-border/60">
 								{users.map((user) => (
 									<tr key={user.id} className="hover:bg-muted/30">
 										<td className="px-4 py-3 font-medium">{user.email}</td>
-										<td className="px-4 py-3 text-muted-foreground">{user.nickname || '—'}</td>
+										<td className="px-4 py-3 text-muted-foreground">{user.nickname || t('labels.none')}</td>
 										<td className="px-4 py-3">
 											<Badge variant={user.role === 'admin' ? 'default' : 'outline'}>
-												{user.role === 'admin' ? '管理员' : '普通用户'}
+												{user.role === 'admin' ? t('roles.admin') : t('roles.user')}
 											</Badge>
 										</td>
 										<td className="px-4 py-3">
@@ -162,7 +165,7 @@ export default function AdminUsersPage() {
 													aria-label={`切换${user.email}状态`}
 												/>
 												<span className="text-xs text-muted-foreground">
-													{user.status === 'active' ? '正常' : '已封禁'}
+													{user.status === 'active' ? t('status.active') : t('status.banned')}
 												</span>
 											</div>
 										</td>
@@ -184,7 +187,7 @@ export default function AdminUsersPage() {
 													disabled={isUpdating}
 												>
 													<Plus className="h-4 w-4" />
-													加积分
+													{t('actions.addPoints')}
 												</Button>
 												<Button
 													size="sm"
@@ -195,7 +198,7 @@ export default function AdminUsersPage() {
 													}
 												>
 													<History className="h-4 w-4" />
-													流水
+													{t('actions.transactions')}
 												</Button>
 												<Button
 													size="sm"
@@ -210,7 +213,9 @@ export default function AdminUsersPage() {
 													disabled={isUpdating}
 												>
 													<UserCheck className="h-4 w-4" />
-													{user.role === 'admin' ? '降为普通' : '设为管理员'}
+													{user.role === 'admin'
+														? t('actions.toggleRoleToUser')
+														: t('actions.toggleRoleToAdmin')}
 												</Button>
 											</div>
 										</td>
@@ -219,7 +224,7 @@ export default function AdminUsersPage() {
 								{!listQuery.isLoading && users.length === 0 && (
 									<tr>
 										<td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
-											未找到用户
+											{t('empty')}
 										</td>
 									</tr>
 								)}
@@ -229,7 +234,7 @@ export default function AdminUsersPage() {
 
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 						<p className="text-xs text-muted-foreground">
-							第 {page} / {pageCount} 页，{formattedStats.total} 个用户
+							{t('pagination', { page, pages: pageCount, total: formattedStats.total })}
 						</p>
 						<div className="flex gap-2">
 							<Button
@@ -238,7 +243,7 @@ export default function AdminUsersPage() {
 								disabled={page === 1 || listQuery.isFetching}
 								onClick={() => setPage((p) => Math.max(1, p - 1))}
 							>
-								上一页
+								{t('prev')}
 							</Button>
 							<Button
 								variant="outline"
@@ -246,7 +251,7 @@ export default function AdminUsersPage() {
 								disabled={page >= pageCount || listQuery.isFetching}
 								onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
 							>
-								下一页
+								{t('next')}
 							</Button>
 						</div>
 					</div>
@@ -256,7 +261,7 @@ export default function AdminUsersPage() {
 			<Dialog open={Boolean(selectedUserForAdd)} onOpenChange={(open) => !open && setSelectedUserForAdd(null)}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>为 {selectedUserForAdd?.email} 加积分</DialogTitle>
+						<DialogTitle>{t('dialogs.addTitle', { email: selectedUserForAdd?.email })}</DialogTitle>
 					</DialogHeader>
 					<div className="space-y-3 py-2">
 						<div className="space-y-2">

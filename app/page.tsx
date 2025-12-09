@@ -1,28 +1,30 @@
 import { ArrowRight, Download, MessageSquare, Play } from 'lucide-react'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { Button } from '~/components/ui/button'
 
-export default function Home() {
+export default async function Home() {
+	const t = await getTranslations('Home')
+
 	return (
 		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
 			<div className="px-4 py-24 sm:px-6 lg:px-8 relative overflow-hidden">
 				{/* Background Elements */}
 				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-secondary/80 to-transparent -z-10 pointer-events-none" />
-				
+
 				<div className="max-w-5xl mx-auto relative z-10">
 					{/* Hero Section */}
 					<div className="text-center mb-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
 						<div className="inline-flex items-center justify-center p-2 mb-8 rounded-full bg-secondary/50 backdrop-blur-sm border border-border/50">
 							<span className="px-3 py-1 text-xs font-medium tracking-wide uppercase text-muted-foreground">
-								Next Gen Video Platform
+								{t('badge')}
 							</span>
 						</div>
 						<h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-foreground mb-8">
-							Video Genius <span className="text-primary/80 font-light">Hub</span>
+							{t('title')}
 						</h1>
 						<p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-light">
-							Your intelligent platform for video processing, transcription, and
-							analysis. Experience the future of media management.
+							{t('hero')}
 						</p>
 					</div>
 
@@ -33,7 +35,7 @@ export default function Home() {
 								size="lg"
 								className="h-14 px-10 rounded-full text-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
 							>
-								Get Started
+								{t('cta')}
 								<ArrowRight className="ml-2 h-5 w-5" strokeWidth={1.5} />
 							</Button>
 						</Link>
@@ -46,10 +48,10 @@ export default function Home() {
 								<Play className="h-7 w-7 text-foreground" strokeWidth={1.5} />
 							</div>
 							<h3 className="text-xl font-semibold text-foreground mb-3">
-								Video Processing
+								{t('features.processing.title')}
 							</h3>
 							<p className="text-muted-foreground leading-relaxed">
-								Upload and process videos with advanced AI capabilities for superior results.
+								{t('features.processing.desc')}
 							</p>
 						</div>
 
@@ -58,10 +60,10 @@ export default function Home() {
 								<Download className="h-7 w-7 text-foreground" strokeWidth={1.5} />
 							</div>
 							<h3 className="text-xl font-semibold text-foreground mb-3">
-								Smart Downloads
+								{t('features.downloads.title')}
 							</h3>
 							<p className="text-muted-foreground leading-relaxed">
-								Download videos with automatic quality optimization and format conversion.
+								{t('features.downloads.desc')}
 							</p>
 						</div>
 
@@ -70,10 +72,10 @@ export default function Home() {
 								<MessageSquare className="h-7 w-7 text-foreground" strokeWidth={1.5} />
 							</div>
 							<h3 className="text-xl font-semibold text-foreground mb-3">
-								AI Comments
+								{t('features.comments.title')}
 							</h3>
 							<p className="text-muted-foreground leading-relaxed">
-								Generate intelligent comments and insights using state-of-the-art models.
+								{t('features.comments.desc')}
 							</p>
 						</div>
 					</div>
@@ -81,11 +83,11 @@ export default function Home() {
 					{/* Stats Section */}
 					<div className="text-center animate-in fade-in duration-700 delay-300">
 						<div className="inline-flex items-center gap-8 text-sm font-medium text-muted-foreground/60 uppercase tracking-widest">
-							<span>Next.js 15</span>
+							<span>{t('tech.next')}</span>
 							<span className="w-1 h-1 rounded-full bg-border" />
-							<span>TypeScript</span>
+							<span>{t('tech.ts')}</span>
 							<span className="w-1 h-1 rounded-full bg-border" />
-							<span>Tailwind CSS</span>
+							<span>{t('tech.tailwind')}</span>
 						</div>
 					</div>
 				</div>

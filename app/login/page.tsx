@@ -10,8 +10,10 @@ import { Label } from '~/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { useAuthQuery, useLoginMutation, useSignupMutation } from '~/lib/auth/hooks'
 import { cn } from '~/lib/utils'
+import { useTranslations } from 'next-intl'
 
 export default function LoginPage() {
+	const t = useTranslations('Login')
 	const searchParams = useSearchParams()
 	const router = useRouter()
 	const next = useMemo(() => searchParams.get('next') || '/media', [searchParams])
@@ -37,16 +39,18 @@ export default function LoginPage() {
 		<div className="min-h-screen bg-gradient-to-br from-background to-secondary/40 flex items-center justify-center px-4 py-10">
 			<Card className="w-full max-w-3xl shadow-xl border border-border/50">
 				<CardHeader className="space-y-2 text-center">
-					<CardTitle className="text-2xl font-semibold text-foreground">登录 / 注册</CardTitle>
+					<CardTitle className="text-2xl font-semibold text-foreground">
+						{t('title')}
+					</CardTitle>
 					<p className="text-sm text-muted-foreground">
-						使用邮箱和密码登录，积分将作为虚拟货币用于消耗。
+						{t('subtitle')}
 					</p>
 				</CardHeader>
 				<CardContent>
 					<Tabs defaultValue="login" className="space-y-4">
 						<TabsList className="mx-auto">
-							<TabsTrigger value="login">登录</TabsTrigger>
-							<TabsTrigger value="signup">注册新账号</TabsTrigger>
+							<TabsTrigger value="login">{t('tabs.login')}</TabsTrigger>
+							<TabsTrigger value="signup">{t('tabs.signup')}</TabsTrigger>
 						</TabsList>
 
 						<TabsContent value="login">
@@ -58,7 +62,7 @@ export default function LoginPage() {
 								className="space-y-4"
 							>
 								<div className="space-y-2">
-									<Label htmlFor="login-email">邮箱</Label>
+									<Label htmlFor="login-email">{t('login.email')}</Label>
 									<Input
 										id="login-email"
 										type="email"
@@ -70,7 +74,7 @@ export default function LoginPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="login-password">密码</Label>
+									<Label htmlFor="login-password">{t('login.password')}</Label>
 									<Input
 										id="login-password"
 										type="password"
@@ -79,11 +83,11 @@ export default function LoginPage() {
 										required
 										value={loginPassword}
 										onChange={(e) => setLoginPassword(e.target.value)}
-										placeholder="至少 8 位"
+										placeholder={t('login.passwordPlaceholder')}
 									/>
 								</div>
 								<Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-									{loginMutation.isPending ? '登录中…' : '登录'}
+									{loginMutation.isPending ? t('login.submitting') : t('login.submit')}
 								</Button>
 							</form>
 						</TabsContent>
@@ -102,7 +106,7 @@ export default function LoginPage() {
 							>
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 									<div className="space-y-2">
-										<Label htmlFor="signup-email">邮箱</Label>
+										<Label htmlFor="signup-email">{t('signup.email')}</Label>
 										<Input
 											id="signup-email"
 											type="email"
@@ -114,18 +118,18 @@ export default function LoginPage() {
 										/>
 									</div>
 									<div className="space-y-2">
-										<Label htmlFor="signup-nickname">昵称（可选）</Label>
+										<Label htmlFor="signup-nickname">{t('signup.nickname')}</Label>
 										<Input
 											id="signup-nickname"
 											type="text"
 											value={signupNickname}
 											onChange={(e) => setSignupNickname(e.target.value)}
-											placeholder="展示名称"
+											placeholder={t('signup.nicknamePlaceholder')}
 										/>
 									</div>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="signup-password">密码</Label>
+									<Label htmlFor="signup-password">{t('signup.password')}</Label>
 									<Input
 										id="signup-password"
 										type="password"
@@ -134,21 +138,21 @@ export default function LoginPage() {
 										required
 										value={signupPassword}
 										onChange={(e) => setSignupPassword(e.target.value)}
-										placeholder="至少 8 位"
+										placeholder={t('signup.passwordPlaceholder')}
 									/>
 									<p className="text-xs text-muted-foreground">
-										注册会自动发放注册积分，可在积分中心查看。
+										{t('signup.hint')}
 									</p>
 								</div>
 								<Button type="submit" className={cn('w-full')} disabled={signupMutation.isPending}>
-									{signupMutation.isPending ? '注册中…' : '注册并登录'}
+									{signupMutation.isPending ? t('signup.submitting') : t('signup.submit')}
 								</Button>
 							</form>
 						</TabsContent>
 					</Tabs>
 					<div className="mt-6 text-center text-sm text-muted-foreground">
 						<Link href="/" className="underline underline-offset-4">
-							返回首页
+							{t('backHome')}
 						</Link>
 					</div>
 				</CardContent>

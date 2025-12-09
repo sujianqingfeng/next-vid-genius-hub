@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { Button } from '~/components/ui/button'
+import { useTranslations } from 'next-intl'
 
 type Props = {
   channelId: string
@@ -11,6 +12,7 @@ type Props = {
 }
 
 export function ChannelVideoList({ channelId, limit = 20, translatedTitleMap }: Props) {
+  const t = useTranslations('Channels.videos')
   const q = useQuery(
     queryOrpc.channel.listChannelVideos.queryOptions({
       input: { id: channelId, limit },
@@ -20,14 +22,14 @@ export function ChannelVideoList({ channelId, limit = 20, translatedTitleMap }: 
 
   if (q.isLoading) {
     return (
-      <div className="text-sm text-muted-foreground p-3">Loading videos…</div>
+      <div className="text-sm text-muted-foreground p-3">{t('loading')}</div>
     )
   }
 
   const list = q.data?.videos ?? []
   if (!list.length) {
     return (
-      <div className="text-sm text-muted-foreground p-3">No videos found.</div>
+      <div className="text-sm text-muted-foreground p-3">{t('empty')}</div>
     )
   }
 
@@ -49,13 +51,13 @@ export function ChannelVideoList({ channelId, limit = 20, translatedTitleMap }: 
               </div>
               {translated && (
                 <div className="truncate text-xs text-muted-foreground">
-                  Original: {v.title}
+                  {t('original', { title: v.title })}
                 </div>
               )}
               <div className="text-xs text-muted-foreground truncate">{v.url}</div>
             </div>
             <a href={v.url} target="_blank" rel="noreferrer">
-              <Button size="sm" variant="ghost">Open</Button>
+              <Button size="sm" variant="ghost">{t('open')}</Button>
             </a>
           </div>
         )

@@ -2,12 +2,14 @@
 
 import { Coins, RefreshCw } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 export default function PointsPage() {
+	const t = useTranslations('Points')
 	const balanceQuery = useQuery(queryOrpc.points.getMyBalance.queryOptions())
 	const txQuery = useQuery(
 		queryOrpc.points.listMyTransactions.queryOptions({ input: { limit: 50, offset: 0 } }),
@@ -29,10 +31,10 @@ export default function PointsPage() {
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
 					<h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
-						<Coins className="w-5 h-5 text-primary" /> 积分中心
+						<Coins className="w-5 h-5 text-primary" /> {t('title')}
 					</h1>
 					<p className="text-sm text-muted-foreground">
-						查看当前余额、历史流水。积分用于扣费（如生成任务）。
+						{t('subtitle')}
 					</p>
 				</div>
 				<Button
@@ -44,54 +46,53 @@ export default function PointsPage() {
 					}}
 					disabled={isLoading}
 				>
-					<RefreshCw className="w-4 h-4 mr-2" /> 刷新
+					<RefreshCw className="w-4 h-4 mr-2" /> {t('refresh')}
 				</Button>
 			</div>
 
 			<div className="grid gap-4 md:grid-cols-3">
 				<Card className="md:col-span-2">
 					<CardHeader className="pb-2">
-						<CardTitle className="text-base">当前积分余额</CardTitle>
+						<CardTitle className="text-base">{t('balance.title')}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="text-4xl font-semibold tracking-tight flex items-baseline gap-2">
 							{balance}
-							<span className="text-sm text-muted-foreground">分</span>
+							<span className="text-sm text-muted-foreground">{t('balance.unit')}</span>
 						</div>
 						<p className="text-xs text-muted-foreground mt-2">
-							注册奖励已发放。后续可通过充值、活动或任务返还增加积分。
+							{t('balance.hint')}
 						</p>
 					</CardContent>
 				</Card>
 				<Card>
 					<CardHeader className="pb-2">
-						<CardTitle className="text-base">快速说明</CardTitle>
+						<CardTitle className="text-base">{t('notes.title')}</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-2 text-sm text-muted-foreground">
-						<p>· 生成/任务前先扣费，失败时可按策略返还。</p>
-				<p>· 不同模型/时长按规则动态扣费，详见定价表。</p>
-						<p>· 积分只在服务端修改，前端无法直接操作余额。</p>
-						<p>· 后续接入支付时可在这里跳转充值。</p>
+						{['one', 'two', 'three', 'four'].map((key) => (
+							<p key={key}>· {t(`notes.items.${key}`)}</p>
+						))}
 					</CardContent>
 				</Card>
 			</div>
 
 			<Card>
 				<CardHeader className="pb-2">
-					<CardTitle className="text-base">积分流水</CardTitle>
+					<CardTitle className="text-base">{t('table.title')}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="grid grid-cols-5 text-xs font-medium text-muted-foreground pb-2 border-b border-border/60">
-						<div>时间</div>
-						<div>类型</div>
-						<div>变动</div>
-						<div>余额</div>
-						<div>备注</div>
+						<div>{t('table.headers.time')}</div>
+						<div>{t('table.headers.type')}</div>
+						<div>{t('table.headers.delta')}</div>
+						<div>{t('table.headers.balance')}</div>
+						<div>{t('table.headers.remark')}</div>
 					</div>
 					<div className="divide-y divide-border/60">
 						{grouped.length === 0 && (
 							<div className="py-6 text-center text-sm text-muted-foreground">
-								{isLoading ? '加载中…' : '暂无流水'}
+								{isLoading ? t('table.loading') : t('table.empty')}
 							</div>
 						)}
 						{grouped.map((item) => (

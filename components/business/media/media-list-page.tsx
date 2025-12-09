@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Plus, Video } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { MediaCard } from '~/components/business/media/media-card'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader } from '~/components/ui/card'
@@ -23,6 +24,7 @@ const PAGE_SIZE = 12
 
 export function MediaListPage() {
 	const [page, setPage] = useState(1)
+	const t = useTranslations('Media')
 
 	type PaginatedMedia = {
 		items: (typeof schema.media.$inferSelect)[]
@@ -45,15 +47,17 @@ export function MediaListPage() {
 			<div className="px-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 				<div className="flex items-end justify-between">
 					<div className="space-y-2">
-						<h1 className="text-4xl font-bold tracking-tight text-foreground">Media Library</h1>
+						<h1 className="text-4xl font-bold tracking-tight text-foreground">
+							{t('title')}
+						</h1>
 						<p className="text-lg text-muted-foreground font-light">
-							Manage and organize your video content.
+							{t('subtitle')}
 						</p>
 					</div>
 					<Link href="/media/download">
 						<Button className="flex items-center gap-2 shadow-sm hover:shadow-md transition-all h-10 px-6">
 							<Plus className="w-4 h-4" strokeWidth={1.5} />
-							Download Media
+							{t('downloadCta')}
 						</Button>
 					</Link>
 				</div>
@@ -87,17 +91,17 @@ export function MediaListPage() {
 								<Video className="h-8 w-8 text-destructive" strokeWidth={1.5} />
 							</div>
 							<h3 className="mb-2 text-xl font-semibold text-destructive">
-								Failed to load media
+								{t('error.title')}
 							</h3>
 							<p className="text-muted-foreground font-light max-w-md mx-auto">
-								There was an error loading your media library. Please try again.
+								{t('error.body')}
 							</p>
 							<Button
 								variant="outline"
 								className="mt-6 border-destructive/20 hover:bg-destructive/10"
 								onClick={() => mediaQuery.refetch()}
 							>
-								Try Again
+								{t('error.retry')}
 							</Button>
 						</CardContent>
 					</Card>
@@ -110,9 +114,11 @@ export function MediaListPage() {
 							<div className="mx-auto mb-6 h-20 w-20 rounded-3xl bg-secondary/50 flex items-center justify-center">
 								<Video className="h-10 w-10 text-muted-foreground/50" strokeWidth={1.5} />
 							</div>
-							<h3 className="mb-3 text-xl font-semibold text-foreground">No media files yet</h3>
+							<h3 className="mb-3 text-xl font-semibold text-foreground">
+								{t('empty.title')}
+							</h3>
 							<p className="text-muted-foreground font-light max-w-sm mx-auto">
-								Get started by downloading your first video to begin building your media library.
+								{t('empty.body')}
 							</p>
 						</CardContent>
 					</Card>

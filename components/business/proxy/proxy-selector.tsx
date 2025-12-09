@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Globe, Shield } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import {
 	Select,
 	SelectContent,
@@ -20,6 +21,7 @@ interface ProxySelectorProps {
 }
 
 export function ProxySelector({ value, onValueChange, disabled, allowDirect = true }: ProxySelectorProps) {
+	const t = useTranslations('Proxy.selector')
 	const { data: proxyData, isLoading, error } = useQuery({
 		...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	})
@@ -43,7 +45,7 @@ export function ProxySelector({ value, onValueChange, disabled, allowDirect = tr
 
 	const renderProxyLabel = (proxy: SimpleProxy) => {
 		if (proxy.id === 'none') {
-			return 'No Proxy (Direct Connection)'
+			return t('direct')
 		}
 
 		const label = proxy.name || `${proxy.protocol}://${proxy.server}:${proxy.port}`
@@ -73,7 +75,7 @@ export function ProxySelector({ value, onValueChange, disabled, allowDirect = tr
 	return (
 		<div className="space-y-2">
 			<label htmlFor="proxy" className="text-sm font-medium">
-				{allowDirect ? 'Proxy (Optional)' : 'Proxy (Required)'}
+				{allowDirect ? t('label.optional') : t('label.required')}
 			</label>
 			<Select
 				value={allowDirect ? value || 'none' : value || undefined}
@@ -81,7 +83,7 @@ export function ProxySelector({ value, onValueChange, disabled, allowDirect = tr
 				disabled={disabled || isLoading || (!allowDirect && availableProxies.length === 0)}
 			>
 				<SelectTrigger>
-					<SelectValue placeholder="Select proxy" />
+					<SelectValue placeholder={t('selectPlaceholder')} />
 				</SelectTrigger>
 				<SelectContent>
 					{availableProxies.map((proxy) => {
@@ -94,7 +96,9 @@ export function ProxySelector({ value, onValueChange, disabled, allowDirect = tr
 										<span className="truncate text-sm font-medium flex items-center gap-2">
 											{renderProxyLabel(proxy)}
 											{isDefault && (
-												<span className="text-[10px] font-semibold uppercase tracking-wide text-primary">Default</span>
+												<span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+													{t('defaultBadge')}
+												</span>
 											)}
 										</span>
 										{/* status text removed */}
@@ -107,17 +111,17 @@ export function ProxySelector({ value, onValueChange, disabled, allowDirect = tr
 			</Select>
 			{isLoading && (
 				<p className="text-xs text-muted-foreground">
-					Loading proxies...
+					{t('loading')}
 				</p>
 			)}
 			{!allowDirect && !isLoading && availableProxies.length === 0 && (
 				<p className="text-xs text-destructive">
-					No proxies available. Please add one first.
+					{t('noneAvailable')}
 				</p>
 			)}
 			{error && (
 				<p className="text-xs text-destructive">
-					Failed to load proxies. Please try again.
+					{t('loadError')}
 				</p>
 			)}
 		</div>

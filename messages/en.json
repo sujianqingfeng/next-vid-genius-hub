@@ -1,0 +1,531 @@
+{
+	"Layout": {
+		"title": "Next Vid Genius Hub",
+		"description": "Video download and processing platform",
+		"nav": {
+			"dashboard": "Dashboard",
+			"media": "Media",
+			"tasks": "Tasks",
+			"points": "Points"
+		}
+	},
+	"Common": {
+		"language": {
+			"zh": "Chinese",
+			"en": "English"
+		}
+	},
+	"Sidebar": {
+		"brand": "Video Genius",
+		"toggle": {
+			"expand": "Expand sidebar",
+			"collapse": "Collapse sidebar"
+		},
+		"nav": {
+			"media": {
+				"title": "Media Library",
+				"desc": "Manage your videos"
+			},
+			"channels": {
+				"title": "Channels",
+				"desc": "Track your subscriptions"
+			},
+			"downloads": {
+				"title": "Downloads",
+				"desc": "Download new content"
+			},
+			"proxy": {
+				"title": "Proxy Manager",
+				"desc": "Manage proxy servers"
+			},
+			"points": {
+				"title": "Points",
+				"desc": "Check balance and history"
+			},
+			"tasks": {
+				"title": "Tasks",
+				"desc": "View cloud job history"
+			},
+			"admin": {
+				"title": "Admin",
+				"desc": "User and config management"
+			}
+		},
+		"user": {
+			"guest": "Guest",
+			"loginPrompt": "Please sign in",
+			"logout": "Sign out",
+			"pointsSuffix": "pts"
+		}
+	},
+	"Media": {
+		"title": "Media Library",
+		"subtitle": "Manage and organize your video content.",
+		"downloadCta": "Download Media",
+		"error": {
+			"title": "Failed to load media",
+			"body": "There was an error loading your media library. Please try again.",
+			"retry": "Try Again"
+		},
+		"empty": {
+			"title": "No media files yet",
+			"body": "Get started by downloading your first video to begin building your media library."
+		}
+	},
+	"Home": {
+		"badge": "Next Gen Video Platform",
+		"title": "Video Genius Hub",
+		"hero": "Your intelligent platform for video processing, transcription, and analysis.",
+		"cta": "Get Started",
+		"features": {
+			"processing": {
+				"title": "Video Processing",
+				"desc": "Upload and process videos with advanced AI capabilities for superior results."
+			},
+			"downloads": {
+				"title": "Smart Downloads",
+				"desc": "Download videos with automatic quality optimization and format conversion."
+			},
+			"comments": {
+				"title": "AI Comments",
+				"desc": "Generate intelligent comments and insights using state-of-the-art models."
+			}
+		},
+		"tech": {
+			"next": "Next.js",
+			"ts": "TypeScript",
+			"tailwind": "Tailwind CSS"
+		}
+	},
+	"Dashboard": {
+		"title": "Dashboard",
+		"subtitle": "Welcome back. Here’s an overview of your creative space.",
+		"cards": {
+			"totalVideos": {
+				"title": "Total Videos",
+				"delta": "+0% from last month"
+			},
+			"media": {
+				"title": "Media Files",
+				"delta": "+0% from last month"
+			},
+			"processing": {
+				"title": "Processing",
+				"delta": "Active tasks"
+			},
+			"analytics": {
+				"title": "Analytics",
+				"delta": "Reports generated"
+			}
+		},
+		"quickActions": {
+			"download": {
+				"title": "Download Video",
+				"desc": "Add a new video to your library"
+			},
+			"browse": {
+				"title": "Browse Media",
+				"desc": "View and manage your videos"
+			},
+			"analytics": {
+				"title": "View Analytics",
+				"desc": "Check your video statistics"
+			}
+		}
+	},
+	"Tasks": {
+		"title": "Tasks",
+		"subtitle": "View cloud jobs by target (media / channel). Enter an ID to load its task history.",
+		"filter": "Filter",
+		"targetId": "Target ID",
+		"targetType": "Target Type",
+		"targetTypePlaceholder": "Select type",
+		"load": "Load",
+		"refresh": "Refresh",
+		"targetLabel": "Target",
+		"progress": "Progress",
+		"timestamps": {
+			"created": "Created",
+			"updated": "Updated",
+			"finished": "Finished",
+			"relative": "Updated {time}"
+		},
+		"empty": "No tasks found for this target.",
+		"errors": {
+			"byTarget": "Failed to load tasks: {message}",
+			"recent": "Failed to load tasks: {message}"
+		},
+		"lists": {
+			"forTarget": "Tasks for target",
+			"recent": "Recent tasks (latest 50)"
+		},
+		"select": {
+			"media": "media",
+			"channel": "channel",
+			"system": "system"
+		},
+		"status": {
+			"queued": "queued",
+			"fetching_metadata": "fetching metadata",
+			"preparing": "preparing",
+			"running": "running",
+			"uploading": "uploading",
+			"completed": "completed",
+			"failed": "failed",
+			"canceled": "canceled"
+		}
+	},
+	"Auth": {
+		"loginSuccess": "Login successful",
+		"loginError": "Login failed",
+		"signupSuccess": "Signup successful",
+		"signupError": "Signup failed",
+		"logoutSuccess": "Signed out",
+		"logoutError": "Logout failed"
+	},
+	"Channels": {
+		"videos": {
+			"loading": "Loading videos…",
+			"empty": "No videos found.",
+			"original": "Original: {title}",
+			"open": "Open"
+		},
+		"page": {
+			"title": "Channels",
+			"subtitle": "Collect the creators you follow, keep their feeds in sync, and translate titles in one place.",
+			"inputPlaceholder": "Paste a YouTube channel URL or ID",
+			"add": "Add Channel",
+			"adding": "Adding…",
+			"loading": "Loading your channels…",
+			"empty": "Add a channel to start tracking new uploads.",
+			"deleteConfirm": "Are you sure you want to delete this channel? This will remove all its videos locally.",
+			"deleteSuccess": "Channel deleted successfully",
+			"deleteError": "Failed to delete channel: {message}",
+			"status": {
+				"idle": "Idle",
+				"queued": "Queued",
+				"running": "Running",
+				"completed": "Completed",
+				"failed": "Failed",
+				"canceled": "Canceled"
+			},
+			"actions": {
+				"view": "View videos",
+				"hide": "Hide videos",
+				"syncTitle": "Sync",
+				"syncDesc": "Select a proxy and fetch the newest uploads.",
+				"sync": "Sync latest",
+				"syncing": "Syncing…",
+				"translateTitle": "Translate",
+				"translateDesc": "Choose a model to localize the latest video titles.",
+				"model": "Model",
+				"translate": "Translate titles",
+				"translating": "Translating…",
+				"showTranslation": "Show translation",
+				"hideTranslation": "Hide translation",
+				"translateSuccess": "Titles translated!",
+				"translateError": "Failed to translate titles: {message}"
+			}
+		}
+	},
+	"Proxy": {
+		"page": {
+			"title": "Proxy Manager",
+			"subtitle": "Manage your proxy subscriptions and nodes.",
+			"tabs": {
+				"subscriptions": "Subscriptions",
+				"proxies": "Proxies"
+			},
+			"addSubscription": "Add Subscription"
+		},
+		"list": {
+			"search": "Search proxies...",
+			"empty": {
+				"title": "No proxies found",
+				"desc": "Try adjusting your search or add a new subscription."
+			},
+			"setDefault": "Set default",
+			"clearDefault": "Clear default",
+			"defaultBadge": "Default",
+			"deleteConfirm": "Are you sure you want to delete this proxy?",
+			"deleteSuccess": "Proxy deleted successfully",
+			"deleteError": "Failed to delete proxy: {message}",
+			"setDefaultSuccess": {
+				"set": "Default proxy updated",
+				"cleared": "Default proxy cleared"
+			},
+			"setDefaultError": "Failed to set default proxy: {message}",
+			"pagination": {
+				"label": "Showing {from} to {to} of {total} proxies",
+				"prev": "Previous",
+				"next": "Next",
+				"page": "Page {page} of {pages}"
+			}
+		},
+		"selector": {
+			"label": {
+				"optional": "Proxy (Optional)",
+				"required": "Proxy (Required)"
+			},
+			"selectPlaceholder": "Select proxy",
+			"direct": "No Proxy (Direct Connection)",
+			"loading": "Loading proxies...",
+			"noneAvailable": "No proxies available. Please add one first.",
+			"loadError": "Failed to load proxies. Please try again.",
+			"defaultBadge": "Default"
+		},
+		"subscription": {
+			"dialog": {
+				"title": "Add SSR Subscription",
+				"desc": "Add a new SSR subscription URL to automatically import proxy servers",
+				"nameLabel": "Subscription Name *",
+				"urlLabel": "Subscription URL *",
+				"urlHint": "Enter the SSR subscription URL that returns proxy configurations",
+				"cancel": "Cancel",
+				"create": "Create Subscription",
+				"creating": "Creating...",
+				"nameRequired": "Subscription name is required",
+				"urlRequired": "Subscription URL is required",
+				"urlInvalid": "Please enter a valid URL (must start with http:// or https://)",
+				"success": "SSR subscription created successfully",
+				"error": "Failed to create SSR subscription: {message}"
+			},
+			"list": {
+				"emptyTitle": "No subscriptions yet",
+				"emptyDesc": "Add your first subscription to start managing proxies.",
+				"deleteConfirm": "Are you sure you want to delete this SSR subscription? This will also delete all associated proxies.",
+				"deleteSuccess": "SSR subscription deleted successfully",
+				"deleteError": "Failed to delete SSR subscription: {message}",
+				"importSuccess": "Imported {count} proxies from subscription",
+				"importSuccessFallback": "Imported proxies from subscription",
+				"importError": "Failed to import from subscription: {message}",
+				"syncing": "Importing...",
+				"sync": "Sync Proxies",
+				"proxiesCount": "{count} proxies",
+				"updated": "Updated {date}"
+			}
+		}
+	},
+	"Points": {
+		"title": "Points",
+		"subtitle": "View your balance and transactions. Points are used for tasks.",
+		"refresh": "Refresh",
+		"balance": {
+			"title": "Current Balance",
+			"hint": "Signup bonus granted. You can top up or earn points from tasks in the future.",
+			"unit": "pts"
+		},
+		"notes": {
+			"title": "Quick Notes",
+			"items": {
+				"one": "Points are charged before tasks; failures may refund per policy.",
+				"two": "Pricing varies by model/duration; see pricing table.",
+				"three": "Balance is server-side only; frontend cannot modify directly.",
+				"four": "Payments will be linked here when available."
+			}
+		},
+		"table": {
+			"title": "Transactions",
+			"headers": {
+				"time": "Time",
+				"type": "Type",
+				"delta": "Change",
+				"balance": "Balance",
+				"remark": "Remark"
+			},
+			"loading": "Loading...",
+			"empty": "No transactions yet"
+		}
+	},
+	"Download": {
+		"page": {
+			"title": "Cloud Video Download",
+			"subtitle": "Queue HD downloads in the worker cluster and monitor them live.",
+			"form": {
+				"title": "New Job",
+				"desc": "Paste a link, select quality, and pick a proxy.",
+				"urlLabel": "Video URL",
+			"urlPlaceholder": "https://example.com/video",
+				"proxyLabel": "Proxy",
+			"quality": "Quality",
+			"quality1080": "1080p",
+			"quality720": "720p",
+				"qualityHint": "Use 720p only if throttling occurs.",
+			"rotateLabel": "Auto rotate proxies on failure",
+				"rotateHint": "Retry with the next proxy when a job fails.",
+			"maxAttempts": "Max attempts",
+			"scope": {
+				"label": "Rotation scope",
+				"selectedFirst": "Selected first",
+				"all": "All proxies"
+			},
+			"submit": "Start download",
+			"submitPending": "Submitting..."
+				,
+				"reset": "Reset"
+			},
+			"rotation": {
+				"disabled": "Disabled",
+				"summary": "Attempt {attempt} / {max}"
+			},
+		"progress": {
+			"title": "Job Status",
+			"status": "Status",
+			"phase": "Phase",
+			"progress": "Progress",
+			"unknown": "Unknown"
+			,
+				"labels": {
+					"jobId": "Job ID",
+					"mediaId": "Media ID",
+					"proxy": "Proxy",
+					"autoRetry": "Auto Retry"
+				},
+			"queued": "Queued",
+			"idle": "Idle",
+			"hint": "Updated roughly every five seconds.",
+			"footer": "Jobs run up to two hours with a 2GB cap. Larger or protected media may take longer in the queue."
+		},
+			"autoRotate": {
+				"noProxy": "No proxies available. Please add one first.",
+				"selectProxy": "Pick a proxy before starting the download."
+			},
+			"toasts": {
+				"queued": "Cloud download queued!",
+				"completed": "Cloud download completed!",
+				"canceled": "Cloud download was canceled.",
+				"failed": "Cloud download failed.",
+				"failedWithMessage": "Cloud download failed: {message}"
+			},
+			"errors": {
+				"missingUrl": "Please enter a valid URL",
+				"missingProxy": "Pick a proxy before starting the download.",
+				"noProxy": "No proxies available. Please add one first.",
+				"missingJob": "jobId not set",
+				"queueFailed": "Failed to queue cloud download"
+			}
+		}
+	},
+	"MediaDetail": {
+		"back": "Back to Media Library",
+		"loading": "Loading media details...",
+		"error": "Failed to load media details. Please try again.",
+		"actions": {
+			"title": "Actions",
+			"sync": "Sync info",
+			"syncing": "Syncing…",
+			"syncSuccess": "Metadata synced from source.",
+			"syncError": "Failed to sync metadata: {message}"
+		},
+		"tabs": {
+			"subtitles": "Subtitles",
+			"publish": "Publish title",
+			"subtitlesAction": "Generate Subtitles",
+			"commentsAction": "View Comments"
+		},
+		"video": {
+			"thumbnailAlt": "Channel thumbnail"
+		},
+		"status": {
+			"title": "Job Status",
+			"updated": "Updated roughly every five seconds.",
+			"labels": {
+				"status": "Status",
+				"phase": "Phase",
+				"jobId": "Job ID",
+				"mediaId": "Media ID",
+				"proxy": "Proxy",
+				"autoRetry": "Auto Retry"
+			},
+			"idle": "Idle",
+			"queued": "Queued",
+			"unknown": "Unknown",
+			"footer": "Jobs run up to two hours with a 2GB cap. Larger or protected media may take longer in the queue."
+		}
+	},
+	"Login": {
+		"title": "Sign In / Sign Up",
+		"subtitle": "Use email and password. Points act as virtual credits for tasks.",
+		"tabs": {
+			"login": "Login",
+			"signup": "Create Account"
+		},
+		"login": {
+			"email": "Email",
+			"password": "Password",
+			"passwordPlaceholder": "At least 8 characters",
+			"submit": "Login",
+			"submitting": "Logging in…"
+		},
+		"signup": {
+			"email": "Email",
+			"password": "Password",
+			"passwordPlaceholder": "At least 8 characters",
+			"nickname": "Nickname (optional)",
+			"nicknamePlaceholder": "Display name",
+			"hint": "Signup grants bonus points; check Points for balance.",
+			"submit": "Sign up & login",
+			"submitting": "Signing up…"
+		},
+		"backHome": "Back to Home"
+	},
+	"Admin": {
+		"layout": {
+			"title": "Admin Console",
+			"nav": {
+				"users": "Users"
+			}
+		},
+		"users": {
+			"title": "User Management",
+			"subtitle": "Review, suspend, or promote users. Total users: {total}",
+			"badge": "Admin",
+			"table": {
+				"email": "Email",
+				"nickname": "Nickname",
+				"role": "Role",
+				"status": "Status",
+				"createdAt": "Created",
+				"lastLogin": "Last login",
+				"actions": "Actions"
+			},
+			"roles": {
+				"admin": "Admin",
+				"user": "User"
+			},
+			"status": {
+				"active": "Active",
+				"banned": "Banned"
+			},
+			"actions": {
+				"addPoints": "Add points",
+				"transactions": "Transactions",
+				"toggleRoleToUser": "Demote to user",
+				"toggleRoleToAdmin": "Promote to admin",
+				"ariaToggle": "Toggle status for {email}"
+			},
+			"empty": "No users found",
+			"searchPlaceholder": "Search email / nickname / ID",
+			"searchButton": "Search",
+			"pagination": "Page {page} / {pages}, {total} users",
+			"prev": "Previous",
+			"next": "Next",
+			"dialogs": {
+				"addTitle": "Add points to {email}"
+			},
+			"toast": {
+				"roleUpdated": "Role updated",
+				"roleUpdateError": "Failed to update role",
+				"statusUpdatedActive": "Unbanned",
+				"statusUpdatedBanned": "Banned",
+				"statusUpdateError": "Failed to update status",
+				"pointsAdded": "Points added",
+				"pointsAddError": "Failed to add points"
+			},
+			"labels": {
+				"points": "pts",
+				"none": "—"
+			}
+		}
+	}
+}

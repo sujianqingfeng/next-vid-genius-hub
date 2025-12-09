@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Settings, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
@@ -11,6 +12,7 @@ import { toast } from 'sonner'
 import { queryOrpc } from '~/lib/orpc/query-client'
 
 export function ProxyList() {
+	const t = useTranslations('Proxy.list')
 	const [page, setPage] = React.useState(1)
 	const [searchTerm, setSearchTerm] = React.useState('')
 	const queryClient = useQueryClient()
@@ -37,10 +39,10 @@ export function ProxyList() {
 			queryClient.invalidateQueries({
 				queryKey: queryOrpc.proxy.getDefaultProxy.key(),
 			})
-			toast.success('Proxy deleted successfully')
+			toast.success(t('deleteSuccess'))
 		},
 		onError: (error) => {
-			toast.error(`Failed to delete proxy: ${error.message}`)
+			toast.error(t('deleteError', { message: error.message }))
 		},
 	})
 
@@ -49,16 +51,18 @@ export function ProxyList() {
 		onSuccess: ({ defaultProxyId: nextDefault }) => {
 			queryClient.invalidateQueries({ queryKey: queryOrpc.proxy.getDefaultProxy.key() })
 			queryClient.invalidateQueries({ queryKey: queryOrpc.proxy.getActiveProxiesForDownload.key() })
-			toast.success(nextDefault ? 'Default proxy updated' : 'Default proxy cleared')
+			toast.success(
+				nextDefault ? t('setDefaultSuccess.set') : t('setDefaultSuccess.cleared'),
+			)
 		},
 		onError: (error) => {
-			toast.error(`Failed to set default proxy: ${error.message}`)
+			toast.error(t('setDefaultError', { message: error.message }))
 		},
 	})
 
 
     const handleDeleteProxy = (proxyId: string) => {
-        if (confirm('Are you sure you want to delete this proxy?')) {
+        if (confirm(t('deleteConfirm'))) {
             deleteProxyMutation.mutate({ id: proxyId })
         }
     }
@@ -85,9 +89,9 @@ export function ProxyList() {
 				<div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-secondary/50 flex items-center justify-center">
 					<Settings className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.5} />
 				</div>
-				<h3 className="mb-2 text-lg font-semibold text-foreground">No proxies found</h3>
+				<h3 className="mb-2 text-lg font-semibold text-foreground">{t('empty.title')}</h3>
 				<p className="text-muted-foreground font-light max-w-sm mx-auto">
-					Try adjusting your search or add a new subscription.
+					{t('empty.desc')}
 				</p>
 			</div>
 		)
@@ -98,7 +102,7 @@ export function ProxyList() {
 			{/* Search Bar */}
 			<div className="flex items-center gap-4">
 				<Input
-					placeholder="Search proxies..."
+					placeholder={t('search')}
 					value={searchTerm}
 					onChange={(e) => setSearchTerm(e.target.value)}
 					className="max-w-sm h-10 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-all"
@@ -121,7 +125,9 @@ export function ProxyList() {
 											{proxy.name || `${proxy.server}:${proxy.port}`}
 										</span>
 										{isDefault && (
-											<span className="text-[11px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-2 py-0.5 rounded-full">Default</span>
+											<span className="text-[11px] font-semibold uppercase tracking-wide text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+												{t('defaultBadge')}
+											</span>
 										)}
 									</div>
 									<div className="text-xs text-muted-foreground font-light font-mono mt-0.5">
@@ -139,7 +145,7 @@ export function ProxyList() {
 										disabled={setDefaultProxyMutation.isPending}
 										className="h-8"
 									>
-										Set default
+										{t('setDefault')}
 									</Button>
 								) : (
 									<Button
@@ -149,7 +155,7 @@ export function ProxyList() {
 										disabled={setDefaultProxyMutation.isPending}
 										className="h-8 text-muted-foreground hover:text-foreground"
 									>
-										Clear default
+										{t('clearDefault')}
 									</Button>
 								)}
 								<Button
@@ -171,7 +177,11 @@ export function ProxyList() {
 			{proxiesData && proxiesData.totalPages > 1 && (
 				<div className="flex items-center justify-between pt-4">
 					<p className="text-sm text-muted-foreground font-light">
-						Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, proxiesData.total)} of {proxiesData.total} proxies
+						{t('pagination.label', {
+							from: (page - 1) * 20 + 1,
+							to: Math.min(page * 20, proxiesData.total),
+							total: proxiesData.total,
+						})}
 					</p>
 					<div className="flex items-center gap-2">
 						<Button
@@ -182,10 +192,10 @@ export function ProxyList() {
 							className="h-8 px-3 bg-transparent border-border/50 hover:bg-secondary/50"
 						>
 							<ChevronLeft className="h-4 w-4 mr-1" strokeWidth={1.5} />
-							Previous
+							{t('pagination.prev')}
 						</Button>
 						<span className="text-sm font-medium px-2">
-							Page {page} of {proxiesData.totalPages}
+							{t('pagination.page', { page, pages: proxiesData.totalPages })}
 						</span>
 						<Button
 							variant="outline"
@@ -194,7 +204,7 @@ export function ProxyList() {
 							disabled={page === proxiesData.totalPages}
 							className="h-8 px-3 bg-transparent border-border/50 hover:bg-secondary/50"
 						>
-							Next
+							{t('pagination.next')}
 							<ChevronRight className="h-4 w-4 ml-1" strokeWidth={1.5} />
 						</Button>
 					</div>

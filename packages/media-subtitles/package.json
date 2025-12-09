@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "description": "Shared subtitle rendering (WebVTT->ASS + FFmpeg) for local runtime and containers.",
-  "main": "dist/index.js",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./index.d.ts"
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
     }
   },
   "files": [
-    "dist",
-    "index.d.ts"
+    "dist"
   ],
   "scripts": {
     "build": "tsdown",

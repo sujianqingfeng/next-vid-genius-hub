@@ -2,13 +2,20 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { ListChecks, RefreshCw, Search, SquarePen } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
 import { type schema } from '~/lib/db'
 import { queryOrpc } from '~/lib/orpc/query-client'
@@ -27,27 +34,29 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 function StatusBadge({ status }: { status?: Task['status'] }) {
+	const tStatus = useTranslations('Tasks.status')
 	if (!status) return null
 	const cls = STATUS_COLOR[status] ?? 'bg-secondary text-secondary-foreground border-secondary/30'
 	return (
 		<span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}>
-			{status}
+			{tStatus(status)}
 		</span>
 	)
 }
 
 function TaskTimeline({ tasks }: { tasks: Task[] }) {
+	const t = useTranslations('Tasks')
 	const formatRelative = (d?: Date | null) => {
 		if (!d) return ''
 		const diff = Date.now() - d.getTime()
 		const sec = Math.max(0, Math.round(diff / 1000))
-		if (sec < 60) return `${sec}s ago`
+		if (sec < 60) return `${sec}s`
 		const min = Math.round(sec / 60)
-		if (min < 60) return `${min}m ago`
+		if (min < 60) return `${min}m`
 		const hr = Math.round(min / 60)
-		if (hr < 24) return `${hr}h ago`
+		if (hr < 24) return `${hr}h`
 		const day = Math.round(hr / 24)
-		return `${day}d ago`
+		return `${day}d`
 	}
 
 	if (tasks.length === 0) {
@@ -57,7 +66,7 @@ function TaskTimeline({ tasks }: { tasks: Task[] }) {
 					<div className="mx-auto mb-4 h-12 w-12 rounded-full bg-secondary/50 flex items-center justify-center">
 						<ListChecks className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
 					</div>
-					No tasks found for this target.
+					{t('empty')}
 				</CardContent>
 			</Card>
 		)
@@ -71,7 +80,7 @@ function TaskTimeline({ tasks }: { tasks: Task[] }) {
 				const updatedAt = task.updatedAt ? new Date(task.updatedAt) : null
 				const timeText =
 					finishedAt?.getTime() === createdAt?.getTime()
-						? 'just now'
+						? '0s'
 						: formatRelative(updatedAt || createdAt || new Date())
 				return (
 					<Card key={task.id} className="border border-border/60 shadow-sm">
@@ -89,12 +98,14 @@ function TaskTimeline({ tasks }: { tasks: Task[] }) {
 						</CardHeader>
 						<CardContent className="space-y-2 text-sm text-muted-foreground">
 							<div className="flex flex-wrap items-center gap-3">
-								<span className="text-foreground font-medium">Target:</span>
+								<span className="text-foreground font-medium">{t('targetLabel')}:</span>
 								<span className="px-2 py-1 rounded bg-secondary/50 text-foreground text-xs">
 									{task.targetType} / {task.targetId}
 								</span>
 								{typeof task.progress === 'number' && (
-									<span className="text-xs">Progress: {task.progress}%</span>
+									<span className="text-xs">
+										{t('progress')}: {task.progress}%
+									</span>
 								)}
 							</div>
 							{task.error && (
@@ -103,11 +114,25 @@ function TaskTimeline({ tasks }: { tasks: Task[] }) {
 								</p>
 							)}
 							<div className="text-xs text-muted-foreground">
-								{createdAt && <span className="mr-3">Created: {createdAt.toLocaleString()}</span>}
-								{updatedAt && <span className="mr-3">Updated: {updatedAt.toLocaleString()}</span>}
-								{finishedAt && <span>Finished: {finishedAt.toLocaleString()}</span>}
+								{createdAt && (
+									<span className="mr-3">
+										{t('timestamps.created')}: {createdAt.toLocaleString()}
+									</span>
+								)}
+								{updatedAt && (
+									<span className="mr-3">
+										{t('timestamps.updated')}: {updatedAt.toLocaleString()}
+									</span>
+								)}
+								{finishedAt && (
+									<span>
+										{t('timestamps.finished')}: {finishedAt.toLocaleString()}
+									</span>
+								)}
 							</div>
-							<div className="text-xs text-foreground/70">Updated {timeText}</div>
+							<div className="text-xs text-foreground/70">
+								{t('timestamps.relative', { time: timeText })}
+							</div>
 						</CardContent>
 					</Card>
 				)
@@ -124,6 +149,7 @@ type Props = {
 export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }: Props) {
 	const router = useRouter()
 	const searchParams = useSearchParams()
+	const t = useTranslations('Tasks')
 	const [targetType, setTargetType] = useState<'media' | 'channel' | 'system'>(initialTargetType)
 	const [targetId, setTargetId] = useState(initialTargetId)
 
@@ -161,10 +187,8 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 		<div className="min-h-full space-y-8 px-6 py-8">
 			<div className="flex items-start justify-between gap-4">
 				<div className="space-y-2">
-					<h1 className="text-3xl font-bold tracking-tight text-foreground">Tasks</h1>
-					<p className="text-muted-foreground">
-						View cloud jobs by target (media / channel). Enter an ID to load its task history.
-					</p>
+					<h1 className="text-3xl font-bold tracking-tight text-foreground">{t('title')}</h1>
+					<p className="text-muted-foreground">{t('subtitle')}</p>
 				</div>
 				<Button
 					variant="outline"
@@ -178,7 +202,7 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 					}}
 				>
 					<RefreshCw className="h-4 w-4 mr-2" strokeWidth={1.5} />
-					Refresh
+					{t('refresh')}
 				</Button>
 			</div>
 
@@ -186,13 +210,13 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 				<CardHeader className="pb-3">
 					<CardTitle className="text-base font-semibold flex items-center gap-2">
 						<Search className="h-4 w-4" strokeWidth={1.5} />
-						Filter
+						{t('filter')}
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<form onSubmit={onSubmit} className="flex flex-col gap-4 sm:flex-row sm:items-end">
 						<div className="flex-1">
-							<Label htmlFor="targetId">Target ID</Label>
+							<Label htmlFor="targetId">{t('targetId')}</Label>
 							<Input
 								id="targetId"
 								placeholder="media id / channel id"
@@ -202,24 +226,24 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 							/>
 						</div>
 						<div className="w-full sm:w-48">
-							<Label>Target Type</Label>
+							<Label>{t('targetType')}</Label>
 							<Select
 								value={targetType}
 								onValueChange={(v) => setTargetType(v as 'media' | 'channel' | 'system')}
 							>
 								<SelectTrigger className="mt-1">
-									<SelectValue placeholder="Select type" />
+									<SelectValue placeholder={t('targetTypePlaceholder')} />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="media">media</SelectItem>
-									<SelectItem value="channel">channel</SelectItem>
-									<SelectItem value="system">system</SelectItem>
+									<SelectItem value="media">{t('select.media')}</SelectItem>
+									<SelectItem value="channel">{t('select.channel')}</SelectItem>
+									<SelectItem value="system">{t('select.system')}</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
 						<Button type="submit" className="sm:w-32">
 							<SquarePen className="h-4 w-4 mr-2" strokeWidth={1.5} />
-							Load
+							{t('load')}
 						</Button>
 					</form>
 				</CardContent>
@@ -253,18 +277,22 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 				</div>
 			)}
 
-			{(byTargetQuery.isError && queryEnabled) && (
+			{byTargetQuery.isError && queryEnabled && (
 				<Card className="border-destructive/30 bg-destructive/5">
 					<CardContent className="py-6 text-destructive">
-						Failed to load tasks: {byTargetQuery.error?.message ?? 'unknown error'}
+						{t('errors.byTarget', {
+							message: byTargetQuery.error?.message ?? 'unknown error',
+						})}
 					</CardContent>
 				</Card>
 			)}
 
-			{(recentQuery.isError && !queryEnabled) && (
+			{recentQuery.isError && !queryEnabled && (
 				<Card className="border-destructive/30 bg-destructive/5">
 					<CardContent className="py-6 text-destructive">
-						Failed to load tasks: {recentQuery.error?.message ?? 'unknown error'}
+						{t('errors.recent', {
+							message: recentQuery.error?.message ?? 'unknown error',
+						})}
 					</CardContent>
 				</Card>
 			)}
@@ -272,7 +300,7 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 			{((byTargetQuery.isSuccess && queryEnabled) || (recentQuery.isSuccess && !queryEnabled)) && (
 				<div className="space-y-2">
 					<div className="text-sm text-muted-foreground">
-						{queryEnabled ? 'Tasks for target' : 'Recent tasks (latest 50)'}
+						{queryEnabled ? t('lists.forTarget') : t('lists.recent')}
 					</div>
 					<TaskTimeline tasks={tasks} />
 				</div>

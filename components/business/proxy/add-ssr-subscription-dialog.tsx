@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { Link } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '~/components/ui/button'
 import {
 	Dialog,
@@ -24,6 +25,7 @@ interface AddSSRSubscriptionDialogProps {
 export function AddSSRSubscriptionDialog({ open, onOpenChange }: AddSSRSubscriptionDialogProps) {
 	const [name, setName] = React.useState('')
 	const [url, setUrl] = React.useState('')
+	const t = useTranslations('Proxy.subscription.dialog')
 	
 	const createSubscriptionMutation = useProxySubscriptionMutation(
 		queryOrpc.proxy.createSSRSubscription.mutationOptions({
@@ -33,8 +35,8 @@ export function AddSSRSubscriptionDialog({ open, onOpenChange }: AddSSRSubscript
 			},
 		}),
 		{
-			successToast: 'SSR subscription created successfully',
-			errorToast: ({ error }) => `Failed to create SSR subscription: ${error.message}`,
+			successToast: t('success'),
+			errorToast: ({ error }) => t('error', { message: error.message }),
 		},
 	)
 
@@ -42,17 +44,17 @@ export function AddSSRSubscriptionDialog({ open, onOpenChange }: AddSSRSubscript
 		e.preventDefault()
 		
 		if (!name.trim()) {
-			toast.error('Subscription name is required')
+			toast.error(t('nameRequired'))
 			return
 		}
 
 		if (!url.trim()) {
-			toast.error('Subscription URL is required')
+			toast.error(t('urlRequired'))
 			return
 		}
 
 		if (!url.trim().startsWith('http')) {
-			toast.error('Please enter a valid URL (must start with http:// or https://)')
+			toast.error(t('urlInvalid'))
 			return
 		}
 
@@ -80,16 +82,16 @@ export function AddSSRSubscriptionDialog({ open, onOpenChange }: AddSSRSubscript
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Link className="h-5 w-5" />
-						Add SSR Subscription
+						{t('title')}
 					</DialogTitle>
 					<DialogDescription>
-						Add a new SSR subscription URL to automatically import proxy servers
+						{t('desc')}
 					</DialogDescription>
 				</DialogHeader>
 				
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor="name">Subscription Name *</Label>
+						<Label htmlFor="name">{t('nameLabel')}</Label>
 						<Input
 							id="name"
 							value={name}
@@ -101,7 +103,7 @@ export function AddSSRSubscriptionDialog({ open, onOpenChange }: AddSSRSubscript
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="url">Subscription URL *</Label>
+						<Label htmlFor="url">{t('urlLabel')}</Label>
 						<Input
 							id="url"
 							value={url}
@@ -112,7 +114,7 @@ export function AddSSRSubscriptionDialog({ open, onOpenChange }: AddSSRSubscript
 							disabled={createSubscriptionMutation.isPending}
 						/>
 						<p className="text-xs text-muted-foreground">
-							Enter the SSR subscription URL that returns proxy configurations
+							{t('urlHint')}
 						</p>
 					</div>
 
@@ -123,13 +125,13 @@ export function AddSSRSubscriptionDialog({ open, onOpenChange }: AddSSRSubscript
 							onClick={handleClose}
 							disabled={createSubscriptionMutation.isPending}
 						>
-							Cancel
+							{t('cancel')}
 						</Button>
 						<Button
 							type="submit"
 							disabled={createSubscriptionMutation.isPending || !name.trim() || !url.trim()}
 						>
-							{createSubscriptionMutation.isPending ? 'Creating...' : 'Create Subscription'}
+							{createSubscriptionMutation.isPending ? t('creating') : t('create')}
 						</Button>
 					</div>
 				</form>

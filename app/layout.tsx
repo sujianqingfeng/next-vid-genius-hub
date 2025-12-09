@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { cookies } from 'next/headers'
+import { NextIntlClientProvider } from 'next-intl'
 import './globals.css'
 import { Toaster } from '~/components/ui/sonner'
+import { getValidLocale, LOCALE_COOKIE_NAME } from '~/i18n/config'
 import { Providers } from './providers'
 
 const geistSans = Geist({
@@ -19,20 +22,33 @@ export const metadata: Metadata = {
 	description: 'Video download and processing platform',
 }
 
-export default function RootLayout({
+async function getLocaleAndMessages() {
+	const store = await cookies()
+	const localeCookie = store.get(LOCALE_COOKIE_NAME)?.value
+	const locale = getValidLocale(localeCookie)
+	const messages = (await import(`../messages/${locale}.json`)).default
+
+	return { locale, messages }
+}
+
+export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode
 }>) {
+	const { locale, messages } = await getLocaleAndMessages()
+
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang={locale} suppressHydrationWarning>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
-				<Providers>
-					{children}
-					<Toaster richColors position="top-right" />
-				</Providers>
+				<NextIntlClientProvider locale={locale} messages={messages}>
+					<Providers>
+						{children}
+						<Toaster richColors position="top-right" />
+					</Providers>
+				</NextIntlClientProvider>
 			</body>
 		</html>
 	)
