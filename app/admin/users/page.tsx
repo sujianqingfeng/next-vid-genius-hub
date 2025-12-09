@@ -1,6 +1,6 @@
 'use client'
 
-import { Shield, UserCheck } from 'lucide-react'
+import { History, Plus, Shield, UserCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '~/components/ui/button'
@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
 import { Switch } from '~/components/ui/switch'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '~/components/ui/dialog'
+import { Textarea } from '~/components/ui/textarea'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 
@@ -18,6 +20,10 @@ export default function AdminUsersPage() {
 	const [page, setPage] = useState(1)
 	const [search, setSearch] = useState('')
 	const [appliedSearch, setAppliedSearch] = useState('')
+	const [selectedUserForLog, setSelectedUserForLog] = useState<null | { id: string; email: string }>(null)
+	const [selectedUserForAdd, setSelectedUserForAdd] = useState<null | { id: string; email: string }>(null)
+	const [addAmount, setAddAmount] = useState<number>(0)
+	const [addRemark, setAddRemark] = useState('')
 
 	const listQuery = useQuery({
 		...queryOrpc.admin.listUsers.queryOptions({
@@ -27,6 +33,8 @@ export default function AdminUsersPage() {
 	})
 
 	const invalidateList = () => qc.invalidateQueries({ queryKey: queryOrpc.admin.listUsers.key() })
+	const invalidateTransactions = (userId: string) =>
+		qc.invalidateQueries({ queryKey: queryOrpc.admin.listUserTransactions.queryKey({ input: { userId } }) })
 
 	const updateRole = useEnhancedMutation(
 		queryOrpc.admin.updateUserRole.mutationOptions({
@@ -51,13 +59,36 @@ export default function AdminUsersPage() {
 	const users = listQuery.data?.items ?? []
 	const pageCount = listQuery.data?.pageCount ?? 1
 
-	const isUpdating = updateRole.isPending || updateStatus.isPending
+	const isUpdating = updateRole.isPending || updateStatus.isPending || addPointsMutation.isPending
 
 	const handleSearch = (e: React.FormEvent) => {
 		e.preventDefault()
 		setPage(1)
 		setAppliedSearch(search.trim())
 	}
+
+	const addPointsMutation = useEnhancedMutation(
+		queryOrpc.admin.addUserPoints.mutationOptions({
+			onSuccess: (_, variables) => {
+				invalidateList()
+				invalidateTransactions(variables.userId)
+				setSelectedUserForAdd(null)
+				setAddAmount(0)
+				setAddRemark('')
+			},
+		}),
+		{
+			successToast: '积分已发放',
+			errorToast: ({ error }) => (error as Error)?.message || '发放失败',
+		},
+	)
+
+	const transactionsQuery = useQuery({
+		...queryOrpc.admin.listUserTransactions.queryOptions({
+			input: { userId: selectedUserForLog?.id || '', limit: 20, offset: 0 },
+		}),
+		enabled: Boolean(selectedUserForLog?.id),
+	})
 
 	const formattedStats = useMemo(
 		() => ({
@@ -143,21 +174,46 @@ export default function AdminUsersPage() {
 											{user.lastLoginAt ? formatDate(user.lastLoginAt) : '—'}
 										</td>
 										<td className="px-4 py-3 text-right">
-											<Button
-												size="sm"
-												variant="outline"
-												className="gap-2"
-												onClick={() =>
-													updateRole.mutate({
-														userId: user.id,
-														role: user.role === 'admin' ? 'user' : 'admin',
-													})
-												}
-												disabled={isUpdating}
-											>
-												<UserCheck className="h-4 w-4" />
-												{user.role === 'admin' ? '降为普通' : '设为管理员'}
-											</Button>
+											<div className="flex justify-end gap-2">
+												<Button
+													size="sm"
+													variant="secondary"
+													className="gap-2"
+													onClick={() =>
+														setSelectedUserForAdd({ id: user.id, email: user.email })
+													}
+													disabled={isUpdating}
+												>
+													<Plus className="h-4 w-4" />
+													加积分
+												</Button>
+												<Button
+													size="sm"
+													variant="outline"
+													className="gap-2"
+													onClick={() =>
+														setSelectedUserForLog({ id: user.id, email: user.email })
+													}
+												>
+													<History className="h-4 w-4" />
+													流水
+												</Button>
+												<Button
+													size="sm"
+													variant="outline"
+													className="gap-2"
+													onClick={() =>
+														updateRole.mutate({
+															userId: user.id,
+															role: user.role === 'admin' ? 'user' : 'admin',
+														})
+													}
+													disabled={isUpdating}
+												>
+													<UserCheck className="h-4 w-4" />
+													{user.role === 'admin' ? '降为普通' : '设为管理员'}
+												</Button>
+											</div>
 										</td>
 									</tr>
 								))}
@@ -197,6 +253,112 @@ export default function AdminUsersPage() {
 					</div>
 				</CardContent>
 			</Card>
+
+			<Dialog open={Boolean(selectedUserForAdd)} onOpenChange={(open) => !open && setSelectedUserForAdd(null)}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>为 {selectedUserForAdd?.email} 加积分</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-3 py-2">
+						<div className="space-y-2">
+							<label className="text-sm font-medium text-foreground">积分数量</label>
+							<Input
+								type="number"
+								min={1}
+								value={addAmount}
+								onChange={(e) => setAddAmount(Number(e.target.value))}
+								placeholder="例如 100"
+							/>
+						</div>
+						<div className="space-y-2">
+							<label className="text-sm font-medium text-foreground">备注（可选）</label>
+							<Textarea
+								value={addRemark}
+								onChange={(e) => setAddRemark(e.target.value)}
+								placeholder="比如：活动奖励、手动补偿"
+							/>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setSelectedUserForAdd(null)}
+							disabled={addPointsMutation.isPending}
+						>
+							取消
+						</Button>
+						<Button
+							onClick={() => {
+								if (!selectedUserForAdd) return
+								if (!addAmount || addAmount <= 0) return
+								addPointsMutation.mutate({
+									userId: selectedUserForAdd.id,
+									amount: Math.floor(addAmount),
+									remark: addRemark || undefined,
+								})
+							}}
+							disabled={!addAmount || addAmount <= 0 || addPointsMutation.isPending}
+						>
+							{addPointsMutation.isPending ? '处理中…' : '确认加分'}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog open={Boolean(selectedUserForLog)} onOpenChange={(open) => !open && setSelectedUserForLog(null)}>
+				<DialogContent className="max-w-2xl">
+					<DialogHeader>
+						<DialogTitle>{selectedUserForLog?.email} 的积分流水</DialogTitle>
+					</DialogHeader>
+					<div className="max-h-[60vh] overflow-y-auto">
+						<table className="min-w-full text-sm">
+							<thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+								<tr>
+									<th className="px-3 py-2 font-medium">时间</th>
+									<th className="px-3 py-2 font-medium">变化</th>
+									<th className="px-3 py-2 font-medium">余额</th>
+									<th className="px-3 py-2 font-medium">类型</th>
+									<th className="px-3 py-2 font-medium">备注</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border/60">
+								{transactionsQuery.data?.items?.map((t) => (
+									<tr key={t.id} className="hover:bg-muted/20">
+										<td className="px-3 py-2 text-muted-foreground">{formatDate(t.createdAt)}</td>
+										<td className="px-3 py-2 font-medium">
+											{t.delta > 0 ? `+${t.delta}` : t.delta}
+										</td>
+										<td className="px-3 py-2 text-muted-foreground">{t.balanceAfter}</td>
+										<td className="px-3 py-2 text-muted-foreground">{t.type}</td>
+										<td className="px-3 py-2 text-muted-foreground">
+											{t.remark || '—'}
+										</td>
+									</tr>
+								))}
+								{transactionsQuery.isFetching && (
+									<tr>
+										<td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">
+											加载中…
+										</td>
+									</tr>
+								)}
+								{!transactionsQuery.isFetching && (transactionsQuery.data?.items?.length ?? 0) === 0 && (
+									<tr>
+										<td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">
+											暂无流水
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setSelectedUserForLog(null)}>
+							关闭
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	)
 }

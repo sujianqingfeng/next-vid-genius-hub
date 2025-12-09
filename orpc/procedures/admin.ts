@@ -3,6 +3,7 @@ import { and, count, desc, eq, like, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import type { RequestContext } from '~/lib/auth/types'
+import { addPoints, listTransactions } from '~/lib/points/service'
 
 function ensureAdmin(context: RequestContext) {
 	const user = context.auth.user
@@ -120,4 +121,47 @@ export const updateUserStatus = os
 			.where(eq(schema.users.id, input.userId))
 
 		return { success: true }
+	})
+
+const AddPointsSchema = z.object({
+	userId: z.string().min(1),
+	amount: z.number().int().positive(),
+	remark: z.string().max(200).optional(),
+})
+
+export const addUserPoints = os
+	.input(AddPointsSchema)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		ensureAdmin(ctx)
+		const db = await getDb()
+
+		const balance = await addPoints({
+			userId: input.userId,
+			amount: input.amount,
+			type: 'manual_adjust',
+			remark: input.remark ?? '管理员加分',
+			db,
+		})
+
+		return { balance }
+	})
+
+const ListUserTransactionsSchema = z.object({
+	userId: z.string().min(1),
+	limit: z.number().int().min(1).max(100).default(20),
+	offset: z.number().int().min(0).default(0),
+})
+
+export const listUserTransactions = os
+	.input(ListUserTransactionsSchema)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		ensureAdmin(ctx)
+		const items = await listTransactions({
+			userId: input.userId,
+			limit: input.limit,
+			offset: input.offset,
+		})
+		return { items }
 	})
