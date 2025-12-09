@@ -22,6 +22,6 @@
   },
   "dependencies": {
     "undici": "^7.16.0",
-    "youtubei.js": "*"
+    "youtubei.js": "^16.0.1"
   }
 }
