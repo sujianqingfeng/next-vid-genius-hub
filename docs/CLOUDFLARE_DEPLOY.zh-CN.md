@@ -338,7 +338,7 @@ export { schema, db }
 说明：
 - 访问方式为 `getCloudflareContext().env.<绑定名>`；上例绑定名为 `DB`
 - 开发环境建议使用 `wrangler dev --remote` + `pnpm dev`，并在 `next.config.ts` 末尾继续调用 `initOpenNextCloudflareForDev()` 以获取 Cloudflare context
-- 若需要在 dev server 启动时自动 apply 迁移，请在 shell 中设置 `D1_AUTO_APPLY_MIGRATIONS=true`；默认关闭，避免本地误改远程 D1
+- 迁移推荐通过 `pnpm db:d1:migrate:remote` 或 CI 流程在目标环境统一执行，不在 dev server 内自动执行
 
 
 
@@ -366,12 +366,11 @@ pnpm wrangler d1 migrations apply vidgen_app
 
 注意：
 - 不要在 Worker 运行时做迁移；请在 CI 或本地对目标库完成迁移
-- 当需要临时禁用 dev server 自动作迁移时，保持 `D1_AUTO_APPLY_MIGRATIONS` 未设置或设为 `false`
 
 ### 4.4 本地 / CI 共用远程 D1
 
 - 环境凭证：配置 `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN`（D1 写权限），执行一次 `wrangler login`/`wrangler config`。
-- 启动开发：`wrangler dev --remote` + `pnpm dev`，或直接 `pnpm dev`（OpenNext 会读取远程绑定）；若需自动迁移，请手动导出 `D1_AUTO_APPLY_MIGRATIONS=true`。
+- 启动开发：`wrangler dev --remote` + `pnpm dev`，或直接 `pnpm dev`（OpenNext 会读取远程绑定）；迁移请单独执行 `pnpm db:d1:migrate:remote` 或在 CI 中处理。
 - 巡检：`pnpm db:d1:list:remote` 查看远程迁移状态，必要时 `pnpm wrangler d1 execute vidgen_app --command "SELECT COUNT(*) FROM ..."` 进行 Spot Check。
 - CI 流程：在部署 job 中插入 `pnpm db:d1:migrate:remote`，并为 job 注入 Cloudflare Token；失败时阻断后续部署，保持 schema 与代码一致。
 
@@ -419,7 +418,6 @@ OpenNext Cloudflare 支持 Next.js 图片优化。项目已在 `next.config.ts` 
 - 报错 “fs not supported”：确认部署版本已包含远端存储逻辑，或排查是否有其他代码在 Worker 环境尝试写入磁盘
 - D1 连接报错：检查 `wrangler.json` 的数据库绑定与绑定名是否与代码一致（如 `env.DB`）
 - D1 迁移失败：在本地或 CI 执行 `pnpm db:d1:migrate:remote`（内部调用 `wrangler d1 migrations apply`），并确认 SQL 与表结构一致
-- Dev server 启动即尝试迁移远程库：确认没有设置 `D1_AUTO_APPLY_MIGRATIONS=true`，或只在单次操作前导出该变量
 - ISR/SSG 不生效：检查 `open-next.config.ts` 与 R2 绑定（`NEXT_INC_CACHE_R2_BUCKET`）是否配置正确
 - 图片 403/外链失败：补充 `next.config.ts` 的 `images.remotePatterns`，或使用 Cloudflare Images
 
