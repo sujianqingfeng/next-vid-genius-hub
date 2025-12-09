@@ -17,10 +17,7 @@ const SpendSchema = z.object({
 
 export const getMyBalance = os.handler(async ({ context }) => {
 	const ctx = context as RequestContext
-	if (!ctx.auth.user) {
-		throw new Error('UNAUTHORIZED')
-	}
-	const balance = await getBalance(ctx.auth.user.id)
+	const balance = await getBalance(ctx.auth.user!.id)
 	return { balance }
 })
 
@@ -28,11 +25,8 @@ export const listMyTransactions = os
 	.input(ListSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		if (!ctx.auth.user) {
-			throw new Error('UNAUTHORIZED')
-		}
 		const items = await listTransactions({
-			userId: ctx.auth.user.id,
+			userId: ctx.auth.user!.id,
 			limit: input.limit,
 			offset: input.offset,
 		})
@@ -43,12 +37,9 @@ export const spendForTask = os
 	.input(SpendSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		if (!ctx.auth.user) {
-			throw new Error('UNAUTHORIZED')
-		}
 		try {
 			const balance = await spendPoints({
-				userId: ctx.auth.user.id,
+				userId: ctx.auth.user!.id,
 				amount: input.amount,
 				type: 'task_cost',
 				refType: input.refType ?? 'task',

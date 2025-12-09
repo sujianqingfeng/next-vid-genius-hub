@@ -71,6 +71,20 @@
       "when": 1765207406835,
       "tag": "0009_silky_galactus",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1765244575932,
+      "tag": "0010_tidy_lady_vermin",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1765244656588,
+      "tag": "0011_panoramic_madame_hydra",
+      "breakpoints": true
     }
   ]
 }

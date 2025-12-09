@@ -1,5 +1,5 @@
 import { os } from '@orpc/server'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
@@ -12,6 +12,7 @@ import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { logger } from '~/lib/logger'
 import { generateObject } from '~/lib/ai/chat'
 import { createId } from '@paralleldrive/cuid2'
+import type { RequestContext } from '~/lib/auth/types'
 
 export const translateComments = os
 	.input(
@@ -21,11 +22,13 @@ export const translateComments = os
 			force: z.boolean().optional().default(false),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { mediaId, model: modelId, force } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 		const db = await getDb()
 		const media = await db.query.media.findFirst({
-			where: eq(schema.media.id, mediaId),
+			where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
 		})
 
 		if (!media || !media.comments) {
@@ -63,7 +66,7 @@ export const translateComments = os
 				translatedTitle,
 				commentCount: translatedComments.length,
 			})
-			.where(eq(schema.media.id, mediaId))
+			.where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
 
 		return { success: true }
 	})
@@ -75,12 +78,14 @@ export const deleteComment = os
 			commentId: z.string(),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { mediaId, commentId } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 
 		const db = await getDb()
 		const media = await db.query.media.findFirst({
-			where: eq(schema.media.id, mediaId),
+			where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
 		})
 
 		if (!media || !media.comments) {
@@ -98,7 +103,7 @@ export const deleteComment = os
 				comments: updatedComments,
 				commentCount: updatedComments.length,
 			})
-			.where(eq(schema.media.id, mediaId))
+			.where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
 
 		return { success: true }
 	})
@@ -110,13 +115,15 @@ export const deleteComments = os
 			commentIds: z.array(z.string()).min(1),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { mediaId, commentIds } = input
 		const ids = new Set(commentIds)
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 
 		const db = await getDb()
 		const media = await db.query.media.findFirst({
-			where: eq(schema.media.id, mediaId),
+			where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
 		})
 
 		if (!media || !media.comments) {
@@ -132,7 +139,7 @@ export const deleteComments = os
 				comments: updatedComments,
 				commentCount: updatedComments.length,
 			})
-			.where(eq(schema.media.id, mediaId))
+			.where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
 
 		return { success: true, deleted: deletedCount }
 	})
@@ -147,10 +154,12 @@ export const startCloudRender = os
             templateId: z.string().optional(),
         }),
     )
-    .handler(async ({ input }) => {
+    .handler(async ({ input, context }) => {
         const { mediaId, proxyId } = input
+        const ctx = context as RequestContext
+        const userId = ctx.auth.user!.id
         const db = await getDb()
-		const where = eq(schema.media.id, mediaId)
+		const where = and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId))
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
 		// 允许在未本地落盘的情况下走云端渲染。
@@ -205,6 +214,7 @@ export const startCloudRender = os
 	const taskId = createId()
 	await db.insert(schema.tasks).values({
 		id: taskId,
+		userId,
 		kind: 'render-comments',
 		engine: 'renderer-remotion',
 		targetType: 'media',
@@ -291,10 +301,12 @@ export const startCloudCommentsDownload = os
 			proxyId: z.string().optional(),
 		}),
 	)
-    .handler(async ({ input }) => {
+    .handler(async ({ input, context }) => {
         const { mediaId, pages, proxyId } = input
+        const ctx = context as RequestContext
+        const userId = ctx.auth.user!.id
         const db = await getDb()
-		const where = eq(schema.media.id, mediaId)
+		const where = and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId))
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
 		if (!media.url) throw new Error('Media URL missing')
@@ -305,6 +317,7 @@ export const startCloudCommentsDownload = os
 		const taskId = createId()
 		await db.insert(schema.tasks).values({
 			id: taskId,
+			userId,
 			kind: 'comments-download',
 			engine: 'media-downloader',
 			targetType: 'media',
@@ -386,8 +399,10 @@ export const getCloudCommentsStatus = os
 
 export const finalizeCloudCommentsDownload = os
 	.input(z.object({ mediaId: z.string(), jobId: z.string().min(1) }))
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { mediaId, jobId } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 		const db = await getDb()
 		const status = await getJobStatus(jobId)
 
@@ -430,7 +445,7 @@ export const finalizeCloudCommentsDownload = os
 				commentCount: comments.length,
 				commentsDownloadedAt: new Date(),
 			})
-			.where(eq(schema.media.id, mediaId))
+			.where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
 		return { success: true, count: comments.length }
 	})
 
@@ -506,10 +521,14 @@ export const moderateComments = os
       overwrite: z.boolean().optional().default(false),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     const { mediaId, model: modelId, overwrite } = input
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
-    const media = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
+    const media = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
+    })
     if (!media) throw new Error('Media not found')
     const comments = media.comments || []
     if (!comments || comments.length === 0) throw new Error('No comments to moderate')
@@ -564,7 +583,7 @@ export const moderateComments = os
           commentsFlaggedCount: 0,
           commentsModerationSummary: {},
         })
-        .where(eq(schema.media.id, mediaId))
+        .where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
       return { success: true, flaggedCount: 0, total: comments.length }
     }
 
@@ -605,7 +624,7 @@ export const moderateComments = os
         commentsFlaggedCount: flaggedCount,
         commentsModerationSummary: Object.fromEntries(summary.entries()),
       })
-      .where(eq(schema.media.id, mediaId))
+      .where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
 
     return { success: true, flaggedCount, total: comments.length }
   })

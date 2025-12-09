@@ -1,6 +1,6 @@
 import { createId } from '@paralleldrive/cuid2'
 import { os } from '@orpc/server'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
@@ -8,6 +8,7 @@ import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
+import type { RequestContext } from '~/lib/auth/types'
 
 const DownloadInputSchema = z.object({
 	url: z.string().url(),
@@ -17,8 +18,10 @@ const DownloadInputSchema = z.object({
 
 export const startCloudDownload = os
 	.input(DownloadInputSchema)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { url, quality, proxyId } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 
 		const provider = ProviderFactory.resolveProvider(url)
 		const source = provider.id === 'tiktok' ? 'tiktok' : 'youtube'
@@ -26,7 +29,7 @@ export const startCloudDownload = os
 
 		const db = await getDb()
 		const existing = await db.query.media.findFirst({
-			where: eq(schema.media.url, url),
+			where: and(eq(schema.media.url, url), eq(schema.media.userId, userId)),
 		})
 
 		const mediaId = existing?.id ?? createId()
@@ -36,6 +39,7 @@ export const startCloudDownload = os
 				.insert(schema.media)
 				.values({
 					id: mediaId,
+					userId,
 					url,
 					source: source as 'youtube' | 'tiktok',
 					title: 'Pending download',
@@ -76,6 +80,7 @@ export const startCloudDownload = os
 		try {
 			await db.insert(schema.tasks).values({
 				id: taskId,
+				userId,
 				kind: 'download',
 				engine: 'media-downloader',
 				targetType: 'media',

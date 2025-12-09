@@ -1,9 +1,12 @@
 import { os } from "@orpc/server";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { AIModelIds } from "~/lib/ai/models";
 import { subtitleRenderConfigSchema } from "~/lib/subtitle/types";
 import { subtitleService } from "~/lib/services/subtitle/subtitle.service";
 import { cloudflareInputFormatSchema, whisperModelSchema } from "~/lib/subtitle/config/models";
+import { getDb, schema } from "~/lib/db";
+import type { RequestContext } from "~/lib/auth/types";
 
 export const transcribe = os
   .input(
@@ -14,7 +17,16 @@ export const transcribe = os
       inputFormat: cloudflareInputFormatSchema.optional(),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
+    const db = await getDb()
+    const media = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
+    })
+    if (!media) {
+      throw new Error("Media not found")
+    }
     const res = await subtitleService.transcribe(input)
     return { success: true, transcription: res.transcription }
   });
@@ -24,7 +36,16 @@ const translateInput = z.object({
   model: z.enum(AIModelIds),
   promptId: z.string().optional(),
 });
-export const translate = os.input(translateInput).handler(async ({ input }) => {
+export const translate = os.input(translateInput).handler(async ({ input, context }) => {
+  const ctx = context as RequestContext
+  const userId = ctx.auth.user!.id
+  const db = await getDb()
+  const media = await db.query.media.findFirst({
+    where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
+  })
+  if (!media) {
+    throw new Error("Media not found")
+  }
   const res = await subtitleService.translate(input)
   return res
 });
@@ -38,7 +59,16 @@ export const updateTranslation = os
       translation: z.string(),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
+    const db = await getDb()
+    const media = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
+    })
+    if (!media) {
+      throw new Error("Media not found")
+    }
     return subtitleService.updateTranslation(input)
   });
 
@@ -49,7 +79,16 @@ export const deleteTranslationCue = os
       index: z.number().min(0),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
+    const db = await getDb()
+    const media = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
+    })
+    if (!media) {
+      throw new Error("Media not found")
+    }
     return subtitleService.deleteTranslationCue(input)
   });
 
@@ -61,14 +100,25 @@ export const startCloudRender = os
       subtitleConfig: subtitleRenderConfigSchema.optional(),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
+    const db = await getDb()
+    const media = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
+    })
+    if (!media) {
+      throw new Error("Media not found")
+    }
     return subtitleService.startCloudRender(input)
   });
 
 // Cloud rendering: get status
 export const getRenderStatus = os
   .input(z.object({ jobId: z.string().min(1) }))
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    // Optional: could look up task by jobId and enforce ownership here.
     return subtitleService.getRenderStatus(input)
   });
 
@@ -85,13 +135,31 @@ export const optimizeTranscription = os
       textCorrect: z.boolean().optional().default(false),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
+    const db = await getDb()
+    const media = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
+    })
+    if (!media) {
+      throw new Error("Media not found")
+    }
     return subtitleService.optimizeTranscription(input)
   });
 
 // Restore transcription from original backup if available
 export const clearOptimizedTranscription = os
   .input(z.object({ mediaId: z.string() }))
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
+    const db = await getDb()
+    const media = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
+    })
+    if (!media) {
+      throw new Error("Media not found")
+    }
     return subtitleService.clearOptimizedTranscription(input)
   });

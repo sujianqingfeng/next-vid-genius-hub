@@ -1,5 +1,5 @@
 import { createId } from '@paralleldrive/cuid2'
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export type ModerationSeverity = 'low' | 'medium' | 'high'
 
@@ -126,6 +126,8 @@ export const tasks = sqliteTable('tasks', {
 		.unique()
 		.notNull()
 		.$defaultFn(() => createId()),
+	// 所属用户；为空表示系统级任务
+	userId: text('user_id'),
 	kind: text('kind', {
 		enum: [
 			'download',
@@ -167,66 +169,76 @@ export const tasks = sqliteTable('tasks', {
 	updatedAt: integer('updated_at', { mode: 'timestamp' }),
 })
 
-export const media = sqliteTable('media', {
-	id: text('id')
-		.unique()
-		.notNull()
-		.$defaultFn(() => createId()),
-	title: text('title').notNull(),
-	translatedTitle: text('translated_title'),
-	author: text('author'),
-	source: text('source', { enum: ['youtube', 'tiktok'] }).notNull(),
-	quality: text('quality', { enum: ['720p', '1080p'] }).notNull(),
-	thumbnail: text('thumbnail'),
-	viewCount: integer('view_count').default(0),
-	likeCount: integer('like_count').default(0),
-	commentCount: integer('comment_count').default(0),
-	createdAt: integer('created_at', { mode: 'timestamp' })
-		.notNull()
-		.$defaultFn(() => new Date()),
-	url: text('url').notNull().unique(),
-	filePath: text('file_path'),
-	audioFilePath: text('audio_file_path'),
-	rawMetadataPath: text('raw_metadata_path'),
-	transcription: text('transcription'),
-	optimizedTranscription: text('optimized_transcription'),
-	transcriptionWords: text('transcription_words', { mode: 'json' }).$type<TranscriptionWord[]>(),
-	translation: text('translation'),
-	videoWithSubtitlesPath: text('video_with_subtitles_path'),
-    videoWithInfoPath: text('video_with_info_path'),
-    // 吸睛发布标题（由 AI 生成后可人工编辑并保存）
-    publishTitle: text('publish_title'),
-    // 渲染配置：评论视频 Remotion 模板
-    commentsTemplate: text('comments_template'),
-    comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
-    commentsDownloadedAt: integer('comments_downloaded_at', { mode: 'timestamp' }),
-    commentsModeratedAt: integer('comments_moderated_at', { mode: 'timestamp' }),
-    commentsModerationModel: text('comments_moderation_model'),
-    commentsFlaggedCount: integer('comments_flagged_count').default(0),
-    commentsModerationSummary: text('comments_moderation_summary', { mode: 'json' }).$type<Record<string, number>>(),
-	downloadBackend: text('download_backend', { enum: ['local', 'cloud'] }).default('local').notNull(),
-	downloadJobId: text('download_job_id'),
-	downloadStatus: text('download_status', {
-		enum: [
-			'queued',
-			'fetching_metadata',
-			'preparing',
-			'downloading',
-			'extracting_audio',
-			'uploading',
-			'completed',
-			'failed',
-			'canceled',
-		],
+export const media = sqliteTable(
+	'media',
+	{
+		id: text('id')
+			.unique()
+			.notNull()
+			.$defaultFn(() => createId()),
+		// 媒体归属的用户；为空表示全局/系统媒体
+		userId: text('user_id'),
+		title: text('title').notNull(),
+		translatedTitle: text('translated_title'),
+		author: text('author'),
+		source: text('source', { enum: ['youtube', 'tiktok'] }).notNull(),
+		quality: text('quality', { enum: ['720p', '1080p'] }).notNull(),
+		thumbnail: text('thumbnail'),
+		viewCount: integer('view_count').default(0),
+		likeCount: integer('like_count').default(0),
+		commentCount: integer('comment_count').default(0),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+		url: text('url').notNull(),
+		filePath: text('file_path'),
+		audioFilePath: text('audio_file_path'),
+		rawMetadataPath: text('raw_metadata_path'),
+		transcription: text('transcription'),
+		optimizedTranscription: text('optimized_transcription'),
+		transcriptionWords: text('transcription_words', { mode: 'json' }).$type<TranscriptionWord[]>(),
+		translation: text('translation'),
+		videoWithSubtitlesPath: text('video_with_subtitles_path'),
+		videoWithInfoPath: text('video_with_info_path'),
+		// 吸睛发布标题（由 AI 生成后可人工编辑并保存）
+		publishTitle: text('publish_title'),
+		// 渲染配置：评论视频 Remotion 模板
+		commentsTemplate: text('comments_template'),
+		comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
+		commentsDownloadedAt: integer('comments_downloaded_at', { mode: 'timestamp' }),
+		commentsModeratedAt: integer('comments_moderated_at', { mode: 'timestamp' }),
+		commentsModerationModel: text('comments_moderation_model'),
+		commentsFlaggedCount: integer('comments_flagged_count').default(0),
+		commentsModerationSummary: text('comments_moderation_summary', {
+			mode: 'json',
+		}).$type<Record<string, number>>(),
+		downloadBackend: text('download_backend', { enum: ['local', 'cloud'] }).default('local').notNull(),
+		downloadJobId: text('download_job_id'),
+		downloadStatus: text('download_status', {
+			enum: [
+				'queued',
+				'fetching_metadata',
+				'preparing',
+				'downloading',
+				'extracting_audio',
+				'uploading',
+				'completed',
+				'failed',
+				'canceled',
+			],
+		}),
+		downloadError: text('download_error'),
+		remoteVideoKey: text('remote_video_key'),
+		remoteAudioKey: text('remote_audio_key'),
+		remoteMetadataKey: text('remote_metadata_key'),
+		downloadQueuedAt: integer('download_queued_at', { mode: 'timestamp' }),
+		downloadCompletedAt: integer('download_completed_at', { mode: 'timestamp' }),
+		rawMetadataDownloadedAt: integer('raw_metadata_downloaded_at', { mode: 'timestamp' }),
+	},
+	(table) => ({
+		userUrlIdx: uniqueIndex('media_user_url_idx').on(table.userId, table.url),
 	}),
-	downloadError: text('download_error'),
-	remoteVideoKey: text('remote_video_key'),
-	remoteAudioKey: text('remote_audio_key'),
-	remoteMetadataKey: text('remote_metadata_key'),
-	downloadQueuedAt: integer('download_queued_at', { mode: 'timestamp' }),
-	downloadCompletedAt: integer('download_completed_at', { mode: 'timestamp' }),
-	rawMetadataDownloadedAt: integer('raw_metadata_downloaded_at', { mode: 'timestamp' }),
-})
+)
 
 export const ssrSubscriptions = sqliteTable('ssr_subscriptions', {
 	id: text('id')
@@ -278,6 +290,8 @@ export const channels = sqliteTable('channels', {
     .unique()
     .notNull()
     .$defaultFn(() => createId()),
+  // 频道归属的用户；为空表示全局/系统频道
+  userId: text('user_id'),
   provider: text('provider', { enum: ['youtube'] })
     .notNull()
     .default('youtube'),

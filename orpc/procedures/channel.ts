@@ -1,6 +1,6 @@
 import { os } from '@orpc/server'
 import { z } from 'zod'
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, and } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
 import { translateText } from '~/lib/ai/translate'
@@ -9,6 +9,7 @@ import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { startCloudJob, getJobStatus, presignGetByKey, putObjectByKey } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/app.config'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
+import type { RequestContext } from '~/lib/auth/types'
 
 const CreateChannelInput = z.object({
   channelUrlOrId: z.string().min(1),
@@ -17,7 +18,9 @@ const CreateChannelInput = z.object({
 
 export const createChannel = os
   .input(CreateChannelInput)
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const now = new Date()
     const id = (await import('@paralleldrive/cuid2')).createId()
     const channelUrl = input.channelUrlOrId
@@ -28,6 +31,7 @@ export const createChannel = os
       .insert(schema.channels)
       .values({
         id,
+        userId,
         provider,
         channelUrl,
         defaultProxyId: input.defaultProxyId ?? null,
@@ -42,9 +46,12 @@ export const createChannel = os
 
 export const listChannels = os
   .input(z.object({ query: z.string().optional(), limit: z.number().min(1).max(100).default(50) }).optional())
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
     const rows = await db.query.channels.findMany({
+      where: eq(schema.channels.userId, userId),
       orderBy: (t, { desc }) => [desc(t.updatedAt ?? t.createdAt)],
       limit: input?.limit ?? 50,
     })
@@ -53,11 +60,17 @@ export const listChannels = os
 
 export const deleteChannel = os
   .input(z.object({ id: z.string().min(1) }))
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
-    // delete videos then channel
-    await db.delete(schema.channelVideos).where(eq(schema.channelVideos.channelId, input.id))
-    await db.delete(schema.channels).where(eq(schema.channels.id, input.id))
+    // delete videos then channel (scoped to current user)
+    const ch = await db.query.channels.findFirst({
+      where: and(eq(schema.channels.id, input.id), eq(schema.channels.userId, userId)),
+    })
+    if (!ch) throw new Error('Channel not found')
+    await db.delete(schema.channelVideos).where(eq(schema.channelVideos.channelId, ch.id))
+    await db.delete(schema.channels).where(and(eq(schema.channels.id, ch.id), eq(schema.channels.userId, userId)))
     return { success: true }
   })
 
@@ -69,9 +82,13 @@ const StartCloudSyncInput = z.object({
 
 export const startCloudSync = os
   .input(StartCloudSyncInput)
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
-    const channel = await db.query.channels.findFirst({ where: eq(schema.channels.id, input.id) })
+    const channel = await db.query.channels.findFirst({
+      where: and(eq(schema.channels.id, input.id), eq(schema.channels.userId, userId)),
+    })
     if (!channel) throw new Error('Channel not found')
     const channelUrlOrId = channel.channelUrl || channel.channelId || input.id
 
@@ -85,6 +102,7 @@ export const startCloudSync = os
 	    const taskId = createId()
 	    await db.insert(schema.tasks).values({
 	      id: taskId,
+	      userId,
 	      kind: 'channel-sync',
 	      engine: 'media-downloader',
 	      targetType: 'channel',
@@ -163,9 +181,13 @@ export const getCloudSyncStatus = os
 
 export const finalizeCloudSync = os
   .input(z.object({ id: z.string().min(1), jobId: z.string().min(1) }))
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
-    const channel = await db.query.channels.findFirst({ where: eq(schema.channels.id, input.id) })
+    const channel = await db.query.channels.findFirst({
+      where: and(eq(schema.channels.id, input.id), eq(schema.channels.userId, userId)),
+    })
     if (!channel) throw new Error('Channel not found')
 
 	    const status = await getJobStatus(input.jobId)
@@ -282,9 +304,13 @@ export const finalizeCloudSync = os
 
 export const getChannel = os
   .input(z.object({ id: z.string().min(1) }))
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
-    const ch = await db.query.channels.findFirst({ where: eq(schema.channels.id, input.id) })
+    const ch = await db.query.channels.findFirst({
+      where: and(eq(schema.channels.id, input.id), eq(schema.channels.userId, userId)),
+    })
     if (!ch) throw new Error('Channel not found')
     const videos = await db
       .select()
@@ -297,8 +323,14 @@ export const getChannel = os
 
 export const listChannelVideos = os
   .input(z.object({ id: z.string().min(1), limit: z.number().min(1).max(100).default(50) }))
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
+    const ch = await db.query.channels.findFirst({
+      where: and(eq(schema.channels.id, input.id), eq(schema.channels.userId, userId)),
+    })
+    if (!ch) throw new Error('Channel not found')
     const rows = await db
       .select()
       .from(schema.channelVideos)
@@ -317,8 +349,14 @@ export const translateVideoTitles = os
       model: z.enum(AIModelIds).default('openai/gpt-4o-mini' as AIModelId),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
+    const ch = await db.query.channels.findFirst({
+      where: and(eq(schema.channels.id, input.channelId), eq(schema.channels.userId, userId)),
+    })
+    if (!ch) throw new Error('Channel not found')
     const rows = await db
       .select()
       .from(schema.channelVideos)

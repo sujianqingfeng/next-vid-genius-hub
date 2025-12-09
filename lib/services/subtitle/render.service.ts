@@ -16,6 +16,7 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
   const now = new Date()
   await db.insert(schema.tasks).values({
     id: taskId,
+    userId: media.userId ?? null,
     kind: 'render-subtitles',
     engine: 'burner-ffmpeg',
     targetType: 'media',

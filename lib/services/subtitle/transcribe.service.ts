@@ -67,6 +67,7 @@ export async function transcribe(input: {
 	const now = new Date()
 	await db.insert(schema.tasks).values({
 		id: taskId,
+		userId: mediaRecord.userId ?? null,
 		kind: 'asr',
 		engine: 'asr-pipeline',
 		targetType: 'media',

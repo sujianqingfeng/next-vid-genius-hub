@@ -203,7 +203,10 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 						</div>
 						<div className="w-full sm:w-48">
 							<Label>Target Type</Label>
-							<Select value={targetType} onValueChange={(v) => setTargetType(v as any)}>
+							<Select
+								value={targetType}
+								onValueChange={(v) => setTargetType(v as 'media' | 'channel' | 'system')}
+							>
 								<SelectTrigger className="mt-1">
 									<SelectValue placeholder="Select type" />
 								</SelectTrigger>

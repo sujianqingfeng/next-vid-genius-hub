@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { os } from '@orpc/server'
-import { desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/app.config'
 import { deleteCloudArtifacts, getJobStatus, startCloudJob } from '~/lib/cloudflare'
@@ -14,6 +14,7 @@ import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
 import { createId } from '@paralleldrive/cuid2'
+import type { RequestContext } from '~/lib/auth/types'
 
 export const list = os
 	.input(
@@ -22,15 +23,18 @@ export const list = os
 			limit: z.number().min(1).max(100).optional().default(9),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { page = 1, limit = 9 } = input
 		const offset = (page - 1) * limit
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 
 		// Fetch paginated items with stable ordering
 		const db = await getDb()
 		const items = await db
 			.select()
 			.from(schema.media)
+			.where(eq(schema.media.userId, userId))
 			.orderBy(desc(schema.media.createdAt))
 			.limit(limit)
 			.offset(offset)
@@ -39,6 +43,7 @@ export const list = os
 		const [{ count }] = await db
 			.select({ count: sql<number>`count(*)` })
 			.from(schema.media)
+			.where(eq(schema.media.userId, userId))
 
 		return {
 			items,
@@ -50,11 +55,13 @@ export const list = os
 
 export const byId = os
 	.input(z.object({ id: z.string() }))
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { id } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 		const db = await getDb()
 		const item = await db.query.media.findFirst({
-			where: eq(schema.media.id, id),
+			where: and(eq(schema.media.id, id), eq(schema.media.userId, userId)),
 		})
 		return item
 	})
@@ -67,10 +74,13 @@ export const refreshMetadata = os
 			proxyId: z.string().optional(),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+
 		const db = await getDb()
 		const record = await db.query.media.findFirst({
-			where: eq(schema.media.id, input.id),
+			where: and(eq(schema.media.id, input.id), eq(schema.media.userId, userId)),
 		})
 		if (!record) {
 			throw new Error('Media not found')
@@ -94,6 +104,7 @@ export const refreshMetadata = os
 			const taskId = createId()
 			await db.insert(schema.tasks).values({
 				id: taskId,
+				userId,
 				kind: 'metadata-refresh',
 				engine: 'media-downloader',
 				targetType: 'media',
@@ -229,9 +240,12 @@ export const refreshMetadata = os
 			return record
 		}
 
-		await db.update(schema.media).set(updates).where(eq(schema.media.id, input.id))
+		await db
+			.update(schema.media)
+			.set(updates)
+			.where(and(eq(schema.media.id, input.id), eq(schema.media.userId, userId)))
 		const updated = await db.query.media.findFirst({
-			where: eq(schema.media.id, input.id),
+			where: and(eq(schema.media.id, input.id), eq(schema.media.userId, userId)),
 		})
 		return updated
 	})
@@ -244,20 +258,25 @@ export const updateTitles = os
 			translatedTitle: z.string().optional(),
 		}),
 	)
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { id, title, translatedTitle } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 
 		const updateData: Record<string, string | undefined> = {}
 		if (title !== undefined) updateData.title = title
 		if (translatedTitle !== undefined) updateData.translatedTitle = translatedTitle
 
 		const db = await getDb()
-		await db.update(schema.media).set(updateData).where(eq(schema.media.id, id))
+		await db
+			.update(schema.media)
+			.set(updateData)
+			.where(and(eq(schema.media.id, id), eq(schema.media.userId, userId)))
 
-        const updated = await db.query.media.findFirst({
-            where: eq(schema.media.id, id),
-        })
-        return updated
+		const updated = await db.query.media.findFirst({
+			where: and(eq(schema.media.id, id), eq(schema.media.userId, userId)),
+		})
+		return updated
     })
 
 // 更新渲染相关设置（目前仅支持评论模板）
@@ -268,13 +287,20 @@ export const updateRenderSettings = os
       commentsTemplate: z.string().optional(),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     const { id, commentsTemplate } = input
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const updates: Record<string, unknown> = {}
     if (typeof commentsTemplate !== 'undefined') updates.commentsTemplate = commentsTemplate
     const db = await getDb()
-    await db.update(schema.media).set(updates).where(eq(schema.media.id, id))
-    const updated = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
+    await db
+      .update(schema.media)
+      .set(updates)
+      .where(and(eq(schema.media.id, id), eq(schema.media.userId, userId)))
+    const updated = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, id), eq(schema.media.userId, userId)),
+    })
     return updated
   })
 
@@ -289,10 +315,14 @@ export const generatePublishTitle = os
       maxComments: z.number().min(5).max(100).optional().default(30),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     const { mediaId, model, count, maxTranscriptChars, maxComments } = input
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
-    const record = await db.query.media.findFirst({ where: eq(schema.media.id, mediaId) })
+    const record = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
+    })
     if (!record) throw new Error('Media not found')
 
     const candidates = await generatePublishTitles({
@@ -316,22 +346,33 @@ export const updatePublishTitle = os
       publishTitle: z.string().min(3).max(120),
     }),
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
     const { id, publishTitle } = input
+    const ctx = context as RequestContext
+    const userId = ctx.auth.user!.id
     const db = await getDb()
-    await db.update(schema.media).set({ publishTitle }).where(eq(schema.media.id, id))
-    const updated = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
+    await db
+      .update(schema.media)
+      .set({ publishTitle })
+      .where(and(eq(schema.media.id, id), eq(schema.media.userId, userId)))
+    const updated = await db.query.media.findFirst({
+      where: and(eq(schema.media.id, id), eq(schema.media.userId, userId)),
+    })
     return updated
   })
 
 export const deleteById = os
 	.input(z.object({ id: z.string() }))
-	.handler(async ({ input }) => {
+	.handler(async ({ input, context }) => {
 		const { id } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
 
 		// 1) Load record to gather cloud references (best-effort)
 		const db = await getDb()
-		const record = await db.query.media.findFirst({ where: eq(schema.media.id, id) })
+		const record = await db.query.media.findFirst({
+			where: and(eq(schema.media.id, id), eq(schema.media.userId, userId)),
+		})
 
 		// 2) Best-effort cloud cleanup (remote keys + orchestrator artifacts)
 		try {
@@ -378,8 +419,10 @@ export const deleteById = os
 			logger.warn('media', `[media.deleteById] cloud cleanup failed (continuing): ${msg}`)
 		}
 
-		// 3) Delete DB record
-		await db.delete(schema.media).where(eq(schema.media.id, id))
+		// 3) Delete DB record（仅删除当前用户的媒体）
+		await db
+			.delete(schema.media)
+			.where(and(eq(schema.media.id, id), eq(schema.media.userId, userId)))
 
 		// 4) Remove local operation directory
 		const operationDir = path.join(OPERATIONS_DIR, id)
