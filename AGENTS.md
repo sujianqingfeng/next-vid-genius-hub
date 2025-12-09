@@ -33,5 +33,4 @@
 
 ## Database & Media Tooling Notes
 - Update schema types → `pnpm db:generate` → inspect SQL → apply with `pnpm db:migrate`; never hand‑edit `drizzle/`.
-- Keep `ffmpeg`, `yt-dlp`, and similar helpers in `scripts/`; document required binaries in PRs when usage changes.
 

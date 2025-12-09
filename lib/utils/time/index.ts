@@ -1,12 +1,7 @@
 /**
- * Consolidated time utility functions
- * Combines general time utilities with subtitle-specific functions
+ * General time helpers shared across the app.
+ * Subtitle-specific functions stay under `lib/subtitle/utils/time`.
  */
-
-// Re-export all subtitle-specific time functions
-export * from "../../subtitle/utils/time";
-
-// Re-export additional general time functions not in subtitle utils
 export function getTimeAgo(date: Date | string | number): string {
   const now = new Date();
   const past = new Date(date);
