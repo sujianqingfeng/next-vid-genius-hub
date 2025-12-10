@@ -19,11 +19,27 @@ export async function chargeLlmUsage(opts: BaseChargeInput & {
 	inputTokens?: number
 	outputTokens?: number
 }): Promise<{ charged: number; balance?: number }> {
-	const { points, totalTokens } = await calculateLlmCost({
-		modelId: opts.modelId,
-		inputTokens: opts.inputTokens,
-		outputTokens: opts.outputTokens,
-	})
+	let points: number
+	let totalTokens: number
+
+	try {
+		const result = await calculateLlmCost({
+			modelId: opts.modelId,
+			inputTokens: opts.inputTokens,
+			outputTokens: opts.outputTokens,
+		})
+		points = result.points
+		totalTokens = result.totalTokens
+	} catch (error) {
+		if (
+			error instanceof Error &&
+			error.message.startsWith('Pricing rule not found for llm')
+		) {
+			return { charged: 0 }
+		}
+		throw error
+	}
+
 	if (points <= 0) return { charged: 0 }
 	const remark = buildRemark(`model=${opts.modelId ?? 'default'} tokens=${totalTokens}`, opts.remark)
 	const balance = await spendPoints({
@@ -49,10 +65,26 @@ export async function chargeAsrUsage(opts: BaseChargeInput & {
 	modelId?: string | null
 	durationSeconds: number
 }): Promise<{ charged: number; balance?: number }> {
-	const { points, durationSeconds } = await calculateAsrCost({
-		modelId: opts.modelId,
-		durationSeconds: opts.durationSeconds,
-	})
+	let points: number
+	let durationSeconds: number
+
+	try {
+		const result = await calculateAsrCost({
+			modelId: opts.modelId,
+			durationSeconds: opts.durationSeconds,
+		})
+		points = result.points
+		durationSeconds = result.durationSeconds
+	} catch (error) {
+		if (
+			error instanceof Error &&
+			error.message.startsWith('Pricing rule not found for asr')
+		) {
+			return { charged: 0 }
+		}
+		throw error
+	}
+
 	if (points <= 0) return { charged: 0 }
 	const remark = buildRemark(`asr model=${opts.modelId ?? 'default'} dur=${durationSeconds.toFixed(1)}s`, opts.remark)
 	const balance = await spendPoints({
@@ -75,7 +107,23 @@ export async function chargeAsrUsage(opts: BaseChargeInput & {
 export async function chargeDownloadUsage(opts: BaseChargeInput & {
 	durationSeconds: number
 }): Promise<{ charged: number; balance?: number }> {
-	const { points, durationSeconds } = await calculateDownloadCost({ durationSeconds: opts.durationSeconds })
+	let points: number
+	let durationSeconds: number
+
+	try {
+		const result = await calculateDownloadCost({ durationSeconds: opts.durationSeconds })
+		points = result.points
+		durationSeconds = result.durationSeconds
+	} catch (error) {
+		if (
+			error instanceof Error &&
+			error.message.startsWith('Pricing rule not found for download')
+		) {
+			return { charged: 0 }
+		}
+		throw error
+	}
+
 	if (points <= 0) return { charged: 0 }
 	const remark = buildRemark(`download dur=${durationSeconds.toFixed(1)}s`, opts.remark)
 	const balance = await spendPoints({
