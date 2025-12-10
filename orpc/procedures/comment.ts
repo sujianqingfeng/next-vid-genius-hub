@@ -139,7 +139,9 @@ export const deleteComments = os
 			throw new Error('Media or comments not found')
 		}
 
-		const updatedComments = media.comments.filter((comment) => !ids.has(comment.id))
+		const updatedComments = media.comments.filter(
+			(comment) => !ids.has(comment.id),
+		)
 		const deletedCount = media.comments.length - updatedComments.length
 
 		await db
@@ -155,97 +157,116 @@ export const deleteComments = os
 
 // Cloud rendering: start job explicitly (Remotion renderer)
 export const startCloudRender = os
-    .input(
-        z.object({
-            mediaId: z.string(),
-            proxyId: z.string().optional(),
-            sourcePolicy: z.enum(['auto', 'original', 'subtitles']).optional().default('auto'),
-            templateId: z.string().optional(),
-        }),
-    )
-    .handler(async ({ input, context }) => {
-        const { mediaId, proxyId } = input
-        const ctx = context as RequestContext
-        const userId = ctx.auth.user!.id
-        const db = await getDb()
-		const where = and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId))
+	.input(
+		z.object({
+			mediaId: z.string(),
+			proxyId: z.string().optional(),
+			sourcePolicy: z
+				.enum(['auto', 'original', 'subtitles'])
+				.optional()
+				.default('auto'),
+			templateId: z.string().optional(),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const { mediaId, proxyId } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+		const where = and(
+			eq(schema.media.id, mediaId),
+			eq(schema.media.userId, userId),
+		)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
 		// 允许在未本地落盘的情况下走云端渲染。
 		// 需要存在一个可用的源：本地文件、已完成的云下载（downloadStatus=completed）、已存在的远端 key，或已有渲染成品。
-	const hasAnySource = Boolean(
-		media.filePath ||
-		media.videoWithSubtitlesPath ||
-		media.remoteVideoKey ||
-		(media.downloadJobId && media.downloadStatus === 'completed'),
-	)
+		const hasAnySource = Boolean(
+			media.filePath ||
+				media.videoWithSubtitlesPath ||
+				media.remoteVideoKey ||
+				(media.downloadJobId && media.downloadStatus === 'completed'),
+		)
 		if (!hasAnySource) {
-			throw new Error('No source video available (need local file, rendered artifact, remote key, or a completed cloud download).')
+			throw new Error(
+				'No source video available (need local file, rendered artifact, remote key, or a completed cloud download).',
+			)
 		}
 		if (!media.comments || media.comments.length === 0) {
 			throw new Error('No comments found for this media')
 		}
 
-	const comments = media.comments
+		const comments = media.comments
 
-	logger.info(
-		'rendering',
-		`[render.start] media=${mediaId} user=${userId} comments=${comments.length} sourcePolicy=${input.sourcePolicy ?? 'auto'} templateId=${input.templateId ?? media.commentsTemplate ?? DEFAULT_TEMPLATE_ID} proxyId=${proxyId ?? 'auto'}`,
-	)
-
-	// Ensure manifest references latest remote assets before kicking off render
-	const manifestPatch: MediaManifestPatch = {}
-	if (media.remoteVideoKey) manifestPatch.remoteVideoKey = media.remoteVideoKey
-	if (media.remoteAudioKey) manifestPatch.remoteAudioKey = media.remoteAudioKey
-	if (media.remoteMetadataKey) manifestPatch.remoteMetadataKey = media.remoteMetadataKey
-	if (Object.keys(manifestPatch).length > 0) {
-		try {
-			await upsertMediaManifest(media.id, manifestPatch, media.title || undefined)
-		} catch (err) {
-			logger.warn(
-				'comments',
-				`[startCloudRender] manifest sync skipped: ${err instanceof Error ? err.message : String(err)}`,
-			)
-		}
-	}
-
-	let snapshotKey: string | undefined
-	try {
-		const snapshot = await buildCommentsSnapshot(media, { comments })
-		snapshotKey = snapshot.key
-		logger.info('comments', `comments-data materialized (render-cloud): ${snapshotKey}`)
-	} catch (error) {
-		logger.error(
-			'comments',
-			`Failed to materialize comments-data before cloud render: ${error instanceof Error ? error.message : String(error)}`,
+		logger.info(
+			'rendering',
+			`[render.start] media=${mediaId} user=${userId} comments=${comments.length} sourcePolicy=${input.sourcePolicy ?? 'auto'} templateId=${input.templateId ?? media.commentsTemplate ?? DEFAULT_TEMPLATE_ID} proxyId=${proxyId ?? 'auto'}`,
 		)
-		throw new Error('Failed to prepare comments metadata for cloud render')
-	}
 
-	const { proxyId: effectiveProxyId, proxyRecord } = await resolveProxyWithDefault({ db, proxyId })
-	const proxyPayload = toProxyJobPayload(proxyRecord)
+		// Ensure manifest references latest remote assets before kicking off render
+		const manifestPatch: MediaManifestPatch = {}
+		if (media.remoteVideoKey)
+			manifestPatch.remoteVideoKey = media.remoteVideoKey
+		if (media.remoteAudioKey)
+			manifestPatch.remoteAudioKey = media.remoteAudioKey
+		if (media.remoteMetadataKey)
+			manifestPatch.remoteMetadataKey = media.remoteMetadataKey
+		if (Object.keys(manifestPatch).length > 0) {
+			try {
+				await upsertMediaManifest(
+					media.id,
+					manifestPatch,
+					media.title || undefined,
+				)
+			} catch (err) {
+				logger.warn(
+					'comments',
+					`[startCloudRender] manifest sync skipped: ${err instanceof Error ? err.message : String(err)}`,
+				)
+			}
+		}
 
-	const taskId = createId()
-	await db.insert(schema.tasks).values({
-		id: taskId,
-		userId,
-		kind: TASK_KINDS.RENDER_COMMENTS,
-		engine: 'renderer-remotion',
-		targetType: 'media',
-		targetId: media.id,
-		status: 'queued',
-		progress: 0,
-		payload: {
-			templateId:
-				input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
-			sourcePolicy: input.sourcePolicy || 'auto',
-			proxyId: effectiveProxyId ?? null,
-		},
-		createdAt: new Date(),
-		updatedAt: new Date(),
-	})
+		let snapshotKey: string | undefined
+		try {
+			const snapshot = await buildCommentsSnapshot(media, { comments })
+			snapshotKey = snapshot.key
+			logger.info(
+				'comments',
+				`comments-data materialized (render-cloud): ${snapshotKey}`,
+			)
+		} catch (error) {
+			logger.error(
+				'comments',
+				`Failed to materialize comments-data before cloud render: ${error instanceof Error ? error.message : String(error)}`,
+			)
+			throw new Error('Failed to prepare comments metadata for cloud render')
+		}
 
-	try {
+		const { proxyId: effectiveProxyId, proxyRecord } =
+			await resolveProxyWithDefault({ db, proxyId })
+		const proxyPayload = toProxyJobPayload(proxyRecord)
+
+		const taskId = createId()
+		await db.insert(schema.tasks).values({
+			id: taskId,
+			userId,
+			kind: TASK_KINDS.RENDER_COMMENTS,
+			engine: 'renderer-remotion',
+			targetType: 'media',
+			targetId: media.id,
+			status: 'queued',
+			progress: 0,
+			payload: {
+				templateId:
+					input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
+				sourcePolicy: input.sourcePolicy || 'auto',
+				proxyId: effectiveProxyId ?? null,
+			},
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		})
+
+		try {
 			const job = await startCloudJob({
 				mediaId: media.id,
 				engine: 'renderer-remotion',
@@ -257,40 +278,41 @@ export const startCloudRender = os
 					templateId:
 						input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
 				},
-		})
-
-		logger.info(
-			'rendering',
-			`[render.job] queued media=${media.id} user=${userId} task=${taskId} job=${job.jobId} proxyId=${effectiveProxyId ?? 'none'}`,
-		)
-
-		await db
-			.update(schema.tasks)
-			.set({
-				jobId: job.jobId,
-				startedAt: new Date(),
-				updatedAt: new Date(),
 			})
-			.where(eq(schema.tasks.id, taskId))
-		return { jobId: job.jobId, taskId }
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to start render task'
-		logger.error(
-			'rendering',
-			`[render.error] media=${mediaId} user=${userId} task=${taskId} error=${message}`,
-		)
-		await db
-			.update(schema.tasks)
-			.set({
-				status: 'failed',
-				error: message,
-				finishedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.tasks.id, taskId))
-		throw error
-	}
-    })
+
+			logger.info(
+				'rendering',
+				`[render.job] queued media=${media.id} user=${userId} task=${taskId} job=${job.jobId} proxyId=${effectiveProxyId ?? 'none'}`,
+			)
+
+			await db
+				.update(schema.tasks)
+				.set({
+					jobId: job.jobId,
+					startedAt: new Date(),
+					updatedAt: new Date(),
+				})
+				.where(eq(schema.tasks.id, taskId))
+			return { jobId: job.jobId, taskId }
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to start render task'
+			logger.error(
+				'rendering',
+				`[render.error] media=${mediaId} user=${userId} task=${taskId} error=${message}`,
+			)
+			await db
+				.update(schema.tasks)
+				.set({
+					status: 'failed',
+					error: message,
+					finishedAt: new Date(),
+					updatedAt: new Date(),
+				})
+				.where(eq(schema.tasks.id, taskId))
+			throw error
+		}
+	})
 
 // Cloud rendering: get status
 export const getRenderStatus = os
@@ -303,7 +325,9 @@ export const getRenderStatus = os
 		)
 		try {
 			const db = await getDb()
-			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
+			const task = await db.query.tasks.findFirst({
+				where: eq(schema.tasks.jobId, input.jobId),
+			})
 			if (task) {
 				await db
 					.update(schema.tasks)
@@ -336,17 +360,21 @@ export const startCloudCommentsDownload = os
 			proxyId: z.string().optional(),
 		}),
 	)
-    .handler(async ({ input, context }) => {
-        const { mediaId, pages, proxyId } = input
-        const ctx = context as RequestContext
-        const userId = ctx.auth.user!.id
-        const db = await getDb()
-		const where = and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId))
+	.handler(async ({ input, context }) => {
+		const { mediaId, pages, proxyId } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+		const where = and(
+			eq(schema.media.id, mediaId),
+			eq(schema.media.userId, userId),
+		)
 		const media = await db.query.media.findFirst({ where })
 		if (!media) throw new Error('Media not found')
 		if (!media.url) throw new Error('Media URL missing')
 
-		const { proxyId: effectiveProxyId, proxyRecord } = await resolveProxyWithDefault({ db, proxyId })
+		const { proxyId: effectiveProxyId, proxyRecord } =
+			await resolveProxyWithDefault({ db, proxyId })
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		logger.info(
@@ -404,7 +432,10 @@ export const startCloudCommentsDownload = os
 
 			return { jobId: job.jobId, taskId }
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to start comments download'
+			const message =
+				error instanceof Error
+					? error.message
+					: 'Failed to start comments download'
 			logger.error(
 				'comments',
 				`[comments.download.error] media=${mediaId} user=${userId} task=${taskId} pages=${pages} error=${message}`,
@@ -420,7 +451,7 @@ export const startCloudCommentsDownload = os
 				.where(eq(schema.tasks.id, taskId))
 			throw error
 		}
-		})
+	})
 
 export const getCloudCommentsStatus = os
 	.input(z.object({ jobId: z.string().min(1) }))
@@ -432,7 +463,9 @@ export const getCloudCommentsStatus = os
 		)
 		try {
 			const db = await getDb()
-			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
+			const task = await db.query.tasks.findFirst({
+				where: eq(schema.tasks.jobId, input.jobId),
+			})
 			if (task) {
 				await db
 					.update(schema.tasks)
@@ -456,6 +489,24 @@ export const getCloudCommentsStatus = os
 		return status
 	})
 
+const commentsMetadataSchema = z.object({
+	comments: z
+		.array(
+			z
+				.object({
+					id: z.union([z.string(), z.number()]).optional(),
+					author: z.string().optional(),
+					authorThumbnail: z.string().optional(),
+					content: z.string().optional(),
+					translatedContent: z.string().optional(),
+					likes: z.union([z.number(), z.string()]).optional(),
+					replyCount: z.union([z.number(), z.string()]).optional(),
+				})
+				.passthrough(),
+		)
+		.default([]),
+})
+
 export const finalizeCloudCommentsDownload = os
 	.input(z.object({ mediaId: z.string(), jobId: z.string().min(1) }))
 	.handler(async ({ input, context }) => {
@@ -471,31 +522,44 @@ export const finalizeCloudCommentsDownload = os
 
 		// Prefer presigned URL from status; otherwise fall back to metadata key and presign via orchestrator
 		const urlFromStatus = status.outputs?.metadata?.url
-		const keyFromStatus = status.outputs?.metadata?.key ?? status.outputMetadataKey
+		const keyFromStatus =
+			status.outputs?.metadata?.key ?? status.outputMetadataKey
 
-    let metadataUrl = urlFromStatus
-    if (!metadataUrl && keyFromStatus) {
-        try {
-            metadataUrl = await presignGetByKey(keyFromStatus)
-        } catch (e) {
-            logger.warn('api', `Failed to presign metadata URL via orchestrator: ${e instanceof Error ? e.message : String(e)}`)
-        }
-    }
+		let metadataUrl = urlFromStatus
+		if (!metadataUrl && keyFromStatus) {
+			try {
+				metadataUrl = await presignGetByKey(keyFromStatus)
+			} catch (e) {
+				logger.warn(
+					'api',
+					`Failed to presign metadata URL via orchestrator: ${
+						e instanceof Error ? e.message : String(e)
+					}`,
+				)
+			}
+		}
 
-		if (!metadataUrl) throw new Error('No comments metadata location (url or key) from job')
+		if (!metadataUrl) {
+			throw new Error('No comments metadata location (url or key) from job')
+		}
+
 		const r = await fetch(metadataUrl)
 		if (!r.ok) throw new Error(`Fetch comments failed: ${r.status}`)
-		const data = (await r.json()) as any
-    const list = Array.isArray(data?.comments) ? (data.comments as any[]) : []
-    const comments: schema.Comment[] = list.map((c: any) => ({
-        id: String(c?.id || ''),
-        author: String(c?.author || ''),
-        authorThumbnail: c?.authorThumbnail || undefined,
-        content: String(c?.content || ''),
-        translatedContent: typeof c?.translatedContent === 'string' ? c.translatedContent : '',
-        likes: Number(c?.likes ?? 0) || 0,
-        replyCount: Number(c?.replyCount ?? 0) || 0,
-    }))
+
+		const { comments: rawComments } = commentsMetadataSchema.parse(
+			await r.json(),
+		)
+
+		const comments: schema.Comment[] = rawComments.map((c) => ({
+			id: String(c.id ?? ''),
+			author: String(c.author ?? ''),
+			authorThumbnail: c.authorThumbnail || undefined,
+			content: String(c.content ?? ''),
+			translatedContent:
+				typeof c.translatedContent === 'string' ? c.translatedContent : '',
+			likes: Number(c.likes ?? 0) || 0,
+			replyCount: Number(c.replyCount ?? 0) || 0,
+		}))
 
 		await db
 			.update(schema.media)
@@ -510,194 +574,248 @@ export const finalizeCloudCommentsDownload = os
 
 // ============ AI Moderation ============
 const moderationResultSchema = z.object({
-  flagged: z
-    .array(
-      z.object({
-        index: z.number().int().nonnegative(),
-        commentId: z.string().min(1),
-        labels: z.array(z.string().min(1)).min(1),
-        severity: z.enum(['low', 'medium', 'high']),
-        reason: z.string().min(3).max(500),
-      }),
-    )
-    .default([]),
-  total: z.number().int().optional(),
+	flagged: z
+		.array(
+			z.object({
+				index: z.number().int().nonnegative(),
+				commentId: z.string().min(1),
+				labels: z.array(z.string().min(1)).min(1),
+				severity: z.enum(['low', 'medium', 'high']),
+				reason: z.string().min(3).max(500),
+			}),
+		)
+		.default([]),
+	total: z.number().int().optional(),
 })
 
 const MODERATION_LABEL_LIST = [
-  'politics',
-  'pornography',
-  'nudity',
-  'violence',
-  'abuse',
-  'hate',
-  'discrimination',
-  'self_harm',
-  'drugs',
-  'weapon',
-  'scam_fraud',
-  'gambling',
-  'privacy',
-  'copyright',
-  'spam',
-  'other',
+	'politics',
+	'pornography',
+	'nudity',
+	'violence',
+	'abuse',
+	'hate',
+	'discrimination',
+	'self_harm',
+	'drugs',
+	'weapon',
+	'scam_fraud',
+	'gambling',
+	'privacy',
+	'copyright',
+	'spam',
+	'other',
 ] as const
 
 function buildModerationSystemPrompt() {
-  return [
-    '你是内容审核助手，需严格依据中国大陆主流平台的审核标准判断评论是否需要拦截或谨慎展示。',
-    '仅按要求输出 JSON，不要输出多余文本、代码块或 markdown。',
-    '审核维度包括但不限于：涉政、色情/裸露、暴力、辱骂、仇恨/歧视、自残/自杀、毒品、武器、诈骗/引流、赌博、隐私泄露、版权侵权、垃圾信息等。',
-    `标签可从以下集合中选择：${MODERATION_LABEL_LIST.join(', ')}。`,
-    '判定为需标记时，给出最贴切的 1-3 个标签，标注严重度（low/medium/high）并简述理由（不超过 300 字）。',
-    '输出格式（严格）：{"flagged":[{"index":0,"commentId":"id","labels":["spam"],"severity":"medium","reason":"..."}],"total":N}',
-  ].join('\n')
+	return [
+		'你是内容审核助手，需严格依据中国大陆主流平台的审核标准判断评论是否需要拦截或谨慎展示。',
+		'仅按要求输出 JSON，不要输出多余文本、代码块或 markdown。',
+		'审核维度包括但不限于：涉政、色情/裸露、暴力、辱骂、仇恨/歧视、自残/自杀、毒品、武器、诈骗/引流、赌博、隐私泄露、版权侵权、垃圾信息等。',
+		`标签可从以下集合中选择：${MODERATION_LABEL_LIST.join(', ')}。`,
+		'判定为需标记时，给出最贴切的 1-3 个标签，标注严重度（low/medium/high）并简述理由（不超过 300 字）。',
+		'输出格式（严格）：{"flagged":[{"index":0,"commentId":"id","labels":["spam"],"severity":"medium","reason":"..."}],"total":N}',
+	].join('\n')
 }
 
-function buildChunkPrompt(items: Array<{ index: number; commentId: string; text: string; translatedText?: string }>) {
-  const header = [
-    '任务：对以下评论进行审核。仅返回 JSON，且必须匹配给定 schema。',
-    '输入为数组，每项包含 index、commentId、text、translatedText(可选)。',
-    '请仅返回需要标记的评论，未命中的不要出现在结果中。',
-  ].join('\n')
+function buildChunkPrompt(
+	items: Array<{
+		index: number
+		commentId: string
+		text: string
+		translatedText?: string
+	}>,
+) {
+	const header = [
+		'任务：对以下评论进行审核。仅返回 JSON，且必须匹配给定 schema。',
+		'输入为数组，每项包含 index、commentId、text、translatedText(可选)。',
+		'请仅返回需要标记的评论，未命中的不要出现在结果中。',
+	].join('\n')
 
-  const body = JSON.stringify(
-    items.map((it) => ({ index: it.index, commentId: it.commentId, text: it.text, translatedText: it.translatedText })),
-  )
+	const body = JSON.stringify(
+		items.map((it) => ({
+			index: it.index,
+			commentId: it.commentId,
+			text: it.text,
+			translatedText: it.translatedText,
+		})),
+	)
 
-  const tail = [
-    '严格输出 JSON：{"flagged":[{"index":number,"commentId":"string","labels":["string"],"severity":"low|medium|high","reason":"string"}],"total":number}',
-  ].join('\n')
+	const tail = [
+		'严格输出 JSON：{"flagged":[{"index":number,"commentId":"string","labels":["string"],"severity":"low|medium|high","reason":"string"}],"total":number}',
+	].join('\n')
 
-  return [header, '评论列表(JSON)：', body, tail].join('\n')
+	return [header, '评论列表(JSON)：', body, tail].join('\n')
 }
 
 export const moderateComments = os
-  .input(
-    z.object({
-      mediaId: z.string(),
-      model: z.enum(AIModelIds).default('openai/gpt-4.1-mini' as AIModelId),
-      overwrite: z.boolean().optional().default(false),
-    }),
-  )
-  .handler(async ({ input, context }) => {
-    const { mediaId, model: modelId, overwrite } = input
-    const ctx = context as RequestContext
-    const userId = ctx.auth.user!.id
-    const db = await getDb()
-    const media = await db.query.media.findFirst({
-      where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
-    })
-    if (!media) throw new Error('Media not found')
-    const comments = media.comments || []
-    if (!comments || comments.length === 0) throw new Error('No comments to moderate')
+	.input(
+		z.object({
+			mediaId: z.string(),
+			model: z.enum(AIModelIds).default('openai/gpt-4.1-mini' as AIModelId),
+			overwrite: z.boolean().optional().default(false),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const { mediaId, model: modelId, overwrite } = input
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+		const media = await db.query.media.findFirst({
+			where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
+		})
+		if (!media) throw new Error('Media not found')
+		const comments = media.comments || []
+		if (!comments || comments.length === 0) {
+			throw new Error('No comments to moderate')
+		}
 
-    logger.info(
-      'comments',
-      `[moderate.start] media=${mediaId} user=${userId} total=${comments.length} model=${modelId} overwrite=${overwrite}`,
-    )
+		logger.info(
+			'comments',
+			`[moderate.start] media=${mediaId} user=${userId} total=${comments.length} model=${modelId} overwrite=${overwrite}`,
+		)
 
-    const runId = createId()
-    const nowIso = new Date().toISOString()
+		const runId = createId()
+		const nowIso = new Date().toISOString()
 
-    // Build chunks
-    const CHUNK_SIZE = 120
-    const chunks: Array<{ start: number; end: number; items: Array<{ index: number; commentId: string; text: string; translatedText?: string }> }> = []
-    for (let i = 0; i < comments.length; i += CHUNK_SIZE) {
-      const slice = comments.slice(i, i + CHUNK_SIZE)
-      const items = slice.map((c, idx) => ({
-        index: idx,
-        commentId: c.id,
-        text: c.content || '',
-        translatedText: c.translatedContent || undefined,
-      }))
-      chunks.push({ start: i, end: i + slice.length, items })
-    }
+		// Build chunks
+		const CHUNK_SIZE = 120
+		const chunks: Array<{
+			start: number
+			end: number
+			items: Array<{
+				index: number
+				commentId: string
+				text: string
+				translatedText?: string
+			}>
+		}> = []
 
-    const system = buildModerationSystemPrompt()
-    const idToIndex = new Map(comments.map((c, i) => [c.id, i]))
+		for (let i = 0; i < comments.length; i += CHUNK_SIZE) {
+			const slice = comments.slice(i, i + CHUNK_SIZE)
+			const items = slice.map((c, idx) => ({
+				// 使用全局索引，方便与原始评论数组直接对应
+				index: i + idx,
+				commentId: c.id,
+				text: c.content || '',
+				translatedText: c.translatedContent || undefined,
+			}))
+			chunks.push({ start: i, end: i + slice.length, items })
+		}
 
-    const flaggedGlobal: Array<{ index: number; labels: string[]; severity: 'low' | 'medium' | 'high'; reason: string }> = []
+		const system = buildModerationSystemPrompt()
+		const idToIndex = new Map(comments.map((c, i) => [c.id, i]))
 
-    for (const ch of chunks) {
-      const prompt = buildChunkPrompt(ch.items)
-      try {
-        const { object } = await generateObject({ model: modelId, system, prompt, schema: moderationResultSchema })
-        const parsed = moderationResultSchema.parse(object)
-        for (const item of parsed.flagged) {
-          // Prefer commentId mapping; fallback to offset+index
-          let idx = idToIndex.get(item.commentId)
-          if (typeof idx !== 'number') idx = ch.start + item.index
-          if (Number.isNaN(idx) || idx == null || idx < 0 || idx >= comments.length) continue
-          flaggedGlobal.push({ index: idx, labels: item.labels.slice(0, 3), severity: item.severity, reason: item.reason })
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        logger.warn('comments', `[moderateComments] chunk failed, skipping: ${msg}`)
-      }
-    }
+		const flaggedGlobal: Array<{
+			index: number
+			labels: string[]
+			severity: 'low' | 'medium' | 'high'
+			reason: string
+		}> = []
 
-    if (flaggedGlobal.length === 0) {
-      // Still update summary timestamps to indicate run happened
-      await db
-        .update(schema.media)
-        .set({
-          commentsModeratedAt: new Date(),
-          commentsModerationModel: modelId,
-          commentsFlaggedCount: 0,
-          commentsModerationSummary: {},
-        })
-        .where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
-      logger.info(
-        'comments',
-        `[moderate.done] media=${mediaId} user=${userId} flagged=0 total=${comments.length}`,
-      )
-      return { success: true, flaggedCount: 0, total: comments.length }
-    }
+		for (const ch of chunks) {
+			const prompt = buildChunkPrompt(ch.items)
+			try {
+				const { object } = await generateObject({
+					model: modelId,
+					system,
+					prompt,
+					schema: moderationResultSchema,
+				})
+				const parsed = moderationResultSchema.parse(object)
+				for (const item of parsed.flagged) {
+					// Prefer commentId mapping; fallback to global index from payload
+					let idx = idToIndex.get(item.commentId)
+					if (typeof idx !== 'number') idx = item.index
+					if (
+						Number.isNaN(idx) ||
+						idx == null ||
+						idx < 0 ||
+						idx >= comments.length
+					) {
+						continue
+					}
+					flaggedGlobal.push({
+						index: idx,
+						labels: item.labels.slice(0, 3),
+						severity: item.severity,
+						reason: item.reason,
+					})
+				}
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err)
+				logger.warn(
+					'comments',
+					`[moderateComments] chunk failed, skipping: ${msg}`,
+				)
+			}
+		}
 
-    // Apply to comment list
-    const touched = new Set<number>()
-    const updated: schema.Comment[] = comments.map((c) => ({ ...c }))
-    const summary = new Map<string, number>()
+		if (flaggedGlobal.length === 0) {
+			// Still update summary timestamps to indicate run happened
+			await db
+				.update(schema.media)
+				.set({
+					commentsModeratedAt: new Date(),
+					commentsModerationModel: modelId,
+					commentsFlaggedCount: 0,
+					commentsModerationSummary: {},
+				})
+				.where(
+					and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
+				)
+			logger.info(
+				'comments',
+				`[moderate.done] media=${mediaId} user=${userId} flagged=0 total=${comments.length}`,
+			)
+			return { success: true, flaggedCount: 0, total: comments.length }
+		}
 
-    for (const f of flaggedGlobal) {
-      if (touched.has(f.index)) continue
-      const current = updated[f.index]
-      if (!current) continue
-      if (current.moderation && !overwrite) continue
-      current.moderation = {
-        flagged: true,
-        labels: f.labels,
-        severity: f.severity,
-        reason: f.reason,
-        runId,
-        modelId,
-        moderatedAt: nowIso,
-      }
-      touched.add(f.index)
-      for (const label of f.labels) summary.set(label, (summary.get(label) || 0) + 1)
-    }
+		// Apply to comment list
+		const touched = new Set<number>()
+		const updated: schema.Comment[] = comments.map((c) => ({ ...c }))
+		const summary = new Map<string, number>()
 
-    let flaggedCount = 0
-    for (const c of updated) {
-      if (c?.moderation?.flagged) flaggedCount++
-    }
+		for (const f of flaggedGlobal) {
+			if (touched.has(f.index)) continue
+			const current = updated[f.index]
+			if (!current) continue
+			if (current.moderation && !overwrite) continue
+			current.moderation = {
+				flagged: true,
+				labels: f.labels,
+				severity: f.severity,
+				reason: f.reason,
+				runId,
+				modelId,
+				moderatedAt: nowIso,
+			}
+			touched.add(f.index)
+			for (const label of f.labels) {
+				summary.set(label, (summary.get(label) || 0) + 1)
+			}
+		}
 
-    await db
-      .update(schema.media)
-      .set({
-        comments: updated,
-        commentsModeratedAt: new Date(),
-        commentsModerationModel: modelId,
-        commentsFlaggedCount: flaggedCount,
-        commentsModerationSummary: Object.fromEntries(summary.entries()),
-      })
-      .where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
+		let flaggedCount = 0
+		for (const c of updated) {
+			if (c?.moderation?.flagged) flaggedCount++
+		}
 
-    logger.info(
-      'comments',
-      `[moderate.done] media=${mediaId} user=${userId} flagged=${flaggedCount} total=${comments.length}`,
-    )
+		await db
+			.update(schema.media)
+			.set({
+				comments: updated,
+				commentsModeratedAt: new Date(),
+				commentsModerationModel: modelId,
+				commentsFlaggedCount: flaggedCount,
+				commentsModerationSummary: Object.fromEntries(summary.entries()),
+			})
+			.where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
 
-    return { success: true, flaggedCount, total: comments.length }
-  })
+		logger.info(
+			'comments',
+			`[moderate.done] media=${mediaId} user=${userId} flagged=${flaggedCount} total=${comments.length}`,
+		)
+
+		return { success: true, flaggedCount, total: comments.length }
+	})
