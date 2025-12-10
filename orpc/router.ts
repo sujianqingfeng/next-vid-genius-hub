@@ -1,4 +1,4 @@
-import { authed, os } from '~/orpc/base'
+import { adminOnly, authed, os } from '~/orpc/base'
 import * as comment from './procedures/comment'
 import * as download from './procedures/download'
 import * as media from './procedures/media'
@@ -24,7 +24,7 @@ export const appRouter = os.router({
 	task: authed.router(task),
 	points: authed.router(points),
 	proxy: authed.router(proxy),
-	admin: authed.router(admin),
+	admin: adminOnly.router(admin),
 })
 
 export type AppRouter = typeof appRouter

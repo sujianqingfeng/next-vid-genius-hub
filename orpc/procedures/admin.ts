@@ -8,14 +8,6 @@ import { ADMIN_USERS_PAGE_SIZE, DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
 import type { PointResourceType } from '~/lib/db/schema'
 import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
 
-function ensureAdmin(context: RequestContext) {
-	const user = context.auth.user
-	if (!user || user.role !== 'admin') {
-		throw new Error('FORBIDDEN')
-	}
-	return user
-}
-
 const ListUsersSchema = z.object({
 	page: z.number().int().min(1).default(1),
 	limit: z.number().int().min(1).max(100).default(ADMIN_USERS_PAGE_SIZE),
@@ -26,7 +18,6 @@ export const listUsers = os
 	.input(ListUsersSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		ensureAdmin(ctx)
 		const db = await getDb()
 
 		const page = input.page ?? 1
@@ -89,7 +80,6 @@ export const updateUserRole = os
 	.input(UpdateUserRoleSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		ensureAdmin(ctx)
 		const db = await getDb()
 
 		await db
@@ -112,7 +102,6 @@ export const updateUserStatus = os
 	.input(UpdateUserStatusSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		ensureAdmin(ctx)
 		const db = await getDb()
 
 		await db
@@ -136,7 +125,6 @@ export const addUserPoints = os
 	.input(AddPointsSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		ensureAdmin(ctx)
 		const db = await getDb()
 
 		const balance = await addPoints({
@@ -160,7 +148,6 @@ export const listUserTransactions = os
 	.input(ListUserTransactionsSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		ensureAdmin(ctx)
 		const items = await listTransactions({
 			userId: input.userId,
 			limit: input.limit,
@@ -179,7 +166,6 @@ export const listPricingRules = os
 	.input(ListPricingRulesSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		ensureAdmin(ctx)
 		const db = await getDb()
 
 		const page = input.page ?? 1
@@ -231,7 +217,6 @@ export const upsertPricingRule = os
 	.input(UpsertPricingRuleSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		ensureAdmin(ctx)
 		const db = await getDb()
 		const now = new Date()
 
@@ -271,7 +256,6 @@ export const deletePricingRule = os
 	.input(DeletePricingRuleSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		ensureAdmin(ctx)
 		const db = await getDb()
 
 		await db

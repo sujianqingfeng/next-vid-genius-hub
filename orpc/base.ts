@@ -17,9 +17,6 @@ export const requireAuth = os.middleware(async ({ context, next }) => {
 		throw new Error('UNAUTHORIZED')
 	}
 
-	// You can also enrich context here, e.g. add `userId` shortcut:
-	// return next({ context: { ...ctx, userId: ctx.auth.user.id } })
-
 	return next({ context })
 })
 
@@ -28,9 +25,42 @@ export const requireAuth = os.middleware(async ({ context, next }) => {
  *
  * Usage:
  *   export const appRouter = os.router({
- *     auth,                      // public routes
+ *     auth,                        // public routes
  *     media: authed.router(media), // all media.* require login
  *   })
  */
 export const authed = os.use(requireAuth)
 
+/**
+ * Admin-only middleware.
+ *
+ * - Requires a logged-in user
+ * - Additionally checks `user.role === 'admin'`
+ * - Throws:
+ *   - `UNAUTHORIZED` when there is no logged-in user
+ *   - `FORBIDDEN` when the user is not an admin
+ */
+export const requireAdmin = os.middleware(async ({ context, next }) => {
+	const ctx = context as RequestContext
+	const user = ctx.auth?.user
+
+	if (!user) {
+		throw new Error('UNAUTHORIZED')
+	}
+
+	if (user.role !== 'admin') {
+		throw new Error('FORBIDDEN')
+	}
+
+	return next({ context })
+})
+
+/**
+ * Convenience builder for "admin-only" routers/procedures.
+ *
+ * Usage:
+ *   export const appRouter = os.router({
+ *     admin: adminOnly.router(admin),
+ *   })
+ */
+export const adminOnly = os.use(requireAdmin)
