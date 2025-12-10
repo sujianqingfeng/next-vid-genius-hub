@@ -2,7 +2,7 @@ import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
 import { schema } from '~/lib/db'
 import type { Comment } from '~/lib/db/schema'
 import type { VideoInfo } from '~/lib/media/types'
-import { bucketPaths } from '~/lib/storage/bucket-paths'
+import { bucketPaths } from '@app/media-domain'
 
 const COMMENTS_SERIES_TITLE = '外网真实评论'
 

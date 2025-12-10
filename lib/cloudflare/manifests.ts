@@ -1,4 +1,4 @@
-import { bucketPaths } from '~/lib/storage/bucket-paths'
+import { bucketPaths } from '@app/media-domain'
 import { requireOrchestratorUrl } from './utils'
 
 export interface MediaManifestPatch {

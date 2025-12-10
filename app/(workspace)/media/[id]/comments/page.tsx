@@ -62,7 +62,7 @@ import {
 	type RemotionTemplateId,
 } from '~/remotion/templates'
 import type { Comment } from '~/lib/db/schema'
-import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 

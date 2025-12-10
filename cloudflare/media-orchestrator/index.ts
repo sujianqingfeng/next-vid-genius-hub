@@ -1,6 +1,11 @@
 import { getContainer } from '@cloudflare/containers'
-import { bucketPaths, type InputVideoVariant } from '../../lib/storage/bucket-paths'
-import type { EngineId, JobStatus, JobTerminalStatus } from '../../lib/job/status'
+import {
+	bucketPaths,
+	type EngineId,
+	type InputVideoVariant,
+	type JobStatus,
+	type JobTerminalStatus,
+} from '@app/media-domain'
 export interface Env {
   JOBS: KVNamespace
   RENDER_BUCKET?: R2Bucket

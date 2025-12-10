@@ -10,7 +10,7 @@ import { PROXY_URL } from '~/lib/config/env'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import type { RequestContext } from '~/lib/auth/types'
-import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { TASK_KINDS } from '~/lib/job/task'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 

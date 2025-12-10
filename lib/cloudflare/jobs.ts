@@ -1,6 +1,6 @@
 import { postSignedJson } from '@app/job-callbacks'
 import { requireJobCallbackSecret, requireOrchestratorUrl } from './utils'
-import type { EngineId, JobStatus } from '~/lib/job/status'
+import type { EngineId, JobStatus } from '@app/media-domain'
 
 export interface StartJobInput extends Record<string, unknown> {
   mediaId: string

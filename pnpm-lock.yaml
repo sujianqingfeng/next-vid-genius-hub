@@ -23,6 +23,9 @@ importers:
       '@app/media-core':
         specifier: workspace:*
         version: link:packages/media-core
+      '@app/media-domain':
+        specifier: workspace:*
+        version: link:packages/media-domain
       '@app/media-node':
         specifier: workspace:*
         version: link:packages/media-node
@@ -200,6 +203,8 @@ importers:
       yaml:
         specifier: ^2.8.2
         version: 2.8.2
+
+  packages/media-domain: {}
 
   packages/media-node: {}
 

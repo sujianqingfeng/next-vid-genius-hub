@@ -5,7 +5,7 @@ import { logger } from '~/lib/logger'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import type { JobStatusResponse } from '~/lib/cloudflare'
-import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { TASK_KINDS } from '~/lib/job/task'
 
 export async function startCloudRender(input: { mediaId: string; subtitleConfig?: SubtitleRenderConfig }): Promise<{ jobId: string; taskId: string }> {

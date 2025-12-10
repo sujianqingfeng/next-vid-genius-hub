@@ -5,8 +5,8 @@ import { logger } from '~/lib/logger'
 import { type CloudflareInputFormat, type WhisperModel, WHISPER_MODELS } from '~/lib/subtitle/config/models'
 import { validateVttContent, normalizeVttContent } from '~/lib/subtitle/utils/vtt'
 import { putObjectByKey, upsertMediaManifest, startCloudJob, getJobStatus } from '~/lib/cloudflare'
-import { bucketPaths } from '~/lib/storage/bucket-paths'
-import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { bucketPaths } from '@app/media-domain'
+import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { TASK_KINDS } from '~/lib/job/task'
 
 export async function transcribe(input: {

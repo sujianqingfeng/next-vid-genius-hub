@@ -15,7 +15,7 @@ import {
 	serializeVttCues,
 	validateVttContent,
 } from '~/lib/subtitle/utils/vtt'
-import { bucketPaths } from '~/lib/storage/bucket-paths'
+import { bucketPaths } from '@app/media-domain'
 
 export async function updateTranslation(input: {
 	mediaId: string

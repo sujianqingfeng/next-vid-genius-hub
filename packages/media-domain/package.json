@@ -1,0 +1,33 @@
+{
+  "name": "@app/media-domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared media domain constants and types (engine IDs, job statuses, bucket paths).",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {},
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./bucket-paths": {
+      "import": "./dist/bucket-paths.js",
+      "types": "./dist/bucket-paths.d.ts"
+    },
+    "./job": {
+      "import": "./dist/job.js",
+      "types": "./dist/job.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "tsdown --clean"
+  }
+}

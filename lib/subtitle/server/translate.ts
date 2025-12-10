@@ -7,7 +7,7 @@ import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
 import { getTranslationPrompt, DEFAULT_TRANSLATION_PROMPT_ID } from '~/lib/subtitle/config/prompts'
 import { z } from 'zod'
 import type { AIModelId } from '~/lib/ai/models'
-import { bucketPaths } from '~/lib/storage/bucket-paths'
+import { bucketPaths } from '@app/media-domain'
 
 export async function translate(input: { mediaId: string; model: AIModelId; promptId?: string }): Promise<{ translation: string }> {
   const { mediaId, model, promptId } = input

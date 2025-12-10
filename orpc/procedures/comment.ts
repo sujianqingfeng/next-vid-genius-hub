@@ -19,7 +19,7 @@ import { logger } from '~/lib/logger'
 import { generateObject } from '~/lib/ai/chat'
 import { createId } from '@paralleldrive/cuid2'
 import type { RequestContext } from '~/lib/auth/types'
-import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { TASK_KINDS } from '~/lib/job/task'
 import { DEFAULT_TEMPLATE_ID } from '~/remotion/templates'
 

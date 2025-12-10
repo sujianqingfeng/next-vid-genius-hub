@@ -19,7 +19,7 @@ import {
 } from '~/lib/ai/models'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/query-client'
-import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 
 export default function ChannelsPage() {

@@ -16,7 +16,7 @@ import type {
 	SubtitleWorkflowState,
 } from '~/lib/subtitle/types'
 import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
-import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
