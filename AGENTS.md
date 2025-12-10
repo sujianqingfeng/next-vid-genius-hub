@@ -12,7 +12,6 @@
 - `pnpm lint` — run the Next.js ESLint suite; fix or annotate warnings.
 - `pnpm test` — run Vitest; add `--watch` for local loops and `--coverage` on persistence‑heavy changes.
 - `pnpm db:generate`, `pnpm db:studio`, `pnpm db:d1:migrate:remote` — manage Drizzle schema changes and inspect state against D1.
-- `pnpm rebuild:native` — rebuild native deps (e.g., `yt-dlp-wrap`) after Node/OS upgrades.
 
 ## Coding Style & Naming Conventions
 - Prefer TypeScript and server components; add `'use client'` only when interactivity is required.
