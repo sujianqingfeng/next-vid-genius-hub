@@ -3,6 +3,8 @@
 import { Coins, RefreshCw } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
@@ -27,29 +29,30 @@ export default function PointsPage() {
 	}))
 
 	return (
-		<div className="p-6 space-y-6">
-			<div className="flex items-center justify-between">
-				<div className="space-y-1">
-					<h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
-						<Coins className="w-5 h-5 text-primary" /> {t('title')}
-					</h1>
-					<p className="text-sm text-muted-foreground">
-						{t('subtitle')}
-					</p>
-				</div>
-				<Button
-					variant="secondary"
-					size="sm"
-					onClick={() => {
-						balanceQuery.refetch()
-						txQuery.refetch()
-					}}
-					disabled={isLoading}
-				>
-					<RefreshCw className="w-4 h-4 mr-2" /> {t('refresh')}
-				</Button>
-			</div>
-
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref="/"
+					showBackButton={false}
+					title={t('title')}
+					subtitle={t('subtitle')}
+					rightContent={
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => {
+								balanceQuery.refetch()
+								txQuery.refetch()
+							}}
+							disabled={isLoading}
+						>
+							<RefreshCw className="mr-2 h-4 w-4" /> {t('refresh')}
+						</Button>
+					}
+				/>
+			}
+		>
+			<div className="space-y-6">
 			<div className="grid gap-4 md:grid-cols-3">
 				<Card className="md:col-span-2">
 					<CardHeader className="pb-2">
@@ -119,5 +122,6 @@ export default function PointsPage() {
 				</CardContent>
 			</Card>
 		</div>
+		</WorkspacePageShell>
 	)
 }

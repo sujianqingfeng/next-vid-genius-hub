@@ -9,6 +9,8 @@ interface PageHeaderProps {
 	backText?: string
 	/** 页面标题 */
 	title?: string
+	/** 子标题/说明文案 */
+	subtitle?: string
 	/** 右侧内容 */
 	rightContent?: React.ReactNode
 	/** 是否显示返回按钮 */
@@ -25,6 +27,7 @@ export function PageHeader({
 	backHref,
 	backText = 'Back',
 	title,
+	subtitle,
 	rightContent,
 	showBackButton = true,
 	buttonVariant = 'outline',
@@ -32,23 +35,28 @@ export function PageHeader({
 	withBackground = false,
 }: PageHeaderProps) {
 	const headerContent = (
-		<div className="flex items-center justify-between">
-			<div className="flex items-center gap-4">
-				{showBackButton && (
-					<Button variant={buttonVariant} size={buttonSize} asChild>
-						<Link href={backHref}>
-							<ArrowLeft className="h-4 w-4 mr-2" />
-							{backText}
-						</Link>
-					</Button>
-				)}
-				{title && (
-					<>
-						{showBackButton && <div className="h-6 w-px bg-border" />}
-						<h1 className="text-xl font-semibold tracking-tight">
-							{title}
-						</h1>
-					</>
+		<div className="flex items-center justify-between gap-6">
+			<div className="flex flex-1 flex-col gap-2">
+				<div className="flex items-center gap-4">
+					{showBackButton && (
+						<Button variant={buttonVariant} size={buttonSize} asChild>
+							<Link href={backHref}>
+								<ArrowLeft className="mr-2 h-4 w-4" />
+								{backText}
+							</Link>
+						</Button>
+					)}
+					{title && (
+						<>
+							{showBackButton && <div className="h-6 w-px bg-border" />}
+							<h1 className="text-2xl font-semibold tracking-tight text-foreground">
+								{title}
+							</h1>
+						</>
+					)}
+				</div>
+				{subtitle && (
+					<p className="text-sm text-muted-foreground">{subtitle}</p>
 				)}
 			</div>
 			{rightContent && (
@@ -59,12 +67,11 @@ export function PageHeader({
 
 	if (withBackground) {
 		return (
-			<div className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50 mb-4">
+			<div className="mb-4 bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
 				<div className="py-3 px-4">{headerContent}</div>
 			</div>
 		)
 	}
 
-	return <div className="mb-6 px-4">{headerContent}</div>
+	return <div className="px-4">{headerContent}</div>
 }
-

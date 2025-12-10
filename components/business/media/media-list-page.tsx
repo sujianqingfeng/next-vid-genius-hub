@@ -5,6 +5,8 @@ import { Plus, Video } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { MediaCard } from '~/components/business/media/media-card'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader } from '~/components/ui/card'
@@ -42,29 +44,25 @@ export function MediaListPage() {
 	const totalPages = Math.ceil(total / MEDIA_PAGE_SIZE)
 
 	return (
-		<div className="min-h-full space-y-8">
-			<div className="px-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-				<div className="flex items-end justify-between">
-					<div className="space-y-2">
-						<h1 className="text-4xl font-bold tracking-tight text-foreground">
-							{t('title')}
-						</h1>
-						<p className="text-lg text-muted-foreground font-light">
-							{t('subtitle')}
-						</p>
-					</div>
-					<Link href="/media/download">
-						<Button className="flex items-center gap-2 shadow-sm hover:shadow-md transition-all h-10 px-6">
-							<Plus className="w-4 h-4" strokeWidth={1.5} />
-							{t('downloadCta')}
-						</Button>
-					</Link>
-				</div>
-			</div>
-
-			{/* Main Content */}
-			<div className="px-6 pb-12">
-				{/* Loading state */}
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref="/"
+					showBackButton={false}
+					title={t('title')}
+					subtitle={t('subtitle')}
+					rightContent={
+						<Link href="/media/download">
+							<Button className="flex items-center gap-2 h-10 px-6 shadow-sm transition-all hover:shadow-md">
+								<Plus className="h-4 w-4" strokeWidth={1.5} />
+								{t('downloadCta')}
+							</Button>
+						</Link>
+					}
+				/>
+			}
+		>
+			<div className="pb-12">
 				{mediaQuery.isLoading && (
 					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
 						{Array.from({ length: MEDIA_PAGE_SIZE }).map((_, idx) => (
@@ -82,7 +80,6 @@ export function MediaListPage() {
 					</div>
 				)}
 
-				{/* Error state */}
 				{mediaQuery.isError && (
 					<Card className="glass border-destructive/20 bg-destructive/5">
 						<CardContent className="p-12 text-center">
@@ -106,7 +103,6 @@ export function MediaListPage() {
 					</Card>
 				)}
 
-				{/* Empty state (without CTA button) */}
 				{mediaQuery.isSuccess && mediaQuery.data.items.length === 0 && (
 					<Card className="glass border-dashed border-border/50">
 						<CardContent className="p-20 text-center">
@@ -123,7 +119,6 @@ export function MediaListPage() {
 					</Card>
 				)}
 
-				{/* Media Grid */}
 				{mediaQuery.isSuccess && mediaQuery.data.items.length > 0 && (
 					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
 						{mediaQuery.data.items.map((media) => (
@@ -132,7 +127,6 @@ export function MediaListPage() {
 					</div>
 				)}
 
-				{/* Pagination */}
 				{mediaQuery.isSuccess && totalPages > 1 && (
 					<div className="mt-16 flex justify-center">
 						<Pagination className="glass inline-flex w-auto rounded-full px-4 py-2 shadow-sm">
@@ -183,6 +177,6 @@ export function MediaListPage() {
 					</div>
 				)}
 			</div>
-		</div>
+		</WorkspacePageShell>
 	)
 }

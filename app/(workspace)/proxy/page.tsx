@@ -3,6 +3,8 @@
 import * as React from 'react'
 import { Plus, Shield, Server } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { Button } from '~/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { SSRSubscriptionsList } from '~/components/business/proxy/ssr-subscriptions-list'
@@ -14,30 +16,26 @@ export default function ProxyPage() {
 	const [isAddSubscriptionDialogOpen, setIsAddSubscriptionDialogOpen] = React.useState(false)
 
 	return (
-		<div className="min-h-full space-y-8">
-			{/* Header */}
-			<div className="px-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-				<div className="flex items-end justify-between">
-					<div className="space-y-2">
-						<h1 className="text-4xl font-bold tracking-tight text-foreground">
-							{t('title')}
-						</h1>
-						<p className="text-lg text-muted-foreground font-light">
-							{t('subtitle')}
-						</p>
-					</div>
-					<Button 
-						onClick={() => setIsAddSubscriptionDialogOpen(true)}
-						className="flex items-center gap-2 shadow-sm hover:shadow-md transition-all h-10 px-6"
-					>
-						<Plus className="h-4 w-4" strokeWidth={1.5} />
-						{t('addSubscription')}
-					</Button>
-				</div>
-			</div>
-
-			{/* Main Content */}
-			<div className="px-6 pb-12">
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref="/"
+					showBackButton={false}
+					title={t('title')}
+					subtitle={t('subtitle')}
+					rightContent={
+						<Button
+							onClick={() => setIsAddSubscriptionDialogOpen(true)}
+							className="flex h-10 items-center gap-2 px-6 shadow-sm transition-all hover:shadow-md"
+						>
+							<Plus className="h-4 w-4" strokeWidth={1.5} />
+							{t('addSubscription')}
+						</Button>
+					}
+				/>
+			}
+		>
+			<div className="pb-12">
 				<Tabs defaultValue="subscriptions" className="space-y-8">
 					<TabsList className="glass inline-flex h-12 items-center justify-center rounded-full bg-secondary/30 p-1 text-muted-foreground shadow-sm">
 						<TabsTrigger 
@@ -75,6 +73,6 @@ export default function ProxyPage() {
 				open={isAddSubscriptionDialogOpen}
 				onOpenChange={setIsAddSubscriptionDialogOpen}
 			/>
-		</div>
+		</WorkspacePageShell>
 	)
 }

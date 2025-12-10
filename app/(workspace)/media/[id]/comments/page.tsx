@@ -19,6 +19,8 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { CommentCard } from '~/components/business/media/comment-card'
 import { RemotionPreviewCard } from '~/components/business/media/remotion-preview-card'
 import { PublishTitleGenerator } from '~/components/business/media/publish-title-generator'
@@ -487,39 +489,30 @@ export default function CommentsPage() {
 	}
 
 	return (
-		<div className="min-h-screen space-y-8">
-			{/* Header */}
-			<div className="px-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-4">
-						<Link
-							href={`/media/${id}`}
-							className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-						>
-							<ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
-						</Link>
-						<div className="space-y-1">
-							<h1 className="text-2xl font-bold tracking-tight text-foreground">Comments</h1>
-							<p className="text-sm text-muted-foreground font-light">
-								Manage, translate, and render comments for this video.
-							</p>
-						</div>
-					</div>
-					{mediaQuery.data?.translatedTitle && (
-						<Button
-							variant="outline"
-							size="sm"
-							className="h-9 gap-2 shadow-sm"
-							onClick={handleEditClick}
-						>
-							<Edit className="h-4 w-4" strokeWidth={1.5} />
-							Edit Titles
-						</Button>
-					)}
-				</div>
-			</div>
-
-			{/* Edit Dialog */}
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref={`/media/${id}`}
+					backText="Back"
+					title="Comments"
+					subtitle="Manage, translate, and render comments for this video."
+					rightContent={
+						mediaQuery.data?.translatedTitle ? (
+							<Button
+								variant="outline"
+								size="sm"
+								className="h-9 gap-2 shadow-sm"
+								onClick={handleEditClick}
+							>
+								<Edit className="h-4 w-4" strokeWidth={1.5} />
+								Edit Titles
+							</Button>
+						) : null
+					}
+				/>
+			}
+		>
+			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
 			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
 				<DialogContent className="glass border-white/20">
 					<DialogHeader>
@@ -566,8 +559,7 @@ export default function CommentsPage() {
 				</DialogContent>
 			</Dialog>
 
-			{/* Main Content */}
-			<div className="px-6 pb-12">
+			<div className="pb-12">
 				{/* Preview - Compact Top */}
 				<div className="mb-8">
 					<RemotionPreviewCard
@@ -1133,6 +1125,6 @@ ${
 					</div>
 				</div>
 			</div>
-		</div>
+		</WorkspacePageShell>
 	)
 }

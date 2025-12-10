@@ -11,6 +11,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { Step1Transcribe } from '~/components/business/media/subtitles/Step1Transcribe'
 import { Step2Translate } from '~/components/business/media/subtitles/Step2Translate'
 import { Step3Render } from '~/components/business/media/subtitles/Step3Render'
@@ -125,7 +127,7 @@ export default function SubtitlesPage() {
 	// 加载状态
 	if (isLoading) {
 		return (
-			<div className="flex items-center justify-center min-h-screen">
+			<div className="flex min-h-screen items-center justify-center">
 				<Loader2 className="h-8 w-8 animate-spin text-primary" />
 			</div>
 		)
@@ -134,13 +136,13 @@ export default function SubtitlesPage() {
 	// 错误状态
 	if (isError) {
 		return (
-			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-center space-y-4">
-					<div className="mx-auto h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center">
+				<div className="space-y-4 text-center">
+					<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
 						<AlertCircle className="h-8 w-8 text-destructive" strokeWidth={1.5} />
 					</div>
 					<h2 className="text-xl font-semibold">Failed to load media</h2>
-					<p className="text-muted-foreground max-w-md mx-auto">
+					<p className="mx-auto max-w-md text-muted-foreground">
 						{error?.message}
 					</p>
 					<Button asChild variant="outline" className="mt-4">
@@ -152,26 +154,17 @@ export default function SubtitlesPage() {
 	}
 
 	return (
-		<div className="min-h-screen space-y-8">
-			{/* Header */}
-			<div className="px-6 pt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-				<div className="flex items-center gap-4">
-					<Link
-						href={`/media/${mediaId}`}
-						className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-					>
-						<ArrowLeft className="h-5 w-5" strokeWidth={1.5} />
-					</Link>
-					<div className="space-y-1">
-						<h1 className="text-2xl font-bold tracking-tight text-foreground">Generate Subtitles</h1>
-						<p className="text-sm text-muted-foreground font-light">
-							Transcribe, translate, and burn subtitles into your video.
-						</p>
-					</div>
-				</div>
-			</div>
-
-			<div className="px-6 pb-12">
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref={`/media/${mediaId}`}
+					backText="Back"
+					title="Generate Subtitles"
+					subtitle="Transcribe, translate, and burn subtitles into your video."
+				/>
+			}
+		>
+			<div className="pb-12">
 				{/* Always-visible preview pane */}
 				<div className="mb-8">
 					<PreviewPane

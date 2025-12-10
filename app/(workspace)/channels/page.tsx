@@ -5,6 +5,8 @@ import { Trash2 } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { ChannelVideoList } from '~/components/business/channels/channel-video-list'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
@@ -124,37 +126,37 @@ export default function ChannelsPage() {
 	)
 
 	return (
-		<div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
-			<header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
-				<div className="space-y-2">
-					<h1 className="text-4xl font-bold tracking-tight text-foreground">
-						{t('title')}
-					</h1>
-					<p className="text-lg text-muted-foreground font-light max-w-2xl">
-						{t('subtitle')}
-					</p>
-				</div>
-				<form
-					onSubmit={handleAddChannel}
-					className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center"
-				>
-					<Input
-						value={newInput}
-						onChange={(e) => setNewInput(e.target.value)}
-						placeholder={t('inputPlaceholder')}
-						className="w-full min-w-0 sm:w-80 h-10 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-all"
-					/>
-					<Button
-						type="submit"
-						disabled={!newInput.trim() || createMutation.isPending}
-						className="h-10 px-6 shadow-sm hover:shadow-md transition-all"
-					>
-						{createMutation.isPending ? t('adding') : t('add')}
-					</Button>
-				</form>
-			</header>
-
-			<main className="space-y-6">
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref="/"
+					showBackButton={false}
+					title={t('title')}
+					subtitle={t('subtitle')}
+					rightContent={
+						<form
+							onSubmit={handleAddChannel}
+							className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center"
+						>
+							<Input
+								value={newInput}
+								onChange={(e) => setNewInput(e.target.value)}
+								placeholder={t('inputPlaceholder')}
+								className="h-10 w-full min-w-0 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-all sm:w-80"
+							/>
+							<Button
+								type="submit"
+								disabled={!newInput.trim() || createMutation.isPending}
+								className="h-10 px-6 shadow-sm transition-all hover:shadow-md"
+							>
+								{createMutation.isPending ? t('adding') : t('add')}
+							</Button>
+						</form>
+					}
+				/>
+			}
+		>
+			<main className="mx-auto max-w-6xl space-y-6">
 				{listQuery.isLoading && (
 					<div className="py-20 text-center text-muted-foreground animate-pulse">
 						{t('loading')}
@@ -223,7 +225,7 @@ export default function ChannelsPage() {
 					</div>
 				)}
 			</main>
-		</div>
+		</WorkspacePageShell>
 	)
 }
 

@@ -1,11 +1,23 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Calendar, Eye, FileText, Heart, MessageSquare, RefreshCw, User, Play } from 'lucide-react'
+import {
+	ArrowLeft,
+	Calendar,
+	Eye,
+	FileText,
+	Heart,
+	MessageSquare,
+	RefreshCw,
+	User,
+	Play,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
@@ -164,21 +176,17 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 	)
 
 	return (
-		<div className="min-h-screen space-y-8">
-			{/* Back navigation */}
-			<div className="px-6 py-6 animate-in fade-in slide-in-from-top-2 duration-500">
-				<Link
-					href="/media"
-					className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group"
-				>
-						<ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" strokeWidth={1.5} />
-						{t('back')}
-					</Link>
-				</div>
-
-			{/* Loading State */}
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref="/media"
+					backText={t('back')}
+					title={media?.title}
+				/>
+			}
+		>
 			{isLoading && (
-				<div className="px-6 grid gap-8 lg:grid-cols-2 max-w-6xl mx-auto animate-pulse">
+				<div className="mx-auto grid max-w-6xl gap-8 animate-pulse lg:grid-cols-2">
 					<div className="space-y-6">
 						<Skeleton className="aspect-[16/9] rounded-2xl bg-secondary/50" />
 					</div>
@@ -197,9 +205,8 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 				</div>
 			)}
 
-			{/* Error State */}
 			{isError && (
-				<div className="px-6 max-w-2xl mx-auto">
+				<div className="mx-auto max-w-2xl">
 					<Card className="glass border-destructive/20 bg-destructive/5">
 						<CardContent className="p-12 text-center">
 							<p className="text-destructive font-medium text-lg">
@@ -210,24 +217,19 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 				</div>
 			)}
 
-			{/* Media Content */}
 			{media && (
-				<div className="px-6 pb-12 space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
-					{/* Header Section */}
-					<div className="grid gap-8 lg:grid-cols-2 max-w-6xl mx-auto">
-						{/* Preview (fallbacks to thumbnail) */}
+				<div className="mx-auto max-w-6xl space-y-10 pb-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+					<div className="grid gap-8 lg:grid-cols-2">
 						<div className="rounded-2xl overflow-hidden shadow-lg ring-1 ring-border/50">
 							<MediaVideoPreview media={media} id={id} />
 						</div>
 
-						{/* Metadata */}
 						<div className="flex flex-col justify-center p-6 glass rounded-3xl">
 							<MediaMetadata media={media} />
 						</div>
 					</div>
 
-					{/* Actions Section */}
-					<div className="max-w-6xl mx-auto">
+					<div>
 						<div className="glass rounded-3xl p-6 space-y-6">
 							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 								<h3 className="text-lg font-semibold text-foreground">{t('actions.title')}</h3>
@@ -285,6 +287,6 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 					</div>
 				</div>
 			)}
-		</div>
+		</WorkspacePageShell>
 	)
 }

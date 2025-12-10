@@ -5,6 +5,8 @@ import { ListChecks, RefreshCw, Search, SquarePen } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
@@ -184,28 +186,33 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 	}
 
 	return (
-		<div className="min-h-full space-y-8 px-6 py-8">
-			<div className="flex items-start justify-between gap-4">
-				<div className="space-y-2">
-					<h1 className="text-3xl font-bold tracking-tight text-foreground">{t('title')}</h1>
-					<p className="text-muted-foreground">{t('subtitle')}</p>
-				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => {
-						if (queryEnabled) {
-							byTargetQuery.refetch()
-						} else {
-							recentQuery.refetch()
-						}
-					}}
-				>
-					<RefreshCw className="h-4 w-4 mr-2" strokeWidth={1.5} />
-					{t('refresh')}
-				</Button>
-			</div>
-
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref="/"
+					showBackButton={false}
+					title={t('title')}
+					subtitle={t('subtitle')}
+					rightContent={
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								if (queryEnabled) {
+									byTargetQuery.refetch()
+								} else {
+									recentQuery.refetch()
+								}
+							}}
+						>
+							<RefreshCw className="mr-2 h-4 w-4" strokeWidth={1.5} />
+							{t('refresh')}
+						</Button>
+					}
+				/>
+			}
+		>
+			<div className="space-y-8">
 			<Card>
 				<CardHeader className="pb-3">
 					<CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -306,5 +313,6 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 				</div>
 			)}
 		</div>
+		</WorkspacePageShell>
 	)
 }

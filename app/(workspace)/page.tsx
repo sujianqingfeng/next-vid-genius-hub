@@ -1,25 +1,26 @@
 import { BarChart3, Download, FileVideo, TrendingUp } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 
 export default async function DashboardPage() {
 	const t = await getTranslations('Dashboard')
 
 	return (
-		<div className="min-h-full p-6 space-y-8">
-			{/* Header Section */}
-			<div className="flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
-				<h1 className="text-4xl font-bold tracking-tight text-foreground">
-					{t('title')}
-				</h1>
-				<p className="text-muted-foreground text-lg font-light">
-					{t('subtitle')}
-				</p>
-			</div>
-
-			{/* Stats Grid */}
-			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-				<Card className="glass border-none shadow-sm hover:shadow-md transition-all duration-300">
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref="/"
+					showBackButton={false}
+					title={t('title')}
+					subtitle={t('subtitle')}
+					withBackground
+				/>
+			}
+		>
+			<div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 md:grid-cols-2 lg:grid-cols-4">
+				<Card className="glass border-none shadow-sm transition-all duration-300 hover:shadow-md">
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium text-muted-foreground">
 							{t('cards.totalVideos.title')}
@@ -28,12 +29,12 @@ export default async function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-3xl font-bold text-foreground">0</div>
-						<p className="text-xs text-muted-foreground mt-1">
+						<p className="mt-1 text-xs text-muted-foreground">
 							{t('cards.totalVideos.delta')}
 						</p>
 					</CardContent>
 				</Card>
-				<Card className="glass border-none shadow-sm hover:shadow-md transition-all duration-300">
+				<Card className="glass border-none shadow-sm transition-all duration-300 hover:shadow-md">
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium text-muted-foreground">
 							{t('cards.media.title')}
@@ -42,12 +43,12 @@ export default async function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-3xl font-bold text-foreground">0</div>
-						<p className="text-xs text-muted-foreground mt-1">
+						<p className="mt-1 text-xs text-muted-foreground">
 							{t('cards.media.delta')}
 						</p>
 					</CardContent>
 				</Card>
-				<Card className="glass border-none shadow-sm hover:shadow-md transition-all duration-300">
+				<Card className="glass border-none shadow-sm transition-all duration-300 hover:shadow-md">
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium text-muted-foreground">
 							{t('cards.processing.title')}
@@ -56,12 +57,12 @@ export default async function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-3xl font-bold text-foreground">0</div>
-						<p className="text-xs text-muted-foreground mt-1">
+						<p className="mt-1 text-xs text-muted-foreground">
 							{t('cards.processing.delta')}
 						</p>
 					</CardContent>
 				</Card>
-				<Card className="glass border-none shadow-sm hover:shadow-md transition-all duration-300">
+				<Card className="glass border-none shadow-sm transition-all duration-300 hover:shadow-md">
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium text-muted-foreground">
 							{t('cards.analytics.title')}
@@ -70,60 +71,68 @@ export default async function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-3xl font-bold text-foreground">0</div>
-						<p className="text-xs text-muted-foreground mt-1">
+						<p className="mt-1 text-xs text-muted-foreground">
 							{t('cards.analytics.delta')}
 						</p>
 					</CardContent>
 				</Card>
 			</div>
 
-			{/* Quick Actions */}
-			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
-				<Card className="glass border-none shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300 cursor-pointer group">
+			<div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 md:grid-cols-2 lg:grid-cols-3">
+				<Card className="glass group cursor-pointer border-none shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
 					<CardContent className="p-6">
 						<div className="flex items-center gap-5">
-							<div className="h-14 w-14 rounded-2xl bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-								<Download className="h-7 w-7 text-foreground group-hover:text-primary transition-colors" strokeWidth={1.5} />
+							<div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/50 transition-colors group-hover:bg-primary/10">
+								<Download
+									className="h-7 w-7 text-foreground transition-colors group-hover:text-primary"
+									strokeWidth={1.5}
+								/>
 							</div>
 							<div>
-								<h3 className="font-semibold text-lg text-foreground">
+								<h3 className="text-lg font-semibold text-foreground">
 									{t('quickActions.download.title')}
 								</h3>
-								<p className="text-sm text-muted-foreground font-light">
+								<p className="text-sm font-light text-muted-foreground">
 									{t('quickActions.download.desc')}
 								</p>
 							</div>
 						</div>
 					</CardContent>
 				</Card>
-				<Card className="glass border-none shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300 cursor-pointer group">
+				<Card className="glass group cursor-pointer border-none shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
 					<CardContent className="p-6">
 						<div className="flex items-center gap-5">
-							<div className="h-14 w-14 rounded-2xl bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-								<FileVideo className="h-7 w-7 text-foreground group-hover:text-primary transition-colors" strokeWidth={1.5} />
+							<div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/50 transition-colors group-hover:bg-primary/10">
+								<FileVideo
+									className="h-7 w-7 text-foreground transition-colors group-hover:text-primary"
+									strokeWidth={1.5}
+								/>
 							</div>
 							<div>
-								<h3 className="font-semibold text-lg text-foreground">
+								<h3 className="text-lg font-semibold text-foreground">
 									{t('quickActions.browse.title')}
 								</h3>
-								<p className="text-sm text-muted-foreground font-light">
+								<p className="text-sm font-light text-muted-foreground">
 									{t('quickActions.browse.desc')}
 								</p>
 							</div>
 						</div>
 					</CardContent>
 				</Card>
-				<Card className="glass border-none shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-300 cursor-pointer group">
+				<Card className="glass group cursor-pointer border-none shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
 					<CardContent className="p-6">
 						<div className="flex items-center gap-5">
-							<div className="h-14 w-14 rounded-2xl bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-								<BarChart3 className="h-7 w-7 text-foreground group-hover:text-primary transition-colors" strokeWidth={1.5} />
+							<div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/50 transition-colors group-hover:bg-primary/10">
+								<BarChart3
+									className="h-7 w-7 text-foreground transition-colors group-hover:text-primary"
+									strokeWidth={1.5}
+								/>
 							</div>
 							<div>
-								<h3 className="font-semibold text-lg text-foreground">
+								<h3 className="text-lg font-semibold text-foreground">
 									{t('quickActions.analytics.title')}
 								</h3>
-								<p className="text-sm text-muted-foreground font-light">
+								<p className="text-sm font-light text-muted-foreground">
 									{t('quickActions.analytics.desc')}
 								</p>
 							</div>
@@ -131,6 +140,6 @@ export default async function DashboardPage() {
 					</CardContent>
 				</Card>
 			</div>
-		</div>
+		</WorkspacePageShell>
 	)
 }

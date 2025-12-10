@@ -1,10 +1,12 @@
 'use client'
 
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Download, Link, Loader2, Cloud } from 'lucide-react'
+import { Download, Link, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
+import { PageHeader } from '~/components/business/layout/page-header'
+import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { Button } from '~/components/ui/button'
 import {
 	Card,
@@ -239,261 +241,303 @@ export default function NewDownloadPage() {
 	])
 
 	return (
-		<div className="min-h-screen space-y-8">
-			<div className="px-6 py-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-				<div className="mx-auto w-full max-w-5xl space-y-8">
-					<header className="flex flex-col items-center gap-4 text-center">
-						<div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20">
-							<Cloud className="h-8 w-8" strokeWidth={1.5} />
-						</div>
-						<div className="space-y-2">
-							<h1 className="text-4xl font-bold tracking-tight text-foreground">
-								{t('title')}
-							</h1>
-							<p className="text-lg text-muted-foreground font-light max-w-xl mx-auto">
-								{t('subtitle')}
-							</p>
-						</div>
-					</header>
-
-					<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),360px]">
-						<form action={formAction} className="space-y-6">
-							<Card className="glass border-none shadow-sm">
-								<CardHeader className="space-y-2 pb-6 border-b border-border/40">
-									<CardTitle className="text-xl">{t('form.title')}</CardTitle>
-									<CardDescription className="text-base font-light">
-										{t('form.desc')}
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="space-y-8 pt-6">
-									<div className="space-y-3">
-										<label htmlFor="url" className="text-sm font-medium text-foreground/80">
-											{t('form.urlLabel')}
-										</label>
-										<div className="relative group">
-											<Link className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" strokeWidth={1.5} />
-											<Input
-												id="url"
-												name="url"
-												type="url"
-												placeholder={t('form.urlPlaceholder')}
-												required
-												disabled={isSubmitting}
-												value={urlValue}
-												onChange={(e) => setUrlValue(e.target.value)}
-												className="h-12 pl-10 bg-background/50 border-border/50 focus:border-primary/50 transition-all"
-											/>
-										</div>
+		<WorkspacePageShell
+			header={
+				<PageHeader
+					backHref="/media"
+					title={t('title')}
+					subtitle={t('subtitle')}
+				/>
+			}
+		>
+			<div className="mx-auto w-full max-w-5xl space-y-8">
+				<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),360px]">
+					<form action={formAction} className="space-y-6">
+						<Card className="glass border-none shadow-sm">
+							<CardHeader className="border-b border-border/40 pb-6 space-y-2">
+								<CardTitle className="text-xl">{t('form.title')}</CardTitle>
+								<CardDescription className="text-base font-light">
+									{t('form.desc')}
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="pt-6 space-y-8">
+								<div className="space-y-3">
+									<label htmlFor="url" className="text-sm font-medium text-foreground/80">
+										{t('form.urlLabel')}
+									</label>
+									<div className="group relative">
+										<Link className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" strokeWidth={1.5} />
+										<Input
+											id="url"
+											name="url"
+											type="url"
+											placeholder={t('form.urlPlaceholder')}
+											required
+											disabled={isSubmitting}
+											value={urlValue}
+											onChange={(e) => setUrlValue(e.target.value)}
+											className="h-12 border-border/50 bg-background/50 pl-10 transition-all focus:border-primary/50"
+										/>
 									</div>
+								</div>
 
-									<div className="grid gap-6 sm:grid-cols-2">
-										<div className="space-y-3">
-											<label htmlFor="quality" className="text-sm font-medium text-foreground/80">
-												{t('form.quality')}
-											</label>
-											<div className="space-y-2">
-												<Select name="quality" defaultValue="1080p" disabled={isSubmitting}>
-													<SelectTrigger id="quality" className="h-10 bg-background/50 border-border/50">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
+								<div className="grid gap-6 sm:grid-cols-2">
+									<div className="space-y-3">
+										<label htmlFor="quality" className="text-sm font-medium text-foreground/80">
+											{t('form.quality')}
+										</label>
+										<div className="space-y-2">
+											<Select name="quality" defaultValue="1080p" disabled={isSubmitting}>
+												<SelectTrigger id="quality" className="h-10 border-border/50 bg-background/50">
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
 													<SelectItem value="1080p">{t('form.quality1080')}</SelectItem>
 													<SelectItem value="720p">{t('form.quality720')}</SelectItem>
 												</SelectContent>
 											</Select>
-											<p className="text-[10px] text-muted-foreground font-light">
+											<p className="text-[10px] font-light text-muted-foreground">
 												{t('form.desc')}
 											</p>
 										</div>
 									</div>
-
-									<div className="space-y-3">
-										<label className="text-sm font-medium text-foreground/80">{t('form.proxyLabel')}</label>
-										<div className="space-y-2">
-											<ProxySelector
-												value={selectedProxyId}
-												onValueChange={setSelectedProxyId}
-												disabled={isSubmitting}
-													allowDirect={false}
-												/>
-												{!hasSelectedProxy && (
-													<p className="text-[10px] text-destructive font-medium">
-														{t('errors.missingProxy')}
-													</p>
-												)}
-											</div>
-										</div>
-									</div>
-
-										<div className="rounded-xl border border-dashed border-border/60 bg-secondary/20 p-5">
-											<div className="flex items-start justify-between gap-4">
-												<div className="space-y-1">
-													<p className="text-sm font-medium text-foreground">
-														{t('form.rotateLabel')}
-													</p>
-													<p className="text-xs text-muted-foreground font-light">
-														{t('form.rotateHint')}
-													</p>
-												</div>
-												<Switch
-													checked={autoRotate}
-													onCheckedChange={(v) => setAutoRotate(Boolean(v))}
-												disabled={isSubmitting}
-												className="data-[state=checked]:bg-primary"
-											/>
-										</div>
-										{autoRotate && (
-											<div className="mt-5 grid gap-5 sm:grid-cols-2 animate-in fade-in slide-in-from-top-2 duration-300">
-													<div className="space-y-2">
-														<label htmlFor="maxAttempts" className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-															{t('form.maxAttempts')}
-														</label>
-														<Input
-															id="maxAttempts"
-														type="number"
-														min={1}
-														max={50}
-														value={maxAttempts}
-														onChange={(e) =>
-															setMaxAttempts(Math.max(1, Math.min(50, Number(e.target.value) || 1)))
-														}
-														disabled={isSubmitting || !autoRotate}
-														className="h-9 bg-background/50 border-border/50"
-													/>
-												</div>
-													<div className="space-y-2">
-														<label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-															{t('form.scope.label')}
-														</label>
-														<Select
-															value={rotationScope}
-															onValueChange={(v) =>
-																setRotationScope((v as 'selectedFirst' | 'all') || 'selectedFirst')
-															}
-															disabled={isSubmitting || !autoRotate}
-														>
-															<SelectTrigger className="h-9 bg-background/50 border-border/50">
-																<SelectValue />
-															</SelectTrigger>
-															<SelectContent>
-																<SelectItem value="selectedFirst">{t('form.scope.selectedFirst')}</SelectItem>
-																<SelectItem value="all">{t('form.scope.all')}</SelectItem>
-															</SelectContent>
-														</Select>
-													</div>
-												</div>
-											)}
-									</div>
-
-									{error && (
-										<div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive font-medium flex items-center gap-2">
-											<div className="h-1.5 w-1.5 rounded-full bg-destructive" />
-											{error}
-										</div>
-									)}
-								</CardContent>
-								<CardFooter className="flex flex-col gap-4 sm:flex-row sm:items-center pt-2 pb-6 border-t border-border/40 mt-6">
-										<Button type="submit" className="flex-1 h-12 text-base shadow-md hover:shadow-lg transition-all" disabled={isSubmitting || !hasSelectedProxy}>
-											{isSubmitting ? (
-												<>
-													<Loader2 className="mr-2 h-5 w-5 animate-spin" />
-													{t('form.submitPending')}
-												</>
-											) : (
-												<>
-													<Download className="mr-2 h-5 w-5" strokeWidth={1.5} />
-													{t('form.submit')}
-												</>
-											)}
-										</Button>
-										<Button type="button" variant="ghost" className="h-12 sm:w-auto hover:bg-secondary/50" onClick={handleReset}>
-											{t('form.reset')}
-										</Button>
-									</CardFooter>
-								</Card>
-							</form>
-
-						<div className="space-y-6">
-							<Card className="glass border-none shadow-sm h-fit sticky top-6">
-								<CardHeader className="space-y-2 pb-4 border-b border-border/40">
-									<CardTitle className="flex items-center gap-2 text-lg font-semibold">
-											<Download className="h-5 w-5 text-primary" strokeWidth={1.5} />
-											{t('progress.title')}
-										</CardTitle>
-										<CardDescription className="text-xs font-light">
-											{t('progress.hint')}
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-6 pt-6">
-										<div className="space-y-3">
-											<div className="flex items-center justify-between text-sm">
-												<span className="text-muted-foreground font-medium">{t('progress.status')}</span>
-												<span className={`font-semibold px-2 py-0.5 rounded-full text-xs ${
-													jobActive 
-														? 'bg-primary/10 text-primary' 
-														: 'bg-secondary text-muted-foreground'
-												}`}>
-													{jobActive ? statusLabel ?? t('progress.queued') : t('progress.idle')}
-												</span>
-											</div>
-											<Progress value={progressPercent ?? 0} className="h-2" />
-											{phaseLabel && (
-												<div className="flex items-center justify-between text-xs text-muted-foreground">
-													<span>{t('progress.phase')}</span>
-													<span className="text-foreground font-medium">{phaseLabel}</span>
-												</div>
-											)}
-										</div>
-
-									<div className="space-y-3 pt-4 border-t border-border/40">
-											<div className="flex items-center justify-between gap-2 text-xs">
-												<span className="text-muted-foreground">{t('progress.labels.jobId')}</span>
-												<span className="font-mono text-foreground bg-secondary/30 px-1.5 py-0.5 rounded">{cloudJobId ? `${cloudJobId.slice(0, 8)}...` : '—'}</span>
-											</div>
-											<div className="flex items-center justify-between gap-2 text-xs">
-												<span className="text-muted-foreground">{t('progress.labels.mediaId')}</span>
-												<span className="font-mono text-foreground bg-secondary/30 px-1.5 py-0.5 rounded">{cloudMediaId ? `${cloudMediaId.slice(0, 8)}...` : '—'}</span>
-											</div>
-											<div className="flex items-center justify-between gap-2 text-xs">
-												<span className="text-muted-foreground">{t('progress.labels.proxy')}</span>
-												<span className="max-w-[60%] truncate text-foreground font-medium" title={renderProxyLabel(selectedProxyId)}>
-													{renderProxyLabel(selectedProxyId)}
-												</span>
-											</div>
-											<div className="flex items-center justify-between gap-2 text-xs">
-												<span className="text-muted-foreground">{t('progress.labels.autoRetry')}</span>
-												<span className="text-foreground font-medium">{rotationSummary}</span>
-											</div>
-										</div>
-
-										{cloudStatusQuery.data?.message && (
-										<div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive font-medium">
-											{cloudStatusQuery.data.message}
-										</div>
-									)}
-								</CardContent>
-									{rotationActive && (
-										<CardFooter className="flex justify-end pt-2 pb-6 border-t border-border/40 mt-2">
-											<Button
-												variant="secondary"
-												size="sm"
-												disabled={autoRetryStopped || isSubmitting}
-												onClick={() => setAutoRetryStopped(true)}
-												className="w-full bg-secondary/80 hover:bg-secondary"
-											>
-												{t('progress.labels.autoRetry')}
-											</Button>
-										</CardFooter>
-									)}
-								</Card>
-
-								<div className="rounded-xl bg-secondary/20 p-4 text-xs text-muted-foreground font-light leading-relaxed">
-									{t('progress.footer')}
 								</div>
-							</div>
+
+								<div className="space-y-3">
+									<label className="text-sm font-medium text-foreground/80">
+										{t('form.proxyLabel')}
+									</label>
+									<div className="space-y-2">
+										<ProxySelector
+											value={selectedProxyId}
+											onValueChange={setSelectedProxyId}
+											disabled={isSubmitting}
+											allowDirect={false}
+										/>
+										{!hasSelectedProxy && (
+											<p className="text-[10px] font-medium text-destructive">
+												{t('errors.missingProxy')}
+											</p>
+										)}
+									</div>
+								</div>
+
+								<div className="rounded-xl border border-dashed border-border/60 bg-secondary/20 p-5">
+									<div className="flex items-start justify-between gap-4">
+										<div className="space-y-1">
+											<p className="text-sm font-medium text-foreground">
+												{t('form.rotateLabel')}
+											</p>
+											<p className="text-xs font-light text-muted-foreground">
+												{t('form.rotateHint')}
+											</p>
+										</div>
+										<Switch
+											checked={autoRotate}
+											onCheckedChange={(v) => setAutoRotate(Boolean(v))}
+											disabled={isSubmitting}
+											className="data-[state=checked]:bg-primary"
+										/>
+									</div>
+									{autoRotate && (
+										<div className="mt-5 grid gap-5 animate-in fade-in slide-in-from-top-2 duration-300 sm:grid-cols-2">
+											<div className="space-y-2">
+												<label
+													htmlFor="maxAttempts"
+													className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+												>
+													{t('form.maxAttempts')}
+												</label>
+												<Input
+													id="maxAttempts"
+													type="number"
+													min={1}
+													max={50}
+													value={maxAttempts}
+													onChange={(e) =>
+														setMaxAttempts(
+															Math.max(
+																1,
+																Math.min(50, Number(e.target.value) || 1),
+															),
+														)
+													}
+													disabled={isSubmitting || !autoRotate}
+													className="h-9 border-border/50 bg-background/50"
+												/>
+											</div>
+											<div className="space-y-2">
+												<label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+													{t('form.scope.label')}
+												</label>
+												<Select
+													value={rotationScope}
+													onValueChange={(v) =>
+														setRotationScope(
+															(v as 'selectedFirst' | 'all') || 'selectedFirst',
+														)
+													}
+													disabled={isSubmitting || !autoRotate}
+												>
+													<SelectTrigger className="h-9 border-border/50 bg-background/50">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="selectedFirst">
+															{t('form.scope.selectedFirst')}
+														</SelectItem>
+														<SelectItem value="all">
+															{t('form.scope.all')}
+														</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
+										</div>
+									)}
+								</div>
+
+								{error && (
+									<div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm font-medium text-destructive">
+										<div className="h-1.5 w-1.5 rounded-full bg-destructive" />
+										{error}
+									</div>
+								)}
+							</CardContent>
+							<CardFooter className="mt-6 flex flex-col gap-4 border-t border-border/40 pt-2 pb-6 sm:flex-row sm:items-center">
+								<Button
+									type="submit"
+									className="h-12 flex-1 text-base shadow-md transition-all hover:shadow-lg"
+									disabled={isSubmitting || !hasSelectedProxy}
+								>
+									{isSubmitting ? (
+										<>
+											<Loader2 className="mr-2 h-5 w-5 animate-spin" />
+											{t('form.submitPending')}
+										</>
+									) : (
+										<>
+											<Download className="mr-2 h-5 w-5" strokeWidth={1.5} />
+											{t('form.submit')}
+										</>
+									)}
+								</Button>
+								<Button
+									type="button"
+									variant="ghost"
+									className="h-12 sm:w-auto hover:bg-secondary/50"
+									onClick={handleReset}
+								>
+									{t('form.reset')}
+								</Button>
+							</CardFooter>
+						</Card>
+					</form>
+
+					<div className="space-y-6">
+						<Card className="glass sticky top-6 h-fit border-none shadow-sm">
+							<CardHeader className="border-b border-border/40 pb-4 space-y-2">
+								<CardTitle className="flex items-center gap-2 text-lg font-semibold">
+									<Download className="h-5 w-5 text-primary" strokeWidth={1.5} />
+									{t('progress.title')}
+								</CardTitle>
+								<CardDescription className="text-xs font-light">
+									{t('progress.hint')}
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="pt-6 space-y-6">
+								<div className="space-y-3">
+									<div className="flex items-center justify-between text-sm">
+										<span className="font-medium text-muted-foreground">
+											{t('progress.status')}
+										</span>
+										<span
+											className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+												jobActive
+													? 'bg-primary/10 text-primary'
+													: 'bg-secondary text-muted-foreground'
+											}`}
+										>
+											{jobActive
+												? statusLabel ?? t('progress.queued')
+												: t('progress.idle')}
+										</span>
+									</div>
+									<Progress value={progressPercent ?? 0} className="h-2" />
+									{phaseLabel && (
+										<div className="flex items-center justify-between text-xs text-muted-foreground">
+											<span>{t('progress.phase')}</span>
+											<span className="font-medium text-foreground">
+												{phaseLabel}
+											</span>
+										</div>
+									)}
+								</div>
+
+								<div className="space-y-3 border-t border-border/40 pt-4">
+									<div className="flex items-center justify-between gap-2 text-xs">
+										<span className="text-muted-foreground">
+											{t('progress.labels.jobId')}
+										</span>
+										<span className="rounded bg-secondary/30 px-1.5 py-0.5 font-mono text-foreground">
+											{cloudJobId ? `${cloudJobId.slice(0, 8)}...` : '—'}
+										</span>
+									</div>
+									<div className="flex items-center justify-between gap-2 text-xs">
+										<span className="text-muted-foreground">
+											{t('progress.labels.mediaId')}
+										</span>
+										<span className="rounded bg-secondary/30 px-1.5 py-0.5 font-mono text-foreground">
+											{cloudMediaId ? `${cloudMediaId.slice(0, 8)}...` : '—'}
+										</span>
+									</div>
+									<div className="flex items-center justify-between gap-2 text-xs">
+										<span className="text-muted-foreground">
+											{t('progress.labels.proxy')}
+										</span>
+										<span
+											className="max-w-[60%] truncate font-medium text-foreground"
+											title={renderProxyLabel(selectedProxyId)}
+										>
+											{renderProxyLabel(selectedProxyId)}
+										</span>
+									</div>
+									<div className="flex items-center justify-between gap-2 text-xs">
+										<span className="text-muted-foreground">
+											{t('progress.labels.autoRetry')}
+										</span>
+										<span className="font-medium text-foreground">
+											{rotationSummary}
+										</span>
+									</div>
+								</div>
+
+								{cloudStatusQuery.data?.message && (
+									<div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs font-medium text-destructive">
+										{cloudStatusQuery.data.message}
+									</div>
+								)}
+							</CardContent>
+							{rotationActive && (
+								<CardFooter className="mt-2 flex justify-end border-t border-border/40 pt-2 pb-6">
+									<Button
+										variant="secondary"
+										size="sm"
+										disabled={autoRetryStopped || isSubmitting}
+										onClick={() => setAutoRetryStopped(true)}
+										className="w-full bg-secondary/80 hover:bg-secondary"
+									>
+										{t('progress.labels.autoRetry')}
+									</Button>
+								</CardFooter>
+							)}
+						</Card>
+
+						<div className="rounded-xl bg-secondary/20 p-4 text-xs font-light leading-relaxed text-muted-foreground">
+							{t('progress.footer')}
 						</div>
 					</div>
 				</div>
-		</div>
+			</div>
+		</WorkspacePageShell>
 	)
 }
