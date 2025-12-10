@@ -511,8 +511,7 @@ export default function CommentsPage() {
 					}
 				/>
 			}
-		>
-			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+			>
 			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
 				<DialogContent className="glass border-white/20">
 					<DialogHeader>

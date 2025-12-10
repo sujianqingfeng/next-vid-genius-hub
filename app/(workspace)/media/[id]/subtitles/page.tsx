@@ -334,6 +334,6 @@ export default function SubtitlesPage() {
 					</div>
 				</Tabs>
 			</div>
-		</div>
+		</WorkspacePageShell>
 	)
 }
