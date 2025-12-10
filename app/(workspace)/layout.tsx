@@ -1,5 +1,5 @@
 import { WorkspaceAuthGate } from '~/components/auth/workspace-auth-gate'
-import { Sidebar } from '~/components/sidebar'
+import { Sidebar } from '~/components/business/layout/sidebar'
 
 export default function WorkspaceLayout({
 	children,

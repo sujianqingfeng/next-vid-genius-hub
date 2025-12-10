@@ -1,23 +1,23 @@
-import { FlatCompat } from '@eslint/eslintrc'
-import { dirname } from 'path'
-import { fileURLToPath } from 'url'
+import { defineConfig } from 'eslint/config'
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-const compat = new FlatCompat({
-	baseDirectory: __dirname,
-})
-
-const eslintConfig = [
-	...compat.extends('next/core-web-vitals', 'next/typescript'),
+// Use Next.js official flat config for ESLint 9+
+// https://nextjs.org/docs/app/api-reference/config/eslint
+const eslintConfig = defineConfig([
+	// Next.js + TypeScript + default ignores
+	...nextCoreWebVitals,
+	// Project-specific overrides
 	{
+		files: ['**/*.ts', '**/*.tsx'],
 		rules: {
-			'@typescript-eslint/no-explicit-any': ['error', {
-				'ignoreRestArgs': true,
-			}],
+			'@typescript-eslint/no-explicit-any': [
+				'error',
+				{
+					ignoreRestArgs: true,
+				},
+			],
 		},
 	},
-]
+])
 
 export default eslintConfig
