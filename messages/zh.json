@@ -13,6 +13,11 @@
 		"language": {
 			"zh": "中文",
 			"en": "英文"
+		},
+		"confirmDialog": {
+			"title": "确认操作",
+			"cancel": "取消",
+			"confirm": "确定"
 		}
 	},
 	"Sidebar": {

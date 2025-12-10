@@ -66,6 +66,7 @@ import {
 import type { Comment } from '~/lib/db/schema'
 import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
 import { MEDIA_SOURCES } from '~/lib/media/source'
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 
 type SourceStatus = {
 	status?: string
@@ -91,6 +92,7 @@ export default function CommentsPage() {
 	const [renderProxyId, setRenderProxyId] = useState<string>('none')
 	const [templateId, setTemplateId] =
 		useState<RemotionTemplateId>(DEFAULT_TEMPLATE_ID)
+	const confirmDialog = useConfirmDialog()
 
 	// Edit titles dialog
 	const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -472,15 +474,14 @@ export default function CommentsPage() {
 		})
 	}
 
-	const handleBulkDelete = () => {
+	const handleBulkDelete = async () => {
 		if (!hasSelection) return
 		const ids = Array.from(selectedCommentIds)
-		const confirmed =
-			typeof window === 'undefined'
-				? true
-				: window.confirm(
-						`Delete ${ids.length} selected comment${ids.length > 1 ? 's' : ''}?`,
-					)
+		const confirmed = await confirmDialog({
+			title: 'Delete comments',
+			description: `Delete ${ids.length} selected comment${ids.length > 1 ? 's' : ''}?`,
+			variant: 'destructive',
+		})
 		if (!confirmed) return
 		deleteCommentsMutation.mutate({
 			mediaId: id,

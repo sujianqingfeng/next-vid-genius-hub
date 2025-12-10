@@ -3,7 +3,6 @@
 import {
 	ChevronLeft,
 	ChevronRight,
-	Download,
 	FileVideo,
 	ListVideo,
 	Globe,
@@ -41,11 +40,6 @@ const baseMenuItems = [
 		key: 'channels',
 		href: '/channels',
 		icon: ListVideo,
-	},
-	{
-		key: 'downloads',
-		href: '/media/download',
-		icon: Download,
 	},
 	{
 		key: 'proxy',

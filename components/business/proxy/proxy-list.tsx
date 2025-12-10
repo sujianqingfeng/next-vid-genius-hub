@@ -10,9 +10,11 @@ import { Input } from '~/components/ui/input'
 // dropdown menu imports removed (no longer used)
 import { toast } from 'sonner'
 import { queryOrpc } from '~/lib/orpc/query-client'
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 
 export function ProxyList() {
 	const t = useTranslations('Proxy.list')
+	const confirmDialog = useConfirmDialog()
 	const [page, setPage] = React.useState(1)
 	const [searchTerm, setSearchTerm] = React.useState('')
 	const queryClient = useQueryClient()
@@ -61,11 +63,14 @@ export function ProxyList() {
 	})
 
 
-    const handleDeleteProxy = (proxyId: string) => {
-        if (confirm(t('deleteConfirm'))) {
-            deleteProxyMutation.mutate({ id: proxyId })
-        }
-    }
+	const handleDeleteProxy = async (proxyId: string) => {
+		const confirmed = await confirmDialog({
+			description: t('deleteConfirm'),
+			variant: 'destructive',
+		})
+		if (!confirmed) return
+		deleteProxyMutation.mutate({ id: proxyId })
+	}
 
 	const filteredProxies = proxiesData?.proxies?.filter(proxy => 
 		proxy.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

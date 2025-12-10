@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { useState } from 'react'
 import { TooltipProvider } from '~/components/ui/tooltip'
+import { ConfirmDialogProvider } from '~/components/business/layout/confirm-dialog-provider'
 
 export function Providers({ children }: { children: React.ReactNode }) {
 	const [queryClient] = useState(
@@ -29,7 +30,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 			disableTransitionOnChange
 		>
 			<QueryClientProvider client={queryClient}>
-				<TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+				<TooltipProvider delayDuration={300}>
+					<ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+				</TooltipProvider>
 			</QueryClientProvider>
 		</ThemeProvider>
 	)

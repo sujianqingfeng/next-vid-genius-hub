@@ -20,9 +20,11 @@ import {
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 
 export default function ChannelsPage() {
 	const t = useTranslations('Channels.page')
+	const confirmDialog = useConfirmDialog()
 	const qc = useQueryClient()
 	const [newInput, setNewInput] = React.useState('')
 	const [jobMap, setJobMap] = React.useState<Record<string, string>>({})
@@ -115,6 +117,19 @@ export default function ChannelsPage() {
 		[finalizeMutation],
 	)
 
+	const handleDeleteChannel = React.useCallback(
+		async (channelId: string) => {
+			if (deleteMutation.isPending) return
+			const confirmed = await confirmDialog({
+				description: t('deleteConfirm'),
+				variant: 'destructive',
+			})
+			if (!confirmed) return
+			deleteMutation.mutate({ id: channelId })
+		},
+		[confirmDialog, deleteMutation, t],
+	)
+
 	const handleAddChannel = React.useCallback(
 		(event?: React.FormEvent<HTMLFormElement>) => {
 			event?.preventDefault()
@@ -203,14 +218,7 @@ export default function ChannelsPage() {
 											}))
 										}
 										onDelete={() => {
-											if (deleteMutation.isPending) return
-											if (
-												confirm(
-													t('deleteConfirm'),
-												)
-											) {
-												deleteMutation.mutate({ id: ch.id })
-											}
+											void handleDeleteChannel(ch.id)
 										}}
 								deleting={deleteMutation.isPending}
 							/>

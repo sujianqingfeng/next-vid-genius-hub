@@ -13,6 +13,7 @@ import {
 	ChevronDown,
 	ChevronUp,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import { Badge } from '~/components/ui/badge'
 import { Label } from '~/components/ui/label'
@@ -49,7 +50,7 @@ export function TimeSegmentEffectsManager({
 	// 添加或更新效果
 	const handleSaveEffect = (effect: TimeSegmentEffect) => {
 		if (!isValidTimeRange(effect.startTime, effect.endTime)) {
-			alert('无效的时间范围：开始时间必须小于结束时间')
+			toast.error('无效的时间范围：开始时间必须小于结束时间')
 			return
 		}
 

@@ -7,9 +7,11 @@ import { useTranslations } from 'next-intl'
 import { Button } from '~/components/ui/button'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useProxySubscriptionMutation } from '~/lib/proxy/useProxySubscriptionMutation'
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 
 export function SSRSubscriptionsList() {
 	const t = useTranslations('Proxy.subscription.list')
+	const confirmDialog = useConfirmDialog()
 	const { data: subscriptionsData, isLoading } = useQuery(
 		queryOrpc.proxy.getSSRSubscriptions.queryOptions(),
 	)
@@ -34,14 +36,13 @@ export function SSRSubscriptionsList() {
 	)
 
 
-	const handleDeleteSubscription = (subscriptionId: string) => {
-		if (
-			confirm(
-				t('deleteConfirm'),
-			)
-		) {
-			deleteSubscriptionMutation.mutate({ id: subscriptionId })
-		}
+	const handleDeleteSubscription = async (subscriptionId: string) => {
+		const confirmed = await confirmDialog({
+			description: t('deleteConfirm'),
+			variant: 'destructive',
+		})
+		if (!confirmed) return
+		deleteSubscriptionMutation.mutate({ id: subscriptionId })
 	}
 
 	const handleImportFromSubscription = (subscriptionId: string) => {

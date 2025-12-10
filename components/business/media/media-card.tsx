@@ -22,6 +22,7 @@ import { type schema } from '~/lib/db'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { formatNumber } from '~/lib/utils/format/format'
 import { getTimeAgo as formatTimeAgo } from '~/lib/utils/time'
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 
 type MediaCardProps = {
 	media: typeof schema.media.$inferSelect
@@ -136,6 +137,7 @@ function MediaMetadata({ media }: { media: typeof schema.media.$inferSelect }) {
 
 export function MediaCard({ media }: MediaCardProps) {
 	const queryClient = useQueryClient()
+	const confirmDialog = useConfirmDialog()
 
 	const deleteMediaMutation = useMutation({
 		...queryOrpc.media.deleteById.mutationOptions(),
@@ -150,12 +152,16 @@ export function MediaCard({ media }: MediaCardProps) {
 		},
 	})
 
-	const handleDelete = (e: React.MouseEvent, id: string) => {
+	const handleDelete = async (e: React.MouseEvent, id: string) => {
 		e.preventDefault() // Prevent navigation
 		e.stopPropagation()
-		if (confirm('Are you sure you want to delete this media?')) {
-			deleteMediaMutation.mutate({ id })
-		}
+		const confirmed = await confirmDialog({
+			title: 'Delete media',
+			description: 'Are you sure you want to delete this media?',
+			variant: 'destructive',
+		})
+		if (!confirmed) return
+		deleteMediaMutation.mutate({ id })
 	}
 
 	return (

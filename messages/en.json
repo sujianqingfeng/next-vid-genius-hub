@@ -13,6 +13,11 @@
 		"language": {
 			"zh": "Chinese",
 			"en": "English"
+		},
+		"confirmDialog": {
+			"title": "Confirm action",
+			"cancel": "Cancel",
+			"confirm": "Confirm"
 		}
 	},
 	"Sidebar": {
