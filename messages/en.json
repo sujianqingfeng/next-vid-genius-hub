@@ -443,7 +443,17 @@
 	},
 	"Login": {
 		"title": "Sign In / Sign Up",
-		"subtitle": "Use email and password. Points act as virtual credits for tasks.",
+		"subtitle": "Use your email and password to access the platform.",
+		"brand": {
+			"title": "Intelligent Video Workspace",
+			"subtitle": "Download, transcribe, and analyze in one place.",
+			"bullets": {
+				"processing": "Smart video processing & transcoding",
+				"downloads": "Multi-platform video downloads",
+				"subtitles": "AI subtitles and summaries"
+			},
+			"footer": "Cloud jobs and flexible workflows supported."
+		},
 		"tabs": {
 			"login": "Login",
 			"signup": "Create Account"
@@ -459,12 +469,17 @@
 			"email": "Email",
 			"password": "Password",
 			"passwordPlaceholder": "At least 8 characters",
+			"confirmPassword": "Confirm password",
+			"confirmPasswordPlaceholder": "Re-enter your password",
+			"confirmPasswordMismatch": "Passwords do not match.",
 			"nickname": "Nickname (optional)",
 			"nicknamePlaceholder": "Display name",
-			"hint": "Signup grants bonus points; check Points for balance.",
+			"hint": "Sign up to start using all features.",
 			"submit": "Sign up & login",
 			"submitting": "Signing up…"
 		},
+		"switchToSignup": "New here? Create an account",
+		"switchToLogin": "Already have an account? Sign in",
 		"backHome": "Back to Home"
 	},
 	"Admin": {

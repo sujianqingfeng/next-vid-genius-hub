@@ -442,7 +442,17 @@
 	},
 	"Login": {
 		"title": "登录 / 注册",
-		"subtitle": "使用邮箱和密码登录，积分作为虚拟货币用于任务扣费。",
+		"subtitle": "使用邮箱和密码登录，开始使用平台服务。",
+		"brand": {
+			"title": "一站式智能视频工作台",
+			"subtitle": "下载、转写、分析，一平台搞定。",
+			"bullets": {
+				"processing": "智能视频处理与转码",
+				"downloads": "多平台视频下载",
+				"subtitles": "AI 字幕与摘要"
+			},
+			"footer": "支持云端任务管理与多种工作流。"
+		},
 		"tabs": {
 			"login": "登录",
 			"signup": "注册新账号"
@@ -458,12 +468,17 @@
 			"email": "邮箱",
 			"password": "密码",
 			"passwordPlaceholder": "至少 8 位",
+			"confirmPassword": "确认密码",
+			"confirmPasswordPlaceholder": "再次输入密码",
+			"confirmPasswordMismatch": "两次输入的密码不一致。",
 			"nickname": "昵称（可选）",
 			"nicknamePlaceholder": "展示名称",
-			"hint": "注册会自动发放积分，可在积分中心查看。",
+			"hint": "注册后即可开始使用平台功能。",
 			"submit": "注册并登录",
 			"submitting": "注册中…"
 		},
+		"switchToSignup": "还没有账号？去注册",
+		"switchToLogin": "已经有账号？去登录",
 		"backHome": "返回首页"
 	},
 	"Admin": {
