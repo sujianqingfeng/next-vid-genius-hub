@@ -5,6 +5,7 @@ import { getDb, schema } from '~/lib/db'
 import type { RequestContext } from '~/lib/auth/types'
 import { addPoints, listTransactions } from '~/lib/points/service'
 import { ADMIN_USERS_PAGE_SIZE, DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
+import type { PointResourceType } from '~/lib/db/schema'
 import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
 
 function ensureAdmin(context: RequestContext) {
@@ -166,4 +167,116 @@ export const listUserTransactions = os
 			offset: input.offset,
 		})
 		return { items }
+	})
+
+const ListPricingRulesSchema = z.object({
+	page: z.number().int().min(1).default(1),
+	limit: z.number().int().min(1).max(100).default(DEFAULT_PAGE_LIMIT),
+	resourceType: z.custom<PointResourceType>().optional(),
+})
+
+export const listPricingRules = os
+	.input(ListPricingRulesSchema)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		ensureAdmin(ctx)
+		const db = await getDb()
+
+		const page = input.page ?? 1
+		const limit = input.limit ?? DEFAULT_PAGE_LIMIT
+		const offset = (page - 1) * limit
+
+		const filters = []
+		if (input.resourceType) {
+			filters.push(eq(schema.pointPricingRules.resourceType, input.resourceType))
+		}
+
+		const whereClause =
+			filters.length === 1 ? filters[0] : filters.length > 1 ? and(...filters) : undefined
+
+		const totalRows = await db
+			.select({ value: count() })
+			.from(schema.pointPricingRules)
+			.where(whereClause)
+
+		const items = await db
+			.select()
+			.from(schema.pointPricingRules)
+			.where(whereClause)
+			.orderBy(desc(schema.pointPricingRules.createdAt))
+			.limit(limit)
+			.offset(offset)
+
+		const total = totalRows?.[0]?.value ?? 0
+		const pageCount = Math.ceil(total / limit) || 1
+
+		return {
+			items,
+			total,
+			page,
+			pageCount,
+		}
+	})
+
+const UpsertPricingRuleSchema = z.object({
+	id: z.string().min(1).optional(),
+	resourceType: z.custom<PointResourceType>(),
+	modelId: z.string().trim().max(200).optional().nullable(),
+	unit: z.enum(['token', 'second', 'minute']),
+	pricePerUnit: z.number().int().min(0),
+	minCharge: z.number().int().min(0).optional().nullable(),
+})
+
+export const upsertPricingRule = os
+	.input(UpsertPricingRuleSchema)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		ensureAdmin(ctx)
+		const db = await getDb()
+		const now = new Date()
+
+		if (input.id) {
+			await db
+				.update(schema.pointPricingRules)
+				.set({
+					resourceType: input.resourceType,
+					modelId: input.modelId ?? null,
+					unit: input.unit,
+					pricePerUnit: input.pricePerUnit,
+					minCharge: input.minCharge ?? null,
+					updatedAt: now,
+				})
+				.where(eq(schema.pointPricingRules.id, input.id))
+			return { success: true }
+		}
+
+		await db.insert(schema.pointPricingRules).values({
+			resourceType: input.resourceType,
+			modelId: input.modelId ?? null,
+			unit: input.unit,
+			pricePerUnit: input.pricePerUnit,
+			minCharge: input.minCharge ?? null,
+			createdAt: now,
+			updatedAt: now,
+		})
+
+		return { success: true }
+	})
+
+const DeletePricingRuleSchema = z.object({
+	id: z.string().min(1),
+})
+
+export const deletePricingRule = os
+	.input(DeletePricingRuleSchema)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		ensureAdmin(ctx)
+		const db = await getDb()
+
+		await db
+			.delete(schema.pointPricingRules)
+			.where(eq(schema.pointPricingRules.id, input.id))
+
+		return { success: true }
 	})

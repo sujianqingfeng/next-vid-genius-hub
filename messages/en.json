@@ -473,7 +473,8 @@
 		"layout": {
 			"title": "Admin Console",
 			"nav": {
-				"users": "Users"
+				"users": "Users",
+				"pricing": "Points pricing"
 			}
 		},
 		"users": {
@@ -525,6 +526,68 @@
 			"labels": {
 				"points": "pts",
 				"none": "—"
+			}
+		},
+		"pointsPricing": {
+			"title": "Points Pricing",
+			"subtitle": "Manage pricing rules for LLM, ASR, and downloads. Total rules: {total}",
+			"badge": "Points",
+			"table": {
+				"title": "Pricing rules",
+				"resourceType": "Resource",
+				"modelId": "Model ID",
+				"unit": "Unit",
+				"pricePerUnit": "Price / unit",
+				"minCharge": "Min charge",
+				"updatedAt": "Updated",
+				"actions": "Actions"
+			},
+			"filters": {
+				"resource": {
+					"all": "All resources",
+					"llm": "LLM",
+					"asr": "ASR",
+					"download": "Download"
+				}
+			},
+			"actions": {
+				"add": "Add rule",
+				"edit": "Edit",
+				"delete": "Delete"
+			},
+			"dialogs": {
+				"addTitle": "Add pricing rule",
+				"editTitle": "Edit pricing rule"
+			},
+			"form": {
+				"resourceType": "Resource type",
+				"unit": "Unit",
+				"units": {
+					"token": "Token",
+					"second": "Second",
+					"minute": "Minute"
+				},
+				"modelId": "Model ID (optional)",
+				"modelIdPlaceholder": "e.g. openai/gpt-4.1-mini",
+				"modelIdHint": "Leave empty for the default rule for this resource.",
+				"pricePerUnit": "Price per unit",
+				"minCharge": "Minimum charge (optional)",
+				"save": "Save",
+				"cancel": "Cancel"
+			},
+			"labels": {
+				"defaultModel": "Default",
+				"none": "—"
+			},
+			"empty": "No pricing rules yet",
+			"pagination": "Page {page} / {pages}, {total} rules",
+			"prev": "Previous",
+			"next": "Next",
+			"toast": {
+				"saved": "Pricing rule saved",
+				"saveError": "Failed to save pricing rule",
+				"deleted": "Pricing rule deleted",
+				"deleteError": "Failed to delete pricing rule"
 			}
 		}
 	}

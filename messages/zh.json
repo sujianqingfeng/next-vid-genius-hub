@@ -472,7 +472,8 @@
 		"layout": {
 			"title": "管理后台",
 			"nav": {
-				"users": "用户管理"
+				"users": "用户管理",
+				"pricing": "计价规则"
 			}
 		},
 		"users": {
@@ -524,6 +525,68 @@
 			"labels": {
 				"points": "分",
 				"none": "—"
+			}
+		},
+		"pointsPricing": {
+			"title": "积分计价规则",
+			"subtitle": "管理 LLM / ASR / 下载等资源的积分计价。当前规则数：{total}",
+			"badge": "计费",
+			"table": {
+				"title": "计价规则",
+				"resourceType": "资源类型",
+				"modelId": "模型 ID",
+				"unit": "计价单位",
+				"pricePerUnit": "单价",
+				"minCharge": "最小扣费",
+				"updatedAt": "更新时间",
+				"actions": "操作"
+			},
+			"filters": {
+				"resource": {
+					"all": "全部资源",
+					"llm": "LLM",
+					"asr": "ASR 语音识别",
+					"download": "下载"
+				}
+			},
+			"actions": {
+				"add": "新增规则",
+				"edit": "编辑",
+				"delete": "删除"
+			},
+			"dialogs": {
+				"addTitle": "新增计价规则",
+				"editTitle": "编辑计价规则"
+			},
+			"form": {
+				"resourceType": "资源类型",
+				"unit": "计价单位",
+				"units": {
+					"token": "Token",
+					"second": "秒",
+					"minute": "分钟"
+				},
+				"modelId": "模型 ID（可选）",
+				"modelIdPlaceholder": "例如 openai/gpt-4.1-mini",
+				"modelIdHint": "留空表示该资源类型的默认规则。",
+				"pricePerUnit": "每单位积分单价",
+				"minCharge": "最小扣费（可选）",
+				"save": "保存",
+				"cancel": "取消"
+			},
+			"labels": {
+				"defaultModel": "默认",
+				"none": "—"
+			},
+			"empty": "暂时还没有计价规则",
+			"pagination": "第 {page} / {pages} 页，共 {total} 条规则",
+			"prev": "上一页",
+			"next": "下一页",
+			"toast": {
+				"saved": "计价规则已保存",
+				"saveError": "保存计价规则失败",
+				"deleted": "计价规则已删除",
+				"deleteError": "删除计价规则失败"
 			}
 		}
 	}

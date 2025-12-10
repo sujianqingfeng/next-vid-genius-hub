@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl'
 
 const navItems = [
 	{ key: 'users', href: '/admin/users' },
+	{ key: 'pricing', href: '/admin/points-pricing' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

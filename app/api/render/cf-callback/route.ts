@@ -262,6 +262,20 @@ async function handleCloudDownloadCallback(
 
   const audioExistsWithSource = audioExists
 
+  const metadataFromPayload = payload.metadata
+  const durationSeconds =
+    typeof payload.durationMs === 'number'
+      ? payload.durationMs / 1000
+      : typeof metadataFromPayload?.durationSeconds === 'number'
+        ? metadataFromPayload.durationSeconds
+        : typeof metadataFromPayload?.duration === 'number'
+          ? metadataFromPayload.duration
+          : typeof (metadataFromPayload as any)?.lengthSeconds === 'number'
+            ? (metadataFromPayload as any).lengthSeconds
+            : 0
+
+  const roundedDuration = Number.isFinite(durationSeconds) && durationSeconds > 0 ? Math.round(durationSeconds) : null
+
   const updates: Record<string, unknown> = {
     downloadBackend: 'cloud',
     downloadStatus: 'completed',
@@ -274,7 +288,11 @@ async function handleCloudDownloadCallback(
     remoteMetadataKey: metadataExistsWithSource ? (metadataKey ?? media.remoteMetadataKey ?? null) : media.remoteMetadataKey ?? null,
   }
 
-  const metadataFromPayload = payload.metadata
+  // Persist rounded duration on the media row when available
+  if (roundedDuration) {
+    updates.duration = roundedDuration
+  }
+
   const title = metadataFromPayload?.title
   const author = metadataFromPayload?.author
   const thumbnail = metadataFromPayload?.thumbnail
@@ -309,22 +327,6 @@ async function handleCloudDownloadCallback(
     } catch (err) {
       logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
     }
-  }
-
-  const durationSeconds =
-    typeof payload.durationMs === 'number'
-      ? payload.durationMs / 1000
-      : typeof metadataFromPayload?.durationSeconds === 'number'
-        ? metadataFromPayload.durationSeconds
-        : typeof metadataFromPayload?.duration === 'number'
-          ? metadataFromPayload.duration
-          : typeof (metadataFromPayload as any)?.lengthSeconds === 'number'
-            ? (metadataFromPayload as any).lengthSeconds
-            : 0
-
-  const roundedDuration = Number.isFinite(durationSeconds) && durationSeconds > 0 ? Math.round(durationSeconds) : null
-  if (roundedDuration) {
-    updates.duration = roundedDuration
   }
 
   if (media.userId && durationSeconds > 0) {
