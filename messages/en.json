@@ -60,7 +60,6 @@
 	},
 	"Media": {
 		"title": "Media Library",
-		"subtitle": "Manage and organize your video content.",
 		"downloadCta": "Download Media",
 		"error": {
 			"title": "Failed to load media",
@@ -99,7 +98,6 @@
 	},
 	"Dashboard": {
 		"title": "Dashboard",
-		"subtitle": "Welcome back. Here’s an overview of your creative space.",
 		"cards": {
 			"totalVideos": {
 				"title": "Total Videos",
@@ -135,7 +133,6 @@
 	},
 	"Tasks": {
 		"title": "Tasks",
-		"subtitle": "View cloud jobs by target (media / channel). Enter an ID to load its task history.",
 		"filter": "Filter",
 		"targetId": "Target ID",
 		"targetType": "Target Type",
@@ -192,7 +189,6 @@
 		},
 		"page": {
 			"title": "Channels",
-			"subtitle": "Collect the creators you follow, keep their feeds in sync, and translate titles in one place.",
 			"inputPlaceholder": "Paste a YouTube channel URL or ID",
 			"add": "Add Channel",
 			"adding": "Adding…",
@@ -231,7 +227,6 @@
 	"Proxy": {
 		"page": {
 			"title": "Proxy Manager",
-			"subtitle": "Manage your proxy subscriptions and nodes.",
 			"tabs": {
 				"subscriptions": "Subscriptions",
 				"proxies": "Proxies"
@@ -308,7 +303,6 @@
 	},
 	"Points": {
 		"title": "Points",
-		"subtitle": "View your balance and transactions. Points are used for tasks.",
 		"refresh": "Refresh",
 		"balance": {
 			"title": "Current Balance",
@@ -340,7 +334,6 @@
 	"Download": {
 		"page": {
 			"title": "Cloud Video Download",
-			"subtitle": "Queue HD downloads in the worker cluster and monitor them live.",
 			"form": {
 				"title": "New Job",
 				"desc": "Paste a link, select quality, and pick a proxy.",

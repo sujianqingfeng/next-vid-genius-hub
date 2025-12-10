@@ -22,7 +22,6 @@ export default function ProxyPage() {
 					backHref="/"
 					showBackButton={false}
 					title={t('title')}
-					subtitle={t('subtitle')}
 					rightContent={
 						<Button
 							onClick={() => setIsAddSubscriptionDialogOpen(true)}

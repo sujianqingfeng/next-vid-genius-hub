@@ -246,7 +246,6 @@ export default function NewDownloadPage() {
 				<PageHeader
 					backHref="/media"
 					title={t('title')}
-					subtitle={t('subtitle')}
 				/>
 			}
 		>

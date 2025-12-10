@@ -132,7 +132,6 @@ export default function ChannelsPage() {
 					backHref="/"
 					showBackButton={false}
 					title={t('title')}
-					subtitle={t('subtitle')}
 					rightContent={
 						<form
 							onSubmit={handleAddChannel}

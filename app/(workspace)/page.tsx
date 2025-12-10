@@ -14,7 +14,6 @@ export default async function DashboardPage() {
 					backHref="/"
 					showBackButton={false}
 					title={t('title')}
-					subtitle={t('subtitle')}
 					withBackground
 				/>
 			}

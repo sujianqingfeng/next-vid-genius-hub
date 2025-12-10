@@ -50,7 +50,6 @@ export function MediaListPage() {
 					backHref="/"
 					showBackButton={false}
 					title={t('title')}
-					subtitle={t('subtitle')}
 					rightContent={
 						<Link href="/media/download">
 							<Button className="flex items-center gap-2 h-10 px-6 shadow-sm transition-all hover:shadow-md">

@@ -60,7 +60,6 @@
 	},
 	"Media": {
 		"title": "媒体库",
-		"subtitle": "管理并整理你的视频内容。",
 		"downloadCta": "下载媒体",
 		"error": {
 			"title": "媒体加载失败",
@@ -99,7 +98,6 @@
 	},
 	"Dashboard": {
 		"title": "仪表盘",
-		"subtitle": "欢迎回来，查看你的创作空间总览。",
 		"cards": {
 			"totalVideos": {
 				"title": "视频总数",
@@ -135,7 +133,6 @@
 	},
 	"Tasks": {
 		"title": "任务",
-		"subtitle": "按目标查看云端作业（媒体 / 频道），输入 ID 以载入任务历史。",
 		"filter": "筛选",
 		"targetId": "目标 ID",
 		"targetType": "目标类型",
@@ -192,7 +189,6 @@
 		},
 		"page": {
 			"title": "频道",
-			"subtitle": "收集你关注的创作者，保持订阅同步，并在此统一翻译标题。",
 			"inputPlaceholder": "粘贴 YouTube 频道链接或 ID",
 			"add": "添加频道",
 			"adding": "添加中…",
@@ -231,7 +227,6 @@
 	"Proxy": {
 		"page": {
 			"title": "代理管理",
-			"subtitle": "管理你的代理订阅和节点。",
 			"tabs": {
 				"subscriptions": "订阅",
 				"proxies": "代理"
@@ -308,7 +303,6 @@
 	},
 	"Points": {
 		"title": "积分中心",
-		"subtitle": "查看余额与流水，积分用于任务扣费。",
 		"refresh": "刷新",
 		"balance": {
 			"title": "当前积分余额",
@@ -340,7 +334,6 @@
 	"Download": {
 		"page": {
 			"title": "云端视频下载",
-			"subtitle": "在集群中排队高清下载并实时监控。",
 			"form": {
 				"title": "新建任务",
 				"desc": "粘贴链接、选择清晰度并选择代理。",

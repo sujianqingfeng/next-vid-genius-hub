@@ -495,7 +495,6 @@ export default function CommentsPage() {
 					backHref={`/media/${id}`}
 					backText="Back"
 					title="Comments"
-					subtitle="Manage, translate, and render comments for this video."
 					rightContent={
 						mediaQuery.data?.translatedTitle ? (
 							<Button

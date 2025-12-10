@@ -160,7 +160,6 @@ export default function SubtitlesPage() {
 					backHref={`/media/${mediaId}`}
 					backText="Back"
 					title="Generate Subtitles"
-					subtitle="Transcribe, translate, and burn subtitles into your video."
 				/>
 			}
 		>

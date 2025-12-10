@@ -192,7 +192,6 @@ export function TasksPage({ initialTargetType = 'media', initialTargetId = '' }:
 					backHref="/"
 					showBackButton={false}
 					title={t('title')}
-					subtitle={t('subtitle')}
 					rightContent={
 						<Button
 							variant="outline"

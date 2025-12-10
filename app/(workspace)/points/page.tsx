@@ -35,7 +35,6 @@ export default function PointsPage() {
 					backHref="/"
 					showBackButton={false}
 					title={t('title')}
-					subtitle={t('subtitle')}
 					rightContent={
 						<Button
 							variant="secondary"
