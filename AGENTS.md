@@ -1,17 +1,24 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
+- Framework: Next.js `16.0.8` with React `19.2.1` (app router, Turbopack).
 - `app/` holds Next.js routes/layouts; `app/(workspace)/` contains core media workflows and server actions.
 - `components/business/` hosts feature-level widgets; `components/ui/` contains primitives. Share only via explicit exports.
-- `lib/` centralizes AI/media utilities and shared hooks; `orpc/` stores RPC definitions consumed by React Query clients.
-- `drizzle/` is generated migration output (do not hand-edit); `public/` serves static assets; `scripts/` contains operational helpers (e.g., ingestion jobs, ffmpeg/yt-dlp wrappers).
+- `lib/` is domain‑oriented (e.g. `auth`, `media`, `subtitle`, `providers`) plus infra modules (`config`, `db`, `logger`, `storage`, `proxy`, `orpc`, `query`) and shared `hooks/utils/types`.
+- `orpc/` stores RPC definitions consumed by React Query (TanStack Query) clients via `@orpc/*`.
+- `packages/` contains shared media engine packages (e.g. `@app/media-core`, `@app/media-node`, `@app/media-providers`, `@app/media-subtitles`, `@app/media-comments`, `@app/job-callbacks`) used by Next, Workers, and containers.
+- `drizzle/` is generated migration output (do not hand-edit); `public/` serves static assets.
+- `containers/` defines media job containers (e.g. `burner-ffmpeg`, `renderer-remotion`, `media-downloader`, `audio-transcoder`) that compose the `@app/*` packages.
+- `cloudflare/` hosts Workers (e.g. `media-orchestrator`) and Cloudflare-specific config; `remotion/` contains the Remotion project used by renderer containers.
 
 ## Build, Test, and Development Commands
-- `pnpm dev` — start Turbopack dev server during feature work.
+- `pnpm dev` — start Turbopack dev server during feature work; `pnpm dev:host` binds to `0.0.0.0` for container / remote access.
 - `pnpm build` then `pnpm start` — create and validate the production bundle locally.
 - `pnpm lint` — run the Next.js ESLint suite; fix or annotate warnings.
 - `pnpm test` — run Vitest; add `--watch` for local loops and `--coverage` on persistence‑heavy changes.
 - `pnpm db:generate`, `pnpm db:studio`, `pnpm db:d1:migrate:remote` — manage Drizzle schema changes and inspect state against D1.
+- `pnpm dev:stack` / `pnpm dev:stack:restart-all` — build and start the media containers defined in `docker-compose.dev.yml`.
+- `pnpm cf:dev` — run the Cloudflare Worker stack for the media orchestrator; `pnpm cf:deploy` deploys to production.
 
 ## Coding Style & Naming Conventions
 - Prefer TypeScript and server components; add `'use client'` only when interactivity is required.
