@@ -1,19 +1,41 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { AbsoluteFill, Easing, Sequence, interpolate, useCurrentFrame, Img } from "remotion";
 import { ThumbsUp } from "lucide-react";
+import {
+  AbsoluteFill,
+  Easing,
+  Img,
+  Sequence,
+  interpolate,
+  useCurrentFrame,
+} from "remotion";
 import type { CommentVideoInputProps } from "./types";
+// Use relative import to avoid Next.js path alias in Remotion bundler
+import { formatCount } from "./utils/format";
 
-// 与横屏模板保持一致的配色与字体
+// 与横屏 CommentsVideo 模板共享的布局与配色
+const layout = {
+  paddingX: 80,
+  paddingY: 60,
+  columnGap: 40,
+  rowGap: 48,
+  infoPanelWidth: 680,
+  cardRadius: 0,
+  cardPaddingX: 32,
+  cardPaddingY: 32,
+};
+
 const palette = {
-  background: "#ffffff",
-  surface: "#f8fafc",
-  border: "rgba(226, 232, 240, 0.8)",
-  textPrimary: "#0f172a",
-  textSecondary: "#334155",
-  textMuted: "#64748b",
-  accent: "#ef4444",
+  // Airbnb Warm Minimal theme
+  background: "#F7F3EF",
+  surface: "#FFFFFF",
+  border: "rgba(31, 42, 53, 0.08)",
+  textPrimary: "#1F2A35",
+  textSecondary: "#2C3A4A",
+  textMuted: "#6B7280",
+  accent: "#FF5A5F", // Airbnb coral
+  accentGlow: "rgba(255, 90, 95, 0.2)",
 };
 
 const baseFontStack = [
@@ -21,51 +43,60 @@ const baseFontStack = [
   '"Noto Sans SC"',
   '"Source Han Sans SC"',
   '"Noto Sans CJK"',
-  "Inter",
-  '"Noto Sans"',
+  '"Inter"',
+  '"Helvetica Neue"',
+  '"Arial Black"',
   "system-ui",
   "-apple-system",
-  "BlinkMacSystemFont",
   '"Segoe UI Emoji"',
   '"Apple Color Emoji"',
   '"Noto Color Emoji"',
-  '"Twemoji Mozilla"',
-  '"EmojiSymbols"',
   "sans-serif",
 ];
+
 const baseFont = baseFontStack.join(", ");
 
 const containerStyle: CSSProperties = {
   backgroundColor: palette.background,
   color: palette.textPrimary,
   fontFamily: baseFont,
-  height: "100%",
-  width: "100%",
+  padding: `${layout.paddingY}px ${layout.paddingX}px`,
   display: "flex",
   flexDirection: "column",
+  gap: layout.rowGap,
+  height: "100%",
+  boxSizing: "border-box",
 };
 
-// 与默认模板保持一致的正文与翻译样式
+// 与横屏模板一致的正文与翻译样式
 const commentBodyStyle: CSSProperties = {
-  fontSize: 26,
-  lineHeight: 1.52,
+  fontSize: 28,
+  lineHeight: 1.6,
   color: palette.textPrimary,
   whiteSpace: "pre-wrap",
   margin: 0,
   width: "100%",
+  fontWeight: 400,
 };
 
 const translatedStyle: CSSProperties = {
-  marginTop: 18,
-  padding: "16px 20px",
-  borderRadius: 16,
-  backgroundColor: "rgba(239, 68, 68, 0.08)",
+  marginTop: 24,
+  padding: "24px 0 24px 24px",
+  borderRadius: 0,
+  backgroundColor: "transparent",
   color: palette.textSecondary,
-  borderLeft: "4px solid rgba(239, 68, 68, 0.3)",
+  borderLeft: `3px solid ${palette.accent}`,
   whiteSpace: "pre-wrap",
-  fontSize: 24,
-  lineHeight: 1.48,
+  fontSize: 26,
+  lineHeight: 1.6,
+  fontWeight: 300,
 };
+
+const chineseCharRegex = /[\u4e00-\u9fff]/;
+
+function isLikelyChinese(text?: string | null): boolean {
+  return Boolean(text && chineseCharRegex.test(text));
+}
 
 // 竖屏主布局：封面 + 主画面
 export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
@@ -93,14 +124,61 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
 
   return (
     <AbsoluteFill style={{ backgroundColor: palette.background }}>
-      {/* 封面场景（保持横屏模板风格） */}
+      {/* 封面场景（统一为与横屏模板一致的电影质感封面） */}
       <Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
         <VerticalCover videoInfo={videoInfo} commentCount={comments.length} fps={fps} />
       </Sequence>
 
       {/* 主场景：横屏画布，左竖屏视频，右评论 */}
       <Sequence layout="none" from={coverDurationInFrames} durationInFrames={mainDuration}>
-        <AbsoluteFill style={{ ...containerStyle, padding: "36px 48px", boxSizing: "border-box" }}>
+        <AbsoluteFill
+          style={{
+            ...containerStyle,
+            background: palette.background,
+            position: "relative",
+          }}
+        >
+          {/* 背景网格 + 光晕，与横屏模板统一 */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `
+                linear-gradient(0deg, ${palette.border} 1px, transparent 1px),
+                linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
+              `,
+              backgroundSize: "40px 40px",
+              opacity: 0.1,
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: "15%",
+              left: "-8%",
+              width: "320px",
+              height: "320px",
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+              filter: "blur(70px)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: "10%",
+              right: "-5%",
+              width: "380px",
+              height: "380px",
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+              filter: "blur(90px)",
+              pointerEvents: "none",
+            }}
+          />
+
           <div
             style={{
               flex: 1,
@@ -110,13 +188,16 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
               gap: 28,
               alignItems: "stretch",
               minHeight: 0,
+              position: "relative",
+              zIndex: 1,
             }}
           >
             {/* 左侧竖屏视频占位（9:16） */}
             <div
               style={{
                 borderRadius: 24,
-                background: "#ffffff",
+                backgroundColor: palette.surface,
+                border: `2px solid ${palette.border}`,
                 overflow: "hidden",
                 display: "flex",
                 alignItems: "center",
@@ -128,11 +209,14 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
                   width: 540,
                   height: 960,
                   borderRadius: 20,
+                  border: `2px solid ${palette.border}`,
                   overflow: "hidden",
-                  background: "#ffffff",
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  backgroundImage: `
+                    linear-gradient(135deg, ${palette.surface} 0%, ${palette.background} 100%)
+                  `,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   color: palette.textMuted,
                   fontSize: 18,
                   fontFamily: baseFont,
@@ -145,16 +229,9 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
             {/* 右侧评论区域：样式与默认模板一致 */}
             <div
               style={{
-                borderRadius: 24,
-                background: palette.surface,
-                border: `1px solid ${palette.border}`,
-                padding: 24,
                 display: "flex",
                 flexDirection: "column",
-                gap: 16,
-                overflow: "hidden",
                 height: "100%",
-                minHeight: 0,
               }}
             >
               {sequences.map(({ startFrame, durationInFrames, comment }) => (
@@ -170,49 +247,363 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
   )
 }
 
-// 竖屏封面（复用横屏风格）
-const VerticalCover: React.FC<{ videoInfo: CommentVideoInputProps["videoInfo"]; commentCount: number; fps: number }>
-  = ({ videoInfo, commentCount, fps }) => {
-  const frame = useCurrentFrame()
-  const opacity = interpolate(frame, [0, fps], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+// 竖屏封面：直接复用横屏模板的电影质感封面样式
+const VerticalCover: React.FC<{
+  videoInfo: CommentVideoInputProps["videoInfo"];
+  commentCount: number;
+  fps: number;
+}> = ({ videoInfo, commentCount, fps }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [0, fps * 0.5], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const titleSlide = interpolate(frame, [fps * 0.3, fps * 0.8], [-50, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
+  });
+
   return (
     <AbsoluteFill
       style={{
-        background: "linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f8fafc 100%)",
-        color: palette.textPrimary,
-        fontFamily: baseFont,
+        background: palette.background,
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        textAlign: "center",
-        padding: "0 48px",
+        color: palette.textPrimary,
+        fontFamily: baseFont,
+        padding: "0 100px",
         boxSizing: "border-box",
         opacity,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <div style={{ fontSize: 28, letterSpacing: "0.12em", color: palette.accent, textTransform: "uppercase" }}>Creator Digest</div>
-      <h1 style={{ margin: "16px 0 8px", fontSize: 54, fontWeight: 800, letterSpacing: "-0.01em" }}>
-        {videoInfo.translatedTitle ?? videoInfo.title}
-      </h1>
-      <div style={{ fontSize: 22, color: palette.textMuted, marginBottom: 24 }}>
-        @{videoInfo.author ?? "unknown"} · 外网真实评论
-      </div>
-      <div style={{ display: "flex", gap: 18, fontSize: 20, color: palette.textSecondary }}>
-        <Badge text={`观看 ${formatCount(videoInfo.viewCount)}`} />
-        <Badge text={`评论 ${commentCount}`} />
+      {/* Cinematic grid overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(0deg, ${palette.border} 1px, transparent 1px),
+            linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
+          `,
+          backgroundSize: "50px 50px",
+          opacity: 0.12,
+        }}
+      />
+
+      {/* Dramatic accent glows */}
+      <div
+        style={{
+          position: "absolute",
+          top: "15%",
+          left: "-5%",
+          width: "430px",
+          height: "430px",
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          filter: "blur(80px)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: "10%",
+          right: "-10%",
+          width: "520px",
+          height: "520px",
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          filter: "blur(95px)",
+        }}
+      />
+
+      {/* Film frame corners */}
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          left: 60,
+          width: 100,
+          height: 100,
+          borderTop: `4px solid ${palette.accent}`,
+          borderLeft: `4px solid ${palette.accent}`,
+          opacity: 0.4,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          right: 60,
+          width: 100,
+          height: 100,
+          borderTop: `4px solid ${palette.accent}`,
+          borderRight: `4px solid ${palette.accent}`,
+          opacity: 0.4,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 60,
+          left: 60,
+          width: 100,
+          height: 100,
+          borderBottom: `4px solid ${palette.accent}`,
+          borderLeft: `4px solid ${palette.accent}`,
+          opacity: 0.4,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 60,
+          right: 60,
+          width: 100,
+          height: 100,
+          borderBottom: `4px solid ${palette.accent}`,
+          borderRight: `4px solid ${palette.accent}`,
+          opacity: 0.4,
+        }}
+      />
+
+      <div
+        style={{
+          maxWidth: 1400,
+          width: "100%",
+          textAlign: "left",
+          position: "relative",
+          zIndex: 1,
+          transform: `translateY(${titleSlide}px)`,
+        }}
+      >
+        {/* Category badge */}
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 0",
+            marginBottom: 40,
+            fontSize: 13,
+            fontWeight: 900,
+            color: palette.accent,
+            letterSpacing: "0.3em",
+            textTransform: "uppercase",
+            textShadow: `0 0 30px ${palette.accentGlow}`,
+          }}
+        >
+          <div
+            style={{
+              width: 4,
+              height: 16,
+              backgroundColor: palette.accent,
+              boxShadow: `0 0 20px ${palette.accentGlow}`,
+            }}
+          />
+          外网真实评论
+        </div>
+
+        {/* Main Title */}
+        <h1
+          style={{
+            margin: "0 0 50px 0",
+            fontSize: 92,
+            fontWeight: 900,
+            letterSpacing: "-0.04em",
+            lineHeight: 0.95,
+            color: palette.accent,
+            textTransform: "uppercase",
+            textShadow: `
+              0 0 32px ${palette.accentGlow},
+              0 6px 50px ${palette.accentGlow}
+            `,
+            maxWidth: "90%",
+          }}
+        >
+          {videoInfo.translatedTitle ?? videoInfo.title}
+        </h1>
+
+        {/* Original Title (if translated) */}
+        {videoInfo.translatedTitle &&
+          videoInfo.translatedTitle !== videoInfo.title && (
+            <p
+              style={{
+                margin: "0 0 70px 0",
+                fontSize: 26,
+                color: palette.textMuted,
+                fontWeight: 300,
+                lineHeight: 1.5,
+                fontStyle: "italic",
+                maxWidth: "85%",
+                paddingLeft: 4,
+              }}
+            >
+              {videoInfo.title}
+            </p>
+          )}
+
+        {/* Dramatic divider */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 20,
+            margin: "0 0 70px 0",
+          }}
+        >
+          <div
+            style={{
+              width: 120,
+              height: 3,
+              backgroundColor: palette.accent,
+              boxShadow: `0 0 20px ${palette.accentGlow}`,
+            }}
+          />
+          <div
+            style={{
+              width: 12,
+              height: 12,
+              backgroundColor: palette.accent,
+              boxShadow: `0 0 30px ${palette.accentGlow}`,
+            }}
+          />
+          <div
+            style={{
+              flex: 1,
+              height: 1,
+              background: `linear-gradient(90deg, ${palette.border}, transparent)`,
+            }}
+          />
+        </div>
+
+        {/* Enhanced Meta Information */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 48,
+            fontSize: 18,
+            color: palette.textSecondary,
+            marginBottom: 50,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: "20px 28px",
+              backgroundColor: palette.surface,
+              border: `1px solid ${palette.border}`,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                color: palette.textMuted,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                fontWeight: 700,
+              }}
+            >
+              观看量
+            </span>
+            <span
+              style={{
+                fontSize: 32,
+                fontWeight: 900,
+                color: palette.accent,
+                textShadow: `0 0 20px ${palette.accentGlow}`,
+              }}
+            >
+              {formatCount(videoInfo.viewCount)}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              padding: "20px 28px",
+              backgroundColor: palette.surface,
+              border: `1px solid ${palette.border}`,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                color: palette.textMuted,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                fontWeight: 700,
+              }}
+            >
+              评论数
+            </span>
+            <span
+              style={{
+                fontSize: 32,
+                fontWeight: 900,
+                color: palette.accent,
+                textShadow: `0 0 20px ${palette.accentGlow}`,
+              }}
+            >
+              {commentCount}
+            </span>
+          </div>
+        </div>
+
+        {/* Author and source */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 24,
+            fontSize: 18,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "14px 24px",
+              backgroundColor: palette.surface,
+              border: `1px solid ${palette.border}`,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: palette.textPrimary,
+                letterSpacing: "0.05em",
+              }}
+            >
+              @{videoInfo.author ?? "未知创作者"}
+            </span>
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: palette.textMuted,
+              fontWeight: 700,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+            }}
+          >
+            TubeTweet Studio
+          </div>
+        </div>
       </div>
     </AbsoluteFill>
-  )
-}
-
-const Badge: React.FC<{ text: string }> = ({ text }) => (
-  <div style={{ padding: "10px 16px", borderRadius: 999, background: "rgba(248, 250, 252, 0.8)", border: `1px solid ${palette.border}` }}>{text}</div>
-)
-
-function isLikelyChinese(text?: string | null): boolean {
-  return Boolean(text && /[\u4e00-\u9fff]/.test(text))
-}
+  );
+};
 
 const VerticalCommentSlide: React.FC<{
   comment: CommentVideoInputProps["comments"][number]
@@ -237,55 +628,127 @@ const VerticalCommentSlide: React.FC<{
   const isChinesePrimary = isLikelyChinese(comment.content)
   const isChineseTranslation = isLikelyChinese(comment.translatedContent)
   const displayCommentStyle: CSSProperties = {
-    fontSize: isChinesePrimary ? 52 : 26,
-    lineHeight: isChinesePrimary ? 1.4 : 1.52,
-    letterSpacing: isChinesePrimary ? "0.024em" : "normal",
+    fontSize: isChinesePrimary ? 56 : 28,
+    lineHeight: isChinesePrimary ? 1.4 : 1.6,
+    letterSpacing: isChinesePrimary ? "0.02em" : "normal",
     color: isChinesePrimary ? palette.accent : palette.textPrimary,
+    fontWeight: isChinesePrimary ? 700 : 400,
+    textShadow: isChinesePrimary ? `0 0 12px ${palette.accentGlow}` : "none",
   }
 
   const totalTextLength = comment.content.length + (comment.translatedContent?.length || 0)
   const needsScroll = totalTextLength > 100
 
   return (
-    <div style={{ opacity, display: "flex", flexDirection: "column", gap: 20, height: "100%", minHeight: 0, position: "relative" }}>
+    <div
+      style={{
+        opacity,
+        display: "flex",
+        flexDirection: "column",
+        gap: 28,
+        height: "100%",
+        position: "relative",
+        padding: "32px 40px",
+        backgroundColor: palette.surface,
+        border: `2px solid ${palette.border}`,
+      }}
+    >
+      {/* Decorative corner frame */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 40,
+          height: 40,
+          borderTop: `3px solid ${palette.accent}`,
+          borderLeft: `3px solid ${palette.accent}`,
+          opacity: 0.6,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          right: 0,
+          width: 40,
+          height: 40,
+          borderBottom: `3px solid ${palette.accent}`,
+          borderRight: `3px solid ${palette.accent}`,
+          opacity: 0.6,
+        }}
+      />
+
       {/* 倒计时 */}
       <div
         style={{
           position: "absolute",
-          top: 12,
-          right: 12,
+          top: 20,
+          right: 20,
           opacity: countdownOpacity,
           display: "flex",
           alignItems: "center",
-          gap: 6,
-          fontSize: 16,
+          gap: 8,
+          fontSize: 14,
           color: palette.textMuted,
-          backgroundColor: "rgba(248, 250, 252, 0.8)",
-          padding: "6px 10px",
-          borderRadius: 8,
+          backgroundColor: palette.background,
+          padding: "8px 14px",
           border: `1px solid ${palette.border}`,
+          fontWeight: 700,
+          letterSpacing: "0.1em",
         }}
       >
         <div
           style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
+            width: 10,
+            height: 10,
             backgroundColor: remainingSeconds <= 2 ? palette.accent : palette.textMuted,
-            transition: "background-color 0.3s ease",
+            boxShadow:
+              remainingSeconds <= 2
+                ? `0 0 15px ${palette.accentGlow}`
+                : "none",
           }}
         />
-        <span>{remainingSeconds}s</span>
+        <span>{remainingSeconds}S</span>
       </div>
 
       {/* 头像 / 作者 / 点赞 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 20,
+          flexShrink: 0,
+        }}
+      >
         <Avatar name={comment.author} src={comment.authorThumbnail} />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-          <p style={{ margin: 0, fontSize: 24, fontWeight: 600, color: palette.textPrimary }}>{comment.author}</p>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: palette.textMuted, fontSize: 18 }}>
-            <ThumbsUp size={18} strokeWidth={2} />
-            <span>{formatCount(comment.likes)}</span>
+        <div
+          style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 26,
+              fontWeight: 800,
+              color: palette.textPrimary,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {comment.author}
+          </p>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              color: palette.textMuted,
+              fontSize: 16,
+            }}
+          >
+            <ThumbsUp size={18} strokeWidth={2.5} />
+            <span style={{ fontWeight: 700, letterSpacing: "0.05em" }}>
+              {formatCount(comment.likes)}
+            </span>
           </div>
         </div>
       </div>
@@ -301,21 +764,26 @@ const VerticalCommentSlide: React.FC<{
         </div>
       ) : (
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          <p style={{ ...commentBodyStyle, ...displayCommentStyle }}>{comment.content}</p>
-          {comment.translatedContent && comment.translatedContent !== comment.content ? (
+          <p style={{ ...commentBodyStyle, ...displayCommentStyle }}>
+            {comment.content}
+          </p>
+          {comment.translatedContent &&
+          comment.translatedContent !== comment.content ? (
             <div
               style={{
                 ...translatedStyle,
                 ...(isChineseTranslation
                   ? {
                       backgroundColor: "transparent",
-                      borderLeft: "none",
+                      borderLeft: `3px solid ${palette.accent}`,
                       color: palette.accent,
-                      padding: 0,
-                      marginTop: 12,
-                      fontSize: 52,
+                      padding: "0 0 0 24px",
+                      marginTop: 28,
+                      fontSize: 56,
                       lineHeight: 1.4,
-                      letterSpacing: "0.024em",
+                      letterSpacing: "0.02em",
+                      fontWeight: 700,
+                      textShadow: `0 0 12px ${palette.accentGlow}`,
                     }
                   : {}),
               }}
@@ -403,7 +871,6 @@ const ScrollingCommentWithTranslation: React.FC<{
   const currentScroll = maxScroll > 0 && scrollDurationFrames > 0
     ? interpolate(frame, [scrollStart, scrollEnd], [0, maxScroll], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.ease })
     : 0
-
   return (
     <div
       ref={containerRef}
@@ -430,21 +897,64 @@ const ScrollingCommentWithTranslation: React.FC<{
 const Avatar: React.FC<{ name: string; src?: string | null }> = ({ name, src }) => {
   if (src) {
     return (
-      <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${palette.border}` }}>
-        <Img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <div
+        style={{
+          width: 80,
+          height: 80,
+          overflow: "hidden",
+          border: `3px solid ${palette.border}`,
+          position: "relative",
+        }}
+      >
+        <Img
+          src={src}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+        {/* Corner accent */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: 20,
+            height: 20,
+            borderTop: `2px solid ${palette.accent}`,
+            borderLeft: `2px solid ${palette.accent}`,
+          }}
+        />
       </div>
     )
   }
   return (
-    <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: palette.accent, border: `2px solid ${palette.border}` }}>
+    <div
+      style={{
+        width: 80,
+        height: 80,
+        backgroundColor: palette.surface,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 32,
+        color: palette.accent,
+        border: `3px solid ${palette.border}`,
+        fontWeight: 900,
+        textShadow: `0 0 20px ${palette.accentGlow}`,
+        position: "relative",
+      }}
+    >
       {name?.charAt(0)?.toUpperCase()}
+      {/* Corner accent */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 20,
+          height: 20,
+          borderTop: `2px solid ${palette.accent}`,
+          borderLeft: `2px solid ${palette.accent}`,
+        }}
+      />
     </div>
   )
-}
-
-function formatCount(n?: number) {
-  if (!n || n <= 0) return "0"
-  if (n < 1000) return String(n)
-  if (n < 10000) return `${(n / 1000).toFixed(1)}K`
-  return `${(n / 10000).toFixed(1)}万`
 }
