@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { CF_ORCHESTRATOR_URL } from '~/lib/config/app.config'
+import { CF_ORCHESTRATOR_URL } from '~/lib/config/env'
 import { presignGetByKey } from '~/lib/cloudflare'
 import { logger } from '~/lib/logger'
 

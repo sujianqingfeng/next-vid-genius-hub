@@ -6,7 +6,7 @@ import { Progress } from '~/components/ui/progress'
 import { Video, Film } from 'lucide-react'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { VideoPreview } from './VideoPreview/VideoPreview'
-import { STATUS_LABELS } from '~/lib/config/media-status.config'
+import { STATUS_LABELS } from '~/lib/config/media-status'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
 

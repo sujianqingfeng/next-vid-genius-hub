@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { AIModelIds } from "~/lib/ai/models";
 import { subtitleRenderConfigSchema } from "~/lib/subtitle/types";
-import { subtitleService } from "~/lib/subtitle/server/subtitle.service";
+import { subtitleService } from "~/lib/subtitle/server/subtitle";
 import { cloudflareInputFormatSchema, whisperModelSchema } from "~/lib/subtitle/config/models";
 import { getDb, schema } from "~/lib/db";
 import type { RequestContext } from "~/lib/auth/types";

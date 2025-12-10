@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
-import { PROXY_URL } from '~/lib/config/app.config'
+import { PROXY_URL } from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
 import {
 	startCloudJob,

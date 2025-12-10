@@ -25,7 +25,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { STATUS_LABELS, PHASE_LABELS } from '~/lib/config/media-status.config'
+import { STATUS_LABELS, PHASE_LABELS } from '~/lib/config/media-status'
 import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { orpc } from '~/lib/orpc/client'

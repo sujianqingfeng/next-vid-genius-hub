@@ -49,7 +49,7 @@ import {
 	type ChatModelId,
 } from '~/lib/ai/models'
 import { extractVideoId } from '@app/media-providers'
-import { STATUS_LABELS } from '~/lib/config/media-status.config'
+import { STATUS_LABELS } from '~/lib/config/media-status'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 import { Progress } from '~/components/ui/progress'

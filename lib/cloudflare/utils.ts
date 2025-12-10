@@ -1,4 +1,4 @@
-import { CF_ORCHESTRATOR_URL, JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/app.config'
+import { CF_ORCHESTRATOR_URL, JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/env'
 
 export function requireOrchestratorUrl(): string {
   if (!CF_ORCHESTRATOR_URL) throw new Error('CF_ORCHESTRATOR_URL is not configured')
