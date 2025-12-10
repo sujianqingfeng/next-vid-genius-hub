@@ -1,6 +1,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 import type { User } from './types'
 import { hashPassword, verifyPassword } from './password'
 import {
@@ -49,6 +50,7 @@ export async function signupUser(input: { email: string; password: string; nickn
 
 	const existing = await db.query.users.findFirst({ where: eq(schema.users.email, email) })
 	if (existing) {
+		logger.warn('api', `[auth.signup] email exists email=${email}`)
 		throw new Error('EMAIL_EXISTS')
 	}
 
@@ -72,11 +74,14 @@ export async function signupUser(input: { email: string; password: string; nickn
 			})
 			.returning()
 		user = inserted
+		logger.info('api', `[auth.signup] created user id=${user.id} email=${email} role=${user.role}`)
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		if (message.toLowerCase().includes('unique') || message.toLowerCase().includes('constraint')) {
+			logger.warn('api', `[auth.signup] unique constraint hit email=${email}`)
 			throw new Error('EMAIL_EXISTS')
 		}
+		logger.error('api', `[auth.signup] failed email=${email} error=${message}`)
 		throw error
 	}
 
@@ -93,6 +98,7 @@ export async function signupUser(input: { email: string; password: string; nickn
 			remark: '注册奖励',
 			db,
 		})
+		logger.info('api', `[auth.signup] signup bonus granted user=${user.id} points=${SIGNUP_BONUS_POINTS} balance=${balance}`)
 	}
 
 	const { token, session } = await createSession({ userId: user.id, db })
@@ -113,14 +119,17 @@ export async function loginUser(input: { email: string; password: string }) {
 	const db = await getDb()
 	let user = await db.query.users.findFirst({ where: eq(schema.users.email, email) })
 	if (!user) {
+		logger.warn('api', `[auth.login] invalid credentials email=${email}`)
 		throw new Error('INVALID_CREDENTIALS')
 	}
 	if (user.status === 'banned') {
+		logger.warn('api', `[auth.login] banned user id=${user.id} email=${email}`)
 		throw new Error('USER_BANNED')
 	}
 
 	const isValid = await verifyPassword(input.password, user.passwordHash)
 	if (!isValid) {
+		logger.warn('api', `[auth.login] invalid password user=${user.id} email=${email}`)
 		throw new Error('INVALID_CREDENTIALS')
 	}
 
@@ -131,6 +140,7 @@ export async function loginUser(input: { email: string; password: string }) {
 			.update(schema.users)
 			.set({ role: 'admin', updatedAt: new Date() })
 			.where(eq(schema.users.id, user.id))
+		logger.info('api', `[auth.login] promoted to admin user=${user.id} email=${email}`)
 	}
 
 	const { token, session } = await createSession({ userId: user.id, db })
@@ -142,6 +152,8 @@ export async function loginUser(input: { email: string; password: string }) {
 		.where(eq(schema.users.id, user.id))
 
 	const balance = await getBalance(user.id, db)
+
+	logger.info('api', `[auth.login] success user=${user.id} email=${email}`)
 
 	return {
 		user: toPublicUser(user),
@@ -155,6 +167,7 @@ export async function loginUser(input: { email: string; password: string }) {
 export async function logoutUser(sessionId: string | null) {
 	if (!sessionId) return
 	await revokeSessionById(sessionId)
+	logger.info('api', `[auth.logout] session=${sessionId}`)
 	return createClearSessionCookie()
 }
 

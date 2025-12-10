@@ -30,6 +30,8 @@ export async function GET(
 
     const variant = new URL(request.url).searchParams.get('variant') || 'auto'
 
+    logger.debug('api', `[source] request media=${mediaId} variant=${variant}`)
+
     
 
 	    // Variant-specific handling
@@ -43,7 +45,10 @@ export async function GET(
             remoteVideoKey: media.remoteVideoKey,
             title: media.title ?? null,
           })
-          if (url) return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
+          if (url) {
+            logger.info('api', `[source] original via remoteVideoKey media=${mediaId}`)
+            return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
+          }
         } catch (e) {
           logger.warn('api', `[source] original variant: presign remoteVideoKey failed: ${e instanceof Error ? e.message : String(e)}`)
         }
@@ -52,6 +57,7 @@ export async function GET(
       if (media.downloadJobId) {
         const remoteUrl = makeOrchestratorArtifactUrl(media.downloadJobId)
         if (remoteUrl) {
+          logger.info('api', `[source] original via orchestrator job=${media.downloadJobId} media=${mediaId}`)
           return proxyRemoteWithRange(remoteUrl, request, { defaultCacheSeconds: 60 })
         }
       }
@@ -66,6 +72,7 @@ export async function GET(
 	      if (renderedPath.startsWith('remote:orchestrator:')) {
 	        const remoteUrl = extractOrchestratorUrlFromPath(renderedPath)
 	        if (!remoteUrl) return NextResponse.json({ error: 'Orchestrator URL not configured' }, { status: 500 })
+	        logger.info('api', `[source] subtitles via orchestrator media=${mediaId}`)
 	        return proxyRemoteWithRange(remoteUrl, request, { defaultCacheSeconds: 60 })
 	      }
 	      // No remote-rendered subtitles available
@@ -96,6 +103,7 @@ export async function GET(
         if (range) passHeaders['range'] = range
         const r = await fetch(remoteUrl, { headers: passHeaders })
 	        if (r.ok) {
+	          logger.info('api', `[source] auto via rendered orchestrator media=${mediaId}`)
 	          return createProxyResponse(r, { defaultCacheSeconds: 60 })
 	        }
 	        // If remote artifact responded non-OK (e.g., 404), continue to generic remote resolution below
@@ -114,7 +122,10 @@ export async function GET(
           remoteVideoKey: media.remoteVideoKey,
           title: media.title ?? null,
         })
-        if (url) return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
+        if (url) {
+          logger.info('api', `[source] auto via remoteVideoKey media=${mediaId}`)
+          return proxyRemoteWithRange(url, request, { defaultCacheSeconds: 60 })
+        }
       } catch (e) {
         logger.warn('api', `[source] presign remoteVideoKey failed: ${e instanceof Error ? e.message : String(e)}`)
       }
@@ -123,10 +134,12 @@ export async function GET(
     if (media.downloadJobId) {
       const remoteUrl = makeOrchestratorArtifactUrl(media.downloadJobId)
       if (remoteUrl) {
+        logger.info('api', `[source] auto via orchestrator job=${media.downloadJobId} media=${mediaId}`)
         return proxyRemoteWithRange(remoteUrl, request, { defaultCacheSeconds: 60 })
       }
     }
 
+    logger.warn('api', `[source] source video not found media=${mediaId}`)
     return NextResponse.json({ error: 'Source video not found' }, { status: 404 })
   } catch (error) {
     logger.error('api', `Error serving source video: ${error instanceof Error ? error.message : String(error)}`)

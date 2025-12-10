@@ -34,6 +34,7 @@ export async function GET(
           title: media.title ?? null,
         })
         if (remoteUrl) {
+          logger.info('api', `[downloaded] via remoteVideoKey media=${mediaId} download=${wantDownload ? '1' : '0'}`)
           return proxyRemoteWithRange(remoteUrl, request, {
             defaultCacheSeconds: 60,
             forceDownloadName: downloadName,
@@ -47,6 +48,7 @@ export async function GET(
       const base = (process.env.CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
       if (base) {
         const url = `${base}/artifacts/${encodeURIComponent(media.downloadJobId)}`
+        logger.info('api', `[downloaded] via orchestrator job=${media.downloadJobId} media=${mediaId} download=${wantDownload ? '1' : '0'}`)
         return proxyRemoteWithRange(url, request, {
           defaultCacheSeconds: 60,
           forceDownloadName: downloadName,
@@ -54,6 +56,7 @@ export async function GET(
       }
     }
 
+    logger.warn('api', `[downloaded] no video available media=${mediaId}`)
     return NextResponse.json({ error: 'No video available' }, { status: 404 })
   } catch (error) {
     logger.error('api', `Error serving downloaded video: ${error instanceof Error ? error.message : String(error)}`)

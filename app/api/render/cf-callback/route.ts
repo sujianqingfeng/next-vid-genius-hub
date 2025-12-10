@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
 
     const payload = JSON.parse(bodyText) as CallbackPayload
 
+    logger.info(
+      'api',
+      `[cf-callback] received job=${payload.jobId} media=${payload.mediaId} engine=${payload.engine ?? 'unknown'} status=${payload.status}`,
+    )
+
     const db = await getDb()
     try {
       const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, payload.jobId) })
@@ -85,6 +90,7 @@ export async function POST(req: NextRequest) {
 
     if (payload.engine === 'media-downloader') {
       await handleCloudDownloadCallback(media, payload as CallbackPayload & { engine: 'media-downloader' })
+      logger.info('api', `[cf-callback] handled downloader callback job=${payload.jobId} media=${payload.mediaId} status=${payload.status}`)
       return NextResponse.json({ ok: true })
     }
 
@@ -101,6 +107,7 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           logger.warn('api', `[cf-callback] manifest (info) update skipped: ${err instanceof Error ? err.message : String(err)}`)
         }
+        logger.info('api', `[cf-callback] render-info completed job=${payload.jobId} media=${payload.mediaId}`)
       } else {
         await db
           .update(schema.media)
@@ -112,6 +119,7 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           logger.warn('api', `[cf-callback] manifest (subtitles) update skipped: ${err instanceof Error ? err.message : String(err)}`)
         }
+        logger.info('api', `[cf-callback] render-subtitles completed job=${payload.jobId} media=${payload.mediaId}`)
       }
     } else if (payload.status === 'failed' || payload.status === 'canceled') {
       // 非 downloader 引擎的失败/取消也落库，便于在媒体详情中留痕
@@ -124,7 +132,10 @@ export async function POST(req: NextRequest) {
         .update(schema.media)
         .set(updates)
         .where(eq(schema.media.id, media.id))
-      
+      logger.warn(
+        'api',
+        `[cf-callback] render ${payload.status} job=${payload.jobId} media=${payload.mediaId} engine=${payload.engine} error=${errorMessage}`,
+      )
     }
 
     return NextResponse.json({ ok: true })
@@ -141,6 +152,11 @@ async function handleCloudDownloadCallback(
   // Ensure a DB handle is available for all branches
   const db = await getDb()
   const where = eq(schema.media.id, payload.mediaId)
+
+	logger.info(
+		'api',
+		`[cf-callback.download] start job=${payload.jobId} media=${payload.mediaId} status=${payload.status}`,
+	)
 
 	async function remoteObjectExists({
 		key,
@@ -233,12 +249,19 @@ async function handleCloudDownloadCallback(
         downloadJobId: payload.jobId,
       })
       .where(where)
+    logger.warn(
+      'api',
+      `[cf-callback.download] non-completed status=${payload.status} job=${payload.jobId} media=${payload.mediaId} error=${payload.error ?? 'n/a'}`,
+    )
     return
   }
 
   // For comments-only tasks, skip video download logic
   if (isCommentsOnly) {
-    
+    logger.info(
+      'api',
+      `[cf-callback.download] comments-only payload detected job=${payload.jobId} media=${payload.mediaId}`,
+    )
     return
   }
 
@@ -257,6 +280,10 @@ async function handleCloudDownloadCallback(
         downloadJobId: payload.jobId,
       })
       .where(where)
+    logger.error(
+      'api',
+      `[cf-callback.download] missing video output job=${payload.jobId} media=${payload.mediaId}`,
+    )
     return
   }
 
@@ -308,6 +335,11 @@ async function handleCloudDownloadCallback(
   if (metadataFromPayload?.source) updates.source = metadataFromPayload.source
 
   await db.update(schema.media).set(updates).where(where)
+
+  logger.info(
+    'api',
+    `[cf-callback.download] completed job=${payload.jobId} media=${payload.mediaId} duration=${roundedDuration ?? 0}s hasVideo=${videoExists} hasAudio=${audioExistsWithSource} hasMetadata=${metadataExistsWithSource}`,
+  )
 
   // Update manifest with remote object keys (best-effort)
   const manifestPatch: Parameters<typeof upsertMediaManifest>[1] = {}

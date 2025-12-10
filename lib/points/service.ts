@@ -1,6 +1,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { desc, eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 import type { PointTransactionType } from '~/lib/db/schema'
 
 type DbClient = Awaited<ReturnType<typeof getDb>>
@@ -72,6 +73,11 @@ export async function addPoints(opts: {
 			createdAt: now,
 		})
 
+		logger.info(
+			'api',
+			`[points.add] user=${opts.userId} delta=${opts.amount} type=${opts.type} balance=${newBalance} refType=${opts.refType ?? 'null'} refId=${opts.refId ?? 'null'}`,
+		)
+
 		return newBalance
 	}
 
@@ -100,6 +106,10 @@ export async function spendPoints(opts: {
 		const account = await ensureAccount(tx, opts.userId)
 		const newBalance = account.balance - opts.amount
 		if (newBalance < 0) {
+			logger.warn(
+				'api',
+				`[points.spend] insufficient user=${opts.userId} delta=${opts.amount} balance=${account.balance} type=${opts.type} refType=${opts.refType ?? 'null'} refId=${opts.refId ?? 'null'}`,
+			)
 			throw new InsufficientPointsError()
 		}
 
@@ -119,6 +129,11 @@ export async function spendPoints(opts: {
 			metadata: opts.metadata ?? null,
 			createdAt: now,
 		})
+
+		logger.info(
+			'api',
+			`[points.spend] user=${opts.userId} delta=-${opts.amount} type=${opts.type} balance=${newBalance} refType=${opts.refType ?? 'null'} refId=${opts.refId ?? 'null'}`,
+		)
 
 		return newBalance
 	}

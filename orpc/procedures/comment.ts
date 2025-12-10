@@ -188,6 +188,11 @@ export const startCloudRender = os
 
 	const comments = media.comments
 
+	logger.info(
+		'rendering',
+		`[render.start] media=${mediaId} user=${userId} comments=${comments.length} sourcePolicy=${input.sourcePolicy ?? 'auto'} templateId=${input.templateId ?? media.commentsTemplate ?? DEFAULT_TEMPLATE_ID} proxyId=${proxyId ?? 'auto'}`,
+	)
+
 	// Ensure manifest references latest remote assets before kicking off render
 	const manifestPatch: MediaManifestPatch = {}
 	if (media.remoteVideoKey) manifestPatch.remoteVideoKey = media.remoteVideoKey
@@ -253,6 +258,11 @@ export const startCloudRender = os
 				},
 		})
 
+		logger.info(
+			'rendering',
+			`[render.job] queued media=${media.id} user=${userId} task=${taskId} job=${job.jobId} proxyId=${effectiveProxyId ?? 'none'}`,
+		)
+
 		await db
 			.update(schema.tasks)
 			.set({
@@ -264,6 +274,10 @@ export const startCloudRender = os
 		return { jobId: job.jobId, taskId }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Failed to start render task'
+		logger.error(
+			'rendering',
+			`[render.error] media=${mediaId} user=${userId} task=${taskId} error=${message}`,
+		)
 		await db
 			.update(schema.tasks)
 			.set({
@@ -282,6 +296,10 @@ export const getRenderStatus = os
 	.input(z.object({ jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
 		const status = await getJobStatus(input.jobId)
+		logger.debug(
+			'comments',
+			`[render.status] job=${input.jobId} status=${status.status} progress=${typeof status.progress === 'number' ? Math.round(status.progress * 100) : 'n/a'}`,
+		)
 		try {
 			const db = await getDb()
 			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
@@ -330,6 +348,11 @@ export const startCloudCommentsDownload = os
 		const { proxyId: effectiveProxyId, proxyRecord } = await resolveProxyWithDefault({ db, proxyId })
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
+		logger.info(
+			'comments',
+			`[comments.download.start] media=${mediaId} user=${userId} pages=${pages} source=${media.source} proxyId=${proxyId ?? 'auto'}`,
+		)
+
 		const taskId = createId()
 		await db.insert(schema.tasks).values({
 			id: taskId,
@@ -363,6 +386,11 @@ export const startCloudCommentsDownload = os
 				},
 			})
 
+			logger.info(
+				'comments',
+				`[comments.download.job] queued media=${mediaId} user=${userId} task=${taskId} job=${job.jobId} pages=${pages} proxyId=${effectiveProxyId ?? 'none'}`,
+			)
+
 			await db
 				.update(schema.tasks)
 				.set({
@@ -375,6 +403,10 @@ export const startCloudCommentsDownload = os
 			return { jobId: job.jobId, taskId }
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to start comments download'
+			logger.error(
+				'comments',
+				`[comments.download.error] media=${mediaId} user=${userId} task=${taskId} pages=${pages} error=${message}`,
+			)
 			await db
 				.update(schema.tasks)
 				.set({
@@ -392,6 +424,10 @@ export const getCloudCommentsStatus = os
 	.input(z.object({ jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
 		const status = await getJobStatus(input.jobId)
+		logger.debug(
+			'comments',
+			`[comments.download.status] job=${input.jobId} status=${status.status} progress=${typeof status.progress === 'number' ? Math.round(status.progress * 100) : 'n/a'}`,
+		)
 		try {
 			const db = await getDb()
 			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
@@ -554,6 +590,11 @@ export const moderateComments = os
     const comments = media.comments || []
     if (!comments || comments.length === 0) throw new Error('No comments to moderate')
 
+    logger.info(
+      'comments',
+      `[moderate.start] media=${mediaId} user=${userId} total=${comments.length} model=${modelId} overwrite=${overwrite}`,
+    )
+
     const runId = createId()
     const nowIso = new Date().toISOString()
 
@@ -605,6 +646,10 @@ export const moderateComments = os
           commentsModerationSummary: {},
         })
         .where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
+      logger.info(
+        'comments',
+        `[moderate.done] media=${mediaId} user=${userId} flagged=0 total=${comments.length}`,
+      )
       return { success: true, flaggedCount: 0, total: comments.length }
     }
 
@@ -646,6 +691,11 @@ export const moderateComments = os
         commentsModerationSummary: Object.fromEntries(summary.entries()),
       })
       .where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
+
+    logger.info(
+      'comments',
+      `[moderate.done] media=${mediaId} user=${userId} flagged=${flaggedCount} total=${comments.length}`,
+    )
 
     return { success: true, flaggedCount, total: comments.length }
   })

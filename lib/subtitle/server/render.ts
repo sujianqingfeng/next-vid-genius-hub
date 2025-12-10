@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
+import { logger } from '~/lib/logger'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import type { JobStatusResponse } from '~/lib/cloudflare'
@@ -13,6 +14,11 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
   const media = await db.query.media.findFirst({ where })
   if (!media) throw new Error('Media not found')
   if (!media.translation) throw new Error('Translation not found')
+
+  logger.info(
+    'rendering',
+    `[subtitles.render.start] media=${media.id} user=${media.userId ?? 'null'}`,
+  )
 
   const taskId = createId()
   const now = new Date()
@@ -48,6 +54,11 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
       })
       .where(eq(schema.tasks.id, taskId))
 
+    logger.info(
+      'rendering',
+      `[subtitles.render.job] queued media=${media.id} user=${media.userId ?? 'null'} task=${taskId} job=${job.jobId}`,
+    )
+
     return { jobId: job.jobId, taskId }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to start subtitles render'
@@ -60,12 +71,22 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
         updatedAt: new Date(),
       })
       .where(eq(schema.tasks.id, taskId))
+    logger.error(
+      'rendering',
+      `[subtitles.render.error] media=${media.id} user=${media.userId ?? 'null'} task=${taskId} error=${message}`,
+    )
     throw error
   }
 }
 
 export async function getRenderStatus(input: { jobId: string }): Promise<JobStatusResponse> {
   const status = await getJobStatus(input.jobId)
+  logger.debug(
+    'rendering',
+    `[subtitles.render.status] job=${input.jobId} status=${status.status} progress=${typeof status.progress === 'number' ? Math.round(
+      status.progress * 100,
+    ) : 'n/a'}`,
+  )
   try {
     const db = await getDb()
     const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })

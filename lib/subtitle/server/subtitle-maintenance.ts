@@ -91,6 +91,13 @@ export async function optimizeTranscription(input: {
 		)
 	}
 
+	logger.info(
+		'transcription',
+		`[optimize] start media=${mediaId} model=${model} pauseThresholdMs=${pauseThresholdMs} maxSentenceMs=${maxSentenceMs} maxChars=${maxChars} lightCleanup=${Boolean(
+			lightCleanup,
+		)} textCorrect=${Boolean(textCorrect)}`,
+	)
+
 	const candidates = buildCandidateBreaks(words, {
 		pauseThresholdMs,
 		maxSentenceMs,
@@ -156,6 +163,10 @@ Strict constraints:
 		.update(schema.media)
 		.set({ optimizedTranscription: optimizedVtt })
 		.where(where)
+	logger.info(
+		'transcription',
+		`[optimize] done media=${mediaId} model=${model}`,
+	)
 	return { optimizedTranscription: optimizedVtt }
 }
 

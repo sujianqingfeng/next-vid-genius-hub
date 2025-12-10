@@ -180,6 +180,10 @@ export async function transcribe(input: {
 		await new Promise((r) => setTimeout(r, 1200))
 	}
 	if (!vttUrl) {
+		logger.error(
+			'transcription',
+			`Cloud ASR pipeline timeout for ${jobId}; last status=${lastStatus}`,
+		)
 		await db
 			.update(schema.tasks)
 			.set({

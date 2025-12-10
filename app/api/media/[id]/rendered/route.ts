@@ -46,6 +46,7 @@ export async function GET(
 					{ status: 500 },
 				)
 			}
+			logger.info('api', `[rendered] via orchestrator media=${mediaId} download=${download ? '1' : '0'}`)
 			return proxyRemoteWithRange(remoteUrl, request, {
 				defaultCacheSeconds: 60,
 				forceDownloadName: downloadName,

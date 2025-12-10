@@ -72,6 +72,10 @@ export async function proxyRemoteWithRange(
   const passHeaders: Record<string, string> = {}
   if (range) passHeaders['range'] = range
   const r = await fetch(remoteUrl, { headers: passHeaders })
+  logger.debug(
+    'media',
+    `[stream.proxy] url=${remoteUrl.split('?')[0]} status=${r.status} range=${range ?? 'none'}`,
+  )
   return createProxyResponse(r, options)
 }
 
@@ -80,13 +84,16 @@ export async function resolveRemoteVideoUrl(media: MinimalMediaLike): Promise<st
   if (!media) return null
   if (media.filePath && media.filePath.startsWith('remote:orchestrator:')) {
     const jobId = media.filePath.split(':').pop()!
+    logger.debug('media', `[stream.resolve] via filePath orchestrator job=${jobId}`)
     return `${base}/artifacts/${encodeURIComponent(jobId)}`
   }
   if (media.downloadJobId) {
+    logger.debug('media', `[stream.resolve] via downloadJobId=${media.downloadJobId}`)
     return `${base}/artifacts/${encodeURIComponent(media.downloadJobId)}`
   }
   if (media.remoteVideoKey) {
     try {
+      logger.debug('media', `[stream.resolve] via remoteVideoKey=${media.remoteVideoKey}`)
       return await presignGetByKey(media.remoteVideoKey)
     } catch (e) {
       logger.error('media', `[stream] presign by key failed: ${e instanceof Error ? e.message : String(e)}`)

@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
+import { logger } from '~/lib/logger'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/env'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
@@ -39,6 +40,11 @@ export const startCloudDownload = os
 		})
 
 		const mediaId = existing?.id ?? createId()
+
+		logger.info(
+			'media',
+			`[download.start] user=${userId} media=${mediaId} url=${url} source=${source} quality=${quality} proxyId=${proxyId ?? 'none'}`,
+		)
 
 		if (!existing) {
 			await db
@@ -110,6 +116,11 @@ export const startCloudDownload = os
 				},
 			})
 
+			logger.info(
+				'media',
+				`[download.job] queued media=${mediaId} job=${job.jobId} user=${userId} source=${source} quality=${quality} proxyId=${effectiveProxyId ?? 'none'}`,
+			)
+
 			await db
 				.update(schema.media)
 				.set({
@@ -134,6 +145,10 @@ export const startCloudDownload = os
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to start cloud download'
+			logger.error(
+				'media',
+				`[download.error] media=${mediaId} user=${userId} url=${url} source=${source} quality=${quality} error=${message}`,
+			)
 			await db
 				.update(schema.media)
 				.set({
@@ -158,6 +173,10 @@ export const getCloudDownloadStatus = os
 	.input(z.object({ jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
 		const status = await getJobStatus(input.jobId)
+		logger.debug(
+			'media',
+			`[download.status] job=${input.jobId} status=${status.status} progress=${typeof status.progress === 'number' ? Math.round(status.progress * 100) : 'n/a'}`,
+		)
 		try {
 			const db = await getDb()
 			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })

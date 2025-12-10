@@ -1,5 +1,6 @@
 import { calculateAsrCost, calculateDownloadCost, calculateLlmCost } from './pricing'
 import { InsufficientPointsError, spendPoints } from './service'
+import { logger } from '~/lib/logger'
 import { POINT_RESOURCE_TYPES, POINT_TRANSACTION_TYPES } from '~/lib/job/task'
 
 interface BaseChargeInput {
@@ -37,6 +38,10 @@ export async function chargeLlmUsage(opts: BaseChargeInput & {
 		) {
 			return { charged: 0 }
 		}
+		logger.error(
+			'api',
+			`[billing.llm] pricing error user=${opts.userId} model=${opts.modelId ?? 'default'} error=${error instanceof Error ? error.message : String(error)}`,
+		)
 		throw error
 	}
 
@@ -58,6 +63,10 @@ export async function chargeLlmUsage(opts: BaseChargeInput & {
 			...(opts.metadata ?? {}),
 		},
 	})
+	logger.info(
+		'api',
+		`[billing.llm] charged user=${opts.userId} model=${opts.modelId ?? 'default'} tokens=${totalTokens} points=${points} balance=${balance ?? 0}`,
+	)
 	return { charged: points, balance }
 }
 
@@ -82,6 +91,10 @@ export async function chargeAsrUsage(opts: BaseChargeInput & {
 		) {
 			return { charged: 0 }
 		}
+		logger.error(
+			'api',
+			`[billing.asr] pricing error user=${opts.userId} model=${opts.modelId ?? 'default'} error=${error instanceof Error ? error.message : String(error)}`,
+		)
 		throw error
 	}
 
@@ -101,6 +114,10 @@ export async function chargeAsrUsage(opts: BaseChargeInput & {
 			...(opts.metadata ?? {}),
 		},
 	})
+	logger.info(
+		'api',
+		`[billing.asr] charged user=${opts.userId} model=${opts.modelId ?? 'default'} dur=${durationSeconds.toFixed(1)}s points=${points} balance=${balance ?? 0}`,
+	)
 	return { charged: points, balance }
 }
 
@@ -121,6 +138,10 @@ export async function chargeDownloadUsage(opts: BaseChargeInput & {
 		) {
 			return { charged: 0 }
 		}
+		logger.error(
+			'api',
+			`[billing.download] pricing error user=${opts.userId} dur=${opts.durationSeconds.toFixed(1)}s error=${error instanceof Error ? error.message : String(error)}`,
+		)
 		throw error
 	}
 
@@ -139,6 +160,10 @@ export async function chargeDownloadUsage(opts: BaseChargeInput & {
 			...(opts.metadata ?? {}),
 		},
 	})
+	logger.info(
+		'api',
+		`[billing.download] charged user=${opts.userId} dur=${durationSeconds.toFixed(1)}s points=${points} balance=${balance ?? 0}`,
+	)
 	return { charged: points, balance }
 }
 

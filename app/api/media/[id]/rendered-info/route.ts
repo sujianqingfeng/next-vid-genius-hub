@@ -44,6 +44,7 @@ export async function GET(
 	      if (!remoteUrl) {
 	        return NextResponse.json({ error: 'Orchestrator URL not configured' }, { status: 500 })
 	      }
+	      logger.info('api', `[rendered-info] via orchestrator media=${mediaId} download=${download ? '1' : '0'}`)
 	      return proxyRemoteWithRange(remoteUrl, request, {
 	        defaultCacheSeconds: 60,
 	        forceDownloadName: downloadName,

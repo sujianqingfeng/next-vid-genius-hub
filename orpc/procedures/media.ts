@@ -98,6 +98,11 @@ export const refreshMetadata = os
 				? MEDIA_SOURCES.TIKTOK
 				: MEDIA_SOURCES.YOUTUBE
 
+			logger.info(
+				'media',
+				`[metadata.refresh.start] media=${record.id} user=${userId} source=${source} proxyId=${input.proxyId ?? 'none'}`,
+			)
+
 			const proxyRecord =
 				input.proxyId && input.proxyId !== 'none'
 					? await db.query.proxies.findFirst({
@@ -206,6 +211,10 @@ export const refreshMetadata = os
 				}
 			} catch (err) {
 				const message = err instanceof Error ? err.message : 'Failed to refresh metadata'
+				logger.error(
+					'media',
+					`[metadata.refresh.error] media=${record.id} user=${userId} error=${message}`,
+				)
 				await db
 					.update(schema.tasks)
 					.set({
@@ -243,6 +252,10 @@ export const refreshMetadata = os
 		if (typeof likeCount === 'number') updates.likeCount = likeCount
 
 		if (Object.keys(updates).length === 0) {
+			logger.info(
+				'media',
+				`[metadata.refresh.done] media=${record.id} user=${userId} no-op (no fields changed)`,
+			)
 			return record
 		}
 
@@ -253,6 +266,10 @@ export const refreshMetadata = os
 		const updated = await db.query.media.findFirst({
 			where: and(eq(schema.media.id, input.id), eq(schema.media.userId, userId)),
 		})
+		logger.info(
+			'media',
+			`[metadata.refresh.done] media=${record.id} user=${userId} updatedFields=${Object.keys(updates).join(',')}`,
+		)
 		return updated
 	})
 
