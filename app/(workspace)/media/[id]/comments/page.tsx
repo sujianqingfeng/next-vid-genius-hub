@@ -2,7 +2,6 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-	ArrowLeft,
 	Copy,
 	Download,
 	Edit,
@@ -15,7 +14,6 @@ import {
 	Loader2,
 	Info,
 } from 'lucide-react'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'

@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	AlertCircle,
-	ArrowLeft,
 	FileText,
 	Languages,
 	Loader2,

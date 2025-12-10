@@ -1,6 +1,6 @@
 'use client'
 
-import { Coins, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { PageHeader } from '~/components/business/layout/page-header'

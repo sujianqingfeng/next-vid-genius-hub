@@ -210,26 +210,6 @@ const Badge: React.FC<{ text: string }> = ({ text }) => (
   <div style={{ padding: "10px 16px", borderRadius: 999, background: "rgba(248, 250, 252, 0.8)", border: `1px solid ${palette.border}` }}>{text}</div>
 )
 
-const VerticalVideoPlaceholder: React.FC = () => {
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#ffffff",
-        color: palette.textMuted,
-        fontFamily: baseFont,
-        fontSize: 18,
-      }}
-    >
-      竖屏视频占位
-    </div>
-  )
-}
-
 function isLikelyChinese(text?: string | null): boolean {
   return Boolean(text && /[\u4e00-\u9fff]/.test(text))
 }

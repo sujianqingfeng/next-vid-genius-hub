@@ -7,7 +7,6 @@ import type {
   CommentsPipelineRequest,
   DownloadPipelineEnv,
   DownloadPipelineRequest,
-  MetadataSummary,
   ProgressEvent,
 } from './types'
 
@@ -143,7 +142,6 @@ export type {
   CommentsPipelineRequest,
   CommentsPipelineEnv,
   ProgressEvent,
-  MetadataSummary,
 } from './types'
 
 export {
@@ -156,4 +154,3 @@ export {
   buildClashConfig,
   startMihomo,
 }
-

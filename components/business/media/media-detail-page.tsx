@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-	ArrowLeft,
 	Calendar,
 	Eye,
 	FileText,
@@ -65,7 +64,6 @@ function MediaThumbnail({ media }: { media: MediaItem }) {
 
 // Media metadata component
 function MediaMetadata({ media }: { media: MediaItem }) {
-	const t = useTranslations('MediaDetail')
 	return (
 		<div className="space-y-6">
 			{/* Title Section */}

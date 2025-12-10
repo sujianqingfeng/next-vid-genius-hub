@@ -136,8 +136,7 @@ export const startCloudRender = os
 // Cloud rendering: get status
 export const getRenderStatus = os
   .input(z.object({ jobId: z.string().min(1) }))
-  .handler(async ({ input, context }) => {
-    const ctx = context as RequestContext
+  .handler(async ({ input }) => {
     // Optional: could look up task by jobId and enforce ownership here.
     return subtitleService.getRenderStatus(input)
   });

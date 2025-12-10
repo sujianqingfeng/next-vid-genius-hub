@@ -98,7 +98,6 @@ export async function downloadYoutubeComments({ url, pages = 3, proxy }: Comment
 function extractAwemeIdFromUrl(url: string): string | null {
   try {
     const u = new URL(url)
-    const host = u.hostname || ''
     const path = u.pathname || ''
 
     // tiktok.com/@user/video/7570655553911901458

@@ -2,7 +2,6 @@ import { os } from '@orpc/server'
 import { and, count, desc, eq, like, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
-import type { RequestContext } from '~/lib/auth/types'
 import { addPoints, listTransactions } from '~/lib/points/service'
 import { ADMIN_USERS_PAGE_SIZE, DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
 import type { PointResourceType } from '~/lib/db/schema'
@@ -16,8 +15,7 @@ const ListUsersSchema = z.object({
 
 export const listUsers = os
 	.input(ListUsersSchema)
-	.handler(async ({ input, context }) => {
-		const ctx = context as RequestContext
+	.handler(async ({ input }) => {
 		const db = await getDb()
 
 		const page = input.page ?? 1
@@ -78,8 +76,7 @@ const UpdateUserRoleSchema = z.object({
 
 export const updateUserRole = os
 	.input(UpdateUserRoleSchema)
-	.handler(async ({ input, context }) => {
-		const ctx = context as RequestContext
+	.handler(async ({ input }) => {
 		const db = await getDb()
 
 		await db
@@ -100,8 +97,7 @@ const UpdateUserStatusSchema = z.object({
 
 export const updateUserStatus = os
 	.input(UpdateUserStatusSchema)
-	.handler(async ({ input, context }) => {
-		const ctx = context as RequestContext
+	.handler(async ({ input }) => {
 		const db = await getDb()
 
 		await db
@@ -123,8 +119,7 @@ const AddPointsSchema = z.object({
 
 export const addUserPoints = os
 	.input(AddPointsSchema)
-	.handler(async ({ input, context }) => {
-		const ctx = context as RequestContext
+	.handler(async ({ input }) => {
 		const db = await getDb()
 
 		const balance = await addPoints({
@@ -146,8 +141,7 @@ const ListUserTransactionsSchema = z.object({
 
 export const listUserTransactions = os
 	.input(ListUserTransactionsSchema)
-	.handler(async ({ input, context }) => {
-		const ctx = context as RequestContext
+	.handler(async ({ input }) => {
 		const items = await listTransactions({
 			userId: input.userId,
 			limit: input.limit,
@@ -164,8 +158,7 @@ const ListPricingRulesSchema = z.object({
 
 export const listPricingRules = os
 	.input(ListPricingRulesSchema)
-	.handler(async ({ input, context }) => {
-		const ctx = context as RequestContext
+	.handler(async ({ input }) => {
 		const db = await getDb()
 
 		const page = input.page ?? 1
@@ -215,8 +208,7 @@ const UpsertPricingRuleSchema = z.object({
 
 export const upsertPricingRule = os
 	.input(UpsertPricingRuleSchema)
-	.handler(async ({ input, context }) => {
-		const ctx = context as RequestContext
+	.handler(async ({ input }) => {
 		const db = await getDb()
 		const now = new Date()
 
@@ -254,8 +246,7 @@ const DeletePricingRuleSchema = z.object({
 
 export const deletePricingRule = os
 	.input(DeletePricingRuleSchema)
-	.handler(async ({ input, context }) => {
-		const ctx = context as RequestContext
+	.handler(async ({ input }) => {
 		const db = await getDb()
 
 		await db

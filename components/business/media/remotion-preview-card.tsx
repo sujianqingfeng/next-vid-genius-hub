@@ -12,7 +12,6 @@ import { DEFAULT_TEMPLATE_ID, getTemplate, type RemotionTemplateId } from '~/rem
 
 import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
 import type { CommentVideoInputProps } from '~/remotion/types'
-import { CommentsVideo } from '~/remotion/CommentsVideo'
 
 const Player = dynamic<PlayerPropsWithoutZod<CommentVideoInputProps>>(
 	() => import('@remotion/player').then((mod) => mod.Player),

@@ -1,6 +1,5 @@
 'use client'
 
-import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Trash2, RefreshCw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
