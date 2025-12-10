@@ -1,5 +1,6 @@
 import { getContainer } from '@cloudflare/containers'
 import { bucketPaths, type InputVideoVariant } from '../../lib/storage/bucket-paths'
+import type { EngineId, JobStatus, JobTerminalStatus } from '../../lib/job/status'
 export interface Env {
   JOBS: KVNamespace
   RENDER_BUCKET?: R2Bucket
@@ -29,19 +30,7 @@ export interface Env {
   RENDERER_REMOTION?: DurableObjectNamespace
 }
 
-type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'
-
-type JobStatus =
-  | 'queued'
-  | 'fetching_metadata'
-  | 'preparing'
-  | 'running'
-  | 'uploading'
-  | 'completed'
-  | 'failed'
-  | 'canceled'
-
-const TERMINAL_STATUSES: JobStatus[] = ['completed', 'failed', 'canceled']
+const TERMINAL_STATUSES: JobTerminalStatus[] = ['completed', 'failed', 'canceled']
 
 // Manifest stored in bucket to advertise where inputs/remote keys are
 // Key: manifests/media/<mediaId>.json

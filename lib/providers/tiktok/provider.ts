@@ -1,11 +1,11 @@
-import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.types'
-import type { BasicVideoInfo } from '~/lib/types/provider.types'
+import type { VideoProvider, VideoProviderContext, BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchTikTokMetadata, pickTikTokThumbnail } from './metadata'
 import { isTikTokUrl, extractTikTokVideoId } from './utils'
 import { logger } from '~/lib/logger'
+import { MEDIA_SOURCES } from '~/lib/media/source'
 
 export const tiktokProvider: VideoProvider = {
-	id: 'tiktok',
+	id: MEDIA_SOURCES.TIKTOK,
 	name: 'TikTok',
 	domains: ['tiktok.com', 'vm.tiktok.com', 'douyin.com', 'iesdouyin.com'],
 	matches: isTikTokUrl,
@@ -28,7 +28,7 @@ export const tiktokProvider: VideoProvider = {
 				thumbnails: tiktokInfo.thumbnails,
 				viewCount: tiktokInfo.view_count,
 				likeCount: tiktokInfo.like_count,
-				source: 'tiktok',
+				source: MEDIA_SOURCES.TIKTOK,
 				raw: tiktokInfo,
 			}
         } catch (error) {

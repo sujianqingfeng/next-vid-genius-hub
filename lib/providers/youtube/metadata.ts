@@ -1,10 +1,11 @@
-'use server'
+"use server"
 
 import type { BasicVideoInfo } from '~/lib/types/provider.types'
-import { logger } from '~/lib/logger'
 import type { VideoProviderContext } from '~/lib/types/provider.types'
-import { getYouTubeClient } from './client'
+import { logger } from '~/lib/logger'
 import { extractVideoId } from '@app/media-providers'
+import { MEDIA_SOURCES } from '~/lib/media/source'
+import { getYouTubeClient } from './client'
 
 export async function fetchYouTubeMetadata(
 	url: string,
@@ -30,7 +31,7 @@ export async function fetchYouTubeMetadata(
 			thumbnails: info.basic_info?.thumbnail,
 			viewCount: info.basic_info?.view_count,
 			likeCount: info.basic_info?.like_count,
-			source: 'youtube',
+			source: MEDIA_SOURCES.YOUTUBE,
 			raw: info,
 		}
     } catch (error) {

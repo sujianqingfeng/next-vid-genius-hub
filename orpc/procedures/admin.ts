@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import type { RequestContext } from '~/lib/auth/types'
 import { addPoints, listTransactions } from '~/lib/points/service'
+import { ADMIN_USERS_PAGE_SIZE, DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
+import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
 
 function ensureAdmin(context: RequestContext) {
 	const user = context.auth.user
@@ -15,7 +17,7 @@ function ensureAdmin(context: RequestContext) {
 
 const ListUsersSchema = z.object({
 	page: z.number().int().min(1).default(1),
-	limit: z.number().int().min(1).max(100).default(20),
+	limit: z.number().int().min(1).max(100).default(ADMIN_USERS_PAGE_SIZE),
 	q: z.string().trim().optional(),
 })
 
@@ -27,7 +29,7 @@ export const listUsers = os
 		const db = await getDb()
 
 		const page = input.page ?? 1
-		const limit = input.limit ?? 20
+		const limit = input.limit ?? ADMIN_USERS_PAGE_SIZE
 		const offset = (page - 1) * limit
 
 		const filters = []
@@ -139,7 +141,7 @@ export const addUserPoints = os
 		const balance = await addPoints({
 			userId: input.userId,
 			amount: input.amount,
-			type: 'manual_adjust',
+			type: POINT_TRANSACTION_TYPES.MANUAL_ADJUST,
 			remark: input.remark ?? '管理员加分',
 			db,
 		})
@@ -149,7 +151,7 @@ export const addUserPoints = os
 
 const ListUserTransactionsSchema = z.object({
 	userId: z.string().min(1),
-	limit: z.number().int().min(1).max(100).default(20),
+	limit: z.number().int().min(1).max(100).default(DEFAULT_PAGE_LIMIT),
 	offset: z.number().int().min(0).default(0),
 })
 

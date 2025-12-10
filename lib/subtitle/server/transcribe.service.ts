@@ -6,6 +6,8 @@ import { type CloudflareInputFormat, type WhisperModel, WHISPER_MODELS } from '~
 import { validateVttContent, normalizeVttContent } from '~/lib/subtitle/utils/vtt'
 import { putObjectByKey, upsertMediaManifest, startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TASK_KINDS } from '~/lib/job/task'
 
 export async function transcribe(input: {
 	mediaId: string
@@ -68,7 +70,7 @@ export async function transcribe(input: {
 	await db.insert(schema.tasks).values({
 		id: taskId,
 		userId: mediaRecord.userId ?? null,
-		kind: 'asr',
+		kind: TASK_KINDS.ASR,
 		engine: 'asr-pipeline',
 		targetType: 'media',
 		targetId: mediaId,
@@ -150,7 +152,7 @@ export async function transcribe(input: {
 						progress: typeof st.progress === 'number' ? Math.round(st.progress * 100) : task.progress,
 						jobStatusSnapshot: st,
 						updatedAt: new Date(),
-						finishedAt: ['completed', 'failed', 'canceled'].includes(st.status) ? new Date() : task.finishedAt,
+						finishedAt: TERMINAL_JOB_STATUSES.includes(st.status) ? new Date() : task.finishedAt,
 					})
 					.where(eq(schema.tasks.id, task.id))
 			}

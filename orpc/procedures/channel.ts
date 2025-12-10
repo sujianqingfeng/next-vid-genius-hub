@@ -10,6 +10,9 @@ import { startCloudJob, getJobStatus, presignGetByKey, putObjectByKey } from '~/
 import { PROXY_URL } from '~/lib/config/app.config'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
 import type { RequestContext } from '~/lib/auth/types'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TASK_KINDS } from '~/lib/job/task'
+import { MEDIA_SOURCES } from '~/lib/media/source'
 
 const CreateChannelInput = z.object({
   channelUrlOrId: z.string().min(1),
@@ -24,7 +27,7 @@ export const createChannel = os
     const now = new Date()
     const id = (await import('@paralleldrive/cuid2')).createId()
     const channelUrl = input.channelUrlOrId
-    const provider: 'youtube' = 'youtube'
+    const provider: 'youtube' = MEDIA_SOURCES.YOUTUBE
 
     const db = await getDb()
     await db
@@ -103,7 +106,7 @@ export const startCloudSync = os
 	    await db.insert(schema.tasks).values({
 	      id: taskId,
 	      userId,
-	      kind: 'channel-sync',
+	      kind: TASK_KINDS.CHANNEL_SYNC,
 	      engine: 'media-downloader',
 	      targetType: 'channel',
 	      targetId: channel.id,
@@ -120,7 +123,7 @@ export const startCloudSync = os
 	        engine: 'media-downloader',
 	        options: {
 	          task: 'channel-list',
-	          source: 'youtube',
+	          source: MEDIA_SOURCES.YOUTUBE,
 	          channelUrlOrId,
 	          limit: input.limit,
 	          defaultProxyUrl: PROXY_URL,
@@ -169,7 +172,7 @@ export const getCloudSyncStatus = os
             progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
             jobStatusSnapshot: status,
             updatedAt: new Date(),
-            finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
+            finishedAt: TERMINAL_JOB_STATUSES.includes(status.status) ? new Date() : task.finishedAt,
           })
           .where(eq(schema.tasks.id, task.id))
       }

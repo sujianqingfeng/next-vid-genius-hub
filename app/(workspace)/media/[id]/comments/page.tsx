@@ -62,6 +62,8 @@ import {
 	type RemotionTemplateId,
 } from '~/remotion/templates'
 import type { Comment } from '~/lib/db/schema'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { MEDIA_SOURCES } from '~/lib/media/source'
 
 type SourceStatus = {
 	status?: string
@@ -107,9 +109,7 @@ export default function CommentsPage() {
 				enabled: !!jobId,
 				refetchInterval: (q: { state: { data?: SourceStatus } }) => {
 					const s = q.state.data?.status
-					return s && ['completed', 'failed', 'canceled'].includes(s)
-						? false
-						: 2000
+					return s && TERMINAL_JOB_STATUSES.includes(s) ? false : 2000
 				},
 			}),
 	})
@@ -322,9 +322,7 @@ export default function CommentsPage() {
 				enabled: !!jobId,
 				refetchInterval: (q: { state: { data?: SourceStatus } }) => {
 					const s = q.state.data?.status
-					return s && ['completed', 'failed', 'canceled'].includes(s)
-						? false
-						: 2000
+					return s && TERMINAL_JOB_STATUSES.includes(s) ? false : 2000
 				},
 			}),
 	})
@@ -425,7 +423,7 @@ export default function CommentsPage() {
 	const getVideoSourceId = () => {
 		if (!mediaQuery.data?.url) return id
 
-		if (mediaQuery.data.source === 'youtube') {
+		if (mediaQuery.data.source === MEDIA_SOURCES.YOUTUBE) {
 			return extractVideoId(mediaQuery.data.url)
 		}
 

@@ -5,6 +5,7 @@ import { logger } from '~/lib/logger'
 import { getDb, schema } from '~/lib/db'
 import { ProxyNodeUrlSchema, ProxyProtocolEnum, parseSSRSubscription } from '~/lib/proxy/parser'
 import { getDefaultProxyId, setDefaultProxyId } from '~/lib/proxy/default-proxy'
+import { DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
 
 // Schemas
 const CreateSSRSubscriptionSchema = z.object({
@@ -228,7 +229,7 @@ export const getProxies = os
 	.input(z.object({ 
 		subscriptionId: z.string().optional(),
 		page: z.number().default(1),
-		limit: z.number().default(20),
+		limit: z.number().default(DEFAULT_PAGE_LIMIT),
 	}))
 	.handler(async ({ input }) => {
 		const db = await getDb()

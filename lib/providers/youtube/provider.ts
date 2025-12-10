@@ -1,9 +1,9 @@
 import type { Innertube } from 'youtubei.js'
-import type { VideoProvider, VideoProviderContext } from '~/lib/types/provider.types'
-import type { BasicVideoInfo } from '~/lib/types/provider.types'
+import type { VideoProvider, VideoProviderContext, BasicVideoInfo } from '~/lib/types/provider.types'
 import { fetchYouTubeMetadata } from './metadata'
 import { logger } from '~/lib/logger'
 import { extractVideoId } from '@app/media-providers'
+import { MEDIA_SOURCES } from '~/lib/media/source'
 
 const clientCache = new Map<string, Promise<Innertube>>()
 
@@ -16,7 +16,7 @@ function isYouTubeUrl(url: string): boolean {
 }
 
 export const youtubeProvider: VideoProvider = {
-	id: 'youtube',
+	id: MEDIA_SOURCES.YOUTUBE,
 	name: 'YouTube',
 	domains: ['youtube.com', 'youtu.be', 'm.youtube.com'],
 	matches: isYouTubeUrl,

@@ -16,6 +16,7 @@ import type {
 	SubtitleWorkflowState,
 } from '~/lib/subtitle/types'
 import { TIME_CONSTANTS } from '~/lib/subtitle/config/constants'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
 import { usePageVisibility } from '~/lib/hooks/usePageVisibility'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
@@ -88,7 +89,7 @@ export function useSubtitleActions({
 				enabled: !!jobId,
 				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
 					const s = q.state.data?.status
-					return s && ['completed', 'failed', 'canceled'].includes(s)
+					return s && TERMINAL_JOB_STATUSES.includes(s)
 						? false
 						: TIME_CONSTANTS.RENDERING_POLL_INTERVAL
 				},

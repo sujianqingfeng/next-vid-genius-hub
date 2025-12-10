@@ -26,6 +26,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { STATUS_LABELS, PHASE_LABELS } from '~/lib/config/media-status.config'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { orpc } from '~/lib/orpc/client'
 
@@ -101,7 +102,7 @@ export default function NewDownloadPage() {
 		refetchInterval: (query) => {
 			const status = query.state.data?.status
 			if (!status) return 5000
-			return ['completed', 'failed', 'canceled'].includes(status) ? false : 5000
+			return status && TERMINAL_JOB_STATUSES.includes(status) ? false : 5000
 		},
 	})
 

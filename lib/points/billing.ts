@@ -1,6 +1,6 @@
 import { calculateAsrCost, calculateDownloadCost, calculateLlmCost } from './pricing'
 import { InsufficientPointsError, spendPoints } from './service'
-import type { PointTransactionType } from '~/lib/db/schema'
+import { POINT_RESOURCE_TYPES, POINT_TRANSACTION_TYPES } from '~/lib/job/task'
 
 interface BaseChargeInput {
 	userId: string
@@ -29,12 +29,12 @@ export async function chargeLlmUsage(opts: BaseChargeInput & {
 	const balance = await spendPoints({
 		userId: opts.userId,
 		amount: points,
-		type: 'ai_usage',
+		type: POINT_TRANSACTION_TYPES.AI_USAGE,
 		refType: opts.refType ?? 'ai',
 		refId: opts.refId ?? null,
 		remark,
 		metadata: {
-			resourceType: 'llm',
+			resourceType: POINT_RESOURCE_TYPES.LLM,
 			modelId: opts.modelId ?? null,
 			tokens: totalTokens,
 			inputTokens: opts.inputTokens ?? 0,
@@ -58,12 +58,12 @@ export async function chargeAsrUsage(opts: BaseChargeInput & {
 	const balance = await spendPoints({
 		userId: opts.userId,
 		amount: points,
-		type: 'asr_usage',
+		type: POINT_TRANSACTION_TYPES.ASR_USAGE,
 		refType: opts.refType ?? 'asr',
 		refId: opts.refId ?? null,
 		remark,
 		metadata: {
-			resourceType: 'asr',
+			resourceType: POINT_RESOURCE_TYPES.ASR,
 			modelId: opts.modelId ?? null,
 			durationSeconds,
 			...(opts.metadata ?? {}),
@@ -81,12 +81,12 @@ export async function chargeDownloadUsage(opts: BaseChargeInput & {
 	const balance = await spendPoints({
 		userId: opts.userId,
 		amount: points,
-		type: 'download_usage',
+		type: POINT_TRANSACTION_TYPES.DOWNLOAD_USAGE,
 		refType: opts.refType ?? 'download',
 		refId: opts.refId ?? null,
 		remark,
 		metadata: {
-			resourceType: 'download',
+			resourceType: POINT_RESOURCE_TYPES.DOWNLOAD,
 			durationSeconds,
 			...(opts.metadata ?? {}),
 		},

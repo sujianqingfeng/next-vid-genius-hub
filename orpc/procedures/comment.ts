@@ -5,7 +5,13 @@ import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { PROXY_URL } from '~/lib/config/app.config'
 import { getDb, schema } from '~/lib/db'
-import { startCloudJob, getJobStatus, presignGetByKey, upsertMediaManifest, type MediaManifestPatch } from '~/lib/cloudflare'
+import {
+	startCloudJob,
+	getJobStatus,
+	presignGetByKey,
+	upsertMediaManifest,
+	type MediaManifestPatch,
+} from '~/lib/cloudflare'
 import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
@@ -13,6 +19,9 @@ import { logger } from '~/lib/logger'
 import { generateObject } from '~/lib/ai/chat'
 import { createId } from '@paralleldrive/cuid2'
 import type { RequestContext } from '~/lib/auth/types'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TASK_KINDS } from '~/lib/job/task'
+import { DEFAULT_TEMPLATE_ID } from '~/remotion/templates'
 
 export const translateComments = os
 	.input(
@@ -215,14 +224,15 @@ export const startCloudRender = os
 	await db.insert(schema.tasks).values({
 		id: taskId,
 		userId,
-		kind: 'render-comments',
+		kind: TASK_KINDS.RENDER_COMMENTS,
 		engine: 'renderer-remotion',
 		targetType: 'media',
 		targetId: media.id,
 		status: 'queued',
 		progress: 0,
 		payload: {
-			templateId: input.templateId || media.commentsTemplate || 'comments-default',
+			templateId:
+				input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
 			sourcePolicy: input.sourcePolicy || 'auto',
 			proxyId: effectiveProxyId ?? null,
 		},
@@ -231,15 +241,16 @@ export const startCloudRender = os
 	})
 
 	try {
-		const job = await startCloudJob({
-			mediaId: media.id,
-			engine: 'renderer-remotion',
-			options: {
-				defaultProxyUrl: PROXY_URL,
-				proxy: proxyPayload,
-				sourcePolicy: input.sourcePolicy || 'auto',
-				templateId: input.templateId || media.commentsTemplate || 'comments-default',
-			},
+			const job = await startCloudJob({
+				mediaId: media.id,
+				engine: 'renderer-remotion',
+				options: {
+					defaultProxyUrl: PROXY_URL,
+					proxy: proxyPayload,
+					sourcePolicy: input.sourcePolicy || 'auto',
+					templateId:
+						input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
+				},
 		})
 
 		await db
@@ -279,10 +290,15 @@ export const getRenderStatus = os
 					.update(schema.tasks)
 					.set({
 						status: status.status,
-						progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
+						progress:
+							typeof status.progress === 'number'
+								? Math.round(status.progress * 100)
+								: null,
 						jobStatusSnapshot: status,
 						updatedAt: new Date(),
-						finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
+						finishedAt: TERMINAL_JOB_STATUSES.includes(status.status)
+							? new Date()
+							: task.finishedAt,
 					})
 					.where(eq(schema.tasks.id, task.id))
 			}
@@ -318,7 +334,7 @@ export const startCloudCommentsDownload = os
 		await db.insert(schema.tasks).values({
 			id: taskId,
 			userId,
-			kind: 'comments-download',
+			kind: TASK_KINDS.COMMENTS_DOWNLOAD,
 			engine: 'media-downloader',
 			targetType: 'media',
 			targetId: mediaId,
@@ -384,10 +400,15 @@ export const getCloudCommentsStatus = os
 					.update(schema.tasks)
 					.set({
 						status: status.status,
-						progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
+						progress:
+							typeof status.progress === 'number'
+								? Math.round(status.progress * 100)
+								: null,
 						jobStatusSnapshot: status,
 						updatedAt: new Date(),
-						finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
+						finishedAt: TERMINAL_JOB_STATUSES.includes(status.status)
+							? new Date()
+							: task.finishedAt,
 					})
 					.where(eq(schema.tasks.id, task.id))
 			}

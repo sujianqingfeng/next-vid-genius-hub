@@ -4,6 +4,8 @@ import { getDb, schema } from '~/lib/db'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
 import type { JobStatusResponse } from '~/lib/cloudflare'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TASK_KINDS } from '~/lib/job/task'
 
 export async function startCloudRender(input: { mediaId: string; subtitleConfig?: SubtitleRenderConfig }): Promise<{ jobId: string; taskId: string }> {
   const where = eq(schema.media.id, input.mediaId)
@@ -17,7 +19,7 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
   await db.insert(schema.tasks).values({
     id: taskId,
     userId: media.userId ?? null,
-    kind: 'render-subtitles',
+    kind: TASK_KINDS.RENDER_SUBTITLES,
     engine: 'burner-ffmpeg',
     targetType: 'media',
     targetId: media.id,
@@ -75,7 +77,7 @@ export async function getRenderStatus(input: { jobId: string }): Promise<JobStat
           progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
           jobStatusSnapshot: status,
           updatedAt: new Date(),
-          finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
+          finishedAt: TERMINAL_JOB_STATUSES.includes(status.status) ? new Date() : task.finishedAt,
         })
         .where(eq(schema.tasks.id, task.id))
     }

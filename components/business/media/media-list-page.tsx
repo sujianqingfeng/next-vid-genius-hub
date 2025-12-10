@@ -19,8 +19,7 @@ import {
 import { Skeleton } from '~/components/ui/skeleton'
 import { type schema } from '~/lib/db'
 import { queryOrpc } from '~/lib/orpc/query-client'
-
-const PAGE_SIZE = 12
+import { MEDIA_PAGE_SIZE } from '~/lib/pagination'
 
 export function MediaListPage() {
 	const [page, setPage] = useState(1)
@@ -35,12 +34,12 @@ export function MediaListPage() {
 
 	const mediaQuery = useQuery<PaginatedMedia, Error>(
 		queryOrpc.media.list.queryOptions({
-			input: { page, limit: PAGE_SIZE },
+			input: { page, limit: MEDIA_PAGE_SIZE },
 		}),
 	)
 
 	const total = mediaQuery.data?.total ?? 0
-	const totalPages = Math.ceil(total / PAGE_SIZE)
+	const totalPages = Math.ceil(total / MEDIA_PAGE_SIZE)
 
 	return (
 		<div className="min-h-full space-y-8">
@@ -68,7 +67,7 @@ export function MediaListPage() {
 				{/* Loading state */}
 				{mediaQuery.isLoading && (
 					<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-pulse">
-						{Array.from({ length: PAGE_SIZE }).map((_, idx) => (
+						{Array.from({ length: MEDIA_PAGE_SIZE }).map((_, idx) => (
 							<Card key={idx} className="overflow-hidden border-none shadow-none bg-secondary/30">
 								<Skeleton className="h-48 w-full bg-secondary/50" />
 								<CardHeader className="p-4 space-y-2">

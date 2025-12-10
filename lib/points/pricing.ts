@@ -1,6 +1,7 @@
 import { and, eq, isNull, or } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import type { PointResourceType } from '~/lib/db/schema'
+import { POINT_RESOURCE_TYPES } from '~/lib/job/task'
 
 export type PricingRule = typeof schema.pointPricingRules.$inferSelect
 
@@ -38,7 +39,7 @@ export async function calculateLlmCost(opts: {
 	outputTokens?: number
 	db?: DbClient
 }): Promise<{ points: number; rule: PricingRule; totalTokens: number }> {
-	const rule = await resolveRule({ resourceType: 'llm', modelId: opts.modelId, db: opts.db })
+	const rule = await resolveRule({ resourceType: POINT_RESOURCE_TYPES.LLM, modelId: opts.modelId, db: opts.db })
 	const inputTokens = Math.max(0, opts.inputTokens ?? 0)
 	const outputTokens = Math.max(0, opts.outputTokens ?? 0)
 	const totalTokens = inputTokens + outputTokens
@@ -52,7 +53,7 @@ export async function calculateAsrCost(opts: {
 	durationSeconds: number
 	db?: DbClient
 }): Promise<{ points: number; rule: PricingRule; durationSeconds: number }> {
-	const rule = await resolveRule({ resourceType: 'asr', modelId: opts.modelId, db: opts.db })
+	const rule = await resolveRule({ resourceType: POINT_RESOURCE_TYPES.ASR, modelId: opts.modelId, db: opts.db })
 	const seconds = Math.max(0, opts.durationSeconds)
 	const units = rule.unit === 'minute' ? Math.ceil(seconds / 60) : Math.ceil(seconds)
 	const points = applyMinCharge(units * rule.pricePerUnit, rule.minCharge)
@@ -63,7 +64,7 @@ export async function calculateDownloadCost(opts: {
 	durationSeconds: number
 	db?: DbClient
 }): Promise<{ points: number; rule: PricingRule; durationSeconds: number }> {
-	const rule = await resolveRule({ resourceType: 'download', modelId: null, db: opts.db })
+	const rule = await resolveRule({ resourceType: POINT_RESOURCE_TYPES.DOWNLOAD, modelId: null, db: opts.db })
 	const seconds = Math.max(0, opts.durationSeconds)
 	const units = rule.unit === 'minute' ? Math.ceil(seconds / 60) : Math.ceil(seconds)
 	const points = applyMinCharge(units * rule.pricePerUnit, rule.minCharge)

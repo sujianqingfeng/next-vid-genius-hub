@@ -13,8 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Textarea } from '~/components/ui/textarea'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-
-const PAGE_SIZE = 20
+import { ADMIN_USERS_PAGE_SIZE } from '~/lib/pagination'
 
 export default function AdminUsersPage() {
 	const t = useTranslations('Admin.users')
@@ -29,7 +28,7 @@ export default function AdminUsersPage() {
 
 	const listQuery = useQuery({
 		...queryOrpc.admin.listUsers.queryOptions({
-			input: { page, limit: PAGE_SIZE, q: appliedSearch || undefined },
+			input: { page, limit: ADMIN_USERS_PAGE_SIZE, q: appliedSearch || undefined },
 		}),
 		keepPreviousData: true,
 	})

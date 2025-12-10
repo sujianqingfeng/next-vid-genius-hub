@@ -16,6 +16,8 @@ import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { bucketPaths } from '~/lib/storage/bucket-paths'
 import { createId } from '@paralleldrive/cuid2'
 import type { RequestContext } from '~/lib/auth/types'
+import { MEDIA_SOURCES } from '~/lib/media/source'
+import { TASK_KINDS } from '~/lib/job/task'
 
 export const list = os
 	.input(
@@ -91,7 +93,10 @@ export const refreshMetadata = os
 		}
 
 		const provider = ProviderFactory.resolveProvider(record.url)
-		const source = provider.id === 'tiktok' ? 'tiktok' : 'youtube'
+		const source =
+			provider.id === MEDIA_SOURCES.TIKTOK
+				? MEDIA_SOURCES.TIKTOK
+				: MEDIA_SOURCES.YOUTUBE
 
 			const proxyRecord =
 				input.proxyId && input.proxyId !== 'none'
@@ -106,7 +111,7 @@ export const refreshMetadata = os
 			await db.insert(schema.tasks).values({
 				id: taskId,
 				userId,
-				kind: 'metadata-refresh',
+				kind: TASK_KINDS.METADATA_REFRESH,
 				engine: 'media-downloader',
 				targetType: 'media',
 				targetId: record.id,

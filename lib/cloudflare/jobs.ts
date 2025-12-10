@@ -1,7 +1,6 @@
 import { postSignedJson } from '@app/job-callbacks'
 import { requireJobCallbackSecret, requireOrchestratorUrl } from './utils'
-
-type EngineId = 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'audio-transcoder' | 'asr-pipeline'
+import type { EngineId, JobStatus } from '~/lib/job/status'
 
 export interface StartJobInput extends Record<string, unknown> {
   mediaId: string
@@ -15,7 +14,7 @@ export interface StartJobResponse {
 
 export interface JobStatusResponse {
   jobId: string
-  status: 'queued' | 'fetching_metadata' | 'preparing' | 'running' | 'uploading' | 'completed' | 'failed' | 'canceled'
+  status: JobStatus
   phase?: 'fetching_metadata' | 'preparing' | 'running' | 'uploading'
   progress?: number
   outputKey?: string

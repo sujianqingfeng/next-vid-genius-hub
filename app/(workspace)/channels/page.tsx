@@ -17,6 +17,7 @@ import {
 } from '~/lib/ai/models'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/query-client'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
 
 export default function ChannelsPage() {
 	const t = useTranslations('Channels.page')
@@ -287,7 +288,7 @@ function ChannelCard({
 			if (!jobId) return false
 			const s = (q.state?.data as { status?: string })?.status
 			if (!s) return 1500
-			return ['completed', 'failed', 'canceled'].includes(s) ? false : 1500
+			return s && TERMINAL_JOB_STATUSES.includes(s) ? false : 1500
 		},
 	})
 	const statusValue = (statusQuery?.data as { status?: string } | null)?.status

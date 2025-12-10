@@ -10,6 +10,7 @@ import {
 	revokeSessionById,
 } from './session'
 import { addPoints, getBalance } from '~/lib/points/service'
+import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
 
 const SIGNUP_BONUS_POINTS = 100
 
@@ -88,7 +89,7 @@ export async function signupUser(input: { email: string; password: string; nickn
 		balance = await addPoints({
 			userId: user.id,
 			amount: SIGNUP_BONUS_POINTS,
-			type: 'signup_bonus',
+			type: POINT_TRANSACTION_TYPES.SIGNUP_BONUS,
 			remark: '注册奖励',
 			db,
 		})

@@ -9,6 +9,9 @@ import { PROXY_URL } from '~/lib/config/app.config'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import type { RequestContext } from '~/lib/auth/types'
+import { TERMINAL_JOB_STATUSES } from '~/lib/job/status'
+import { TASK_KINDS } from '~/lib/job/task'
+import { MEDIA_SOURCES } from '~/lib/media/source'
 
 const DownloadInputSchema = z.object({
 	url: z.string().url(),
@@ -24,7 +27,10 @@ export const startCloudDownload = os
 		const userId = ctx.auth.user!.id
 
 		const provider = ProviderFactory.resolveProvider(url)
-		const source = provider.id === 'tiktok' ? 'tiktok' : 'youtube'
+		const source =
+			provider.id === MEDIA_SOURCES.TIKTOK
+				? MEDIA_SOURCES.TIKTOK
+				: MEDIA_SOURCES.YOUTUBE
 		const now = new Date()
 
 		const db = await getDb()
@@ -81,7 +87,7 @@ export const startCloudDownload = os
 			await db.insert(schema.tasks).values({
 				id: taskId,
 				userId,
-				kind: 'download',
+				kind: TASK_KINDS.DOWNLOAD,
 				engine: 'media-downloader',
 				targetType: 'media',
 				targetId: mediaId,
@@ -158,13 +164,18 @@ export const getCloudDownloadStatus = os
 			if (task) {
 				await db
 					.update(schema.tasks)
-					.set({
-						status: status.status,
-						progress: typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
-						jobStatusSnapshot: status,
-						updatedAt: new Date(),
-						finishedAt: ['completed', 'failed', 'canceled'].includes(status.status) ? new Date() : task.finishedAt,
-					})
+						.set({
+							status: status.status,
+							progress:
+								typeof status.progress === 'number'
+									? Math.round(status.progress * 100)
+									: null,
+							jobStatusSnapshot: status,
+							updatedAt: new Date(),
+							finishedAt: TERMINAL_JOB_STATUSES.includes(status.status)
+								? new Date()
+								: task.finishedAt,
+						})
 					.where(eq(schema.tasks.id, task.id))
 			}
 		} catch {
