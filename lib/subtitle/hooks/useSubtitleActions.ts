@@ -24,6 +24,7 @@ import {
 	DEFAULT_TRANSCRIPTION_LANGUAGE,
 	type TranscriptionLanguage,
 } from '~/lib/subtitle/config/languages'
+import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 
 interface UseSubtitleActionsOptions {
 	mediaId: string
@@ -122,6 +123,7 @@ export function useSubtitleActions({
 			invalidateQueries: {
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
 			},
+			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
 

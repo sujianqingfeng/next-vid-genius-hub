@@ -1,13 +1,14 @@
-import { os } from "@orpc/server";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
-import { AIModelIds } from "~/lib/ai/models";
-import { subtitleRenderConfigSchema } from "~/lib/subtitle/types";
-import { subtitleService } from "~/lib/subtitle/server/subtitle";
-import { cloudflareInputFormatSchema, whisperModelSchema } from "~/lib/subtitle/config/models";
-import { getDb, schema } from "~/lib/db";
-import type { RequestContext } from "~/lib/auth/types";
-import { chargeAsrUsage, InsufficientPointsError } from "~/lib/points/billing";
+import { os } from '@orpc/server'
+import { and, eq } from 'drizzle-orm'
+import { z } from 'zod'
+import { AIModelIds } from '~/lib/ai/models'
+import { subtitleRenderConfigSchema } from '~/lib/subtitle/types'
+import { subtitleService } from '~/lib/subtitle/server/subtitle'
+import { cloudflareInputFormatSchema, whisperModelSchema } from '~/lib/subtitle/config/models'
+import { getDb, schema } from '~/lib/db'
+import type { RequestContext } from '~/lib/auth/types'
+import { chargeAsrUsage, InsufficientPointsError } from '~/lib/points/billing'
+import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 
 export const transcribe = os
   .input(
@@ -19,37 +20,39 @@ export const transcribe = os
     }),
   )
   .handler(async ({ input, context }) => {
-    const ctx = context as RequestContext
-    const userId = ctx.auth.user!.id
-    const db = await getDb()
-    const media = await db.query.media.findFirst({
-      where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
-    })
-    if (!media) {
-      throw new Error("Media not found")
-    }
-    const res = await subtitleService.transcribe(input)
+  	const ctx = context as RequestContext
+  	const userId = ctx.auth.user!.id
+  	const db = await getDb()
+  	const media = await db.query.media.findFirst({
+  		where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
+  	})
+  	if (!media) {
+  		throw new Error('Media not found')
+  	}
+  	const res = await subtitleService.transcribe(input)
 
-    if (res.durationSeconds > 0) {
-      try {
-        await chargeAsrUsage({
-          userId,
-          modelId: input.model,
-          durationSeconds: res.durationSeconds,
-          refType: "asr",
-          refId: input.mediaId,
-          remark: `asr ${input.model} ${res.durationSeconds.toFixed(1)}s`,
-        })
-      } catch (error) {
-        if (error instanceof InsufficientPointsError) {
-          throw new Error("INSUFFICIENT_POINTS")
-        }
-        throw error
-      }
-    }
+  	if (res.durationSeconds > 0) {
+  		try {
+  			await chargeAsrUsage({
+  				userId,
+  				modelId: input.model,
+  				durationSeconds: res.durationSeconds,
+  				refType: 'asr',
+  				refId: input.mediaId,
+  				remark: `asr ${input.model} ${res.durationSeconds.toFixed(1)}s`,
+  			})
+  		} catch (error) {
+  			if (error instanceof InsufficientPointsError) {
+  				// Transcription has already been generated at this point; surface a clear
+  				// business error so the client can show a helpful message instead of 500.
+  				throwInsufficientPointsError('积分不足，转录结果已生成但本次扣费失败，请前往“积分”页面充值后重试。')
+  			}
+  			throw error
+  		}
+  	}
 
-    return { success: true, transcription: res.transcription }
-  });
+  	return { success: true, transcription: res.transcription }
+  })
 
 const translateInput = z.object({
   mediaId: z.string(),

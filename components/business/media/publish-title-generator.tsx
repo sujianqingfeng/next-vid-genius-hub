@@ -17,6 +17,7 @@ import {
   DEFAULT_CHAT_MODEL_ID,
   type ChatModelId,
 } from '~/lib/ai/models'
+import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 
 interface PublishTitleGeneratorProps {
   mediaId: string
@@ -55,7 +56,7 @@ export function PublishTitleGenerator({ mediaId, initialPublishTitle }: PublishT
     }),
     {
       successToast: 'Generated candidates',
-      errorToast: ({ error }) => `Generate failed: ${error.message}`,
+      errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
     },
   )
 

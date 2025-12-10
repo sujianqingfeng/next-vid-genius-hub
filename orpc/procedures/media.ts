@@ -11,6 +11,7 @@ import { logger } from '~/lib/logger'
 import { generatePublishTitles } from '~/lib/ai/titles'
 import { ChatModelIds, type ChatModelId } from '~/lib/ai/models'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
+import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { bucketPaths } from '@app/media-domain'
@@ -373,7 +374,7 @@ export const generatePublishTitle = os
         })
       } catch (error) {
         if (error instanceof InsufficientPointsError) {
-          throw new Error('INSUFFICIENT_POINTS')
+          throwInsufficientPointsError('积分不足，无法生成标题，请前往“积分”页面充值后再试。')
         }
         throw error
       }

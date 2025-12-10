@@ -2,6 +2,7 @@ import { os } from '@orpc/server'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
 import { InsufficientPointsError, getBalance, listTransactions, spendPoints } from '~/lib/points/service'
+import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 
 const ListSchema = z.object({
 	limit: z.number().int().min(1).max(100).default(50),
@@ -49,7 +50,7 @@ export const spendForTask = os
 			return { balance }
 		} catch (error) {
 			if (error instanceof InsufficientPointsError) {
-				throw new Error('INSUFFICIENT_POINTS')
+				throwInsufficientPointsError('积分不足，任务扣费失败，请先充值。')
 			}
 			throw error
 		}
