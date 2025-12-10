@@ -158,8 +158,8 @@ pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中
    - 长时任务心跳：每 30s 打印一次 `running… <x>%`，频率可通过环境变量 `RENDER_HEARTBEAT_MS` 调整（设为 `0` 关闭）。
 - 云端下载：`preparing` → `fetching_metadata` → `downloading` → `extracting_audio` → `uploading`。
 4) 轮询 /jobs/:id：
-   - 渲染：R2 出现 `outputs/by-media/<mediaId>/<jobId>/video.mp4` 即标记完成。
-- 下载：R2 出现 `downloads/<mediaId>/<jobId>/{video.mp4,audio.mp3,metadata.json}` 后标记完成。
+   - 渲染：R2 出现 `media/<mediaId>-<titleSlug>/outputs/<jobId>/video.mp4` 即标记完成。
+- 下载：R2 出现 `media/<mediaId>-<titleSlug>/downloads/<jobId>/{video.mp4,audio.mp3,metadata.json}` 后标记完成。
 5) Next 日志打印 `[cf-callback] ... job <jobId>`，并将产物对应的远端 Key 写入 manifest（如 `remoteVideoKey/remoteAudioKey/remoteMetadataKey`、`subtitlesInputKey` 等）。
 6) 前端自动刷新：渲染流程跳到 Step 4 预览；下载页出现“Cloud download completed”并可继续字幕流程。
 

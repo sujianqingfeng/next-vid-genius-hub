@@ -11,8 +11,12 @@ export interface MediaManifestPatch {
   renderedInfoJobId?: string | null
 }
 
-export async function upsertMediaManifest(mediaId: string, patch: MediaManifestPatch): Promise<void> {
-  const key = bucketPaths.manifests.media(mediaId)
+export async function upsertMediaManifest(
+  mediaId: string,
+  patch: MediaManifestPatch,
+  mediaTitle?: string | null,
+): Promise<void> {
+  const key = bucketPaths.manifests.media(mediaId, { title: mediaTitle ?? undefined })
   const base = requireOrchestratorUrl()
   const presignUrl = `${base.replace(/\/$/, '')}/debug/presign?key=${encodeURIComponent(key)}&contentType=${encodeURIComponent('application/json')}`
   const presignResp = await fetch(presignUrl)

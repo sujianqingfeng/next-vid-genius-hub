@@ -5,6 +5,11 @@ import type { EngineId, JobStatus } from '@app/media-domain'
 export interface StartJobInput extends Record<string, unknown> {
   mediaId: string
   engine: EngineId
+  /**
+   * Optional human-readable title for the media / resource.
+   * Used only to build nicer R2 object keys (e.g. media/{id}-{slug}/...).
+   */
+  title?: string | null
   options?: Record<string, unknown>
 }
 

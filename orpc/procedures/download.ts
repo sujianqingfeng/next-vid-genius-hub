@@ -107,6 +107,7 @@ export const startCloudDownload = os
 			const job = await startCloudJob({
 				mediaId,
 				engine: 'media-downloader',
+				title: existing?.title || 'Pending download',
 				options: {
 					url,
 					quality,

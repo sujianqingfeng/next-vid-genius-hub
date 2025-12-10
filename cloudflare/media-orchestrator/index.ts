@@ -41,6 +41,7 @@ const TERMINAL_STATUSES: JobTerminalStatus[] = ['completed', 'failed', 'canceled
 // Key: manifests/media/<mediaId>.json
 interface MediaManifest {
   mediaId: string
+  title?: string
   // Original download outputs
   remoteVideoKey?: string
   remoteAudioKey?: string
@@ -57,6 +58,7 @@ interface MediaManifest {
 interface StartBody {
   mediaId: string
   engine: EngineId
+  title?: string | null
   options?: Record<string, unknown>
 }
 
@@ -215,8 +217,8 @@ async function getSigningKey(secret: string, date: string, region: string, servi
   return kSigning
 }
 
-async function readManifest(env: Env, bucket: string, mediaId: string): Promise<MediaManifest | null> {
-  const key = bucketPaths.manifests.media(mediaId)
+async function readManifest(env: Env, bucket: string, mediaId: string, title?: string | null): Promise<MediaManifest | null> {
+  const key = bucketPaths.manifests.media(mediaId, { title })
   // Prefer R2 binding if available
   try {
     if (env.RENDER_BUCKET) {
@@ -250,8 +252,14 @@ async function presignGetForContainer(
   return presignS3(env, 'GET', bucket, key, 600, undefined, endpointOverride)
 }
 
-async function writeManifestPatch(env: Env, bucket: string, mediaId: string, patch: Partial<MediaManifest>): Promise<void> {
-  const key = bucketPaths.manifests.media(mediaId)
+async function writeManifestPatch(
+  env: Env,
+  bucket: string,
+  mediaId: string,
+  patch: Partial<MediaManifest>,
+  title?: string | null,
+): Promise<void> {
+  const key = bucketPaths.manifests.media(mediaId, { title })
   const merge = (base: any, add: any) => ({ ...base, ...Object.fromEntries(Object.entries(add).filter(([, v]) => v !== undefined)) })
   // Prefer R2 binding
   if (env.RENDER_BUCKET) {
@@ -328,29 +336,32 @@ async function handleStart(env: Env, req: Request) {
   const sourcePolicy = ((body.options || {}) as any).sourcePolicy as 'auto' | 'original' | 'subtitles' | undefined
   const inputVariant: InputVideoVariant | undefined =
     sourcePolicy === 'original' ? 'raw' : sourcePolicy === 'subtitles' ? 'subtitles' : undefined
-  const inputVideoKey = bucketPaths.inputs.videoVariant(body.mediaId, inputVariant)
-  const inputVttKey = bucketPaths.inputs.subtitles(body.mediaId)
-  const inputDataKey = bucketPaths.inputs.comments(body.mediaId)
+  const pathOptions = { title: body.title ?? undefined }
+  const inputVideoKey = bucketPaths.inputs.videoVariant(body.mediaId, inputVariant, pathOptions)
+  const inputVttKey = bucketPaths.inputs.subtitles(body.mediaId, pathOptions)
+  const inputDataKey = bucketPaths.inputs.comments(body.mediaId, pathOptions)
   const outputVideoKey = isDownloader
-    ? bucketPaths.downloads.video(body.mediaId, jobId)
-    : bucketPaths.outputs.video(body.mediaId, jobId)
+    ? bucketPaths.downloads.video(body.mediaId, jobId, pathOptions)
+    : bucketPaths.outputs.video(body.mediaId, jobId, pathOptions)
   const outputAudioKey = isDownloader
-    ? bucketPaths.downloads.audio(body.mediaId, jobId)
-    : ((isAudioTranscoder || isAsrPipeline) ? bucketPaths.asr.processedAudio(body.mediaId, jobId) : undefined)
-  const outputMetadataKey = isDownloader ? bucketPaths.downloads.metadata(body.mediaId, jobId) : undefined
+    ? bucketPaths.downloads.audio(body.mediaId, jobId, pathOptions)
+    : ((isAudioTranscoder || isAsrPipeline)
+      ? bucketPaths.asr.processedAudio(body.mediaId, jobId, pathOptions)
+      : undefined)
+  const outputMetadataKey = isDownloader ? bucketPaths.downloads.metadata(body.mediaId, jobId, pathOptions) : undefined
 
   let inputVideoUrl: string | undefined
   let inputVttUrl: string | undefined
   let inputDataUrl: string | undefined
   if (!isDownloader && !isAudioTranscoder && !isAsrPipeline) {
     // Bucket-first: try to use existing objects/manifest without touching Next
-    const manifest = await readManifest(env, bucketName, body.mediaId)
+    const manifest = await readManifest(env, bucketName, body.mediaId, body.title)
 
     // 1) Video source
     if (sourcePolicy === 'auto') {
       // Auto policy: prefer subtitles variant, then raw, then default/remote.
       // 1a) Try subtitles variant input (bucket or manifest)
-      const subtitlesKey = bucketPaths.inputs.subtitledVideo(body.mediaId)
+      const subtitlesKey = bucketPaths.inputs.subtitledVideo(body.mediaId, pathOptions)
       const hasSubVideo = await s3Head(env, bucketName, subtitlesKey)
       if (hasSubVideo) {
         inputVideoUrl = await presignGetForContainer(env, bucketName, subtitlesKey, jobS3Endpoint)
@@ -360,7 +371,7 @@ async function handleStart(env: Env, req: Request) {
 
       // 1b) Fallback to raw variant if subtitles variant is not available
       if (!inputVideoUrl) {
-        const rawKey = bucketPaths.inputs.rawVideo(body.mediaId)
+        const rawKey = bucketPaths.inputs.rawVideo(body.mediaId, pathOptions)
         const hasRawVideo = await s3Head(env, bucketName, rawKey)
         if (hasRawVideo) {
           inputVideoUrl = await presignGetForContainer(env, bucketName, rawKey, jobS3Endpoint)
@@ -369,7 +380,7 @@ async function handleStart(env: Env, req: Request) {
 
       // 1c) Final fallback: default input video or remoteVideoKey
       if (!inputVideoUrl) {
-        const defaultKey = bucketPaths.inputs.video(body.mediaId)
+        const defaultKey = bucketPaths.inputs.video(body.mediaId, pathOptions)
         const hasDefaultVideo = await s3Head(env, bucketName, defaultKey)
         if (hasDefaultVideo) {
           inputVideoUrl = await presignGetForContainer(env, bucketName, defaultKey, jobS3Endpoint)
@@ -551,6 +562,7 @@ async function handleStart(env: Env, req: Request) {
     const initPayload: Record<string, unknown> = {
       jobId,
       mediaId: body.mediaId,
+      title: body.title,
       engine: body.engine,
       status: 'running',
       outputKey: outputVideoKey,
@@ -739,7 +751,8 @@ async function materializeSubtitlesInput(env: Env, doc: any) {
   const mediaId: string | undefined = doc?.mediaId
   const sourceKey: string | undefined = doc?.outputKey
   if (!mediaId || !sourceKey) return
-  const targetKey = bucketPaths.inputs.subtitledVideo(mediaId)
+  const pathOptions = { title: (doc?.title as string | undefined) }
+  const targetKey = bucketPaths.inputs.subtitledVideo(mediaId, pathOptions)
   // Skip if already materialized
   const exists = await s3Head(env, bucket, targetKey)
   if (exists) return
@@ -750,7 +763,7 @@ async function materializeSubtitlesInput(env: Env, doc: any) {
     if (!r.ok || !r.body) throw new Error(`fetch source for copy failed: ${r.status}`)
     await s3Put(env, bucket, targetKey, 'video/mp4', r.body as ReadableStream)
     // Update manifest
-    try { await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }) } catch {}
+    try { await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }, doc?.title as string | undefined) } catch {}
     return
   }
   // Fallback to R2 binding
@@ -758,7 +771,7 @@ async function materializeSubtitlesInput(env: Env, doc: any) {
     const obj = await env.RENDER_BUCKET.get(sourceKey)
     if (!obj) throw new Error('sourceKey not found in R2')
     await env.RENDER_BUCKET.put(targetKey, obj.body as ReadableStream, { httpMetadata: { contentType: 'video/mp4' } })
-    try { await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }) } catch {}
+    try { await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }, doc?.title as string | undefined) } catch {}
     return
   }
   throw new Error('no storage configured for materialization')
@@ -872,12 +885,13 @@ async function runAsrForPipeline(env: Env, doc: any) {
 
   // Store into R2
   const mediaKey = doc.mediaId || 'unknown'
-  const vttKey = bucketPaths.asr.results.transcript(mediaKey, jobId)
+  const pathOptions = { title: (doc?.title as string | undefined) }
+  const vttKey = bucketPaths.asr.results.transcript(mediaKey, jobId, pathOptions)
   await s3Put(env, bucket, vttKey, 'text/vtt', String(vtt))
 
   let wordsKey: string | undefined
   if (words && (Array.isArray(words) ? words.length > 0 : true)) {
-    wordsKey = bucketPaths.asr.results.words(mediaKey, jobId)
+    wordsKey = bucketPaths.asr.results.words(mediaKey, jobId, pathOptions)
     await s3Put(env, bucket, wordsKey, 'application/json', JSON.stringify(words))
   }
 
@@ -1215,13 +1229,14 @@ function collectKeysFromDoc(doc: any, jobId: string): string[] {
       }
     }
     const mediaId = typeof doc.mediaId === 'string' ? doc.mediaId : undefined
+    const pathOptions = { title: (doc?.title as string | undefined) }
     if (mediaId) {
-      push(bucketPaths.outputs.video(mediaId, jobId))
-      push(bucketPaths.downloads.video(mediaId, jobId))
-      push(bucketPaths.downloads.audio(mediaId, jobId))
-      push(bucketPaths.downloads.metadata(mediaId, jobId))
-      push(bucketPaths.asr.results.transcript(mediaId, jobId))
-      push(bucketPaths.asr.results.words(mediaId, jobId))
+      push(bucketPaths.outputs.video(mediaId, jobId, pathOptions))
+      push(bucketPaths.downloads.video(mediaId, jobId, pathOptions))
+      push(bucketPaths.downloads.audio(mediaId, jobId, pathOptions))
+      push(bucketPaths.downloads.metadata(mediaId, jobId, pathOptions))
+      push(bucketPaths.asr.results.transcript(mediaId, jobId, pathOptions))
+      push(bucketPaths.asr.results.words(mediaId, jobId, pathOptions))
     }
   }
 
@@ -1305,6 +1320,7 @@ export class RenderJobDO {
       const doc = {
         jobId: body.jobId,
         mediaId: body.mediaId,
+        title: body.title,
         engine: body.engine,
         status: body.status || 'queued',
         outputKey: body.outputKey,

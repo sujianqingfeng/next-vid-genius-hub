@@ -23,14 +23,15 @@ export async function updateTranslation(input: {
 }): Promise<{ success: true }> {
 	const where = eq(schema.media.id, input.mediaId)
 	const db = await getDb()
+	const media = await db.query.media.findFirst({ where })
 	await db
 		.update(schema.media)
 		.set({ translation: input.translation })
 		.where(where)
 	try {
-		const vttKey = bucketPaths.inputs.subtitles(input.mediaId)
+		const vttKey = bucketPaths.inputs.subtitles(input.mediaId, { title: media?.title || undefined })
 		await putObjectByKey(vttKey, 'text/vtt', input.translation)
-		await upsertMediaManifest(input.mediaId, { vttKey })
+		await upsertMediaManifest(input.mediaId, { vttKey }, media?.title || undefined)
 		logger.info(
 			'translation',
 			`Translated VTT materialized (manual update): ${vttKey}`,

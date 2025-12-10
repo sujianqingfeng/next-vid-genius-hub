@@ -10,13 +10,15 @@
   - /jobs/:id：供前端轮询；检测 R2 是否产生输出；若完成则回调 Next 落库。
   - /upload/:id（可选兜底）：容器可直接 POST 成品；Worker 写入 R2。
   - /artifacts/:id：从 R2 读取产物（播放/下载代理）。
-- R2：
-  - inputs/videos/{mediaId}.mp4
-  - inputs/videos/subtitles/{mediaId}.mp4
-  - inputs/subtitles/{mediaId}.vtt
-  - inputs/comments/{mediaId}.json
-  - outputs/by-media/{mediaId}/{jobId}/video.mp4
-  - downloads/{mediaId}/{jobId}/{video.mp4,audio.mp3,metadata.json}
+- R2（按媒体聚合 + 含标题 slug）：
+  - media/{mediaId}-{titleSlug}/manifest.json
+  - media/{mediaId}-{titleSlug}/inputs/video/source.mp4
+  - media/{mediaId}-{titleSlug}/inputs/video/raw.mp4
+  - media/{mediaId}-{titleSlug}/inputs/video/subtitles.mp4
+  - media/{mediaId}-{titleSlug}/inputs/subtitles/subtitles.vtt
+  - media/{mediaId}-{titleSlug}/inputs/comments/latest.json
+  - media/{mediaId}-{titleSlug}/outputs/{jobId}/video.mp4
+  - media/{mediaId}-{titleSlug}/downloads/{jobId}/{video.mp4,audio.mp3,metadata.json}
 - 容器（containers/media-downloader）：
   - /render：调用 `yt-dlp` 下载源视频与原始元数据、`ffmpeg` 提取音轨，将产物上传至 R2。
 - 容器（containers/burner-ffmpeg）：

@@ -94,6 +94,7 @@ export async function transcribe(input: {
 		const job = await startCloudJob({
 			mediaId,
 			engine: 'asr-pipeline',
+			title: mediaRecord.title || undefined,
 			options: {
 				sourceKey: remoteAudioKey,
 				maxBytes: targetBytes,
@@ -230,9 +231,9 @@ export async function transcribe(input: {
 		.set({ transcription: vttContent, transcriptionWords })
 		.where(eq(schema.media.id, mediaId))
 	try {
-		const vttKey = bucketPaths.inputs.subtitles(mediaId)
+		const vttKey = bucketPaths.inputs.subtitles(mediaId, { title: mediaRecord.title || undefined })
 		await putObjectByKey(vttKey, 'text/vtt', vttContent)
-		await upsertMediaManifest(mediaId, { vttKey })
+		await upsertMediaManifest(mediaId, { vttKey }, mediaRecord.title || undefined)
 		logger.info('transcription', `VTT materialized to bucket: ${vttKey}`)
 	} catch (err) {
 		logger.warn(

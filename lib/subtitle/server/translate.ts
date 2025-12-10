@@ -83,9 +83,9 @@ Strict rules:
 
   await db.update(schema.media).set({ translation: vtt }).where(where)
   try {
-    const vttKey = bucketPaths.inputs.subtitles(mediaId)
+    const vttKey = bucketPaths.inputs.subtitles(mediaId, { title: media.title || undefined })
     await putObjectByKey(vttKey, 'text/vtt', vtt)
-    await upsertMediaManifest(mediaId, { vttKey })
+    await upsertMediaManifest(mediaId, { vttKey }, media.title || undefined)
     logger.info('translation', `Translated VTT materialized: ${vttKey}`)
   } catch (err) {
     logger.warn('translation', `Translate materialization skipped: ${err instanceof Error ? err.message : String(err)}`)

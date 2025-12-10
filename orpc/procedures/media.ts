@@ -137,6 +137,7 @@ export const refreshMetadata = os
 				const job = await startCloudJob({
 					mediaId: record.id,
 					engine: 'media-downloader',
+					title: record.title || undefined,
 					options: {
 						task: 'metadata-only',
 						url: record.url,
@@ -426,13 +427,14 @@ export const deleteById = os
 				if (record.remoteAudioKey) keys.push(record.remoteAudioKey)
 				if (record.remoteMetadataKey) keys.push(record.remoteMetadataKey)
 				// Well-known per-media objects that we materialize into the bucket
+				const pathOptions = { title: record.title || undefined }
 				keys.push(
-					bucketPaths.manifests.media(id),
-					bucketPaths.inputs.subtitles(id),
-					bucketPaths.inputs.subtitledVideo(id),
-					bucketPaths.inputs.video(id),
-					bucketPaths.inputs.rawVideo(id),
-					bucketPaths.inputs.comments(id),
+					bucketPaths.manifests.media(id, pathOptions),
+					bucketPaths.inputs.subtitles(id, pathOptions),
+					bucketPaths.inputs.subtitledVideo(id, pathOptions),
+					bucketPaths.inputs.video(id, pathOptions),
+					bucketPaths.inputs.rawVideo(id, pathOptions),
+					bucketPaths.inputs.comments(id, pathOptions),
 				)
 
 				const artifactJobIds: string[] = []
@@ -448,11 +450,11 @@ export const deleteById = os
 
 				// Known per-media prefixes that may contain multiple artifacts
 				const prefixes = [
-					bucketPaths.outputs.byMediaPrefix(id),
-					bucketPaths.downloads.prefix(id),
-					bucketPaths.asr.results.prefix(id),
+					bucketPaths.outputs.byMediaPrefix(id, pathOptions),
+					bucketPaths.downloads.prefix(id, pathOptions),
+					bucketPaths.asr.results.prefix(id, pathOptions),
 					// Also delete audio produced by audio-transcoder/ASR pipeline
-					bucketPaths.asr.processedPrefix(id),
+					bucketPaths.asr.processedPrefix(id, pathOptions),
 				]
 
 				await deleteCloudArtifacts({ keys, artifactJobIds, prefixes })

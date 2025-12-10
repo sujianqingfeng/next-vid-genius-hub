@@ -1,41 +1,108 @@
 export type InputVideoVariant = 'raw' | 'subtitles'
 
+export interface MediaPathOptions {
+	title?: string | null
+}
+
+/**
+ * Normalize a human-facing title into a slug fragment that is safe for use
+ * inside R2 object keys. This keeps non-ASCII characters (e.g. 中文) but
+ * removes path-breaking characters and trims length.
+ */
+export function slugifyTitle(rawTitle: string | null | undefined, maxLength = 80): string {
+	const fallback = 'untitled'
+	if (!rawTitle) return fallback
+	let title = rawTitle.trim()
+	if (!title) return fallback
+	// Replace whitespace with dashes and strip slashes to avoid breaking prefixes
+	let slug = title.replace(/\s+/g, '-').replace(/[\\/]+/g, '-')
+	// Collapse repeated dashes and trim boundary dashes
+	slug = slug.replace(/-+/g, '-').replace(/^-+|-+$/g, '')
+	if (!slug) slug = fallback
+	if (slug.length > maxLength) {
+		slug = slug.slice(0, maxLength).replace(/-+$/g, '')
+		if (!slug) slug = fallback
+	}
+	return slug
+}
+
+function mediaRoot(mediaId: string, options?: MediaPathOptions): string {
+	const slug = slugifyTitle(options?.title ?? null)
+	return `media/${mediaId}-${slug}`
+}
+
+function channelRoot(channelId: string, options?: MediaPathOptions): string {
+	const slug = slugifyTitle(options?.title ?? null)
+	return `channels/${channelId}-${slug}`
+}
+
 /**
  * Centralized helpers for every well-known bucket key we write/read.
  * These keep path conventions in one place so Worker、Next 服务与容器不会各自硬编码。
+ *
+ * All media-related keys are now grouped under:
+ *   media/{mediaId}-{slug}/...
+ * where slug comes from the media title (best-effort). This makes it easier
+ * to visually locate objects in the R2 console.
  */
 export const bucketPaths = {
 	manifests: {
-		media: (mediaId: string) => `manifests/media/${mediaId}.json`,
+		media: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/manifest.json`,
 	},
 	inputs: {
-		video: (mediaId: string) => `inputs/videos/${mediaId}.mp4`,
-		videoVariant: (mediaId: string, variant?: InputVideoVariant) =>
-			variant ? `inputs/videos/${variant}/${mediaId}.mp4` : `inputs/videos/${mediaId}.mp4`,
-		subtitledVideo: (mediaId: string) => `inputs/videos/subtitles/${mediaId}.mp4`,
-		rawVideo: (mediaId: string) => `inputs/videos/raw/${mediaId}.mp4`,
-		subtitles: (mediaId: string) => `inputs/subtitles/${mediaId}.vtt`,
-		comments: (mediaId: string) => `inputs/comments/${mediaId}.json`,
-		channelVideos: (channelId: string, jobId: string) => `inputs/channel-videos/${channelId}/${jobId}.json`,
+		video: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/inputs/video/source.mp4`,
+		videoVariant: (
+			mediaId: string,
+			variant?: InputVideoVariant,
+			options?: MediaPathOptions,
+		) => {
+			const root = mediaRoot(mediaId, options)
+			if (variant === 'raw') return `${root}/inputs/video/raw.mp4`
+			if (variant === 'subtitles') return `${root}/inputs/video/subtitles.mp4`
+			return `${root}/inputs/video/source.mp4`
+		},
+		subtitledVideo: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/inputs/video/subtitles.mp4`,
+		rawVideo: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/inputs/video/raw.mp4`,
+		subtitles: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/inputs/subtitles/subtitles.vtt`,
+		comments: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/inputs/comments/latest.json`,
+		channelVideos: (channelId: string, jobId: string, options?: MediaPathOptions) =>
+			`${channelRoot(channelId, options)}/jobs/${jobId}/videos.json`,
 	},
 	downloads: {
-		prefix: (mediaId: string) => `downloads/${mediaId}/`,
-		video: (mediaId: string, jobId: string) => `downloads/${mediaId}/${jobId}/video.mp4`,
-		audio: (mediaId: string, jobId: string) => `downloads/${mediaId}/${jobId}/audio.mp3`,
-		metadata: (mediaId: string, jobId: string) => `downloads/${mediaId}/${jobId}/metadata.json`,
+		prefix: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/downloads/`,
+		video: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/downloads/${jobId}/video.mp4`,
+		audio: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/downloads/${jobId}/audio.mp3`,
+		metadata: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/downloads/${jobId}/metadata.json`,
 	},
 	outputs: {
-		video: (mediaId: string, jobId: string) => `outputs/by-media/${mediaId}/${jobId}/video.mp4`,
-		byMediaPrefix: (mediaId: string) => `outputs/by-media/${mediaId}/`,
-		fallbackVideo: (jobId: string) => `outputs/${jobId}/video.mp4`,
+		video: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/outputs/${jobId}/video.mp4`,
+		byMediaPrefix: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/outputs/`,
+		fallbackVideo: (jobId: string) => `jobs/${jobId}/fallback/video.mp4`,
 	},
 	asr: {
-		processedPrefix: (mediaId: string) => `asr/processed/${mediaId}/`,
-		processedAudio: (mediaId: string, jobId: string) => `asr/processed/${mediaId}/${jobId}/audio.mp3`,
+		processedPrefix: (mediaId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/asr/processed/`,
+		processedAudio: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/asr/processed/${jobId}/audio.mp3`,
 		results: {
-			prefix: (mediaId: string) => `asr/results/by-media/${mediaId}/`,
-			transcript: (mediaId: string, jobId: string) => `asr/results/by-media/${mediaId}/${jobId}/transcript.vtt`,
-			words: (mediaId: string, jobId: string) => `asr/results/by-media/${mediaId}/${jobId}/words.json`,
+			prefix: (mediaId: string, options?: MediaPathOptions) =>
+				`${mediaRoot(mediaId, options)}/asr/results/`,
+			transcript: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+				`${mediaRoot(mediaId, options)}/asr/results/${jobId}/transcript.vtt`,
+			words: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+				`${mediaRoot(mediaId, options)}/asr/results/${jobId}/words.json`,
 		},
 	},
 }

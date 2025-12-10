@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
           .where(eq(schema.media.id, media.id))
         // Update manifest to record rendered info artifact
         try {
-          await upsertMediaManifest(payload.mediaId, { renderedInfoJobId: payload.jobId })
+          await upsertMediaManifest(payload.mediaId, { renderedInfoJobId: payload.jobId }, media.title || undefined)
         } catch (err) {
           logger.warn('api', `[cf-callback] manifest (info) update skipped: ${err instanceof Error ? err.message : String(err)}`)
         }
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
           .where(eq(schema.media.id, media.id))
         // Update manifest to record rendered subtitles artifact
         try {
-          await upsertMediaManifest(payload.mediaId, { renderedSubtitlesJobId: payload.jobId })
+          await upsertMediaManifest(payload.mediaId, { renderedSubtitlesJobId: payload.jobId }, media.title || undefined)
         } catch (err) {
           logger.warn('api', `[cf-callback] manifest (subtitles) update skipped: ${err instanceof Error ? err.message : String(err)}`)
         }
@@ -355,7 +355,7 @@ async function handleCloudDownloadCallback(
   }
   if (Object.keys(manifestPatch).length > 0) {
     try {
-      await upsertMediaManifest(payload.mediaId, manifestPatch)
+      await upsertMediaManifest(payload.mediaId, manifestPatch, media.title || undefined)
     } catch (err) {
       logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
     }

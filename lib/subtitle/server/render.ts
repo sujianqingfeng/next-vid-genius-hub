@@ -42,6 +42,7 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
     const job = await startCloudJob({
       mediaId: media.id,
       engine: 'burner-ffmpeg',
+      title: media.title || undefined,
       options: { subtitleConfig: input.subtitleConfig },
     })
 

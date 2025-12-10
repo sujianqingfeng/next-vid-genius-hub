@@ -26,7 +26,7 @@ export async function buildCommentsSnapshot(
 	media: MediaRecord,
 	options: BuildCommentsSnapshotOptions,
 ): Promise<BuildCommentsSnapshotResult> {
-	const key = bucketPaths.inputs.comments(media.id)
+	const key = bucketPaths.inputs.comments(media.id, { title: media.title || undefined })
 
 	const translatedTitle = (options.translatedTitle ?? media.translatedTitle) || undefined
 
@@ -40,7 +40,7 @@ export async function buildCommentsSnapshot(
 	}
 
 	await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments: options.comments }))
-	await upsertMediaManifest(media.id, { commentsKey: key })
+	await upsertMediaManifest(media.id, { commentsKey: key }, media.title || undefined)
 
 	return { key, videoInfo }
 }

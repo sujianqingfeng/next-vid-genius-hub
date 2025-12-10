@@ -200,7 +200,7 @@ export const startCloudRender = os
 	if (media.remoteMetadataKey) manifestPatch.remoteMetadataKey = media.remoteMetadataKey
 	if (Object.keys(manifestPatch).length > 0) {
 		try {
-			await upsertMediaManifest(media.id, manifestPatch)
+			await upsertMediaManifest(media.id, manifestPatch, media.title || undefined)
 		} catch (err) {
 			logger.warn(
 				'comments',
@@ -249,6 +249,7 @@ export const startCloudRender = os
 			const job = await startCloudJob({
 				mediaId: media.id,
 				engine: 'renderer-remotion',
+				title: media.title || undefined,
 				options: {
 					defaultProxyUrl: PROXY_URL,
 					proxy: proxyPayload,
@@ -376,6 +377,7 @@ export const startCloudCommentsDownload = os
 			const job = await startCloudJob({
 				mediaId,
 				engine: 'media-downloader',
+				title: media.title || undefined,
 				options: {
 					url: media.url,
 					source: media.source,

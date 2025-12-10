@@ -121,6 +121,7 @@ export const startCloudSync = os
 	      const job = await startCloudJob({
 	        mediaId: channel.id,
 	        engine: 'media-downloader',
+	        title: channel.title || undefined,
 	        options: {
 	          task: 'channel-list',
 	          source: MEDIA_SOURCES.YOUTUBE,
@@ -298,8 +299,12 @@ export const finalizeCloudSync = os
 
     // Optional: materialize snap to bucket for auditing
     try {
-      const key = bucketPaths.inputs.channelVideos(channel.id, input.jobId)
-      await putObjectByKey(key, 'application/json', JSON.stringify({ channel: { id: channel.id, url: channel.channelUrl }, videos: list }, null, 2))
+      const key = bucketPaths.inputs.channelVideos(channel.id, input.jobId, { title: channel.title || undefined })
+      await putObjectByKey(
+        key,
+        'application/json',
+        JSON.stringify({ channel: { id: channel.id, url: channel.channelUrl }, videos: list }, null, 2),
+        )
     } catch {}
 
     return { success: true, count: list.length }

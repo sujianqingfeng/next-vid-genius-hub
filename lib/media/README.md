@@ -32,7 +32,7 @@ These types are used by:
 - `buildCommentsSnapshot(media, { comments, translatedTitle? })`
   - Builds a `videoInfo` object from the current `media` row
   - Persists `{ videoInfo, comments }` JSON to object storage using a stable key
-    under `inputs/comments/<mediaId>.json`
+    under `media/<mediaId>-<titleSlug>/inputs/comments/latest.json`
   - Updates the media manifest with `commentsKey`
 
 Downstream consumers (Remotion containers, preview UI) treat this JSON shape as
