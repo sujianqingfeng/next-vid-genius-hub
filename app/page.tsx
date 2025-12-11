@@ -2,6 +2,7 @@ import { ArrowRight, Download, MessageSquare, Play } from 'lucide-react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { Button } from '~/components/ui/button'
+import { HomeLanguageToggle } from '~/components/business/home/home-language-toggle'
 
 export default async function Home() {
 	const t = await getTranslations('Home')
@@ -13,6 +14,10 @@ export default async function Home() {
 				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-secondary/80 to-transparent -z-10 pointer-events-none" />
 
 				<div className="max-w-5xl mx-auto relative z-10">
+					<div className="flex justify-end mb-8">
+						<HomeLanguageToggle />
+					</div>
+
 					{/* Hero Section */}
 					<div className="text-center mb-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
 						<div className="inline-flex items-center justify-center p-2 mb-8 rounded-full bg-secondary/50 backdrop-blur-sm border border-border/50">
@@ -77,17 +82,6 @@ export default async function Home() {
 							<p className="text-muted-foreground leading-relaxed">
 								{t('features.comments.desc')}
 							</p>
-						</div>
-					</div>
-
-					{/* Stats Section */}
-					<div className="text-center animate-in fade-in duration-700 delay-300">
-						<div className="inline-flex items-center gap-8 text-sm font-medium text-muted-foreground/60 uppercase tracking-widest">
-							<span>{t('tech.next')}</span>
-							<span className="w-1 h-1 rounded-full bg-border" />
-							<span>{t('tech.ts')}</span>
-							<span className="w-1 h-1 rounded-full bg-border" />
-							<span>{t('tech.tailwind')}</span>
 						</div>
 					</div>
 				</div>
