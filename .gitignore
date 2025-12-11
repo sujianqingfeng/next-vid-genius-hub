@@ -65,6 +65,7 @@ cloudflare/media-orchestrator/.wrangler
 cloudflare/media-orchestrator/.mf
 cloudflare/media-orchestrator/.dev.vars
 cloudflare/media-orchestrator/orchestrator.log
+cloudflare/media-orchestrator/*.js
 
 # Root-level Cloudflare Wrangler state
 /.wrangler
