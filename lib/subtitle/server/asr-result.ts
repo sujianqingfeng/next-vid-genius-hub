@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { bucketPaths } from '@app/media-domain'
 import { getDb, schema, type TranscriptionWord } from '~/lib/db'
-import { putObjectByKey, presignGetByKey, upsertMediaManifest } from '~/lib/cloudflare'
+import { putObjectByKey, presignGetByKey } from '~/lib/cloudflare'
 import { logger } from '~/lib/logger'
 import { normalizeVttContent, validateVttContent } from '~/lib/subtitle/utils/vtt'
 
@@ -75,7 +75,6 @@ export async function persistAsrResultFromBucket(input: PersistAsrResultInput) {
 	try {
 		const vttTargetKey = bucketPaths.inputs.subtitles(mediaId, { title: title || undefined })
 		await putObjectByKey(vttTargetKey, 'text/vtt', vttContent)
-		await upsertMediaManifest(mediaId, { vttKey: vttTargetKey }, title || undefined)
 		logger.info(
 			'transcription',
 			`[persistAsrResultFromBucket] VTT materialized media=${mediaId} key=${vttTargetKey}`,

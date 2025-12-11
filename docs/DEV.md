@@ -76,68 +76,60 @@ pnpm cf:dev
 pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中转）
 ```
 
-## 桶优先与清单（manifest）
+## 桶优先与每任务清单（job manifest）
 
-- 清单位置：`manifests/media/<mediaId>.json`
-- 字段说明：
-  - `remoteVideoKey` / `remoteAudioKey` / `remoteMetadataKey`：云下载产物的远端 Key
-  - `vttKey`：字幕文本输入（`inputs/subtitles/<mediaId>.vtt`）
-  - `commentsKey`：评论数据输入（`inputs/comments/<mediaId>.json`）
-  - `subtitlesInputKey`：带字幕视频输入（`inputs/videos/subtitles/<mediaId>.mp4`）
-  - `renderedSubtitlesJobId` / `renderedInfoJobId`：渲染作业号（观测用）
+- 每个异步任务在启动前会写入一份清单：`manifests/jobs/<jobId>.json`
+- 字段（简化）：
+  - `jobId` / `mediaId` / `engine` / `createdAt`
+  - `inputs`：本次任务需要的远端 Key（例如 `videoKey`、`vttKey`、`commentsKey`、`asrSourceKey` 等）
+  - `outputs`：可选，记录本次任务预期写入的产物 Key（调试用）
+  - `optionsSnapshot`：从当时的 engine options 抽取的配置快照（如 `sourcePolicy`、`templateId`、`url` 等）
 
 示例：
 
 ```json
 {
+  "jobId": "job_xyz",
   "mediaId": "abc123",
-  "remoteVideoKey": "downloads/abc123/job_xyz/video.mp4",
-  "remoteAudioKey": "downloads/abc123/job_xyz/audio.mp3",
-  "remoteMetadataKey": "downloads/abc123/job_xyz/metadata.json",
-  "vttKey": "inputs/subtitles/abc123.vtt",
-  "commentsKey": "inputs/comments/abc123.json",
-  "subtitlesInputKey": "inputs/videos/subtitles/abc123.mp4",
-  "renderedSubtitlesJobId": "job_sub_1",
-  "renderedInfoJobId": "job_info_2"
+  "engine": "burner-ffmpeg",
+  "createdAt": 1733900000000,
+  "inputs": {
+    "videoKey": "media/abc123-xxx/downloads/job_dl/video.mp4",
+    "vttKey": "media/abc123-xxx/inputs/subtitles/subtitles.vtt",
+    "sourcePolicy": "original"
+  },
+  "optionsSnapshot": {
+    "subtitleConfig": { "fontSize": 36 }
+  }
 }
 ```
 
 物化职责：
 - Next：
-  - 转写完成后写入 `inputs/subtitles/<mediaId>.vtt` 并更新 `vttKey`
-  - 评论下载/翻译后写入 `inputs/comments/<mediaId>.json` 并更新 `commentsKey`
-  - 云下载回调时写入 `remote*Key`
+  - 转写完成后写入 `inputs/subtitles/<mediaId>/subtitles.vtt`
+  - 评论下载/翻译后写入 `inputs/comments/<mediaId>/latest.json`
+  - 云下载回调时更新 DB 中的 `remote*Key`
+  - 启动任意云任务前，根据 DB +固定路径+业务逻辑，生产该任务的 `JobManifest` 并写入 `manifests/jobs/<jobId>.json`
 - Worker：
-  - 字幕渲染完成后，将成品物化到 `inputs/videos/subtitles/<mediaId>.mp4` 并更新 `subtitlesInputKey`
-
-严格模式（无回退）：
-- Worker 启动任务时仅依赖桶与 manifest；若缺少所需输入，直接返回 `missing_inputs`。
-- 启动任务前请确保：
-  - 下载视频：存在 `remoteVideoKey`（指向 `downloads/{jobId}/video.mp4`）
-  - 字幕文本（字幕烧录时需要）：`inputs/subtitles/<mediaId>.vtt` 或 `vttKey`
-  - 评论数据（Remotion 渲染时需要）：`inputs/comments/<mediaId>.json` 或 `commentsKey`
-  - 带字幕视频（若源策略选择 `subtitles` 或 `auto` 需要优先使用字幕版）：`inputs/videos/subtitles/<mediaId>.mp4` 或 `subtitlesInputKey`
+  - 启动任务时只读取对应的 `JobManifest`，用里面的 `inputs.*Key` 通过 S3 HEAD + 预签 URL 检查/生成容器输入；
+  - 若必需输入缺失，直接返回 `missing_inputs`。
 
 ### Source Policy（视频源策略）
 
-`renderer-remotion` 引擎（目前用于“评论视频渲染”）支持通过 `sourcePolicy` 选择输入视频源，取值：
+`renderer-remotion` 引擎（目前用于“评论视频渲染”）仍通过 `sourcePolicy` 选择视频输入源，但决策在 Next 侧完成并写入 `JobManifest.inputs`：
 
-- `auto`（默认）
-  - 优先使用“带字幕视频”变体：
-    - `inputs/videos/subtitles/<mediaId>.mp4`，或
-    - manifest 中的 `subtitlesInputKey`
-  - 若不存在字幕变体，则回退到下载结果：
-    - manifest 中的 `remoteVideoKey`
-- `original`
-  - 只使用下载结果：manifest.`remoteVideoKey`；
-  - 若缺失，在严格模式下返回 `missing_inputs`。
-- `subtitles`
-  - 只使用“带字幕视频”变体：
-    - `inputs/videos/subtitles/<mediaId>.mp4`，或
-    - manifest 中的 `subtitlesInputKey`；
-  - 若二者都缺失，在严格模式下返回 `missing_inputs`（不会再回退到其他源）。
+- Next 端：
+  - 读取 DB 中 `remoteVideoKey`、已有渲染成品路径等；
+  - 根据 `sourcePolicy`（auto/original/subtitles）和当前桶内是否存在字幕版视频，决定本次任务使用的 `videoKey`；
+  - 将决策结果写入 `JobManifest.inputs.videoKey`（以及必要时的 `subtitlesInputKey`）。
+- Worker 端：
+  - 不再根据 `mediaId` 自己推断 source policy，只信任 JobManifest。
 
-字幕烧录容器 `burner-ffmpeg` 当前不读取 `sourcePolicy`，仍然只依赖 `remoteVideoKey` + `inputs/subtitles/<mediaId>.vtt`/`vttKey` 作为输入。
+字幕烧录容器 `burner-ffmpeg` 依然只依赖：
+- `inputs.videoKey`（通常指向下载结果）和
+- `inputs.vttKey`（`inputs/subtitles/<mediaId>/subtitles.vtt`）
+
+Worker 只负责验证这些 key 是否在桶中存在，不再自动补全/回退。
 
 ### 云端产物存储
 

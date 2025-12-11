@@ -3,7 +3,7 @@ import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { parseVttCues, serializeVttCues, validateVttContent } from '~/lib/subtitle/utils/vtt'
 import { generateObject } from '~/lib/ai/chat'
-import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
+import { putObjectByKey } from '~/lib/cloudflare'
 import { getTranslationPrompt, DEFAULT_TRANSLATION_PROMPT_ID } from '~/lib/subtitle/config/prompts'
 import { z } from 'zod'
 import type { AIModelId } from '~/lib/ai/models'
@@ -134,7 +134,6 @@ Strict rules:
   try {
     const vttKey = bucketPaths.inputs.subtitles(mediaId, { title: media.title || undefined })
     await putObjectByKey(vttKey, 'text/vtt', vtt)
-    await upsertMediaManifest(mediaId, { vttKey }, media.title || undefined)
     logger.info('translation', `Translated VTT materialized: ${vttKey}`)
   } catch (err) {
     logger.warn('translation', `Translate materialization skipped: ${err instanceof Error ? err.message : String(err)}`)

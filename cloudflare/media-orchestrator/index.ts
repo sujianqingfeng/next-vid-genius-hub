@@ -36,25 +36,35 @@ export interface Env {
 
 const TERMINAL_STATUSES: JobTerminalStatus[] = ['completed', 'failed', 'canceled']
 
-// Manifest stored in bucket to advertise where inputs/remote keys are
-// Key: manifests/media/<mediaId>.json
-interface MediaManifest {
+// Per-job manifest: immutable snapshot of what a single async job needs.
+// This is written by the Next app at job-start time so that the Worker and
+// containers never have to reach into the primary DB.
+interface JobManifest {
+  jobId: string
   mediaId: string
-  title?: string
-  // Original download outputs
-  remoteVideoKey?: string
-  remoteAudioKey?: string
-  remoteMetadataKey?: string
-  // Pre-materialized inputs (optional)
-  vttKey?: string
-  commentsKey?: string
-  subtitlesInputKey?: string
-  // Rendered artifacts (for reference)
-  renderedSubtitlesJobId?: string
-  renderedInfoJobId?: string
+  engine: EngineId | string
+  createdAt: number
+  inputs?: {
+    videoKey?: string | null
+    audioKey?: string | null
+    subtitlesInputKey?: string | null
+    vttKey?: string | null
+    commentsKey?: string | null
+    asrSourceKey?: string | null
+    sourcePolicy?: 'auto' | 'original' | 'subtitles' | null
+  }
+  outputs?: {
+    videoKey?: string | null
+    audioKey?: string | null
+    metadataKey?: string | null
+    vttKey?: string | null
+    wordsKey?: string | null
+  }
+  optionsSnapshot?: Record<string, unknown>
 }
 
 interface StartBody {
+  jobId: string
   mediaId: string
   engine: EngineId
   title?: string | null
@@ -216,17 +226,14 @@ async function getSigningKey(secret: string, date: string, region: string, servi
   return kSigning
 }
 
-async function readManifest(env: Env, _bucket: string, mediaId: string, title?: string | null): Promise<MediaManifest | null> {
-  // Single source of truth: use bucketPaths.manifests.media (slug-based layout)
-  const key = bucketPaths.manifests.media(mediaId, { title: title ?? undefined })
-
+async function readJobManifest(env: Env, jobId: string): Promise<JobManifest | null> {
   if (!env.RENDER_BUCKET) return null
-
+  const key = bucketPaths.manifests.job(jobId)
   try {
     const obj = await env.RENDER_BUCKET.get(key)
     if (!obj) return null
     const text = await obj.text()
-    return JSON.parse(text) as MediaManifest
+    return JSON.parse(text) as JobManifest
   } catch {
     return null
   }
@@ -241,30 +248,6 @@ async function presignGetForContainer(
   return presignS3(env, 'GET', bucket, key, 600, undefined, endpointOverride)
 }
 
-async function writeManifestPatch(
-  env: Env,
-  _bucket: string,
-  mediaId: string,
-  patch: Partial<MediaManifest>,
-  title?: string | null,
-): Promise<void> {
-  const key = bucketPaths.manifests.media(mediaId, { title })
-  const merge = (base: any, add: any) => ({ ...base, ...Object.fromEntries(Object.entries(add).filter(([, v]) => v !== undefined)) })
-
-  if (!env.RENDER_BUCKET) {
-    throw new Error('RENDER_BUCKET is not configured')
-  }
-
-  let current: any = {}
-  try {
-    const cur = await env.RENDER_BUCKET.get(key)
-    if (cur) current = JSON.parse(await cur.text())
-  } catch {}
-
-  const next = merge({ mediaId, ...current }, patch)
-  await env.RENDER_BUCKET.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } })
-}
-
 async function handleStart(env: Env, req: Request) {
   const raw = await req.text()
   const sig = req.headers.get('x-signature') || ''
@@ -273,8 +256,8 @@ async function handleStart(env: Env, req: Request) {
     return json({ error: 'unauthorized' }, { status: 401 })
   }
   const body = JSON.parse(raw) as StartBody
-  if (!body?.mediaId || !body?.engine) return json({ error: 'bad request' }, { status: 400 })
-  const jobId = uid()
+  if (!body?.jobId || !body?.mediaId || !body?.engine) return json({ error: 'bad request' }, { status: 400 })
+  const jobId = body.jobId
   const now = Date.now()
   // Choose container base by engine
   let containerBase: string
@@ -312,10 +295,7 @@ async function handleStart(env: Env, req: Request) {
   const isAudioTranscoder = body.engine === 'audio-transcoder'
   const isAsrPipeline = body.engine === 'asr-pipeline'
   const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
-  const sourcePolicy = ((body.options || {}) as any).sourcePolicy as 'auto' | 'original' | 'subtitles' | undefined
   const pathOptions = { title: body.title ?? undefined }
-  const inputVttKey = bucketPaths.inputs.subtitles(body.mediaId, pathOptions)
-  const inputDataKey = bucketPaths.inputs.comments(body.mediaId, pathOptions)
   const outputVideoKey = isDownloader
     ? bucketPaths.downloads.video(body.mediaId, jobId, pathOptions)
     : bucketPaths.outputs.video(body.mediaId, jobId, pathOptions)
@@ -330,52 +310,32 @@ async function handleStart(env: Env, req: Request) {
   let inputVttUrl: string | undefined
   let inputDataUrl: string | undefined
   if (!isDownloader && !isAudioTranscoder && !isAsrPipeline) {
-    // Bucket-first: try to use existing objects/manifest without touching Next
-    const manifest = await readManifest(env, bucketName, body.mediaId, body.title)
+    // Resolve inputs exclusively from per-job manifest written by Next. The
+    // Worker no longer consults the media-level manifest when starting jobs.
+    const jobManifest = await readJobManifest(env, jobId)
+    if (!jobManifest) {
+      return json({ error: 'missing_job_manifest', details: { jobId } }, { status: 400 })
+    }
+    const inputs = jobManifest.inputs || {}
 
     // 1) Video source
-    // 1) Video source
-    if (sourcePolicy === 'subtitles') {
-      // Strict subtitles-only policy: only accept pre-materialized subtitles variant
-      const subtitlesKey = bucketPaths.inputs.subtitledVideo(body.mediaId, pathOptions)
-      const hasSubVideo = await s3Head(env, bucketName, subtitlesKey)
-      if (hasSubVideo) {
-        inputVideoUrl = await presignGetForContainer(env, bucketName, subtitlesKey, jobS3Endpoint)
-      } else if (manifest?.subtitlesInputKey) {
-        inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.subtitlesInputKey, jobS3Endpoint)
-      }
-    } else if (sourcePolicy === 'original') {
-      // Original policy: prefer the canonical remoteVideoKey recorded by downloader
-      if (manifest?.remoteVideoKey) {
-        inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.remoteVideoKey, jobS3Endpoint)
-      }
-    } else {
-      // Auto policy (default): prefer subtitles variant, then remoteVideoKey
-      const subtitlesKey = bucketPaths.inputs.subtitledVideo(body.mediaId, pathOptions)
-      const hasSubVideo = await s3Head(env, bucketName, subtitlesKey)
-      if (hasSubVideo) {
-        inputVideoUrl = await presignGetForContainer(env, bucketName, subtitlesKey, jobS3Endpoint)
-      } else if (manifest?.subtitlesInputKey) {
-        inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.subtitlesInputKey, jobS3Endpoint)
-      } else if (manifest?.remoteVideoKey) {
-        inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.remoteVideoKey, jobS3Endpoint)
+    if (inputs.videoKey) {
+      const hasVideo = await s3Head(env, bucketName, inputs.videoKey)
+      if (hasVideo) {
+        inputVideoUrl = await presignGetForContainer(env, bucketName, inputs.videoKey, jobS3Endpoint)
       }
     }
 
     // 2) Text inputs (VTT / comments)
-    if (body.engine === 'burner-ffmpeg') {
-      const hasVtt = await s3Head(env, bucketName, inputVttKey)
+    if (body.engine === 'burner-ffmpeg' && inputs.vttKey) {
+      const hasVtt = await s3Head(env, bucketName, inputs.vttKey)
       if (hasVtt) {
-        inputVttUrl = await presignGetForContainer(env, bucketName, inputVttKey, jobS3Endpoint)
-      } else if (manifest?.vttKey) {
-        inputVttUrl = await presignGetForContainer(env, bucketName, manifest.vttKey, jobS3Endpoint)
+        inputVttUrl = await presignGetForContainer(env, bucketName, inputs.vttKey, jobS3Endpoint)
       }
-    } else if (body.engine === 'renderer-remotion') {
-      const hasData = await s3Head(env, bucketName, inputDataKey)
+    } else if (body.engine === 'renderer-remotion' && inputs.commentsKey) {
+      const hasData = await s3Head(env, bucketName, inputs.commentsKey)
       if (hasData) {
-        inputDataUrl = await presignGetForContainer(env, bucketName, inputDataKey, jobS3Endpoint)
-      } else if (manifest?.commentsKey) {
-        inputDataUrl = await presignGetForContainer(env, bucketName, manifest.commentsKey, jobS3Endpoint)
+        inputDataUrl = await presignGetForContainer(env, bucketName, inputs.commentsKey, jobS3Endpoint)
       }
     }
 
@@ -396,9 +356,10 @@ async function handleStart(env: Env, req: Request) {
           JSON.stringify({
             mediaId: body.mediaId,
             engine: body.engine,
-            sourcePolicy,
-            manifestVideoKey: manifest?.remoteVideoKey ?? null,
-            manifestVttKey: manifest?.vttKey ?? null,
+            jobId,
+            videoKey: inputs.videoKey ?? null,
+            vttKey: inputs.vttKey ?? null,
+            commentsKey: inputs.commentsKey ?? null,
             hasInputVideoUrl: Boolean(inputVideoUrl),
             hasInputVttUrl: Boolean(inputVttUrl),
             needVideo,
@@ -718,10 +679,6 @@ async function materializeSubtitlesInput(env: Env, doc: any) {
   const obj = await env.RENDER_BUCKET.get(sourceKey)
   if (!obj) throw new Error('sourceKey not found in R2')
   await env.RENDER_BUCKET.put(targetKey, obj.body as ReadableStream, { httpMetadata: { contentType: 'video/mp4' } })
-  try {
-    const bucket = env.S3_BUCKET_NAME || 'vidgen-render'
-    await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }, doc?.title as string | undefined)
-  } catch {}
 }
 
 async function runAsrForPipeline(env: Env, doc: any) {

@@ -9,8 +9,8 @@ import {
 	startCloudJob,
 	getJobStatus,
 	presignGetByKey,
-	upsertMediaManifest,
-	type MediaManifestPatch,
+	putJobManifest,
+	type JobManifest,
 } from '~/lib/cloudflare'
 import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
@@ -203,29 +203,6 @@ export const startCloudRender = os
 			`[render.start] media=${mediaId} user=${userId} comments=${comments.length} sourcePolicy=${input.sourcePolicy ?? 'auto'} templateId=${input.templateId ?? media.commentsTemplate ?? DEFAULT_TEMPLATE_ID} proxyId=${proxyId ?? 'auto'}`,
 		)
 
-		// Ensure manifest references latest remote assets before kicking off render
-		const manifestPatch: MediaManifestPatch = {}
-		if (media.remoteVideoKey)
-			manifestPatch.remoteVideoKey = media.remoteVideoKey
-		if (media.remoteAudioKey)
-			manifestPatch.remoteAudioKey = media.remoteAudioKey
-		if (media.remoteMetadataKey)
-			manifestPatch.remoteMetadataKey = media.remoteMetadataKey
-		if (Object.keys(manifestPatch).length > 0) {
-			try {
-				await upsertMediaManifest(
-					media.id,
-					manifestPatch,
-					media.title || undefined,
-				)
-			} catch (err) {
-				logger.warn(
-					'comments',
-					`[startCloudRender] manifest sync skipped: ${err instanceof Error ? err.message : String(err)}`,
-				)
-			}
-		}
-
 		let snapshotKey: string | undefined
 		try {
 			const snapshot = await buildCommentsSnapshot(media, { comments })
@@ -247,6 +224,7 @@ export const startCloudRender = os
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		const taskId = createId()
+		const jobId = `job_${createId()}`
 		await db.insert(schema.tasks).values({
 			id: taskId,
 			userId,
@@ -267,7 +245,30 @@ export const startCloudRender = os
 		})
 
 		try {
+			// Per-job manifest for comments render. We use the canonical remote
+			// video as source and the freshly materialized comments snapshot.
+			const manifest: JobManifest = {
+				jobId,
+				mediaId: media.id,
+				engine: 'renderer-remotion',
+				createdAt: Date.now(),
+				inputs: {
+					videoKey: media.remoteVideoKey ?? null,
+					commentsKey: snapshotKey ?? null,
+					sourcePolicy: (input.sourcePolicy || 'auto') as any,
+				},
+				optionsSnapshot: {
+					defaultProxyUrl: PROXY_URL,
+					proxyId: effectiveProxyId ?? null,
+					sourcePolicy: input.sourcePolicy || 'auto',
+					templateId:
+						input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
+				},
+			}
+			await putJobManifest(jobId, manifest)
+
 			const job = await startCloudJob({
+				jobId,
 				mediaId: media.id,
 				engine: 'renderer-remotion',
 				title: media.title || undefined,
@@ -402,7 +403,24 @@ export const startCloudCommentsDownload = os
 		})
 
 		try {
+			const manifest: JobManifest = {
+				jobId,
+				mediaId,
+				engine: 'media-downloader',
+				createdAt: Date.now(),
+				inputs: {},
+				optionsSnapshot: {
+					url: media.url,
+					source: media.source,
+					task: 'comments',
+					commentsPages: pages,
+					proxyId: effectiveProxyId ?? null,
+				},
+			}
+			await putJobManifest(jobId, manifest)
+
 			const job = await startCloudJob({
+				jobId,
 				mediaId,
 				engine: 'media-downloader',
 				title: media.title || undefined,

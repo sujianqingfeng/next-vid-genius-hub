@@ -4,7 +4,7 @@ import { os } from '@orpc/server'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/env'
-import { deleteCloudArtifacts, getJobStatus, startCloudJob } from '~/lib/cloudflare'
+import { deleteCloudArtifacts, getJobStatus, startCloudJob, putJobManifest, type JobManifest } from '~/lib/cloudflare'
 import type { JobStatusResponse } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
@@ -111,6 +111,7 @@ export const refreshMetadata = os
 			const proxyPayload = toProxyJobPayload(proxyRecord)
 
 			const taskId = createId()
+			const jobId = `job_${createId()}`
 			await db.insert(schema.tasks).values({
 				id: taskId,
 				userId,
@@ -132,7 +133,24 @@ export const refreshMetadata = os
 
 			let lastStatus: JobStatusResponse | null = null
 			try {
+				const manifest: JobManifest = {
+					jobId,
+					mediaId: record.id,
+					engine: 'media-downloader',
+					createdAt: Date.now(),
+					inputs: {},
+					optionsSnapshot: {
+						task: 'metadata-only',
+						url: record.url,
+						quality: record.quality || '1080p',
+						source,
+						proxyId: input.proxyId ?? null,
+					},
+				}
+				await putJobManifest(jobId, manifest)
+
 				const job = await startCloudJob({
+					jobId,
 					mediaId: record.id,
 					engine: 'media-downloader',
 					title: record.title || undefined,
@@ -350,7 +368,6 @@ export const deleteById = os
 				// Well-known per-media objects that we materialize into the bucket
 				const pathOptions = { title: record.title || undefined }
 				keys.push(
-					bucketPaths.manifests.media(id, pathOptions),
 					bucketPaths.inputs.subtitles(id, pathOptions),
 					bucketPaths.inputs.subtitledVideo(id, pathOptions),
 					bucketPaths.inputs.comments(id, pathOptions),

@@ -11,6 +11,8 @@ import {
 	getJobStatus,
 	presignGetByKey,
 	putObjectByKey,
+	putJobManifest,
+	type JobManifest,
 } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/env'
 import { bucketPaths } from '@app/media-domain'
@@ -131,6 +133,8 @@ export const startCloudSync = os
 		}
 
 		const taskId = createId()
+		const jobId = `job_${createId()}`
+
 		await db.insert(schema.tasks).values({
 			id: taskId,
 			userId,
@@ -150,7 +154,24 @@ export const startCloudSync = os
 		})
 
 		try {
+			const manifest: JobManifest = {
+				jobId,
+				mediaId: channel.id,
+				engine: 'media-downloader',
+				createdAt: Date.now(),
+				inputs: {},
+				optionsSnapshot: {
+					task: 'channel-list',
+					source: MEDIA_SOURCES.YOUTUBE,
+					channelUrlOrId,
+					limit: input.limit,
+					proxyId: proxyId ?? null,
+				},
+			}
+			await putJobManifest(jobId, manifest)
+
 			const job = await startCloudJob({
+				jobId,
 				mediaId: channel.id,
 				engine: 'media-downloader',
 				title: channel.title || undefined,

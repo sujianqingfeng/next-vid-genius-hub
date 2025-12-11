@@ -1,4 +1,4 @@
-import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
+import { putObjectByKey } from '~/lib/cloudflare'
 import { schema } from '~/lib/db'
 import type { Comment } from '~/lib/db/schema'
 import type { VideoInfo } from '~/lib/media/types'
@@ -40,7 +40,6 @@ export async function buildCommentsSnapshot(
 	}
 
 	await putObjectByKey(key, 'application/json', JSON.stringify({ videoInfo, comments: options.comments }))
-	await upsertMediaManifest(media.id, { commentsKey: key }, media.title || undefined)
 
 	return { key, videoInfo }
 }

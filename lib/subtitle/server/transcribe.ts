@@ -3,7 +3,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { type CloudflareInputFormat, type WhisperModel, WHISPER_MODELS } from '~/lib/subtitle/config/models'
-import { startCloudJob } from '~/lib/cloudflare'
+import { startCloudJob, putJobManifest, type JobManifest } from '~/lib/cloudflare'
 import { TASK_KINDS } from '~/lib/job/task'
 
 export async function transcribe(input: {
@@ -86,7 +86,31 @@ export async function transcribe(input: {
 
 	let jobId: string | null = null
 	try {
+		// Generate jobId so we can snapshot inputs into a per-job manifest.
+		jobId = `job_${createId()}`
+
+		const manifest: JobManifest = {
+			jobId,
+			mediaId,
+			engine: 'asr-pipeline',
+			createdAt: Date.now(),
+			inputs: {
+				asrSourceKey: remoteAudioKey,
+			},
+			optionsSnapshot: {
+				sourceKey: remoteAudioKey,
+				maxBytes: targetBytes,
+				targetBitrates,
+				sampleRate,
+				model: modelId,
+				inputFormat: cloudflareInputFormat,
+				language: languageForCloud ?? null,
+			},
+		}
+		await putJobManifest(jobId, manifest)
+
 		const job = await startCloudJob({
+			jobId,
 			mediaId,
 			engine: 'asr-pipeline',
 			title: mediaRecord.title || undefined,

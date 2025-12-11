@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { logger } from '~/lib/logger'
-import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
+import { startCloudJob, getJobStatus, putJobManifest, type JobManifest } from '~/lib/cloudflare'
 import { PROXY_URL } from '~/lib/config/env'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
@@ -88,6 +88,9 @@ export const startCloudDownload = os
 		const { proxyId: effectiveProxyId, proxyRecord } = await resolveProxyWithDefault({ db, proxyId })
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 		const taskId = createId()
+		// Generate a stable jobId so we can create a per-job manifest before
+		// calling the orchestrator.
+		const jobId = `job_${createId()}`
 
 		try {
 			await db.insert(schema.tasks).values({
@@ -104,7 +107,25 @@ export const startCloudDownload = os
 				updatedAt: now,
 			})
 
+			// Minimal per-job manifest for downloader. Inputs live in engineOptions
+			// (url/quality/source); containers/orchestrator don't need DB access.
+			const manifest: JobManifest = {
+				jobId,
+				mediaId,
+				engine: 'media-downloader',
+				createdAt: Date.now(),
+				inputs: {},
+				optionsSnapshot: {
+					url,
+					quality,
+					source,
+					proxyId: effectiveProxyId ?? null,
+				},
+			}
+			await putJobManifest(jobId, manifest)
+
 			const job = await startCloudJob({
+				jobId,
 				mediaId,
 				engine: 'media-downloader',
 				title: existing?.title || 'Pending download',

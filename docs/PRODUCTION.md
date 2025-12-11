@@ -67,35 +67,33 @@ R2_BUCKET_NAME = "vidgen-render"
 
 ```
 
-### 桶优先输入与清单（manifest）
+### 桶优先输入与 Job Manifest
 
-- 清单位置：`manifests/media/<mediaId>.json`
-- 字段：`remoteVideoKey/remoteAudioKey/remoteMetadataKey`、`vttKey`、`commentsKey`、`subtitlesInputKey`、`renderedSubtitlesJobId`、`renderedInfoJobId`
-- 物化职责：
-  - Next：
-    - 转写完成 → 写入 `inputs/subtitles/<mediaId>.vtt` → 更新 `vttKey`
-    - 评论下载/翻译完成 → 写入 `inputs/comments/<mediaId>.json` → 更新 `commentsKey`
-    - 云下载回调 → 更新 `remote*Key`
-  - Worker：
-    - 字幕渲染完成 → 物化 `inputs/videos/subtitles/<mediaId>.mp4` → 更新 `subtitlesInputKey`
+- 每个云任务在启动前，Next 会写入一份仅针对该任务的清单：`manifests/jobs/<jobId>.json`
+- 清单中包含：
+  - `inputs`：本次任务需要访问的 R2 对象 key（视频、字幕、评论、ASR 音频等）；
+  - `outputs`：本次任务预期写入的 key（调试用）；
+  - `optionsSnapshot`：从 engine options 抽取的关键信息（比如 `sourcePolicy`、`templateId`、`url`）。
+
+物化职责：
+- Next：
+  - 转写完成 → 写入 `media/{mediaId}-{slug}/inputs/subtitles/subtitles.vtt`
+  - 评论下载/翻译完成 → 写入 `media/{mediaId}-{slug}/inputs/comments/latest.json`
+  - 云下载回调 → 更新 DB 中的 `remoteVideoKey/remoteAudioKey/remoteMetadataKey`
+  - 启动任务前，根据 DB + 固定路径 + 业务规则生成 `JobManifest` 并写入 `manifests/jobs/<jobId>.json`
+- Worker：
+  - 启动任务时只读取该 job 的 manifest，检查 `inputs.*Key` 所指对象是否存在（HEAD + 预签 GET）；
+  - 任意必需输入缺失时返回 `missing_inputs`，Next/前端根据错误决定如何提示/重试。
 
 #### Source Policy（视频源策略）
 
-`renderer-remotion`（评论视频渲染）会根据 `sourcePolicy` 选择视频输入：
+`renderer-remotion`（评论视频渲染）的 sourcePolicy 选择逻辑完全由 Next 决定：
 
-- `auto`（推荐）：
-  1. 优先使用“带字幕视频”变体：`inputs/videos/subtitles/<mediaId>.mp4` 或 manifest.`subtitlesInputKey`；
-  2. 若没有字幕变体，则回退到下载结果：manifest.`remoteVideoKey`。
-- `original`：
-  - 只接受下载结果：manifest.`remoteVideoKey`；
-  - 若缺失，在严格模式下直接返回 `missing_inputs`。
-- `subtitles`：
-  - 只接受“带字幕视频”变体：`inputs/videos/subtitles/<mediaId>.mp4` 或 manifest.`subtitlesInputKey`；
-  - 若二者都不存在，在严格模式下直接返回 `missing_inputs`，不会再回退到其他源。
-
-严格模式（无回退）：
-- Worker 启动任务仅依赖桶与 manifest；缺少输入直接报错。
-- 启动前请保证对应 inputs 或 manifest 指针存在。
+- Next 根据 `sourcePolicy` 和当前桶内是否存在字幕版视频，选择：
+  - 使用下载结果（`downloads/.../video.mp4`），或
+  - 使用已渲染的“带字幕视频”变体（`inputs/video/subtitles.mp4` 等）。
+- 选择结果写入 `JobManifest.inputs.videoKey`（必要时附带 `subtitlesInputKey`）。
+- Worker 只验证 `videoKey` 对应对象存在与否，不再基于 `mediaId` 和 media 级别 manifest 做回退决策。
 ```
 
 2) 生产密钥（不要写入 wrangler.toml）

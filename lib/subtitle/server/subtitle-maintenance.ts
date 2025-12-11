@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { AIModelId } from '~/lib/ai/models'
-import { putObjectByKey, upsertMediaManifest } from '~/lib/cloudflare'
+import { putObjectByKey } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import {
@@ -31,7 +31,6 @@ export async function updateTranslation(input: {
 	try {
 		const vttKey = bucketPaths.inputs.subtitles(input.mediaId, { title: media?.title || undefined })
 		await putObjectByKey(vttKey, 'text/vtt', input.translation)
-		await upsertMediaManifest(input.mediaId, { vttKey }, media?.title || undefined)
 		logger.info(
 			'translation',
 			`Translated VTT materialized (manual update): ${vttKey}`,

@@ -1,43 +1,54 @@
 import { bucketPaths } from '@app/media-domain'
-import { requireOrchestratorUrl } from './utils'
+import { presignPutAndGetByKey } from './storage'
 
-export interface MediaManifestPatch {
-  remoteVideoKey?: string | null
-  remoteAudioKey?: string | null
-  remoteMetadataKey?: string | null
-  vttKey?: string | null
-  commentsKey?: string | null
-  renderedSubtitlesJobId?: string | null
-  renderedInfoJobId?: string | null
+// Per-job manifest: immutable snapshot of everything a single async job needs
+// so that Workers/containers never have to reach into the primary DB.
+export interface JobManifest {
+  jobId: string
+  mediaId: string
+  engine: string
+  createdAt: number
+  // Inputs resolved at job-start time. Engines must not look at DB; only at
+  // these resolved keys/options.
+  inputs: {
+    // Generic video/audio keys (e.g. downloads/.../video.mp4)
+    videoKey?: string | null
+    audioKey?: string | null
+    // Optional pre-materialized variants
+    subtitlesInputKey?: string | null
+    vttKey?: string | null
+    commentsKey?: string | null
+    // ASR / audio pipelines
+    asrSourceKey?: string | null
+    // Optional policy hints (e.g. which variant to prefer)
+    sourcePolicy?: 'auto' | 'original' | 'subtitles' | null
+  }
+  // Optional outputs contract for observability/debugging. Containers still
+  // receive presigned PUT URLs from the orchestrator; this just records the
+  // canonical keys we expect to be written.
+  outputs?: {
+    videoKey?: string | null
+    audioKey?: string | null
+    metadataKey?: string | null
+    vttKey?: string | null
+    wordsKey?: string | null
+  }
+  // Best-effort snapshot of engine options for debugging.
+  optionsSnapshot?: Record<string, unknown>
 }
 
-export async function upsertMediaManifest(
-  mediaId: string,
-  patch: MediaManifestPatch,
-  mediaTitle?: string | null,
-): Promise<void> {
-  const key = bucketPaths.manifests.media(mediaId, { title: mediaTitle ?? undefined })
-  const base = requireOrchestratorUrl()
-  const presignUrl = `${base.replace(/\/$/, '')}/debug/presign?key=${encodeURIComponent(key)}&contentType=${encodeURIComponent('application/json')}`
-  const presignResp = await fetch(presignUrl)
-  if (!presignResp.ok) throw new Error(`manifest presign failed: ${presignResp.status}`)
-  const { putUrl, getUrl } = (await presignResp.json()) as { putUrl?: string; getUrl?: string }
-  if (!putUrl || !getUrl) throw new Error('manifest presign: missing URLs')
-
-  let current: Record<string, unknown> = {}
-  try {
-    const r = await fetch(getUrl)
-    if (r.ok) current = (await r.json()) as Record<string, unknown>
-  } catch {}
-  const next = {
-    mediaId,
-    ...current,
-    ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)),
-  }
-  const putResp = await fetch(putUrl, {
+export async function putJobManifest(jobId: string, manifest: JobManifest): Promise<void> {
+  const key = bucketPaths.manifests.job(jobId)
+  const { putUrl } = await presignPutAndGetByKey(key, 'application/json')
+  const res = await fetch(putUrl, {
     method: 'PUT',
-    headers: { 'content-type': 'application/json', 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
-    body: JSON.stringify(next),
+    headers: {
+      'content-type': 'application/json',
+      'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
+    },
+    body: JSON.stringify(manifest),
   })
-  if (!putResp.ok) throw new Error(`manifest put failed: ${putResp.status} ${await putResp.text()}`)
+  if (!res.ok) {
+    throw new Error(`putJobManifest failed: ${res.status} ${await res.text()}`)
+  }
 }

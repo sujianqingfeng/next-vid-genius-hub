@@ -3,9 +3,9 @@ import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
-import { startCloudJob, getJobStatus } from '~/lib/cloudflare'
+import { startCloudJob, getJobStatus, putJobManifest, type JobManifest } from '~/lib/cloudflare'
 import type { JobStatusResponse } from '~/lib/cloudflare'
-import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
+import { bucketPaths, TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { TASK_KINDS } from '~/lib/job/task'
 
 export async function startCloudRender(input: { mediaId: string; subtitleConfig?: SubtitleRenderConfig }): Promise<{ jobId: string; taskId: string }> {
@@ -39,7 +39,31 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
   })
 
   try {
+    // Generate job id up-front so we can materialize a per-job manifest that
+    // describes the exact inputs this render should use.
+    const jobId = `job_${createId()}`
+
+    const vttKey = bucketPaths.inputs.subtitles(media.id, { title: media.title ?? undefined })
+    const manifest: JobManifest = {
+      jobId,
+      mediaId: media.id,
+      engine: 'burner-ffmpeg',
+      createdAt: Date.now(),
+      inputs: {
+        // For subtitles burn-in we always use the canonical remote video as source.
+        videoKey: media.remoteVideoKey ?? null,
+        vttKey,
+        sourcePolicy: 'original',
+      },
+      optionsSnapshot: {
+        subtitleConfig: input.subtitleConfig ?? null,
+      },
+    }
+
+    await putJobManifest(jobId, manifest)
+
     const job = await startCloudJob({
+      jobId,
       mediaId: media.id,
       engine: 'burner-ffmpeg',
       title: media.title || undefined,

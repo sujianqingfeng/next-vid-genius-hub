@@ -4,7 +4,7 @@ import { getDb, schema } from '~/lib/db'
 import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/env'
 import { verifyHmacSHA256 } from '@app/job-callbacks'
 import { logger } from '~/lib/logger'
-import { presignGetByKey, upsertMediaManifest } from '~/lib/cloudflare'
+import { presignGetByKey } from '~/lib/cloudflare'
 import { chargeDownloadUsage, InsufficientPointsError, chargeAsrUsage } from '~/lib/points/billing'
 import { persistAsrResultFromBucket } from '~/lib/subtitle/server/asr-result'
 
@@ -169,24 +169,12 @@ export async function POST(req: NextRequest) {
           .update(schema.media)
           .set({ videoWithInfoPath: `remote:orchestrator:${payload.jobId}` })
           .where(eq(schema.media.id, media.id))
-        // Update manifest to record rendered info artifact
-        try {
-          await upsertMediaManifest(payload.mediaId, { renderedInfoJobId: payload.jobId }, media.title || undefined)
-        } catch (err) {
-          logger.warn('api', `[cf-callback] manifest (info) update skipped: ${err instanceof Error ? err.message : String(err)}`)
-        }
         logger.info('api', `[cf-callback] render-info completed job=${payload.jobId} media=${payload.mediaId}`)
       } else {
         await db
           .update(schema.media)
           .set({ videoWithSubtitlesPath: `remote:orchestrator:${payload.jobId}` })
           .where(eq(schema.media.id, media.id))
-        // Update manifest to record rendered subtitles artifact
-        try {
-          await upsertMediaManifest(payload.mediaId, { renderedSubtitlesJobId: payload.jobId }, media.title || undefined)
-        } catch (err) {
-          logger.warn('api', `[cf-callback] manifest (subtitles) update skipped: ${err instanceof Error ? err.message : String(err)}`)
-        }
         logger.info('api', `[cf-callback] render-subtitles completed job=${payload.jobId} media=${payload.mediaId}`)
       }
     } else if (payload.status === 'failed' || payload.status === 'canceled') {
@@ -408,26 +396,6 @@ async function handleCloudDownloadCallback(
     'api',
     `[cf-callback.download] completed job=${payload.jobId} media=${payload.mediaId} duration=${roundedDuration ?? 0}s hasVideo=${videoExists} hasAudio=${audioExistsWithSource} hasMetadata=${metadataExistsWithSource}`,
   )
-
-  // Update manifest with remote object keys (best-effort)
-  const manifestPatch: Parameters<typeof upsertMediaManifest>[1] = {}
-  const manifestVideoKey = rawVideoKey ?? resolvedVideoKey ?? null
-  if (videoExists && manifestVideoKey) {
-    manifestPatch.remoteVideoKey = manifestVideoKey
-  }
-  if (audioExistsWithSource && audioKey) {
-    manifestPatch.remoteAudioKey = audioKey
-  }
-  if (metadataExistsWithSource && metadataKey) {
-    manifestPatch.remoteMetadataKey = metadataKey
-  }
-  if (Object.keys(manifestPatch).length > 0) {
-    try {
-      await upsertMediaManifest(payload.mediaId, manifestPatch, media.title || undefined)
-    } catch (err) {
-      logger.warn('api', `[cf-callback] manifest update skipped: ${err instanceof Error ? err.message : String(err)}`)
-    }
-  }
 
   if (media.userId && durationSeconds > 0) {
     try {

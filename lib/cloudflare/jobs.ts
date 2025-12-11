@@ -3,6 +3,12 @@ import { requireJobCallbackSecret, requireOrchestratorUrl } from './utils'
 import type { EngineId, JobStatus } from '@app/media-domain'
 
 export interface StartJobInput extends Record<string, unknown> {
+  /**
+   * Globally unique job id for this async task. The caller (Next) is now
+   * responsible for generating this id so it can be used consistently across
+   * DB records, manifests and orchestrator/containers.
+   */
+  jobId: string
   mediaId: string
   engine: EngineId
   /**
