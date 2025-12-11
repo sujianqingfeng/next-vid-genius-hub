@@ -218,7 +218,9 @@ async function getSigningKey(secret: string, date: string, region: string, servi
 }
 
 async function readManifest(env: Env, bucket: string, mediaId: string, title?: string | null): Promise<MediaManifest | null> {
-  const key = bucketPaths.manifests.media(mediaId, { title })
+  // Single source of truth: use bucketPaths.manifests.media (slug-based layout)
+  const key = bucketPaths.manifests.media(mediaId, { title: title ?? undefined })
+
   // Prefer R2 binding if available
   try {
     if (env.RENDER_BUCKET) {
@@ -229,7 +231,8 @@ async function readManifest(env: Env, bucket: string, mediaId: string, title?: s
       }
     }
   } catch {}
-  // Fallback to S3 presign if configured
+
+  // Fallback to S3 presign for the same key
   try {
     const exists = await s3Head(env, bucket, key)
     if (exists) {
@@ -240,6 +243,7 @@ async function readManifest(env: Env, bucket: string, mediaId: string, title?: s
       }
     }
   } catch {}
+
   return null
 }
 
@@ -435,8 +439,37 @@ async function handleStart(env: Env, req: Request) {
       if (needVideo) missing.push('video')
       if (needVtt) missing.push('subtitles')
       if (needData) missing.push('comments-data')
+
+      // Debug log to understand why inputs are considered missing in dev
+      try {
+        console.warn(
+          '[handleStart.missing_inputs]',
+          JSON.stringify({
+            mediaId: body.mediaId,
+            engine: body.engine,
+            sourcePolicy,
+            inputVideoKey,
+            inputVttKey,
+            manifestVideoKey: manifest?.remoteVideoKey ?? null,
+            manifestVttKey: manifest?.vttKey ?? null,
+            hasInputVideoUrl: Boolean(inputVideoUrl),
+            hasInputVttUrl: Boolean(inputVttUrl),
+            needVideo,
+            needVtt,
+            needData,
+          }),
+        )
+      } catch {}
+
       return json(
-        { error: 'missing_inputs', details: { missing, hint: 'Materialize inputs in bucket and manifest' } },
+        {
+          error: 'missing_inputs',
+          details: {
+            missing,
+            // 标记已经使用 GET-range 探测，便于从 Next 日志中区分新旧 Worker 版本
+            hint: 'Materialize inputs in bucket/manifest (checked via GET-range)',
+          },
+        },
         { status: 400 },
       )
     }
@@ -1030,11 +1063,19 @@ async function verifyHmac(secret: string, data: string, signature: string): Prom
 }
 
 // --- S3 helpers ---
+// Note: R2 对预签名 HEAD 的行为在某些场景下会返回 403，而同一对象的 GET 却是 200。
+// 这里直接使用带 Range 的 GET 探测对象是否存在，避免误判 missing_inputs。
 async function s3Head(env: Env, bucket: string, key: string): Promise<boolean> {
   try {
-    const url = await presignS3(env, 'HEAD', bucket, key, 60)
-    const r = await fetch(url, { method: 'HEAD' })
-    return r.ok
+    const url = await presignS3(env, 'GET', bucket, key, 60)
+    const r = await fetch(url, {
+      method: 'GET',
+      headers: { range: 'bytes=0-0' },
+    })
+    // 200 或 206 都视为对象存在；404 视为不存在，其它状态按不存在处理
+    if (r.ok || r.status === 206) return true
+    if (r.status === 404) return false
+    return false
   } catch {
     return false
   }
