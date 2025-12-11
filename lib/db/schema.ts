@@ -234,8 +234,6 @@ export const media = sqliteTable(
 		translation: text('translation'),
 		videoWithSubtitlesPath: text('video_with_subtitles_path'),
 		videoWithInfoPath: text('video_with_info_path'),
-		// 吸睛发布标题（由 AI 生成后可人工编辑并保存）
-		publishTitle: text('publish_title'),
 		// 渲染配置：评论视频 Remotion 模板
 		commentsTemplate: text('comments_template'),
 		comments: text('comments', { mode: 'json' }).$type<Comment[]>(),

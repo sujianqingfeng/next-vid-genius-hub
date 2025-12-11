@@ -404,7 +404,7 @@
 			}
 		}
 	},
-	"MediaDetail": {
+		"MediaDetail": {
 		"back": "Back to Media Library",
 		"loading": "Loading media details...",
 		"error": "Failed to load media details. Please try again.",
@@ -417,7 +417,6 @@
 		},
 		"tabs": {
 			"subtitles": "Subtitles",
-			"publish": "Publish title",
 			"subtitlesAction": "Generate Subtitles",
 			"commentsAction": "View Comments"
 		},

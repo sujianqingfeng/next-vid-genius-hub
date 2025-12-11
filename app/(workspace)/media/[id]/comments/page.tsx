@@ -21,7 +21,6 @@ import { PageHeader } from '~/components/business/layout/page-header'
 import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { CommentCard } from '~/components/business/media/comment-card'
 import { RemotionPreviewCard } from '~/components/business/media/remotion-preview-card'
-import { PublishTitleGenerator } from '~/components/business/media/publish-title-generator'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -623,14 +622,6 @@ export default function CommentsPage() {
 														<Copy className="h-3 w-3 mr-2" strokeWidth={1.5} />
 														Copy English Title
 													</Button>
-												</div>
-
-												{/* Publish Title Generator */}
-												<div className="pt-2 border-t border-border/40">
-													<PublishTitleGenerator
-														mediaId={id}
-														initialPublishTitle={mediaQuery.data.publishTitle}
-													/>
 												</div>
 
 												<div className="space-y-2 pt-2 border-t border-border/40">

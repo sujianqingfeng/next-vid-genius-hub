@@ -8,10 +8,7 @@ import { deleteCloudArtifacts, getJobStatus, startCloudJob } from '~/lib/cloudfl
 import type { JobStatusResponse } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
-import { generatePublishTitles } from '~/lib/ai/titles'
 import { ChatModelIds, type ChatModelId } from '~/lib/ai/models'
-import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
-import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { bucketPaths } from '@app/media-domain'
@@ -322,83 +319,6 @@ export const updateRenderSettings = os
     await db
       .update(schema.media)
       .set(updates)
-      .where(and(eq(schema.media.id, id), eq(schema.media.userId, userId)))
-    const updated = await db.query.media.findFirst({
-      where: and(eq(schema.media.id, id), eq(schema.media.userId, userId)),
-    })
-    return updated
-  })
-
-// 生成吸睛发布标题（基于原标题/字幕/评论；字幕可为空时自动降级）
-export const generatePublishTitle = os
-  .input(
-    z.object({
-      mediaId: z.string(),
-      model: z.enum(ChatModelIds).optional().default('openai/gpt-4.1-mini' as ChatModelId),
-      count: z.number().min(3).max(5).optional().default(5),
-      maxTranscriptChars: z.number().min(500).max(6000).optional().default(2000),
-      maxComments: z.number().min(5).max(100).optional().default(30),
-    }),
-  )
-  .handler(async ({ input, context }) => {
-    const { mediaId, model, count, maxTranscriptChars, maxComments } = input
-    const ctx = context as RequestContext
-    const userId = ctx.auth.user!.id
-    const db = await getDb()
-    const record = await db.query.media.findFirst({
-      where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
-    })
-    if (!record) throw new Error('Media not found')
-
-    const { titles, usage } = await generatePublishTitles({
-      model,
-      title: record.title ?? undefined,
-      translatedTitle: record.translatedTitle ?? undefined,
-      transcript: record.optimizedTranscription || record.transcription || undefined,
-      comments: record.comments || [],
-      count,
-      maxTranscriptChars,
-      maxComments,
-    })
-
-    if (usage?.totalTokens) {
-      try {
-        await chargeLlmUsage({
-          userId,
-          modelId: model,
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens,
-          refType: 'ai:publish_title',
-          refId: mediaId,
-          remark: `publish_title tokens=${usage.totalTokens}`,
-        })
-      } catch (error) {
-        if (error instanceof InsufficientPointsError) {
-          throwInsufficientPointsError('积分不足，无法生成标题，请前往“积分”页面充值后再试。')
-        }
-        throw error
-      }
-    }
-
-    return { candidates: titles }
-  })
-
-// 保存选中的发布标题
-export const updatePublishTitle = os
-  .input(
-    z.object({
-      id: z.string(),
-      publishTitle: z.string().min(3).max(120),
-    }),
-  )
-  .handler(async ({ input, context }) => {
-    const { id, publishTitle } = input
-    const ctx = context as RequestContext
-    const userId = ctx.auth.user!.id
-    const db = await getDb()
-    await db
-      .update(schema.media)
-      .set({ publishTitle })
       .where(and(eq(schema.media.id, id), eq(schema.media.userId, userId)))
     const updated = await db.query.media.findFirst({
       where: and(eq(schema.media.id, id), eq(schema.media.userId, userId)),

@@ -416,7 +416,6 @@
 		},
 		"tabs": {
 			"subtitles": "字幕",
-			"publish": "发布标题",
 			"subtitlesAction": "生成字幕",
 			"commentsAction": "查看评论"
 		},
