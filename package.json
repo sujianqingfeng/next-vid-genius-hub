@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.80",
-    "@ai-sdk/openai-compatible": "^1.0.28",
+    "@ai-sdk/deepseek": "^1.0.10",
     "@app/media-domain": "workspace:*",
     "@app/job-callbacks": "workspace:*",
     "@app/media-comments": "workspace:*",

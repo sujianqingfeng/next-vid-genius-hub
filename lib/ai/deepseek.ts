@@ -1,13 +1,12 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-
-const BASE_URL = 'https://api.deepseek.com/v1'
+import { createDeepSeek } from '@ai-sdk/deepseek'
 
 export const deepseekModels = [
 	{ id: 'deepseek/deepseek-v3', modelName: 'deepseek-chat' },
 ] as const
 
-export const deepseekProvider = createOpenAICompatible({
-	name: 'deepseek',
+const deepseek = createDeepSeek({
 	apiKey: process.env.DEEPSEEK_API_KEY,
-	baseURL: BASE_URL,
 })
+
+// Keep the same provider shape so lib/ai/chat.ts can keep using deepseekProvider(modelName).
+export const deepseekProvider = deepseek

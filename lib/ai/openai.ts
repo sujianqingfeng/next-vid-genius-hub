@@ -1,4 +1,4 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { createOpenAI } from '@ai-sdk/openai'
 
 const BASE_URL = 'https://api.chatanywhere.tech/v1'
 
@@ -10,8 +10,10 @@ export const openaiModels = [
 	{ id: 'openai/gpt-5-nano', modelName: 'gpt-5-nano' },
 ] as const
 
-export const openaiProvider = createOpenAICompatible({
-	name: 'openai',
+const openai = createOpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 	baseURL: BASE_URL,
 })
+
+// Expose provider in the same shape as before: a callable that accepts modelName.
+export const openaiProvider = openai
