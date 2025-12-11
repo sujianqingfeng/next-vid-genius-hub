@@ -113,7 +113,7 @@ pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中
 严格模式（无回退）：
 - Worker 启动任务时仅依赖桶与 manifest；若缺少所需输入，直接返回 `missing_inputs`。
 - 启动任务前请确保：
-  - 原始视频：`inputs/videos/<mediaId>.mp4` 或存在 `remoteVideoKey`
+  - 下载视频：存在 `remoteVideoKey`（指向 `downloads/{jobId}/video.mp4`）
   - 字幕文本（字幕烧录时需要）：`inputs/subtitles/<mediaId>.vtt` 或 `vttKey`
   - 评论数据（Remotion 渲染时需要）：`inputs/comments/<mediaId>.json` 或 `commentsKey`
   - 带字幕视频（若源策略选择 `subtitles` 或 `auto` 需要优先使用字幕版）：`inputs/videos/subtitles/<mediaId>.mp4` 或 `subtitlesInputKey`
@@ -126,22 +126,18 @@ pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中
   - 优先使用“带字幕视频”变体：
     - `inputs/videos/subtitles/<mediaId>.mp4`，或
     - manifest 中的 `subtitlesInputKey`
-  - 若不存在字幕变体，则回退到原始 `raw` 变体：
-    - `inputs/videos/raw/<mediaId>.mp4`
-  - 若仍不存在，则再回退到默认/远程源：
-    - `inputs/videos/<mediaId>.mp4`，或
+  - 若不存在字幕变体，则回退到下载结果：
     - manifest 中的 `remoteVideoKey`
 - `original`
-  - 只尝试原始 `raw` 变体：`inputs/videos/raw/<mediaId>.mp4`；
-  - 若不存在，则仅允许使用 manifest 的 `remoteVideoKey` 作为最后兜底；
-  - 若两者都缺失，在严格模式下返回 `missing_inputs`。
+  - 只使用下载结果：manifest.`remoteVideoKey`；
+  - 若缺失，在严格模式下返回 `missing_inputs`。
 - `subtitles`
   - 只使用“带字幕视频”变体：
     - `inputs/videos/subtitles/<mediaId>.mp4`，或
     - manifest 中的 `subtitlesInputKey`；
-  - 若二者都缺失，在严格模式下返回 `missing_inputs`（不会再回退到原始视频）。
+  - 若二者都缺失，在严格模式下返回 `missing_inputs`（不会再回退到其他源）。
 
-字幕烧录容器 `burner-ffmpeg` 当前不读取 `sourcePolicy`，仍然只依赖 `inputs/videos/<mediaId>.mp4`/`remoteVideoKey` + `inputs/subtitles/<mediaId>.vtt`/`vttKey` 作为输入。
+字幕烧录容器 `burner-ffmpeg` 当前不读取 `sourcePolicy`，仍然只依赖 `remoteVideoKey` + `inputs/subtitles/<mediaId>.vtt`/`vttKey` 作为输入。
 
 ### 云端产物存储
 

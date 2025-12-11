@@ -1,5 +1,3 @@
-export type InputVideoVariant = 'raw' | 'subtitles'
-
 export interface MediaPathOptions {
 	title?: string | null
 }
@@ -54,22 +52,8 @@ export const bucketPaths = {
 			`manifests/media/${mediaId}.json`,
 	},
 	inputs: {
-		video: (mediaId: string, options?: MediaPathOptions) =>
-			`${mediaRoot(mediaId, options)}/inputs/video/source.mp4`,
-		videoVariant: (
-			mediaId: string,
-			variant?: InputVideoVariant,
-			options?: MediaPathOptions,
-		) => {
-			const root = mediaRoot(mediaId, options)
-			if (variant === 'raw') return `${root}/inputs/video/raw.mp4`
-			if (variant === 'subtitles') return `${root}/inputs/video/subtitles.mp4`
-			return `${root}/inputs/video/source.mp4`
-		},
 		subtitledVideo: (mediaId: string, options?: MediaPathOptions) =>
 			`${mediaRoot(mediaId, options)}/inputs/video/subtitles.mp4`,
-		rawVideo: (mediaId: string, options?: MediaPathOptions) =>
-			`${mediaRoot(mediaId, options)}/inputs/video/raw.mp4`,
 		subtitles: (mediaId: string, options?: MediaPathOptions) =>
 			`${mediaRoot(mediaId, options)}/inputs/subtitles/subtitles.vtt`,
 		comments: (mediaId: string, options?: MediaPathOptions) =>

@@ -12,8 +12,6 @@
   - /artifacts/:id：从 R2 读取产物（播放/下载代理）。
 - R2（按媒体聚合 + 含标题 slug）：
   - media/{mediaId}-{titleSlug}/manifest.json
-  - media/{mediaId}-{titleSlug}/inputs/video/source.mp4
-  - media/{mediaId}-{titleSlug}/inputs/video/raw.mp4
   - media/{mediaId}-{titleSlug}/inputs/video/subtitles.mp4
   - media/{mediaId}-{titleSlug}/inputs/subtitles/subtitles.vtt
   - media/{mediaId}-{titleSlug}/inputs/comments/latest.json
@@ -87,14 +85,13 @@ R2_BUCKET_NAME = "vidgen-render"
 
 - `auto`（推荐）：
   1. 优先使用“带字幕视频”变体：`inputs/videos/subtitles/<mediaId>.mp4` 或 manifest.`subtitlesInputKey`；
-  2. 若没有字幕变体，则回退到原始 `raw` 变体：`inputs/videos/raw/<mediaId>.mp4`；
-  3. 若仍不存在，则使用默认/远程源：`inputs/videos/<mediaId>.mp4` 或 manifest.`remoteVideoKey`。
+  2. 若没有字幕变体，则回退到下载结果：manifest.`remoteVideoKey`。
 - `original`：
-  - 使用 `raw` 变体：`inputs/videos/raw/<mediaId>.mp4`；
-  - 若缺失则仅允许回退到 manifest.`remoteVideoKey`。
+  - 只接受下载结果：manifest.`remoteVideoKey`；
+  - 若缺失，在严格模式下直接返回 `missing_inputs`。
 - `subtitles`：
   - 只接受“带字幕视频”变体：`inputs/videos/subtitles/<mediaId>.mp4` 或 manifest.`subtitlesInputKey`；
-  - 若二者都不存在，在严格模式下直接返回 `missing_inputs`，不会再回退到原始视频。
+  - 若二者都不存在，在严格模式下直接返回 `missing_inputs`，不会再回退到其他源。
 
 严格模式（无回退）：
 - Worker 启动任务仅依赖桶与 manifest；缺少输入直接报错。

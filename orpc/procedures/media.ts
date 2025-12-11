@@ -353,8 +353,6 @@ export const deleteById = os
 					bucketPaths.manifests.media(id, pathOptions),
 					bucketPaths.inputs.subtitles(id, pathOptions),
 					bucketPaths.inputs.subtitledVideo(id, pathOptions),
-					bucketPaths.inputs.video(id, pathOptions),
-					bucketPaths.inputs.rawVideo(id, pathOptions),
 					bucketPaths.inputs.comments(id, pathOptions),
 				)
 

@@ -2,7 +2,6 @@ import { getContainer } from '@cloudflare/containers'
 import {
 	bucketPaths,
 	type EngineId,
-	type InputVideoVariant,
 	type JobStatus,
 	type JobTerminalStatus,
 } from '@app/media-domain'
@@ -217,34 +216,20 @@ async function getSigningKey(secret: string, date: string, region: string, servi
   return kSigning
 }
 
-async function readManifest(env: Env, bucket: string, mediaId: string, title?: string | null): Promise<MediaManifest | null> {
+async function readManifest(env: Env, _bucket: string, mediaId: string, title?: string | null): Promise<MediaManifest | null> {
   // Single source of truth: use bucketPaths.manifests.media (slug-based layout)
   const key = bucketPaths.manifests.media(mediaId, { title: title ?? undefined })
 
-  // Prefer R2 binding if available
-  try {
-    if (env.RENDER_BUCKET) {
-      const obj = await env.RENDER_BUCKET.get(key)
-      if (obj) {
-        const text = await obj.text()
-        return JSON.parse(text) as MediaManifest
-      }
-    }
-  } catch {}
+  if (!env.RENDER_BUCKET) return null
 
-  // Fallback to S3 presign for the same key
   try {
-    const exists = await s3Head(env, bucket, key)
-    if (exists) {
-      const url = await presignS3(env, 'GET', bucket, key, 300)
-      const r = await fetch(url)
-      if (r.ok) {
-        return (await r.json()) as MediaManifest
-      }
-    }
-  } catch {}
-
-  return null
+    const obj = await env.RENDER_BUCKET.get(key)
+    if (!obj) return null
+    const text = await obj.text()
+    return JSON.parse(text) as MediaManifest
+  } catch {
+    return null
+  }
 }
 
 async function presignGetForContainer(
@@ -258,36 +243,26 @@ async function presignGetForContainer(
 
 async function writeManifestPatch(
   env: Env,
-  bucket: string,
+  _bucket: string,
   mediaId: string,
   patch: Partial<MediaManifest>,
   title?: string | null,
 ): Promise<void> {
   const key = bucketPaths.manifests.media(mediaId, { title })
   const merge = (base: any, add: any) => ({ ...base, ...Object.fromEntries(Object.entries(add).filter(([, v]) => v !== undefined)) })
-  // Prefer R2 binding
-  if (env.RENDER_BUCKET) {
-    let current: any = {}
-    try {
-      const cur = await env.RENDER_BUCKET.get(key)
-      if (cur) current = JSON.parse(await cur.text())
-    } catch {}
-    const next = merge({ mediaId, ...current }, patch)
-    await env.RENDER_BUCKET.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } })
-    return
+
+  if (!env.RENDER_BUCKET) {
+    throw new Error('RENDER_BUCKET is not configured')
   }
-  // Fallback to S3 GET+PUT
+
   let current: any = {}
   try {
-    const exists = await s3Head(env, bucket, key)
-    if (exists) {
-      const url = await presignS3(env, 'GET', bucket, key, 300)
-      const r = await fetch(url)
-      if (r.ok) current = await r.json()
-    }
+    const cur = await env.RENDER_BUCKET.get(key)
+    if (cur) current = JSON.parse(await cur.text())
   } catch {}
+
   const next = merge({ mediaId, ...current }, patch)
-  await s3Put(env, bucket, key, 'application/json', JSON.stringify(next))
+  await env.RENDER_BUCKET.put(key, JSON.stringify(next), { httpMetadata: { contentType: 'application/json' } })
 }
 
 async function handleStart(env: Env, req: Request) {
@@ -338,10 +313,7 @@ async function handleStart(env: Env, req: Request) {
   const isAsrPipeline = body.engine === 'asr-pipeline'
   const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
   const sourcePolicy = ((body.options || {}) as any).sourcePolicy as 'auto' | 'original' | 'subtitles' | undefined
-  const inputVariant: InputVideoVariant | undefined =
-    sourcePolicy === 'original' ? 'raw' : sourcePolicy === 'subtitles' ? 'subtitles' : undefined
   const pathOptions = { title: body.title ?? undefined }
-  const inputVideoKey = bucketPaths.inputs.videoVariant(body.mediaId, inputVariant, pathOptions)
   const inputVttKey = bucketPaths.inputs.subtitles(body.mediaId, pathOptions)
   const inputDataKey = bucketPaths.inputs.comments(body.mediaId, pathOptions)
   const outputVideoKey = isDownloader
@@ -362,9 +334,9 @@ async function handleStart(env: Env, req: Request) {
     const manifest = await readManifest(env, bucketName, body.mediaId, body.title)
 
     // 1) Video source
-    if (sourcePolicy === 'auto') {
-      // Auto policy: prefer subtitles variant, then raw, then default/remote.
-      // 1a) Try subtitles variant input (bucket or manifest)
+    // 1) Video source
+    if (sourcePolicy === 'subtitles') {
+      // Strict subtitles-only policy: only accept pre-materialized subtitles variant
       const subtitlesKey = bucketPaths.inputs.subtitledVideo(body.mediaId, pathOptions)
       const hasSubVideo = await s3Head(env, bucketName, subtitlesKey)
       if (hasSubVideo) {
@@ -372,45 +344,22 @@ async function handleStart(env: Env, req: Request) {
       } else if (manifest?.subtitlesInputKey) {
         inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.subtitlesInputKey, jobS3Endpoint)
       }
-
-      // 1b) Fallback to raw variant if subtitles variant is not available
-      if (!inputVideoUrl) {
-        const rawKey = bucketPaths.inputs.rawVideo(body.mediaId, pathOptions)
-        const hasRawVideo = await s3Head(env, bucketName, rawKey)
-        if (hasRawVideo) {
-          inputVideoUrl = await presignGetForContainer(env, bucketName, rawKey, jobS3Endpoint)
-        }
-      }
-
-      // 1c) Final fallback: default input video or remoteVideoKey
-      if (!inputVideoUrl) {
-        const defaultKey = bucketPaths.inputs.video(body.mediaId, pathOptions)
-        const hasDefaultVideo = await s3Head(env, bucketName, defaultKey)
-        if (hasDefaultVideo) {
-          inputVideoUrl = await presignGetForContainer(env, bucketName, defaultKey, jobS3Endpoint)
-        } else if (manifest?.remoteVideoKey) {
-          // Use remote video directly without copying
-          inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.remoteVideoKey, jobS3Endpoint)
-        }
-      }
-    } else if (inputVariant === undefined || inputVariant === 'raw') {
-      const hasInputVideo = await s3Head(env, bucketName, inputVideoKey)
-      if (hasInputVideo) {
-        inputVideoUrl = await presignGetForContainer(env, bucketName, inputVideoKey, jobS3Endpoint)
-      } else if (manifest?.remoteVideoKey) {
-        // Use remote video directly without copying
+    } else if (sourcePolicy === 'original') {
+      // Original policy: prefer the canonical remoteVideoKey recorded by downloader
+      if (manifest?.remoteVideoKey) {
         inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.remoteVideoKey, jobS3Endpoint)
       }
-    } else if (inputVariant === 'subtitles') {
-      // Prefer pre-materialized subtitles variant if present in bucket
-      const hasSubVideo = await s3Head(env, bucketName, inputVideoKey)
+    } else {
+      // Auto policy (default): prefer subtitles variant, then remoteVideoKey
+      const subtitlesKey = bucketPaths.inputs.subtitledVideo(body.mediaId, pathOptions)
+      const hasSubVideo = await s3Head(env, bucketName, subtitlesKey)
       if (hasSubVideo) {
-        inputVideoUrl = await presignGetForContainer(env, bucketName, inputVideoKey, jobS3Endpoint)
+        inputVideoUrl = await presignGetForContainer(env, bucketName, subtitlesKey, jobS3Endpoint)
       } else if (manifest?.subtitlesInputKey) {
-        // Allow manifest to point to the materialized subtitles input (same as inputVideoKey by convention)
         inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.subtitlesInputKey, jobS3Endpoint)
+      } else if (manifest?.remoteVideoKey) {
+        inputVideoUrl = await presignGetForContainer(env, bucketName, manifest.remoteVideoKey, jobS3Endpoint)
       }
-      // Note: subtitles variant requires pre-materialized bucket input
     }
 
     // 2) Text inputs (VTT / comments)
@@ -448,8 +397,6 @@ async function handleStart(env: Env, req: Request) {
             mediaId: body.mediaId,
             engine: body.engine,
             sourcePolicy,
-            inputVideoKey,
-            inputVttKey,
             manifestVideoKey: manifest?.remoteVideoKey ?? null,
             manifestVttKey: manifest?.vttKey ?? null,
             hasInputVideoUrl: Boolean(inputVideoUrl),
@@ -611,21 +558,6 @@ async function handleStart(env: Env, req: Request) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(initPayload),
     })
-  } else {
-    // fallback to KV (should not happen in prod)
-    await env.JOBS.put(
-      jobId,
-      JSON.stringify({
-        ...doc,
-        status: 'running',
-        outputKey: outputVideoKey,
-        outputAudioKey,
-        outputMetadataKey,
-        mediaId: body.mediaId,
-        engine: body.engine,
-      }),
-      { expirationTtl: Number(env.JOB_TTL_SECONDS || 86400) },
-    )
   }
   return json({ jobId })
 }
@@ -697,12 +629,6 @@ async function handleArtifactDelete(env: Env, jobId: string) {
     } catch (err) {
       console.warn('[artifact-delete] DO cleanup failed', err)
     }
-  }
-
-  try {
-    await env.JOBS.delete(jobId)
-  } catch (err) {
-    console.warn('[artifact-delete] KV cleanup failed', err)
   }
 
   const hasErrors = Object.keys(errors).length > 0
@@ -780,34 +706,22 @@ async function handleContainerCallback(env: Env, req: Request) {
 }
 
 async function materializeSubtitlesInput(env: Env, doc: any) {
-  const bucket = env.S3_BUCKET_NAME || 'vidgen-render'
   const mediaId: string | undefined = doc?.mediaId
   const sourceKey: string | undefined = doc?.outputKey
   if (!mediaId || !sourceKey) return
+  if (!env.RENDER_BUCKET) throw new Error('RENDER_BUCKET is not configured for materialization')
   const pathOptions = { title: (doc?.title as string | undefined) }
   const targetKey = bucketPaths.inputs.subtitledVideo(mediaId, pathOptions)
   // Skip if already materialized
-  const exists = await s3Head(env, bucket, targetKey)
-  if (exists) return
-  // Try S3 path first if configured
-  if (env.S3_ENDPOINT) {
-    const getUrl = await presignS3(env, 'GET', bucket, sourceKey, 600)
-    const r = await fetch(getUrl)
-    if (!r.ok || !r.body) throw new Error(`fetch source for copy failed: ${r.status}`)
-    await s3Put(env, bucket, targetKey, 'video/mp4', r.body as ReadableStream)
-    // Update manifest
-    try { await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }, doc?.title as string | undefined) } catch {}
-    return
-  }
-  // Fallback to R2 binding
-  if (env.RENDER_BUCKET) {
-    const obj = await env.RENDER_BUCKET.get(sourceKey)
-    if (!obj) throw new Error('sourceKey not found in R2')
-    await env.RENDER_BUCKET.put(targetKey, obj.body as ReadableStream, { httpMetadata: { contentType: 'video/mp4' } })
-    try { await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }, doc?.title as string | undefined) } catch {}
-    return
-  }
-  throw new Error('no storage configured for materialization')
+  const head = await env.RENDER_BUCKET.head(targetKey)
+  if (head) return
+  const obj = await env.RENDER_BUCKET.get(sourceKey)
+  if (!obj) throw new Error('sourceKey not found in R2')
+  await env.RENDER_BUCKET.put(targetKey, obj.body as ReadableStream, { httpMetadata: { contentType: 'video/mp4' } })
+  try {
+    const bucket = env.S3_BUCKET_NAME || 'vidgen-render'
+    await writeManifestPatch(env, bucket, mediaId, { subtitlesInputKey: targetKey }, doc?.title as string | undefined)
+  } catch {}
 }
 
 async function runAsrForPipeline(env: Env, doc: any) {
@@ -989,29 +903,17 @@ async function handleArtifactGet(env: Env, req: Request, jobId: string) {
   } catch {}
   const range = req.headers.get('range')
 
-  // 首选：若配置了 S3_ENDPOINT（R2 S3 或 MinIO），通过 S3 预签名直读，适配开发场景
-  if (env.S3_ENDPOINT && env.S3_BUCKET_NAME) {
-    const url = await presignS3(env, 'GET', env.S3_BUCKET_NAME, key, 600)
-    const headers: Record<string, string> = {}
-    if (range) headers['range'] = range
-    const r = await fetch(url, { headers })
-    const respHeaders = new Headers()
-    const copy = ['content-type','accept-ranges','content-length','content-range','cache-control','etag','last-modified']
-    for (const h of copy) {
-      const v = r.headers.get(h)
-      if (v) respHeaders.set(h, v)
-    }
-    if (!respHeaders.has('cache-control')) respHeaders.set('cache-control','private, max-age=60')
-    return new Response(r.body, { status: r.status, headers: respHeaders })
+  if (!env.RENDER_BUCKET) {
+    return json({ error: 'RENDER_BUCKET not configured' }, { status: 500 })
   }
 
-  // 其次：R2 绑定直读（生产常见路径）
+  // R2 绑定直读（生产常见路径）
   if (range) {
     const m = range.match(/bytes=(\d*)-(\d*)/)
     if (!m) return json({ error: 'invalid range' }, { status: 400 })
     const startStr = m[1]
     const endStr = m[2]
-    const head = await env.RENDER_BUCKET!.head(key)
+    const head = await env.RENDER_BUCKET.head(key)
     if (!head) return new Response('not found', { status: 404 })
     const size = head.size
     let start: number
@@ -1029,7 +931,7 @@ async function handleArtifactGet(env: Env, req: Request, jobId: string) {
     }
     if (end >= size) end = size - 1
     const len = end - start + 1
-    const part = await env.RENDER_BUCKET!.get(key, { range: { offset: start, length: len } })
+    const part = await env.RENDER_BUCKET.get(key, { range: { offset: start, length: len } })
     if (!part) return new Response('not found', { status: 404 })
     const h = new Headers()
     h.set('content-type', part.httpMetadata?.contentType || 'video/mp4')
@@ -1038,7 +940,7 @@ async function handleArtifactGet(env: Env, req: Request, jobId: string) {
     h.set('content-range', `bytes ${start}-${end}/${size}`)
     return new Response(part.body, { status: 206, headers: h })
   }
-  const obj = await env.RENDER_BUCKET!.get(key)
+  const obj = await env.RENDER_BUCKET.get(key)
   if (!obj) return new Response('not found', { status: 404 })
   const h = new Headers()
   h.set('content-type', obj.httpMetadata?.contentType || 'video/mp4')
@@ -1108,92 +1010,31 @@ async function s3Put(env: Env, bucket: string, key: string, contentType: string,
   }
 }
 
-async function s3Delete(env: Env, bucket: string, key: string): Promise<void> {
-  const url = await presignS3(env, 'DELETE', bucket, key, 600)
-  const headers: Record<string, string> = { 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' }
-  const r = await fetch(url, { method: 'DELETE', headers })
-  if (!r.ok && r.status !== 404) {
-    let msg = ''
-    try { msg = await r.text() } catch {}
-    console.error('[s3Delete] DELETE', url.split('?')[0], r.status, msg)
-    throw new Error(`s3Delete failed: ${r.status}`)
-  }
-}
-
 async function deleteObjectFromStorage(env: Env, key: string): Promise<void> {
   if (!key) return
-  let deleted = false
-  let lastError: Error | undefined
-
-  if (env.RENDER_BUCKET) {
-    try {
-      await env.RENDER_BUCKET.delete(key)
-      deleted = true
-    } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e))
-    }
+  if (!env.RENDER_BUCKET) {
+    throw new Error('deleteObjectFromStorage: RENDER_BUCKET is not configured')
   }
-
-  if (env.S3_ENDPOINT && env.S3_BUCKET_NAME) {
-    try {
-      await s3Delete(env, env.S3_BUCKET_NAME, key)
-      deleted = true
-    } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e))
-    }
+  try {
+    await env.RENDER_BUCKET.delete(key)
+  } catch (e) {
+    throw (e instanceof Error ? e : new Error(String(e)))
   }
-
-  if (!env.RENDER_BUCKET && !(env.S3_ENDPOINT && env.S3_BUCKET_NAME)) {
-    throw new Error('deleteObjectFromStorage: no storage configured')
-  }
-
-  if (!deleted && lastError) throw lastError
 }
 
-// List keys under a prefix using either R2 binding or S3 ListObjectsV2
+// List keys under a prefix using R2 binding
 async function listKeysByPrefix(env: Env, prefix: string): Promise<string[]> {
   const out: string[] = []
-  // Prefer R2 binding if available
-  if (env.RENDER_BUCKET) {
-    let cursor: string | undefined
-    // Cloudflare R2 list supports pagination via cursor
-    while (true) {
-      const resp = await env.RENDER_BUCKET.list({ prefix, cursor, limit: 1000 })
-      for (const obj of resp.objects) {
-        if (obj.key) out.push(obj.key)
-      }
-      if (!resp.truncated || !resp.cursor) break
-      cursor = resp.cursor
-    }
-    return out
-  }
-  // Fallback to S3-compatible listing (MinIO/R2 S3)
-  const bucket = env.S3_BUCKET_NAME
-  const endpoint = env.S3_ENDPOINT
-  if (!bucket || !endpoint) return out
-  let token: string | undefined
-  // Loop until all pages are fetched
+  if (!env.RENDER_BUCKET) return out
+  let cursor: string | undefined
+  // Cloudflare R2 list supports pagination via cursor
   while (true) {
-    const extra: Record<string, string> = { 'list-type': '2', prefix, 'max-keys': '1000' }
-    if (token) extra['continuation-token'] = token
-    const url = await presignS3(env, 'GET', bucket, undefined, 120, undefined, undefined, extra)
-    const r = await fetch(url)
-    if (!r.ok) {
-      // If list fails, break to avoid blocking deletion of explicit keys
-      break
+    const resp = await env.RENDER_BUCKET.list({ prefix, cursor, limit: 1000 })
+    for (const obj of resp.objects) {
+      if (obj.key) out.push(obj.key)
     }
-    const xml = await r.text()
-    // Extract keys
-    const keyMatches = xml.matchAll(/<Key>([^<]+)<\/Key>/g)
-    for (const m of keyMatches) {
-      const k = m[1]
-      if (k && k.startsWith(prefix)) out.push(k)
-    }
-    const isTruncated = /<IsTruncated>true<\/IsTruncated>/.test(xml)
-    if (!isTruncated) break
-    const tokenMatch = xml.match(/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/)
-    token = tokenMatch ? tokenMatch[1] : undefined
-    if (!token) break
+    if (!resp.truncated || !resp.cursor) break
+    cursor = resp.cursor
   }
   return out
 }
