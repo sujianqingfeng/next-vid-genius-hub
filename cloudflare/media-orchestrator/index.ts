@@ -1500,6 +1500,26 @@ export class RenderJobDO {
       }
       payload.outputs = outputs
       if (doc.metadata) payload.metadata = doc.metadata
+    } else if (doc.engine === 'asr-pipeline') {
+      const outputs: Record<string, unknown> = {}
+      const vttKey: string | undefined = doc.outputs?.vtt?.key
+      const wordsKey: string | undefined = doc.outputs?.words?.key
+      if (vttKey) {
+        outputs.vtt = {
+          key: vttKey,
+          url: await presignS3(this.env, 'GET', bucket, vttKey, 600),
+        }
+      }
+      if (wordsKey) {
+        outputs.words = {
+          key: wordsKey,
+          url: await presignS3(this.env, 'GET', bucket, wordsKey, 600),
+        }
+      }
+      if (Object.keys(outputs).length > 0) {
+        payload.outputs = outputs
+      }
+      if (doc.metadata) payload.metadata = doc.metadata
     } else if (doc.outputKey) {
       payload.outputKey = doc.outputKey
       payload.outputUrl = await presignS3(this.env, 'GET', bucket, doc.outputKey, 600)

@@ -75,6 +75,7 @@ export default function SubtitlesPage() {
 		previewCloudStatus,
 		previewVersion,
 		startCloudRenderMutation,
+		asrStatus,
 		transcribeMutation,
 		optimizeMutation,
 		clearOptimizedMutation,
@@ -241,6 +242,9 @@ export default function SubtitlesPage() {
 											optimizeMutation.mutate({ mediaId, model: selectedAIModel, ...params })
 										}}
 										onRestoreOriginal={() => clearOptimizedMutation.mutate({ mediaId })}
+										asrStatus={asrStatus?.status}
+										asrPhase={asrStatus?.phase}
+										asrProgress={typeof asrStatus?.progress === 'number' ? asrStatus.progress : null}
 										errorMessage={
 											transcribeMutation.isError
 												? transcribeMutation.error.message

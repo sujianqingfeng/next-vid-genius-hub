@@ -5,13 +5,14 @@ import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/env'
 import { verifyHmacSHA256 } from '@app/job-callbacks'
 import { logger } from '~/lib/logger'
 import { presignGetByKey, upsertMediaManifest } from '~/lib/cloudflare'
-import { chargeDownloadUsage, InsufficientPointsError } from '~/lib/points/billing'
+import { chargeDownloadUsage, InsufficientPointsError, chargeAsrUsage } from '~/lib/points/billing'
+import { persistAsrResultFromBucket } from '~/lib/subtitle/server/asr-result'
 
 type CallbackPayload = {
   jobId: string
   mediaId: string
   status: 'completed' | 'failed' | 'canceled'
-  engine?: 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader'
+  engine?: 'burner-ffmpeg' | 'renderer-remotion' | 'media-downloader' | 'asr-pipeline'
   outputUrl?: string
   outputKey?: string
   durationMs?: number
@@ -21,6 +22,8 @@ type CallbackPayload = {
     video?: { url?: string; key?: string }
     audio?: { url?: string; key?: string }
     metadata?: { url?: string; key?: string }
+    vtt?: { url?: string; key?: string }
+    words?: { url?: string; key?: string }
   }
   metadata?: {
     title?: string
@@ -31,6 +34,7 @@ type CallbackPayload = {
     source?: 'youtube' | 'tiktok'
     quality?: '720p' | '1080p'
     commentCount?: number  // For comments-only tasks
+    model?: string         // ASR model id (from orchestrator metadata)
   }
 }
 
@@ -91,6 +95,70 @@ export async function POST(req: NextRequest) {
     if (payload.engine === 'media-downloader') {
       await handleCloudDownloadCallback(media, payload as CallbackPayload & { engine: 'media-downloader' })
       logger.info('api', `[cf-callback] handled downloader callback job=${payload.jobId} media=${payload.mediaId} status=${payload.status}`)
+      return NextResponse.json({ ok: true })
+    }
+
+    if (payload.engine === 'asr-pipeline') {
+      if (payload.status === 'completed') {
+        const vttKey = payload.outputs?.vtt?.key
+        if (!vttKey) {
+          logger.error('api', `[cf-callback] asr-pipeline missing vtt output job=${payload.jobId}`)
+          return NextResponse.json({ error: 'missing vtt output' }, { status: 400 })
+        }
+
+        try {
+          await persistAsrResultFromBucket({
+            mediaId: payload.mediaId,
+            vttKey,
+            wordsKey: payload.outputs?.words?.key,
+            vttUrl: payload.outputs?.vtt?.url,
+            wordsUrl: payload.outputs?.words?.url,
+            title: media.title,
+          })
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          logger.error('api', `[cf-callback] asr persist failed job=${payload.jobId} media=${payload.mediaId} error=${msg}`)
+          return NextResponse.json({ error: msg }, { status: 500 })
+        }
+
+        try {
+          const durationSeconds =
+            typeof media.duration === 'number' && media.duration > 0 ? media.duration : 0
+          const modelId =
+            typeof payload.metadata?.model === 'string' ? payload.metadata.model : undefined
+          if (durationSeconds > 0 && modelId && media.userId) {
+            await chargeAsrUsage({
+              userId: media.userId,
+              modelId,
+              durationSeconds,
+              refType: 'asr',
+              refId: media.id,
+              remark: `asr ${modelId} ${durationSeconds.toFixed(1)}s`,
+            })
+          }
+        } catch (error) {
+          if (error instanceof InsufficientPointsError) {
+            logger.warn('api', `[cf-callback] asr charge skipped (insufficient points) media=${media.id}`)
+          } else {
+            logger.warn(
+              'api',
+              `[cf-callback] asr charge failed: ${error instanceof Error ? error.message : String(error)}`,
+            )
+          }
+        }
+
+        logger.info('api', `[cf-callback] asr completed job=${payload.jobId} media=${payload.mediaId}`)
+      } else if (payload.status === 'failed' || payload.status === 'canceled') {
+        await db
+          .update(schema.media)
+          .set({ downloadError: `[asr-pipeline] ${payload.error ?? payload.status}` })
+          .where(eq(schema.media.id, media.id))
+        logger.warn(
+          'api',
+          `[cf-callback] asr ${payload.status} job=${payload.jobId} media=${payload.mediaId} error=${payload.error ?? 'n/a'}`,
+        )
+      }
+
       return NextResponse.json({ ok: true })
     }
 

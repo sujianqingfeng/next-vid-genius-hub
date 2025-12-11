@@ -66,6 +66,25 @@ export function useSubtitleActions({
 	)
 	const isVisible = usePageVisibility()
 
+	const {
+		setJobId: setAsrJobId,
+		statusQuery: asrStatusQuery,
+	} = useCloudJob({
+		storageKey: `subtitleAsrJob:${mediaId}`,
+		enabled: isVisible && activeStep === 'step1',
+		createQueryOptions: (jobId) =>
+			queryOrpc.subtitle.getAsrStatus.queryOptions({
+				input: { jobId },
+				enabled: !!jobId,
+				refetchInterval: (q: { state: { data?: { status?: string } } }) => {
+					const s = q.state.data?.status
+					return s && TERMINAL_JOB_STATUSES.includes(s)
+						? false
+						: TIME_CONSTANTS.RENDERING_POLL_INTERVAL
+				},
+			}),
+	})
+
 	const handleCloudRenderComplete = useCallback(() => {
 		queryClient.invalidateQueries({
 			queryKey: queryOrpc.media.byId.queryKey({ input: { id: mediaId } }),
@@ -100,17 +119,17 @@ export function useSubtitleActions({
 	const transcribeMutation = useEnhancedMutation(
 		queryOrpc.subtitle.transcribe.mutationOptions({
 			onSuccess: (data) => {
-				if (data.transcription) {
+				if (data?.jobId) {
 					logger.info(
 						'transcription',
-						'Transcription completed successfully on client',
+						`ASR job started on client: ${data.jobId} (model=${data.model})`,
 					)
-					updateWorkflowState({
-						transcription: data.transcription,
-						selectedModel,
-						transcriptionLanguage: selectedLanguage,
-					})
+					setAsrJobId(data.jobId)
 				}
+				updateWorkflowState({
+					selectedModel,
+					transcriptionLanguage: selectedLanguage,
+				})
 			},
 			onError: (error) => {
 				logger.error(
@@ -147,6 +166,7 @@ export function useSubtitleActions({
 
 	const translateMutation = useEnhancedMutation(
 		queryOrpc.subtitle.translate.mutationOptions({
+			retry: 0,
 			onSuccess: (data) => {
 				if (data.translation) {
 					updateWorkflowState({
@@ -180,6 +200,14 @@ export function useSubtitleActions({
 		? {
 				status: (cloudStatusQuery.data as { status?: string }).status,
 				progress: (cloudStatusQuery.data as { progress?: number }).progress,
+			}
+		: null
+
+	const asrStatus = asrStatusQuery.data
+		? {
+				status: (asrStatusQuery.data as { status?: string }).status,
+				phase: (asrStatusQuery.data as { phase?: string }).phase,
+				progress: (asrStatusQuery.data as { progress?: number }).progress,
 			}
 		: null
 
@@ -231,17 +259,21 @@ export function useSubtitleActions({
 		updateWorkflowState({ subtitleConfig: config })
 	}
 
-		return {
-			// derived selections
-			selectedModel,
-			selectedAIModel,
-			selectedLanguage,
+	return {
+		// derived selections
+		selectedModel,
+		selectedAIModel,
+		selectedLanguage,
 
 		// cloud render + preview
 		cloudStatusQuery,
 		previewCloudStatus,
 		previewVersion,
 		startCloudRenderMutation,
+
+		// asr status
+		asrStatusQuery,
+		asrStatus,
 
 		// mutations
 		transcribeMutation,

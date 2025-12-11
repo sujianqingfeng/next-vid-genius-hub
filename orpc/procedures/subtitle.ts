@@ -7,8 +7,8 @@ import { subtitleService } from '~/lib/subtitle/server/subtitle'
 import { cloudflareInputFormatSchema, whisperModelSchema } from '~/lib/subtitle/config/models'
 import { getDb, schema } from '~/lib/db'
 import type { RequestContext } from '~/lib/auth/types'
-import { chargeAsrUsage, InsufficientPointsError } from '~/lib/points/billing'
-import { throwInsufficientPointsError } from '~/lib/orpc/errors'
+import { getJobStatus } from '~/lib/cloudflare'
+import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 
 export const transcribe = os
   .input(
@@ -31,27 +31,8 @@ export const transcribe = os
   	}
   	const res = await subtitleService.transcribe(input)
 
-  	if (res.durationSeconds > 0) {
-  		try {
-  			await chargeAsrUsage({
-  				userId,
-  				modelId: input.model,
-  				durationSeconds: res.durationSeconds,
-  				refType: 'asr',
-  				refId: input.mediaId,
-  				remark: `asr ${input.model} ${res.durationSeconds.toFixed(1)}s`,
-  			})
-  		} catch (error) {
-  			if (error instanceof InsufficientPointsError) {
-  				// Transcription has already been generated at this point; surface a clear
-  				// business error so the client can show a helpful message instead of 500.
-  				throwInsufficientPointsError('积分不足，转录结果已生成但本次扣费失败，请前往“积分”页面充值后重试。')
-  			}
-  			throw error
-  		}
-  	}
-
-  	return { success: true, transcription: res.transcription }
+  	// Billing for ASR usage is now handled in the ASR callback handler based on media.duration
+  	return { success: true, jobId: res.jobId, durationSeconds: res.durationSeconds, model: input.model, userId }
   })
 
 const translateInput = z.object({
@@ -185,3 +166,32 @@ export const clearOptimizedTranscription = os
     }
     return subtitleService.clearOptimizedTranscription(input)
   });
+
+// ASR status: lightweight proxy to orchestrator for UI progress
+export const getAsrStatus = os
+  .input(z.object({ jobId: z.string().min(1) }))
+  .handler(async ({ input }) => {
+    const status = await getJobStatus(input.jobId)
+    try {
+      const db = await getDb()
+      const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, input.jobId) })
+      if (task) {
+        await db
+          .update(schema.tasks)
+          .set({
+            status: status.status,
+            progress:
+              typeof status.progress === 'number' ? Math.round(status.progress * 100) : null,
+            jobStatusSnapshot: status,
+            updatedAt: new Date(),
+            finishedAt: TERMINAL_JOB_STATUSES.includes(status.status)
+              ? new Date()
+              : task.finishedAt,
+          })
+          .where(eq(schema.tasks.id, task.id))
+      }
+    } catch {
+      // best-effort; ignore sync errors
+    }
+    return status
+  })

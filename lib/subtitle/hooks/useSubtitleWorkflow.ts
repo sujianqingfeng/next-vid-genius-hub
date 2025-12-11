@@ -29,10 +29,19 @@ export function useSubtitleWorkflow({ mediaId, onStepChange }: UseSubtitleWorkfl
 		subtitleConfig: { ...DEFAULT_SUBTITLE_RENDER_CONFIG },
 	}))
 
-	// 媒体数据查询
-	const mediaQuery = useQuery(
-		queryOrpc.media.byId.queryOptions({ input: { id: mediaId } }),
-	)
+	// 媒体数据查询（在没有转录结果时，定期轮询，获得 ASR 回调写入的最新状态）
+	const mediaQuery = useQuery({
+		...queryOrpc.media.byId.queryOptions({ input: { id: mediaId } }),
+		refetchInterval: (data) => {
+			const media = data as
+				| { transcription?: string | null; optimizedTranscription?: string | null }
+				| undefined
+			const hasTranscription =
+				!!media?.transcription || !!media?.optimizedTranscription
+			// 若尚未有转录结果，每 3 秒刷新一次；一旦有结果则停止轮询
+			return hasTranscription ? false : 3000
+		},
+	})
 
 	// 切换活动步骤
 	const setActiveStep = useCallback((stepId: SubtitleStepId) => {

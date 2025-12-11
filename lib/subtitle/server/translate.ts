@@ -62,7 +62,56 @@ Strict rules:
     logger.info('translation', `Structured translation produced ${out.length} items for media ${mediaId}`)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    logger.error('translation', `Structured translation failed for media ${mediaId}: ${msg}`)
+
+    // 尝试从 AI SDK / 上游模型错误对象里提取原始响应，方便排查结构化失败原因
+    let debugDetails: Record<string, unknown> | null = null
+    if (e && typeof e === 'object') {
+      const err = e as Record<string, unknown>
+      debugDetails = {
+        mediaId,
+        model,
+      }
+
+      const rawResponse =
+        err.response ??
+        (err.cause && typeof err.cause === 'object'
+          ? (err.cause as Record<string, unknown>).response
+          : undefined)
+
+      const rawBody =
+        rawResponse && typeof rawResponse === 'object'
+          ? (rawResponse as Record<string, unknown>).body
+          : undefined
+
+      const text =
+        err.text ??
+        (err.cause && typeof err.cause === 'object'
+          ? (err.cause as Record<string, unknown>).text
+          : undefined)
+
+      if (rawResponse) debugDetails.rawResponse = rawResponse
+      if (rawBody) debugDetails.rawBody = rawBody
+      if (text) debugDetails.sourceText = text
+      debugDetails.errorMessage =
+        (err.message as string | undefined) ??
+        ((err.cause as { message?: string } | undefined)?.message)
+    }
+
+    if (debugDetails) {
+      let serialized = ''
+      try {
+        serialized = JSON.stringify(debugDetails)
+      } catch {
+        serialized = String(debugDetails)
+      }
+      logger.error(
+        'translation',
+        `Structured translation failed for media ${mediaId}: ${msg} | details=${serialized}`,
+      )
+    } else {
+      logger.error('translation', `Structured translation failed for media ${mediaId}: ${msg}`)
+    }
+
     throw new Error(`Structured translation failed: ${msg}`)
   }
 

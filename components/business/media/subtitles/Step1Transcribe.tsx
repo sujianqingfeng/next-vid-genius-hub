@@ -14,6 +14,7 @@ import { Textarea } from '~/components/ui/textarea'
 import { Input } from '~/components/ui/input'
 import { Switch } from '~/components/ui/switch'
 import { Label } from '~/components/ui/label'
+import { Progress } from '~/components/ui/progress'
 import {
 	getAvailableModels,
 	getModelLabel,
@@ -51,6 +52,10 @@ interface Step1TranscribeProps {
   onRestoreOriginal?: () => void
   selectedLanguage?: TranscriptionLanguage
   onLanguageChange?: (lang: TranscriptionLanguage) => void
+  // ASR job status (optional)
+  asrStatus?: string
+  asrPhase?: string
+  asrProgress?: number | null
 }
 
 export function Step1Transcribe(props: Step1TranscribeProps) {
@@ -71,6 +76,9 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 		onRestoreOriginal,
 		selectedLanguage,
 		onLanguageChange,
+		asrStatus,
+		asrPhase,
+		asrProgress,
 	} = props
 	const effectiveAIModel = selectedAIModel ?? DEFAULT_CHAT_MODEL_ID
 
@@ -194,9 +202,25 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 				</div>
 
 				{/* Pipeline indicator */}
-				<div className="text-xs text-muted-foreground flex items-center gap-2">
-					<Badge variant="secondary">ASR Pipeline: Cloud</Badge>
-					<span>降采样与转写均在 Cloudflare Worker 侧完成。</span>
+				<div className="space-y-2">
+					<div className="text-xs text-muted-foreground flex items-center gap-2">
+						<Badge variant="secondary">ASR Pipeline: Cloud</Badge>
+						<span>降采样与转写均在 Cloudflare Worker 侧完成。</span>
+					</div>
+					{asrStatus && (
+						<div className="flex flex-col gap-1 rounded-md border border-border/40 bg-muted/40 p-2">
+							<div className="flex items-center justify-between text-[11px] text-muted-foreground">
+								<span className="font-medium">Job status</span>
+								<span className="rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-semibold text-foreground">
+									{asrStatus}
+									{asrPhase ? ` · ${asrPhase}` : ''}
+								</span>
+							</div>
+							{typeof asrProgress === 'number' && (
+								<Progress value={Math.round(asrProgress * 100)} className="h-1.5" />
+							)}
+						</div>
+					)}
 				</div>
 
 				{/* Optimization Controls - Shown when transcription exists */}

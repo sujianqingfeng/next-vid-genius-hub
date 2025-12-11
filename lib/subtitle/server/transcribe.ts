@@ -1,12 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
-import { getDb, schema, type TranscriptionWord } from '~/lib/db'
+import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { type CloudflareInputFormat, type WhisperModel, WHISPER_MODELS } from '~/lib/subtitle/config/models'
-import { validateVttContent, normalizeVttContent } from '~/lib/subtitle/utils/vtt'
-import { putObjectByKey, upsertMediaManifest, startCloudJob, getJobStatus } from '~/lib/cloudflare'
-import { bucketPaths } from '@app/media-domain'
-import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
+import { startCloudJob } from '~/lib/cloudflare'
 import { TASK_KINDS } from '~/lib/job/task'
 
 export async function transcribe(input: {
@@ -14,7 +11,7 @@ export async function transcribe(input: {
 	model: WhisperModel
 	language?: string
 	inputFormat?: CloudflareInputFormat
-}): Promise<{ success: true; transcription: string; words?: TranscriptionWord[]; durationSeconds: number }> {
+}): Promise<{ success: true; jobId: string; durationSeconds: number }> {
 	const { mediaId, model } = input
 	const normalizedLanguage =
 		input.language && input.language !== 'auto' ? input.language : undefined
@@ -35,8 +32,6 @@ export async function transcribe(input: {
 		throw new Error('Media not found.')
 	}
 
-	let vttContent: string
-	let transcriptionWords: TranscriptionWord[] | undefined
 	const remoteAudioKey = mediaRecord.remoteAudioKey
 	if (!remoteAudioKey) {
 		logger.error(
@@ -128,136 +123,7 @@ export async function transcribe(input: {
 		throw error
 	}
 
-	logger.info(
-		'transcription',
-		`Cloud ASR job started: ${jobId} (maxBytes=${targetBytes}, bitrates=[${targetBitrates.join(',')}], sr=${sampleRate})`,
-	)
-	const startedAt = Date.now()
-	let lastStatus = 'queued'
-	let vttUrl: string | undefined
-	let wordsUrl: string | undefined
-	while (Date.now() - startedAt < 180_000) {
-		const st = await getJobStatus(jobId!)
-		lastStatus = st.status
-		logger.debug(
-			'transcription',
-			`Cloud ASR status for ${jobId}: ${st.status} phase=${st.phase ?? '-'} progress=${st.progress ?? '-'}`,
-		)
-		try {
-			const task = await db.query.tasks.findFirst({ where: eq(schema.tasks.jobId, jobId!) })
-			if (task) {
-				await db
-					.update(schema.tasks)
-					.set({
-						status: st.status,
-						progress: typeof st.progress === 'number' ? Math.round(st.progress * 100) : task.progress,
-						jobStatusSnapshot: st,
-						updatedAt: new Date(),
-						finishedAt: TERMINAL_JOB_STATUSES.includes(st.status) ? new Date() : task.finishedAt,
-					})
-					.where(eq(schema.tasks.id, task.id))
-			}
-		} catch {
-			// best-effort
-		}
-		if (st.status === 'completed') {
-			vttUrl = st.outputs?.vtt?.url
-			wordsUrl = st.outputs?.words?.url
-			break
-		}
-		if (st.status === 'failed' || st.status === 'canceled') {
-			const msg = st.message || 'Cloud ASR pipeline failed'
-			await db
-				.update(schema.tasks)
-				.set({
-					status: st.status,
-					error: msg,
-					finishedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.jobId, jobId!))
-			throw new Error(`job ${jobId}: ${msg}`)
-		}
-		await new Promise((r) => setTimeout(r, 1200))
-	}
-	if (!vttUrl) {
-		logger.error(
-			'transcription',
-			`Cloud ASR pipeline timeout for ${jobId}; last status=${lastStatus}`,
-		)
-		await db
-			.update(schema.tasks)
-			.set({
-				status: 'failed',
-				error: `timeout:${lastStatus}`,
-				finishedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.tasks.jobId, jobId!))
-		throw new Error(`Cloud ASR pipeline timeout for ${jobId}; last status=${lastStatus}`)
-	}
-	const vttResp = await fetch(vttUrl)
-	if (!vttResp.ok) throw new Error(`fetch vtt failed: ${vttResp.status}`)
-	vttContent = await vttResp.text()
-	if (wordsUrl) {
-		try {
-			const wr = await fetch(wordsUrl)
-			if (wr.ok) transcriptionWords = (await wr.json()) as TranscriptionWord[]
-		} catch {}
-	}
-
-	// Validate/normalize VTT
-	const validation = validateVttContent(vttContent)
-	if (!validation.isValid) {
-		logger.warn(
-			'transcription',
-			`VTT format validation failed for cloudflare: ${validation.errors.join(', ')}`,
-		)
-		vttContent = normalizeVttContent(vttContent)
-		const revalidation = validateVttContent(vttContent)
-		if (!revalidation.isValid) {
-			logger.error(
-				'transcription',
-				`Failed to normalize VTT format for cloudflare: ${revalidation.errors.join(', ')}`,
-			)
-			throw new Error(
-				`Invalid VTT format from cloudflare transcription: ${revalidation.errors.join(', ')}`,
-			)
-		}
-	}
-
-	await db
-		.update(schema.media)
-		.set({ transcription: vttContent, transcriptionWords })
-		.where(eq(schema.media.id, mediaId))
-	try {
-		const vttKey = bucketPaths.inputs.subtitles(mediaId, { title: mediaRecord.title || undefined })
-		await putObjectByKey(vttKey, 'text/vtt', vttContent)
-		await upsertMediaManifest(mediaId, { vttKey }, mediaRecord.title || undefined)
-		logger.info('transcription', `VTT materialized to bucket: ${vttKey}`)
-	} catch (err) {
-		logger.warn(
-			'transcription',
-			`VTT materialization skipped: ${err instanceof Error ? err.message : String(err)}`,
-		)
-	}
-
-	logger.info('transcription', `Transcription completed successfully for media ${mediaId}`)
-	try {
-		await db
-			.update(schema.tasks)
-			.set({
-				status: 'completed',
-				progress: 100,
-				finishedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.tasks.jobId, jobId!))
-	} catch {
-		// ignore
-	}
-
 	const durationSeconds = typeof mediaRecord.duration === 'number' && mediaRecord.duration > 0 ? mediaRecord.duration : 0
 
-	return { success: true, transcription: vttContent, words: transcriptionWords, durationSeconds }
+	return { success: true, jobId: jobId!, durationSeconds }
 }
