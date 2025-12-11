@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '~/components/ui/badge'
-import { Progress } from '~/components/ui/progress'
 import { Video, Film } from 'lucide-react'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { VideoPreview } from './VideoPreview/VideoPreview'
@@ -196,16 +195,7 @@ export function PreviewPane(props: PreviewPaneProps) {
         </div>
       </div>
 
-      {(isRendering || typeof progressPct === 'number') && (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <Progress value={typeof progressPct === 'number' ? progressPct : 0} srLabel="Rendering progress" />
-          </div>
-          <div className="shrink-0 text-xs text-muted-foreground tabular-nums">
-            {statusLabel ?? 'Rendering…'}{typeof progressPct === 'number' ? ` • ${progressPct}%` : ''}
-          </div>
-        </div>
-      )}
+      {/* 进度条和详细状态由上层的 CloudJobProgress 统一展示，这里只保留紧凑文案 */}
     </div>
   )
 }

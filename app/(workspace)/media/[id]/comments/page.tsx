@@ -51,7 +51,6 @@ import { extractVideoId } from '@app/media-providers'
 import { STATUS_LABELS } from '~/lib/config/media-status'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
-import { Progress } from '~/components/ui/progress'
 import { Switch } from '~/components/ui/switch'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
@@ -64,6 +63,7 @@ import type { Comment } from '~/lib/db/schema'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
+import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 
 type SourceStatus = {
 	status?: string
@@ -433,15 +433,6 @@ export default function CommentsPage() {
 	}
 
 	const cloudRenderStatus = cloudStatusQuery.data as SourceStatus | undefined
-	const commentsStatusLabel = cloudCommentsStatus?.status
-		? STATUS_LABELS[
-				cloudCommentsStatus.status as keyof typeof STATUS_LABELS
-			] ?? cloudCommentsStatus.status
-		: 'Starting...'
-	const commentsProgressValue =
-		typeof cloudCommentsStatus?.progress === 'number'
-			? Math.round((cloudCommentsStatus.progress ?? 0) * 100)
-			: 0
 	const renderStatusLabel = cloudRenderStatus?.status ?? 'Starting...'
 	const renderProgressValue =
 		typeof cloudRenderStatus?.progress === 'number'
@@ -716,16 +707,18 @@ export default function CommentsPage() {
 												</Button>
 												
 												{commentsCloudJobId && (
-													<div className="rounded-lg bg-secondary/30 p-3 space-y-2">
-														<div className="flex items-center justify-between text-xs">
-															<span className="text-muted-foreground">Status</span>
-															<span className="font-medium">
-																{commentsStatusLabel}
-															</span>
-														</div>
-														<Progress
-															value={commentsProgressValue}
-															className="h-1.5"
+													<div className="rounded-lg bg-secondary/30 p-3">
+														<CloudJobProgress
+															status={cloudCommentsStatus?.status}
+															progress={
+																typeof cloudCommentsStatus?.progress === 'number'
+																	? cloudCommentsStatus.progress
+																	: null
+															}
+															jobId={commentsCloudJobId}
+															showPhase={false}
+															showIds={false}
+															labels={{ status: 'Status' }}
 														/>
 													</div>
 												)}
@@ -943,16 +936,18 @@ export default function CommentsPage() {
 												</Button>
 
 												{cloudJobId && (
-													<div className="rounded-lg bg-secondary/30 p-3 space-y-2">
-														<div className="flex items-center justify-between text-xs">
-															<span className="text-muted-foreground">Status</span>
-															<span className="font-medium">
-																{renderStatusLabel}
-															</span>
-														</div>
-														<Progress
-															value={renderProgressValue}
-															className="h-1.5"
+													<div className="rounded-lg bg-secondary/30 p-3">
+														<CloudJobProgress
+															status={cloudRenderStatus?.status}
+															progress={
+																typeof cloudRenderStatus?.progress === 'number'
+																	? cloudRenderStatus.progress
+																	: null
+															}
+															jobId={cloudJobId}
+															showPhase={false}
+															showIds={false}
+															labels={{ status: 'Render status' }}
 														/>
 													</div>
 												)}

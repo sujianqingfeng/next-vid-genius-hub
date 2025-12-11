@@ -21,6 +21,7 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
+import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 
 export default function ChannelsPage() {
 	const t = useTranslations('Channels.page')
@@ -300,7 +301,7 @@ function ChannelCard({
 			return s && TERMINAL_JOB_STATUSES.includes(s) ? false : 1500
 		},
 	})
-	const statusValue = (statusQuery?.data as { status?: string } | null)?.status
+	const statusValue = (statusQuery?.data as { status?: string; progress?: number } | null)?.status
 
 	// Only propagate status changes when the value actually changes to avoid update loops.
 	React.useEffect(() => {
@@ -334,16 +335,6 @@ function ChannelCard({
 				t('actions.translateError', { message: error.message }),
 		},
 	)
-
-	const statusLabel = React.useMemo(() => {
-		if (!status) return t('status.idle')
-		const key = status.replace(/_/g, ' ')
-		return t(`status.${status as keyof typeof STATUS_COLOR}`, {
-			defaultValue: key,
-		})
-	}, [status, t])
-
-	const isSyncing = status === 'running' || status === 'queued'
 
 	return (
 		<article className="glass rounded-2xl p-6 transition-all duration-300 hover:shadow-lg hover:bg-white/60 group">
@@ -410,9 +401,21 @@ function ChannelCard({
 									{t('actions.syncDesc')}
 								</p>
 							</div>
-							<span className="rounded-full border border-border/50 bg-background/50 px-3 py-1 text-xs font-medium capitalize text-foreground shadow-sm">
-								{statusLabel}
-							</span>
+							<div className="min-w-[140px]">
+								<CloudJobProgress
+									status={status ?? (statusQuery.data as { status?: string } | null)?.status}
+									progress={
+										typeof (statusQuery.data as { progress?: number } | null)?.progress === 'number'
+											? (statusQuery.data as { progress?: number } | null)!.progress
+											: null
+									}
+									jobId={jobId}
+									showPhase={false}
+									showIds={false}
+									idleLabel={t('status.idle')}
+									labels={{ status: t('actions.syncTitle') }}
+								/>
+							</div>
 						</div>
 						<div className="space-y-4">
 							<ProxySelector

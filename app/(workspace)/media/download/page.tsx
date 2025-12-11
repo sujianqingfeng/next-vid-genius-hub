@@ -30,6 +30,7 @@ import { STATUS_LABELS, PHASE_LABELS } from '~/lib/config/media-status'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { orpc } from '~/lib/orpc/client'
+import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 
 export default function NewDownloadPage() {
 	const t = useTranslations('Download.page')
@@ -318,63 +319,38 @@ export default function NewDownloadPage() {
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="pt-6 space-y-6">
-								<div className="space-y-3">
-									<div className="flex items-center justify-between text-sm">
-										<span className="font-medium text-muted-foreground">
-											{t('progress.status')}
-										</span>
-										<span
-											className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-												jobActive
-													? 'bg-primary/10 text-primary'
-													: 'bg-secondary text-muted-foreground'
-											}`}
-										>
-											{jobActive
-												? (statusLabel ?? t('progress.queued'))
-												: t('progress.idle')}
-										</span>
-									</div>
-									<Progress value={progressPercent ?? 0} className="h-2" />
-									{phaseLabel && (
-										<div className="flex items-center justify-between text-xs text-muted-foreground">
-											<span>{t('progress.phase')}</span>
-											<span className="font-medium text-foreground">
-												{phaseLabel}
+								<CloudJobProgress
+									status={cloudStatusQuery.data?.status}
+									phase={cloudStatusQuery.data?.phase}
+									progress={
+										typeof cloudStatusQuery.data?.progress === 'number'
+											? cloudStatusQuery.data.progress
+											: null
+									}
+									jobId={cloudJobId}
+									mediaId={cloudMediaId}
+									jobActive={jobActive}
+									idleLabel={t('progress.idle')}
+									labels={{
+										status: t('progress.status'),
+										phase: t('progress.phase'),
+										jobId: t('progress.labels.jobId'),
+										mediaId: t('progress.labels.mediaId'),
+									}}
+									extraRows={
+										<div className="flex items-center justify-between gap-2 text-xs border-t border-border/40 pt-3">
+											<span className="text-muted-foreground">
+												{t('progress.labels.proxy')}
+											</span>
+											<span
+												className="max-w-[60%] truncate font-medium text-foreground"
+												title={renderProxyLabel(selectedProxyId)}
+											>
+												{renderProxyLabel(selectedProxyId)}
 											</span>
 										</div>
-									)}
-								</div>
-
-								<div className="space-y-3 border-t border-border/40 pt-4">
-									<div className="flex items-center justify-between gap-2 text-xs">
-										<span className="text-muted-foreground">
-											{t('progress.labels.jobId')}
-										</span>
-										<span className="rounded bg-secondary/30 px-1.5 py-0.5 font-mono text-foreground">
-											{cloudJobId ? `${cloudJobId.slice(0, 8)}...` : '—'}
-										</span>
-									</div>
-									<div className="flex items-center justify-between gap-2 text-xs">
-										<span className="text-muted-foreground">
-											{t('progress.labels.mediaId')}
-										</span>
-										<span className="rounded bg-secondary/30 px-1.5 py-0.5 font-mono text-foreground">
-											{cloudMediaId ? `${cloudMediaId.slice(0, 8)}...` : '—'}
-										</span>
-									</div>
-									<div className="flex items-center justify-between gap-2 text-xs">
-										<span className="text-muted-foreground">
-											{t('progress.labels.proxy')}
-										</span>
-										<span
-											className="max-w-[60%] truncate font-medium text-foreground"
-											title={renderProxyLabel(selectedProxyId)}
-										>
-											{renderProxyLabel(selectedProxyId)}
-										</span>
-									</div>
-								</div>
+									}
+								/>
 
 								{cloudStatusQuery.data?.message && (
 									<div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs font-medium text-destructive">

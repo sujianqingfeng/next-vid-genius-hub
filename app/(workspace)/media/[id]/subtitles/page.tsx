@@ -31,6 +31,7 @@ import { useSubtitleActions } from '~/lib/subtitle/hooks/useSubtitleActions'
 import type { SubtitleStepId } from '~/lib/subtitle/types'
 import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
 import { DEFAULT_TRANSCRIPTION_LANGUAGE } from '~/lib/subtitle/config/languages'
+import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 
 export default function SubtitlesPage() {
 	const params = useParams()
@@ -179,6 +180,18 @@ export default function SubtitlesPage() {
 						onCurrentTimeChange={handleCurrentTimeChange}
 						onVideoRefChange={handleVideoRefChange}
 					/>
+					{(renderStatusValue || (previewCloudStatus && typeof previewCloudStatus.progress === 'number')) && (
+						<div className="mt-3">
+							<CloudJobProgress
+								status={previewCloudStatus?.status}
+								progress={typeof previewCloudStatus?.progress === 'number' ? previewCloudStatus.progress : null}
+								jobId={undefined}
+								showPhase={false}
+								showIds={false}
+								labels={{ status: 'Render status' }}
+							/>
+						</div>
+					)}
 				</div>
 
 				{/* Step Navigation under preview (Tabs) */}
