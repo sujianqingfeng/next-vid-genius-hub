@@ -47,8 +47,11 @@ function channelRoot(channelId: string, options?: MediaPathOptions): string {
  */
 export const bucketPaths = {
 	manifests: {
-		media: (mediaId: string, options?: MediaPathOptions) =>
-			`${mediaRoot(mediaId, options)}/manifest.json`,
+		// Manifest path is intentionally independent of the (mutable) media title so that
+		// each mediaId has a single stable manifest location. Older manifests written to
+		// slugged paths like `media/{mediaId}-{slug}/manifest.json` will not be read.
+		media: (mediaId: string, _options?: MediaPathOptions) =>
+			`manifests/media/${mediaId}.json`,
 	},
 	inputs: {
 		video: (mediaId: string, options?: MediaPathOptions) =>

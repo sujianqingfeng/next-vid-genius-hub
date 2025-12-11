@@ -38,7 +38,9 @@ export async function persistAsrResultFromBucket(input: PersistAsrResultInput) {
 		} catch (err) {
 			logger.warn(
 				'transcription',
-				,
+				`[persistAsrResultFromBucket] Failed to fetch transcription words for media=${mediaId}: ${
+					err instanceof Error ? err.message : String(err)
+				}`,
 			)
 		}
 	}
@@ -47,12 +49,20 @@ export async function persistAsrResultFromBucket(input: PersistAsrResultInput) {
 	if (!validation.isValid) {
 		logger.warn(
 			'transcription',
-			,
+			`[persistAsrResultFromBucket] VTT validation failed for media=${mediaId}: ${validation.errors.join(
+				', ',
+			)}; attempting normalize`,
 		)
 		vttContent = normalizeVttContent(vttContent)
 		const revalidation = validateVttContent(vttContent)
 		if (!revalidation.isValid) {
-			throw new Error()
+			logger.error(
+				'transcription',
+				`[persistAsrResultFromBucket] VTT still invalid after normalization for media=${mediaId}: ${revalidation.errors.join(
+					', ',
+				)}`,
+			)
+			throw new Error('VTT validation failed after normalization')
 		}
 	}
 
@@ -66,11 +76,16 @@ export async function persistAsrResultFromBucket(input: PersistAsrResultInput) {
 		const vttTargetKey = bucketPaths.inputs.subtitles(mediaId, { title: title || undefined })
 		await putObjectByKey(vttTargetKey, 'text/vtt', vttContent)
 		await upsertMediaManifest(mediaId, { vttKey: vttTargetKey }, title || undefined)
-		logger.info('transcription', )
+		logger.info(
+			'transcription',
+			`[persistAsrResultFromBucket] VTT materialized media=${mediaId} key=${vttTargetKey}`,
+		)
 	} catch (err) {
 		logger.warn(
 			'transcription',
-			,
+			`[persistAsrResultFromBucket] VTT materialization skipped media=${mediaId}: ${
+				err instanceof Error ? err.message : String(err)
+			}`,
 		)
 	}
 }
