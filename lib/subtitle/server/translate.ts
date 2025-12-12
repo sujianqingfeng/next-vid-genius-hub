@@ -2,14 +2,21 @@ import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { parseVttCues, serializeVttCues, validateVttContent } from '~/lib/subtitle/utils/vtt'
-import { generateObject } from '~/lib/ai/chat'
+import { generateObjectWithUsage } from '~/lib/ai/chat'
 import { putObjectByKey } from '~/lib/cloudflare'
 import { getTranslationPrompt, DEFAULT_TRANSLATION_PROMPT_ID } from '~/lib/subtitle/config/prompts'
 import { z } from 'zod'
 import type { AIModelId } from '~/lib/ai/models'
 import { bucketPaths } from '@app/media-domain'
 
-export async function translate(input: { mediaId: string; model: AIModelId; promptId?: string }): Promise<{ translation: string }> {
+export async function translate(input: {
+	mediaId: string
+	model: AIModelId
+	promptId?: string
+}): Promise<{
+	translation: string
+	usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
+}> {
   const { mediaId, model, promptId } = input
   const where = eq(schema.media.id, mediaId)
   const db = await getDb()
@@ -54,9 +61,11 @@ Strict rules:
   const prompt = `Original WebVTT cues (timestamps + text):\n${JSON.stringify(compact)}\n\nReturn JSON with shape { cues: [{ start, end, en, zh }] } only.`
 
   let objectCues: Array<{ start: string; end: string; en?: string; zh: string }>
+  let llmUsage: { inputTokens: number; outputTokens: number; totalTokens: number } | undefined
   try {
-    const { object } = await generateObject({ model, system, prompt, schema: Schema })
-    const out = Array.isArray(object?.cues) ? object.cues : []
+    const res = await generateObjectWithUsage({ model, system, prompt, schema: Schema })
+    llmUsage = res.usage
+    const out = Array.isArray(res.object?.cues) ? res.object.cues : []
     if (!out.length) throw new Error('Empty cues from structured translation')
     objectCues = out
     logger.info('translation', `Structured translation produced ${out.length} items for media ${mediaId}`)
@@ -138,5 +147,5 @@ Strict rules:
   } catch (err) {
     logger.warn('translation', `Translate materialization skipped: ${err instanceof Error ? err.message : String(err)}`)
   }
-  return { translation: vtt }
+  return { translation: vtt, usage: llmUsage }
 }

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { generateObject, generateText } from './chat'
+import { generateObjectWithUsage, generateTextWithUsage } from './chat'
 import { logger } from '~/lib/logger'
 import { AIModelId } from './models'
 
@@ -19,7 +19,13 @@ const translationSystemPrompt = [
 	'If the source is already Chinese, still return {"translation":"<original text>"} with identical content.',
 ].join(' ')
 
-export async function translateText(text: string, modelId: AIModelId) {
+export async function translateTextWithUsage(
+	text: string,
+	modelId: AIModelId,
+): Promise<{
+	translation: string
+	usage: { inputTokens: number; outputTokens: number; totalTokens: number }
+}> {
 	const prompt = [
 		'Task: translate the provided text into natural Simplified Chinese.',
 		'Output requirement: respond with EXACTLY one JSON object: {"translation":"..."} (no markdown, no prose).',
@@ -29,23 +35,30 @@ export async function translateText(text: string, modelId: AIModelId) {
 		text,
 	].join('\n')
 
+	let usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+
 	if (!unsupportedStructuredModels.has(modelId)) {
 		try {
-			const { object } = await generateObject({
+			const res = await generateObjectWithUsage({
 				model: modelId,
 				system: translationSystemPrompt,
 				prompt,
 				schema: translationSchema,
 			})
+			usage = {
+				inputTokens: usage.inputTokens + (res.usage?.inputTokens ?? 0),
+				outputTokens: usage.outputTokens + (res.usage?.outputTokens ?? 0),
+				totalTokens: usage.totalTokens + (res.usage?.totalTokens ?? 0),
+			}
 
-			const parsed = translationSchema.safeParse(object)
+			const parsed = translationSchema.safeParse(res.object)
 			if (!parsed.success) {
 				throw new Error('Translation response did not match expected schema')
 			}
 
 			const output = parsed.data.translation.trim()
 			if (output.length > 0) {
-				return output
+				return { translation: output, usage }
 			}
 		} catch (error) {
 			const details: Record<string, unknown> = { modelId }
@@ -87,11 +100,16 @@ export async function translateText(text: string, modelId: AIModelId) {
 		text,
 	].join('\n')
 
-	const fallback = await generateText({
+	const fallback = await generateTextWithUsage({
 		model: modelId,
 		system: fallbackSystem,
 		prompt: fallbackPrompt,
 	})
+	usage = {
+		inputTokens: usage.inputTokens + (fallback.usage?.inputTokens ?? 0),
+		outputTokens: usage.outputTokens + (fallback.usage?.outputTokens ?? 0),
+		totalTokens: usage.totalTokens + (fallback.usage?.totalTokens ?? 0),
+	}
 
 	const raw = fallback.text?.trim() ?? ''
 	const normalized = raw
@@ -99,5 +117,13 @@ export async function translateText(text: string, modelId: AIModelId) {
 		.replace(/^(output|result)[:：]\s*/i, '')
 		.trim()
 
-	return normalized.length > 0 ? normalized : text
+	return {
+		translation: normalized.length > 0 ? normalized : text,
+		usage,
+	}
+}
+
+export async function translateText(text: string, modelId: AIModelId) {
+	const { translation } = await translateTextWithUsage(text, modelId)
+	return translation
 }

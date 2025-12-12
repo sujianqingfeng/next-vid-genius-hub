@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { generateObject } from '~/lib/ai/chat'
+import { generateObjectWithUsage } from '~/lib/ai/chat'
 import type { AIModelId } from '~/lib/ai/models'
 import type { TranscriptionWord } from '~/lib/db/schema'
 import { formatVttTimestamp } from '~/lib/subtitle/utils/time'
@@ -124,7 +124,10 @@ export async function buildSegmentsByAI(args: {
 	model: AIModelId
 	maxChars: number
 	maxSentenceMs: number
-}): Promise<Segment[]> {
+}): Promise<{
+	segments: Segment[]
+	usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
+}> {
 	const { words, candidates, model, maxChars, maxSentenceMs } = args
 
 	// Prepare compact tokens snapshot to keep prompt size reasonable
@@ -145,7 +148,7 @@ Rules:
 	const prompt = `Tokens (index:i, token:t):\n${JSON.stringify(tokens)}\n\nCandidate sentence ends (indices):\n${JSON.stringify(candidateEnds)}\n\nReturn JSON only.`
 
 	try {
-		const { object } = await generateObject({
+		const { object, usage } = await generateObjectWithUsage({
 			model,
 			system,
 			prompt,
@@ -154,7 +157,8 @@ Rules:
 		const segs = object.segments
 			.map((s) => ({ startIndex: s.startIndex, endIndex: s.endIndex }))
 			.filter((s) => s.startIndex <= s.endIndex)
-		if (segs.length) return ensureCoverAllTokens(segs, words.length)
+		if (segs.length)
+			return { segments: ensureCoverAllTokens(segs, words.length), usage }
 	} catch {
 		// fall back below
 	}
@@ -166,7 +170,7 @@ Rules:
 		segs.push({ startIndex: start, endIndex: end })
 		start = end + 1
 	}
-	return ensureCoverAllTokens(segs, words.length)
+	return { segments: ensureCoverAllTokens(segs, words.length) }
 }
 
 function ensureCoverAllTokens(

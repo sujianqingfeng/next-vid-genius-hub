@@ -203,6 +203,8 @@ const UpsertPricingRuleSchema = z.object({
 	modelId: z.string().trim().max(200).optional().nullable(),
 	unit: z.enum(['token', 'second', 'minute']),
 	pricePerUnit: z.number().int().min(0),
+	inputPricePerUnit: z.number().int().min(0).optional().nullable(),
+	outputPricePerUnit: z.number().int().min(0).optional().nullable(),
 	minCharge: z.number().int().min(0).optional().nullable(),
 })
 
@@ -212,6 +214,15 @@ export const upsertPricingRule = os
 		const db = await getDb()
 		const now = new Date()
 
+		if (input.resourceType === 'llm') {
+			if (input.unit !== 'token') {
+				throw new Error('LLM pricing rule unit must be token')
+			}
+			if (input.inputPricePerUnit == null || input.outputPricePerUnit == null) {
+				throw new Error('LLM pricing rules require both inputPricePerUnit and outputPricePerUnit')
+			}
+		}
+
 		if (input.id) {
 			await db
 				.update(schema.pointPricingRules)
@@ -220,6 +231,8 @@ export const upsertPricingRule = os
 					modelId: input.modelId ?? null,
 					unit: input.unit,
 					pricePerUnit: input.pricePerUnit,
+					inputPricePerUnit: input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
+					outputPricePerUnit: input.resourceType === 'llm' ? (input.outputPricePerUnit ?? null) : null,
 					minCharge: input.minCharge ?? null,
 					updatedAt: now,
 				})
@@ -232,6 +245,8 @@ export const upsertPricingRule = os
 			modelId: input.modelId ?? null,
 			unit: input.unit,
 			pricePerUnit: input.pricePerUnit,
+			inputPricePerUnit: input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
+			outputPricePerUnit: input.resourceType === 'llm' ? (input.outputPricePerUnit ?? null) : null,
 			minCharge: input.minCharge ?? null,
 			createdAt: now,
 			updatedAt: now,

@@ -23,6 +23,8 @@ import {
 } from '~/components/ui/select'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { ChatModelIds } from '~/lib/ai/models'
+import { WHISPER_MODEL_IDS, getModelLabel } from '~/lib/subtitle/config/models'
 
 type ResourceFilter = 'all' | 'llm' | 'asr' | 'download'
 
@@ -32,6 +34,8 @@ type EditingRule = {
 	modelId: string
 	unit: 'token' | 'second' | 'minute'
 	pricePerUnit: number
+	inputPricePerUnit: number
+	outputPricePerUnit: number
 	minCharge: number | ''
 }
 
@@ -40,6 +44,8 @@ const DEFAULT_EDITING_RULE: EditingRule = {
 	modelId: '',
 	unit: 'minute',
 	pricePerUnit: 1,
+	inputPricePerUnit: 1,
+	outputPricePerUnit: 1,
 	minCharge: 1,
 }
 
@@ -104,32 +110,48 @@ export default function AdminPointsPricingPage() {
 		setEditingRule(DEFAULT_EDITING_RULE)
 	}
 
-	const handleEdit = (rule: any) => {
-		setEditingRule({
-			id: rule.id,
-			resourceType: rule.resourceType,
-			modelId: rule.modelId ?? '',
-			unit: rule.unit,
-			pricePerUnit: rule.pricePerUnit,
-			minCharge: typeof rule.minCharge === 'number' ? rule.minCharge : '',
-		})
-	}
-
-	const handleSave = () => {
-		if (!editingRule) return
-		const payload = {
-			id: editingRule.id,
-			resourceType: editingRule.resourceType,
-			modelId: editingRule.modelId.trim() || null,
-			unit: editingRule.unit,
-			pricePerUnit: Number.isFinite(editingRule.pricePerUnit)
-				? editingRule.pricePerUnit
-				: 0,
-			minCharge:
-				editingRule.minCharge === '' ? null : Number(editingRule.minCharge ?? 0),
+		const handleEdit = (rule: any) => {
+			setEditingRule({
+				id: rule.id,
+				resourceType: rule.resourceType,
+				modelId: rule.modelId ?? '',
+				unit: rule.unit,
+				pricePerUnit: rule.pricePerUnit,
+				inputPricePerUnit: typeof rule.inputPricePerUnit === 'number' ? rule.inputPricePerUnit : 0,
+				outputPricePerUnit: typeof rule.outputPricePerUnit === 'number' ? rule.outputPricePerUnit : 0,
+				minCharge: typeof rule.minCharge === 'number' ? rule.minCharge : '',
+			})
 		}
-		upsertRule.mutate(payload as any)
-	}
+
+		const handleSave = () => {
+			if (!editingRule) return
+			const payload = {
+				id: editingRule.id,
+				resourceType: editingRule.resourceType,
+				modelId:
+					editingRule.resourceType === 'download'
+						? null
+						: editingRule.modelId.trim() || null,
+				unit: editingRule.unit,
+				pricePerUnit:
+					editingRule.resourceType === 'llm'
+						? 0
+						: Number.isFinite(editingRule.pricePerUnit)
+								? editingRule.pricePerUnit
+								: 0,
+				inputPricePerUnit:
+					editingRule.resourceType === 'llm'
+						? (Number.isFinite(editingRule.inputPricePerUnit) ? editingRule.inputPricePerUnit : 0)
+						: null,
+				outputPricePerUnit:
+					editingRule.resourceType === 'llm'
+						? (Number.isFinite(editingRule.outputPricePerUnit) ? editingRule.outputPricePerUnit : 0)
+						: null,
+				minCharge:
+					editingRule.minCharge === '' ? null : Number(editingRule.minCharge ?? 0),
+			}
+			upsertRule.mutate(payload as any)
+		}
 
 	const handleDelete = (id: string) => {
 		if (!id) return
@@ -191,16 +213,27 @@ export default function AdminPointsPricingPage() {
 									<th className="px-4 py-3 font-medium">
 										{t('table.resourceType')}
 									</th>
-									<th className="px-4 py-3 font-medium">
-										{t('table.modelId')}
-									</th>
-									<th className="px-4 py-3 font-medium">{t('table.unit')}</th>
-									<th className="px-4 py-3 font-medium">
-										{t('table.pricePerUnit')}
-									</th>
-									<th className="px-4 py-3 font-medium">
-										{t('table.minCharge')}
-									</th>
+										<th className="px-4 py-3 font-medium">
+											{t('table.modelId')}
+										</th>
+										<th className="px-4 py-3 font-medium">{t('table.unit')}</th>
+										{resourceFilter === 'llm' ? (
+											<>
+												<th className="px-4 py-3 font-medium">
+													{t('table.inputPricePerUnit')}
+												</th>
+												<th className="px-4 py-3 font-medium">
+													{t('table.outputPricePerUnit')}
+												</th>
+											</>
+										) : (
+											<th className="px-4 py-3 font-medium">
+												{t('table.pricePerUnit')}
+											</th>
+										)}
+										<th className="px-4 py-3 font-medium">
+											{t('table.minCharge')}
+										</th>
 									<th className="px-4 py-3 font-medium">
 										{t('table.updatedAt')}
 									</th>
@@ -220,13 +253,26 @@ export default function AdminPointsPricingPage() {
 										<td className="px-4 py-3 text-muted-foreground">
 											{rule.modelId || t('labels.defaultModel')}
 										</td>
-										<td className="px-4 py-3 text-muted-foreground">{rule.unit}</td>
-										<td className="px-4 py-3 text-muted-foreground">
-											{rule.pricePerUnit}
-										</td>
-										<td className="px-4 py-3 text-muted-foreground">
-											{rule.minCharge ?? t('labels.none')}
-										</td>
+											<td className="px-4 py-3 text-muted-foreground">{rule.unit}</td>
+											{resourceFilter === 'llm' ? (
+												<>
+													<td className="px-4 py-3 text-muted-foreground">
+														{rule.inputPricePerUnit ?? 0}
+													</td>
+													<td className="px-4 py-3 text-muted-foreground">
+														{rule.outputPricePerUnit ?? 0}
+													</td>
+												</>
+											) : (
+												<td className="px-4 py-3 text-muted-foreground">
+													{rule.resourceType === 'llm'
+														? `${rule.inputPricePerUnit ?? 0} / ${rule.outputPricePerUnit ?? 0}`
+														: rule.pricePerUnit}
+												</td>
+											)}
+											<td className="px-4 py-3 text-muted-foreground">
+												{rule.minCharge ?? t('labels.none')}
+											</td>
 										<td className="px-4 py-3 text-muted-foreground">
 											{rule.updatedAt
 												? new Date(rule.updatedAt).toLocaleString()
@@ -307,14 +353,23 @@ export default function AdminPointsPricingPage() {
 								<label className="text-xs font-medium text-muted-foreground">
 									{t('form.resourceType')}
 								</label>
-								<Select
-									value={editingRule?.resourceType ?? 'download'}
-									onValueChange={(v) =>
-										setEditingRule((prev) =>
-											prev ? { ...prev, resourceType: v as any } : prev,
-										)
-									}
-								>
+										<Select
+											value={editingRule?.resourceType ?? 'download'}
+											onValueChange={(v) =>
+												setEditingRule((prev) =>
+													prev
+														? prev.resourceType === v
+															? prev
+															: {
+																	...prev,
+																	resourceType: v as any,
+																	modelId: '',
+																	unit: v === 'llm' ? 'token' : 'minute',
+																}
+														: prev,
+												)
+											}
+										>
 									<SelectTrigger className="h-9">
 										<SelectValue />
 									</SelectTrigger>
@@ -335,14 +390,15 @@ export default function AdminPointsPricingPage() {
 								<label className="text-xs font-medium text-muted-foreground">
 									{t('form.unit')}
 								</label>
-								<Select
-									value={editingRule?.unit ?? 'minute'}
-									onValueChange={(v) =>
-										setEditingRule((prev) =>
-											prev ? { ...prev, unit: v as any } : prev,
-										)
-									}
-								>
+									<Select
+										value={editingRule?.unit ?? 'minute'}
+										onValueChange={(v) =>
+											setEditingRule((prev) =>
+												prev ? { ...prev, unit: v as any } : prev,
+											)
+										}
+										disabled={editingRule?.resourceType === 'llm'}
+									>
 									<SelectTrigger className="h-9">
 										<SelectValue />
 									</SelectTrigger>
@@ -354,48 +410,114 @@ export default function AdminPointsPricingPage() {
 								</Select>
 							</div>
 						</div>
-						<div className="space-y-2">
-							<label className="text-xs font-medium text-muted-foreground">
-								{t('form.modelId')}
-							</label>
-							<Input
-								placeholder={t('form.modelIdPlaceholder')}
-								value={editingRule?.modelId ?? ''}
-								onChange={(e) =>
-									setEditingRule((prev) =>
-										prev ? { ...prev, modelId: e.target.value } : prev,
-									)
-								}
-							/>
-							<p className="text-[10px] text-muted-foreground">
-								{t('form.modelIdHint')}
-							</p>
-						</div>
-						<div className="grid gap-4 sm:grid-cols-2">
 							<div className="space-y-2">
 								<label className="text-xs font-medium text-muted-foreground">
-									{t('form.pricePerUnit')}
+									{t('form.modelId')}
 								</label>
-								<Input
-									type="number"
-									min={0}
-									value={editingRule?.pricePerUnit ?? 0}
-									onChange={(e) =>
+								<Select
+									value={editingRule?.modelId ?? ''}
+									onValueChange={(v) =>
 										setEditingRule((prev) =>
-											prev
-												? {
-														...prev,
-														pricePerUnit: Number(e.target.value || 0),
-													}
-												: prev,
+											prev ? { ...prev, modelId: v } : prev,
 										)
 									}
-								/>
+									disabled={editingRule?.resourceType === 'download'}
+								>
+									<SelectTrigger className="h-9">
+										<SelectValue placeholder={t('form.modelIdPlaceholder')} />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="">
+											{t('labels.defaultModel')}
+										</SelectItem>
+										{editingRule?.resourceType === 'llm' &&
+											ChatModelIds.map((modelId) => (
+												<SelectItem key={modelId} value={modelId}>
+													{modelId}
+												</SelectItem>
+											))}
+										{editingRule?.resourceType === 'asr' &&
+											WHISPER_MODEL_IDS.map((modelId) => (
+												<SelectItem key={modelId} value={modelId}>
+													{getModelLabel(modelId)}
+												</SelectItem>
+											))}
+									</SelectContent>
+								</Select>
+								<p className="text-[10px] text-muted-foreground">
+									{t('form.modelIdHint')}
+								</p>
 							</div>
-							<div className="space-y-2">
-								<label className="text-xs font-medium text-muted-foreground">
-									{t('form.minCharge')}
-								</label>
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div className="space-y-2">
+									<label className="text-xs font-medium text-muted-foreground">
+										{t('form.pricePerUnit')}
+									</label>
+									{editingRule?.resourceType === 'llm' ? (
+										<div className="grid gap-3 sm:grid-cols-2">
+											<div className="space-y-1">
+												<label className="text-[10px] text-muted-foreground">
+													{t('form.inputPricePerUnit')}
+												</label>
+												<Input
+													type="number"
+													min={0}
+													value={editingRule?.inputPricePerUnit ?? 0}
+													onChange={(e) =>
+														setEditingRule((prev) =>
+															prev
+																? {
+																		...prev,
+																		inputPricePerUnit: Number(e.target.value || 0),
+																	}
+																: prev,
+														)
+													}
+												/>
+											</div>
+											<div className="space-y-1">
+												<label className="text-[10px] text-muted-foreground">
+													{t('form.outputPricePerUnit')}
+												</label>
+												<Input
+													type="number"
+													min={0}
+													value={editingRule?.outputPricePerUnit ?? 0}
+													onChange={(e) =>
+														setEditingRule((prev) =>
+															prev
+																? {
+																		...prev,
+																		outputPricePerUnit: Number(e.target.value || 0),
+																	}
+																: prev,
+														)
+													}
+												/>
+											</div>
+										</div>
+									) : (
+										<Input
+											type="number"
+											min={0}
+											value={editingRule?.pricePerUnit ?? 0}
+											onChange={(e) =>
+												setEditingRule((prev) =>
+													prev
+														? {
+																...prev,
+																pricePerUnit: Number(e.target.value || 0),
+															}
+														: prev,
+												)
+											}
+										/>
+									)}
+								</div>
+								<div className="space-y-2">
+									<label className="text-xs font-medium text-muted-foreground">
+										{t('form.minCharge')}
+									</label>
 								<Input
 									type="number"
 									min={0}

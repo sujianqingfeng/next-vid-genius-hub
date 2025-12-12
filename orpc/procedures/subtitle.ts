@@ -9,6 +9,8 @@ import { getDb, schema } from '~/lib/db'
 import type { RequestContext } from '~/lib/auth/types'
 import { getJobStatus } from '~/lib/cloudflare'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
+import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
+import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 
 export const transcribe = os
   .input(
@@ -51,7 +53,23 @@ export const translate = os.input(translateInput).handler(async ({ input, contex
     throw new Error("Media not found")
   }
   const res = await subtitleService.translate(input)
-  return res
+  try {
+    await chargeLlmUsage({
+      userId,
+      modelId: input.model,
+      inputTokens: res.usage?.inputTokens ?? 0,
+      outputTokens: res.usage?.outputTokens ?? 0,
+      refType: 'subtitle-translate',
+      refId: input.mediaId,
+      remark: `subtitle translate tokens=${(res.usage?.totalTokens ?? 0)}`,
+    })
+  } catch (err) {
+    if (err instanceof InsufficientPointsError) {
+      throwInsufficientPointsError('积分不足，字幕翻译失败，请先充值。')
+    }
+    throw err
+  }
+  return { translation: res.translation }
 });
 
 // 使用新架构中的Schema，移除重复定义
@@ -148,7 +166,24 @@ export const optimizeTranscription = os
     if (!media) {
       throw new Error("Media not found")
     }
-    return subtitleService.optimizeTranscription(input)
+    const res = await subtitleService.optimizeTranscription(input)
+    try {
+      await chargeLlmUsage({
+        userId,
+        modelId: input.model,
+        inputTokens: res.usage?.inputTokens ?? 0,
+        outputTokens: res.usage?.outputTokens ?? 0,
+        refType: 'subtitle-optimize',
+        refId: input.mediaId,
+        remark: `subtitle optimize tokens=${(res.usage?.totalTokens ?? 0)}`,
+      })
+    } catch (err) {
+      if (err instanceof InsufficientPointsError) {
+        throwInsufficientPointsError('积分不足，字幕优化失败，请先充值。')
+      }
+      throw err
+    }
+    return { optimizedTranscription: res.optimizedTranscription }
   });
 
 // Restore transcription from original backup if available

@@ -45,6 +45,8 @@ export async function chargeLlmUsage(opts: BaseChargeInput & {
 		throw error
 	}
 
+	// If AI SDK didn't provide usage, totalTokens may be 0. Avoid charging minCharge blindly.
+	if (totalTokens <= 0) return { charged: 0 }
 	if (points <= 0) return { charged: 0 }
 	const remark = buildRemark(`model=${opts.modelId ?? 'default'} tokens=${totalTokens}`, opts.remark)
 	const balance = await spendPoints({

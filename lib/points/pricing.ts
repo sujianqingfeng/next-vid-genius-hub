@@ -17,12 +17,17 @@ async function resolveRule(opts: {
 	db?: DbClient
 }): Promise<PricingRule> {
 	const client = opts.db ?? (await getDb())
-	const rows = await client.query.pointPricingRules.findMany({
-		where: and(
-			eq(schema.pointPricingRules.resourceType, opts.resourceType),
-			or(eq(schema.pointPricingRules.modelId, opts.modelId ?? null), isNull(schema.pointPricingRules.modelId)),
-		),
-	})
+	const whereClause = opts.modelId
+		? and(
+				eq(schema.pointPricingRules.resourceType, opts.resourceType),
+				or(eq(schema.pointPricingRules.modelId, opts.modelId), isNull(schema.pointPricingRules.modelId)),
+			)
+		: and(
+				eq(schema.pointPricingRules.resourceType, opts.resourceType),
+				isNull(schema.pointPricingRules.modelId),
+			)
+
+	const rows = await client.query.pointPricingRules.findMany({ where: whereClause })
 
 	const match = rows.find((r) => r.modelId && opts.modelId && r.modelId === opts.modelId)
 	const fallback = rows.find((r) => r.modelId == null)
@@ -43,8 +48,13 @@ export async function calculateLlmCost(opts: {
 	const inputTokens = Math.max(0, opts.inputTokens ?? 0)
 	const outputTokens = Math.max(0, opts.outputTokens ?? 0)
 	const totalTokens = inputTokens + outputTokens
-	const units = rule.unit === 'token' ? totalTokens : totalTokens
-	const points = applyMinCharge(Math.ceil(units * rule.pricePerUnit), rule.minCharge)
+	if (rule.unit !== 'token') {
+		throw new Error(`LLM pricing rule unit must be token (got ${rule.unit})`)
+	}
+	const inputPrice = rule.inputPricePerUnit ?? 0
+	const outputPrice = rule.outputPricePerUnit ?? 0
+	const rawCost = inputTokens * inputPrice + outputTokens * outputPrice
+	const points = applyMinCharge(Math.ceil(rawCost), rule.minCharge)
 	return { points, rule, totalTokens }
 }
 

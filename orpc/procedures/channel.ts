@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { and, desc, eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
-import { translateText } from '~/lib/ai/translate'
+import { translateTextWithUsage } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import {
@@ -19,6 +19,8 @@ import type { RequestContext } from '~/lib/auth/types'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { TASK_KINDS } from '~/lib/job/task'
 import { MEDIA_SOURCES } from '~/lib/media/source'
+import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
+import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 
 const CreateChannelInput = z.object({
 	channelUrlOrId: z.string().min(1),
@@ -537,16 +539,40 @@ export const translateVideoTitles = os
 				desc(
 					schema.channelVideos.publishedAt ?? schema.channelVideos.createdAt,
 				),
-			)
-			.limit(input.limit)
+				)
+				.limit(input.limit)
 
-		const translations = await Promise.all(
-			rows.map(async (r) => {
-				const text = r.title || ''
-				const t = await translateText(text, input.model)
-				return { id: r.id, translation: t }
+			let totalInputTokens = 0
+			let totalOutputTokens = 0
+			const translations = await Promise.all(
+				rows.map(async (r) => {
+					const text = r.title || ''
+				if (!text.trim()) {
+					return { id: r.id, translation: '' }
+				}
+				const res = await translateTextWithUsage(text, input.model)
+				totalInputTokens += res.usage.inputTokens
+				totalOutputTokens += res.usage.outputTokens
+				return { id: r.id, translation: res.translation }
 			}),
 		)
+
+		try {
+			await chargeLlmUsage({
+				userId,
+				modelId: input.model,
+				inputTokens: totalInputTokens,
+				outputTokens: totalOutputTokens,
+				refType: 'channel-translate',
+				refId: input.channelId,
+				remark: `channel translate tokens=${totalInputTokens + totalOutputTokens}`,
+			})
+		} catch (err) {
+			if (err instanceof InsufficientPointsError) {
+				throwInsufficientPointsError('积分不足，频道标题翻译失败，请先充值。')
+			}
+			throw err
+		}
 
 		return { items: translations }
 	})

@@ -69,7 +69,10 @@ export async function optimizeTranscription(input: {
 	maxChars: number
 	lightCleanup?: boolean
 	textCorrect?: boolean
-}): Promise<{ optimizedTranscription: string }> {
+}): Promise<{
+	optimizedTranscription: string
+	usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
+}> {
 	const {
 		mediaId,
 		model,
@@ -103,13 +106,22 @@ export async function optimizeTranscription(input: {
 		maxSentenceMs,
 		maxChars,
 	})
-	let segments = await buildSegmentsByAI({
+	let llmUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+	const segRes = await buildSegmentsByAI({
 		words,
 		candidates,
 		model,
 		maxChars,
 		maxSentenceMs,
 	})
+	if (segRes.usage) {
+		llmUsage = {
+			inputTokens: llmUsage.inputTokens + segRes.usage.inputTokens,
+			outputTokens: llmUsage.outputTokens + segRes.usage.outputTokens,
+			totalTokens: llmUsage.totalTokens + segRes.usage.totalTokens,
+		}
+	}
+	let segments = segRes.segments
 	// Make orphan merge stricter to avoid swallowing the start of next sentence
 	segments = applyOrphanGuard(segments, words, {
 		maxOrphanWords: 1,
@@ -139,9 +151,16 @@ Strict constraints:
 - Keep non-English tokens unchanged
 - Output the cleaned VTT content as-is, no extra commentary`
 		try {
-			const { text } = await import('~/lib/ai/chat').then((m) =>
-				m.generateText({ model, system, prompt: optimizedVtt }),
+			const { text, usage } = await import('~/lib/ai/chat').then((m) =>
+				m.generateTextWithUsage({ model, system, prompt: optimizedVtt }),
 			)
+			if (usage) {
+				llmUsage = {
+					inputTokens: llmUsage.inputTokens + usage.inputTokens,
+					outputTokens: llmUsage.outputTokens + usage.outputTokens,
+					totalTokens: llmUsage.totalTokens + usage.totalTokens,
+				}
+			}
 			const v = text.trim()
 			const check = validateVttContent(v)
 			if (check.isValid) optimizedVtt = v
@@ -167,7 +186,7 @@ Strict constraints:
 		'transcription',
 		`[optimize] done media=${mediaId} model=${model}`,
 	)
-	return { optimizedTranscription: optimizedVtt }
+	return { optimizedTranscription: optimizedVtt, usage: llmUsage }
 }
 
 export async function clearOptimizedTranscription(input: {

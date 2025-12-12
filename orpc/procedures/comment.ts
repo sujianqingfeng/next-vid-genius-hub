@@ -1,7 +1,7 @@
 import { os } from '@orpc/server'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { translateText } from '~/lib/ai/translate'
+import { translateTextWithUsage } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { getDb, schema } from '~/lib/db'
 import {
@@ -15,12 +15,14 @@ import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { logger } from '~/lib/logger'
-import { generateObject } from '~/lib/ai/chat'
+import { generateObjectWithUsage } from '~/lib/ai/chat'
 import { createId } from '@paralleldrive/cuid2'
 import type { RequestContext } from '~/lib/auth/types'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { TASK_KINDS } from '~/lib/job/task'
 import { DEFAULT_TEMPLATE_ID } from '~/remotion/templates'
+import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
+import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 
 export const translateComments = os
 	.input(
@@ -45,8 +47,13 @@ export const translateComments = os
 
 		// 翻译标题
 		let translatedTitle = media.translatedTitle
+		let totalInputTokens = 0
+		let totalOutputTokens = 0
 		if (media.title && (force || !translatedTitle)) {
-			translatedTitle = await translateText(media.title, modelId)
+			const res = await translateTextWithUsage(media.title, modelId)
+			translatedTitle = res.translation
+			totalInputTokens += res.usage.inputTokens
+			totalOutputTokens += res.usage.outputTokens
 		}
 
 		// 翻译评论
@@ -59,13 +66,34 @@ export const translateComments = os
 				if (comment.translatedContent && !force) {
 					return comment
 				}
-				const translatedContent = await translateText(comment.content, modelId)
+				const res = await translateTextWithUsage(comment.content, modelId)
+				totalInputTokens += res.usage.inputTokens
+				totalOutputTokens += res.usage.outputTokens
+				const translatedContent = res.translation
 				return {
 					...comment,
 					translatedContent,
 				}
 			}),
 		)
+
+		// Charge once for all LLM translation calls
+		try {
+			await chargeLlmUsage({
+				userId,
+				modelId,
+				inputTokens: totalInputTokens,
+				outputTokens: totalOutputTokens,
+				refType: 'comments-translate',
+				refId: mediaId,
+				remark: `comments translate tokens=${totalInputTokens + totalOutputTokens}`,
+			})
+		} catch (err) {
+			if (err instanceof InsufficientPointsError) {
+				throwInsufficientPointsError('积分不足，评论翻译失败，请先充值。')
+			}
+			throw err
+		}
 
 		await db
 			.update(schema.media)
@@ -727,17 +755,23 @@ export const moderateComments = os
 			severity: 'low' | 'medium' | 'high'
 			reason: string
 		}> = []
+		let totalInputTokens = 0
+		let totalOutputTokens = 0
 
 		for (const ch of chunks) {
 			const prompt = buildChunkPrompt(ch.items)
 			try {
-				const { object } = await generateObject({
+				const res = await generateObjectWithUsage({
 					model: modelId,
 					system,
 					prompt,
 					schema: moderationResultSchema,
 				})
-				const parsed = moderationResultSchema.parse(object)
+				if (res.usage) {
+					totalInputTokens += res.usage.inputTokens
+					totalOutputTokens += res.usage.outputTokens
+				}
+				const parsed = moderationResultSchema.parse(res.object)
 				for (const item of parsed.flagged) {
 					// Prefer commentId mapping; fallback to global index from payload
 					let idx = idToIndex.get(item.commentId)
@@ -764,6 +798,24 @@ export const moderateComments = os
 					`[moderateComments] chunk failed, skipping: ${msg}`,
 				)
 			}
+		}
+
+		// Charge once for moderation LLM calls (successful chunks only)
+		try {
+			await chargeLlmUsage({
+				userId,
+				modelId,
+				inputTokens: totalInputTokens,
+				outputTokens: totalOutputTokens,
+				refType: 'comments-moderate',
+				refId: mediaId,
+				remark: `comments moderate tokens=${totalInputTokens + totalOutputTokens}`,
+			})
+		} catch (err) {
+			if (err instanceof InsufficientPointsError) {
+				throwInsufficientPointsError('积分不足，评论审核失败，请先充值。')
+			}
+			throw err
 		}
 
 		if (flaggedGlobal.length === 0) {

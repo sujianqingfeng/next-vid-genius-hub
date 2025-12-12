@@ -145,6 +145,9 @@ export const pointPricingRules = sqliteTable('point_pricing_rules', {
 	modelId: text('model_id'),
 	unit: text('unit', { enum: ['token', 'second', 'minute'] }).notNull(),
 	pricePerUnit: integer('price_per_unit').notNull(),
+	// LLM only: separate prices for input/output tokens. Non-LLM rows keep these null.
+	inputPricePerUnit: integer('input_price_per_unit'),
+	outputPricePerUnit: integer('output_price_per_unit'),
 	minCharge: integer('min_charge'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
