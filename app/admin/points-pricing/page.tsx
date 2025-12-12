@@ -23,8 +23,6 @@ import {
 } from '~/components/ui/select'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { ChatModelIds } from '~/lib/ai/models'
-import { WHISPER_MODEL_IDS, getModelLabel } from '~/lib/subtitle/config/models'
 
 type ResourceFilter = 'all' | 'llm' | 'asr' | 'download'
 
@@ -66,6 +64,19 @@ export default function AdminPointsPricingPage() {
 		}),
 		keepPreviousData: true,
 	})
+
+	const llmModelsQuery = useQuery(
+		queryOrpc.admin.listAiModels.queryOptions({
+			input: { kind: 'llm', enabledOnly: false },
+		}),
+	)
+	const asrModelsQuery = useQuery(
+		queryOrpc.admin.listAiModels.queryOptions({
+			input: { kind: 'asr', enabledOnly: false },
+		}),
+	)
+	const llmModels = llmModelsQuery.data?.items ?? []
+	const asrModels = asrModelsQuery.data?.items ?? []
 
 	const invalidateList = () =>
 		qc.invalidateQueries({ queryKey: queryOrpc.admin.listPricingRules.key() })
@@ -431,15 +442,15 @@ export default function AdminPointsPricingPage() {
 											{t('labels.defaultModel')}
 										</SelectItem>
 										{editingRule?.resourceType === 'llm' &&
-											ChatModelIds.map((modelId) => (
-												<SelectItem key={modelId} value={modelId}>
-													{modelId}
+											llmModels.map((model) => (
+												<SelectItem key={model.id} value={model.id}>
+													{model.label || model.id}
 												</SelectItem>
 											))}
 										{editingRule?.resourceType === 'asr' &&
-											WHISPER_MODEL_IDS.map((modelId) => (
-												<SelectItem key={modelId} value={modelId}>
-													{getModelLabel(modelId)}
+											asrModels.map((model) => (
+												<SelectItem key={model.id} value={model.id}>
+													{model.label || model.id}
 												</SelectItem>
 											))}
 									</SelectContent>

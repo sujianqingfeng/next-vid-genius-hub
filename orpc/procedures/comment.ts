@@ -2,7 +2,6 @@ import { os } from '@orpc/server'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateTextWithUsage } from '~/lib/ai/translate'
-import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { getDb, schema } from '~/lib/db'
 import {
 	startCloudJob,
@@ -23,20 +22,26 @@ import { TASK_KINDS } from '~/lib/job/task'
 import { DEFAULT_TEMPLATE_ID } from '~/remotion/templates'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
 import { throwInsufficientPointsError } from '~/lib/orpc/errors'
+import { getDefaultAiModel, isEnabledModel } from '~/lib/ai/config/service'
 
 export const translateComments = os
 	.input(
 		z.object({
 			mediaId: z.string(),
-			model: z.enum(AIModelIds).default('openai/gpt-4o-mini' as AIModelId),
+			model: z.string().trim().min(1).optional(),
 			force: z.boolean().optional().default(false),
 		}),
 	)
 	.handler(async ({ input, context }) => {
-		const { mediaId, model: modelId, force } = input
+		const { mediaId, force } = input
 		const ctx = context as RequestContext
 		const userId = ctx.auth.user!.id
 		const db = await getDb()
+		const defaultModel = await getDefaultAiModel('llm', db)
+		const modelId = input.model ?? defaultModel?.id
+		if (!modelId || !(await isEnabledModel('llm', modelId, db))) {
+			throw new Error('LLM model is not enabled')
+		}
 		const media = await db.query.media.findFirst({
 			where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
 		})
@@ -695,15 +700,20 @@ export const moderateComments = os
 	.input(
 		z.object({
 			mediaId: z.string(),
-			model: z.enum(AIModelIds).default('openai/gpt-4.1-mini' as AIModelId),
+			model: z.string().trim().min(1).optional(),
 			overwrite: z.boolean().optional().default(false),
 		}),
 	)
 	.handler(async ({ input, context }) => {
-		const { mediaId, model: modelId, overwrite } = input
+		const { mediaId, overwrite } = input
 		const ctx = context as RequestContext
 		const userId = ctx.auth.user!.id
 		const db = await getDb()
+		const defaultModel = await getDefaultAiModel('llm', db)
+		const modelId = input.model ?? defaultModel?.id
+		if (!modelId || !(await isEnabledModel('llm', modelId, db))) {
+			throw new Error('LLM model is not enabled')
+		}
 		const media = await db.query.media.findFirst({
 			where: and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)),
 		})

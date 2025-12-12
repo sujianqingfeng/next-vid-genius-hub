@@ -8,6 +8,8 @@ import { useTranslations } from 'next-intl'
 
 const navItems = [
 	{ key: 'users', href: '/admin/users' },
+	{ key: 'aiProviders', href: '/admin/ai-providers' },
+	{ key: 'aiModels', href: '/admin/ai-models' },
 	{ key: 'pricing', href: '/admin/points-pricing' },
 ]
 

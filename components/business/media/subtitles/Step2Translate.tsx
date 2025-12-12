@@ -2,11 +2,13 @@
 
 import { AlertCircle, Loader2, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { type ChatModelId } from '~/lib/ai/models'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
+import { queryOrpc } from '~/lib/orpc/query-client'
 
 interface Step2TranslateProps {
 	selectedAIModel: ChatModelId
@@ -35,6 +37,15 @@ export function Step2Translate(props: Step2TranslateProps) {
 		() => (translation ? parseVttCues(translation) : []),
 		[translation],
 	)
+	const llmModelsQuery = useQuery(
+		queryOrpc.ai.listModels.queryOptions({
+			input: { kind: 'llm', enabledOnly: true },
+		}),
+	)
+	const llmModelOptions = (llmModelsQuery.data?.items ?? []).map((m) => ({
+		id: m.id as ChatModelId,
+		label: m.label,
+	}))
 
 	return (
 		<div className="space-y-6">
@@ -42,6 +53,7 @@ export function Step2Translate(props: Step2TranslateProps) {
 				<ChatModelSelect
 					value={selectedAIModel}
 					onChange={onModelChange}
+					models={llmModelOptions}
 					disabled={isPending}
 					triggerClassName="w-full lg:w-[240px]"
 				/>

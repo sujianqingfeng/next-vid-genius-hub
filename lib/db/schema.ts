@@ -364,3 +364,66 @@ export const channelVideos = sqliteTable('channel_videos', {
     .notNull()
     .$defaultFn(() => new Date()),
 })
+
+// ---------------- AI Providers & Models ----------------
+
+export const aiProviders = sqliteTable(
+	'ai_providers',
+	{
+		id: text('id')
+			.unique()
+			.notNull()
+			.$defaultFn(() => createId()),
+		// short stable identifier for code/seed (e.g. openai, packycode, deepseek, cloudflare)
+		slug: text('slug').notNull(),
+		name: text('name').notNull(),
+		// provider serves a single kind of models only
+		kind: text('kind', { enum: ['llm', 'asr'] }).notNull(),
+		// provider type is constrained by kind at runtime
+		type: text('type', {
+			enum: ['openai_compat', 'deepseek_native', 'cloudflare_asr'],
+		}).notNull(),
+		baseUrl: text('base_url'),
+		apiKey: text('api_key'),
+		enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+		metadata: text('metadata', { mode: 'json' }),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+		updatedAt: integer('updated_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		slugIdx: uniqueIndex('ai_providers_slug_idx').on(table.slug),
+	}),
+)
+
+export const aiModels = sqliteTable(
+	'ai_models',
+	{
+		// global model id; for ASR this is the Cloudflare run id (e.g. @cf/openai/whisper-tiny-en)
+		id: text('id').primaryKey(),
+		providerId: text('provider_id').notNull(),
+		kind: text('kind', { enum: ['llm', 'asr'] }).notNull(),
+		// remote provider-specific model name/run id
+		remoteModelId: text('remote_model_id').notNull(),
+		label: text('label').notNull(),
+		description: text('description'),
+		enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+		isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+		capabilities: text('capabilities', { mode: 'json' }),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+		updatedAt: integer('updated_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		providerRemoteIdx: uniqueIndex('ai_models_provider_remote_idx').on(
+			table.providerId,
+			table.remoteModelId,
+		),
+	}),
+)

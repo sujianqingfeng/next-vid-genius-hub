@@ -1,11 +1,18 @@
 import { os } from '@orpc/server'
-import { and, count, desc, eq, like, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, like, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import { addPoints, listTransactions } from '~/lib/points/service'
 import { ADMIN_USERS_PAGE_SIZE, DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
 import type { PointResourceType } from '~/lib/db/schema'
 import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
+import {
+	invalidateAiConfigCache,
+	listAiModels as listAiModelsFromConfig,
+	listAiProviders as listAiProvidersFromConfig,
+	getDefaultAiModel,
+} from '~/lib/ai/config/service'
+import { generateText } from '~/lib/ai/chat'
 
 const ListUsersSchema = z.object({
 	page: z.number().int().min(1).default(1),
@@ -269,4 +276,327 @@ export const deletePricingRule = os
 			.where(eq(schema.pointPricingRules.id, input.id))
 
 		return { success: true }
+	})
+
+// ---------------- AI Providers / Models ----------------
+
+const AI_PROVIDER_KINDS = ['llm', 'asr'] as const
+const AI_PROVIDER_TYPES = ['openai_compat', 'deepseek_native', 'cloudflare_asr'] as const
+
+function assertProviderKindType(kind: (typeof AI_PROVIDER_KINDS)[number], type: (typeof AI_PROVIDER_TYPES)[number]) {
+	if (kind === 'llm') {
+		if (type !== 'openai_compat' && type !== 'deepseek_native') {
+			throw new Error(`Invalid LLM provider type: ${type}`)
+		}
+		return
+	}
+	if (type !== 'cloudflare_asr') {
+		throw new Error(`Invalid ASR provider type: ${type}`)
+	}
+}
+
+const ListAiProvidersSchema = z.object({
+	kind: z.enum(AI_PROVIDER_KINDS),
+	enabledOnly: z.boolean().optional().default(false),
+})
+
+export const listAiProviders = os
+	.input(ListAiProvidersSchema)
+	.handler(async ({ input }) => {
+		const items = await listAiProvidersFromConfig({
+			kind: input.kind,
+			enabledOnly: input.enabledOnly,
+		})
+		return { items }
+	})
+
+const UpsertAiProviderSchema = z.object({
+	id: z.string().min(1).optional(),
+	slug: z.string().trim().min(1).max(50),
+	name: z.string().trim().min(1).max(200),
+	kind: z.enum(AI_PROVIDER_KINDS),
+	type: z.enum(AI_PROVIDER_TYPES),
+	baseUrl: z.string().trim().max(500).optional().nullable(),
+	apiKey: z.string().trim().max(5000).optional().nullable(),
+	enabled: z.boolean().optional(),
+	metadata: z.record(z.unknown()).optional().nullable(),
+})
+
+export const upsertAiProvider = os
+	.input(UpsertAiProviderSchema)
+	.handler(async ({ input }) => {
+		assertProviderKindType(input.kind, input.type)
+
+		const db = await getDb()
+		const now = new Date()
+
+		if (input.id) {
+			const existing = await db.query.aiProviders.findFirst({
+				where: eq(schema.aiProviders.id, input.id),
+			})
+			if (!existing) throw new Error('Provider not found')
+
+			await db
+				.update(schema.aiProviders)
+				.set({
+					slug: input.slug,
+					name: input.name,
+					kind: input.kind,
+					type: input.type,
+					baseUrl: input.baseUrl === undefined ? existing.baseUrl : input.baseUrl,
+					apiKey: input.apiKey === undefined ? existing.apiKey : input.apiKey,
+					enabled: input.enabled ?? existing.enabled,
+					metadata: input.metadata === undefined ? existing.metadata : input.metadata,
+					updatedAt: now,
+				})
+				.where(eq(schema.aiProviders.id, input.id))
+
+			invalidateAiConfigCache()
+			return { success: true }
+		}
+
+		await db.insert(schema.aiProviders).values({
+			slug: input.slug,
+			name: input.name,
+			kind: input.kind,
+			type: input.type,
+			baseUrl: input.baseUrl ?? null,
+			apiKey: input.apiKey ?? null,
+			enabled: input.enabled ?? true,
+			metadata: input.metadata ?? null,
+			createdAt: now,
+			updatedAt: now,
+		})
+
+		invalidateAiConfigCache()
+		return { success: true }
+	})
+
+const ToggleAiProviderSchema = z.object({
+	id: z.string().min(1),
+	enabled: z.boolean(),
+})
+
+export const toggleAiProvider = os
+	.input(ToggleAiProviderSchema)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+		await db
+			.update(schema.aiProviders)
+			.set({ enabled: input.enabled, updatedAt: new Date() })
+			.where(eq(schema.aiProviders.id, input.id))
+
+		invalidateAiConfigCache()
+		return { success: true }
+	})
+
+const TestAiProviderSchema = z.object({
+	providerId: z.string().min(1),
+	modelId: z.string().trim().min(1).optional(),
+})
+
+export const testAiProvider = os
+	.input(TestAiProviderSchema)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+		const provider = await db.query.aiProviders.findFirst({
+			where: eq(schema.aiProviders.id, input.providerId),
+		})
+		if (!provider) throw new Error('Provider not found')
+		if (provider.kind !== 'llm') {
+			return { success: true, message: 'ASR provider config OK (no direct test request).' }
+		}
+
+		const model = input.modelId
+			? await db.query.aiModels.findFirst({
+					where: and(
+						eq(schema.aiModels.id, input.modelId),
+						eq(schema.aiModels.providerId, input.providerId),
+						eq(schema.aiModels.kind, 'llm'),
+					),
+				})
+			: await db.query.aiModels.findFirst({
+					where: and(
+						eq(schema.aiModels.providerId, input.providerId),
+						eq(schema.aiModels.kind, 'llm'),
+						eq(schema.aiModels.enabled, true),
+					),
+					orderBy: asc(schema.aiModels.createdAt),
+				})
+
+		if (!model) {
+			throw new Error('No enabled LLM model found for this provider')
+		}
+
+		// Lightweight ping; no points billing.
+		const res = await generateText({
+			model: model.id,
+			system: 'You are a system healthcheck endpoint. Reply with OK only.',
+			prompt: 'OK',
+		})
+
+		return { success: true, message: res.text?.trim() || 'OK' }
+	})
+
+const ListAiModelsSchema = z.object({
+	kind: z.enum(AI_PROVIDER_KINDS),
+	providerId: z.string().min(1).optional(),
+	enabledOnly: z.boolean().optional().default(false),
+})
+
+export const listAiModels = os
+	.input(ListAiModelsSchema)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+
+		// Prefer config cache for the common "list all models by kind" path.
+		if (!input.providerId && !input.enabledOnly) {
+			const items = await listAiModelsFromConfig({ kind: input.kind, enabledOnly: false, db })
+			return { items }
+		}
+
+		const filters = [eq(schema.aiModels.kind, input.kind)]
+		if (input.providerId) filters.push(eq(schema.aiModels.providerId, input.providerId))
+		if (input.enabledOnly) filters.push(eq(schema.aiModels.enabled, true))
+		const whereClause = filters.length === 1 ? filters[0] : and(...filters)
+
+		const items = await db.query.aiModels.findMany({
+			where: whereClause,
+			orderBy: asc(schema.aiModels.createdAt),
+		})
+
+		return { items }
+	})
+
+const UpsertAiModelSchema = z.object({
+	id: z.string().trim().min(1).max(200),
+	kind: z.enum(AI_PROVIDER_KINDS),
+	providerId: z.string().min(1),
+	remoteModelId: z.string().trim().min(1).max(200),
+	label: z.string().trim().min(1).max(200),
+	description: z.string().trim().max(500).optional().nullable(),
+	enabled: z.boolean().optional(),
+	isDefault: z.boolean().optional(),
+	capabilities: z.record(z.unknown()).optional().nullable(),
+})
+
+export const upsertAiModel = os
+	.input(UpsertAiModelSchema)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+		const now = new Date()
+
+		const provider = await db.query.aiProviders.findFirst({
+			where: eq(schema.aiProviders.id, input.providerId),
+		})
+		if (!provider) throw new Error('Provider not found')
+		if (provider.kind !== input.kind) {
+			throw new Error(`Provider kind mismatch: provider=${provider.kind} model=${input.kind}`)
+		}
+		if (input.kind === 'asr' && input.remoteModelId !== input.id) {
+			throw new Error('ASR remoteModelId must equal id (Cloudflare run id)')
+		}
+
+		const existing = await db.query.aiModels.findFirst({
+			where: eq(schema.aiModels.id, input.id),
+		})
+
+		const enabled = input.enabled ?? existing?.enabled ?? true
+		const isDefault = input.isDefault ?? existing?.isDefault ?? false
+
+		if (isDefault) {
+			await db
+				.update(schema.aiModels)
+				.set({ isDefault: false, updatedAt: now })
+				.where(and(eq(schema.aiModels.kind, input.kind), eq(schema.aiModels.isDefault, true), ne(schema.aiModels.id, input.id)))
+		}
+
+		if (existing) {
+			await db
+				.update(schema.aiModels)
+				.set({
+					providerId: input.providerId,
+					kind: input.kind,
+					remoteModelId: input.remoteModelId,
+					label: input.label,
+					description: input.description ?? null,
+					enabled,
+					isDefault,
+					capabilities: input.capabilities ?? null,
+					updatedAt: now,
+				})
+				.where(eq(schema.aiModels.id, input.id))
+		} else {
+			await db.insert(schema.aiModels).values({
+				id: input.id,
+				providerId: input.providerId,
+				kind: input.kind,
+				remoteModelId: input.remoteModelId,
+				label: input.label,
+				description: input.description ?? null,
+				enabled,
+				isDefault,
+				capabilities: input.capabilities ?? null,
+				createdAt: now,
+				updatedAt: now,
+			})
+		}
+
+		invalidateAiConfigCache()
+		return { success: true }
+	})
+
+const ToggleAiModelSchema = z.object({
+	id: z.string().min(1),
+	enabled: z.boolean(),
+})
+
+export const toggleAiModel = os
+	.input(ToggleAiModelSchema)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+		await db
+			.update(schema.aiModels)
+			.set({ enabled: input.enabled, updatedAt: new Date() })
+			.where(eq(schema.aiModels.id, input.id))
+		invalidateAiConfigCache()
+		return { success: true }
+	})
+
+const SetDefaultAiModelSchema = z.object({
+	kind: z.enum(AI_PROVIDER_KINDS),
+	id: z.string().min(1),
+})
+
+export const setDefaultAiModel = os
+	.input(SetDefaultAiModelSchema)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+		const now = new Date()
+
+		const model = await db.query.aiModels.findFirst({
+			where: eq(schema.aiModels.id, input.id),
+		})
+		if (!model) throw new Error('Model not found')
+		if (model.kind !== input.kind) throw new Error('Model kind mismatch')
+
+		await db
+			.update(schema.aiModels)
+			.set({ isDefault: false, updatedAt: now })
+			.where(and(eq(schema.aiModels.kind, input.kind), eq(schema.aiModels.isDefault, true), ne(schema.aiModels.id, input.id)))
+
+		await db
+			.update(schema.aiModels)
+			.set({ isDefault: true, updatedAt: now })
+			.where(eq(schema.aiModels.id, input.id))
+
+		invalidateAiConfigCache()
+		return { success: true }
+	})
+
+export const getDefaultModelForKind = os
+	.input(z.object({ kind: z.enum(AI_PROVIDER_KINDS) }))
+	.handler(async ({ input }) => {
+		const cfg = await getDefaultAiModel(input.kind)
+		return { model: cfg }
 	})

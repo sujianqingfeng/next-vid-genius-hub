@@ -486,7 +486,79 @@
 			"title": "Admin Console",
 			"nav": {
 				"users": "Users",
+				"aiProviders": "AI providers",
+				"aiModels": "AI models",
 				"pricing": "Points pricing"
+			}
+		},
+		"aiProviders": {
+			"title": "AI Providers",
+			"tabs": { "llm": "LLM Providers", "asr": "ASR Providers" },
+			"empty": "No providers found",
+			"status": { "enabled": "Enabled", "disabled": "Disabled" },
+			"actions": {
+				"add": "Add provider",
+				"edit": "Edit",
+				"enable": "Enable",
+				"disable": "Disable",
+				"test": "Test",
+				"save": "Save",
+				"cancel": "Cancel"
+			},
+			"fields": {
+				"slug": "Slug",
+				"name": "Name",
+				"type": "Type",
+				"baseUrl": "Base URL",
+				"apiKey": "API key",
+				"enabled": "Enabled"
+			},
+			"dialog": {
+				"addTitle": "Add provider",
+				"editTitle": "Edit provider"
+			},
+			"toast": {
+				"saved": "Provider saved",
+				"testOk": "Provider test OK",
+				"testFail": "Provider test failed"
+			}
+		},
+		"aiModels": {
+			"title": "AI Models",
+			"tabs": { "llm": "LLM Models", "asr": "ASR Models" },
+			"empty": "No models found",
+			"status": {
+				"default": "Default",
+				"enabled": "Enabled",
+				"disabled": "Disabled"
+			},
+			"actions": {
+				"add": "Add model",
+				"edit": "Edit",
+				"enable": "Enable",
+				"disable": "Disable",
+				"setDefault": "Set default",
+				"save": "Save",
+				"cancel": "Cancel"
+			},
+			"fields": {
+				"id": "Model ID",
+				"provider": "Provider",
+				"remoteModelId": "Remote model ID",
+				"label": "Label",
+				"description": "Description",
+				"inputFormat": "Input format",
+				"supportsLanguageHint": "Supports language hint",
+				"enabled": "Enabled",
+				"isDefault": "Default"
+			},
+			"dialog": {
+				"addTitle": "Add model",
+				"editTitle": "Edit model"
+			},
+			"toast": {
+				"saved": "Model saved",
+				"defaultSet": "Default model updated"
 			}
 		},
 		"users": {

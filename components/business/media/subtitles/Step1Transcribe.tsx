@@ -14,11 +14,6 @@ import { Textarea } from '~/components/ui/textarea'
 import { Input } from '~/components/ui/input'
 import { Switch } from '~/components/ui/switch'
 import { Label } from '~/components/ui/label'
-import {
-	getAvailableModels,
-	getModelLabel,
-	WHISPER_MODELS,
-} from '~/lib/subtitle/config/models'
 import type { WhisperModel } from '~/lib/subtitle/config/models'
 import { DEFAULT_CHAT_MODEL_ID, type ChatModelId } from '~/lib/ai/models'
 import { ChatModelSelect } from '~/components/business/media/subtitles/ChatModelSelect'
@@ -29,6 +24,8 @@ import {
 	type TranscriptionLanguage,
 } from '~/lib/subtitle/config/languages'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
+import { useQuery } from '@tanstack/react-query'
+import { queryOrpc } from '~/lib/orpc/query-client'
 
 interface Step1TranscribeProps {
 	selectedModel: WhisperModel
@@ -81,8 +78,29 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 		asrProgress,
 	} = props
 	const effectiveAIModel = selectedAIModel ?? DEFAULT_CHAT_MODEL_ID
+	const asrModelsQuery = useQuery(
+		queryOrpc.ai.listModels.queryOptions({
+			input: { kind: 'asr', enabledOnly: true },
+		}),
+	)
+	const availableModels = asrModelsQuery.data?.items ?? []
+	type AsrCaps = {
+		inputFormat?: 'binary' | 'array' | 'base64'
+		supportsLanguageHint?: boolean
+	}
+	const selectedAsrModel = availableModels.find((m) => m.id === selectedModel)
+	const asrCaps = selectedAsrModel?.capabilities as AsrCaps | null | undefined
+	const supportsLanguageHint = Boolean(asrCaps?.supportsLanguageHint)
 
-	const availableModels = getAvailableModels('cloudflare')
+	const llmModelsQuery = useQuery(
+		queryOrpc.ai.listModels.queryOptions({
+			input: { kind: 'llm', enabledOnly: true },
+		}),
+	)
+	const llmModelOptions = (llmModelsQuery.data?.items ?? []).map((m) => ({
+		id: m.id as ChatModelId,
+		label: m.label,
+	}))
 
 	// 使用配置化的模型信息，移除硬编码
 
@@ -147,8 +165,8 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 								</SelectTrigger>
 								<SelectContent>
 									{availableModels.map((model) => (
-										<SelectItem key={model} value={model}>
-											{getModelLabel(model)}
+										<SelectItem key={model.id} value={model.id}>
+											{model.label || model.id}
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -159,7 +177,7 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 							<label className="text-sm font-medium block">
 								Language{' '}
 								{selectedModel &&
-									!WHISPER_MODELS[selectedModel]?.supportsLanguageHint && (
+									!supportsLanguageHint && (
 										<span className="text-xs text-muted-foreground">(仅 Large v3 Turbo 支持)</span>
 									)}
 							</label>
@@ -171,7 +189,7 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 								disabled={
 									isPending ||
 									(selectedModel &&
-										!WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
+										!supportsLanguageHint)
 								}
 							>
 								<SelectTrigger className="w-full">
@@ -245,6 +263,7 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 						<ChatModelSelect
 							value={effectiveAIModel}
 							onChange={(model) => onOptimizeModelChange?.(model)}
+							models={llmModelOptions}
 							disabled={isOptimizing}
 						/>
 					</div>

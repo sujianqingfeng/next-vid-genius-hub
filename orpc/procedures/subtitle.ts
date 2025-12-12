@@ -1,22 +1,22 @@
 import { os } from '@orpc/server'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { AIModelIds } from '~/lib/ai/models'
 import { subtitleRenderConfigSchema } from '~/lib/subtitle/types'
 import { subtitleService } from '~/lib/subtitle/server/subtitle'
-import { cloudflareInputFormatSchema, whisperModelSchema } from '~/lib/subtitle/config/models'
+import { cloudflareInputFormatSchema } from '~/lib/subtitle/config/models'
 import { getDb, schema } from '~/lib/db'
 import type { RequestContext } from '~/lib/auth/types'
 import { getJobStatus } from '~/lib/cloudflare'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
 import { throwInsufficientPointsError } from '~/lib/orpc/errors'
+import { getDefaultAiModel, isEnabledModel } from '~/lib/ai/config/service'
 
 export const transcribe = os
   .input(
     z.object({
       mediaId: z.string(),
-      model: whisperModelSchema,
+      model: z.string().min(1),
       language: z.string().min(2).max(16).optional(),
       inputFormat: cloudflareInputFormatSchema.optional(),
     }),
@@ -31,7 +31,10 @@ export const transcribe = os
   	if (!media) {
   		throw new Error('Media not found')
   	}
-  	const res = await subtitleService.transcribe(input)
+		if (!(await isEnabledModel('asr', input.model, db))) {
+			throw new Error(`ASR model ${input.model} is not enabled`)
+		}
+  		const res = await subtitleService.transcribe(input)
 
   	// Billing for ASR usage is now handled in the ASR callback handler based on media.duration
   	return { success: true, jobId: res.jobId, durationSeconds: res.durationSeconds, model: input.model, userId }
@@ -39,24 +42,29 @@ export const transcribe = os
 
 const translateInput = z.object({
   mediaId: z.string(),
-  model: z.enum(AIModelIds),
+  model: z.string().trim().min(1).optional(),
   promptId: z.string().optional(),
 });
 export const translate = os.input(translateInput).handler(async ({ input, context }) => {
   const ctx = context as RequestContext
   const userId = ctx.auth.user!.id
   const db = await getDb()
+  const defaultModel = await getDefaultAiModel('llm', db)
+  const modelId = input.model ?? defaultModel?.id
+  if (!modelId || !(await isEnabledModel('llm', modelId, db))) {
+    throw new Error('LLM model is not enabled')
+  }
   const media = await db.query.media.findFirst({
     where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
   })
   if (!media) {
     throw new Error("Media not found")
   }
-  const res = await subtitleService.translate(input)
+  const res = await subtitleService.translate({ ...input, model: modelId })
   try {
     await chargeLlmUsage({
       userId,
-      modelId: input.model,
+      modelId,
       inputTokens: res.usage?.inputTokens ?? 0,
       outputTokens: res.usage?.outputTokens ?? 0,
       refType: 'subtitle-translate',
@@ -148,7 +156,7 @@ export const optimizeTranscription = os
   .input(
     z.object({
       mediaId: z.string(),
-      model: z.enum(AIModelIds),
+      model: z.string().trim().min(1).optional(),
       pauseThresholdMs: z.number().min(0).max(5000).default(480),
       maxSentenceMs: z.number().min(1000).max(30000).default(8000),
       maxChars: z.number().min(10).max(160).default(68),
@@ -160,17 +168,22 @@ export const optimizeTranscription = os
     const ctx = context as RequestContext
     const userId = ctx.auth.user!.id
     const db = await getDb()
+    const defaultModel = await getDefaultAiModel('llm', db)
+    const modelId = input.model ?? defaultModel?.id
+    if (!modelId || !(await isEnabledModel('llm', modelId, db))) {
+      throw new Error('LLM model is not enabled')
+    }
     const media = await db.query.media.findFirst({
       where: and(eq(schema.media.id, input.mediaId), eq(schema.media.userId, userId)),
     })
     if (!media) {
       throw new Error("Media not found")
     }
-    const res = await subtitleService.optimizeTranscription(input)
+    const res = await subtitleService.optimizeTranscription({ ...input, model: modelId })
     try {
       await chargeLlmUsage({
         userId,
-        modelId: input.model,
+        modelId,
         inputTokens: res.usage?.inputTokens ?? 0,
         outputTokens: res.usage?.outputTokens ?? 0,
         refType: 'subtitle-optimize',

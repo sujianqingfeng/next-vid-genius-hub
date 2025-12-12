@@ -55,7 +55,8 @@ export const models = [
 	...whisperModels,
 ] as const
 
-export type AIModelId = (typeof models)[number]['id']
+// Runtime model IDs are DB-configurable; keep legacy static lists for seed/UI only.
+export type AIModelId = string
 
 export const AIModelIds = models.map((m) => m.id)
 
@@ -67,6 +68,6 @@ const chatModelProviders = [
 
 export const ChatModelIds = chatModelProviders.map((m) => m.id)
 
-export type ChatModelId = (typeof chatModelProviders)[number]['id']
+export type ChatModelId = string
 
 export const DEFAULT_CHAT_MODEL_ID: ChatModelId = 'packycode/gpt-5.1'

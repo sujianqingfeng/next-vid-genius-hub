@@ -1,20 +1,25 @@
 import { z } from 'zod'
 
 /**
- * Whisper 模型与转录 Provider 配置
- * 统一管理所有转录相关的模型定义和配置（包括 Zod Schema）
+ * ASR（Whisper / Workers AI）模型与转录 Provider 配置
+ *
+ * 注意：
+ * - 后端实际可用 ASR 模型来源于 DB（ai_models.kind='asr'）。
+ * - 这里保留一份 Cloudflare Workers AI 的默认/兜底列表，供客户端在未拉取动态列表时使用。
  */
 
 export const TRANSCRIPTION_PROVIDERS = ['cloudflare'] as const
 export type TranscriptionProvider = (typeof TRANSCRIPTION_PROVIDERS)[number]
 
+// Cloudflare Workers AI run ids (legacy fallback list)
 export const WHISPER_MODEL_IDS = [
-	'whisper-medium',
-	'whisper-tiny-en',
-	'whisper-large-v3-turbo',
+	'@cf/openai/whisper-tiny-en',
+	'@cf/openai/whisper-large-v3-turbo',
+	'@cf/openai/whisper',
 ] as const
 
-export type WhisperModel = (typeof WHISPER_MODEL_IDS)[number]
+// Runtime ASR model IDs are DB-configurable; keep legacy list for fallback/UI only.
+export type WhisperModel = string
 
 export type CloudflareInputFormat = 'binary' | 'array' | 'base64'
 
@@ -29,31 +34,31 @@ export interface WhisperModelConfig {
 }
 
 /**
- * 所有支持的Whisper模型配置
+ * 所有支持的 ASR 模型兜底配置
  */
 export const WHISPER_MODELS: Record<WhisperModel, WhisperModelConfig> = {
-	'whisper-medium': {
-		id: 'whisper-medium',
-		label: 'Whisper Medium',
-		description: 'Balanced quality and speed',
+	'@cf/openai/whisper-tiny-en': {
+		id: '@cf/openai/whisper-tiny-en',
+		label: 'Whisper Tiny (EN)',
+		description: 'Fast, English only',
 		providers: ['cloudflare'],
 		isDefault: true,
 		cloudflareInputFormat: 'binary',
 	},
-	'whisper-tiny-en': {
-		id: 'whisper-tiny-en',
-		label: 'Whisper Tiny (EN)',
-		description: 'Fast, English only',
-		providers: ['cloudflare'],
-		cloudflareInputFormat: 'binary',
-	},
-	'whisper-large-v3-turbo': {
-		id: 'whisper-large-v3-turbo',
+	'@cf/openai/whisper-large-v3-turbo': {
+		id: '@cf/openai/whisper-large-v3-turbo',
 		label: 'Whisper Large v3 Turbo',
 		description: 'High quality, faster processing',
 		providers: ['cloudflare'],
 		supportsLanguageHint: true,
 		cloudflareInputFormat: 'base64',
+	},
+	'@cf/openai/whisper': {
+		id: '@cf/openai/whisper',
+		label: 'Whisper (Medium)',
+		description: 'Balanced quality and speed',
+		providers: ['cloudflare'],
+		cloudflareInputFormat: 'binary',
 	},
 } as const
 

@@ -7,7 +7,6 @@ import { deleteCloudArtifacts, getJobStatus, startCloudJob, putJobManifest, type
 import type { JobStatusResponse } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
-import { ChatModelIds, type ChatModelId } from '~/lib/ai/models'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { bucketPaths } from '@app/media-domain'

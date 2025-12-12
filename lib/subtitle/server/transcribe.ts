@@ -2,24 +2,34 @@ import { eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
-import { type CloudflareInputFormat, type WhisperModel, WHISPER_MODELS } from '~/lib/subtitle/config/models'
+import { type CloudflareInputFormat } from '~/lib/subtitle/config/models'
 import { startCloudJob, putJobManifest, type JobManifest } from '~/lib/cloudflare'
 import { TASK_KINDS } from '~/lib/job/task'
+import { getAiModelConfig } from '~/lib/ai/config/service'
 
 export async function transcribe(input: {
 	mediaId: string
-	model: WhisperModel
+	model: string
 	language?: string
 	inputFormat?: CloudflareInputFormat
 }): Promise<{ success: true; jobId: string; durationSeconds: number }> {
 	const { mediaId, model } = input
 	const normalizedLanguage =
 		input.language && input.language !== 'auto' ? input.language : undefined
-	const modelConfig = WHISPER_MODELS[model]
-	const supportsLanguageHint = Boolean(modelConfig?.supportsLanguageHint)
+
+	const modelCfg = await getAiModelConfig(model)
+	if (!modelCfg || modelCfg.kind !== 'asr' || !modelCfg.enabled) {
+		throw new Error(`ASR model ${model} is not available`)
+	}
+	if (!modelCfg.provider.enabled || modelCfg.provider.kind !== 'asr') {
+		throw new Error(`ASR provider for model ${model} is not available`)
+	}
+
+	const caps = (modelCfg.capabilities as any) || {}
+	const supportsLanguageHint = Boolean(caps.supportsLanguageHint)
 	const languageForCloud = supportsLanguageHint ? normalizedLanguage : undefined
 	const cloudflareInputFormat: CloudflareInputFormat =
-		input.inputFormat ?? modelConfig?.cloudflareInputFormat ?? 'binary'
+		input.inputFormat ?? (caps.inputFormat as CloudflareInputFormat | undefined) ?? 'binary'
 
 	logger.info('transcription', `Starting transcription for media ${mediaId} with cloudflare/${model}`)
 
@@ -49,16 +59,7 @@ export async function transcribe(input: {
 		.split(',')
 		.map((s) => Number(s.trim()))
 		.filter((n) => Number.isFinite(n) && n > 0)
-	const cloudflareModelMap: Record<
-		string,
-		'@cf/openai/whisper-tiny-en' | '@cf/openai/whisper-large-v3-turbo' | '@cf/openai/whisper'
-	> = {
-		'whisper-tiny-en': '@cf/openai/whisper-tiny-en',
-		'whisper-large-v3-turbo': '@cf/openai/whisper-large-v3-turbo',
-		'whisper-medium': '@cf/openai/whisper',
-	}
-	const modelId = cloudflareModelMap[model]
-	if (!modelId) throw new Error(`Model ${model} is not supported by Cloudflare provider`)
+	const modelId = modelCfg.remoteModelId
 
 	const taskId = createId()
 	const now = new Date()

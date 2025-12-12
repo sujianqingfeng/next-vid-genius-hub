@@ -4,7 +4,6 @@ import { and, desc, eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
 import { translateTextWithUsage } from '~/lib/ai/translate'
-import { type AIModelId, AIModelIds } from '~/lib/ai/models'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import {
 	startCloudJob,
@@ -21,6 +20,7 @@ import { TASK_KINDS } from '~/lib/job/task'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
 import { throwInsufficientPointsError } from '~/lib/orpc/errors'
+import { getDefaultAiModel, isEnabledModel } from '~/lib/ai/config/service'
 
 const CreateChannelInput = z.object({
 	channelUrlOrId: z.string().min(1),
@@ -517,13 +517,18 @@ export const translateVideoTitles = os
 		z.object({
 			channelId: z.string().min(1),
 			limit: z.number().min(1).max(100).default(20),
-			model: z.enum(AIModelIds).default('openai/gpt-4o-mini' as AIModelId),
+			model: z.string().trim().min(1).optional(),
 		}),
 	)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
 		const userId = ctx.auth.user!.id
 		const db = await getDb()
+		const defaultModel = await getDefaultAiModel('llm', db)
+		const modelId = input.model ?? defaultModel?.id
+		if (!modelId || !(await isEnabledModel('llm', modelId, db))) {
+			throw new Error('LLM model is not enabled')
+		}
 		const ch = await db.query.channels.findFirst({
 			where: and(
 				eq(schema.channels.id, input.channelId),
@@ -550,7 +555,7 @@ export const translateVideoTitles = os
 				if (!text.trim()) {
 					return { id: r.id, translation: '' }
 				}
-				const res = await translateTextWithUsage(text, input.model)
+				const res = await translateTextWithUsage(text, modelId)
 				totalInputTokens += res.usage.inputTokens
 				totalOutputTokens += res.usage.outputTokens
 				return { id: r.id, translation: res.translation }
@@ -560,7 +565,7 @@ export const translateVideoTitles = os
 		try {
 			await chargeLlmUsage({
 				userId,
-				modelId: input.model,
+				modelId,
 				inputTokens: totalInputTokens,
 				outputTokens: totalOutputTokens,
 				refType: 'channel-translate',

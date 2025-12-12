@@ -2,14 +2,14 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
-	ChatModelIds,
 	DEFAULT_CHAT_MODEL_ID,
 	type ChatModelId,
 } from '~/lib/ai/models'
 import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
-import { getDefaultModel, WHISPER_MODELS, type WhisperModel } from '~/lib/subtitle/config/models'
+import type { WhisperModel } from '~/lib/subtitle/config/models'
 import type {
 	SubtitleRenderConfig,
 	SubtitleStepId,
@@ -43,17 +43,31 @@ export function useSubtitleActions({
 }: UseSubtitleActionsOptions) {
 	const queryClient = useQueryClient()
 
+	const asrDefaultQuery = useQuery(
+		queryOrpc.ai.getDefaultModel.queryOptions({ input: { kind: 'asr' } }),
+	)
+	const asrDefaultId = asrDefaultQuery.data?.model?.id
 	const selectedModel: WhisperModel =
-		workflowState.selectedModel ?? getDefaultModel('cloudflare')
-	const selectedModelConfig = WHISPER_MODELS[selectedModel]
+		workflowState.selectedModel ?? asrDefaultId ?? '@cf/openai/whisper-tiny-en'
 
+	type AsrCaps = {
+		inputFormat?: 'binary' | 'array' | 'base64'
+		supportsLanguageHint?: boolean
+	}
+	const asrModelsQuery = useQuery(
+		queryOrpc.ai.listModels.queryOptions({
+			input: { kind: 'asr', enabledOnly: true },
+		}),
+	)
+	const asrModels = asrModelsQuery.data?.items ?? []
+
+	const llmDefaultQuery = useQuery(
+		queryOrpc.ai.getDefaultModel.queryOptions({ input: { kind: 'llm' } }),
+	)
+	const llmDefaultId = llmDefaultQuery.data?.model?.id
 	const initialChatModel = useMemo<ChatModelId>(() => {
-		const configured =
-			(ChatModelIds as readonly ChatModelId[]).find(
-				(id) => id === DEFAULT_CHAT_MODEL_ID,
-			) ?? (ChatModelIds[0] as ChatModelId | undefined)
-		return configured ?? DEFAULT_CHAT_MODEL_ID
-	}, [])
+		return (llmDefaultId as ChatModelId | undefined) ?? DEFAULT_CHAT_MODEL_ID
+	}, [llmDefaultId])
 
 	const selectedAIModel: ChatModelId =
 		workflowState.selectedAIModel ?? initialChatModel
@@ -212,8 +226,10 @@ export function useSubtitleActions({
 		: null
 
 	const handleStartTranscription = () => {
-			const canHintLanguage = Boolean(WHISPER_MODELS[selectedModel]?.supportsLanguageHint)
-			const cloudflareInputFormat = selectedModelConfig?.cloudflareInputFormat ?? 'binary'
+			const selectedAsrModel = asrModels.find((m) => m.id === selectedModel)
+			const caps = selectedAsrModel?.capabilities as AsrCaps | null | undefined
+			const canHintLanguage = Boolean(caps?.supportsLanguageHint)
+			const cloudflareInputFormat = caps?.inputFormat ?? 'binary'
 			logger.info(
 				'transcription',
 				`User started transcription: cloudflare/${selectedModel} for media ${mediaId}`,

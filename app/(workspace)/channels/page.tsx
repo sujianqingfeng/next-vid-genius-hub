@@ -13,7 +13,6 @@ import { ProxySelector } from '~/components/business/proxy/proxy-selector'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import {
-	ChatModelIds,
 	DEFAULT_CHAT_MODEL_ID,
 	type ChatModelId,
 } from '~/lib/ai/models'
@@ -34,12 +33,25 @@ export default function ChannelsPage() {
 		Record<string, string>
 	>({})
 	const [expanded, setExpanded] = React.useState<Record<string, boolean>>({})
+	const llmModelsQuery = useQuery(
+		queryOrpc.ai.listModels.queryOptions({
+			input: { kind: 'llm', enabledOnly: true },
+		}),
+	)
+	const llmDefaultQuery = useQuery(
+		queryOrpc.ai.getDefaultModel.queryOptions({
+			input: { kind: 'llm' },
+		}),
+	)
+	const llmDefaultId =
+		llmDefaultQuery.data?.model?.id ?? DEFAULT_CHAT_MODEL_ID
+	const llmModelOptions = (llmModelsQuery.data?.items ?? []).map((m) => ({
+		id: m.id as ChatModelId,
+		label: m.label,
+	}))
 	const defaultChannelModel = React.useMemo<ChatModelId>(() => {
-		const configured =
-			ChatModelIds.find((id) => id === DEFAULT_CHAT_MODEL_ID) ??
-			ChatModelIds[0]
-		return (configured ?? DEFAULT_CHAT_MODEL_ID) as ChatModelId
-	}, [])
+		return llmDefaultId as ChatModelId
+	}, [llmDefaultId])
 	const [selectedModelByChannel, setSelectedModelByChannel] = React.useState<
 		Record<string, ChatModelId>
 	>({})
@@ -450,6 +462,7 @@ function ChannelCard({
 								<ChatModelSelect
 									value={selectedModel}
 									onChange={onSelectModel}
+									models={llmModelOptions}
 									disabled={translateMutation.isPending}
 									triggerClassName="w-full bg-background/50 border-border/50"
 								/>

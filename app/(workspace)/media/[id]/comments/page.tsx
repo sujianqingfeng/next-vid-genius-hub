@@ -43,7 +43,6 @@ import {
 } from '~/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import {
-	ChatModelIds,
 	DEFAULT_CHAT_MODEL_ID,
 	type ChatModelId,
 } from '~/lib/ai/models'
@@ -90,6 +89,31 @@ export default function CommentsPage() {
 	const [templateId, setTemplateId] =
 		useState<RemotionTemplateId>(DEFAULT_TEMPLATE_ID)
 	const confirmDialog = useConfirmDialog()
+
+	const llmModelsQuery = useQuery(
+		queryOrpc.ai.listModels.queryOptions({
+			input: { kind: 'llm', enabledOnly: true },
+		}),
+	)
+	const llmModelOptions = (llmModelsQuery.data?.items ?? []).map((m) => ({
+		id: m.id as ChatModelId,
+		label: m.label,
+	}))
+	useQuery({
+		...queryOrpc.ai.getDefaultModel.queryOptions({
+			input: { kind: 'llm' },
+		}),
+		onSuccess: (data) => {
+			const id = data?.model?.id
+			if (!id) return
+			setModel((m) =>
+				m === DEFAULT_CHAT_MODEL_ID ? (id as ChatModelId) : m,
+			)
+			setModModel((m) =>
+				m === DEFAULT_CHAT_MODEL_ID ? (id as ChatModelId) : m,
+			)
+		},
+	})
 
 	// Edit titles dialog
 	const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -737,9 +761,9 @@ export default function CommentsPage() {
 															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
-															{ChatModelIds.map((modelId) => (
-																<SelectItem key={modelId} value={modelId}>
-																	{modelId}
+															{llmModelOptions.map((m) => (
+																<SelectItem key={m.id} value={m.id}>
+																	{m.label || m.id}
 																</SelectItem>
 															))}
 														</SelectContent>
@@ -797,9 +821,9 @@ export default function CommentsPage() {
 															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
-															{ChatModelIds.map((modelId) => (
-																<SelectItem key={modelId} value={modelId}>
-																	{modelId}
+															{llmModelOptions.map((m) => (
+																<SelectItem key={m.id} value={m.id}>
+																	{m.label || m.id}
 																</SelectItem>
 															))}
 														</SelectContent>

@@ -485,7 +485,79 @@
 			"title": "管理后台",
 			"nav": {
 				"users": "用户管理",
+				"aiProviders": "AI 提供商",
+				"aiModels": "AI 模型",
 				"pricing": "计价规则"
+			}
+		},
+		"aiProviders": {
+			"title": "AI 提供商",
+			"tabs": { "llm": "LLM 提供商", "asr": "ASR 提供商" },
+			"empty": "暂无提供商",
+			"status": { "enabled": "已启用", "disabled": "已停用" },
+			"actions": {
+				"add": "新增提供商",
+				"edit": "编辑",
+				"enable": "启用",
+				"disable": "停用",
+				"test": "测试",
+				"save": "保存",
+				"cancel": "取消"
+			},
+			"fields": {
+				"slug": "标识",
+				"name": "名称",
+				"type": "类型",
+				"baseUrl": "Base URL",
+				"apiKey": "API Key",
+				"enabled": "启用"
+			},
+			"dialog": {
+				"addTitle": "新增提供商",
+				"editTitle": "编辑提供商"
+			},
+			"toast": {
+				"saved": "提供商已保存",
+				"testOk": "提供商测试通过",
+				"testFail": "提供商测试失败"
+			}
+		},
+		"aiModels": {
+			"title": "AI 模型",
+			"tabs": { "llm": "LLM 模型", "asr": "ASR 模型" },
+			"empty": "暂无模型",
+			"status": {
+				"default": "默认",
+				"enabled": "已启用",
+				"disabled": "已停用"
+			},
+			"actions": {
+				"add": "新增模型",
+				"edit": "编辑",
+				"enable": "启用",
+				"disable": "停用",
+				"setDefault": "设为默认",
+				"save": "保存",
+				"cancel": "取消"
+			},
+			"fields": {
+				"id": "模型 ID",
+				"provider": "提供商",
+				"remoteModelId": "远端模型 ID",
+				"label": "显示名称",
+				"description": "描述",
+				"inputFormat": "输入格式",
+				"supportsLanguageHint": "支持语言提示",
+				"enabled": "启用",
+				"isDefault": "默认"
+			},
+			"dialog": {
+				"addTitle": "新增模型",
+				"editTitle": "编辑模型"
+			},
+			"toast": {
+				"saved": "模型已保存",
+				"defaultSet": "默认模型已更新"
 			}
 		},
 		"users": {
