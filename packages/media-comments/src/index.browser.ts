@@ -64,7 +64,7 @@ export async function inlineRemoteImage(url?: string | null, { timeoutMs = 15000
     const bytes = new Uint8Array(arrayBuffer)
     for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
     // Note: btoa is a browser API
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+     
     // @ts-ignore
     const base64 = typeof btoa === 'function' ? btoa(binary) : ''
     const contentType = r.headers.get('content-type') || inferContentTypeFromUrl(url) || 'image/jpeg'

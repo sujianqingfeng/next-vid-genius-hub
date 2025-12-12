@@ -13,7 +13,7 @@ function decodeBase64(input: string): string {
 	if (typeof atob === 'function') {
 		return atob(input)
 	}
-	// eslint-disable-next-line no-restricted-globals
+	 
 	// @ts-ignore - Buffer is not available on Edge, but fallback only runs in Node
 	return Buffer.from(input, 'base64').toString('utf-8')
 }

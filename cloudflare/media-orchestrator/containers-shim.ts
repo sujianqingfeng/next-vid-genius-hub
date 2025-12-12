@@ -4,7 +4,7 @@
 // - class Container (for metadata on [[containers]] entries)
 // - function getContainer(binding, id) -> returns an object with fetch()
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+ 
 export class Container {
   // Default port the container exposes; used only as metadata by Wrangler/Workers
   // Concrete values are set by subclasses in containers.ts

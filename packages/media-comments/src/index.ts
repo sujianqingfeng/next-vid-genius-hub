@@ -65,7 +65,7 @@ function abToBase64(ab: ArrayBuffer) {
 	const len = bytes.byteLength
 	for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i])
 	// Note: btoa is only available in browser environments
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+	 
 	// @ts-ignore
 	return typeof btoa === 'function' ? btoa(binary) : ''
 }
@@ -73,7 +73,7 @@ function abToBase64(ab: ArrayBuffer) {
 async function loadUndiciSafely(): Promise<any | undefined> {
 	if (!hasNode()) return undefined
 	try {
-		// eslint-disable-next-line no-new-func
+		 
 		const dynImport = Function('m', 'return import(m)') as (m: string) => Promise<any>
 		return await dynImport('undici')
 	} catch {

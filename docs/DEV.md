@@ -15,9 +15,9 @@
 
 ### lib 目录约定（新增）
 
-- 领域模块：`auth` / `media` / `subtitle` / `asr` / `points` / `providers` / `ai`
-- 基础设施：`config` / `db` / `logger` / `storage` / `proxy` / `orpc` / `query`
-- 横切：`hooks` / `utils` / `types`
+- 领域模块：`auth` / `media` / `subtitle`（含 ASR） / `points` / `providers` / `ai` / `job`
+- 基础设施：`config` / `db` / `logger` / `storage` / `proxy` / `orpc` / `query` / `cloudflare`
+- 横切：`errors` / `hooks` / `utils` / `types`
 - 规则：
   - 领域内的 types/hooks/utils/server 均放在 `lib/<domain>/**`。
   - `lib/types` 仅放跨领域类型（例如 provider 类型）；领域内类型放各自 `lib/<domain>/types`。
@@ -42,22 +42,23 @@ Compose 只负责拉起各类媒体容器；对象存储直接指向 Cloudflare 
 
 ## Worker 本地配置
 
-`cloudflare/media-orchestrator/wrangler.toml` 已默认将 `S3_ENDPOINT/S3_INTERNAL_ENDPOINT` 指向 Cloudflare R2（`https://<account>.r2.cloudflarestorage.com`，`S3_STYLE=vhost`）。确保 `.env` 中提供 `S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY`（使用 `wrangler secret put` 注入生产环境）即可。若短暂离线需要回退 MinIO，可临时改成 MinIO 端点并自行运行 MinIO。
+仓库根目录的 `wrangler.toml` 已默认将 `S3_ENDPOINT/S3_INTERNAL_ENDPOINT` 指向 Cloudflare R2（`https://<account>.r2.cloudflarestorage.com`，`S3_STYLE=vhost`）。确保通过 `wrangler secret put` 提供 `S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY` 即可。若短暂离线需要回退 MinIO，可临时改成 MinIO 端点并自行运行 MinIO。
 
 运行 Worker：
 
 ```bash
-pnpm cf:dev
+pnpm cf:dev      # 完整本地环境（Cloudflare Containers + R2）
+# 或
+pnpm cf:dev:lite # 轻量模式，仅使用外部 Docker 容器
 ```
 
 ### Workers AI（ASR）凭据（方案 A）
 
 字幕 Step 1 若选择 Cloud（或降采样后端为 cloud/auto 触发 asr-pipeline），Worker 需要有 Workers AI 的 REST 凭据，否则会报错 `asr-pipeline: Workers AI credentials not configured`。
 
-本地开发强烈建议使用 wrangler secret 注入（不要把密钥写入仓库）：
+本地开发强烈建议使用 wrangler secret 注入（不要把密钥写入仓库）。在仓库根目录（`wrangler.toml` 所在位置）执行：
 
 ```bash
-cd cloudflare/media-orchestrator
 wrangler secret put CF_AI_ACCOUNT_ID   # 你的 Cloudflare Account ID（供 Workers AI 使用）
 wrangler secret put CF_AI_API_TOKEN    # 具有 Workers AI 访问权限的 API Token
 ```
@@ -73,7 +74,7 @@ pnpm cf:dev
 ## Next 本地
 
 ```bash
-pnpm dev:host   # 监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中转）
+pnpm dev        # 或 pnpm dev:host；当前脚本均监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中转）
 ```
 
 ## 桶优先与每任务清单（job manifest）

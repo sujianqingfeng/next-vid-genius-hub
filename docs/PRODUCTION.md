@@ -33,15 +33,14 @@
 
 ## Worker（Orchestrator）生产配置
 
-目录：`cloudflare/media-orchestrator/`
+代码目录：`cloudflare/media-orchestrator/`，Worker 配置文件：仓库根目录的 `wrangler.toml`。
 
-1) 绑定 KV 与 R2（wrangler.toml）
+1) 绑定 KV 与 R2（节选自 wrangler.toml）
 
 ```toml
 name = "media-orchestrator"
-main = "index.ts"
-compatibility_date = "2024-05-01"
-workers_dev = false  # 生产建议关闭，使用 routes
+main = "cloudflare/media-orchestrator/index.ts"
+compatibility_date = "2025-10-19"
 
 [[kv_namespaces]]
 binding = "JOBS"
@@ -54,16 +53,20 @@ bucket_name = "vidgen-render"  # 与实际桶名一致
 [vars]
 JOB_TTL_SECONDS = 86400
 CONTAINER_BASE_URL = "https://<subtitle-container-endpoint>"
+CONTAINER_BASE_URL_AUDIO = "https://<audio-transcoder-endpoint>"
 CONTAINER_BASE_URL_REMOTION = "https://<remotion-container-endpoint>"
 CONTAINER_BASE_URL_DOWNLOADER = "https://<media-downloader-endpoint>"
-NEXT_BASE_URL = "https://<your-next-app-domain>"         # 供 Worker 回调 Next 使用
-ORCHESTRATOR_BASE_URL_NEXT = "https://<your-worker-domain>" # 供 Next 拉取 artifacts（兜底）
+NEXT_BASE_URL = "https://<your-next-app-domain>"              # 供 Worker 回调 Next 使用
+ORCHESTRATOR_BASE_URL_CONTAINER = "https://<your-worker-domain>" # 供容器识别 Orchestrator 对外地址（回调等）
 
-# R2 直连（强烈建议生产启用）
-R2_S3_ENDPOINT = "<accountid>.r2.cloudflarestorage.com"
-R2_ACCESS_KEY_ID = "<access-key>"
-R2_SECRET_ACCESS_KEY = "<secret-key>"
-R2_BUCKET_NAME = "vidgen-render"
+# R2 直连（强烈建议生产启用，S3 兼容配置）
+S3_ENDPOINT = "https://<accountid>.r2.cloudflarestorage.com"
+S3_INTERNAL_ENDPOINT = "https://<accountid>.r2.cloudflarestorage.com" # 容器从内网访问时可指向内网域名
+S3_ACCESS_KEY_ID = "<access-key>"
+S3_SECRET_ACCESS_KEY = "<secret-key>"
+S3_BUCKET_NAME = "vidgen-render"
+S3_STYLE = "vhost"
+S3_REGION = "auto"
 
 ```
 
@@ -118,10 +121,9 @@ pnpm cf:deploy
 
 5) Workers AI 凭据（ASR，方案 A）
 
-生产环境不要把密钥写入 `wrangler.toml`。通过 wrangler secrets 注入 Worker 运行时可见的变量（与本地一致）：
+生产环境不要把密钥写入 `wrangler.toml`。通过 wrangler secrets 注入 Worker 运行时可见的变量（与本地一致），在仓库根目录执行：
 
 ```bash
-cd cloudflare/media-orchestrator
 wrangler secret put CF_AI_ACCOUNT_ID   # 你的 Cloudflare Account ID（供 Workers AI 使用）
 wrangler secret put CF_AI_API_TOKEN    # 具有 Workers AI 访问权限的 API Token
 ```
@@ -192,7 +194,7 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 
 ## 模式
 
-- 生产/开发统一：设置 `R2_S3_*`（或使用 R2 绑定），容器仅与 R2 交互，Worker 检测 R2 输出完成 → 回调 Next 落库；无 Next 中转。
+- 生产/开发统一：在 `wrangler.toml` 中配置好 `S3_*`（或使用 R2 绑定），容器仅与 R2 交互，Worker 检测 R2 输出完成 → 回调 Next 落库；无 Next 中转。
 
 ### 产物回传策略
 
