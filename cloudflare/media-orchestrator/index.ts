@@ -227,12 +227,10 @@ async function getSigningKey(secret: string, date: string, region: string, servi
 }
 
 async function readJobManifest(env: Env, jobId: string): Promise<JobManifest | null> {
-  if (!env.RENDER_BUCKET) return null
   const key = bucketPaths.manifests.job(jobId)
+  const text = await readObjectTextWithFallback(env, key)
+  if (!text) return null
   try {
-    const obj = await env.RENDER_BUCKET.get(key)
-    if (!obj) return null
-    const text = await obj.text()
     return JSON.parse(text) as JobManifest
   } catch {
     return null
@@ -670,15 +668,12 @@ async function materializeSubtitlesInput(env: Env, doc: any) {
   const mediaId: string | undefined = doc?.mediaId
   const sourceKey: string | undefined = doc?.outputKey
   if (!mediaId || !sourceKey) return
-  if (!env.RENDER_BUCKET) throw new Error('RENDER_BUCKET is not configured for materialization')
   const pathOptions = { title: (doc?.title as string | undefined) }
   const targetKey = bucketPaths.inputs.subtitledVideo(mediaId, pathOptions)
-  // Skip if already materialized
-  const head = await env.RENDER_BUCKET.head(targetKey)
-  if (head) return
-  const obj = await env.RENDER_BUCKET.get(sourceKey)
-  if (!obj) throw new Error('sourceKey not found in R2')
-  await env.RENDER_BUCKET.put(targetKey, obj.body as ReadableStream, { httpMetadata: { contentType: 'video/mp4' } })
+  // Skip if already materialized（优先使用 R2 绑定，缺失时回退到 S3）
+  const exists = await objectExistsWithFallback(env, targetKey)
+  if (exists) return
+  await copyObjectWithFallback(env, sourceKey, targetKey, 'video/mp4')
 }
 
 async function runAsrForPipeline(env: Env, doc: any) {
@@ -828,10 +823,10 @@ async function handleUpload(env: Env, req: Request, jobId: string) {
     }
   } catch {}
 
-  // Persist artifact into R2
-  await env.RENDER_BUCKET.put(outputKey, req.body as ReadableStream, {
-    httpMetadata: { contentType: 'video/mp4' },
-  })
+  // Persist artifact into bucket（优先使用 S3，便于本地 Worker 直接写入远端 R2）
+  const body = req.body as ReadableStream | null
+  if (!body) return json({ error: 'missing request body' }, { status: 400 })
+  await putObjectStreamToStorage(env, outputKey, 'video/mp4', body)
   return json({ ok: true, outputKey, outputUrl: `/artifacts/${jobId}` })
 }
 
@@ -860,49 +855,59 @@ async function handleArtifactGet(env: Env, req: Request, jobId: string) {
   } catch {}
   const range = req.headers.get('range')
 
-  if (!env.RENDER_BUCKET) {
-    return json({ error: 'RENDER_BUCKET not configured' }, { status: 500 })
+  // R2 绑定直读（生产常见路径）；若不可用或对象不存在则回退到 S3 直连
+  if (env.RENDER_BUCKET) {
+    try {
+      if (range) {
+        const m = range.match(/bytes=(\d*)-(\d*)/)
+        if (!m) return json({ error: 'invalid range' }, { status: 400 })
+        const startStr = m[1]
+        const endStr = m[2]
+        const head = await env.RENDER_BUCKET.head(key)
+        if (head) {
+          const size = head.size
+          let start: number
+          let end: number
+          if (startStr === '' && endStr) {
+            const suffix = parseInt(endStr, 10)
+            start = Math.max(size - suffix, 0)
+            end = size - 1
+          } else {
+            start = parseInt(startStr, 10)
+            end = endStr ? parseInt(endStr, 10) : size - 1
+          }
+          if (Number.isNaN(start) || Number.isNaN(end) || start < 0 || end < start) {
+            return json({ error: 'invalid range' }, { status: 416 })
+          }
+          if (end >= size) end = size - 1
+          const len = end - start + 1
+          const part = await env.RENDER_BUCKET.get(key, { range: { offset: start, length: len } })
+          if (part) {
+            const h = new Headers()
+            h.set('content-type', part.httpMetadata?.contentType || 'video/mp4')
+            h.set('accept-ranges', 'bytes')
+            h.set('content-length', String(len))
+            h.set('content-range', `bytes ${start}-${end}/${size}`)
+            return new Response(part.body, { status: 206, headers: h })
+          }
+        }
+        // head 或 get 返回空时，回退到 S3
+      } else {
+        const obj = await env.RENDER_BUCKET.get(key)
+        if (obj) {
+          const h = new Headers()
+          h.set('content-type', obj.httpMetadata?.contentType || 'video/mp4')
+          h.set('accept-ranges', 'bytes')
+          return new Response(obj.body, { headers: h })
+        }
+      }
+    } catch (e) {
+      console.warn('[artifacts] R2 read failed, falling back to S3', e)
+    }
   }
 
-  // R2 绑定直读（生产常见路径）
-  if (range) {
-    const m = range.match(/bytes=(\d*)-(\d*)/)
-    if (!m) return json({ error: 'invalid range' }, { status: 400 })
-    const startStr = m[1]
-    const endStr = m[2]
-    const head = await env.RENDER_BUCKET.head(key)
-    if (!head) return new Response('not found', { status: 404 })
-    const size = head.size
-    let start: number
-    let end: number
-    if (startStr === '' && endStr) {
-      const suffix = parseInt(endStr, 10)
-      start = Math.max(size - suffix, 0)
-      end = size - 1
-    } else {
-      start = parseInt(startStr, 10)
-      end = endStr ? parseInt(endStr, 10) : size - 1
-    }
-    if (Number.isNaN(start) || Number.isNaN(end) || start < 0 || end < start) {
-      return json({ error: 'invalid range' }, { status: 416 })
-    }
-    if (end >= size) end = size - 1
-    const len = end - start + 1
-    const part = await env.RENDER_BUCKET.get(key, { range: { offset: start, length: len } })
-    if (!part) return new Response('not found', { status: 404 })
-    const h = new Headers()
-    h.set('content-type', part.httpMetadata?.contentType || 'video/mp4')
-    h.set('accept-ranges', 'bytes')
-    h.set('content-length', String(len))
-    h.set('content-range', `bytes ${start}-${end}/${size}`)
-    return new Response(part.body, { status: 206, headers: h })
-  }
-  const obj = await env.RENDER_BUCKET.get(key)
-  if (!obj) return new Response('not found', { status: 404 })
-  const h = new Headers()
-  h.set('content-type', obj.httpMetadata?.contentType || 'video/mp4')
-  h.set('accept-ranges', 'bytes')
-  return new Response(obj.body, { headers: h })
+  // Fallback: stream via S3 presigned URL（本地 Worker 仍可访问远端 R2）
+  return streamObjectFromS3(env, key, range)
 }
 
 async function hmacHex(secret: string, data: string): Promise<string> {
@@ -967,14 +972,104 @@ async function s3Put(env: Env, bucket: string, key: string, contentType: string,
   }
 }
 
-async function deleteObjectFromStorage(env: Env, key: string): Promise<void> {
-  if (!key) return
-  if (!env.RENDER_BUCKET) {
-    throw new Error('deleteObjectFromStorage: RENDER_BUCKET is not configured')
+function getBucketName(env: Env): string {
+  return env.S3_BUCKET_NAME || 'vidgen-render'
+}
+
+// Try R2 绑定优先；本地 dev 下若 R2 只是 Miniflare 模拟，则回退到远端 R2（S3）。
+async function readObjectTextWithFallback(env: Env, key: string): Promise<string | null> {
+  if (env.RENDER_BUCKET) {
+    try {
+      const obj = await env.RENDER_BUCKET.get(key)
+      if (obj) return await obj.text()
+    } catch (e) {
+      console.warn('[storage] R2 get failed, falling back to S3', e)
+    }
   }
   try {
-    await env.RENDER_BUCKET.delete(key)
+    const bucket = getBucketName(env)
+    const url = await presignS3(env, 'GET', bucket, key, 600)
+    const r = await fetch(url)
+    if (!r.ok) {
+      if (r.status === 404) return null
+      console.warn('[storage] S3 GET failed', { key, status: r.status })
+      return null
+    }
+    return await r.text()
   } catch (e) {
+    console.warn('[storage] S3 GET error', e)
+    return null
+  }
+}
+
+async function objectExistsWithFallback(env: Env, key: string): Promise<boolean> {
+  if (env.RENDER_BUCKET) {
+    try {
+      const head = await env.RENDER_BUCKET.head(key)
+      if (head) return true
+    } catch (e) {
+      console.warn('[storage] R2 head failed, falling back to S3', e)
+    }
+  }
+  const bucket = getBucketName(env)
+  return s3Head(env, bucket, key)
+}
+
+async function copyObjectWithFallback(env: Env, sourceKey: string, targetKey: string, contentType: string): Promise<void> {
+  if (env.RENDER_BUCKET) {
+    try {
+      const obj = await env.RENDER_BUCKET.get(sourceKey)
+      if (obj) {
+        await env.RENDER_BUCKET.put(targetKey, obj.body as ReadableStream, { httpMetadata: { contentType } })
+        return
+      }
+      console.warn('[storage] R2 copy: source not found, falling back to S3', { sourceKey })
+    } catch (e) {
+      console.warn('[storage] R2 copy failed, falling back to S3', e)
+    }
+  }
+  const bucket = getBucketName(env)
+  const url = await presignS3(env, 'GET', bucket, sourceKey, 600)
+  const r = await fetch(url)
+  if (!r.ok) {
+    let msg = ''
+    try { msg = await r.text() } catch {}
+    throw new Error(`copyObjectWithFallback: source GET failed: ${r.status} ${msg}`)
+  }
+  await s3Put(env, bucket, targetKey, contentType, r.body as ReadableStream)
+}
+
+async function putObjectStreamToStorage(env: Env, key: string, contentType: string, body: ReadableStream | string): Promise<void> {
+  const bucket = getBucketName(env)
+  await s3Put(env, bucket, key, contentType, body)
+}
+
+async function s3Delete(env: Env, bucket: string, key: string): Promise<void> {
+  const url = await presignS3(env, 'DELETE', bucket, key, 600)
+  const r = await fetch(url, { method: 'DELETE' })
+  if (!r.ok && r.status !== 404 && r.status !== 204) {
+    let msg = ''
+    try { msg = await r.text() } catch {}
+    console.error('[s3Delete] DELETE', url.split('?')[0], r.status, msg)
+    throw new Error(`s3Delete failed: ${r.status}`)
+  }
+}
+
+async function deleteObjectFromStorage(env: Env, key: string): Promise<void> {
+  if (!key) return
+  const bucket = getBucketName(env)
+  let r2Error: Error | null = null
+  if (env.RENDER_BUCKET) {
+    try {
+      await env.RENDER_BUCKET.delete(key)
+    } catch (e) {
+      r2Error = e instanceof Error ? e : new Error(String(e))
+    }
+  }
+  try {
+    await s3Delete(env, bucket, key)
+  } catch (e) {
+    if (r2Error) throw r2Error
     throw (e instanceof Error ? e : new Error(String(e)))
   }
 }
@@ -994,6 +1089,31 @@ async function listKeysByPrefix(env: Env, prefix: string): Promise<string[]> {
     cursor = resp.cursor
   }
   return out
+}
+
+async function streamObjectFromS3(env: Env, key: string, range: string | null): Promise<Response> {
+  const bucket = getBucketName(env)
+  const url = await presignS3(env, 'GET', bucket, key, 600)
+  const headers: Record<string, string> = {}
+  if (range) headers.range = range
+  const r = await fetch(url, { method: 'GET', headers })
+  if (!r.ok && r.status !== 206) {
+    if (r.status === 404) return new Response('not found', { status: 404 })
+    let msg = ''
+    try { msg = await r.text() } catch {}
+    console.error('[artifacts] S3 GET failed', { key, status: r.status, msg })
+    return json({ error: 'storage_read_failed', status: r.status }, { status: 502 })
+  }
+  const h = new Headers()
+  const ct = r.headers.get('content-type') || 'video/mp4'
+  h.set('content-type', ct)
+  const ar = r.headers.get('accept-ranges') || 'bytes'
+  h.set('accept-ranges', ar)
+  const cl = r.headers.get('content-length')
+  if (cl) h.set('content-length', cl)
+  const cr = r.headers.get('content-range')
+  if (cr) h.set('content-range', cr)
+  return new Response(r.body, { status: r.status, headers: h })
 }
 
 async function handleDebugDeletePrefixes(env: Env, req: Request) {
