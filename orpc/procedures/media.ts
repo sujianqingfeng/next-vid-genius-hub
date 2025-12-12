@@ -3,7 +3,6 @@ import path from 'node:path'
 import { os } from '@orpc/server'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { OPERATIONS_DIR, PROXY_URL } from '~/lib/config/env'
 import { deleteCloudArtifacts, getJobStatus, startCloudJob, putJobManifest, type JobManifest } from '~/lib/cloudflare'
 import type { JobStatusResponse } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
@@ -16,6 +15,9 @@ import { createId } from '@paralleldrive/cuid2'
 import type { RequestContext } from '~/lib/auth/types'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { TASK_KINDS } from '~/lib/job/task'
+
+// Local operations workspace (used for best-effort cleanup when deleting media)
+const OPERATIONS_DIR = './operations'
 
 export const list = os
 	.input(
@@ -160,7 +162,6 @@ export const refreshMetadata = os
 						quality: (record.quality || '1080p') as '720p' | '1080p',
 						source,
 						proxy: proxyPayload,
-						defaultProxyUrl: PROXY_URL,
 					},
 				})
 

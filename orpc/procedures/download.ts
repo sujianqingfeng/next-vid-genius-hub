@@ -6,7 +6,6 @@ import { getDb, schema } from '~/lib/db'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { logger } from '~/lib/logger'
 import { startCloudJob, getJobStatus, putJobManifest, type JobManifest } from '~/lib/cloudflare'
-import { PROXY_URL } from '~/lib/config/env'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import type { RequestContext } from '~/lib/auth/types'
@@ -134,7 +133,6 @@ export const startCloudDownload = os
 					quality,
 					source,
 					proxy: proxyPayload,
-					defaultProxyUrl: PROXY_URL,
 				},
 			})
 

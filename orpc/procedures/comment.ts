@@ -3,7 +3,6 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { translateText } from '~/lib/ai/translate'
 import { type AIModelId, AIModelIds } from '~/lib/ai/models'
-import { PROXY_URL } from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
 import {
 	startCloudJob,
@@ -258,7 +257,6 @@ export const startCloudRender = os
 					sourcePolicy: (input.sourcePolicy || 'auto') as any,
 				},
 				optionsSnapshot: {
-					defaultProxyUrl: PROXY_URL,
 					proxyId: effectiveProxyId ?? null,
 					sourcePolicy: input.sourcePolicy || 'auto',
 					templateId:
@@ -273,7 +271,6 @@ export const startCloudRender = os
 				engine: 'renderer-remotion',
 				title: media.title || undefined,
 				options: {
-					defaultProxyUrl: PROXY_URL,
 					proxy: proxyPayload,
 					sourcePolicy: input.sourcePolicy || 'auto',
 					templateId:
@@ -384,6 +381,7 @@ export const startCloudCommentsDownload = os
 		)
 
 		const taskId = createId()
+		const jobId = `job_${createId()}`
 		await db.insert(schema.tasks).values({
 			id: taskId,
 			userId,
@@ -429,7 +427,6 @@ export const startCloudCommentsDownload = os
 					source: media.source,
 					task: 'comments',
 					commentsPages: pages,
-					defaultProxyUrl: PROXY_URL,
 					proxy: proxyPayload,
 				},
 			})

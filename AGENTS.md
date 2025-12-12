@@ -44,4 +44,14 @@ Cloudflare deployment is wired through `wrangler.json` / `wrangler.toml` and `op
 - Flag schema migrations or long‑running media jobs so reviewers can plan rollouts.
 
 ## Database & Media Tooling Notes
+- Local schema tooling uses a fixed sqlite URL `file:./local.db` configured in `drizzle.config.ts` (no `DATABASE_URL` env required).
 - Update schema types → `pnpm db:generate` → inspect SQL → apply to D1 with `pnpm db:d1:migrate:remote` → (optionally) `pnpm db:d1:list:remote` to verify remote state; never hand‑edit `drizzle/`.
+
+## Server Environment Variables (Next app)
+These are read from `process.env` under `lib/config/env.ts` and used across the app:
+
+- `CLOUDFLARE_ASR_MAX_UPLOAD_BYTES` — max payload size for Workers AI ASR upload (bytes); default `4 * 1024 * 1024`.
+- `ASR_TARGET_BITRATES` — comma-separated audio target bitrates for ASR pre-processing, e.g. `48,24`.
+- `ASR_SAMPLE_RATE` — target audio sample rate for ASR; default `16000`.
+- `CF_ORCHESTRATOR_URL` — public URL of the orchestrator Worker; used for `/artifacts/:jobId` and debug presign endpoints.
+- `JOB_CALLBACK_HMAC_SECRET` — shared secret used for HMAC between Next and the orchestrator (callbacks, debug delete, etc.).

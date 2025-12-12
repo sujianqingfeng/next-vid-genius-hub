@@ -1,15 +1,6 @@
 // Minimal centralized environment-backed config for server-side code.
 // 只保留当前代码实际 import 的配置，避免堆积未使用的常量。
 
-// Database
-export const DATABASE_URL = process.env.DATABASE_URL || 'file:./local.db'
-
-// Local operations workspace
-export const OPERATIONS_DIR = process.env.OPERATIONS_DIR || './operations'
-
-// Outbound proxy used by media jobs / HTTP fetches
-export const PROXY_URL = process.env.PROXY_URL
-
 // Cloudflare Workers AI (Whisper) payload size限制
 export const CLOUDFLARE_ASR_MAX_UPLOAD_BYTES =
 	Number(process.env.CLOUDFLARE_ASR_MAX_UPLOAD_BYTES || '') ||

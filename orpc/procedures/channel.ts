@@ -14,7 +14,6 @@ import {
 	putJobManifest,
 	type JobManifest,
 } from '~/lib/cloudflare'
-import { PROXY_URL } from '~/lib/config/env'
 import { bucketPaths } from '@app/media-domain'
 import type { RequestContext } from '~/lib/auth/types'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
@@ -180,7 +179,6 @@ export const startCloudSync = os
 					source: MEDIA_SOURCES.YOUTUBE,
 					channelUrlOrId,
 					limit: input.limit,
-					defaultProxyUrl: PROXY_URL,
 					proxy: proxyPayload,
 				},
 			})

@@ -1,16 +1,15 @@
 import { defineConfig } from 'drizzle-kit'
-import { DATABASE_URL } from './lib/config/env'
 
-if (!DATABASE_URL) {
-	throw new Error('DATABASE_URL is not set in .env file')
-}
+// Local sqlite database used by Drizzle CLI for schema generation / studio.
+// This no longer depends on an environment variable to keep tooling simple.
+const LOCAL_SQLITE_URL = 'file:./local.db'
 
 export default defineConfig({
 	schema: './lib/db/schema.ts',
 	out: './drizzle',
 	dialect: 'sqlite',
 	dbCredentials: {
-		url: DATABASE_URL,
+		url: LOCAL_SQLITE_URL,
 	},
 	verbose: true,
 	strict: true,

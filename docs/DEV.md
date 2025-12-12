@@ -1,92 +1,222 @@
 # 本地开发同生产的同构方案（Cloudflare R2 直连）
 
-目标：让本地开发与生产路径一致，容器仅访问对象存储（S3 兼容）与编排（Worker），不依赖 `localhost/host.docker.internal`。
+目标：让本地开发与生产路径尽量一致，容器仅访问对象存储（S3 兼容）与编排（Worker），不再直接访问 Next。Next 主要负责业务 UI、DB 和写入 per-job manifest。
 
 ## 组件
 
-- Cloudflare R2（S3 兼容）作为统一对象存储（本地/线上同桶）
-- 渲染容器 `burner-ffmpeg`（仅访问 S3）
-- Worker（wrangler dev）负责（桶优先）：
-  - 直接从桶读取/检测输入（`inputs/...` 或 manifest 指针），不再从 Next 拉取源数据
-  - 生成 S3 预签名 URL（GET/PUT），仅将 URL 下发给容器
-  - 触发容器 `/render` 并在 Durable Object 中维护强一致状态
-  - 轮询时通过 HEAD 检测桶内产物；完成后回调 Next 落库
-  - 当字幕渲染完成时，自动将成品物化到 `inputs/videos/subtitles/<mediaId>.mp4`，并写入 `manifest.subtitlesInputKey`
+- Cloudflare R2（S3 兼容）作为统一对象存储（本地/线上共一个桶，例如 `vidgen-render`）。
+- 渲染/下载容器：
+  - `burner-ffmpeg`：字幕烧录渲染。
+  - `renderer-remotion`：评论视频渲染。
+  - `media-downloader`：云端下载（yt-dlp + ffmpeg）。
+  - `audio-transcoder`：ASR 前置转码。
+- Worker（`cloudflare/media-orchestrator`，wrangler dev）负责（桶优先）：
+  - 只通过 per-job manifest + R2 HEAD 检测输入，不再从 Next 拉取文件；
+  - 生成 S3 预签名 URL（GET/PUT），只把 URL 下发给容器；
+  - 触发容器 `/render` 并在 Durable Object 中维护强一致状态；
+  - 轮询时通过 HEAD 检测桶内产物；完成后回调 Next 落库；
+  - ASR（`asr-pipeline`）在 Worker 内串联 audio-transcoder + Workers AI。
+- Next 应用（本仓库）：
+  - 提供 UI / API；
+  - 通过 ORPC 创建云任务、写入 per-job manifest、让 Worker 编排；
+  - 通过 `CF_ORCHESTRATOR_URL` 访问 orchestrator（例如 `http://localhost:8787` 或生产域名）。
 
-### lib 目录约定（新增）
+### lib 目录约定
 
 - 领域模块：`auth` / `media` / `subtitle`（含 ASR） / `points` / `providers` / `ai` / `job`
 - 基础设施：`config` / `db` / `logger` / `storage` / `proxy` / `orpc` / `query` / `cloudflare`
 - 横切：`errors` / `hooks` / `utils` / `types`
 - 规则：
   - 领域内的 types/hooks/utils/server 均放在 `lib/<domain>/**`。
-  - `lib/types` 仅放跨领域类型（例如 provider 类型）；领域内类型放各自 `lib/<domain>/types`。
-  - `lib/utils`/`lib/hooks` 只放真正通用的工具；不要在这里新增领域特定逻辑。
+  - `lib/types` 仅放跨领域类型（例如 provider 类型）；领域内类型放在各自 `lib/<domain>/types`。
+  - `lib/utils` / `lib/hooks` 只放真正通用的工具；不要在这里新增领域特定逻辑。
+  - 与 Cloudflare orchestrator / R2 交互的代码统一放在 `lib/cloudflare/**`。
 
-## 启动容器
+## 启动本地容器
+
+推荐使用脚本（便于和 wrangler.toml 保持一致）：
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d burner-ffmpeg renderer-remotion media-downloader audio-transcoder
+pnpm dev:stack
+# 或停止并清理
+pnpm dev:stack:down
 ```
 
-Compose 只负责拉起各类媒体容器；对象存储直接指向 Cloudflare R2，无需再运行 MinIO。
+该脚本实际等价于：
+
+```bash
+docker compose -f docker-compose.dev.yml up -d \
+  burner-ffmpeg renderer-remotion media-downloader audio-transcoder
+```
+
+Compose 只负责拉起各类媒体容器；对象存储直接指向 Cloudflare R2，不再运行 MinIO。
+
+容器暴露端口（保持与 `wrangler.toml` 一致）：
+
+- burner-ffmpeg: `http://localhost:9080`
+- renderer-remotion: `http://localhost:8190`
+- media-downloader: `http://localhost:8100`
+- audio-transcoder: `http://localhost:8110`
 
 ### 本地代理（Clash / Mihomo）
 
 - `media-downloader` 容器会在任务开始时自动生成 Clash(Mihomo) 配置：
   - 优先使用数据库 Proxy 表中传递的 `nodeUrl`（SSR / Trojan / VLESS 等）或 HTTP(S) / SOCKS 参数；
-  - 若未提供节点，可在 Compose 中通过环境变量注入订阅地址，例如：`CLASH_SUBSCRIPTION_URL=https://example.com/subscription.yaml`；
+  - 若未提供节点，可通过环境变量注入订阅地址：
+    - `CLASH_SUBSCRIPTION_URL=https://example.com/subscription.yaml`
   - 也可使用 `CLASH_RAW_CONFIG` 直接提供完整的 Clash YAML。
-- 默认在容器内开放 `http://127.0.0.1:7890`，yt-dlp/ffmpeg 会通过该端口访问外网。
-- 遇到无法连通的情况时，请确认订阅 URL 可被容器访问，或为数据库中的代理补充可用的 SSR/HTTP 节点。
+- 默认在容器内部开放 `http://127.0.0.1:7890`，yt-dlp / ffmpeg 会通过该端口访问外网。
+- 遇到无法连通的情况时，请确认：
+  - 订阅 URL 可被容器访问；
+  - 或为数据库中的代理补充可用的 SSR / HTTP 节点。
 
 ## Worker 本地配置
 
-仓库根目录的 `wrangler.toml` 已默认将 `S3_ENDPOINT/S3_INTERNAL_ENDPOINT` 指向 Cloudflare R2（`https://<account>.r2.cloudflarestorage.com`，`S3_STYLE=vhost`）。确保通过 `wrangler secret put` 提供 `S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY` 即可。若短暂离线需要回退 MinIO，可临时改成 MinIO 端点并自行运行 MinIO。
+仓库根目录的 `wrangler.toml` 已配置：
+
+```toml
+name = "media-orchestrator"
+main = "cloudflare/media-orchestrator/index.ts"
+tsconfig = "cloudflare/media-orchestrator/tsconfig.json"
+compatibility_date = "2025-10-19"
+
+[dev]
+port = 8787
+local_protocol = "http"
+
+[[r2_buckets]]
+binding = "RENDER_BUCKET"
+bucket_name = "vidgen-render"
+
+[vars]
+JOB_TTL_SECONDS = 86400
+CONTAINER_BASE_URL = "http://localhost:9080"
+CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
+CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
+CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
+NEXT_BASE_URL = "http://localhost:3000"
+JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
+PUT_EXPIRES = 600
+
+# R2 直连
+S3_ENDPOINT = "https://<account>.r2.cloudflarestorage.com"
+S3_INTERNAL_ENDPOINT = "https://<account>.r2.cloudflarestorage.com"
+S3_BUCKET_NAME = "vidgen-render"
+S3_STYLE = "vhost"
+S3_REGION = "us-east-1"
+ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
+```
+
+> 注意：本地默认 `S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY` 建议通过 `wrangler secret` 注入，而不是写在 `wrangler.toml`。
+
+### 本地环境切换（env.local / env.local-lite）
+
+`wrangler.toml` 中提供了两个开发环境：
+
+```toml
+[env.local.vars]
+PREFER_EXTERNAL_CONTAINERS = "true"
+NO_CF_CONTAINERS = "false"
+
+[env.local-lite.vars]
+PREFER_EXTERNAL_CONTAINERS = "true"
+NO_CF_CONTAINERS = "true"
+```
+
+在 Worker 代码中：
+
+- 只要 `PREFER_EXTERNAL_CONTAINERS === "true"` 或 `NO_CF_CONTAINERS === "true"`：
+  - 就直接通过 `CONTAINER_BASE_URL*` 的 HTTP 地址调用外部 Docker 容器；
+  - 而不是使用 Cloudflare Containers 的 Durable Object binding。
+
+因此当前行为是：
+
+- `pnpm cf:dev`（env.local）
+  - 启动本地 Worker，使用外部 Docker 容器（与 `docker-compose.dev.yml` 对齐）；
+  - 同时声明了 Cloudflare Containers 配置，但默认不会实际走 Cloudflare Containers。
+- `pnpm cf:dev:lite`（env.local-lite）
+  - 同样只使用外部 Docker 容器；
+  - 并且通过 `NO_CF_CONTAINERS` 禁用掉 Cloudflare Containers 相关逻辑。
+
+若未来需要在本地验证 Cloudflare Containers，可以手动改 `wrangler.toml`：
+
+- 将 `[env.local.vars]` 中 `PREFER_EXTERNAL_CONTAINERS` 设为 `"false"`，`NO_CF_CONTAINERS` 删除或设为 `"false"`。
 
 运行 Worker：
 
 ```bash
-pnpm cf:dev      # 完整本地环境（Cloudflare Containers + R2）
+pnpm cf:dev      # 本地 Worker + R2 + 外部 Docker 容器
 # 或
-pnpm cf:dev:lite # 轻量模式，仅使用外部 Docker 容器
+pnpm cf:dev:lite # 轻量模式，仍然使用外部 Docker 容器，但跳过 CF Containers 配置构建
 ```
 
 ### Workers AI（ASR）凭据（方案 A）
 
-字幕 Step 1 若选择 Cloud（或降采样后端为 cloud/auto 触发 asr-pipeline），Worker 需要有 Workers AI 的 REST 凭据，否则会报错 `asr-pipeline: Workers AI credentials not configured`。
+字幕 Step 1 若选择 Cloud（或降采样后端为 `cloud`/`auto` 触发 `asr-pipeline`），Worker 需要有 Workers AI 的 REST 凭据，否则会报错：
 
-本地开发强烈建议使用 wrangler secret 注入（不要把密钥写入仓库）。在仓库根目录（`wrangler.toml` 所在位置）执行：
+- `asr-pipeline: Workers AI credentials not configured`
+
+本地开发建议使用 wrangler secret 注入，在仓库根目录执行：
 
 ```bash
-wrangler secret put CF_AI_ACCOUNT_ID   # 你的 Cloudflare Account ID（供 Workers AI 使用）
+wrangler secret put CF_AI_ACCOUNT_ID   # Cloudflare Account ID（Workers AI）
 wrangler secret put CF_AI_API_TOKEN    # 具有 Workers AI 访问权限的 API Token
 ```
 
-设置完成后，重启本地 Worker：
+设置完成后重启本地 Worker：
 
 ```bash
 pnpm cf:dev
 ```
 
-验证方式：在字幕页 Step 1 选择 `provider=cloudflare`，将“降采样后端”设为 `cloud`（或 `auto`），触发转录后，wrangler 控制台不应再出现凭据缺失报错；`/jobs/:id` 会在 audio-transcoder 完成后继续执行 ASR，并返回 `vtt/words` 产物。
+验证方式：
+
+1. 在字幕页 Step 1 选择 `provider=cloudflare`；
+2. 将“降采样后端”设为 `cloud` 或 `auto`；
+3. 触发转录后，wrangler 控制台不应再出现凭据缺失报错；
+4. `/jobs/:id` 会在 `audio-transcoder` 完成后继续执行 ASR，返回 `vtt` + `words.json` 产物。
 
 ## Next 本地
 
+Next 使用 OpenNext Cloudflare 集成，通过 `wrangler.json` 绑定 D1 / R2。
+
+启动 Next dev：
+
 ```bash
-pnpm dev        # 或 pnpm dev:host；当前脚本均监听 0.0.0.0:3000（本地 UI/接口；不再承担输入中转）
+pnpm dev        # 或 pnpm dev:host
 ```
 
-## 桶优先与每任务清单（job manifest）
+当前脚本均监听 `0.0.0.0:3000`，便于容器和远程浏览器访问。Next 不再承担媒体输入中转，所有媒体 IO 通过 Worker + R2 完成。
 
-- 每个异步任务在启动前会写入一份清单：`manifests/jobs/<jobId>.json`
-- 字段（简化）：
-  - `jobId` / `mediaId` / `engine` / `createdAt`
-  - `inputs`：本次任务需要的远端 Key（例如 `videoKey`、`vttKey`、`commentsKey`、`asrSourceKey` 等）
-  - `outputs`：可选，记录本次任务预期写入的产物 Key（调试用）
-  - `optionsSnapshot`：从当时的 engine options 抽取的配置快照（如 `sourcePolicy`、`templateId`、`url` 等）
+## 桶优先与每任务清单（Job Manifest）
 
-示例：
+### R2 路径约定
+
+所有路径集中定义在 `@app/media-domain` 的 `bucketPaths` 中，典型例子（按 `mediaId` + 标题 slug 聚合）：
+
+- per-job manifest：
+  - `manifests/jobs/<jobId>.json`
+- 字幕相关输入：
+  - `media/{mediaId}-{slug}/inputs/video/subtitles.mp4`
+  - `media/{mediaId}-{slug}/inputs/subtitles/subtitles.vtt`
+- 评论：
+  - `media/{mediaId}-{slug}/inputs/comments/latest.json`
+- 云下载：
+  - `media/{mediaId}-{slug}/downloads/{jobId}/video.mp4`
+  - `media/{mediaId}-{slug}/downloads/{jobId}/audio.mp3`
+  - `media/{mediaId}-{slug}/downloads/{jobId}/metadata.json`
+- 云渲染输出：
+  - `media/{mediaId}-{slug}/outputs/{jobId}/video.mp4`
+- ASR：
+  - `media/{mediaId}-{slug}/asr/processed/{jobId}/audio.mp3`
+  - `media/{mediaId}-{slug}/asr/results/{jobId}/transcript.vtt`
+  - `media/{mediaId}-{slug}/asr/results/{jobId}/words.json`
+
+> 旧文档中出现的 `inputs/videos/subtitles/<mediaId>.mp4` 等路径已废弃，统一改为上面的 slug 格式路径。
+
+### Job Manifest 形状
+
+每个异步任务在启动前会写入一份清单：`manifests/jobs/<jobId>.json`：
 
 ```json
 {
@@ -99,61 +229,61 @@ pnpm dev        # 或 pnpm dev:host；当前脚本均监听 0.0.0.0:3000（本�
     "vttKey": "media/abc123-xxx/inputs/subtitles/subtitles.vtt",
     "sourcePolicy": "original"
   },
+  "outputs": {
+    "videoKey": "media/abc123-xxx/outputs/job_xyz/video.mp4"
+  },
   "optionsSnapshot": {
     "subtitleConfig": { "fontSize": 36 }
   }
 }
 ```
 
+字段说明（简化版）：
+
+- `jobId` / `mediaId` / `engine` / `createdAt`：任务元信息；
+- `inputs`：本次任务需要的远端 Key（例如 `videoKey` / `vttKey` / `commentsKey` / `asrSourceKey` 等）；
+- `outputs`：可选，记录本次任务预期写入的产物 Key（调试用）；
+- `optionsSnapshot`：从当时的 engine options 抽取的配置快照（例如 `sourcePolicy`、`templateId`、`url` 等）。
+
 物化职责：
+
 - Next：
-  - 转写完成后写入 `inputs/subtitles/<mediaId>/subtitles.vtt`
-  - 评论下载/翻译后写入 `inputs/comments/<mediaId>/latest.json`
-  - 云下载回调时更新 DB 中的 `remote*Key`
-  - 启动任意云任务前，根据 DB +固定路径+业务逻辑，生产该任务的 `JobManifest` 并写入 `manifests/jobs/<jobId>.json`
+  - 转写完成后写入：`media/{mediaId}-{slug}/inputs/subtitles/subtitles.vtt`；
+  - 评论下载/翻译后写入：`media/{mediaId}-{slug}/inputs/comments/latest.json`；
+  - 云下载回调时更新 DB 中的 `remoteVideoKey` / `remoteAudioKey` / `remoteMetadataKey`；
+  - 启动任意云任务前，根据 DB + 固定路径 + 业务逻辑，构造该 job 的 `JobManifest` 并写入 `manifests/jobs/<jobId>.json`。
 - Worker：
-  - 启动任务时只读取对应的 `JobManifest`，用里面的 `inputs.*Key` 通过 S3 HEAD + 预签 URL 检查/生成容器输入；
-  - 若必需输入缺失，直接返回 `missing_inputs`。
+  - 启动任务时只读取对应的 `JobManifest`，使用 `inputs.*Key` 通过 S3 HEAD + 预签 GET 检查/生成容器输入；
+  - 若必需输入缺失，直接返回 `missing_inputs`，前端根据错误决定如何提示/重试；
+  - Worker 不再读取 media-level manifest（旧的 `media/{mediaId}/manifest.json`）。
 
 ### Source Policy（视频源策略）
 
-`renderer-remotion` 引擎（目前用于“评论视频渲染”）仍通过 `sourcePolicy` 选择视频输入源，但决策在 Next 侧完成并写入 `JobManifest.inputs`：
+`renderer-remotion` 引擎（用于“评论视频渲染”）的 `sourcePolicy` 逻辑完全在 Next 侧完成：
 
-- Next 端：
-  - 读取 DB 中 `remoteVideoKey`、已有渲染成品路径等；
-  - 根据 `sourcePolicy`（auto/original/subtitles）和当前桶内是否存在字幕版视频，决定本次任务使用的 `videoKey`；
-  - 将决策结果写入 `JobManifest.inputs.videoKey`（以及必要时的 `subtitlesInputKey`）。
-- Worker 端：
-  - 不再根据 `mediaId` 自己推断 source policy，只信任 JobManifest。
+- Next 根据 `sourcePolicy` 和 R2 当前状态选择：
+  - 使用下载结果：`media/{mediaId}-{slug}/downloads/{jobId}/video.mp4`；或
+  - 使用已渲染的“带字幕视频”变体：`media/{mediaId}-{slug}/inputs/video/subtitles.mp4`。
+- 选择结果写入 `JobManifest.inputs.videoKey`（必要时附带 `subtitlesInputKey` 或其它辅助字段）；
+- Worker 只检查 `videoKey` 对应对象是否存在，并为容器生成预签 URL；不会根据 `mediaId` 自行回退。
 
-字幕烧录容器 `burner-ffmpeg` 依然只依赖：
-- `inputs.videoKey`（通常指向下载结果）和
-- `inputs.vttKey`（`inputs/subtitles/<mediaId>/subtitles.vtt`）
+## 本地数据落地（operations 目录）与远端产物
 
-Worker 只负责验证这些 key 是否在桶中存在，不再自动补全/回退。
+- 本地 `./operations` 仅用于个别操作（例如本地调试、过渡逻辑）的中间文件；
+- 云端下载 / 渲染完成后默认只记录远端 Key 和 `downloadJobId`：
+  - 不再将视频 / 音频 / metadata 持久写入 `./operations/<mediaId>/`；
+- 预览 / 播放通过：
+  - Worker 的 `/artifacts/:jobId`；
+  - 或通过 orchestrator 的 `/debug/presign` 生成的 R2 预签 GET URL。
 
-### 云端产物存储
+## 冒烟测试（本地）
 
-- 云端下载/渲染完成后不再将视频/音频/metadata 落地到 `OPERATIONS_DIR/<mediaId>/`，统一只记录远端 Key。
-- 预览/播放通过 Worker 预签 URL 或 `/artifacts/:jobId` 进行，如需本地副本可手动下载对应对象。
-
-## 流程验证
-
-1) 在字幕流程 Step 3 或下载页选择 Cloud → 启动任务。
-2) Worker 日志：
-   - `start job` → `resolve inputs from bucket/manifest` → `trigger container`。
-3) 容器日志：
-   - 字幕渲染：`preparing` → `inputs ready` → `20%/30%/...`（每10%一条）→ `ffmpeg done` → `uploading artifact`。
-   - 长时任务心跳：每 30s 打印一次 `running… <x>%`，频率可通过环境变量 `RENDER_HEARTBEAT_MS` 调整（设为 `0` 关闭）。
-- 云端下载：`preparing` → `fetching_metadata` → `downloading` → `extracting_audio` → `uploading`。
-4) 轮询 /jobs/:id：
-   - 渲染：R2 出现 `media/<mediaId>-<titleSlug>/outputs/<jobId>/video.mp4` 即标记完成。
-- 下载：R2 出现 `media/<mediaId>-<titleSlug>/downloads/<jobId>/{video.mp4,audio.mp3,metadata.json}` 后标记完成。
-5) Next 日志打印 `[cf-callback] ... job <jobId>`，并将产物对应的远端 Key 写入 manifest（如 `remoteVideoKey/remoteAudioKey/remoteMetadataKey`、`subtitlesInputKey` 等）。
-6) 前端自动刷新：渲染流程跳到 Step 4 预览；下载页出现“Cloud download completed”并可继续字幕流程。
-
-## 注意事项
-
-- 如需在离线环境临时改用 MinIO，可把 `S3_ENDPOINT` 切换回 `http://127.0.0.1:9000`（或 compose 网络内的 `http://minio:9000`），并手动运行 MinIO；恢复网络后改回 R2 端点即可。
-- 不建议在本地模式下再使用 `/upload` 或容器回调；S3 直连路径更稳、更贴近生产。
- - 新逻辑将 jobId 持久化在浏览器（`subtitleCloudJob:<mediaId>`），刷新后自动恢复轮询；页面失焦会暂停轮询、聚焦恢复。
+1. 启动容器和 Worker：
+   - `pnpm dev:stack`
+   - `pnpm cf:dev`
+2. 启动 Next：
+   - `pnpm dev`
+3. 上传 10–30 秒小样视频，选择 Cloud 流程触发字幕渲染：
+   - 确认 Worker 日志有 `start job ...`，容器日志有进度与心跳；
+   - `/jobs/:id` 状态从 `queued` → `running` → `completed`；
+   - Next 页面能通过 orchestrator `/artifacts/:jobId` 顺利播放。

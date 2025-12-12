@@ -115,8 +115,7 @@ async function handleRender(req, res) {
   });
   sendJson(res, 202, { jobId });
 
-  const baseDefaultProxyUrl =
-    engineOptions?.defaultProxyUrl || process.env.PROXY_URL;
+  const baseDefaultProxyUrl = engineOptions?.defaultProxyUrl || null;
   let clashController = null;
 
   // Optional progress helper
