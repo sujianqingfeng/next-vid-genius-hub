@@ -53,6 +53,15 @@ const DEFAULT_ASR_CAPS = {
 	supportsLanguageHint: false,
 }
 
+function isEditingModelValid(editing: EditingModel | null): boolean {
+	if (!editing) return false
+	if (!editing.id.trim()) return false
+	if (!editing.providerId) return false
+	if (editing.kind === 'llm' && !editing.remoteModelId.trim()) return false
+	if (!editing.label.trim()) return false
+	return true
+}
+
 export default function AdminAiModelsPage() {
 	const t = useTranslations('Admin.aiModels')
 	const qc = useQueryClient()
@@ -107,6 +116,8 @@ export default function AdminAiModelsPage() {
 		() => providers.filter((p) => p.kind === kind),
 		[kind, providers],
 	)
+
+	const isValid = isEditingModelValid(editing)
 
 	return (
 		<div className="space-y-6">
@@ -402,9 +413,9 @@ export default function AdminAiModelsPage() {
 							{t('actions.cancel')}
 						</Button>
 						<Button
-							disabled={upsertModel.isPending || !editing}
+							disabled={upsertModel.isPending || !isValid}
 							onClick={() => {
-								if (!editing) return
+								if (!editing || !isEditingModelValid(editing)) return
 								const caps =
 									editing.kind === 'asr'
 										? {

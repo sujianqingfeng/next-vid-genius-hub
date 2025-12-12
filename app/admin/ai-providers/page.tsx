@@ -51,6 +51,13 @@ const DEFAULT_PROVIDER: EditingProvider = {
 	enabled: true,
 }
 
+function isEditingProviderValid(editing: EditingProvider | null): boolean {
+	if (!editing) return false
+	if (!editing.slug.trim()) return false
+	if (!editing.name.trim()) return false
+	return true
+}
+
 export default function AdminAiProvidersPage() {
 	const t = useTranslations('Admin.aiProviders')
 	const qc = useQueryClient()
@@ -101,6 +108,8 @@ export default function AdminAiProvidersPage() {
 			? ['openai_compat', 'deepseek_native']
 			: ['cloudflare_asr']
 	}, [kind])
+
+	const isValid = isEditingProviderValid(editing)
 
 	return (
 		<div className="space-y-6">
@@ -288,9 +297,9 @@ export default function AdminAiProvidersPage() {
 							{t('actions.cancel')}
 						</Button>
 						<Button
-							disabled={upsertProvider.isPending || !editing}
+							disabled={upsertProvider.isPending || !isValid}
 							onClick={() => {
-								if (!editing) return
+								if (!editing || !isEditingProviderValid(editing)) return
 								upsertProvider.mutate({
 									id: editing.id,
 									slug: editing.slug.trim(),
@@ -311,4 +320,3 @@ export default function AdminAiProvidersPage() {
 		</div>
 	)
 }
-

@@ -477,7 +477,8 @@ const UpsertAiModelSchema = z.object({
 	description: z.string().trim().max(500).optional().nullable(),
 	enabled: z.boolean().optional(),
 	isDefault: z.boolean().optional(),
-	capabilities: z.record(z.unknown()).optional().nullable(),
+	// Use catch-all object instead of record() to avoid Zod v4 standard-schema bug
+	capabilities: z.object({}).catchall(z.unknown()).optional().nullable(),
 })
 
 export const upsertAiModel = os
