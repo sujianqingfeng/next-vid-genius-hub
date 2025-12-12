@@ -47,6 +47,8 @@ const DEFAULT_EDITING_RULE: EditingRule = {
 	minCharge: 1,
 }
 
+const DEFAULT_MODEL_SENTINEL = '__default__'
+
 export default function AdminPointsPricingPage() {
 	const t = useTranslations('Admin.pointsPricing')
 	const qc = useQueryClient()
@@ -426,10 +428,19 @@ export default function AdminPointsPricingPage() {
 									{t('form.modelId')}
 								</label>
 								<Select
-									value={editingRule?.modelId ?? ''}
+									value={
+										editingRule?.modelId
+											? editingRule.modelId
+											: DEFAULT_MODEL_SENTINEL
+									}
 									onValueChange={(v) =>
 										setEditingRule((prev) =>
-											prev ? { ...prev, modelId: v } : prev,
+											prev
+												? {
+														...prev,
+														modelId: v === DEFAULT_MODEL_SENTINEL ? '' : v,
+													}
+												: prev,
 										)
 									}
 									disabled={editingRule?.resourceType === 'download'}
@@ -438,7 +449,7 @@ export default function AdminPointsPricingPage() {
 										<SelectValue placeholder={t('form.modelIdPlaceholder')} />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="">
+										<SelectItem value={DEFAULT_MODEL_SENTINEL}>
 											{t('labels.defaultModel')}
 										</SelectItem>
 										{editingRule?.resourceType === 'llm' &&
