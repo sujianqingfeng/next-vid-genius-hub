@@ -626,22 +626,22 @@
 				"none": "—"
 			}
 		},
-		"pointsPricing": {
-			"title": "积分计价规则",
-			"subtitle": "管理 LLM / ASR / 下载等资源的积分计价。当前规则数：{total}",
-			"badge": "计费",
-			"table": {
-				"title": "计价规则",
-				"resourceType": "资源类型",
-				"modelId": "模型 ID",
+			"pointsPricing": {
+				"title": "积分计价规则",
+				"subtitle": "管理 LLM / ASR / 下载等资源的积分计价。当前规则数：{total}",
+				"badge": "计费",
+				"table": {
+					"title": "计价规则",
+					"resourceType": "资源类型",
+					"modelId": "模型 ID",
 			"unit": "计价单位",
 			"pricePerUnit": "单价",
-			"inputPricePerUnit": "输入 Token 单价",
-			"outputPricePerUnit": "输出 Token 单价",
+			"inputPricePerUnit": "输入 Token 单价（微积分）",
+			"outputPricePerUnit": "输出 Token 单价（微积分）",
 			"minCharge": "最小扣费",
-				"updatedAt": "更新时间",
-				"actions": "操作"
-			},
+					"updatedAt": "更新时间",
+					"actions": "操作"
+				},
 			"filters": {
 				"resource": {
 					"all": "全部资源",
@@ -671,12 +671,13 @@
 				"modelIdPlaceholder": "例如 openai/gpt-4.1-mini",
 				"modelIdHint": "留空表示该资源类型的默认规则。",
 			"pricePerUnit": "每单位积分单价",
-			"inputPricePerUnit": "输入 Token 单价",
-			"outputPricePerUnit": "输出 Token 单价",
+			"inputPricePerUnit": "输入 Token 单价（微积分/Token）",
+			"outputPricePerUnit": "输出 Token 单价（微积分/Token）",
+			"llmPricingHint": "LLM 单价按“微积分/Token”计。1 积分 = 1,000,000 微积分；且 10 元 = 1000 积分，因此 RMB/1M Tokens = 微积分/Token ÷ 100（例如 8 元/1M 输入 Token ⇒ 800 微积分/Token）。",
 			"minCharge": "最小扣费（可选）",
-				"save": "保存",
-				"cancel": "取消"
-			},
+					"save": "保存",
+					"cancel": "取消"
+				},
 			"labels": {
 				"defaultModel": "默认",
 				"none": "—"

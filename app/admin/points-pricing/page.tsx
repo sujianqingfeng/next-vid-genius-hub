@@ -23,6 +23,7 @@ import {
 } from '~/components/ui/select'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { rmbPerMillionTokensFromMicroPointsPerToken } from '~/lib/points/units'
 
 type ResourceFilter = 'all' | 'llm' | 'asr' | 'download'
 
@@ -267,22 +268,28 @@ export default function AdminPointsPricingPage() {
 											{rule.modelId || t('labels.defaultModel')}
 										</td>
 											<td className="px-4 py-3 text-muted-foreground">{rule.unit}</td>
-											{resourceFilter === 'llm' ? (
-												<>
+												{resourceFilter === 'llm' ? (
+													<>
+														<td className="px-4 py-3 text-muted-foreground">
+															{rule.inputPricePerUnit ?? 0}
+															<span className="ml-2 text-xs text-muted-foreground/80">
+																(~{rmbPerMillionTokensFromMicroPointsPerToken(rule.inputPricePerUnit ?? 0).toFixed(2)} RMB/1M)
+															</span>
+														</td>
+														<td className="px-4 py-3 text-muted-foreground">
+															{rule.outputPricePerUnit ?? 0}
+															<span className="ml-2 text-xs text-muted-foreground/80">
+																(~{rmbPerMillionTokensFromMicroPointsPerToken(rule.outputPricePerUnit ?? 0).toFixed(2)} RMB/1M)
+															</span>
+														</td>
+													</>
+												) : (
 													<td className="px-4 py-3 text-muted-foreground">
-														{rule.inputPricePerUnit ?? 0}
+														{rule.resourceType === 'llm'
+															? `${rule.inputPricePerUnit ?? 0} / ${rule.outputPricePerUnit ?? 0} (RMB/1M ~${rmbPerMillionTokensFromMicroPointsPerToken(rule.inputPricePerUnit ?? 0).toFixed(2)} / ${rmbPerMillionTokensFromMicroPointsPerToken(rule.outputPricePerUnit ?? 0).toFixed(2)})`
+															: rule.pricePerUnit}
 													</td>
-													<td className="px-4 py-3 text-muted-foreground">
-														{rule.outputPricePerUnit ?? 0}
-													</td>
-												</>
-											) : (
-												<td className="px-4 py-3 text-muted-foreground">
-													{rule.resourceType === 'llm'
-														? `${rule.inputPricePerUnit ?? 0} / ${rule.outputPricePerUnit ?? 0}`
-														: rule.pricePerUnit}
-												</td>
-											)}
+												)}
 											<td className="px-4 py-3 text-muted-foreground">
 												{rule.minCharge ?? t('labels.none')}
 											</td>
@@ -481,45 +488,51 @@ export default function AdminPointsPricingPage() {
 												<label className="text-[10px] text-muted-foreground">
 													{t('form.inputPricePerUnit')}
 												</label>
-												<Input
-													type="number"
-													min={0}
-													value={editingRule?.inputPricePerUnit ?? 0}
-													onChange={(e) =>
-														setEditingRule((prev) =>
-															prev
-																? {
-																		...prev,
-																		inputPricePerUnit: Number(e.target.value || 0),
-																	}
-																: prev,
-														)
-													}
-												/>
+													<Input
+														type="number"
+														min={0}
+														value={editingRule?.inputPricePerUnit ?? 0}
+														onChange={(e) =>
+															setEditingRule((prev) =>
+																prev
+																	? {
+																			...prev,
+																			inputPricePerUnit: Number(e.target.value || 0),
+																		}
+																	: prev,
+															)
+														}
+													/>
+													<p className="text-[10px] text-muted-foreground">
+														~{rmbPerMillionTokensFromMicroPointsPerToken(editingRule?.inputPricePerUnit ?? 0).toFixed(2)} RMB/1M
+													</p>
+												</div>
+												<div className="space-y-1">
+													<label className="text-[10px] text-muted-foreground">
+														{t('form.outputPricePerUnit')}
+													</label>
+													<Input
+														type="number"
+														min={0}
+														value={editingRule?.outputPricePerUnit ?? 0}
+														onChange={(e) =>
+															setEditingRule((prev) =>
+																prev
+																	? {
+																			...prev,
+																			outputPricePerUnit: Number(e.target.value || 0),
+																		}
+																	: prev,
+															)
+														}
+													/>
+													<p className="text-[10px] text-muted-foreground">
+														~{rmbPerMillionTokensFromMicroPointsPerToken(editingRule?.outputPricePerUnit ?? 0).toFixed(2)} RMB/1M
+													</p>
+												</div>
 											</div>
-											<div className="space-y-1">
-												<label className="text-[10px] text-muted-foreground">
-													{t('form.outputPricePerUnit')}
-												</label>
-												<Input
-													type="number"
-													min={0}
-													value={editingRule?.outputPricePerUnit ?? 0}
-													onChange={(e) =>
-														setEditingRule((prev) =>
-															prev
-																? {
-																		...prev,
-																		outputPricePerUnit: Number(e.target.value || 0),
-																	}
-																: prev,
-														)
-													}
-												/>
-											</div>
-										</div>
-									) : (
-										<Input
+										) : (
+											<Input
 											type="number"
 											min={0}
 											value={editingRule?.pricePerUnit ?? 0}
@@ -533,13 +546,18 @@ export default function AdminPointsPricingPage() {
 														: prev,
 												)
 											}
-										/>
-									)}
-								</div>
-								<div className="space-y-2">
-									<label className="text-xs font-medium text-muted-foreground">
-										{t('form.minCharge')}
-									</label>
+											/>
+										)}
+										{editingRule?.resourceType === 'llm' ? (
+											<p className="text-[10px] text-muted-foreground">
+												{t('form.llmPricingHint')}
+											</p>
+										) : null}
+									</div>
+									<div className="space-y-2">
+										<label className="text-xs font-medium text-muted-foreground">
+											{t('form.minCharge')}
+										</label>
 								<Input
 									type="number"
 									min={0}

@@ -2,6 +2,7 @@ import { and, eq, isNull, or } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import type { PointResourceType } from '~/lib/db/schema'
 import { POINT_RESOURCE_TYPES } from '~/lib/job/task'
+import { MICRO_POINTS_PER_POINT } from './units'
 
 export type PricingRule = typeof schema.pointPricingRules.$inferSelect
 
@@ -9,6 +10,12 @@ type DbClient = Awaited<ReturnType<typeof getDb>>
 
 function applyMinCharge(cost: number, minCharge?: number | null) {
 	return Math.max(cost, minCharge ?? 0)
+}
+
+function ceilDivBigInt(numerator: bigint, denominator: bigint): bigint {
+	if (denominator <= 0n) throw new Error('denominator must be positive')
+	if (numerator <= 0n) return 0n
+	return (numerator + denominator - 1n) / denominator
 }
 
 async function resolveRule(opts: {
@@ -45,16 +52,25 @@ export async function calculateLlmCost(opts: {
 	db?: DbClient
 }): Promise<{ points: number; rule: PricingRule; totalTokens: number }> {
 	const rule = await resolveRule({ resourceType: POINT_RESOURCE_TYPES.LLM, modelId: opts.modelId, db: opts.db })
-	const inputTokens = Math.max(0, opts.inputTokens ?? 0)
-	const outputTokens = Math.max(0, opts.outputTokens ?? 0)
+	const inputTokens = Math.max(0, Math.trunc(opts.inputTokens ?? 0))
+	const outputTokens = Math.max(0, Math.trunc(opts.outputTokens ?? 0))
 	const totalTokens = inputTokens + outputTokens
 	if (rule.unit !== 'token') {
 		throw new Error(`LLM pricing rule unit must be token (got ${rule.unit})`)
 	}
-	const inputPrice = rule.inputPricePerUnit ?? 0
-	const outputPrice = rule.outputPricePerUnit ?? 0
-	const rawCost = inputTokens * inputPrice + outputTokens * outputPrice
-	const points = applyMinCharge(Math.ceil(rawCost), rule.minCharge)
+	// LLM pricing uses micropoints per token to support sub-point granularity.
+	// - 1 point = 1_000_000 micropoints
+	// - `inputPricePerUnit` / `outputPricePerUnit` store micropoints per token (integers)
+	const inputPriceMicro = Math.max(0, Math.trunc(rule.inputPricePerUnit ?? 0))
+	const outputPriceMicro = Math.max(0, Math.trunc(rule.outputPricePerUnit ?? 0))
+	const rawCostMicro =
+		BigInt(inputTokens) * BigInt(inputPriceMicro) +
+		BigInt(outputTokens) * BigInt(outputPriceMicro)
+	const pointsBig = ceilDivBigInt(rawCostMicro, BigInt(MICRO_POINTS_PER_POINT))
+	if (pointsBig > BigInt(Number.MAX_SAFE_INTEGER)) {
+		throw new Error('LLM cost overflow (points too large)')
+	}
+	const points = applyMinCharge(Number(pointsBig), rule.minCharge)
 	return { points, rule, totalTokens }
 }
 

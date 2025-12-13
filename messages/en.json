@@ -637,8 +637,8 @@
 				"modelId": "Model ID",
 			"unit": "Unit",
 			"pricePerUnit": "Price / unit",
-			"inputPricePerUnit": "Input price",
-			"outputPricePerUnit": "Output price",
+			"inputPricePerUnit": "Input token price (µpoints)",
+			"outputPricePerUnit": "Output token price (µpoints)",
 			"minCharge": "Min charge",
 				"updatedAt": "Updated",
 				"actions": "Actions"
@@ -672,8 +672,9 @@
 				"modelIdPlaceholder": "e.g. openai/gpt-4.1-mini",
 				"modelIdHint": "Leave empty for the default rule for this resource.",
 			"pricePerUnit": "Price per unit",
-			"inputPricePerUnit": "Input token price per unit",
-			"outputPricePerUnit": "Output token price per unit",
+			"inputPricePerUnit": "Input token price (µpoints/token)",
+			"outputPricePerUnit": "Output token price (µpoints/token)",
+			"llmPricingHint": "LLM prices are stored as µpoints/token. 1 point = 1,000,000 µpoints. With 10 RMB = 1000 points, RMB per 1M tokens = µpoints/token ÷ 100 (e.g. 8 RMB/1M input tokens ⇒ 800 µpoints/token).",
 			"minCharge": "Minimum charge (optional)",
 				"save": "Save",
 				"cancel": "Cancel"
