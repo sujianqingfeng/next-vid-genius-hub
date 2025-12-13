@@ -481,16 +481,23 @@
 		"switchToLogin": "Already have an account? Sign in",
 		"backHome": "Back to Home"
 	},
-	"Admin": {
-		"layout": {
-			"title": "Admin Console",
-			"nav": {
-				"users": "Users",
-				"aiProviders": "AI providers",
-				"aiModels": "AI models",
-				"pricing": "Points pricing"
-			}
-		},
+  "Admin": {
+    "layout": {
+      "title": "Admin Console",
+      "actions": {
+        "backToWorkspace": "Back to workspace",
+        "back": "Back"
+      },
+      "mobile": {
+        "sectionPlaceholder": "Select section"
+      },
+      "nav": {
+        "users": "Users",
+        "aiProviders": "AI providers",
+        "aiModels": "AI models",
+        "pricing": "Points pricing"
+      }
+    },
 		"aiProviders": {
 			"title": "AI Providers",
 			"tabs": { "llm": "LLM Providers", "asr": "ASR Providers" },

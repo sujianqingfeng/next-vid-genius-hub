@@ -480,16 +480,23 @@
 		"switchToLogin": "已经有账号？去登录",
 		"backHome": "返回首页"
 	},
-	"Admin": {
-		"layout": {
-			"title": "管理后台",
-			"nav": {
-				"users": "用户管理",
-				"aiProviders": "AI 提供商",
-				"aiModels": "AI 模型",
-				"pricing": "计价规则"
-			}
-		},
+  "Admin": {
+    "layout": {
+      "title": "管理后台",
+      "actions": {
+        "backToWorkspace": "返回工作区",
+        "back": "返回"
+      },
+      "mobile": {
+        "sectionPlaceholder": "选择模块"
+      },
+      "nav": {
+        "users": "用户管理",
+        "aiProviders": "AI 提供商",
+        "aiModels": "AI 模型",
+        "pricing": "计价规则"
+      }
+    },
 		"aiProviders": {
 			"title": "AI 提供商",
 			"tabs": { "llm": "LLM 提供商", "asr": "ASR 提供商" },
