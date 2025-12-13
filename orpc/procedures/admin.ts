@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, isNull, like, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import { addPoints, listTransactions } from '~/lib/points/service'
-import { ADMIN_USERS_PAGE_SIZE, DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
+import { ADMIN_PRICING_RULES_PAGE_SIZE, ADMIN_USERS_PAGE_SIZE, DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
 import type { PointResourceType } from '~/lib/db/schema'
 import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
 import {
@@ -160,7 +160,7 @@ export const listUserTransactions = os
 
 const ListPricingRulesSchema = z.object({
 	page: z.number().int().min(1).default(1),
-	limit: z.number().int().min(1).max(100).default(DEFAULT_PAGE_LIMIT),
+	limit: z.number().int().min(1).max(ADMIN_PRICING_RULES_PAGE_SIZE).default(DEFAULT_PAGE_LIMIT),
 	resourceType: z.custom<PointResourceType>().optional(),
 })
 

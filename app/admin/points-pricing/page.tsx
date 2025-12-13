@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { ADMIN_PRICING_RULES_PAGE_SIZE } from '~/lib/pagination'
 import {
 	MICRO_POINTS_PER_POINT,
 	microPointsPerTokenFromRmbPerMillionTokens,
@@ -161,7 +162,7 @@ export default function AdminPointsPricingPage() {
 
 	const rulesQuery = useQuery({
 		...queryOrpc.admin.listPricingRules.queryOptions({
-			input: { page: 1, limit: 500, resourceType: kind },
+			input: { page: 1, limit: ADMIN_PRICING_RULES_PAGE_SIZE, resourceType: kind },
 		}),
 		keepPreviousData: true,
 	})
