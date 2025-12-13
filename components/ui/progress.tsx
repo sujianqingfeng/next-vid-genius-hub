@@ -1,31 +1,31 @@
-"use client"
+'use client'
 
+import * as ProgressPrimitive from '@radix-ui/react-progress'
 import * as React from 'react'
 
-export interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
-  value?: number // 0..100
-  srLabel?: string
+import { cn } from '~/lib/utils'
+
+function Progress({
+	className,
+	value,
+	...props
+}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+	return (
+		<ProgressPrimitive.Root
+			data-slot="progress"
+			className={cn(
+				'bg-primary/20 relative h-2 w-full overflow-hidden rounded-full',
+				className,
+			)}
+			{...props}
+		>
+			<ProgressPrimitive.Indicator
+				data-slot="progress-indicator"
+				className="bg-primary h-full w-full flex-1 transition-all"
+				style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+			/>
+		</ProgressPrimitive.Root>
+	)
 }
 
-export function Progress({ value = 0, srLabel = 'Progress', className = '', ...rest }: ProgressProps) {
-  const pct = Math.max(0, Math.min(100, Math.round(value)))
-  return (
-    <div className={`w-full ${className}`} {...rest}>
-      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full bg-primary transition-[width] duration-300 ease-out"
-          style={{ width: `${pct}%` }}
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          role="progressbar"
-          aria-label={srLabel}
-        />
-      </div>
-      <span className="sr-only" aria-live="polite">{srLabel}: {pct}%</span>
-    </div>
-  )
-}
-
-export default Progress
-
+export { Progress }
