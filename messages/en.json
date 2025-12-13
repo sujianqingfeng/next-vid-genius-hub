@@ -733,5 +733,67 @@
 				"deleteError": "Failed to delete pricing rule"
 			}
 		}
+	},
+	"Privacy": {
+		"title": "Privacy Policy",
+		"backHome": "Back to Home",
+		"lastUpdated": "Last updated",
+		"updateDate": "January 2025",
+		"sections": {
+			"intro": {
+				"title": "Introduction",
+				"content": "Welcome to Video Genius Hub. We value your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, store, and protect your data. By using our service, you agree to the practices described in this policy."
+			},
+			"collection": {
+				"title": "Information We Collect",
+				"content": "We may collect the following types of information:",
+				"items": {
+					"account": "Account information: including your email address, nickname, and password (stored encrypted)",
+					"usage": "Usage data: including your activity logs, service usage patterns, and preferences",
+					"device": "Device information: including device type, operating system, browser type, and IP address",
+					"media": "Media data: including metadata related to videos you upload or download"
+				}
+			},
+			"usage": {
+				"title": "How We Use Your Information",
+				"content": "We use the information we collect for the following purposes:",
+				"items": {
+					"service": "To provide, maintain, and improve our services",
+					"improve": "To analyze usage patterns and optimize user experience",
+					"communicate": "To send you service-related notifications and updates",
+					"security": "To detect, prevent, and address technical issues and security threats"
+				}
+			},
+			"storage": {
+				"title": "Data Storage",
+				"content": "Your data is stored on secure cloud servers. We employ industry-standard encryption and security measures to protect your information. We retain your data only for as long as necessary or as required by law."
+			},
+			"sharing": {
+				"title": "Data Sharing",
+				"content": "We do not sell your personal information. We may share your information in the following circumstances: with your consent; to comply with legal obligations; to protect our rights and safety; with trusted third-party service providers who help us operate our services (and who are bound by privacy protections)."
+			},
+			"rights": {
+				"title": "Your Rights",
+				"content": "You have the following rights regarding your personal data:",
+				"items": {
+					"access": "Access the personal data we hold about you",
+					"correct": "Correct inaccurate or incomplete data",
+					"delete": "Request deletion of your data in certain circumstances",
+					"export": "Request export of your data in a portable format"
+				}
+			},
+			"cookies": {
+				"title": "Cookies and Tracking Technologies",
+				"content": "We use cookies and similar technologies to enhance your experience, analyze usage, and provide personalized content. You can manage cookie preferences through your browser settings, but disabling certain cookies may affect service functionality."
+			},
+			"updates": {
+				"title": "Policy Updates",
+				"content": "We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Significant changes will be communicated to you through in-service notifications or email."
+			},
+			"contact": {
+				"title": "Contact Us",
+				"content": "If you have any questions or concerns about this Privacy Policy, please contact us through the support channels within the platform."
+			}
+		}
 	}
 }
