@@ -24,21 +24,64 @@ async function resolveRule(opts: {
 	db?: DbClient
 }): Promise<PricingRule> {
 	const client = opts.db ?? (await getDb())
-	const whereClause = opts.modelId
+
+	// Download pricing never depends on provider/model.
+	if (opts.resourceType === POINT_RESOURCE_TYPES.DOWNLOAD) {
+		const row = await client.query.pointPricingRules.findFirst({
+			where: and(
+				eq(schema.pointPricingRules.resourceType, opts.resourceType),
+				isNull(schema.pointPricingRules.providerId),
+				isNull(schema.pointPricingRules.modelId),
+			),
+		})
+		if (!row) {
+			throw new Error(`Pricing rule not found for ${opts.resourceType} (model=default)`)
+		}
+		return row
+	}
+
+	const modelId = opts.modelId ?? null
+	let providerId: string | null = null
+
+	if (modelId) {
+		const model = await client.query.aiModels.findFirst({
+			where: eq(schema.aiModels.id, modelId),
+		})
+		if (model) {
+			// Best-effort kind validation
+			if (opts.resourceType === POINT_RESOURCE_TYPES.LLM && model.kind !== 'llm') {
+				throw new Error(`Pricing model kind mismatch for llm (model=${modelId})`)
+			}
+			if (opts.resourceType === POINT_RESOURCE_TYPES.ASR && model.kind !== 'asr') {
+				throw new Error(`Pricing model kind mismatch for asr (model=${modelId})`)
+			}
+			providerId = model.providerId
+		}
+	}
+
+	const whereClause = modelId
 		? and(
 				eq(schema.pointPricingRules.resourceType, opts.resourceType),
-				or(eq(schema.pointPricingRules.modelId, opts.modelId), isNull(schema.pointPricingRules.modelId)),
+				or(
+					eq(schema.pointPricingRules.modelId, modelId),
+					and(isNull(schema.pointPricingRules.modelId), providerId ? eq(schema.pointPricingRules.providerId, providerId) : isNull(schema.pointPricingRules.providerId)),
+					and(isNull(schema.pointPricingRules.modelId), isNull(schema.pointPricingRules.providerId)),
+				),
 			)
 		: and(
 				eq(schema.pointPricingRules.resourceType, opts.resourceType),
 				isNull(schema.pointPricingRules.modelId),
+				isNull(schema.pointPricingRules.providerId),
 			)
 
 	const rows = await client.query.pointPricingRules.findMany({ where: whereClause })
 
-	const match = rows.find((r) => r.modelId && opts.modelId && r.modelId === opts.modelId)
-	const fallback = rows.find((r) => r.modelId == null)
-	const rule = match ?? fallback
+	const modelRule = modelId ? rows.find((r) => r.modelId === modelId) : undefined
+	const providerRule =
+		providerId ? rows.find((r) => r.modelId == null && r.providerId === providerId) : undefined
+	const globalRule = rows.find((r) => r.modelId == null && r.providerId == null)
+
+	const rule = modelRule ?? providerRule ?? globalRule
 	if (!rule) {
 		throw new Error(`Pricing rule not found for ${opts.resourceType} (model=${opts.modelId ?? 'default'})`)
 	}

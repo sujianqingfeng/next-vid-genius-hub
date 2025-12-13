@@ -1,5 +1,5 @@
 import { os } from '@orpc/server'
-import { and, asc, count, desc, eq, like, ne, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, isNull, like, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import { addPoints, listTransactions } from '~/lib/points/service'
@@ -208,6 +208,7 @@ export const listPricingRules = os
 const UpsertPricingRuleSchema = z.object({
 	id: z.string().min(1).optional(),
 	resourceType: z.custom<PointResourceType>(),
+	providerId: z.string().min(1).optional().nullable(),
 	modelId: z.string().trim().max(200).optional().nullable(),
 	unit: z.enum(['token', 'second', 'minute']),
 	pricePerUnit: z.number().int().min(0),
@@ -221,6 +222,38 @@ export const upsertPricingRule = os
 	.handler(async ({ input }) => {
 		const db = await getDb()
 		const now = new Date()
+
+		let normalizedProviderId =
+			input.resourceType === 'download' ? null : (input.providerId ?? null)
+		let normalizedModelId =
+			input.resourceType === 'download' ? null : (input.modelId ?? null)
+
+		if (normalizedModelId) {
+			const model = await db.query.aiModels.findFirst({
+				where: eq(schema.aiModels.id, normalizedModelId),
+			})
+			if (!model) throw new Error('Model not found')
+			if (model.kind !== input.resourceType) {
+				throw new Error(`Model kind mismatch: model=${model.kind} pricing=${input.resourceType}`)
+			}
+			if (normalizedProviderId && normalizedProviderId !== model.providerId) {
+				throw new Error('Provider mismatch for model pricing rule')
+			}
+			normalizedProviderId = model.providerId
+		} else if (normalizedProviderId) {
+			const provider = await db.query.aiProviders.findFirst({
+				where: eq(schema.aiProviders.id, normalizedProviderId),
+			})
+			if (!provider) throw new Error('Provider not found')
+			if (provider.kind !== input.resourceType) {
+				throw new Error(`Provider kind mismatch: provider=${provider.kind} pricing=${input.resourceType}`)
+			}
+		}
+
+		if (input.resourceType === 'download') {
+			normalizedProviderId = null
+			normalizedModelId = null
+		}
 
 		if (input.resourceType === 'llm') {
 			if (input.unit !== 'token') {
@@ -236,7 +269,8 @@ export const upsertPricingRule = os
 				.update(schema.pointPricingRules)
 				.set({
 					resourceType: input.resourceType,
-					modelId: input.modelId ?? null,
+					providerId: normalizedProviderId,
+					modelId: normalizedModelId,
 					unit: input.unit,
 					pricePerUnit: input.pricePerUnit,
 					inputPricePerUnit: input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
@@ -248,9 +282,57 @@ export const upsertPricingRule = os
 			return { success: true }
 		}
 
+		// Upsert by (resourceType, providerId, modelId) to avoid accidental duplicate rules.
+		const whereClause =
+			normalizedProviderId == null && normalizedModelId == null
+				? and(
+						eq(schema.pointPricingRules.resourceType, input.resourceType),
+						isNull(schema.pointPricingRules.providerId),
+						isNull(schema.pointPricingRules.modelId),
+					)
+				: normalizedProviderId != null && normalizedModelId == null
+					? and(
+							eq(schema.pointPricingRules.resourceType, input.resourceType),
+							eq(schema.pointPricingRules.providerId, normalizedProviderId),
+							isNull(schema.pointPricingRules.modelId),
+						)
+					: normalizedProviderId != null && normalizedModelId != null
+						? and(
+								eq(schema.pointPricingRules.resourceType, input.resourceType),
+								eq(schema.pointPricingRules.modelId, normalizedModelId),
+								or(
+									eq(schema.pointPricingRules.providerId, normalizedProviderId),
+									isNull(schema.pointPricingRules.providerId),
+								),
+							)
+						: and(
+								eq(schema.pointPricingRules.resourceType, input.resourceType),
+								eq(schema.pointPricingRules.modelId, normalizedModelId ?? ''),
+							)
+
+		const existing = await db.query.pointPricingRules.findFirst({ where: whereClause })
+		if (existing) {
+			await db
+				.update(schema.pointPricingRules)
+				.set({
+					resourceType: input.resourceType,
+					providerId: normalizedProviderId,
+					modelId: normalizedModelId,
+					unit: input.unit,
+					pricePerUnit: input.pricePerUnit,
+					inputPricePerUnit: input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
+					outputPricePerUnit: input.resourceType === 'llm' ? (input.outputPricePerUnit ?? null) : null,
+					minCharge: input.minCharge ?? null,
+					updatedAt: now,
+				})
+				.where(eq(schema.pointPricingRules.id, existing.id))
+			return { success: true }
+		}
+
 		await db.insert(schema.pointPricingRules).values({
 			resourceType: input.resourceType,
-			modelId: input.modelId ?? null,
+			providerId: normalizedProviderId,
+			modelId: normalizedModelId,
 			unit: input.unit,
 			pricePerUnit: input.pricePerUnit,
 			inputPricePerUnit: input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,

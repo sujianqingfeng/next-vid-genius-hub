@@ -630,16 +630,28 @@
 				"title": "积分计价规则",
 				"subtitle": "管理 LLM / ASR / 下载等资源的积分计价。当前规则数：{total}",
 				"badge": "计费",
+				"matrix": {
+					"title": "计价矩阵",
+					"subtitle": "按模型配置价格；未配置的模型会继承默认规则。",
+					"defaultReady": "默认规则已配置",
+					"defaultMissing": "缺少默认规则（将不扣费）"
+				},
 				"table": {
 					"title": "计价规则",
+					"provider": "Provider",
+					"model": "模型",
 					"resourceType": "资源类型",
 					"modelId": "模型 ID",
-			"unit": "计价单位",
-			"pricePerUnit": "单价",
-			"inputPricePerUnit": "输入 Token 单价（微积分）",
-			"outputPricePerUnit": "输出 Token 单价（微积分）",
-			"minCharge": "最小扣费",
+					"unit": "计价单位",
+					"pricePerUnit": "单价",
+					"inputPricePerUnit": "输入 Token 单价（微积分）",
+					"outputPricePerUnit": "输出 Token 单价（微积分）",
+					"inputRmbPerMillion": "输入价（RMB/1M tokens）",
+					"outputRmbPerMillion": "输出价（RMB/1M tokens）",
+					"pointsPerMinute": "积分/分钟",
+					"minCharge": "最小扣费",
 					"updatedAt": "更新时间",
+					"status": "状态",
 					"actions": "操作"
 				},
 			"filters": {
@@ -652,12 +664,16 @@
 			},
 			"actions": {
 				"add": "新增规则",
+				"editDefault": "编辑默认规则",
 				"edit": "编辑",
+				"reset": "清除覆盖",
 				"delete": "删除"
 			},
 			"dialogs": {
 				"addTitle": "新增计价规则",
-				"editTitle": "编辑计价规则"
+				"editTitle": "编辑计价规则",
+				"editDefaultTitle": "编辑默认规则",
+				"editTitleWithTarget": "编辑：{target}"
 			},
 			"form": {
 				"resourceType": "资源类型",
@@ -670,16 +686,39 @@
 				"modelId": "模型 ID（可选）",
 				"modelIdPlaceholder": "例如 openai/gpt-4.1-mini",
 				"modelIdHint": "留空表示该资源类型的默认规则。",
-			"pricePerUnit": "每单位积分单价",
-			"inputPricePerUnit": "输入 Token 单价（微积分/Token）",
-			"outputPricePerUnit": "输出 Token 单价（微积分/Token）",
-			"llmPricingHint": "LLM 单价按“微积分/Token”计。1 积分 = 1,000,000 微积分；且 10 元 = 1000 积分，因此 RMB/1M Tokens = 微积分/Token ÷ 100（例如 8 元/1M 输入 Token ⇒ 800 微积分/Token）。",
-			"minCharge": "最小扣费（可选）",
+				"pricePerUnit": "每单位积分单价",
+				"pointsPerMinute": "每分钟积分",
+				"inputPricePerUnit": "输入 Token 单价（微积分/Token）",
+				"outputPricePerUnit": "输出 Token 单价（微积分/Token）",
+				"inputRmbPerMillion": "输入价（RMB/1M tokens）",
+				"outputRmbPerMillion": "输出价（RMB/1M tokens）",
+				"microHint": "存储值：{micro} 微积分/Token",
+				"overrideHint": "提示：当前模型未单独配置，保存后会创建“模型覆盖规则”。",
+				"llmPricingHint": "LLM 单价按“微积分/Token”计。1 积分 = 1,000,000 微积分；且 10 元 = 1000 积分，因此 RMB/1M Tokens = 微积分/Token ÷ 100（例如 8 元/1M 输入 Token ⇒ 800 微积分/Token）。",
+				"minCharge": "最小扣费（可选）",
 					"save": "保存",
 					"cancel": "取消"
 				},
+				"status": {
+					"override": "已覆盖",
+					"inherited": "继承默认",
+					"missing": "缺少规则"
+				},
+				"preview": {
+					"title": "扣费预估",
+					"model": "模型（可选）",
+					"inputTokens": "输入 Tokens",
+					"outputTokens": "输出 Tokens",
+					"minutes": "时长（分钟）",
+					"roundingHint": "按分钟向上取整计费。",
+					"points": "预计扣除积分",
+					"noRule": "缺少默认规则：当前用量将不会扣费。",
+					"llmDetail": "totalTokens={totalTokens} rawPoints={rawPoints} minCharge={minCharge}",
+					"timeDetail": "units={units} unit={unit} rawPoints={rawPoints} minCharge={minCharge}"
+				},
 			"labels": {
 				"defaultModel": "默认",
+				"providerDefault": "Provider 默认",
 				"none": "—"
 			},
 			"empty": "暂时还没有计价规则",

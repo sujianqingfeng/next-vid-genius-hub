@@ -142,6 +142,12 @@ export const pointPricingRules = sqliteTable('point_pricing_rules', {
 		.notNull()
 		.$defaultFn(() => createId()),
 	resourceType: text('resource_type', { enum: ['llm', 'asr', 'download'] }).notNull(),
+	// Nullable:
+	// - null + null => global default for the resourceType
+	// - providerId + null => provider default (LLM/ASR only)
+	// - providerId + modelId => model override (LLM/ASR only)
+	// Download always uses null providerId/modelId.
+	providerId: text('provider_id'),
 	modelId: text('model_id'),
 	unit: text('unit', { enum: ['token', 'second', 'minute'] }).notNull(),
 	pricePerUnit: integer('price_per_unit').notNull(),

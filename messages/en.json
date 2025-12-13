@@ -631,16 +631,28 @@
 			"title": "Points Pricing",
 			"subtitle": "Manage pricing rules for LLM, ASR, and downloads. Total rules: {total}",
 			"badge": "Points",
+			"matrix": {
+				"title": "Pricing Matrix",
+				"subtitle": "Set prices per model; models without overrides inherit the default rule.",
+				"defaultReady": "Default rule configured",
+				"defaultMissing": "Missing default rule (no charge)"
+			},
 			"table": {
 				"title": "Pricing rules",
+				"provider": "Provider",
+				"model": "Model",
 				"resourceType": "Resource",
 				"modelId": "Model ID",
-			"unit": "Unit",
-			"pricePerUnit": "Price / unit",
-			"inputPricePerUnit": "Input token price (µpoints)",
-			"outputPricePerUnit": "Output token price (µpoints)",
-			"minCharge": "Min charge",
+				"unit": "Unit",
+				"pricePerUnit": "Price / unit",
+				"inputPricePerUnit": "Input token price (µpoints)",
+				"outputPricePerUnit": "Output token price (µpoints)",
+				"inputRmbPerMillion": "Input (RMB/1M tokens)",
+				"outputRmbPerMillion": "Output (RMB/1M tokens)",
+				"pointsPerMinute": "Points/min",
+				"minCharge": "Min charge",
 				"updatedAt": "Updated",
+				"status": "Status",
 				"actions": "Actions"
 			},
 			"filters": {
@@ -653,12 +665,16 @@
 			},
 			"actions": {
 				"add": "Add rule",
+				"editDefault": "Edit default",
 				"edit": "Edit",
+				"reset": "Reset",
 				"delete": "Delete"
 			},
 			"dialogs": {
 				"addTitle": "Add pricing rule",
-				"editTitle": "Edit pricing rule"
+				"editTitle": "Edit pricing rule",
+				"editDefaultTitle": "Edit default rule",
+				"editTitleWithTarget": "Edit: {target}"
 			},
 			"form": {
 				"resourceType": "Resource type",
@@ -671,16 +687,39 @@
 				"modelId": "Model ID (optional)",
 				"modelIdPlaceholder": "e.g. openai/gpt-4.1-mini",
 				"modelIdHint": "Leave empty for the default rule for this resource.",
-			"pricePerUnit": "Price per unit",
-			"inputPricePerUnit": "Input token price (µpoints/token)",
-			"outputPricePerUnit": "Output token price (µpoints/token)",
-			"llmPricingHint": "LLM prices are stored as µpoints/token. 1 point = 1,000,000 µpoints. With 10 RMB = 1000 points, RMB per 1M tokens = µpoints/token ÷ 100 (e.g. 8 RMB/1M input tokens ⇒ 800 µpoints/token).",
-			"minCharge": "Minimum charge (optional)",
+				"pricePerUnit": "Price per unit",
+				"pointsPerMinute": "Points per minute",
+				"inputPricePerUnit": "Input token price (µpoints/token)",
+				"outputPricePerUnit": "Output token price (µpoints/token)",
+				"inputRmbPerMillion": "Input (RMB/1M tokens)",
+				"outputRmbPerMillion": "Output (RMB/1M tokens)",
+				"microHint": "Stored: {micro} µpoints/token",
+				"overrideHint": "Hint: this model has no override yet; saving will create a model override rule.",
+				"llmPricingHint": "LLM prices are stored as µpoints/token. 1 point = 1,000,000 µpoints. With 10 RMB = 1000 points, RMB per 1M tokens = µpoints/token ÷ 100 (e.g. 8 RMB/1M input tokens ⇒ 800 µpoints/token).",
+				"minCharge": "Minimum charge (optional)",
 				"save": "Save",
 				"cancel": "Cancel"
 			},
+			"status": {
+				"override": "Override",
+				"inherited": "Inherited",
+				"missing": "Missing"
+			},
+			"preview": {
+				"title": "Charge Preview",
+				"model": "Model (optional)",
+				"inputTokens": "Input tokens",
+				"outputTokens": "Output tokens",
+				"minutes": "Duration (minutes)",
+				"roundingHint": "Billed by rounding up to minutes.",
+				"points": "Estimated points",
+				"noRule": "Missing default rule: usage will not be charged.",
+				"llmDetail": "totalTokens={totalTokens} rawPoints={rawPoints} minCharge={minCharge}",
+				"timeDetail": "units={units} unit={unit} rawPoints={rawPoints} minCharge={minCharge}"
+			},
 			"labels": {
 				"defaultModel": "Default",
+				"providerDefault": "Provider default",
 				"none": "—"
 			},
 			"empty": "No pricing rules yet",

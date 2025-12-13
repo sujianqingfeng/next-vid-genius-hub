@@ -1,0 +1,1 @@
+ALTER TABLE `point_pricing_rules` ADD `provider_id` text;
