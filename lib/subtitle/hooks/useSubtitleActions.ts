@@ -229,7 +229,6 @@ export function useSubtitleActions({
 			const selectedAsrModel = asrModels.find((m) => m.id === selectedModel)
 			const caps = selectedAsrModel?.capabilities as AsrCaps | null | undefined
 			const canHintLanguage = Boolean(caps?.supportsLanguageHint)
-			const cloudflareInputFormat = caps?.inputFormat ?? 'binary'
 			logger.info(
 				'transcription',
 				`User started transcription: cloudflare/${selectedModel} for media ${mediaId}`,
@@ -241,7 +240,6 @@ export function useSubtitleActions({
 			transcribeMutation.mutate({
 				mediaId,
 				model: selectedModel,
-				inputFormat: cloudflareInputFormat,
 				language:
 					canHintLanguage && selectedLanguage && selectedLanguage !== DEFAULT_TRANSCRIPTION_LANGUAGE
 						? selectedLanguage

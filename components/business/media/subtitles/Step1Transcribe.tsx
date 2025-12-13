@@ -178,7 +178,7 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 								Language{' '}
 								{selectedModel &&
 									!supportsLanguageHint && (
-										<span className="text-xs text-muted-foreground">(仅 Large v3 Turbo 支持)</span>
+										<span className="text-xs text-muted-foreground">(当前模型不支持)</span>
 									)}
 							</label>
 							<Select

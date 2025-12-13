@@ -3,7 +3,6 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { subtitleRenderConfigSchema } from '~/lib/subtitle/types'
 import { subtitleService } from '~/lib/subtitle/server/subtitle'
-import { cloudflareInputFormatSchema } from '~/lib/subtitle/config/models'
 import { getDb, schema } from '~/lib/db'
 import type { RequestContext } from '~/lib/auth/types'
 import { getJobStatus } from '~/lib/cloudflare'
@@ -18,7 +17,6 @@ export const transcribe = os
       mediaId: z.string(),
       model: z.string().min(1),
       language: z.string().min(2).max(16).optional(),
-      inputFormat: cloudflareInputFormatSchema.optional(),
     }),
   )
   .handler(async ({ input, context }) => {

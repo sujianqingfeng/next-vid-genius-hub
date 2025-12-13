@@ -19,9 +19,6 @@ export interface Env {
 	S3_STYLE?: 'vhost' | 'path'
 	S3_REGION?: string
 	RENDER_JOB_DO?: DurableObjectNamespace
-	// Workers AI (REST credentials) for ASR pipeline
-	CF_AI_ACCOUNT_ID?: string
-	CF_AI_API_TOKEN?: string
 	// Containers Durable Object bindings (optional; when configured, will be used instead of raw URLs)
 	MEDIA_DOWNLOADER?: DurableObjectNamespace
 	AUDIO_TRANSCODER?: DurableObjectNamespace
@@ -81,4 +78,3 @@ export interface StatusDoc {
 	error?: string
 	ts: number
 }
-

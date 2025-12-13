@@ -1,6 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { ensureAiSeeded } from './seed'
+import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
 
 export type AIProviderKind = 'llm' | 'asr'
 
@@ -82,8 +83,16 @@ export async function listAiModels(opts: {
 		orderBy: asc(schema.aiModels.createdAt),
 	})
 
-	modelsCache.set(key, { at: Date.now(), value: items })
-	return items
+	const normalized =
+		opts.kind === 'asr'
+			? items.map((m) => ({
+					...m,
+					capabilities: deriveCloudflareAsrCapabilities(m.remoteModelId),
+				}))
+			: items
+
+	modelsCache.set(key, { at: Date.now(), value: normalized })
+	return normalized
 }
 
 export async function getAiModelConfig(id: string, db?: DbClient) {
@@ -108,7 +117,14 @@ export async function getAiModelConfig(id: string, db?: DbClient) {
 		return null
 	}
 
-	const value = { ...model, provider }
+	const value =
+		model.kind === 'asr'
+			? {
+					...model,
+					capabilities: deriveCloudflareAsrCapabilities(model.remoteModelId),
+					provider,
+				}
+			: { ...model, provider }
 	modelByIdCache.set(key, { at: Date.now(), value })
 	return value
 }
@@ -151,7 +167,14 @@ export async function getDefaultAiModel(kind: AIProviderKind, db?: DbClient) {
 		return null
 	}
 
-	const value = { ...model, provider }
+	const value =
+		model.kind === 'asr'
+			? {
+					...model,
+					capabilities: deriveCloudflareAsrCapabilities(model.remoteModelId),
+					provider,
+				}
+			: { ...model, provider }
 	defaultModelCache.set(key, { at: Date.now(), value })
 	return value
 }
@@ -160,4 +183,3 @@ export async function isEnabledModel(kind: AIProviderKind, id: string, db?: DbCl
 	const cfg = await getAiModelConfig(id, db)
 	return Boolean(cfg && cfg.kind === kind && cfg.enabled)
 }
-

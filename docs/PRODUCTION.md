@@ -137,9 +137,13 @@ Worker 内部会根据 `PREFER_EXTERNAL_CONTAINERS` / `NO_CF_CONTAINERS` 判断�
 wrangler secret put JOB_CALLBACK_HMAC_SECRET   # 与 Next 的 .env 同值
 wrangler secret put S3_ACCESS_KEY_ID
 wrangler secret put S3_SECRET_ACCESS_KEY
-wrangler secret put CF_AI_ACCOUNT_ID           # Workers AI Account ID
-wrangler secret put CF_AI_API_TOKEN            # Workers AI API Token
 ```
+
+Workers AI（ASR）凭据不再作为 Worker secret 配置；由 Next 从 DB 读取：
+
+- Admin → AI providers → ASR Providers → `cloudflare`：
+  - `Account ID`
+  - `API token`
 
 ### 4）路由与自定义域
 

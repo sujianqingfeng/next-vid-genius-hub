@@ -13,6 +13,7 @@ import {
 	getDefaultAiModel,
 } from '~/lib/ai/config/service'
 import { generateText } from '~/lib/ai/chat'
+import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
 
 const ListUsersSchema = z.object({
 	page: z.number().int().min(1).default(1),
@@ -319,7 +320,8 @@ const UpsertAiProviderSchema = z.object({
 	baseUrl: z.string().trim().max(500).optional().nullable(),
 	apiKey: z.string().trim().max(5000).optional().nullable(),
 	enabled: z.boolean().optional(),
-	metadata: z.record(z.unknown()).optional().nullable(),
+	// Use catch-all object instead of record() to avoid Zod v4 standard-schema bug
+	metadata: z.object({}).catchall(z.unknown()).optional().nullable(),
 })
 
 export const upsertAiProvider = os
@@ -385,6 +387,33 @@ export const toggleAiProvider = os
 			.update(schema.aiProviders)
 			.set({ enabled: input.enabled, updatedAt: new Date() })
 			.where(eq(schema.aiProviders.id, input.id))
+
+		invalidateAiConfigCache()
+		return { success: true }
+	})
+
+const DeleteAiProviderSchema = z.object({
+	id: z.string().min(1),
+})
+
+export const deleteAiProvider = os
+	.input(DeleteAiProviderSchema)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+
+		const provider = await db.query.aiProviders.findFirst({
+			where: eq(schema.aiProviders.id, input.id),
+		})
+		if (!provider) throw new Error('Provider not found')
+
+		const referenced = await db.query.aiModels.findFirst({
+			where: eq(schema.aiModels.providerId, input.id),
+		})
+		if (referenced) {
+			throw new Error('Cannot delete provider: models still reference it')
+		}
+
+		await db.delete(schema.aiProviders).where(eq(schema.aiProviders.id, input.id))
 
 		invalidateAiConfigCache()
 		return { success: true }
@@ -465,7 +494,15 @@ export const listAiModels = os
 			orderBy: asc(schema.aiModels.createdAt),
 		})
 
-		return { items }
+		const normalized =
+			input.kind === 'asr'
+				? items.map((m) => ({
+						...m,
+						capabilities: deriveCloudflareAsrCapabilities(m.remoteModelId),
+					}))
+				: items
+
+		return { items: normalized }
 	})
 
 const UpsertAiModelSchema = z.object({
@@ -497,6 +534,10 @@ export const upsertAiModel = os
 		if (input.kind === 'asr' && input.remoteModelId !== input.id) {
 			throw new Error('ASR remoteModelId must equal id (Cloudflare run id)')
 		}
+		if (input.kind === 'asr') {
+			// Validate modelId; ASR capabilities are derived from modelId and cannot be overridden.
+			deriveCloudflareAsrCapabilities(input.id)
+		}
 
 		const existing = await db.query.aiModels.findFirst({
 			where: eq(schema.aiModels.id, input.id),
@@ -523,7 +564,7 @@ export const upsertAiModel = os
 					description: input.description ?? null,
 					enabled,
 					isDefault,
-					capabilities: input.capabilities ?? null,
+					capabilities: input.kind === 'asr' ? null : (input.capabilities ?? null),
 					updatedAt: now,
 				})
 				.where(eq(schema.aiModels.id, input.id))
@@ -537,7 +578,7 @@ export const upsertAiModel = os
 				description: input.description ?? null,
 				enabled,
 				isDefault,
-				capabilities: input.capabilities ?? null,
+				capabilities: input.kind === 'asr' ? null : (input.capabilities ?? null),
 				createdAt: now,
 				updatedAt: now,
 			})

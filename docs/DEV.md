@@ -152,22 +152,13 @@ pnpm cf:dev:lite # 轻量模式，仍然使用外部 Docker 容器，但跳过 C
 
 ### Workers AI（ASR）凭据（方案 A）
 
-字幕 Step 1 若选择 Cloud（或降采样后端为 `cloud`/`auto` 触发 `asr-pipeline`），Worker 需要有 Workers AI 的 REST 凭据，否则会报错：
+字幕 Step 1 若选择 Cloud（触发 `asr-pipeline`），Workers AI 的凭据由 **Next 从 DB 读取**：
 
-- `asr-pipeline: Workers AI credentials not configured`
+- Admin → AI providers → ASR Providers → `cloudflare`：
+  - `Account ID`：Cloudflare account id
+  - `API token`：具有 Workers AI 访问权限的 API Token
 
-本地开发建议使用 wrangler secret 注入，在仓库根目录执行：
-
-```bash
-wrangler secret put CF_AI_ACCOUNT_ID   # Cloudflare Account ID（Workers AI）
-wrangler secret put CF_AI_API_TOKEN    # 具有 Workers AI 访问权限的 API Token
-```
-
-设置完成后重启本地 Worker：
-
-```bash
-pnpm cf:dev
-```
+未配置会在 Worker 触发 ASR 时由 Next 接口返回错误：`Cloudflare ASR provider credentials not configured in DB`。
 
 验证方式：
 
@@ -175,6 +166,13 @@ pnpm cf:dev
 2. 将“降采样后端”设为 `cloud` 或 `auto`；
 3. 触发转录后，wrangler 控制台不应再出现凭据缺失报错；
 4. `/jobs/:id` 会在 `audio-transcoder` 完成后继续执行 ASR，返回 `vtt` + `words.json` 产物。
+
+补充说明（ASR 模型配置）：
+
+- Cloudflare ASR 的请求/返回参数与能力（如是否支持 `language`、音频传参格式）与 `modelId` 强绑定；
+- 后台 `ASR Models` 仅允许配置已支持的 `modelId`，能力参数由系统推导且不可手工覆盖；
+- 历史遗留的 `ai_models.capabilities`（ASR）字段会被忽略；如需清理可执行：
+  - `UPDATE ai_models SET capabilities = NULL WHERE kind = 'asr';`
 
 ## Next 本地
 

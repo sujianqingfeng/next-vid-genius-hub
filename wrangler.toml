@@ -22,9 +22,6 @@ PREFER_EXTERNAL_CONTAINERS = "false"
 CONTAINER_BASE_URL = "http://localhost:9080"
 # Audio transcoder engine (dev)
 CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
-# Workers AI (REST credentials) for ASR pipeline - set in your environment
-# CF_AI_ACCOUNT_ID = "<your-account-id>"
-# CF_AI_API_TOKEN = "<your-api-token>"
 # Dedicated Remotion renderer container (dev)
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 # Cloud download container (media-downloader)

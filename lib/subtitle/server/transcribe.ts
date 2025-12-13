@@ -2,16 +2,15 @@ import { eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
-import { type CloudflareInputFormat } from '~/lib/subtitle/config/models'
 import { startCloudJob, putJobManifest, type JobManifest } from '~/lib/cloudflare'
 import { TASK_KINDS } from '~/lib/job/task'
 import { getAiModelConfig } from '~/lib/ai/config/service'
+import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
 
 export async function transcribe(input: {
 	mediaId: string
 	model: string
 	language?: string
-	inputFormat?: CloudflareInputFormat
 }): Promise<{ success: true; jobId: string; durationSeconds: number }> {
 	const { mediaId, model } = input
 	const normalizedLanguage =
@@ -25,11 +24,8 @@ export async function transcribe(input: {
 		throw new Error(`ASR provider for model ${model} is not available`)
 	}
 
-	const caps = (modelCfg.capabilities as any) || {}
-	const supportsLanguageHint = Boolean(caps.supportsLanguageHint)
-	const languageForCloud = supportsLanguageHint ? normalizedLanguage : undefined
-	const cloudflareInputFormat: CloudflareInputFormat =
-		input.inputFormat ?? (caps.inputFormat as CloudflareInputFormat | undefined) ?? 'binary'
+	const caps = deriveCloudflareAsrCapabilities(modelCfg.remoteModelId)
+	const languageForCloud = caps.supportsLanguageHint ? normalizedLanguage : undefined
 
 	logger.info('transcription', `Starting transcription for media ${mediaId} with cloudflare/${model}`)
 
@@ -78,7 +74,6 @@ export async function transcribe(input: {
 			targetBitrates,
 			sampleRate,
 			model: modelId,
-			inputFormat: cloudflareInputFormat,
 			...(languageForCloud ? { language: languageForCloud } : {}),
 		},
 		createdAt: now,
@@ -104,7 +99,6 @@ export async function transcribe(input: {
 				targetBitrates,
 				sampleRate,
 				model: modelId,
-				inputFormat: cloudflareInputFormat,
 				language: languageForCloud ?? null,
 			},
 		}
@@ -121,7 +115,6 @@ export async function transcribe(input: {
 				targetBitrates,
 				sampleRate,
 				model: modelId,
-				inputFormat: cloudflareInputFormat,
 				...(languageForCloud ? { language: languageForCloud } : {}),
 			},
 		})

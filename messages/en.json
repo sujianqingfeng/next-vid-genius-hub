@@ -501,16 +501,22 @@
 				"edit": "Edit",
 				"enable": "Enable",
 				"disable": "Disable",
+				"delete": "Delete",
 				"test": "Test",
 				"save": "Save",
 				"cancel": "Cancel"
+			},
+			"confirm": {
+				"delete": "Delete provider \"{name}\"? This cannot be undone."
 			},
 			"fields": {
 				"slug": "Slug",
 				"name": "Name",
 				"type": "Type",
 				"baseUrl": "Base URL",
+				"accountId": "Account ID",
 				"apiKey": "API key",
+				"apiToken": "API token",
 				"enabled": "Enabled"
 			},
 			"dialog": {
@@ -519,6 +525,8 @@
 			},
 			"toast": {
 				"saved": "Provider saved",
+				"deleted": "Provider deleted",
+				"deleteFail": "Provider delete failed",
 				"testOk": "Provider test OK",
 				"testFail": "Provider test failed"
 			}

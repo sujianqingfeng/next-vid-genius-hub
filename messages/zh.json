@@ -500,16 +500,22 @@
 				"edit": "编辑",
 				"enable": "启用",
 				"disable": "停用",
+				"delete": "删除",
 				"test": "测试",
 				"save": "保存",
 				"cancel": "取消"
+			},
+			"confirm": {
+				"delete": "确定删除提供商「{name}」吗？此操作不可恢复。"
 			},
 			"fields": {
 				"slug": "标识",
 				"name": "名称",
 				"type": "类型",
 				"baseUrl": "Base URL",
+				"accountId": "Account ID",
 				"apiKey": "API Key",
+				"apiToken": "API Token",
 				"enabled": "启用"
 			},
 			"dialog": {
@@ -518,6 +524,8 @@
 			},
 			"toast": {
 				"saved": "提供商已保存",
+				"deleted": "提供商已删除",
+				"deleteFail": "提供商删除失败",
 				"testOk": "提供商测试通过",
 				"testFail": "提供商测试失败"
 			}

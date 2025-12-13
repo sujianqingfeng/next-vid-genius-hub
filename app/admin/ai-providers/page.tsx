@@ -38,6 +38,7 @@ type EditingProvider = {
 	type: ProviderType
 	baseUrl: string
 	apiKey: string
+	accountId: string
 	enabled: boolean
 }
 
@@ -48,6 +49,7 @@ const DEFAULT_PROVIDER: EditingProvider = {
 	type: 'openai_compat',
 	baseUrl: '',
 	apiKey: '',
+	accountId: '',
 	enabled: true,
 }
 
@@ -101,6 +103,13 @@ export default function AdminAiProvidersPage() {
 			successToast: ({ data }) => data?.message || t('toast.testOk'),
 			errorToast: t('toast.testFail'),
 		},
+	)
+
+	const deleteProvider = useEnhancedMutation(
+		queryOrpc.admin.deleteAiProvider.mutationOptions({
+			onSuccess: () => invalidateList(),
+		}),
+		{ successToast: t('toast.deleted'), errorToast: t('toast.deleteFail') },
 	)
 
 	const typeOptions = useMemo<ProviderType[]>(() => {
@@ -165,12 +174,16 @@ export default function AdminAiProvidersPage() {
 															name: p.name,
 															kind: p.kind,
 															type: p.type,
-															baseUrl: p.baseUrl ?? '',
-															apiKey: '',
-															enabled: Boolean(p.enabled),
-														})
-													}
-												>
+									baseUrl: p.baseUrl ?? '',
+									apiKey: '',
+									accountId:
+										typeof (p.metadata as any)?.accountId === 'string'
+											? String((p.metadata as any).accountId)
+											: '',
+									enabled: Boolean(p.enabled),
+								})
+							}
+						>
 													{t('actions.edit')}
 												</Button>
 												<Button
@@ -184,6 +197,20 @@ export default function AdminAiProvidersPage() {
 													}
 												>
 													{p.enabled ? t('actions.disable') : t('actions.enable')}
+												</Button>
+												<Button
+													variant="destructive"
+													size="sm"
+													disabled={deleteProvider.isPending}
+													onClick={() => {
+														const ok = window.confirm(
+															t('confirm.delete', { name: p.name }),
+														)
+														if (!ok) return
+														deleteProvider.mutate({ id: p.id })
+													}}
+												>
+													{t('actions.delete')}
 												</Button>
 												{p.kind === 'llm' ? (
 													<Button
@@ -266,9 +293,28 @@ export default function AdminAiProvidersPage() {
 									/>
 								</div>
 							) : null}
-							{editing.kind === 'llm' ? (
+							{editing.kind === 'asr' ? (
 								<div className="space-y-2">
-									<Label>{t('fields.apiKey')}</Label>
+									<Label>{t('fields.accountId')}</Label>
+									<Input
+										placeholder="Cloudflare account id"
+										value={editing.accountId}
+										onChange={(e) =>
+											setEditing({
+												...editing,
+												accountId: e.target.value,
+											})
+										}
+									/>
+								</div>
+							) : null}
+							{editing.kind === 'llm' || editing.kind === 'asr' ? (
+								<div className="space-y-2">
+									<Label>
+										{editing.kind === 'asr'
+											? t('fields.apiToken')
+											: t('fields.apiKey')}
+									</Label>
 									<Input
 										type="password"
 										value={editing.apiKey}
@@ -306,8 +352,15 @@ export default function AdminAiProvidersPage() {
 									name: editing.name.trim(),
 									kind: editing.kind,
 									type: editing.type,
-									baseUrl: editing.baseUrl.trim() || null,
+									baseUrl:
+										editing.kind === 'llm'
+											? editing.baseUrl.trim() || null
+											: null,
 									apiKey: editing.apiKey.trim() || undefined,
+									metadata:
+										editing.kind === 'asr' && editing.accountId.trim()
+											? { accountId: editing.accountId.trim() }
+											: undefined,
 									enabled: editing.enabled,
 								})
 							}}

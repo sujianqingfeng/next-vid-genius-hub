@@ -38,19 +38,6 @@ type EditingModel = {
 	description: string
 	enabled: boolean
 	isDefault: boolean
-	// ASR-only capabilities
-	inputFormat: 'binary' | 'array' | 'base64'
-	supportsLanguageHint: boolean
-}
-
-type AsrCaps = {
-	inputFormat?: 'binary' | 'array' | 'base64'
-	supportsLanguageHint?: boolean
-}
-
-const DEFAULT_ASR_CAPS = {
-	inputFormat: 'binary' as const,
-	supportsLanguageHint: false,
 }
 
 function isEditingModelValid(editing: EditingModel | null): boolean {
@@ -135,7 +122,6 @@ export default function AdminAiModelsPage() {
 								description: '',
 								enabled: true,
 								isDefault: false,
-								...DEFAULT_ASR_CAPS,
 							})
 						}
 					>
@@ -159,7 +145,6 @@ export default function AdminAiModelsPage() {
 										const provider = providers.find(
 											(p) => p.id === m.providerId,
 										)
-										const caps = m.capabilities as AsrCaps | null | undefined
 										return (
 											<div
 												key={m.id}
@@ -206,13 +191,6 @@ export default function AdminAiModelsPage() {
 																description: m.description ?? '',
 																enabled: Boolean(m.enabled),
 																isDefault: Boolean(m.isDefault),
-																inputFormat:
-																	caps?.inputFormat ??
-																	DEFAULT_ASR_CAPS.inputFormat,
-																supportsLanguageHint: Boolean(
-																	caps?.supportsLanguageHint ??
-																		DEFAULT_ASR_CAPS.supportsLanguageHint,
-																),
 															})
 														}
 													>
@@ -337,53 +315,6 @@ export default function AdminAiModelsPage() {
 								/>
 							</div>
 
-							{editing.kind === 'asr' ? (
-								<>
-									<div className="space-y-2">
-										<Label>{t('fields.inputFormat')}</Label>
-										<Select
-											value={editing.inputFormat}
-											onValueChange={(v) =>
-												setEditing({
-													...editing,
-													inputFormat:
-														v as EditingModel['inputFormat'],
-												})
-											}
-										>
-											<SelectTrigger>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="binary">
-													binary
-												</SelectItem>
-												<SelectItem value="array">
-													array
-												</SelectItem>
-												<SelectItem value="base64">
-													base64
-												</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
-									<div className="flex items-center gap-2">
-										<Switch
-											checked={editing.supportsLanguageHint}
-											onCheckedChange={(checked) =>
-												setEditing({
-													...editing,
-													supportsLanguageHint: checked,
-												})
-											}
-										/>
-										<span className="text-sm">
-											{t('fields.supportsLanguageHint')}
-										</span>
-									</div>
-								</>
-							) : null}
-
 							<div className="flex items-center gap-2">
 								<Switch
 									checked={editing.enabled}
@@ -416,14 +347,6 @@ export default function AdminAiModelsPage() {
 							disabled={upsertModel.isPending || !isValid}
 							onClick={() => {
 								if (!editing || !isEditingModelValid(editing)) return
-								const caps =
-									editing.kind === 'asr'
-										? {
-												inputFormat: editing.inputFormat,
-												supportsLanguageHint:
-													editing.supportsLanguageHint,
-											}
-										: null
 								upsertModel.mutate({
 									id: editing.id.trim(),
 									kind: editing.kind,
@@ -437,7 +360,6 @@ export default function AdminAiModelsPage() {
 										editing.description.trim() || null,
 									enabled: editing.enabled,
 									isDefault: editing.isDefault,
-									capabilities: caps,
 								})
 							}}
 						>
