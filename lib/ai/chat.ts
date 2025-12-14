@@ -29,6 +29,8 @@ export async function generateText(options: {
 	model: string
 	system: string
 	prompt: string
+	maxTokens?: number
+	temperature?: number
 }) {
 	const { model: modelId, ...rest } = options
 	const model = await getModel(modelId)
@@ -44,6 +46,8 @@ export async function generateObject<T>(options: {
 	system: string
 	prompt: string
 	schema: z.Schema<T>
+	maxTokens?: number
+	temperature?: number
 }) {
 	const { model: modelId, schema, ...rest } = options
 	const model = await getModel(modelId)
@@ -56,11 +60,12 @@ export async function generateObject<T>(options: {
 	})
 }
 
-
 export async function generateTextWithUsage(options: {
 	model: string
 	system: string
 	prompt: string
+	maxTokens?: number
+	temperature?: number
 }) {
 	const result = await generateText(options)
 	const usageRaw: any = (result as any).usage || {}
@@ -81,6 +86,8 @@ export async function generateObjectWithUsage<T>(options: {
 	system: string
 	prompt: string
 	schema: z.Schema<T>
+	maxTokens?: number
+	temperature?: number
 }) {
 	const result = await generateObject<T>(options)
 	const usageRaw: any = (result as any).usage || {}
