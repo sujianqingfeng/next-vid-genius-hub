@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { ensureAiSeeded } from './seed'
 import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
@@ -83,13 +83,30 @@ export async function listAiModels(opts: {
 		orderBy: asc(schema.aiModels.createdAt),
 	})
 
-	const normalized =
-		opts.kind === 'asr'
-			? items.map((m) => ({
-					...m,
-					capabilities: deriveCloudflareAsrCapabilities(m.remoteModelId),
-				}))
-			: items
+	let normalized = items as any[]
+	if (opts.kind === 'asr') {
+		const providerIds = Array.from(new Set(items.map((m) => m.providerId)))
+		const providers =
+			providerIds.length > 0
+				? await database.query.aiProviders.findMany({
+						where: inArray(schema.aiProviders.id, providerIds),
+					})
+				: []
+		const providerById = new Map(providers.map((p) => [p.id, p]))
+		normalized = items.map((m) => {
+			const provider = providerById.get(m.providerId)
+			if (!provider) {
+				throw new Error(`ASR model ${m.id} references missing providerId=${m.providerId}`)
+			}
+			if (provider.type === 'cloudflare_asr') {
+				return { ...m, capabilities: deriveCloudflareAsrCapabilities(m.remoteModelId) }
+			}
+			if (provider.type === 'whisper_api') {
+				return { ...m, capabilities: { supportsLanguageHint: true } }
+			}
+			throw new Error(`Unsupported ASR provider type: ${provider.type}`)
+		})
+	}
 
 	modelsCache.set(key, { at: Date.now(), value: normalized })
 	return normalized
@@ -117,14 +134,18 @@ export async function getAiModelConfig(id: string, db?: DbClient) {
 		return null
 	}
 
-	const value =
-		model.kind === 'asr'
-			? {
-					...model,
-					capabilities: deriveCloudflareAsrCapabilities(model.remoteModelId),
-					provider,
-				}
-			: { ...model, provider }
+	let value: any
+	if (model.kind === 'asr') {
+		if (provider.type === 'cloudflare_asr') {
+			value = { ...model, capabilities: deriveCloudflareAsrCapabilities(model.remoteModelId), provider }
+		} else if (provider.type === 'whisper_api') {
+			value = { ...model, capabilities: { supportsLanguageHint: true }, provider }
+		} else {
+			throw new Error(`Unsupported ASR provider type: ${provider.type}`)
+		}
+	} else {
+		value = { ...model, provider }
+	}
 	modelByIdCache.set(key, { at: Date.now(), value })
 	return value
 }
@@ -167,14 +188,18 @@ export async function getDefaultAiModel(kind: AIProviderKind, db?: DbClient) {
 		return null
 	}
 
-	const value =
-		model.kind === 'asr'
-			? {
-					...model,
-					capabilities: deriveCloudflareAsrCapabilities(model.remoteModelId),
-					provider,
-				}
-			: { ...model, provider }
+	let value: any
+	if (model.kind === 'asr') {
+		if (provider.type === 'cloudflare_asr') {
+			value = { ...model, capabilities: deriveCloudflareAsrCapabilities(model.remoteModelId), provider }
+		} else if (provider.type === 'whisper_api') {
+			value = { ...model, capabilities: { supportsLanguageHint: true }, provider }
+		} else {
+			throw new Error(`Unsupported ASR provider type: ${provider.type}`)
+		}
+	} else {
+		value = { ...model, provider }
+	}
 	defaultModelCache.set(key, { at: Date.now(), value })
 	return value
 }

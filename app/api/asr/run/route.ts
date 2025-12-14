@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm'
 import { getAiModelConfig } from '~/lib/ai/config/service'
 import { presignGetByKey, putObjectByKey } from '~/lib/cloudflare'
 import { runCloudflareWorkersAiAsr } from '~/lib/subtitle/server/cloudflare-workers-ai'
+import { runWhisperApiAsr } from '~/lib/subtitle/server/whisper-api'
 import { logger } from '~/lib/logger'
 
 type Body = {
@@ -37,20 +38,51 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'ASR model not available' }, { status: 400 })
 		}
 		const provider = modelCfg.provider
-		if (!provider.enabled || provider.kind !== 'asr' || provider.type !== 'cloudflare_asr') {
+		if (!provider.enabled || provider.kind !== 'asr') {
 			return NextResponse.json({ error: 'ASR provider not available' }, { status: 400 })
 		}
 
-		const accountId =
-			typeof (provider.metadata as any)?.accountId === 'string'
-				? String((provider.metadata as any).accountId).trim()
-				: ''
-		const apiToken = typeof provider.apiKey === 'string' ? provider.apiKey.trim() : ''
-		if (!accountId || !apiToken) {
-			return NextResponse.json(
-				{ error: 'Cloudflare ASR provider credentials not configured in DB' },
-				{ status: 400 },
-			)
+		let runAsr: (opts: { audio: ArrayBuffer }) => Promise<{ vtt: string; words?: unknown }>
+		if (provider.type === 'cloudflare_asr') {
+			const accountId =
+				typeof (provider.metadata as any)?.accountId === 'string'
+					? String((provider.metadata as any).accountId).trim()
+					: ''
+			const apiToken = typeof provider.apiKey === 'string' ? provider.apiKey.trim() : ''
+			if (!accountId || !apiToken) {
+				return NextResponse.json(
+					{ error: 'Cloudflare ASR provider credentials not configured in DB' },
+					{ status: 400 },
+				)
+			}
+			runAsr = ({ audio }) =>
+				runCloudflareWorkersAiAsr({
+					accountId,
+					apiToken,
+					modelId: modelCfg.remoteModelId,
+					audio,
+					language: body.language,
+				})
+		} else if (provider.type === 'whisper_api') {
+			const baseUrl = typeof provider.baseUrl === 'string' ? provider.baseUrl.trim() : ''
+			const apiKey = typeof provider.apiKey === 'string' ? provider.apiKey.trim() : ''
+			if (!baseUrl || !apiKey) {
+				return NextResponse.json(
+					{ error: 'Whisper API provider credentials not configured in DB' },
+					{ status: 400 },
+				)
+			}
+			runAsr = ({ audio }) =>
+				runWhisperApiAsr({
+					baseUrl,
+					apiKey,
+					remoteModelId: modelCfg.remoteModelId,
+					audio,
+					language: body.language,
+					filename: `${body.mediaId}-${body.jobId}.mp3`,
+				})
+		} else {
+			return NextResponse.json({ error: 'ASR provider not available' }, { status: 400 })
 		}
 
 		const db = await getDb()
@@ -70,13 +102,7 @@ export async function POST(req: NextRequest) {
 		}
 		const audio = await audioResp.arrayBuffer()
 
-		const { vtt, words } = await runCloudflareWorkersAiAsr({
-			accountId,
-			apiToken,
-			modelId: modelCfg.remoteModelId,
-			audio,
-			language: body.language,
-		})
+		const { vtt, words } = await runAsr({ audio })
 
 		const vttKey = bucketPaths.asr.results.transcript(body.mediaId, body.jobId, pathOptions)
 		await putObjectByKey(vttKey, 'text/vtt', vtt)
@@ -89,8 +115,16 @@ export async function POST(req: NextRequest) {
 
 		return NextResponse.json({ vttKey, wordsKey })
 	} catch (e) {
-		logger.error('api', `[asr.run] error: ${e instanceof Error ? e.message : String(e)}`)
-		return NextResponse.json({ error: 'internal error' }, { status: 500 })
+		const message = e instanceof Error ? e.message : String(e)
+		logger.error('api', `[asr.run] error: ${message}`)
+
+		const includeDetails =
+			process.env.NODE_ENV !== 'production' ||
+			process.env.DEBUG_ASR_RUN_ERRORS === 'true'
+
+		return NextResponse.json(
+			includeDetails ? { error: 'internal error', details: message } : { error: 'internal error' },
+			{ status: 500 },
+		)
 	}
 }
-

@@ -521,6 +521,7 @@
 				"type": "类型",
 				"baseUrl": "Base URL",
 				"accountId": "Account ID",
+				"maxUploadBytes": "最大上传字节数",
 				"apiKey": "API Key",
 				"apiToken": "API Token",
 				"enabled": "启用"

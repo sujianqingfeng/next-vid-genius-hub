@@ -1,7 +1,6 @@
 import type { Env } from '../types'
 import { jobStub } from '../utils/job'
 import { hmacHex, requireJobCallbackSecret } from '../utils/hmac'
-import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
 
 export async function runAsrForPipeline(env: Env, doc: any) {
 	const jobId = doc.jobId
@@ -16,8 +15,6 @@ export async function runAsrForPipeline(env: Env, doc: any) {
 		typeof doc?.metadata?.language === 'string' ? doc.metadata.language : undefined
 	const normalizedLanguage =
 		jobLanguage && jobLanguage !== 'auto' ? jobLanguage : undefined
-	const caps = deriveCloudflareAsrCapabilities(model)
-	const languageForCloud = caps.supportsLanguageHint ? normalizedLanguage : undefined
 
 	const nextBase = (env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
 	const url = `${nextBase}/api/asr/run`
@@ -27,7 +24,7 @@ export async function runAsrForPipeline(env: Env, doc: any) {
 		title: doc?.title as string | undefined,
 		outputAudioKey: audioKey,
 		model,
-		language: languageForCloud,
+		language: normalizedLanguage,
 	}
 	const secret = requireJobCallbackSecret(env)
 	const signature = await hmacHex(secret, JSON.stringify(payload))

@@ -24,10 +24,21 @@ export async function transcribe(input: {
 		throw new Error(`ASR provider for model ${model} is not available`)
 	}
 
-	const caps = deriveCloudflareAsrCapabilities(modelCfg.remoteModelId)
-	const languageForCloud = caps.supportsLanguageHint ? normalizedLanguage : undefined
+	const provider = modelCfg.provider
+	const supportsLanguageHint =
+		provider.type === 'cloudflare_asr'
+			? deriveCloudflareAsrCapabilities(modelCfg.remoteModelId).supportsLanguageHint
+			: provider.type === 'whisper_api'
+				? true
+				: (() => {
+						throw new Error(`Unsupported ASR provider type: ${provider.type}`)
+					})()
+	const languageForProvider = supportsLanguageHint ? normalizedLanguage : undefined
 
-	logger.info('transcription', `Starting transcription for media ${mediaId} with cloudflare/${model}`)
+	logger.info(
+		'transcription',
+		`Starting transcription for media ${mediaId} with ${provider.slug}/${model}`,
+	)
 
 	const db = await getDb()
 	const mediaRecord = await db.query.media.findFirst({
@@ -49,13 +60,26 @@ export async function transcribe(input: {
 		)
 	}
 
-	const targetBytes = Number(process.env.CLOUDFLARE_ASR_MAX_UPLOAD_BYTES || 4 * 1024 * 1024)
+	const configuredMaxUploadBytes =
+		typeof (provider.metadata as any)?.maxUploadBytes === 'number'
+			? Number((provider.metadata as any).maxUploadBytes)
+			: undefined
+	const defaultMaxUploadBytes =
+		provider.type === 'whisper_api'
+			? 500 * 1024 * 1024
+			: Number(process.env.CLOUDFLARE_ASR_MAX_UPLOAD_BYTES || 4 * 1024 * 1024)
+	const targetBytes =
+		typeof configuredMaxUploadBytes === 'number' &&
+		Number.isFinite(configuredMaxUploadBytes) &&
+		configuredMaxUploadBytes > 0
+			? configuredMaxUploadBytes
+			: defaultMaxUploadBytes
 	const sampleRate = Number(process.env.ASR_SAMPLE_RATE || 16000)
 	const targetBitrates = (process.env.ASR_TARGET_BITRATES || '48,24')
 		.split(',')
 		.map((s) => Number(s.trim()))
 		.filter((n) => Number.isFinite(n) && n > 0)
-	const modelId = modelCfg.remoteModelId
+	const modelId = modelCfg.id
 
 	const taskId = createId()
 	const now = new Date()
@@ -74,7 +98,7 @@ export async function transcribe(input: {
 			targetBitrates,
 			sampleRate,
 			model: modelId,
-			...(languageForCloud ? { language: languageForCloud } : {}),
+			...(languageForProvider ? { language: languageForProvider } : {}),
 		},
 		createdAt: now,
 		updatedAt: now,
@@ -99,7 +123,7 @@ export async function transcribe(input: {
 				targetBitrates,
 				sampleRate,
 				model: modelId,
-				language: languageForCloud ?? null,
+				language: languageForProvider ?? null,
 			},
 		}
 		await putJobManifest(jobId, manifest)
@@ -115,7 +139,7 @@ export async function transcribe(input: {
 				targetBitrates,
 				sampleRate,
 				model: modelId,
-				...(languageForCloud ? { language: languageForCloud } : {}),
+				...(languageForProvider ? { language: languageForProvider } : {}),
 			},
 		})
 		jobId = job.jobId

@@ -45,6 +45,13 @@ function isEditingModelValid(editing: EditingModel | null): boolean {
 	if (!editing.id.trim()) return false
 	if (!editing.providerId) return false
 	if (editing.kind === 'llm' && !editing.remoteModelId.trim()) return false
+	if (
+		editing.kind === 'asr' &&
+		editing.id.trim().startsWith('whisper/') &&
+		!editing.remoteModelId.trim()
+	) {
+		return false
+	}
 	if (!editing.label.trim()) return false
 	return true
 }
@@ -103,6 +110,13 @@ export default function AdminAiModelsPage() {
 		() => providers.filter((p) => p.kind === kind),
 		[kind, providers],
 	)
+
+	const editingProvider = useMemo(() => {
+		if (!editing?.providerId) return null
+		return providers.find((p) => p.id === editing.providerId) ?? null
+	}, [editing?.providerId, providers])
+	const editingProviderType = (editingProvider?.type as string | undefined) ?? undefined
+	const isWhisperApiAsr = Boolean(editing?.kind === 'asr' && editingProviderType === 'whisper_api')
 
 	const isValid = isEditingModelValid(editing)
 
@@ -249,12 +263,20 @@ export default function AdminAiModelsPage() {
 								<Input
 									placeholder={
 										editing.kind === 'asr'
-											? '@cf/openai/whisper-...'
+											? isWhisperApiAsr
+												? 'whisper/distil-large-v3'
+												: '@cf/openai/whisper-...'
 											: 'openai/gpt-...'
 									}
 									value={editing.id}
 									onChange={(e) =>
-										setEditing({ ...editing, id: e.target.value })
+										setEditing({
+											...editing,
+											id: e.target.value,
+											...(isWhisperApiAsr && e.target.value.startsWith('whisper/')
+												? { remoteModelId: e.target.value.slice('whisper/'.length) }
+												: {}),
+										})
 									}
 								/>
 							</div>
@@ -278,16 +300,25 @@ export default function AdminAiModelsPage() {
 									</SelectContent>
 								</Select>
 							</div>
-							{editing.kind === 'llm' ? (
+							{editing.kind === 'llm' || isWhisperApiAsr ? (
 								<div className="space-y-2">
 									<Label>{t('fields.remoteModelId')}</Label>
 									<Input
-										placeholder="gpt-4.1-mini"
+										placeholder={isWhisperApiAsr ? 'distil-large-v3' : 'gpt-4.1-mini'}
 										value={editing.remoteModelId}
 										onChange={(e) =>
-											setEditing({
-												...editing,
-												remoteModelId: e.target.value,
+											setEditing((prev) => {
+												if (!prev) return prev
+												const remoteModelId = e.target.value
+												if (!isWhisperApiAsr) {
+													return { ...prev, remoteModelId }
+												}
+												const trimmed = remoteModelId.trim()
+												return {
+													...prev,
+													remoteModelId,
+													id: trimmed ? `whisper/${trimmed}` : prev.id,
+												}
 											})
 										}
 									/>
@@ -353,7 +384,9 @@ export default function AdminAiModelsPage() {
 									providerId: editing.providerId,
 									remoteModelId:
 										editing.kind === 'asr'
-											? editing.id.trim()
+											? isWhisperApiAsr
+												? editing.remoteModelId.trim()
+												: editing.id.trim()
 											: editing.remoteModelId.trim(),
 									label: editing.label.trim(),
 									description:

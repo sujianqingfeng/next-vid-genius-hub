@@ -389,7 +389,7 @@ export const aiProviders = sqliteTable(
 		kind: text('kind', { enum: ['llm', 'asr'] }).notNull(),
 		// provider type is constrained by kind at runtime
 		type: text('type', {
-			enum: ['openai_compat', 'deepseek_native', 'cloudflare_asr'],
+			enum: ['openai_compat', 'deepseek_native', 'cloudflare_asr', 'whisper_api'],
 		}).notNull(),
 		baseUrl: text('base_url'),
 		apiKey: text('api_key'),

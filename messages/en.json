@@ -522,6 +522,7 @@
 				"type": "Type",
 				"baseUrl": "Base URL",
 				"accountId": "Account ID",
+				"maxUploadBytes": "Max upload bytes",
 				"apiKey": "API key",
 				"apiToken": "API token",
 				"enabled": "Enabled"

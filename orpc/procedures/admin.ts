@@ -364,7 +364,12 @@ export const deletePricingRule = os
 // ---------------- AI Providers / Models ----------------
 
 const AI_PROVIDER_KINDS = ['llm', 'asr'] as const
-const AI_PROVIDER_TYPES = ['openai_compat', 'deepseek_native', 'cloudflare_asr'] as const
+const AI_PROVIDER_TYPES = [
+	'openai_compat',
+	'deepseek_native',
+	'cloudflare_asr',
+	'whisper_api',
+] as const
 
 function assertProviderKindType(kind: (typeof AI_PROVIDER_KINDS)[number], type: (typeof AI_PROVIDER_TYPES)[number]) {
 	if (kind === 'llm') {
@@ -373,7 +378,7 @@ function assertProviderKindType(kind: (typeof AI_PROVIDER_KINDS)[number], type: 
 		}
 		return
 	}
-	if (type !== 'cloudflare_asr') {
+	if (type !== 'cloudflare_asr' && type !== 'whisper_api') {
 		throw new Error(`Invalid ASR provider type: ${type}`)
 	}
 }
@@ -410,6 +415,25 @@ export const upsertAiProvider = os
 	.input(UpsertAiProviderSchema)
 	.handler(async ({ input }) => {
 		assertProviderKindType(input.kind, input.type)
+
+		if (input.kind === 'asr' && input.type === 'whisper_api') {
+			const baseUrl = (input.baseUrl ?? '').trim()
+			if (!baseUrl) {
+				throw new Error('Whisper API providers require baseUrl')
+			}
+		}
+		if (input.kind === 'asr') {
+			const maxUploadBytes =
+				typeof (input.metadata as any)?.maxUploadBytes === 'number'
+					? (input.metadata as any).maxUploadBytes
+					: undefined
+			if (
+				typeof maxUploadBytes === 'number' &&
+				(!Number.isFinite(maxUploadBytes) || maxUploadBytes <= 0)
+			) {
+				throw new Error('metadata.maxUploadBytes must be a positive number')
+			}
+		}
 
 		const db = await getDb()
 		const now = new Date()
@@ -515,7 +539,46 @@ export const testAiProvider = os
 		})
 		if (!provider) throw new Error('Provider not found')
 		if (provider.kind !== 'llm') {
-			return { success: true, message: 'ASR provider config OK (no direct test request).' }
+			if (provider.type === 'cloudflare_asr') {
+				return { success: true, message: 'Cloudflare ASR provider config OK (no direct test).' }
+			}
+
+			if (provider.type === 'whisper_api') {
+				const baseUrl =
+					typeof provider.baseUrl === 'string'
+						? provider.baseUrl.trim().replace(/\/$/, '')
+						: ''
+				if (!baseUrl) throw new Error('Whisper API baseUrl is not configured for this provider')
+
+				const apiKey = typeof provider.apiKey === 'string' ? provider.apiKey.trim() : ''
+				if (!apiKey) throw new Error('Whisper API token is not configured for this provider')
+
+				const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+				const timeout = setTimeout(() => controller?.abort(), 5000)
+				try {
+					const r = await fetch(`${baseUrl}/health`, {
+						method: 'GET',
+						signal: controller?.signal,
+					})
+					if (!r.ok) {
+						const t = await r.text().catch(() => '')
+						throw new Error(`Whisper API health check failed: ${r.status} ${t}`)
+					}
+					const json = (await r.json().catch(() => null)) as any
+					const modelCount = Array.isArray(json?.models) ? json.models.length : undefined
+					return {
+						success: true,
+						message:
+							typeof modelCount === 'number'
+								? `Whisper API OK (models=${modelCount})`
+								: 'Whisper API OK',
+					}
+				} finally {
+					clearTimeout(timeout)
+				}
+			}
+
+			return { success: true, message: 'ASR provider config OK.' }
 		}
 
 		const model = input.modelId
@@ -560,6 +623,14 @@ export const listAiModels = os
 	.handler(async ({ input }) => {
 		const db = await getDb()
 
+		if (input.kind === 'asr') {
+			const all = await listAiModelsFromConfig({ kind: 'asr', enabledOnly: false, db })
+			const filtered = all
+				.filter((m) => (input.providerId ? m.providerId === input.providerId : true))
+				.filter((m) => (input.enabledOnly ? Boolean(m.enabled) : true))
+			return { items: filtered }
+		}
+
 		// Prefer config cache for the common "list all models by kind" path.
 		if (!input.providerId && !input.enabledOnly) {
 			const items = await listAiModelsFromConfig({ kind: input.kind, enabledOnly: false, db })
@@ -575,16 +646,7 @@ export const listAiModels = os
 			where: whereClause,
 			orderBy: asc(schema.aiModels.createdAt),
 		})
-
-		const normalized =
-			input.kind === 'asr'
-				? items.map((m) => ({
-						...m,
-						capabilities: deriveCloudflareAsrCapabilities(m.remoteModelId),
-					}))
-				: items
-
-		return { items: normalized }
+		return { items }
 	})
 
 const UpsertAiModelSchema = z.object({
@@ -613,12 +675,22 @@ export const upsertAiModel = os
 		if (provider.kind !== input.kind) {
 			throw new Error(`Provider kind mismatch: provider=${provider.kind} model=${input.kind}`)
 		}
-		if (input.kind === 'asr' && input.remoteModelId !== input.id) {
-			throw new Error('ASR remoteModelId must equal id (Cloudflare run id)')
-		}
 		if (input.kind === 'asr') {
-			// Validate modelId; ASR capabilities are derived from modelId and cannot be overridden.
-			deriveCloudflareAsrCapabilities(input.id)
+			if (provider.type === 'cloudflare_asr') {
+				if (input.remoteModelId !== input.id) {
+					throw new Error('Cloudflare ASR remoteModelId must equal id (Cloudflare run id)')
+				}
+				// Validate modelId; ASR capabilities are derived from modelId and cannot be overridden.
+				deriveCloudflareAsrCapabilities(input.id)
+			} else if (provider.type === 'whisper_api') {
+				if (!input.id.startsWith('whisper/')) {
+					throw new Error('Whisper ASR model id must be namespaced as whisper/<remoteModelId>')
+				}
+				const expected = `whisper/${input.remoteModelId}`
+				if (input.id !== expected) {
+					throw new Error(`Whisper ASR model id must equal whisper/<remoteModelId>: expected ${expected}`)
+				}
+			}
 		}
 
 		const existing = await db.query.aiModels.findFirst({

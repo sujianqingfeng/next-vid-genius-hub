@@ -28,7 +28,7 @@ import { queryOrpc } from '~/lib/orpc/query-client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 
 type ProviderKind = 'llm' | 'asr'
-type ProviderType = 'openai_compat' | 'deepseek_native' | 'cloudflare_asr'
+type ProviderType = 'openai_compat' | 'deepseek_native' | 'cloudflare_asr' | 'whisper_api'
 
 type EditingProvider = {
 	id?: string
@@ -39,6 +39,7 @@ type EditingProvider = {
 	baseUrl: string
 	apiKey: string
 	accountId: string
+	maxUploadBytes: string
 	enabled: boolean
 }
 
@@ -50,6 +51,7 @@ const DEFAULT_PROVIDER: EditingProvider = {
 	baseUrl: '',
 	apiKey: '',
 	accountId: '',
+	maxUploadBytes: '',
 	enabled: true,
 }
 
@@ -115,7 +117,7 @@ export default function AdminAiProvidersPage() {
 	const typeOptions = useMemo<ProviderType[]>(() => {
 		return kind === 'llm'
 			? ['openai_compat', 'deepseek_native']
-			: ['cloudflare_asr']
+			: ['cloudflare_asr', 'whisper_api']
 	}, [kind])
 
 	const isValid = isEditingProviderValid(editing)
@@ -173,12 +175,16 @@ export default function AdminAiProvidersPage() {
 															slug: p.slug,
 															name: p.name,
 															kind: p.kind,
-															type: p.type,
+									type: p.type,
 									baseUrl: p.baseUrl ?? '',
 									apiKey: '',
 									accountId:
 										typeof (p.metadata as any)?.accountId === 'string'
 											? String((p.metadata as any).accountId)
+											: '',
+									maxUploadBytes:
+										typeof (p.metadata as any)?.maxUploadBytes === 'number'
+											? String((p.metadata as any).maxUploadBytes)
 											: '',
 									enabled: Boolean(p.enabled),
 								})
@@ -293,7 +299,19 @@ export default function AdminAiProvidersPage() {
 									/>
 								</div>
 							) : null}
-							{editing.kind === 'asr' ? (
+							{editing.kind === 'asr' && editing.type === 'whisper_api' ? (
+								<div className="space-y-2">
+									<Label>{t('fields.baseUrl')}</Label>
+									<Input
+										placeholder="https://vid.temp-drop-files.store"
+										value={editing.baseUrl}
+										onChange={(e) =>
+											setEditing({ ...editing, baseUrl: e.target.value })
+										}
+									/>
+								</div>
+							) : null}
+							{editing.kind === 'asr' && editing.type === 'cloudflare_asr' ? (
 								<div className="space-y-2">
 									<Label>{t('fields.accountId')}</Label>
 									<Input
@@ -304,6 +322,22 @@ export default function AdminAiProvidersPage() {
 												...editing,
 												accountId: e.target.value,
 											})
+										}
+									/>
+								</div>
+							) : null}
+							{editing.kind === 'asr' ? (
+								<div className="space-y-2">
+									<Label>{t('fields.maxUploadBytes')}</Label>
+									<Input
+										placeholder={
+											editing.type === 'whisper_api'
+												? String(500 * 1024 * 1024)
+												: String(4 * 1024 * 1024)
+										}
+										value={editing.maxUploadBytes}
+										onChange={(e) =>
+											setEditing({ ...editing, maxUploadBytes: e.target.value })
 										}
 									/>
 								</div>
@@ -343,28 +377,45 @@ export default function AdminAiProvidersPage() {
 							{t('actions.cancel')}
 						</Button>
 						<Button
-							disabled={upsertProvider.isPending || !isValid}
-							onClick={() => {
-								if (!editing || !isEditingProviderValid(editing)) return
-								upsertProvider.mutate({
-									id: editing.id,
-									slug: editing.slug.trim(),
-									name: editing.name.trim(),
-									kind: editing.kind,
-									type: editing.type,
-									baseUrl:
-										editing.kind === 'llm'
-											? editing.baseUrl.trim() || null
-											: null,
-									apiKey: editing.apiKey.trim() || undefined,
-									metadata:
-										editing.kind === 'asr' && editing.accountId.trim()
-											? { accountId: editing.accountId.trim() }
-											: undefined,
-									enabled: editing.enabled,
-								})
-							}}
-						>
+									disabled={upsertProvider.isPending || !isValid}
+									onClick={() => {
+										if (!editing || !isEditingProviderValid(editing)) return
+										const maxUploadBytesRaw = editing.maxUploadBytes.trim()
+										const maxUploadBytes = maxUploadBytesRaw
+											? Number(maxUploadBytesRaw)
+											: undefined
+										const asrMetadata =
+											editing.kind === 'asr'
+												? {
+														...(editing.accountId.trim()
+															? { accountId: editing.accountId.trim() }
+															: {}),
+														...(typeof maxUploadBytes === 'number' &&
+														Number.isFinite(maxUploadBytes) &&
+														maxUploadBytes > 0
+															? { maxUploadBytes }
+															: {}),
+													}
+												: undefined
+										upsertProvider.mutate({
+											id: editing.id,
+											slug: editing.slug.trim(),
+											name: editing.name.trim(),
+											kind: editing.kind,
+											type: editing.type,
+											baseUrl:
+												editing.kind === 'llm' || editing.type === 'whisper_api'
+													? editing.baseUrl.trim() || null
+													: null,
+											apiKey: editing.apiKey.trim() || undefined,
+											metadata:
+												asrMetadata && Object.keys(asrMetadata).length > 0
+													? asrMetadata
+													: undefined,
+											enabled: editing.enabled,
+										})
+									}}
+								>
 							{t('actions.save')}
 						</Button>
 					</DialogFooter>
