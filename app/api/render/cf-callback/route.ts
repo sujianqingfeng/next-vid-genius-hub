@@ -31,6 +31,9 @@ type CallbackPayload = {
     thumbnail?: string
     viewCount?: number
     likeCount?: number
+    durationSeconds?: number
+    duration?: number
+    lengthSeconds?: number
     source?: 'youtube' | 'tiktok'
     quality?: '720p' | '1080p'
     commentCount?: number  // For comments-only tasks
@@ -353,8 +356,8 @@ async function handleCloudDownloadCallback(
         ? metadataFromPayload.durationSeconds
         : typeof metadataFromPayload?.duration === 'number'
           ? metadataFromPayload.duration
-          : typeof (metadataFromPayload as any)?.lengthSeconds === 'number'
-            ? (metadataFromPayload as any).lengthSeconds
+          : typeof metadataFromPayload?.lengthSeconds === 'number'
+            ? metadataFromPayload.lengthSeconds
             : 0
 
   const roundedDuration = Number.isFinite(durationSeconds) && durationSeconds > 0 ? Math.round(durationSeconds) : null

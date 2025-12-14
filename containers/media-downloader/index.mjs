@@ -376,6 +376,26 @@ async function handleRender(req, res) {
       );
 
       const finalMetadata = summariseMetadata(pipelineRes?.rawMetadata || null);
+      let callbackMetadata = {
+        ...finalMetadata,
+        quality,
+        source: engineOptions.source || "youtube",
+      };
+      // Ensure title is present in the callback metadata (orchestrator forwards only this summary to Next).
+      if (!callbackMetadata.title) {
+        try {
+          const { fetchVideoMetadata } = await import("@app/media-node");
+          const raw = await fetchVideoMetadata(url, { proxy });
+          const refreshed = summariseMetadata(
+            raw && typeof raw === "object" ? raw : null,
+          );
+          callbackMetadata = {
+            ...refreshed,
+            quality,
+            source: engineOptions.source || "youtube",
+          };
+        } catch {}
+      }
       const outputs = {
         video: { key: outputVideoKey },
       };
@@ -389,11 +409,7 @@ async function handleRender(req, res) {
         outputAudioKey,
         outputMetadataKey,
         outputs,
-        metadata: {
-          ...finalMetadata,
-          quality,
-          source: engineOptions.source || "youtube",
-        },
+        metadata: callbackMetadata,
       });
     }
   } catch (error) {
