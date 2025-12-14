@@ -272,6 +272,8 @@ export const media = sqliteTable(
 		remoteVideoKey: text('remote_video_key'),
 		remoteAudioKey: text('remote_audio_key'),
 		remoteMetadataKey: text('remote_metadata_key'),
+		downloadVideoBytes: integer('download_video_bytes'),
+		downloadAudioBytes: integer('download_audio_bytes'),
 		downloadQueuedAt: integer('download_queued_at', { mode: 'timestamp' }),
 		downloadCompletedAt: integer('download_completed_at', { mode: 'timestamp' }),
 		rawMetadataDownloadedAt: integer('raw_metadata_downloaded_at', { mode: 'timestamp' }),

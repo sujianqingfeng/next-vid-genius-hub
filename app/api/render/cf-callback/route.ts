@@ -38,6 +38,8 @@ type CallbackPayload = {
     quality?: '720p' | '1080p'
     commentCount?: number  // For comments-only tasks
     model?: string         // ASR model id (from orchestrator metadata)
+    videoBytes?: number
+    audioBytes?: number
   }
 }
 
@@ -392,6 +394,12 @@ async function handleCloudDownloadCallback(
   if (likeCount !== undefined) updates.likeCount = likeCount
   if (metadataFromPayload?.quality) updates.quality = metadataFromPayload.quality
   if (metadataFromPayload?.source) updates.source = metadataFromPayload.source
+  if (typeof metadataFromPayload?.videoBytes === 'number' && Number.isFinite(metadataFromPayload.videoBytes)) {
+    updates.downloadVideoBytes = metadataFromPayload.videoBytes
+  }
+  if (typeof metadataFromPayload?.audioBytes === 'number' && Number.isFinite(metadataFromPayload.audioBytes)) {
+    updates.downloadAudioBytes = metadataFromPayload.audioBytes
+  }
 
   await db.update(schema.media).set(updates).where(where)
 

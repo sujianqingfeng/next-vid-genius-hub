@@ -138,6 +138,8 @@ async function handleRender(req, res) {
   const videoPath = `${basePath}.mp4`;
   const audioPath = `${basePath}.mp3`;
   const commentsDir = join(tmpDir, `${jobId}-comments`);
+  let uploadedVideoBytes = null;
+  let uploadedAudioBytes = null;
 
   // progress helper imported from shared (created above)
 
@@ -325,6 +327,7 @@ async function handleRender(req, res) {
               const buf = readFileSync(path);
               try {
                 await uploadArtifact(outputVideoPutUrl, buf, "video/mp4");
+                uploadedVideoBytes = stat.size;
                 console.log("[media-downloader] upload video success", {
                   jobId,
                   bytes: buf.length,
@@ -352,6 +355,7 @@ async function handleRender(req, res) {
               const buf = readFileSync(path);
               try {
                 await uploadArtifact(outputAudioPutUrl, buf, "audio/mpeg");
+                uploadedAudioBytes = stat.size;
                 console.log("[media-downloader] upload audio success", {
                   jobId,
                   bytes: buf.length,
@@ -380,6 +384,8 @@ async function handleRender(req, res) {
         ...finalMetadata,
         quality,
         source: engineOptions.source || "youtube",
+        ...(uploadedVideoBytes != null ? { videoBytes: uploadedVideoBytes } : {}),
+        ...(uploadedAudioBytes != null ? { audioBytes: uploadedAudioBytes } : {}),
       };
       // Ensure title is present in the callback metadata (orchestrator forwards only this summary to Next).
       if (!callbackMetadata.title) {
