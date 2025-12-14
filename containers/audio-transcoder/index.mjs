@@ -34,6 +34,13 @@ async function handleRender(req, res) {
   )
 
   const postUpdate = makeStatusCallback({ callbackUrl, secret, baseFields: { jobId } })
+  let lastPhase
+  let lastProgress
+  const post = async (status, fields = {}) => {
+    if (fields?.phase != null) lastPhase = fields.phase
+    if (fields?.progress != null) lastProgress = fields.progress
+    return postUpdate(status, fields)
+  }
 
   if (!inputAudioUrl || !outputAudioPutUrl) {
     console.error('[audio-transcoder] missing input/output URL')
@@ -42,7 +49,7 @@ async function handleRender(req, res) {
   }
 
   try {
-    await postUpdate('preparing', { phase: 'preparing', progress: 0.05 })
+    await post('preparing', { phase: 'preparing', progress: 0.05 })
     const inFile = join(tmpdir(), `${jobId}_in.mp3`)
     const outFile = join(tmpdir(), `${jobId}_out.mp3`)
 
@@ -55,7 +62,7 @@ async function handleRender(req, res) {
     )
     writeFileSync(inFile, buf)
 
-    await postUpdate('running', { phase: 'running', progress: 0.2 })
+    await post('running', { phase: 'running', progress: 0.2 })
     const { size, bitrate: usedBitrate } = await transcodeToTargetSize(inFile, outFile, {
       maxBytes,
       bitrates,
@@ -65,7 +72,7 @@ async function handleRender(req, res) {
       },
     })
 
-    await postUpdate('uploading', { phase: 'uploading', progress: 0.95 })
+    await post('uploading', { phase: 'uploading', progress: 0.95 })
     const outBuf = readFileSync(outFile)
     const headers = { 'content-type': 'audio/mpeg', 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' }
     const up = await fetch(outputAudioPutUrl, { method: 'PUT', headers, body: outBuf })
@@ -81,7 +88,11 @@ async function handleRender(req, res) {
     await postUpdate('completed', { outputs: { audio: {} } })
   } catch (e) {
     console.error('[audio-transcoder] failed', e)
-    await postUpdate('failed', { error: e?.message || 'unknown error' })
+    await postUpdate('failed', {
+      phase: lastPhase,
+      progress: lastProgress,
+      error: e?.message || 'unknown error',
+    })
   }
 }
 

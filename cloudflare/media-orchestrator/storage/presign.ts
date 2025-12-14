@@ -50,8 +50,13 @@ export async function presignS3(
 	}
 	headerEntries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
 	const signedHeaders = headerEntries.map(([name]) => name).join(';') || 'host'
+	// AWS SigV4 canonical URI encoding must follow RFC3986 and percent-encode
+	// characters that encodeURIComponent leaves as-is (e.g. !, *, ', (, )).
 	const encodeKey = (value: string) =>
-		encodeURIComponent(value).replace(/%2F/g, '/').replace(/%7E/g, '~')
+		encodeURIComponent(value)
+			.replace(/[!*'()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+			.replace(/%2F/g, '/')
+			.replace(/%7E/g, '~')
 	const canonicalUri = (() => {
 		if (style === 'vhost') {
 			if (!key) return '/'
