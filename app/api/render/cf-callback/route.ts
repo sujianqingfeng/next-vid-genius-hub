@@ -21,6 +21,8 @@ type CallbackPayload = {
   outputs?: {
     video?: { url?: string; key?: string }
     audio?: { url?: string; key?: string }
+    audioSource?: { url?: string; key?: string }
+    audioProcessed?: { url?: string; key?: string }
     metadata?: { url?: string; key?: string }
     vtt?: { url?: string; key?: string }
     words?: { url?: string; key?: string }
@@ -40,6 +42,7 @@ type CallbackPayload = {
     model?: string         // ASR model id (from orchestrator metadata)
     videoBytes?: number
     audioBytes?: number
+    audioSourceBytes?: number
   }
 }
 
@@ -283,19 +286,28 @@ async function handleCloudDownloadCallback(
 	const rawVideoKey = payload.outputs?.video?.key ?? null
 	const fallbackVideoKey = (payload as Partial<CallbackPayload>)?.outputKey ?? null
 	const resolvedVideoKey = rawVideoKey ?? fallbackVideoKey ?? null
-	const audioKey = payload.outputs?.audio?.key ?? null
+	const audioProcessedKey =
+		payload.outputs?.audioProcessed?.key ??
+		payload.outputs?.audio?.key ??
+		(payload as any)?.outputAudioKey ??
+		null
+	const audioSourceKey =
+		payload.outputs?.audioSource?.key ?? (payload as any)?.outputAudioSourceKey ?? null
 	const metadataKey = payload.outputs?.metadata?.key ?? null
 	const videoUrl = payload.outputs?.video?.url ?? null
-	const audioUrl = payload.outputs?.audio?.url ?? null
+	const audioProcessedUrl =
+		payload.outputs?.audioProcessed?.url ?? payload.outputs?.audio?.url ?? null
+	const audioSourceUrl = payload.outputs?.audioSource?.url ?? null
 	const metadataUrl = payload.outputs?.metadata?.url ?? null
 
 	const hasMetadataOutput = Boolean(metadataUrl || metadataKey)
 	const hasVideoKey = Boolean(resolvedVideoKey)
-	const hasAudioKey = Boolean(audioKey)
+	const hasAudioKey = Boolean(audioProcessedKey)
 	const isCommentsOnly = hasMetadataOutput && !hasVideoKey && !hasAudioKey
 
 	const videoExists = await remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
-	const audioExists = await remoteObjectExists({ key: audioKey, directUrl: audioUrl })
+	const audioProcessedExists = await remoteObjectExists({ key: audioProcessedKey, directUrl: audioProcessedUrl })
+	const audioSourceExists = await remoteObjectExists({ key: audioSourceKey, directUrl: audioSourceUrl })
 	const metadataExistsWithSource = await remoteObjectExists({ key: metadataKey, directUrl: metadataUrl })
 
   
@@ -348,7 +360,7 @@ async function handleCloudDownloadCallback(
     return
   }
 
-  const audioExistsWithSource = audioExists
+  const audioProcessedExistsWithSource = audioProcessedExists
 
   const metadataFromPayload = payload.metadata
   const durationSeconds =
@@ -372,7 +384,10 @@ async function handleCloudDownloadCallback(
     downloadCompletedAt: new Date(),
     // Prefer outputs.video.key; fall back to outputKey for backward compatibility
     remoteVideoKey: videoExists ? (resolvedVideoKey ?? media.remoteVideoKey ?? null) : media.remoteVideoKey ?? null,
-    remoteAudioKey: audioExistsWithSource ? (audioKey ?? media.remoteAudioKey ?? null) : media.remoteAudioKey ?? null,
+    // Backward-compatible: remoteAudioKey points at processed audio.
+    remoteAudioKey: audioProcessedExistsWithSource ? (audioProcessedKey ?? media.remoteAudioKey ?? null) : media.remoteAudioKey ?? null,
+    remoteAudioProcessedKey: audioProcessedExistsWithSource ? (audioProcessedKey ?? media.remoteAudioProcessedKey ?? null) : media.remoteAudioProcessedKey ?? null,
+    remoteAudioSourceKey: audioSourceExists ? (audioSourceKey ?? media.remoteAudioSourceKey ?? null) : media.remoteAudioSourceKey ?? null,
     remoteMetadataKey: metadataExistsWithSource ? (metadataKey ?? media.remoteMetadataKey ?? null) : media.remoteMetadataKey ?? null,
   }
 
@@ -405,7 +420,7 @@ async function handleCloudDownloadCallback(
 
   logger.info(
     'api',
-    `[cf-callback.download] completed job=${payload.jobId} media=${payload.mediaId} duration=${roundedDuration ?? 0}s hasVideo=${videoExists} hasAudio=${audioExistsWithSource} hasMetadata=${metadataExistsWithSource}`,
+    `[cf-callback.download] completed job=${payload.jobId} media=${payload.mediaId} duration=${roundedDuration ?? 0}s hasVideo=${videoExists} hasAudio=${audioProcessedExistsWithSource} hasMetadata=${metadataExistsWithSource}`,
   )
 
   if (media.userId && durationSeconds > 0) {

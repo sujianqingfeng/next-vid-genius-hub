@@ -70,9 +70,14 @@ export async function handleStart(env: Env, req: Request) {
 	const outputVideoKey = isDownloader
 		? bucketPaths.downloads.video(body.mediaId, jobId, pathOptions)
 		: bucketPaths.outputs.video(body.mediaId, jobId, pathOptions)
-	let outputAudioKey = isDownloader
-		? bucketPaths.downloads.audio(body.mediaId, jobId, pathOptions)
+	const outputAudioSourceKey = isDownloader
+		? bucketPaths.downloads.audioSource(body.mediaId, jobId, pathOptions)
 		: undefined
+	const outputAudioProcessedKey = isDownloader
+		? bucketPaths.downloads.audioProcessed(body.mediaId, jobId, pathOptions)
+		: undefined
+	// Backward-compatible: treat outputAudioKey as the processed audio key.
+	let outputAudioKey = isDownloader ? outputAudioProcessedKey : undefined
 	const outputMetadataKey = isDownloader
 		? bucketPaths.downloads.metadata(body.mediaId, jobId, pathOptions)
 		: undefined
@@ -227,7 +232,20 @@ export async function handleStart(env: Env, req: Request) {
 				bucketName,
 				outputAudioKey,
 				putTtl,
-				'audio/mpeg',
+				// Processed audio from media-downloader is WAV (PCM S16LE, 16kHz mono).
+				'audio/wav',
+				jobS3Endpoint,
+			)
+		: undefined
+	const outputAudioSourcePutUrl = outputAudioSourceKey
+		? await presignS3(
+				env,
+				'PUT',
+				bucketName,
+				outputAudioSourceKey,
+				putTtl,
+				// Source audio is extracted losslessly from MP4 into a Matroska audio container.
+				'audio/x-matroska',
 				jobS3Endpoint,
 			)
 		: undefined
@@ -255,8 +273,11 @@ export async function handleStart(env: Env, req: Request) {
 	if (isDownloader) {
 		payload.outputVideoPutUrl = outputVideoPutUrl
 		if (outputAudioPutUrl) payload.outputAudioPutUrl = outputAudioPutUrl
+		if (outputAudioSourcePutUrl) payload.outputAudioSourcePutUrl = outputAudioSourcePutUrl
 		payload.outputVideoKey = outputVideoKey
 		if (outputAudioKey) payload.outputAudioKey = outputAudioKey
+		if (outputAudioSourceKey) payload.outputAudioSourceKey = outputAudioSourceKey
+		if (outputAudioProcessedKey) payload.outputAudioProcessedKey = outputAudioProcessedKey
 		if (outputMetadataPutUrl)
 			payload.outputMetadataPutUrl = outputMetadataPutUrl
 		if (outputMetadataKey) payload.outputMetadataKey = outputMetadataKey
@@ -368,6 +389,8 @@ export async function handleStart(env: Env, req: Request) {
 			outputKey: outputVideoKey,
 		}
 		if (outputAudioKey) initPayload.outputAudioKey = outputAudioKey
+		if (outputAudioSourceKey) initPayload['outputAudioSourceKey'] = outputAudioSourceKey
+		if (outputAudioProcessedKey) initPayload['outputAudioProcessedKey'] = outputAudioProcessedKey
 		if (outputMetadataKey) initPayload.outputMetadataKey = outputMetadataKey
 		// Persist initial options for ASR pipeline (e.g., model/thresholds)
 		if (isAsrPipeline) {

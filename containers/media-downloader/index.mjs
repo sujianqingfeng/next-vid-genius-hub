@@ -10,6 +10,8 @@ import { sendJson, sanitizeEngineOptions, createStatusHelpers, uploadArtifact, e
 import {
   downloadVideo as coreDownloadVideo,
   extractAudio as coreExtractAudio,
+  extractAudioSource as coreExtractAudioSource,
+  transcodeAudioToWav as coreTranscodeAudioToWav,
 } from "@app/media-node";
 import {
   summariseMetadata,
@@ -61,9 +63,12 @@ async function handleRender(req, res) {
     engineOptions = {},
     outputVideoPutUrl,
     outputAudioPutUrl,
+    outputAudioSourcePutUrl,
     outputMetadataPutUrl,
     outputVideoKey,
     outputAudioKey,
+    outputAudioSourceKey,
+    outputAudioProcessedKey,
     outputMetadataKey,
     callbackUrl,
   } = payload;
@@ -78,12 +83,16 @@ async function handleRender(req, res) {
     jobId,
     outputVideoKey,
     outputAudioKey,
+    outputAudioSourceKey,
+    outputAudioProcessedKey,
     outputMetadataKey,
     hasVideoPutUrl: Boolean(outputVideoPutUrl),
     hasAudioPutUrl: Boolean(outputAudioPutUrl),
+    hasAudioSourcePutUrl: Boolean(outputAudioSourcePutUrl),
     hasMetadataPutUrl: Boolean(outputMetadataPutUrl),
     videoPutUrl: maskUrl(outputVideoPutUrl),
     audioPutUrl: maskUrl(outputAudioPutUrl),
+    audioSourcePutUrl: maskUrl(outputAudioSourcePutUrl),
     metadataPutUrl: maskUrl(outputMetadataPutUrl),
   });
 
@@ -136,10 +145,12 @@ async function handleRender(req, res) {
   const tmpDir = tmpdir();
   const basePath = join(tmpDir, `${jobId}`);
   const videoPath = `${basePath}.mp4`;
-  const audioPath = `${basePath}.mp3`;
+  const audioSourcePath = `${basePath}.source.mka`;
+  const audioProcessedPath = `${basePath}.processed.wav`;
   const commentsDir = join(tmpDir, `${jobId}-comments`);
   let uploadedVideoBytes = null;
-  let uploadedAudioBytes = null;
+  let uploadedAudioProcessedBytes = null;
+  let uploadedAudioSourceBytes = null;
 
   // progress helper imported from shared (created above)
 
@@ -295,14 +306,24 @@ async function handleRender(req, res) {
         { url, quality },
         {
           ensureDir: ensureDirExists,
-          resolvePaths: async () => ({ videoPath, audioPath }),
+          resolvePaths: async () => ({
+            videoPath,
+            audioPath: outputAudioPutUrl ? audioProcessedPath : undefined,
+          }),
           downloader: async (u, q, out) =>
             coreDownloadVideo(u, q, out, {
               proxy,
               captureJson: Boolean(outputMetadataPutUrl),
             }),
           audioExtractor: outputAudioPutUrl
-            ? (v, a) => coreExtractAudio(v, a)
+            ? async (v, out) => {
+                if (outputAudioSourcePutUrl) {
+                  await coreExtractAudioSource(v, audioSourcePath);
+                  await coreTranscodeAudioToWav(audioSourcePath, out);
+                  return;
+                }
+                await coreExtractAudio(v, out);
+              }
             : async () => {},
           persistRawMetadata: async () => {},
           artifactStore: {
@@ -354,8 +375,8 @@ async function handleRender(req, res) {
               });
               const buf = readFileSync(path);
               try {
-                await uploadArtifact(outputAudioPutUrl, buf, "audio/mpeg");
-                uploadedAudioBytes = stat.size;
+                await uploadArtifact(outputAudioPutUrl, buf, "audio/wav");
+                uploadedAudioProcessedBytes = stat.size;
                 console.log("[media-downloader] upload audio success", {
                   jobId,
                   bytes: buf.length,
@@ -380,12 +401,38 @@ async function handleRender(req, res) {
       );
 
       const finalMetadata = summariseMetadata(pipelineRes?.rawMetadata || null);
+
+      // Upload source audio (lossless stream copy) if orchestrator provided a target.
+      if (outputAudioSourcePutUrl) {
+        const stat = await fsPromises.stat(audioSourcePath);
+        console.log("[media-downloader] upload audio source start", {
+          jobId,
+          path: audioSourcePath,
+          bytes: stat.size,
+          outputAudioSourceKey,
+          audioSourcePutUrl: maskUrl(outputAudioSourcePutUrl),
+        });
+        const buf = readFileSync(audioSourcePath);
+        await uploadArtifact(outputAudioSourcePutUrl, buf, "audio/x-matroska");
+        uploadedAudioSourceBytes = stat.size;
+        console.log("[media-downloader] upload audio source success", {
+          jobId,
+          bytes: buf.length,
+          outputAudioSourceKey,
+        });
+      }
+
       let callbackMetadata = {
         ...finalMetadata,
         quality,
         source: engineOptions.source || "youtube",
         ...(uploadedVideoBytes != null ? { videoBytes: uploadedVideoBytes } : {}),
-        ...(uploadedAudioBytes != null ? { audioBytes: uploadedAudioBytes } : {}),
+        ...(uploadedAudioProcessedBytes != null
+          ? { audioBytes: uploadedAudioProcessedBytes }
+          : {}),
+        ...(uploadedAudioSourceBytes != null
+          ? { audioSourceBytes: uploadedAudioSourceBytes }
+          : {}),
       };
       // Ensure title is present in the callback metadata (orchestrator forwards only this summary to Next).
       if (!callbackMetadata.title) {
@@ -405,7 +452,11 @@ async function handleRender(req, res) {
       const outputs = {
         video: { key: outputVideoKey },
       };
-      if (outputAudioKey) outputs.audio = { key: outputAudioKey };
+      if (outputAudioKey) {
+        outputs.audio = { key: outputAudioKey };
+        outputs.audioProcessed = { key: outputAudioKey };
+      }
+      if (outputAudioSourceKey) outputs.audioSource = { key: outputAudioSourceKey };
       if (outputMetadataKey && pipelineRes?.rawMetadata != null)
         outputs.metadata = { key: outputMetadataKey };
       await postUpdate("completed", {
@@ -413,6 +464,8 @@ async function handleRender(req, res) {
         progress: 1,
         outputKey: outputVideoKey,
         outputAudioKey,
+        outputAudioSourceKey,
+        outputAudioProcessedKey: outputAudioProcessedKey || outputAudioKey,
         outputMetadataKey,
         outputs,
         metadata: callbackMetadata,
@@ -436,7 +489,10 @@ async function handleRender(req, res) {
       unlinkSync(videoPath);
     } catch {}
     try {
-      unlinkSync(audioPath);
+      unlinkSync(audioSourcePath);
+    } catch {}
+    try {
+      unlinkSync(audioProcessedPath);
     } catch {}
     try {
       // cleanup comments dir

@@ -134,6 +134,13 @@
       "when": 1765721024528,
       "tag": "0018_thick_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1765770842619,
+      "tag": "0019_nosy_tattoo",
+      "breakpoints": true
     }
   ]
 }

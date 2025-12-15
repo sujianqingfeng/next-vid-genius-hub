@@ -5,6 +5,7 @@ import {
 	Calendar,
 	Eye,
 	FileText,
+	HardDrive,
 	Heart,
 	MessageSquare,
 	RefreshCw,
@@ -22,7 +23,7 @@ import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import { queryOrpc } from '~/lib/orpc/query-client'
-import { formatNumber } from '~/lib/utils/format/format'
+import { formatBytes, formatNumber } from '~/lib/utils/format/format'
 import { getTimeAgo as formatTimeAgo } from '~/lib/utils/time'
 import type { MediaItem } from '~/lib/media/types'
 import { toast } from 'sonner'
@@ -112,6 +113,68 @@ function MediaMetadata({ media }: { media: MediaItem }) {
 				</Badge>
 			</div>
 		</div>
+	)
+}
+
+function MediaStorageInfo({ media }: { media: MediaItem }) {
+	const t = useTranslations('MediaDetail.info')
+
+	const rows: Array<{ label: string; value: string }> = [
+		{
+			label: t('labels.videoSize'),
+			value: formatBytes(media.downloadVideoBytes),
+		},
+		{
+			label: t('labels.processedAudioSize'),
+			value: formatBytes(media.downloadAudioBytes),
+		},
+		{
+			label: t('labels.videoKey'),
+			value: media.remoteVideoKey || t('unknown'),
+		},
+		{
+			label: t('labels.processedAudioKey'),
+			value:
+				media.remoteAudioProcessedKey || media.remoteAudioKey || t('unknown'),
+		},
+		{
+			label: t('labels.sourceAudioKey'),
+			value: media.remoteAudioSourceKey || t('unknown'),
+		},
+		{
+			label: t('labels.metadataKey'),
+			value: media.remoteMetadataKey || t('unknown'),
+		},
+	]
+
+	return (
+		<Card className="glass border-none shadow-sm">
+			<CardContent className="p-6 space-y-4">
+				<div className="flex items-center gap-2">
+					<HardDrive className="w-4 h-4 text-primary" strokeWidth={1.5} />
+					<h3 className="text-lg font-semibold text-foreground">{t('title')}</h3>
+				</div>
+				<div className="grid gap-3 sm:grid-cols-2">
+					{rows.map((row) => (
+						<div
+							key={row.label}
+							className="rounded-xl border border-border/40 bg-background/40 p-4"
+						>
+							<div className="text-xs text-muted-foreground">{row.label}</div>
+							<div
+								className="mt-1 text-sm font-medium text-foreground break-all"
+								title={row.value}
+							>
+								{row.value}
+							</div>
+						</div>
+					))}
+				</div>
+				<div className="text-[11px] font-light text-muted-foreground">
+					{t('hint')}
+				</div>
+			</CardContent>
+		</Card>
 	)
 }
 
@@ -226,6 +289,8 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 							<MediaMetadata media={media} />
 						</div>
 					</div>
+
+					<MediaStorageInfo media={media} />
 
 					<div>
 						<div className="glass rounded-3xl p-6 space-y-6">

@@ -75,6 +75,8 @@ export interface MediaItem {
 	downloadError?: string | null
 	remoteVideoKey?: string | null
 	remoteAudioKey?: string | null
+	remoteAudioSourceKey?: string | null
+	remoteAudioProcessedKey?: string | null
 	remoteMetadataKey?: string | null
 	downloadVideoBytes?: number | null
 	downloadAudioBytes?: number | null

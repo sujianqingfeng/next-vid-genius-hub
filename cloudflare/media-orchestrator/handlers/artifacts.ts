@@ -45,6 +45,9 @@ function collectKeysFromDoc(doc: any, jobId: string): string[] {
 		if (mediaId) {
 			push(bucketPaths.outputs.video(mediaId, jobId, pathOptions))
 			push(bucketPaths.downloads.video(mediaId, jobId, pathOptions))
+			push(bucketPaths.downloads.audioSource(mediaId, jobId, pathOptions))
+			push(bucketPaths.downloads.audioProcessed(mediaId, jobId, pathOptions))
+			// Backward-compatible alias (processed audio)
 			push(bucketPaths.downloads.audio(mediaId, jobId, pathOptions))
 			push(bucketPaths.downloads.metadata(mediaId, jobId, pathOptions))
 			push(bucketPaths.asr.results.transcript(mediaId, jobId, pathOptions))
@@ -185,4 +188,3 @@ export async function handleArtifactGet(env: Env, req: Request, jobId: string) {
 	// Fallback: stream via S3 presigned URL（本地 Worker 仍可访问远端 R2）
 	return streamObjectFromS3(env, key, range)
 }
-

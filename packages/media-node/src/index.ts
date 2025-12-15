@@ -99,6 +99,7 @@ export async function fetchVideoMetadata(
 }
 
 export async function extractAudio(videoPath: string, audioPath: string): Promise<void> {
+  // Processed audio: 16kHz mono WAV (PCM S16LE) for downstream ASR workflows.
   const args = [
     '-y',
     '-hide_banner',
@@ -107,13 +108,58 @@ export async function extractAudio(videoPath: string, audioPath: string): Promis
     '-i',
     videoPath,
     '-vn',
-    '-acodec',
-    'libmp3lame',
-    '-b:a',
-    '128k',
     '-ar',
     '16000',
+    '-ac',
+    '1',
+    '-c:a',
+    'pcm_s16le',
     audioPath,
+  ]
+  await run('ffmpeg', args)
+}
+
+export async function extractAudioSource(videoPath: string, audioPath: string): Promise<void> {
+  // Lossless stream copy from the downloaded MP4.
+  const args = [
+    '-y',
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-i',
+    videoPath,
+    '-vn',
+    // Matroska audio container supports common codecs (AAC/Opus/etc) for -c:a copy.
+    '-f',
+    'matroska',
+    '-c:a',
+    'copy',
+    audioPath,
+  ]
+  await run('ffmpeg', args)
+}
+
+export async function transcodeAudioToWav(
+  inputPath: string,
+  outputPath: string,
+  options: { sampleRate?: number; channels?: number } = {},
+): Promise<void> {
+  const sampleRate = Number(options.sampleRate ?? 16000)
+  const channels = Number(options.channels ?? 1)
+  const args = [
+    '-y',
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-i',
+    inputPath,
+    '-ar',
+    String(sampleRate),
+    '-ac',
+    String(channels),
+    '-c:a',
+    'pcm_s16le',
+    outputPath,
   ]
   await run('ffmpeg', args)
 }
@@ -173,4 +219,11 @@ export async function transcodeToTargetSize(
   return { size: lastSize, bitrate: lastBr }
 }
 
-export default { downloadVideo, fetchVideoMetadata, extractAudio, transcodeToTargetSize }
+export default {
+  downloadVideo,
+  fetchVideoMetadata,
+  extractAudio,
+  extractAudioSource,
+  transcodeAudioToWav,
+  transcodeToTargetSize,
+}

@@ -437,6 +437,19 @@
 			"queued": "排队中",
 			"unknown": "未知",
 			"footer": "任务最长运行两小时，单个文件上限 2GB。更大的或受保护的媒体可能在队列中等待更久。"
+		},
+		"info": {
+			"title": "存储信息",
+			"unknown": "未知",
+			"hint": "文件大小会在云端下载成功后记录。",
+			"labels": {
+				"videoSize": "视频大小",
+				"processedAudioSize": "处理后音频大小",
+				"videoKey": "视频 Key",
+				"processedAudioKey": "处理后音频 Key",
+				"sourceAudioKey": "原始音频 Key",
+				"metadataKey": "元数据 Key"
+			}
 		}
 	},
 	"Login": {

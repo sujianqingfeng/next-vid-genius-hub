@@ -364,6 +364,8 @@ export const deleteById = os
 				// Directly referenced remote objects from the record
 				if (record.remoteVideoKey) keys.push(record.remoteVideoKey)
 				if (record.remoteAudioKey) keys.push(record.remoteAudioKey)
+				if (record.remoteAudioSourceKey) keys.push(record.remoteAudioSourceKey)
+				if (record.remoteAudioProcessedKey) keys.push(record.remoteAudioProcessedKey)
 				if (record.remoteMetadataKey) keys.push(record.remoteMetadataKey)
 				// Well-known per-media objects that we materialize into the bucket
 				const pathOptions = { title: record.title || undefined }

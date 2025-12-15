@@ -64,8 +64,15 @@ export const bucketPaths = {
 			`${mediaRoot(mediaId, options)}/downloads/`,
 		video: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
 			`${mediaRoot(mediaId, options)}/downloads/${jobId}/video.mp4`,
+		// Source audio extracted losslessly from the downloaded MP4 (-c:a copy).
+		audioSource: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/downloads/${jobId}/audio.source.mka`,
+		// Processed audio for downstream workflows (e.g. ASR): 16kHz mono WAV (PCM S16LE).
+		audioProcessed: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
+			`${mediaRoot(mediaId, options)}/downloads/${jobId}/audio.processed.wav`,
+		// Backward-compatible alias: treated as processed audio.
 		audio: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
-			`${mediaRoot(mediaId, options)}/downloads/${jobId}/audio.mp3`,
+			`${mediaRoot(mediaId, options)}/downloads/${jobId}/audio.processed.wav`,
 		metadata: (mediaId: string, jobId: string, options?: MediaPathOptions) =>
 			`${mediaRoot(mediaId, options)}/downloads/${jobId}/metadata.json`,
 	},

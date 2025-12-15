@@ -35,6 +35,8 @@ export interface JobStatusResponse {
   outputs?: {
     video?: { key?: string; url?: string }
     audio?: { key?: string; url?: string }
+    audioSource?: { key?: string; url?: string }
+    audioProcessed?: { key?: string; url?: string }
     metadata?: { key?: string; url?: string }
     vtt?: { key?: string; url?: string }
     words?: { key?: string; url?: string }

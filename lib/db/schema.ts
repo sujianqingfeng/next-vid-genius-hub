@@ -270,6 +270,8 @@ export const media = sqliteTable(
 		downloadError: text('download_error'),
 		remoteVideoKey: text('remote_video_key'),
 		remoteAudioKey: text('remote_audio_key'),
+		remoteAudioSourceKey: text('remote_audio_source_key'),
+		remoteAudioProcessedKey: text('remote_audio_processed_key'),
 		remoteMetadataKey: text('remote_metadata_key'),
 		downloadVideoBytes: integer('download_video_bytes'),
 		downloadAudioBytes: integer('download_audio_bytes'),

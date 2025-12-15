@@ -33,7 +33,10 @@ export class RenderJobDO {
 				engine: body.engine,
 				status: body.status || 'queued',
 				outputKey: body.outputKey,
+				// Backward-compatible: outputAudioKey is treated as processed audio.
 				outputAudioKey: body.outputAudioKey,
+				outputAudioSourceKey: body.outputAudioSourceKey,
+				outputAudioProcessedKey: body.outputAudioProcessedKey,
 				outputMetadataKey: body.outputMetadataKey,
 				metadata: body.metadata,
 				ts: Date.now(),
@@ -55,6 +58,8 @@ export class RenderJobDO {
 				error: body.error ?? doc.error,
 				outputKey: body.outputKey ?? doc.outputKey,
 				outputAudioKey: body.outputAudioKey ?? doc.outputAudioKey,
+				outputAudioSourceKey: body.outputAudioSourceKey ?? doc.outputAudioSourceKey,
+				outputAudioProcessedKey: body.outputAudioProcessedKey ?? doc.outputAudioProcessedKey,
 				outputMetadataKey: body.outputMetadataKey ?? doc.outputMetadataKey,
 				outputs: body.outputs ?? doc.outputs,
 				metadata: body.metadata ?? doc.metadata,
@@ -293,11 +298,29 @@ export class RenderJobDO {
 					url: await presignS3(this.env, 'GET', bucket, doc.outputKey, 600),
 				}
 			}
-			const audioKey = doc.outputAudioKey || doc.outputs?.audio?.key
-			if (audioKey) {
+			const audioProcessedKey =
+				doc.outputAudioProcessedKey ||
+				doc.outputAudioKey ||
+				doc.outputs?.audioProcessed?.key ||
+				doc.outputs?.audio?.key
+			const audioSourceKey =
+				doc.outputAudioSourceKey || doc.outputs?.audioSource?.key
+
+			// Backward-compatible field: "audio" points at processed audio.
+			if (audioProcessedKey) {
 				outputs.audio = {
-					key: audioKey,
-					url: await presignS3(this.env, 'GET', bucket, audioKey, 600),
+					key: audioProcessedKey,
+					url: await presignS3(this.env, 'GET', bucket, audioProcessedKey, 600),
+				}
+				outputs.audioProcessed = {
+					key: audioProcessedKey,
+					url: await presignS3(this.env, 'GET', bucket, audioProcessedKey, 600),
+				}
+			}
+			if (audioSourceKey) {
+				outputs.audioSource = {
+					key: audioSourceKey,
+					url: await presignS3(this.env, 'GET', bucket, audioSourceKey, 600),
 				}
 			}
 			const metadataKey = doc.outputMetadataKey || doc.outputs?.metadata?.key

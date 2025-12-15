@@ -438,6 +438,19 @@
 			"queued": "Queued",
 			"unknown": "Unknown",
 			"footer": "Jobs run up to two hours with a 2GB cap. Larger or protected media may take longer in the queue."
+		},
+		"info": {
+			"title": "Storage",
+			"unknown": "Unknown",
+			"hint": "File sizes are recorded after successful cloud downloads.",
+			"labels": {
+				"videoSize": "Video size",
+				"processedAudioSize": "Processed audio size",
+				"videoKey": "Video key",
+				"processedAudioKey": "Processed audio key",
+				"sourceAudioKey": "Source audio key",
+				"metadataKey": "Metadata key"
+			}
 		}
 	},
 	"Login": {
