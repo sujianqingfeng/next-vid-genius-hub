@@ -294,57 +294,70 @@ export function MediaDetailPageClient({ id }: { id: string }) {
 
 					<div>
 						<div className="glass rounded-3xl p-6 space-y-6">
-							<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-								<h3 className="text-lg font-semibold text-foreground">{t('actions.title')}</h3>
-								<div className="grid w-full gap-3 sm:grid-flow-col sm:auto-cols-max sm:items-center sm:w-auto">
-									<div className="w-full sm:w-64">
-										<ProxySelector
-											value={selectedProxyId}
-											onValueChange={setSelectedProxyId}
-											disabled={refreshMetadataMutation.isPending}
-											allowDirect={true}
-										/>
-									</div>
+							<h3 className="text-lg font-semibold text-foreground">
+								{t('actions.title')}
+							</h3>
+
+							<div className="grid gap-3 sm:grid-cols-2">
+								<Button
+									asChild
+									variant="default"
+									size="lg"
+									className="h-12 w-full justify-start gap-3 shadow-sm hover:shadow-md transition-all"
+								>
+									<Link href={`/media/${id}/subtitles`}>
+										<FileText className="w-4 h-4" strokeWidth={1.5} />
+										<span className="font-semibold">
+											{t('tabs.subtitlesAction')}
+										</span>
+									</Link>
+								</Button>
+
+								<Button
+									asChild
+									variant="outline"
+									size="lg"
+									className="h-12 w-full justify-start gap-3 bg-transparent border-border/50 hover:bg-secondary/50 transition-all"
+								>
+									<Link href={`/media/${id}/comments`}>
+										<MessageSquare className="w-4 h-4" strokeWidth={1.5} />
+										<span className="font-semibold">
+											{t('tabs.commentsAction')}
+										</span>
+									</Link>
+								</Button>
+							</div>
+
+							<div className="rounded-2xl border border-border/40 bg-background/40 p-4 sm:p-5">
+								<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+									<ProxySelector
+										value={selectedProxyId}
+										onValueChange={setSelectedProxyId}
+										disabled={refreshMetadataMutation.isPending}
+										allowDirect={true}
+									/>
 									<Button
 										variant="outline"
 										size="lg"
-										className="h-11 w-full sm:w-auto bg-transparent border-border/50 hover:bg-secondary/50 transition-all"
+										className="h-11 w-full bg-transparent border-border/50 hover:bg-secondary/50 transition-all sm:w-auto sm:self-end"
 										onClick={() =>
 											refreshMetadataMutation.mutate({
 												id,
-												proxyId: selectedProxyId === 'none' ? undefined : selectedProxyId,
+												proxyId:
+													selectedProxyId === 'none' ? undefined : selectedProxyId,
 											})
 										}
 										disabled={refreshMetadataMutation.isPending || !media?.url}
 									>
-										<RefreshCw className={`w-4 h-4 mr-2 ${refreshMetadataMutation.isPending ? 'animate-spin' : ''}`} strokeWidth={1.5} />
-										{refreshMetadataMutation.isPending ? t('actions.syncing') : t('actions.sync')}
+										<RefreshCw
+											className={`w-4 h-4 ${refreshMetadataMutation.isPending ? 'animate-spin' : ''}`}
+											strokeWidth={1.5}
+										/>
+										{refreshMetadataMutation.isPending
+											? t('actions.syncing')
+											: t('actions.sync')}
 									</Button>
 								</div>
-							</div>
-
-							<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
-								<Link href={`/media/${id}/subtitles`} className="block">
-									<Button
-										variant="default"
-										size="lg"
-										className="h-12 w-full justify-start gap-3 shadow-sm hover:shadow-md transition-all"
-									>
-										<FileText className="w-4 h-4" strokeWidth={1.5} />
-										<span className="font-semibold">{t('tabs.subtitlesAction')}</span>
-									</Button>
-								</Link>
-
-								<Link href={`/media/${id}/comments`} className="block">
-									<Button
-									variant="outline"
-									size="lg"
-										className="h-12 w-full justify-start gap-3 bg-transparent border-border/50 hover:bg-secondary/50 transition-all"
-									>
-										<MessageSquare className="w-4 h-4" strokeWidth={1.5} />
-										<span className="font-semibold">{t('tabs.commentsAction')}</span>
-									</Button>
-								</Link>
 							</div>
 						</div>
 					</div>
