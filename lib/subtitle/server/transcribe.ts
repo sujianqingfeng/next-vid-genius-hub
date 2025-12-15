@@ -25,13 +25,15 @@ export async function transcribe(input: {
 	}
 
 	const provider = modelCfg.provider
-	if (provider.type !== 'cloudflare_asr') {
+	if (provider.type !== 'cloudflare_asr' && provider.type !== 'whisper_api') {
 		throw new Error(
-			`ASR provider type ${provider.type} is not supported by cloud asr-pipeline (Workers AI only)`,
+			`ASR provider type ${provider.type} is not supported by cloud asr-pipeline`,
 		)
 	}
 	const supportsLanguageHint =
-		deriveCloudflareAsrCapabilities(modelCfg.remoteModelId).supportsLanguageHint
+		provider.type === 'cloudflare_asr'
+			? deriveCloudflareAsrCapabilities(modelCfg.remoteModelId).supportsLanguageHint
+			: true
 	const languageForProvider = supportsLanguageHint ? normalizedLanguage : undefined
 
 	logger.info(
@@ -48,11 +50,16 @@ export async function transcribe(input: {
 		throw new Error('Media not found.')
 	}
 
-	const remoteAudioKey = mediaRecord.remoteAudioKey
-	if (!remoteAudioKey) {
+	// Prefer processed audio for ASR (more stable for single-language + consistent sample rate),
+	// fall back to legacy remoteAudioKey, then raw source audio when available.
+	const sourceKey =
+		mediaRecord.remoteAudioProcessedKey ||
+		mediaRecord.remoteAudioKey ||
+		mediaRecord.remoteAudioSourceKey
+	if (!sourceKey) {
 		logger.error(
 			'transcription',
-			'Cloud transcription requires remoteAudioKey (audio not uploaded to storage)',
+			'Cloud transcription requires remote audio in storage (processed/source audio key missing)',
 		)
 		throw new Error(
 			'Remote audio is not available. Please upload audio to storage before transcribing.',
@@ -78,7 +85,9 @@ export async function transcribe(input: {
 		.split(',')
 		.map((s) => Number(s.trim()))
 		.filter((n) => Number.isFinite(n) && n > 0)
-	const modelId = modelCfg.remoteModelId
+	// Use DB model id for billing/pricing rules; pass remoteModelId separately for the orchestrator runner.
+	const modelId = modelCfg.id
+	const remoteModelId = modelCfg.remoteModelId
 
 	const taskId = createId()
 	const now = new Date()
@@ -91,16 +100,19 @@ export async function transcribe(input: {
 		targetId: mediaId,
 		status: 'queued',
 		progress: 0,
-		payload: {
-			sourceKey: remoteAudioKey,
-			maxBytes: targetBytes,
-			targetBitrates,
-			sampleRate,
-			model: modelId,
-			...(languageForProvider ? { language: languageForProvider } : {}),
-		},
-		createdAt: now,
-		updatedAt: now,
+			payload: {
+				sourceKey,
+				maxBytes: targetBytes,
+				targetBitrates,
+				sampleRate,
+				model: modelId,
+				remoteModelId,
+				providerType: provider.type,
+				providerId: provider.id,
+				...(languageForProvider ? { language: languageForProvider } : {}),
+			},
+			createdAt: now,
+			updatedAt: now,
 	})
 
 	let jobId: string | null = null
@@ -114,14 +126,17 @@ export async function transcribe(input: {
 			engine: 'asr-pipeline',
 			createdAt: Date.now(),
 			inputs: {
-				asrSourceKey: remoteAudioKey,
+				asrSourceKey: sourceKey,
 			},
 			optionsSnapshot: {
-				sourceKey: remoteAudioKey,
+				sourceKey,
 				maxBytes: targetBytes,
 				targetBitrates,
 				sampleRate,
 				model: modelId,
+				remoteModelId,
+				providerType: provider.type,
+				providerId: provider.id,
 				language: languageForProvider ?? null,
 			},
 		}
@@ -133,11 +148,14 @@ export async function transcribe(input: {
 			engine: 'asr-pipeline',
 			title: mediaRecord.title || undefined,
 			options: {
-				sourceKey: remoteAudioKey,
+				sourceKey,
 				maxBytes: targetBytes,
 				targetBitrates,
 				sampleRate,
 				model: modelId,
+				remoteModelId,
+				providerType: provider.type,
+				providerId: provider.id,
 				...(languageForProvider ? { language: languageForProvider } : {}),
 			},
 		})

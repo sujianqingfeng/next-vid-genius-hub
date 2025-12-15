@@ -1,10 +1,20 @@
 import type { Env } from '../types'
 import { TERMINAL_STATUSES } from '../types'
 import { runAsrForPipeline } from '../asr/pipeline'
+import { bucketPaths } from '@app/media-domain'
+import { putObjectStreamToStorage, readObjectArrayBufferWithFallback } from '../storage/fallback'
 import { presignS3 } from '../storage/presign'
 import { s3Head } from '../storage/s3'
 import { jobStub } from '../utils/job'
 import { hmacHex, requireJobCallbackSecret } from '../utils/hmac'
+import {
+	fetchWhisperApiConfigFromNext,
+	getWhisperJobResult,
+	getWhisperJobStatus,
+	mapWhisperStatusToJobStatus,
+	resolveWhisperProgressFraction,
+	submitWhisperTranscriptionJob,
+} from '../asr/whisper-api-jobs'
 
 // ---------------- Durable Object for strong-consistent job state ----------------
 export class RenderJobDO {
@@ -91,6 +101,40 @@ export class RenderJobDO {
 				})
 			}
 			if (TERMINAL_STATUSES.includes(doc.status) || doc.outputs?.vtt?.key) {
+				return new Response(JSON.stringify({ ok: true }), {
+					headers: { 'content-type': 'application/json' },
+				})
+			}
+			const providerType = doc?.metadata?.providerType
+			if (providerType === 'whisper_api') {
+				this.state.waitUntil(
+					(async () => {
+						try {
+							await this.startWhisperAsr(doc)
+						} catch (e) {
+							const msg = (e as Error)?.message || String(e)
+							console.error('[asr-pipeline.whisper_api] background error', {
+								jobId: doc.jobId,
+								msg,
+							})
+							try {
+								const stub = jobStub(this.env, doc.jobId)
+								if (stub) {
+									await stub.fetch('https://do/progress', {
+										method: 'POST',
+										headers: { 'content-type': 'application/json' },
+										body: JSON.stringify({
+											jobId: doc.jobId,
+											status: 'failed',
+											error: msg,
+											ts: Date.now(),
+										}),
+									})
+								}
+							} catch {}
+						}
+					})(),
+				)
 				return new Response(JSON.stringify({ ok: true }), {
 					headers: { 'content-type': 'application/json' },
 				})
@@ -269,6 +313,204 @@ export class RenderJobDO {
 			status: 404,
 			headers: { 'content-type': 'application/json' },
 		})
+	}
+
+	// Durable Object alarms: used for polling external async ASR providers.
+	async alarm() {
+		const doc = (await this.state.storage.get('job')) as any
+		if (!doc || doc.engine !== 'asr-pipeline' || !doc.jobId) return
+		if (TERMINAL_STATUSES.includes(doc.status) || doc.outputs?.vtt?.key) return
+		if (doc?.metadata?.providerType !== 'whisper_api') return
+
+		const whisperJobId = typeof doc?.metadata?.whisperJobId === 'string' ? doc.metadata.whisperJobId : null
+		if (!whisperJobId) return
+
+		try {
+			const providerId = String(doc?.metadata?.providerId || '').trim()
+			const modelId = String(doc?.metadata?.model || '').trim()
+			if (!providerId || !modelId) {
+				throw new Error('whisper_api missing providerId/model')
+			}
+
+			const cfg = await fetchWhisperApiConfigFromNext(this.env, { providerId, modelId })
+			const status = await getWhisperJobStatus({
+				baseUrl: cfg.baseUrl,
+				apiKey: cfg.apiKey,
+				jobId: whisperJobId,
+			})
+
+			const mappedStatus = mapWhisperStatusToJobStatus(status.status)
+			const phase =
+				status.status === 'queued'
+					? 'asr_queued'
+					: status.status === 'running'
+						? 'asr_running'
+						: status.status === 'succeeded'
+							? undefined
+							: 'asr_failed'
+
+			// Sync progress/status into DO state.
+			{
+				const stub = jobStub(this.env, doc.jobId)
+				if (stub) {
+					await stub.fetch('https://do/progress', {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							jobId: doc.jobId,
+							status: mappedStatus === 'completed' ? 'running' : mappedStatus,
+							phase,
+							progress: typeof status.progressFraction === 'number' ? status.progressFraction : undefined,
+							error: status.error ?? undefined,
+							metadata: { ...(doc.metadata || {}), whisperJobId },
+							ts: Date.now(),
+						}),
+					})
+				}
+			}
+
+			if (mappedStatus === 'failed') {
+				const stub = jobStub(this.env, doc.jobId)
+				if (stub) {
+					await stub.fetch('https://do/progress', {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							jobId: doc.jobId,
+							status: 'failed',
+							error: status.error || 'Whisper API job failed',
+							ts: Date.now(),
+						}),
+					})
+				}
+				return
+			}
+
+			if (mappedStatus === 'completed') {
+				const vtt = await getWhisperJobResult({
+					baseUrl: cfg.baseUrl,
+					apiKey: cfg.apiKey,
+					jobId: whisperJobId,
+					responseFormat: 'vtt',
+				})
+				const json = await getWhisperJobResult({
+					baseUrl: cfg.baseUrl,
+					apiKey: cfg.apiKey,
+					jobId: whisperJobId,
+					responseFormat: 'json',
+				})
+
+				const extractWords = (payload: any) => {
+					const out: Array<{ word: string; start: number; end: number }> = []
+					const segments = Array.isArray(payload?.segments) ? payload.segments : []
+					for (const seg of segments) {
+						const words = Array.isArray(seg?.words) ? seg.words : []
+						for (const w of words) {
+							if (
+								w &&
+								typeof w.word === 'string' &&
+								typeof w.start === 'number' &&
+								typeof w.end === 'number'
+							) {
+								out.push({ word: w.word, start: w.start, end: w.end })
+							}
+						}
+					}
+					return out.length > 0 ? out : undefined
+				}
+
+				const mediaId = doc.mediaId || 'unknown'
+				const title = doc?.title as string | undefined
+				const pathOptions = { title }
+				const vttKey = bucketPaths.asr.results.transcript(mediaId, doc.jobId, pathOptions)
+				await putObjectStreamToStorage(this.env, vttKey, 'text/vtt', String(vtt))
+
+				let wordsKey: string | undefined
+				const words = extractWords(json)
+				if (words && words.length > 0) {
+					wordsKey = bucketPaths.asr.results.words(mediaId, doc.jobId, pathOptions)
+					await putObjectStreamToStorage(this.env, wordsKey, 'application/json', JSON.stringify(words))
+				}
+
+				const stub = jobStub(this.env, doc.jobId)
+				if (stub) {
+					const outputs: any = {}
+					outputs.vtt = { key: vttKey }
+					if (wordsKey) outputs.words = { key: wordsKey }
+					await stub.fetch('https://do/progress', {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							jobId: doc.jobId,
+							status: 'completed',
+							progress: 1,
+							outputs,
+							metadata: { ...(doc.metadata || {}), whisperJobId },
+							ts: Date.now(),
+						}),
+					})
+				}
+				return
+			}
+		} catch (e) {
+			const msg = (e as Error)?.message || String(e)
+			console.error('[asr-pipeline.whisper_api] poll error', { jobId: doc.jobId, msg })
+		}
+
+		// Not finished yet: schedule another poll.
+		try {
+			await this.state.storage.setAlarm(Date.now() + 3000)
+		} catch {}
+	}
+
+	private async startWhisperAsr(doc: any) {
+		const providerId = String(doc?.metadata?.providerId || '').trim()
+		const modelId = String(doc?.metadata?.model || '').trim()
+		if (!providerId || !modelId) {
+			throw new Error('whisper_api missing providerId/model')
+		}
+
+		const audioKey: string | undefined = doc.outputAudioKey || doc.outputs?.audio?.key
+		if (!audioKey) throw new Error('asr-pipeline.whisper_api: missing outputAudioKey')
+
+		const cfg = await fetchWhisperApiConfigFromNext(this.env, { providerId, modelId })
+		const audio = await readObjectArrayBufferWithFallback(this.env, audioKey)
+		if (!audio) throw new Error(`asr-pipeline.whisper_api: audio not found: ${audioKey}`)
+
+		const language =
+			typeof doc?.metadata?.language === 'string' && doc.metadata.language !== 'auto'
+				? doc.metadata.language
+				: undefined
+
+		const job = await submitWhisperTranscriptionJob({
+			baseUrl: cfg.baseUrl,
+			apiKey: cfg.apiKey,
+			model: cfg.remoteModelId,
+			language,
+			audio,
+			filename: 'audio.wav',
+		})
+
+		const stub = jobStub(this.env, doc.jobId)
+		if (stub) {
+			const progress = resolveWhisperProgressFraction(job) ?? 0
+			await stub.fetch('https://do/progress', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					jobId: doc.jobId,
+					status: 'running',
+					phase: 'asr_submitted',
+					progress,
+					metadata: { ...(doc.metadata || {}), whisperJobId: job.id },
+					ts: Date.now(),
+				}),
+			})
+		}
+
+		try {
+			await this.state.storage.setAlarm(Date.now() + 1000)
+		} catch {}
 	}
 
 	private async notifyNext(doc: any) {

@@ -10,7 +10,10 @@ export async function runAsrForPipeline(env: Env, doc: any) {
 	if (!audioKey) throw new Error('asr-pipeline: missing outputAudioKey')
 
 	// Decide model
-	const model: string = (doc?.metadata?.model as string) || '@cf/openai/whisper-tiny-en'
+	const model: string =
+		(doc?.metadata?.remoteModelId as string) ||
+		(doc?.metadata?.model as string) ||
+		'@cf/openai/whisper-tiny-en'
 	const jobLanguage =
 		typeof doc?.metadata?.language === 'string' ? doc.metadata.language : undefined
 	const normalizedLanguage =

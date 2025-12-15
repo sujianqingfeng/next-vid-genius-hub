@@ -76,6 +76,27 @@ Worker 侧更贴合：
 优点：彻底解决超时与稳定性问题，可扩展进度展示、重试、取消等。
 缺点：需要改 ASR 服务端 + Next/Worker 集成。
 
+## 已落地实现（whisper_api 异步 jobs + orchestrator）
+
+当前实现选择“由 orchestrator Worker 负责提交 job + 轮询 + 产物写回”，整体不会再依赖同步长请求，从而规避 524。
+
+关键点：
+
+- Next 侧启动 `asr-pipeline` 时会把 `providerType/providerId/model(remoteModelId)` 一并作为 job options 传给 orchestrator（不包含 token）。
+- orchestrator 需要调用 Next 的内部接口解析 `whisper_api` provider 的 `baseUrl/apiKey`：
+  - `POST /api/internal/ai/asr-provider`（HMAC 签名，secret 复用 `JOB_CALLBACK_HMAC_SECRET`）。
+- orchestrator 提交异步任务：
+  - `POST /v1/audio/transcriptions/jobs` → 返回 `whisperJobId`
+  - Durable Object 使用 `alarm()` 定时轮询：
+    - `GET /v1/audio/transcriptions/jobs/{job_id}`
+    - 完成后再拉结果：
+      - `GET /v1/audio/transcriptions/jobs/{job_id}/result?response_format=vtt`
+      - `GET /v1/audio/transcriptions/jobs/{job_id}/result?response_format=json`（提取 words）
+- 结果仍按既有约定写回 R2：
+  - `asr/results/*.vtt`
+  - `asr/results/*.words.json`
+  并通过 `cf-callback` 回调 Next 落库与计费。
+
 ### 方案 C：流式输出（SSE / chunked）
 
 目标：持续向代理发送数据（哪怕是心跳/进度），避免长时间无首字节导致超时。
