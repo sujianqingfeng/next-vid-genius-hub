@@ -17,6 +17,7 @@ import {
 import { useParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useLocale, useTranslations } from 'next-intl'
 import { PageHeader } from '~/components/business/layout/page-header'
 import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { CommentCard } from '~/components/business/media/comment-card'
@@ -70,6 +71,8 @@ type SourceStatus = {
 }
 
 export default function CommentsPage() {
+	const t = useTranslations('MediaComments.page')
+	const locale = useLocale()
 	const params = useParams()
 	const id = params.id as string
 	const queryClient = useQueryClient()
@@ -163,8 +166,9 @@ export default function CommentsPage() {
 			invalidateQueries: {
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			},
-			successToast: 'Template saved!',
-			errorToast: ({ error }) => `Failed to save template: ${error.message}`,
+			successToast: t('toasts.templateSaved'),
+			errorToast: ({ error }) =>
+				t('errors.templateSaveFailed', { message: error.message }),
 		},
 	)
 
@@ -178,8 +182,9 @@ export default function CommentsPage() {
 			invalidateQueries: {
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			},
-			successToast: 'Titles updated successfully!',
-			errorToast: ({ error }) => `Failed to update titles: ${error.message}`,
+			successToast: t('toasts.titlesUpdated'),
+			errorToast: ({ error }) =>
+				t('errors.titlesUpdateFailed', { message: error.message }),
 		},
 	)
 
@@ -199,20 +204,20 @@ export default function CommentsPage() {
 
 	const copyTitleValue = (value: string | null | undefined, label: string) => {
 		if (!value) {
-			toast.error(`${label} does not exist`)
+			toast.error(t('toasts.valueMissing', { label }))
 			return
 		}
 		if (typeof navigator === 'undefined' || !navigator.clipboard) {
-			toast.error('Unable to access clipboard')
+			toast.error(t('toasts.clipboardUnavailable'))
 			return
 		}
 		navigator.clipboard
 			.writeText(value)
 			.then(() => {
-				toast.success(`${label} copied to clipboard`)
+				toast.success(t('toasts.copiedToClipboard', { label }))
 			})
 			.catch(() => {
-				toast.error(`Failed to copy ${label}`)
+				toast.error(t('toasts.copyFailed', { label }))
 			})
 	}
 
@@ -223,7 +228,7 @@ export default function CommentsPage() {
 			},
 		}),
 		{
-			successToast: 'Cloud comments download queued',
+			successToast: t('toasts.cloudCommentsQueued'),
 			errorToast: ({ error }) => error.message,
 		},
 	)
@@ -238,7 +243,7 @@ export default function CommentsPage() {
 			invalidateQueries: {
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			},
-			successToast: 'Comments downloaded!',
+			successToast: t('toasts.commentsDownloaded'),
 			errorToast: ({ error }) => error.message,
 		},
 	)
@@ -279,9 +284,9 @@ export default function CommentsPage() {
 			invalidateQueries: {
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			},
-			successToast: 'Comments translated!',
+			successToast: t('toasts.commentsTranslated'),
 			errorToast: ({ error }) =>
-				`Failed to translate comments: ${error.message}`,
+				t('errors.translateFailed', { message: error.message }),
 		},
 	)
 
@@ -292,8 +297,9 @@ export default function CommentsPage() {
 				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			},
 			successToast: ({ data }) =>
-				`Moderation done: ${data?.flaggedCount ?? 0} flagged`,
-			errorToast: ({ error }) => `Failed to moderate: ${error.message}`,
+				t('toasts.moderationDone', { count: data?.flaggedCount ?? 0 }),
+			errorToast: ({ error }) =>
+				t('errors.moderateFailed', { message: error.message }),
 		},
 	)
 
@@ -309,10 +315,10 @@ export default function CommentsPage() {
 			},
 			successToast: ({ variables }) => {
 				const count = variables.commentIds.length
-				return `Deleted ${count} comment${count > 1 ? 's' : ''}`
+				return t('toasts.commentsDeleted', { count })
 			},
 			errorToast: ({ error }) =>
-				`Failed to delete comments: ${error.message}`,
+				t('errors.deleteFailed', { message: error.message }),
 		},
 	)
 
@@ -363,7 +369,7 @@ export default function CommentsPage() {
 			},
 		}),
 		{
-			successToast: 'Cloud render queued',
+			successToast: t('toasts.cloudRenderQueued'),
 			errorToast: ({ error }) => error.message,
 		},
 	)
@@ -490,8 +496,8 @@ export default function CommentsPage() {
 		if (!hasSelection) return
 		const ids = Array.from(selectedCommentIds)
 		const confirmed = await confirmDialog({
-			title: 'Delete comments',
-			description: `Delete ${ids.length} selected comment${ids.length > 1 ? 's' : ''}?`,
+			title: t('bulkDelete.confirm.title'),
+			description: t('bulkDelete.confirm.description', { count: ids.length }),
 			variant: 'destructive',
 		})
 		if (!confirmed) return
@@ -506,8 +512,8 @@ export default function CommentsPage() {
 			header={
 				<PageHeader
 					backHref={`/media/${id}`}
-					backText="Back"
-					title="Comments"
+					backText={t('header.back')}
+					title={t('header.title')}
 					rightContent={
 						mediaQuery.data?.translatedTitle ? (
 							<Button
@@ -517,7 +523,7 @@ export default function CommentsPage() {
 								onClick={handleEditClick}
 							>
 								<Edit className="h-4 w-4" strokeWidth={1.5} />
-								Edit Titles
+								{t('header.editTitles')}
 							</Button>
 						) : null
 					}
@@ -527,44 +533,46 @@ export default function CommentsPage() {
 			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
 				<DialogContent className="glass border-white/20">
 					<DialogHeader>
-						<DialogTitle>Edit Titles</DialogTitle>
+						<DialogTitle>{t('editDialog.title')}</DialogTitle>
 						<DialogDescription>
-							Update the original and translated titles for this media.
+							{t('editDialog.description')}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-4">
 						<div className="space-y-2">
-							<Label htmlFor="title">Original Title (Chinese)</Label>
+							<Label htmlFor="title">{t('editDialog.fields.originalLabel')}</Label>
 							<Input
 								id="title"
 								value={editTitle}
 								onChange={(e) => setEditTitle(e.target.value)}
-								placeholder="Enter original title"
+								placeholder={t('editDialog.fields.originalPlaceholder')}
 								className="bg-white/50 border-white/20"
 							/>
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="translatedTitle">
-								Translated Title (English)
+								{t('editDialog.fields.translatedLabel')}
 							</Label>
 							<Input
 								id="translatedTitle"
 								value={editTranslatedTitle}
 								onChange={(e) => setEditTranslatedTitle(e.target.value)}
-								placeholder="Enter translated title"
+								placeholder={t('editDialog.fields.translatedPlaceholder')}
 								className="bg-white/50 border-white/20"
 							/>
 						</div>
 					</div>
 					<DialogFooter>
 						<Button variant="ghost" onClick={() => setEditDialogOpen(false)}>
-							Cancel
+							{t('editDialog.actions.cancel')}
 						</Button>
 						<Button
 							onClick={handleSaveTitles}
 							disabled={updateTitlesMutation.isPending}
 						>
-							{updateTitlesMutation.isPending ? 'Saving...' : 'Save'}
+							{updateTitlesMutation.isPending
+								? t('editDialog.actions.saving')
+								: t('editDialog.actions.save')}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -590,26 +598,26 @@ export default function CommentsPage() {
 								<CardHeader className="pb-4 border-b border-border/40">
 									<CardTitle className="text-lg flex items-center gap-2">
 										<Settings className="h-5 w-5 text-primary" strokeWidth={1.5} />
-										Workflow
+										{t('workflow.title')}
 									</CardTitle>
 								</CardHeader>
 								<CardContent className="pt-6">
 									<Tabs defaultValue="download" className="w-full">
 										<TabsList className="grid w-full grid-cols-5 bg-secondary/30 p-1 rounded-xl">
 											<TabsTrigger value="basics" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
-												Base
+												{t('tabs.basics')}
 											</TabsTrigger>
 											<TabsTrigger value="download" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
-												Get
+												{t('tabs.download')}
 											</TabsTrigger>
 											<TabsTrigger value="translate" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
-												Trans
+												{t('tabs.translate')}
 											</TabsTrigger>
 											<TabsTrigger value="moderate" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
-												Mod
+												{t('tabs.moderate')}
 											</TabsTrigger>
 											<TabsTrigger value="render" className="rounded-lg text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
-												Render
+												{t('tabs.render')}
 											</TabsTrigger>
 										</TabsList>
 
@@ -617,10 +625,11 @@ export default function CommentsPage() {
 											<div className="space-y-4">
 												<div className="space-y-2">
 													<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-														Translated Title
+														{t('basics.translatedTitle.label')}
 													</p>
 													<div className="rounded-lg bg-white/50 p-3 text-sm font-medium shadow-sm border border-white/20">
-														{mediaQuery.data.translatedTitle ?? 'No translated title'}
+														{mediaQuery.data.translatedTitle ??
+															t('basics.translatedTitle.empty')}
 													</div>
 													<Button
 														variant="ghost"
@@ -630,21 +639,21 @@ export default function CommentsPage() {
 														onClick={() =>
 															copyTitleValue(
 																mediaQuery.data?.translatedTitle,
-																'English title',
+																t('labels.englishTitle'),
 															)
 														}
 													>
 														<Copy className="h-3 w-3 mr-2" strokeWidth={1.5} />
-														Copy English Title
+														{t('basics.translatedTitle.copy')}
 													</Button>
 												</div>
 
 												<div className="space-y-2 pt-2 border-t border-border/40">
 													<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-														Original Title
+														{t('basics.originalTitle.label')}
 													</p>
 													<div className="rounded-lg bg-white/50 p-3 text-sm text-muted-foreground shadow-sm border border-white/20">
-														{mediaQuery.data.title ?? 'No original title'}
+														{mediaQuery.data.title ?? t('basics.originalTitle.empty')}
 													</div>
 													<Button
 														variant="ghost"
@@ -654,12 +663,12 @@ export default function CommentsPage() {
 														onClick={() =>
 															copyTitleValue(
 																mediaQuery.data?.title,
-																'Original title',
+																t('labels.originalTitle'),
 															)
 														}
 													>
 														<Copy className="h-3 w-3 mr-2" strokeWidth={1.5} />
-														Copy Original Title
+														{t('basics.originalTitle.copy')}
 													</Button>
 												</div>
 											</div>
@@ -669,7 +678,7 @@ export default function CommentsPage() {
 											<div className="space-y-4">
 												<div className="space-y-2">
 													<Label className="text-xs font-medium text-muted-foreground">
-														Pages to fetch
+														{t('download.pagesLabel')}
 													</Label>
 													<Select value={pages} onValueChange={setPages}>
 														<SelectTrigger className="w-full bg-white/50 border-white/20">
@@ -678,7 +687,7 @@ export default function CommentsPage() {
 														<SelectContent>
 															{[...Array(10).keys()].map((i) => (
 																<SelectItem key={i + 1} value={String(i + 1)}>
-																	{i + 1} page{i > 0 ? 's' : ''}
+																	{t('download.pagesOption', { count: i + 1 })}
 																</SelectItem>
 															))}
 														</SelectContent>
@@ -686,7 +695,7 @@ export default function CommentsPage() {
 												</div>
 												<div className="space-y-2">
 													<Label className="text-xs font-medium text-muted-foreground">
-														Proxy
+														{t('fields.proxy')}
 													</Label>
 													<ProxySelector
 														value={selectedProxyId}
@@ -699,8 +708,8 @@ export default function CommentsPage() {
 													onClick={() => {
 														if (!canQueueCommentsDownload) {
 															const message = hasAvailableProxies
-																? 'Please select a proxy first.'
-																: 'No proxies available.'
+																? t('errors.selectProxyFirst')
+																: t('errors.noProxiesAvailable')
 															toast.error(message)
 															return
 														}
@@ -720,12 +729,12 @@ export default function CommentsPage() {
 													{startCloudCommentsMutation.isPending ? (
 														<>
 															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															Queuing...
+															{t('download.queuing')}
 														</>
 													) : (
 														<>
 															<Download className="mr-2 h-4 w-4" strokeWidth={1.5} />
-															Start Download
+															{t('download.start')}
 														</>
 													)}
 												</Button>
@@ -742,7 +751,7 @@ export default function CommentsPage() {
 															jobId={commentsCloudJobId}
 															showPhase={false}
 															showIds={false}
-															labels={{ status: 'Status' }}
+															labels={{ status: t('cloudJob.labels.status') }}
 														/>
 													</div>
 												)}
@@ -752,7 +761,9 @@ export default function CommentsPage() {
 										<TabsContent value="translate" className="space-y-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
 											<div className="space-y-4">
 												<div className="space-y-2">
-													<Label className="text-xs font-medium text-muted-foreground">AI Model</Label>
+													<Label className="text-xs font-medium text-muted-foreground">
+														{t('fields.aiModel')}
+													</Label>
 													<Select
 														value={model}
 														onValueChange={(v) => setModel(v as ChatModelId)}
@@ -774,7 +785,7 @@ export default function CommentsPage() {
 														htmlFor="force-translate"
 														className="text-sm font-medium"
 													>
-														Overwrite existing
+														{t('fields.overwriteExisting')}
 													</Label>
 													<Switch
 														id="force-translate"
@@ -797,12 +808,12 @@ export default function CommentsPage() {
 													{translateCommentsMutation.isPending ? (
 														<>
 															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															Translating...
+															{t('translate.translating')}
 														</>
 													) : (
 														<>
 															<LanguagesIcon className="mr-2 h-4 w-4" strokeWidth={1.5} />
-															Translate
+															{t('translate.translate')}
 														</>
 													)}
 												</Button>
@@ -812,7 +823,9 @@ export default function CommentsPage() {
 										<TabsContent value="moderate" className="space-y-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
 											<div className="space-y-4">
 												<div className="space-y-2">
-													<Label className="text-xs font-medium text-muted-foreground">AI Model</Label>
+													<Label className="text-xs font-medium text-muted-foreground">
+														{t('fields.aiModel')}
+													</Label>
 													<Select
 														value={modModel}
 														onValueChange={(v) => setModModel(v as ChatModelId)}
@@ -835,7 +848,7 @@ export default function CommentsPage() {
 														htmlFor="overwrite-moderation"
 														className="text-sm font-medium"
 													>
-														Overwrite existing
+														{t('fields.overwriteExisting')}
 													</Label>
 													<Switch
 														id="overwrite-moderation"
@@ -859,12 +872,12 @@ export default function CommentsPage() {
 													{moderateCommentsMutation.isPending ? (
 														<>
 															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															Moderating...
+															{t('moderate.moderating')}
 														</>
 													) : (
 														<>
 															<ShieldAlert className="mr-2 h-4 w-4" strokeWidth={1.5} />
-															Run Moderation
+															{t('moderate.run')}
 														</>
 													)}
 												</Button>
@@ -874,7 +887,9 @@ export default function CommentsPage() {
 										<TabsContent value="render" className="space-y-4 mt-6 animate-in fade-in slide-in-from-bottom-2">
 											<div className="space-y-4">
 												<div className="space-y-2">
-													<Label className="text-xs font-medium text-muted-foreground">Template</Label>
+													<Label className="text-xs font-medium text-muted-foreground">
+														{t('render.template')}
+													</Label>
 													<Select
 														value={templateId}
 														onValueChange={(v) => {
@@ -900,24 +915,34 @@ export default function CommentsPage() {
 												</div>
 
 												<div className="space-y-2">
-													<Label className="text-xs font-medium text-muted-foreground">Source Policy</Label>
+													<Label className="text-xs font-medium text-muted-foreground">
+														{t('render.sourcePolicy.label')}
+													</Label>
 													<Select
 														value={sourcePolicy}
 														onValueChange={(v) => setSourcePolicy(v as SourcePolicy)}
 													>
 														<SelectTrigger className="w-full bg-white/50 border-white/20">
-															<SelectValue />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="auto">Auto (Best available)</SelectItem>
-															<SelectItem value="original">Original Video</SelectItem>
-															<SelectItem value="subtitles">Subtitle Render</SelectItem>
-														</SelectContent>
-													</Select>
-												</div>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="auto">
+															{t('render.sourcePolicy.auto')}
+														</SelectItem>
+														<SelectItem value="original">
+															{t('render.sourcePolicy.original')}
+														</SelectItem>
+														<SelectItem value="subtitles">
+															{t('render.sourcePolicy.subtitles')}
+														</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
 
 												<div className="space-y-2">
-													<Label className="text-xs font-medium text-muted-foreground">Proxy</Label>
+													<Label className="text-xs font-medium text-muted-foreground">
+														{t('fields.proxy')}
+													</Label>
 													<ProxySelector
 														value={renderProxyId}
 														onValueChange={setRenderProxyId}
@@ -930,8 +955,8 @@ export default function CommentsPage() {
 													onClick={() => {
 														if (!canQueueRender) {
 															const message = hasAvailableProxies
-																? 'Please select a proxy first.'
-																: 'No proxies available.'
+																? t('errors.selectProxyFirst')
+																: t('errors.noProxiesAvailable')
 															toast.error(message)
 															return
 														}
@@ -949,12 +974,12 @@ export default function CommentsPage() {
 													{startCloudRenderMutation.isPending ? (
 														<>
 															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															Queuing...
+															{t('render.queuing')}
 														</>
 													) : (
 														<>
 															<Film className="mr-2 h-4 w-4" strokeWidth={1.5} />
-															Start Render
+															{t('render.start')}
 														</>
 													)}
 												</Button>
@@ -971,23 +996,25 @@ export default function CommentsPage() {
 															jobId={cloudJobId}
 															showPhase={false}
 															showIds={false}
-															labels={{ status: 'Render status' }}
+															labels={{ status: t('cloudJob.labels.renderStatus') }}
 														/>
 													</div>
 												)}
 
 												<div className="space-y-2">
-													<Label className="text-xs font-medium text-muted-foreground">Rendered Output</Label>
+													<Label className="text-xs font-medium text-muted-foreground">
+														{t('render.output.label')}
+													</Label>
 													{hasRenderedCommentsVideo ? (
 														<Button asChild variant="outline" className="w-full shadow-sm">
 															<a href={renderedDownloadUrl}>
 																<Download className="mr-2 h-4 w-4" strokeWidth={1.5} />
-																Download Rendered Video
+																{t('render.output.download')}
 															</a>
 														</Button>
 													) : (
 														<div className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/50 bg-secondary/30 px-3 py-2">
-															Render completes here to enable download.
+															{t('render.output.emptyHint')}
 														</div>
 													)}
 												</div>
@@ -1000,13 +1027,13 @@ export default function CommentsPage() {
 								<CardHeader className="pb-4 border-b border-border/40">
 									<CardTitle className="text-lg flex items-center gap-2">
 										<Info className="h-5 w-5 text-primary" strokeWidth={1.5} />
-										Video Info
+										{t('videoInfo.title')}
 									</CardTitle>
 								</CardHeader>
 								<CardContent className="pt-6 space-y-4">
 									<div className="space-y-2">
 										<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-											Source ID
+											{t('videoInfo.sourceId')}
 										</p>
 										<div className="rounded-lg bg-white/50 p-3 text-sm font-mono shadow-sm border border-white/20 break-all">
 											{getVideoSourceId()}
@@ -1016,36 +1043,52 @@ export default function CommentsPage() {
 										variant="ghost"
 										size="sm"
 										onClick={() => {
-											const disclaimerText = `内容声明
+											const dateLocale = locale === 'zh' ? 'zh-CN' : 'en-US'
+											const collectedAt =
+												mediaQuery.data?.comments &&
+												mediaQuery.data.comments.length > 0 &&
+												mediaQuery.data.commentsDownloadedAt
+													? new Date(
+															mediaQuery.data.commentsDownloadedAt,
+														).toLocaleString(dateLocale, {
+															year: 'numeric',
+															month: '2-digit',
+															day: '2-digit',
+															hour: '2-digit',
+															minute: '2-digit',
+														})
+													: null
 
-本视频仅用于娱乐用途，所引用的评论不代表本平台的立场或观点。
-请理性观看，避免传播不实信息。
+											const disclaimerLines = [
+												t('disclaimer.title'),
+												'',
+												t('disclaimer.body1'),
+												t('disclaimer.body2'),
+												'',
+												t('disclaimer.sourceVideo', {
+													sourceId: getVideoSourceId(),
+												}),
+												collectedAt
+													? t('disclaimer.collectedAt', {
+															datetime: collectedAt,
+														})
+													: null,
+											].filter((x): x is string => Boolean(x))
 
-原始视频：${getVideoSourceId()}
-${
-	mediaQuery.data?.comments &&
-	mediaQuery.data.comments.length > 0 &&
-	mediaQuery.data.commentsDownloadedAt
-		? `评论采集时间：${new Date(
-				mediaQuery.data.commentsDownloadedAt,
-			).toLocaleString('zh-CN', {
-				year: 'numeric',
-				month: '2-digit',
-				day: '2-digit',
-				hour: '2-digit',
-				minute: '2-digit',
-			})}`
-		: ''
-}`;
-											if (navigator.clipboard) {
-												navigator.clipboard.writeText(disclaimerText)
-												toast.success('Disclaimer copied to clipboard')
+											const disclaimerText = disclaimerLines.join('\n')
+
+											if (!navigator.clipboard) {
+												toast.error(t('toasts.clipboardUnavailable'))
+												return
 											}
+
+											navigator.clipboard.writeText(disclaimerText)
+											toast.success(t('toasts.disclaimerCopied'))
 										}}
 										className="w-full justify-start text-xs text-muted-foreground hover:text-foreground"
 									>
 										<Copy className="mr-2 h-3 w-3" strokeWidth={1.5} />
-										Copy Disclaimer
+										{t('videoInfo.copyDisclaimer')}
 									</Button>
 								</CardContent>
 							</Card>
@@ -1058,13 +1101,13 @@ ${
 							<div className="flex items-center gap-2">
 								<MessageCircle className="h-5 w-5 text-primary" strokeWidth={1.5} />
 								<h2 className="text-lg font-semibold">
-									Comments ({comments.length})
+									{t('comments.title', { count: comments.length })}
 								</h2>
 							</div>
 							<div className="flex flex-wrap items-center gap-2">
 								{hasSelection ? (
 									<Badge variant="secondary" className="h-7 rounded-full px-3 text-xs">
-										{selectedCount} selected
+										{t('comments.selected', { count: selectedCount })}
 									</Badge>
 								) : null}
 								<Button
@@ -1074,7 +1117,9 @@ ${
 									disabled={visibleComments.length === 0}
 									className="h-8"
 								>
-									{allVisibleSelected ? 'Clear selection' : 'Select all'}
+									{allVisibleSelected
+										? t('comments.clearSelection')
+										: t('comments.selectAll')}
 								</Button>
 								<Button
 									variant="destructive"
@@ -1086,12 +1131,12 @@ ${
 									{deleteCommentsMutation.isPending ? (
 										<>
 											<Loader2 className="h-4 w-4 animate-spin" />
-											Deleting...
+											{t('comments.deleting')}
 										</>
 									) : (
 										<>
 											<Trash2 className="h-4 w-4" />
-											Delete Selected
+											{t('comments.deleteSelected')}
 										</>
 									)}
 								</Button>
@@ -1123,9 +1168,11 @@ ${
 								<div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-secondary/50 flex items-center justify-center">
 									<MessageCircle className="h-8 w-8 text-muted-foreground/50" strokeWidth={1.5} />
 								</div>
-								<h3 className="mb-2 text-lg font-semibold text-foreground">No comments found</h3>
+								<h3 className="mb-2 text-lg font-semibold text-foreground">
+									{t('empty.title')}
+								</h3>
 								<p className="text-muted-foreground font-light max-w-sm mx-auto">
-									Download comments to get started.
+									{t('empty.description')}
 								</p>
 							</div>
 						)}

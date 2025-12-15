@@ -453,6 +453,151 @@
 			}
 		}
 	},
+	"MediaComments": {
+		"page": {
+			"header": {
+				"back": "Back",
+				"title": "Comments",
+				"editTitles": "Edit Titles"
+			},
+			"editDialog": {
+				"title": "Edit Titles",
+				"description": "Update the original and translated titles for this media.",
+				"fields": {
+					"originalLabel": "Original Title (Chinese)",
+					"originalPlaceholder": "Enter original title",
+					"translatedLabel": "Translated Title (English)",
+					"translatedPlaceholder": "Enter translated title"
+				},
+				"actions": {
+					"cancel": "Cancel",
+					"save": "Save",
+					"saving": "Saving..."
+				}
+			},
+			"workflow": {
+				"title": "Workflow"
+			},
+			"tabs": {
+				"basics": "Base",
+				"download": "Get",
+				"translate": "Trans",
+				"moderate": "Mod",
+				"render": "Render"
+			},
+			"labels": {
+				"englishTitle": "English title",
+				"originalTitle": "Original title"
+			},
+			"fields": {
+				"proxy": "Proxy",
+				"aiModel": "AI Model",
+				"overwriteExisting": "Overwrite existing"
+			},
+			"basics": {
+				"translatedTitle": {
+					"label": "Translated Title",
+					"empty": "No translated title",
+					"copy": "Copy English Title"
+				},
+				"originalTitle": {
+					"label": "Original Title",
+					"empty": "No original title",
+					"copy": "Copy Original Title"
+				}
+			},
+			"download": {
+				"pagesLabel": "Pages to fetch",
+				"pagesOption": "{count, plural, one {# page} other {# pages}}",
+				"start": "Start Download",
+				"queuing": "Queuing..."
+			},
+			"translate": {
+				"translate": "Translate",
+				"translating": "Translating..."
+			},
+			"moderate": {
+				"run": "Run Moderation",
+				"moderating": "Moderating..."
+			},
+			"render": {
+				"template": "Template",
+				"start": "Start Render",
+				"queuing": "Queuing...",
+				"sourcePolicy": {
+					"label": "Source Policy",
+					"auto": "Auto (Best available)",
+					"original": "Original Video",
+					"subtitles": "Subtitle Render"
+				},
+				"output": {
+					"label": "Rendered Output",
+					"download": "Download Rendered Video",
+					"emptyHint": "Render completes here to enable download."
+				}
+			},
+			"cloudJob": {
+				"labels": {
+					"status": "Status",
+					"renderStatus": "Render status"
+				}
+			},
+			"videoInfo": {
+				"title": "Video Info",
+				"sourceId": "Source ID",
+				"copyDisclaimer": "Copy Disclaimer"
+			},
+			"disclaimer": {
+				"title": "Content Disclaimer",
+				"body1": "This video is for entertainment purposes only. Referenced comments do not represent this platform's stance or views.",
+				"body2": "Please watch responsibly and avoid spreading misinformation.",
+				"sourceVideo": "Source video: {sourceId}",
+				"collectedAt": "Comments collected at: {datetime}"
+			},
+			"comments": {
+				"title": "Comments ({count})",
+				"selected": "{count} selected",
+				"selectAll": "Select all",
+				"clearSelection": "Clear selection",
+				"deleteSelected": "Delete Selected",
+				"deleting": "Deleting..."
+			},
+			"empty": {
+				"title": "No comments found",
+				"description": "Download comments to get started."
+			},
+			"bulkDelete": {
+				"confirm": {
+					"title": "Delete comments",
+					"description": "Delete {count, plural, one {# selected comment} other {# selected comments}}?"
+				}
+			},
+			"toasts": {
+				"valueMissing": "{label} does not exist",
+				"clipboardUnavailable": "Unable to access clipboard",
+				"copiedToClipboard": "{label} copied to clipboard",
+				"copyFailed": "Failed to copy {label}",
+				"templateSaved": "Template saved!",
+				"titlesUpdated": "Titles updated successfully!",
+				"cloudCommentsQueued": "Cloud comments download queued",
+				"commentsDownloaded": "Comments downloaded!",
+				"commentsTranslated": "Comments translated!",
+				"moderationDone": "Moderation done: {count} flagged",
+				"commentsDeleted": "Deleted {count, plural, one {# comment} other {# comments}}",
+				"cloudRenderQueued": "Cloud render queued",
+				"disclaimerCopied": "Disclaimer copied to clipboard"
+			},
+			"errors": {
+				"selectProxyFirst": "Please select a proxy first.",
+				"noProxiesAvailable": "No proxies available.",
+				"templateSaveFailed": "Failed to save template: {message}",
+				"titlesUpdateFailed": "Failed to update titles: {message}",
+				"translateFailed": "Failed to translate comments: {message}",
+				"moderateFailed": "Failed to moderate: {message}",
+				"deleteFailed": "Failed to delete comments: {message}"
+			}
+		}
+	},
 	"Login": {
 		"title": "Sign In / Sign Up",
 		"subtitle": "Use your email and password to access the platform.",

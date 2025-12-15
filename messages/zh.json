@@ -452,6 +452,151 @@
 			}
 		}
 	},
+	"MediaComments": {
+		"page": {
+			"header": {
+				"back": "返回",
+				"title": "评论",
+				"editTitles": "编辑标题"
+			},
+			"editDialog": {
+				"title": "编辑标题",
+				"description": "更新该媒体的原标题和译文标题。",
+				"fields": {
+					"originalLabel": "原标题（中文）",
+					"originalPlaceholder": "请输入原标题",
+					"translatedLabel": "译文标题（英文）",
+					"translatedPlaceholder": "请输入译文标题"
+				},
+				"actions": {
+					"cancel": "取消",
+					"save": "保存",
+					"saving": "保存中…"
+				}
+			},
+			"workflow": {
+				"title": "工作流"
+			},
+			"tabs": {
+				"basics": "基础",
+				"download": "获取",
+				"translate": "翻译",
+				"moderate": "审核",
+				"render": "渲染"
+			},
+			"labels": {
+				"englishTitle": "英文标题",
+				"originalTitle": "原标题"
+			},
+			"fields": {
+				"proxy": "代理",
+				"aiModel": "AI 模型",
+				"overwriteExisting": "覆盖已有内容"
+			},
+			"basics": {
+				"translatedTitle": {
+					"label": "译文标题",
+					"empty": "暂无译文标题",
+					"copy": "复制英文标题"
+				},
+				"originalTitle": {
+					"label": "原标题",
+					"empty": "暂无原标题",
+					"copy": "复制原标题"
+				}
+			},
+			"download": {
+				"pagesLabel": "拉取页数",
+				"pagesOption": "{count} 页",
+				"start": "开始下载",
+				"queuing": "排队中…"
+			},
+			"translate": {
+				"translate": "开始翻译",
+				"translating": "翻译中…"
+			},
+			"moderate": {
+				"run": "运行审核",
+				"moderating": "审核中…"
+			},
+			"render": {
+				"template": "模板",
+				"start": "开始渲染",
+				"queuing": "排队中…",
+				"sourcePolicy": {
+					"label": "来源策略",
+					"auto": "自动（优先最优）",
+					"original": "原视频",
+					"subtitles": "字幕渲染"
+				},
+				"output": {
+					"label": "渲染输出",
+					"download": "下载渲染视频",
+					"emptyHint": "渲染完成后可在此下载。"
+				}
+			},
+			"cloudJob": {
+				"labels": {
+					"status": "状态",
+					"renderStatus": "渲染状态"
+				}
+			},
+			"videoInfo": {
+				"title": "视频信息",
+				"sourceId": "源 ID",
+				"copyDisclaimer": "复制声明"
+			},
+			"disclaimer": {
+				"title": "内容声明",
+				"body1": "本视频仅用于娱乐用途，所引用的评论不代表本平台的立场或观点。",
+				"body2": "请理性观看，避免传播不实信息。",
+				"sourceVideo": "原始视频：{sourceId}",
+				"collectedAt": "评论采集时间：{datetime}"
+			},
+			"comments": {
+				"title": "评论（{count}）",
+				"selected": "已选 {count} 条",
+				"selectAll": "全选",
+				"clearSelection": "清除选择",
+				"deleteSelected": "删除所选",
+				"deleting": "删除中…"
+			},
+			"empty": {
+				"title": "暂无评论",
+				"description": "先下载评论以开始使用。"
+			},
+			"bulkDelete": {
+				"confirm": {
+					"title": "删除评论",
+					"description": "确定删除选中的 {count} 条评论？"
+				}
+			},
+			"toasts": {
+				"valueMissing": "{label} 不存在",
+				"clipboardUnavailable": "无法访问剪贴板",
+				"copiedToClipboard": "{label} 已复制到剪贴板",
+				"copyFailed": "复制 {label} 失败",
+				"templateSaved": "模板已保存！",
+				"titlesUpdated": "标题更新成功！",
+				"cloudCommentsQueued": "云端评论下载已排队",
+				"commentsDownloaded": "评论已下载！",
+				"commentsTranslated": "评论已翻译！",
+				"moderationDone": "审核完成：标记 {count} 条",
+				"commentsDeleted": "已删除 {count} 条评论",
+				"cloudRenderQueued": "云端渲染已排队",
+				"disclaimerCopied": "声明已复制到剪贴板"
+			},
+			"errors": {
+				"selectProxyFirst": "请先选择代理。",
+				"noProxiesAvailable": "暂无可用代理。",
+				"templateSaveFailed": "保存模板失败：{message}",
+				"titlesUpdateFailed": "更新标题失败：{message}",
+				"translateFailed": "翻译评论失败：{message}",
+				"moderateFailed": "审核失败：{message}",
+				"deleteFailed": "删除评论失败：{message}"
+			}
+		}
+	},
 	"Login": {
 		"title": "登录 / 注册",
 		"subtitle": "使用邮箱和密码登录，开始使用平台服务。",
