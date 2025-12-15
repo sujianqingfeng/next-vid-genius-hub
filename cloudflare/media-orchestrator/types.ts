@@ -7,9 +7,11 @@ export interface Env {
 	CONTAINER_BASE_URL?: string
 	CONTAINER_BASE_URL_REMOTION?: string
 	CONTAINER_BASE_URL_DOWNLOADER?: string
-	CONTAINER_BASE_URL_AUDIO?: string
 	NEXT_BASE_URL?: string
 	JOB_CALLBACK_HMAC_SECRET?: string
+	// Workers AI (REST credentials) for ASR pipeline
+	CF_AI_ACCOUNT_ID?: string
+	CF_AI_API_TOKEN?: string
 	// Generic S3-compatible config (R2/MinIO)
 	S3_ENDPOINT?: string
 	S3_INTERNAL_ENDPOINT?: string
@@ -21,7 +23,6 @@ export interface Env {
 	RENDER_JOB_DO?: DurableObjectNamespace
 	// Containers Durable Object bindings (optional; when configured, will be used instead of raw URLs)
 	MEDIA_DOWNLOADER?: DurableObjectNamespace
-	AUDIO_TRANSCODER?: DurableObjectNamespace
 	BURNER_FFMPEG?: DurableObjectNamespace
 	RENDERER_REMOTION?: DurableObjectNamespace
 	// Local/prod vars referenced via (env as any) in some handlers

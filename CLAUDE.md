@@ -19,7 +19,7 @@ pnpm db:d1:list:remote      # List remote migration status
 # Media containers (Docker Compose)
 pnpm dev:stack              # Start all media containers
 pnpm dev:stack:down         # Stop and clean up containers
-pnpm dev:stack:restart-*    # Rebuild and restart individual containers (burner, remotion, downloader, audio-transcoder)
+pnpm dev:stack:restart-*    # Rebuild and restart individual containers (burner, remotion, downloader)
 
 # Cloudflare Worker (media-orchestrator)
 pnpm cf:dev                 # Run Worker locally (full mode)
@@ -42,7 +42,7 @@ pnpm typecheck:packages     # Type-check all @app/* packages
 - `packages/` — Shared `@app/*` packages used across Next, Workers, and containers:
   - `media-core`, `media-node`, `media-providers`, `media-subtitles`, `media-comments`, `media-domain`, `job-callbacks`
 - `cloudflare/` — Workers (e.g., `media-orchestrator`) and Worker-specific components
-- `containers/` — Media job containers: `burner-ffmpeg`, `renderer-remotion`, `media-downloader`, `audio-transcoder`
+- `containers/` — Media job containers: `burner-ffmpeg`, `renderer-remotion`, `media-downloader`
 - `remotion/` — Remotion video templates for renderer containers
 - `orpc/` — RPC definitions consumed by React Query via `@orpc/*`
 - `components/business/` — Feature widgets; `components/ui/` — Primitives
@@ -64,7 +64,7 @@ R2 path convention (defined in `@app/media-domain`):
 ### Local Development Stack
 
 Full local development requires three components running:
-1. `pnpm dev:stack` — Docker containers (burner-ffmpeg:9080, renderer-remotion:8190, media-downloader:8100, audio-transcoder:8110)
+1. `pnpm dev:stack` — Docker containers (burner-ffmpeg:9080, renderer-remotion:8190, media-downloader:8100)
 2. `pnpm cf:dev` — Worker at localhost:8787
 3. `pnpm dev` — Next.js at localhost:3000
 

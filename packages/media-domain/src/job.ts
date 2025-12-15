@@ -23,5 +23,4 @@ export type EngineId =
 	| 'burner-ffmpeg'
 	| 'renderer-remotion'
 	| 'media-downloader'
-	| 'audio-transcoder'
 	| 'asr-pipeline'

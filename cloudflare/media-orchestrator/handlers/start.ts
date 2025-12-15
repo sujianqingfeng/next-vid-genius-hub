@@ -40,6 +40,8 @@ export async function handleStart(env: Env, req: Request) {
 		return json({ error: 'bad request' }, { status: 400 })
 	}
 	const jobId = body.jobId
+	const isDownloader = body.engine === 'media-downloader'
+	const isAsrPipeline = body.engine === 'asr-pipeline'
 	// Choose container base by engine
 	let containerBase: string
 	if (body.engine === 'renderer-remotion') {
@@ -52,17 +54,6 @@ export async function handleStart(env: Env, req: Request) {
 			env.CONTAINER_BASE_URL_DOWNLOADER ||
 			env.CONTAINER_BASE_URL ||
 			'http://localhost:8100'
-	} else if (body.engine === 'audio-transcoder') {
-		containerBase =
-			env.CONTAINER_BASE_URL_AUDIO ||
-			env.CONTAINER_BASE_URL ||
-			'http://localhost:8110'
-	} else if (body.engine === 'asr-pipeline') {
-		// Phase 2: chain audio-transcoder + Workers AI inside worker
-		containerBase =
-			env.CONTAINER_BASE_URL_AUDIO ||
-			env.CONTAINER_BASE_URL ||
-			'http://localhost:8110'
 	} else {
 		containerBase = env.CONTAINER_BASE_URL || 'http://localhost:9080'
 	}
@@ -74,27 +65,58 @@ export async function handleStart(env: Env, req: Request) {
 	// Prepare payload for container
 	// Ensure inputs exist in R2 (Worker fetches from Next, container不会访问Next)
 	const bucketName = env.S3_BUCKET_NAME || 'vidgen-render'
-	const isDownloader = body.engine === 'media-downloader'
-	const isAudioTranscoder = body.engine === 'audio-transcoder'
-	const isAsrPipeline = body.engine === 'asr-pipeline'
 	const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
 	const pathOptions = { title: body.title ?? undefined }
 	const outputVideoKey = isDownloader
 		? bucketPaths.downloads.video(body.mediaId, jobId, pathOptions)
 		: bucketPaths.outputs.video(body.mediaId, jobId, pathOptions)
-	const outputAudioKey = isDownloader
+	let outputAudioKey = isDownloader
 		? bucketPaths.downloads.audio(body.mediaId, jobId, pathOptions)
-		: isAudioTranscoder || isAsrPipeline
-			? bucketPaths.asr.processedAudio(body.mediaId, jobId, pathOptions)
-			: undefined
+		: undefined
 	const outputMetadataKey = isDownloader
 		? bucketPaths.downloads.metadata(body.mediaId, jobId, pathOptions)
 		: undefined
 
+	const opts = (body.options || {}) as any
+	if (isAsrPipeline) {
+		const sourceKey = typeof opts.sourceKey === 'string' ? opts.sourceKey : String(opts.sourceKey || '')
+		if (!sourceKey) {
+			return json({ error: 'asr-pipeline missing sourceKey' }, { status: 400 })
+		}
+		// For direct ASR, treat the original audio key as the "outputAudioKey" for observability.
+		outputAudioKey = sourceKey
+
+		const stub = jobStub(env, jobId)
+		if (stub) {
+			const initPayload: Record<string, unknown> = {
+				jobId,
+				mediaId: body.mediaId,
+				title: body.title,
+				engine: body.engine,
+				status: 'running',
+				outputKey: undefined,
+				outputAudioKey,
+				metadata: { ...(body.options || {}) },
+			}
+			await stub.fetch('https://do/init', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(initPayload),
+			})
+			// Kick off ASR in the Durable Object (async via waitUntil).
+			await stub.fetch('https://do/start-asr', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ jobId }),
+			})
+		}
+		return json({ jobId })
+	}
+
 	let inputVideoUrl: string | undefined
 	let inputVttUrl: string | undefined
 	let inputDataUrl: string | undefined
-	if (!isDownloader && !isAudioTranscoder && !isAsrPipeline) {
+	if (!isDownloader && !isAsrPipeline) {
 		// Resolve inputs exclusively from per-job manifest written by Next. The
 		// Worker no longer consults the media-level manifest when starting jobs.
 		const jobManifest = await readJobManifest(env, jobId)
@@ -189,9 +211,7 @@ export async function handleStart(env: Env, req: Request) {
 
 	const putTtl = Number(env.PUT_EXPIRES || 600)
 	const outputVideoPutUrl =
-		isAudioTranscoder || isAsrPipeline
-			? undefined
-			: await presignS3(
+		await presignS3(
 					env,
 					'PUT',
 					bucketName,
@@ -226,7 +246,7 @@ export async function handleStart(env: Env, req: Request) {
 	const payload: any = {
 		jobId,
 		mediaId: body.mediaId,
-		engine: isAsrPipeline ? 'audio-transcoder' : body.engine,
+		engine: body.engine,
 		// Use container-visible base URL so the callback reaches the Worker in dev/prod
 		callbackUrl: `${baseSelfForContainer}/callbacks/container`,
 		engineOptions: body.options || {},
@@ -240,32 +260,6 @@ export async function handleStart(env: Env, req: Request) {
 		if (outputMetadataPutUrl)
 			payload.outputMetadataPutUrl = outputMetadataPutUrl
 		if (outputMetadataKey) payload.outputMetadataKey = outputMetadataKey
-	} else if (isAudioTranscoder || isAsrPipeline) {
-		// For audio transcoder, inputs: audio only; outputs: audio only
-		// Inputs: prefer sourceKey -> presign GET; else options.sourceUrl
-		let inputAudioUrl: string | undefined
-		const opts = (body.options || {}) as any
-		if (opts.sourceKey) {
-			inputAudioUrl = await presignS3(
-				env,
-				'GET',
-				bucketName,
-				String(opts.sourceKey),
-				600,
-				undefined,
-				jobS3Endpoint,
-			)
-		} else if (opts.sourceUrl) {
-			inputAudioUrl = String(opts.sourceUrl)
-		}
-		if (!inputAudioUrl || !outputAudioPutUrl) {
-			return json(
-				{ error: 'audio-transcoder missing input or output URL' },
-				{ status: 400 },
-			)
-		}
-		payload.inputAudioUrl = inputAudioUrl
-		payload.outputAudioPutUrl = outputAudioPutUrl
 	} else {
 		payload.inputVideoUrl = inputVideoUrl
 		if (body.engine === 'burner-ffmpeg') {
@@ -283,9 +277,6 @@ export async function handleStart(env: Env, req: Request) {
 		switch (engine) {
 			case 'media-downloader':
 				return env.MEDIA_DOWNLOADER
-			case 'audio-transcoder':
-			case 'asr-pipeline':
-				return env.AUDIO_TRANSCODER
 			case 'burner-ffmpeg':
 				return env.BURNER_FFMPEG
 			case 'renderer-remotion':
@@ -390,4 +381,3 @@ export async function handleStart(env: Env, req: Request) {
 	}
 	return json({ jobId })
 }
-

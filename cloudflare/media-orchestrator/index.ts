@@ -7,7 +7,7 @@ import { handleDebugDelete, handleDebugDeletePrefixes, handleDebugPresign } from
 import { handleGetStatus } from './handlers/status'
 
 // Re-export container classes so the runtime can locate them by class_name
-export { MediaDownloaderContainer, AudioTranscoderContainer, BurnerFfmpegContainer, RendererRemotionContainer } from './containers'
+export { MediaDownloaderContainer, BurnerFfmpegContainer, RendererRemotionContainer } from './containers'
 export { RenderJobDO } from './do/RenderJobDO'
 
 export default {

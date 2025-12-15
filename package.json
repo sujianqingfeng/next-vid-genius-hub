@@ -25,9 +25,7 @@
     "dev:stack:restart-remotion": "pnpm dev:stack:rebuild-remotion && docker compose -f docker-compose.dev.yml up -d renderer-remotion",
     "dev:stack:rebuild-downloader": "docker compose -f docker-compose.dev.yml build media-downloader",
     "dev:stack:restart-downloader": "pnpm dev:stack:rebuild-downloader && docker compose -f docker-compose.dev.yml up -d media-downloader",
-    "dev:stack:rebuild-audio-transcoder": "docker compose -f docker-compose.dev.yml build audio-transcoder",
-    "dev:stack:restart-audio-transcoder": "pnpm dev:stack:rebuild-audio-transcoder && docker compose -f docker-compose.dev.yml up -d audio-transcoder",
-    "dev:stack:restart-all": "docker compose -f docker-compose.dev.yml build burner-ffmpeg renderer-remotion media-downloader audio-transcoder && docker compose -f docker-compose.dev.yml up -d burner-ffmpeg renderer-remotion media-downloader audio-transcoder",
+    "dev:stack:restart-all": "docker compose -f docker-compose.dev.yml build burner-ffmpeg renderer-remotion media-downloader && docker compose -f docker-compose.dev.yml up -d burner-ffmpeg renderer-remotion media-downloader",
     "build:packages": "pnpm -r --filter '@app/*' run build",
     "typecheck:packages": "pnpm -r --filter '@app/*' run typecheck"
   },

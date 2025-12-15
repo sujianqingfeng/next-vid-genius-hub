@@ -58,7 +58,6 @@ export type TaskEngine =
 	| 'media-downloader'
 	| 'renderer-remotion'
 	| 'burner-ffmpeg'
-	| 'audio-transcoder'
 	| 'asr-pipeline'
 
 export const users = sqliteTable('users', {
@@ -182,7 +181,7 @@ export const tasks = sqliteTable('tasks', {
 		],
 	}).notNull(),
 	engine: text('engine', {
-		enum: ['media-downloader', 'renderer-remotion', 'burner-ffmpeg', 'audio-transcoder', 'asr-pipeline'],
+		enum: ['media-downloader', 'renderer-remotion', 'burner-ffmpeg', 'asr-pipeline'],
 	}).notNull(),
 	targetType: text('target_type', { enum: ['media', 'channel', 'system'] }).notNull(),
 	targetId: text('target_id').notNull(),

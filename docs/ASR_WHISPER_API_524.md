@@ -2,21 +2,19 @@
 
 ## 背景
 
+> 说明：该文档记录的是旧的 Whisper API 方案；当前 `asr-pipeline` 已调整为由 orchestrator Worker 直接调用 Workers AI，不再经过 Next 的 `/api/asr/run`。
+
 当前 ASR 流程（简化）：
 
 1. Worker orchestrator 运行 `asr-pipeline`：
-   - 先跑 `audio-transcoder` 生成处理后的音频（R2 key：`outputAudioKey`）。
-2. Worker 调用 Next：`POST /api/asr/run`（携带 `outputAudioKey`、`model` 等）。
-3. Next 从 R2 拉取音频后，调用外部 Whisper API：
-   - `POST {baseUrl}/v1/audio/transcriptions`（multipart/form-data）。
-4. Next 将 `vtt` / `words.json` 写回 R2，Worker 继续回调 Next `cf-callback` 落库与计费。
+   - 从对象存储读取音频（key：`outputAudioKey` / `sourceKey`）。
+2. Worker 直接调用 Workers AI ASR（`/ai/run/:model`）。
+3. Worker 将 `vtt` / `words.json` 写回 R2，并回调 Next `cf-callback` 落库与计费。
 
 ## 现象（Symptoms）
 
 - Worker 日志出现：
-  - `Next ASR failed: 500 {"error":"internal error","details":"Whisper API ASR failed: 524 ..."}`
-- Next 日志出现：
-  - `POST /api/asr/run 500 ...`
+  - `Workers AI ASR failed: 524 ...`
 - Whisper 服务端日志显示任务仍在持续进行：
   - 能看到 `Transcribing... 10% / 20% ...` 的进度输出。
 
@@ -114,4 +112,3 @@ Worker 侧更贴合：
 
 - 若必须先跑通：把 Whisper API 换成直连地址（绕过 Cloudflare）。
 - 否则：不要再依赖同步长请求（避免浪费算力）。
-

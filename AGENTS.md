@@ -10,7 +10,7 @@
 - `docs/` hosts internal development and deployment docs (DEV/PRODUCTION, Cloudflare and containers migration guides, etc.).
 - `i18n/` and `messages/` define next-intl configuration and locale message catalogs for multi-language UI.
 - `drizzle/` is generated migration output (do not hand-edit); `public/` serves static assets.
-- `containers/` defines media job containers (e.g. `burner-ffmpeg`, `renderer-remotion`, `media-downloader`, `audio-transcoder`) that compose the `@app/*` packages.
+- `containers/` defines media job containers (e.g. `burner-ffmpeg`, `renderer-remotion`, `media-downloader`) that compose the `@app/*` packages.
 - `cloudflare/` hosts Workers (e.g. `media-orchestrator`) plus Worker-specific React components/templates; `remotion/` contains the Remotion project used by renderer containers.
 
 Cloudflare deployment is wired through `wrangler.json` / `wrangler.toml` and `open-next.config.ts` at the repository root.

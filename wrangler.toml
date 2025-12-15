@@ -20,8 +20,6 @@ JOB_TTL_SECONDS = 86400
 PREFER_EXTERNAL_CONTAINERS = "false"
 # Default container base; specific engines can override below
 CONTAINER_BASE_URL = "http://localhost:9080"
-# Audio transcoder engine (dev)
-CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
 # Dedicated Remotion renderer container (dev)
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 # Cloud download container (media-downloader)
@@ -50,7 +48,6 @@ name = "media-orchestrator-local"
 PREFER_EXTERNAL_CONTAINERS = "true"
 JOB_TTL_SECONDS = 86400
 CONTAINER_BASE_URL = "http://localhost:9080"
-CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
 NEXT_BASE_URL = "http://localhost:3000"
@@ -84,12 +81,6 @@ image_build_context = "."
 max_instances = 10
 
 [[env.local.containers]]
-class_name = "AudioTranscoderContainer"
-image = "containers/audio-transcoder/Dockerfile"
-image_build_context = "."
-max_instances = 10
-
-[[env.local.containers]]
 class_name = "BurnerFfmpegContainer"
 image = "containers/burner-ffmpeg/Dockerfile"
 image_build_context = "."
@@ -104,10 +95,6 @@ max_instances = 5
 [[env.local.durable_objects.bindings]]
 name = "MEDIA_DOWNLOADER"
 class_name = "MediaDownloaderContainer"
-
-[[env.local.durable_objects.bindings]]
-name = "AUDIO_TRANSCODER"
-class_name = "AudioTranscoderContainer"
 
 [[env.local.durable_objects.bindings]]
 name = "BURNER_FFMPEG"
@@ -126,7 +113,6 @@ PREFER_EXTERNAL_CONTAINERS = "true"
 NO_CF_CONTAINERS = "true"
 JOB_TTL_SECONDS = 86400
 CONTAINER_BASE_URL = "http://localhost:9080"
-CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
 NEXT_BASE_URL = "http://localhost:3000"
@@ -178,12 +164,6 @@ image_build_context = "."
 max_instances = 10
 
 [[containers]]
-class_name = "AudioTranscoderContainer"
-image = "containers/audio-transcoder/Dockerfile"
-image_build_context = "."
-max_instances = 10
-
-[[containers]]
 class_name = "BurnerFfmpegContainer"
 image = "containers/burner-ffmpeg/Dockerfile"
 image_build_context = "."
@@ -200,10 +180,6 @@ name = "MEDIA_DOWNLOADER"
 class_name = "MediaDownloaderContainer"
 
 [[durable_objects.bindings]]
-name = "AUDIO_TRANSCODER"
-class_name = "AudioTranscoderContainer"
-
-[[durable_objects.bindings]]
 name = "BURNER_FFMPEG"
 class_name = "BurnerFfmpegContainer"
 
@@ -215,7 +191,6 @@ class_name = "RendererRemotionContainer"
 tag = "v2-containers"
 new_sqlite_classes = [
   "MediaDownloaderContainer",
-  "AudioTranscoderContainer",
   "BurnerFfmpegContainer",
   "RendererRemotionContainer",
 ]

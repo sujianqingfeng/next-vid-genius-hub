@@ -1,7 +1,9 @@
 import type { Env } from '../types'
 import { TERMINAL_STATUSES } from '../types'
+import { runAsrForPipeline } from '../asr/pipeline'
 import { presignS3 } from '../storage/presign'
 import { s3Head } from '../storage/s3'
+import { jobStub } from '../utils/job'
 import { hmacHex, requireJobCallbackSecret } from '../utils/hmac'
 
 // ---------------- Durable Object for strong-consistent job state ----------------
@@ -71,6 +73,49 @@ export class RenderJobDO {
 				next.nextNotified = true
 				await this.state.storage.put('job', next)
 			}
+			return new Response(JSON.stringify({ ok: true }), {
+				headers: { 'content-type': 'application/json' },
+			})
+		}
+		if (req.method === 'POST' && path.endsWith('/start-asr')) {
+			const doc = (await this.state.storage.get('job')) as any
+			if (!doc || doc.engine !== 'asr-pipeline' || !doc.jobId) {
+				return new Response(JSON.stringify({ error: 'bad request' }), {
+					status: 400,
+					headers: { 'content-type': 'application/json' },
+				})
+			}
+			if (TERMINAL_STATUSES.includes(doc.status) || doc.outputs?.vtt?.key) {
+				return new Response(JSON.stringify({ ok: true }), {
+					headers: { 'content-type': 'application/json' },
+				})
+			}
+			// Fire-and-forget ASR work; results and errors will be persisted via /progress.
+			this.state.waitUntil(
+				(async () => {
+					try {
+						await runAsrForPipeline(this.env, doc)
+					} catch (e) {
+						const msg = (e as Error)?.message || String(e)
+						console.error('[asr-pipeline] background error', { jobId: doc.jobId, msg })
+						try {
+							const stub = jobStub(this.env, doc.jobId)
+							if (stub) {
+								await stub.fetch('https://do/progress', {
+									method: 'POST',
+									headers: { 'content-type': 'application/json' },
+									body: JSON.stringify({
+										jobId: doc.jobId,
+										status: 'failed',
+										error: msg,
+										ts: Date.now(),
+									}),
+								})
+							}
+						} catch {}
+					}
+				})(),
+			)
 			return new Response(JSON.stringify({ ok: true }), {
 				headers: { 'content-type': 'application/json' },
 			})
@@ -313,4 +358,3 @@ export class RenderJobDO {
 		}).catch(() => {})
 	}
 }
-

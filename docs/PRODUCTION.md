@@ -68,11 +68,10 @@ bucket_name = "vidgen-render"
 [vars]
 JOB_TTL_SECONDS = 86400
 
-# 默认容器端点（如使用外部容器平台）
-CONTAINER_BASE_URL = "https://<subtitle-container-endpoint>"
-CONTAINER_BASE_URL_AUDIO = "https://<audio-transcoder-endpoint>"
-CONTAINER_BASE_URL_REMOTION = "https://<remotion-container-endpoint>"
-CONTAINER_BASE_URL_DOWNLOADER = "https://<media-downloader-endpoint>"
+	# 默认容器端点（如使用外部容器平台）
+	CONTAINER_BASE_URL = "https://<subtitle-container-endpoint>"
+	CONTAINER_BASE_URL_REMOTION = "https://<remotion-container-endpoint>"
+	CONTAINER_BASE_URL_DOWNLOADER = "https://<media-downloader-endpoint>"
 
 NEXT_BASE_URL = "https://<your-next-app-domain>"              # Worker 回调 Next
 ORCHESTRATOR_BASE_URL_CONTAINER = "https://<your-worker-domain>" # 容器向 Worker 回调时使用的对外地址

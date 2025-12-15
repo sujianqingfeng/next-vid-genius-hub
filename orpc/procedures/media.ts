@@ -389,7 +389,7 @@ export const deleteById = os
 					bucketPaths.outputs.byMediaPrefix(id, pathOptions),
 					bucketPaths.downloads.prefix(id, pathOptions),
 					bucketPaths.asr.results.prefix(id, pathOptions),
-					// Also delete audio produced by audio-transcoder/ASR pipeline
+					// Also delete processed audio produced by ASR pipeline (if any)
 					bucketPaths.asr.processedPrefix(id, pathOptions),
 				]
 

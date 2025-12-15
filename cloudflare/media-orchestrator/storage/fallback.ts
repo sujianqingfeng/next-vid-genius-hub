@@ -38,6 +38,34 @@ export async function readObjectTextWithFallback(
 	}
 }
 
+export async function readObjectArrayBufferWithFallback(
+	env: Env,
+	key: string,
+): Promise<ArrayBuffer | null> {
+	if (env.RENDER_BUCKET) {
+		try {
+			const obj = await env.RENDER_BUCKET.get(key)
+			if (obj) return await obj.arrayBuffer()
+		} catch (e) {
+			console.warn('[storage] R2 get(arrayBuffer) failed, falling back to S3', e)
+		}
+	}
+	try {
+		const bucket = getBucketName(env)
+		const url = await presignS3(env, 'GET', bucket, key, 600)
+		const r = await fetch(url)
+		if (!r.ok) {
+			if (r.status === 404) return null
+			console.warn('[storage] S3 GET(arrayBuffer) failed', { key, status: r.status })
+			return null
+		}
+		return await r.arrayBuffer()
+	} catch (e) {
+		console.warn('[storage] S3 GET(arrayBuffer) error', e)
+		return null
+	}
+}
+
 export async function objectExistsWithFallback(
 	env: Env,
 	key: string,
@@ -176,4 +204,3 @@ export async function streamObjectFromS3(
 	if (cr) h.set('content-range', cr)
 	return new Response(r.body, { status: r.status, headers: h })
 }
-

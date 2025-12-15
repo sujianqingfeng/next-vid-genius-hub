@@ -25,14 +25,13 @@ export async function transcribe(input: {
 	}
 
 	const provider = modelCfg.provider
+	if (provider.type !== 'cloudflare_asr') {
+		throw new Error(
+			`ASR provider type ${provider.type} is not supported by cloud asr-pipeline (Workers AI only)`,
+		)
+	}
 	const supportsLanguageHint =
-		provider.type === 'cloudflare_asr'
-			? deriveCloudflareAsrCapabilities(modelCfg.remoteModelId).supportsLanguageHint
-			: provider.type === 'whisper_api'
-				? true
-				: (() => {
-						throw new Error(`Unsupported ASR provider type: ${provider.type}`)
-					})()
+		deriveCloudflareAsrCapabilities(modelCfg.remoteModelId).supportsLanguageHint
 	const languageForProvider = supportsLanguageHint ? normalizedLanguage : undefined
 
 	logger.info(
@@ -79,7 +78,7 @@ export async function transcribe(input: {
 		.split(',')
 		.map((s) => Number(s.trim()))
 		.filter((n) => Number.isFinite(n) && n > 0)
-	const modelId = modelCfg.id
+	const modelId = modelCfg.remoteModelId
 
 	const taskId = createId()
 	const now = new Date()

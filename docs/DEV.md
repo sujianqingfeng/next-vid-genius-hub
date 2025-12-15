@@ -9,13 +9,12 @@
   - `burner-ffmpeg`：字幕烧录渲染。
   - `renderer-remotion`：评论视频渲染。
   - `media-downloader`：云端下载（yt-dlp + ffmpeg）。
-  - `audio-transcoder`：ASR 前置转码。
 - Worker（`cloudflare/media-orchestrator`，wrangler dev）负责（桶优先）：
   - 只通过 per-job manifest + R2 HEAD 检测输入，不再从 Next 拉取文件；
   - 生成 S3 预签名 URL（GET/PUT），只把 URL 下发给容器；
   - 触发容器 `/render` 并在 Durable Object 中维护强一致状态；
   - 轮询时通过 HEAD 检测桶内产物；完成后回调 Next 落库；
-  - ASR（`asr-pipeline`）在 Worker 内串联 audio-transcoder + Workers AI。
+  - ASR（`asr-pipeline`）由 Worker 直接调用 Workers AI 并写回产物。
 - Next 应用（本仓库）：
   - 提供 UI / API；
   - 通过 ORPC 创建云任务、写入 per-job manifest、让 Worker 编排；
@@ -46,7 +45,7 @@ pnpm dev:stack:down
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d \
-  burner-ffmpeg renderer-remotion media-downloader audio-transcoder
+  burner-ffmpeg renderer-remotion media-downloader
 ```
 
 Compose 只负责拉起各类媒体容器；对象存储直接指向 Cloudflare R2，不再运行 MinIO。
@@ -56,7 +55,6 @@ Compose 只负责拉起各类媒体容器；对象存储直接指向 Cloudflare 
 - burner-ffmpeg: `http://localhost:9080`
 - renderer-remotion: `http://localhost:8190`
 - media-downloader: `http://localhost:8100`
-- audio-transcoder: `http://localhost:8110`
 
 ### 本地代理（Clash / Mihomo）
 
@@ -91,7 +89,6 @@ bucket_name = "vidgen-render"
 [vars]
 JOB_TTL_SECONDS = 86400
 CONTAINER_BASE_URL = "http://localhost:9080"
-CONTAINER_BASE_URL_AUDIO = "http://localhost:8110"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
 NEXT_BASE_URL = "http://localhost:3000"
@@ -165,7 +162,7 @@ pnpm cf:dev:lite # 轻量模式，仍然使用外部 Docker 容器，但跳过 C
 1. 在字幕页 Step 1 选择 `provider=cloudflare`；
 2. 将“降采样后端”设为 `cloud` 或 `auto`；
 3. 触发转录后，wrangler 控制台不应再出现凭据缺失报错；
-4. `/jobs/:id` 会在 `audio-transcoder` 完成后继续执行 ASR，返回 `vtt` + `words.json` 产物。
+4. `/jobs/:id` 会在 ASR 完成后返回 `vtt` + `words.json` 产物。
 
 补充说明（ASR 模型配置）：
 

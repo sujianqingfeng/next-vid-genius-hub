@@ -44,16 +44,3 @@ services:
       - MIHOMO_PORT=${MIHOMO_PORT:-7890}
     ports:
       - "8100:8080"
-
-  audio-transcoder:
-    build:
-      context: .
-      dockerfile: containers/audio-transcoder/Dockerfile
-      args:
-        BASE_NODE_IMAGE: mirror.gcr.io/library/node:18-slim
-    container_name: audio-transcoder
-    environment:
-      - NODE_ENV=development
-      - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
-    ports:
-      - "8110:8080"
