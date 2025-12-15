@@ -56,50 +56,23 @@ export function LanguageSwitcher({ collapsed = false }: { collapsed?: boolean })
 	const currentLabel = t(`language.${locale}`)
 	const nextLabel = t(`language.${nextLocale}`)
 
-	const toggleButton = (
-		<Button
-			type="button"
-			variant="ghost"
-			size={collapsed ? 'icon' : 'sm'}
-			className={
-				collapsed
-					? 'h-8 w-8 rounded-full'
-					: 'h-8 w-9 rounded-full justify-center px-0'
-			}
-			onClick={() => handleChange(nextLocale)}
-			disabled={isPending}
-			aria-label={`${currentLabel} → ${nextLabel}`}
-		>
-			<span className="text-[11px] font-semibold uppercase">
-				{locale === 'zh' ? '中' : 'En'}
-			</span>
-		</Button>
-	)
-
-	if (collapsed) {
-		return (
-			<div className="flex justify-center">
-				<Tooltip>
-					<TooltipTrigger asChild>{toggleButton}</TooltipTrigger>
-					<TooltipContent side="right">
-						<span>
-							{currentLabel} → {nextLabel}
-						</span>
-					</TooltipContent>
-				</Tooltip>
-			</div>
-		)
-	}
-
 	return (
-		<div className="flex items-center justify-between gap-2 rounded-xl bg-sidebar-accent/50 px-3 py-2 ring-1 ring-sidebar-border/40">
-			<div className="flex items-center gap-2 text-xs text-sidebar-foreground/70">
-				<Languages className="h-4 w-4" strokeWidth={1.5} />
-				<span className="truncate">{currentLabel}</span>
-			</div>
+		<div className={collapsed ? 'flex justify-center' : 'flex justify-end'}>
 			<Tooltip>
-				<TooltipTrigger asChild>{toggleButton}</TooltipTrigger>
-				<TooltipContent side="top">
+				<TooltipTrigger asChild>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="h-9 w-9 rounded-full"
+						onClick={() => handleChange(nextLocale)}
+						disabled={isPending}
+						aria-label={`${currentLabel} → ${nextLabel}`}
+					>
+						<Languages className="h-5 w-5" strokeWidth={1.5} />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent side={collapsed ? 'right' : 'top'}>
 					<span>
 						{currentLabel} → {nextLabel}
 					</span>
