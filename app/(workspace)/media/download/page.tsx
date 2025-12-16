@@ -18,7 +18,6 @@ import {
 } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { ProxySelector } from '~/components/business/proxy/proxy-selector'
-import { Progress } from '~/components/ui/progress'
 import {
 	Select,
 	SelectContent,
@@ -26,7 +25,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { STATUS_LABELS, PHASE_LABELS } from '~/lib/config/media-status'
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { orpc } from '~/lib/orpc/client'
@@ -45,14 +43,6 @@ export default function NewDownloadPage() {
 	const proxiesQuery = useQuery({
 		...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	})
-
-	function renderProxyLabel(id: string | undefined): string {
-		if (!id || id === 'none') return t('autoRotate.noProxy')
-		const p = proxiesQuery.data?.proxies?.find((x) => x.id === id)
-		if (!p) return id
-		const label = p.name || `${p.protocol}://${p.server}:${p.port}`
-		return label
-	}
 
 	const cloudDownloadMutation = useMutation(
 		queryOrpc.download.startCloudDownload.mutationOptions({
@@ -84,13 +74,6 @@ export default function NewDownloadPage() {
 		},
 	})
 
-	const statusLabel = cloudStatusQuery.data?.status
-		? (STATUS_LABELS[cloudStatusQuery.data.status] ??
-			cloudStatusQuery.data.status)
-		: null
-	const phaseLabel = cloudStatusQuery.data?.phase
-		? (PHASE_LABELS[cloudStatusQuery.data.phase] ?? cloudStatusQuery.data.phase)
-		: null
 	const isSubmitting = cloudDownloadMutation.isPending
 
 	const availableProxyOptions =
@@ -99,10 +82,6 @@ export default function NewDownloadPage() {
 	const hasSelectedProxy = Boolean(
 		selectedProxyId && selectedProxyId !== 'none',
 	)
-	const progressPercent =
-		typeof cloudStatusQuery.data?.progress === 'number'
-			? Math.round(cloudStatusQuery.data.progress * 100)
-			: null
 	const jobActive = Boolean(cloudJobId)
 
 	const handleReset = () => {
@@ -176,7 +155,7 @@ export default function NewDownloadPage() {
 			header={<PageHeader backHref="/media" title={t('title')} />}
 		>
 			<div className="mx-auto w-full max-w-5xl space-y-8">
-				<div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),360px]">
+				<div className="space-y-8">
 					<form action={formAction} className="space-y-6">
 						<Card className="glass border-none shadow-sm">
 							<CardHeader className="border-b border-border/40 pb-6 space-y-2">
@@ -300,69 +279,41 @@ export default function NewDownloadPage() {
 								>
 									{t('form.reset')}
 								</Button>
+								{cloudJobId && (
+									<CloudJobProgress
+										status={cloudStatusQuery.data?.status}
+										phase={cloudStatusQuery.data?.phase}
+										progress={
+											typeof cloudStatusQuery.data?.progress === 'number'
+												? cloudStatusQuery.data.progress
+												: null
+										}
+										jobId={cloudJobId}
+										mediaId={cloudMediaId}
+										jobActive={jobActive}
+										idleLabel={t('progress.idle')}
+										showCompactLabel={false}
+										labels={{
+											status: t('progress.status'),
+											phase: t('progress.phase'),
+											jobId: t('progress.labels.jobId'),
+											mediaId: t('progress.labels.mediaId'),
+											progress: t('progress.progress'),
+										}}
+									/>
+								)}
 							</CardFooter>
 						</Card>
 					</form>
 
-					<div className="space-y-6">
-						<Card className="glass sticky top-6 h-fit border-none shadow-sm">
-							<CardHeader className="border-b border-border/40 pb-4 space-y-2">
-								<CardTitle className="flex items-center gap-2 text-lg font-semibold">
-									<Download
-										className="h-5 w-5 text-primary"
-										strokeWidth={1.5}
-									/>
-									{t('progress.title')}
-								</CardTitle>
-								<CardDescription className="text-xs font-light">
-									{t('progress.hint')}
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="pt-6 space-y-6">
-								<CloudJobProgress
-									status={cloudStatusQuery.data?.status}
-									phase={cloudStatusQuery.data?.phase}
-									progress={
-										typeof cloudStatusQuery.data?.progress === 'number'
-											? cloudStatusQuery.data.progress
-											: null
-									}
-									jobId={cloudJobId}
-									mediaId={cloudMediaId}
-									jobActive={jobActive}
-									idleLabel={t('progress.idle')}
-									labels={{
-										status: t('progress.status'),
-										phase: t('progress.phase'),
-										jobId: t('progress.labels.jobId'),
-										mediaId: t('progress.labels.mediaId'),
-									}}
-									extraRows={
-										<div className="flex items-center justify-between gap-2 text-xs border-t border-border/40 pt-3">
-											<span className="text-muted-foreground">
-												{t('progress.labels.proxy')}
-											</span>
-											<span
-												className="max-w-[60%] truncate font-medium text-foreground"
-												title={renderProxyLabel(selectedProxyId)}
-											>
-												{renderProxyLabel(selectedProxyId)}
-											</span>
-										</div>
-									}
-								/>
-
-								{cloudStatusQuery.data?.message && (
-									<div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs font-medium text-destructive">
-										{cloudStatusQuery.data.message}
-									</div>
-								)}
-							</CardContent>
-						</Card>
-
-						<div className="rounded-xl bg-secondary/20 p-4 text-xs font-light leading-relaxed text-muted-foreground">
-							{t('progress.footer')}
+					{cloudStatusQuery.data?.message && (
+						<div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs font-medium text-destructive">
+							{cloudStatusQuery.data.message}
 						</div>
+					)}
+
+					<div className="rounded-xl bg-secondary/20 p-4 text-xs font-light leading-relaxed text-muted-foreground">
+						{t('progress.footer')}
 					</div>
 				</div>
 			</div>

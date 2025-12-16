@@ -1,27 +1,21 @@
 'use client'
 
-import {
-	type ChangeEvent,
-	useState,
-	useEffect,
-} from 'react'
-import {
-	AlertCircle,
-	Loader2,
-} from 'lucide-react'
-import { areConfigsEqual } from '~/lib/subtitle/utils/config'
-
+import { AlertCircle, Loader2 } from 'lucide-react'
+import { type ChangeEvent, useEffect, useState } from 'react'
+import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 import { Button } from '~/components/ui/button'
-import { SUBTITLE_RENDER_PRESETS, DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
-
-
+import {
+	DEFAULT_SUBTITLE_RENDER_CONFIG,
+	SUBTITLE_RENDER_PRESETS,
+} from '~/lib/subtitle/config/presets'
 import type {
+	HintTextConfig,
 	SubtitleRenderConfig,
 	SubtitleRenderPreset,
-	HintTextConfig,
 	TimeSegmentEffect,
 } from '~/lib/subtitle/types'
+import { areConfigsEqual } from '~/lib/subtitle/utils/config'
 
 import { SubtitleConfigControls } from './SubtitleConfig/SubtitleConfigControls'
 import { HintTextConfigControls } from './HintTextConfig/HintTextConfigControls'
@@ -39,7 +33,12 @@ interface Step3RenderProps {
 	mediaDuration?: number
 	currentPreviewTime?: number
 	onPreviewSeek?: (time: number) => void
-
+	cloudStatus?: {
+		status?: string
+		phase?: string
+		progress?: number | null
+		jobId?: string | null
+	} | null
 }
 
 /**
@@ -57,6 +56,7 @@ export function Step3Render(props: Step3RenderProps) {
 		mediaDuration,
 		currentPreviewTime,
 		onPreviewSeek,
+		cloudStatus,
 	} = props
 
 	// 预设状态管理
@@ -76,7 +76,9 @@ export function Step3Render(props: Step3RenderProps) {
 		setSelectedPresetId((prev) => (prev === nextId ? prev : nextId))
 	}, [config])
 
-	const selectedPreset = SUBTITLE_RENDER_PRESETS.find((preset) => preset.id === selectedPresetId)
+	const selectedPreset = SUBTITLE_RENDER_PRESETS.find(
+		(preset) => preset.id === selectedPresetId,
+	)
 
 	// 预设点击处理
 	const handlePresetClick = (preset: SubtitleRenderPreset) => {
@@ -85,11 +87,15 @@ export function Step3Render(props: Step3RenderProps) {
 	}
 
 	// 字体大小变化处理
-	const handleNumericChange = (field: keyof SubtitleRenderConfig) =>
+	const handleNumericChange =
+		(field: keyof SubtitleRenderConfig) =>
 		(event: ChangeEvent<HTMLInputElement>) => {
 			const value = Number(event.target.value)
 			if (Number.isNaN(value)) return
-			const clamped = Math.min(Math.max(value, COLOR_CONSTANTS.FONT_SIZE_MIN), COLOR_CONSTANTS.FONT_SIZE_MAX)
+			const clamped = Math.min(
+				Math.max(value, COLOR_CONSTANTS.FONT_SIZE_MIN),
+				COLOR_CONSTANTS.FONT_SIZE_MAX,
+			)
 			onConfigChange({ ...config, [field]: clamped })
 		}
 
@@ -99,25 +105,39 @@ export function Step3Render(props: Step3RenderProps) {
 		if (Number.isNaN(value)) return
 		onConfigChange({
 			...config,
-			backgroundOpacity: Math.min(Math.max(value, COLOR_CONSTANTS.OPACITY_MIN), COLOR_CONSTANTS.OPACITY_MAX)
+			backgroundOpacity: Math.min(
+				Math.max(value, COLOR_CONSTANTS.OPACITY_MIN),
+				COLOR_CONSTANTS.OPACITY_MAX,
+			),
 		})
 	}
 
 	// 颜色变化处理
-	const handleColorChange = (field: keyof SubtitleRenderConfig) =>
+	const handleColorChange =
+		(field: keyof SubtitleRenderConfig) =>
 		(event: ChangeEvent<HTMLInputElement>) => {
 			onConfigChange({ ...config, [field]: event.target.value })
 		}
 
 	// 提示文本配置变化处理
-	const handleHintTextChange = (field: keyof HintTextConfig, value: string | number | boolean) => {
-		const currentConfig = config.hintTextConfig || DEFAULT_SUBTITLE_RENDER_CONFIG.hintTextConfig!
+	const handleHintTextChange = (
+		field: keyof HintTextConfig,
+		value: string | number | boolean,
+	) => {
+		const currentConfig =
+			config.hintTextConfig || DEFAULT_SUBTITLE_RENDER_CONFIG.hintTextConfig!
 
 		let hintTextConfig: HintTextConfig
 		if (field === 'position') {
-			hintTextConfig = { ...currentConfig, [field]: value as 'center' | 'top' | 'bottom' }
+			hintTextConfig = {
+				...currentConfig,
+				[field]: value as 'center' | 'top' | 'bottom',
+			}
 		} else if (field === 'animation') {
-			hintTextConfig = { ...currentConfig, [field]: value as 'fade-in' | 'slide-up' | 'none' | undefined }
+			hintTextConfig = {
+				...currentConfig,
+				[field]: value as 'fade-in' | 'slide-up' | 'none' | undefined,
+			}
 		} else if (field === 'enabled') {
 			hintTextConfig = { ...currentConfig, [field]: value as boolean }
 		} else if (field === 'fontSize' || field === 'backgroundOpacity') {
@@ -139,14 +159,14 @@ export function Step3Render(props: Step3RenderProps) {
 		onPreviewSeek?.(time)
 	}
 
-
-
 	return (
 		<div className="space-y-6">
 			{/* 顶部操作栏，按钮位置与其他步骤对齐 */}
 			<div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
 				<div className="space-y-1">
-					<h3 className="text-base font-semibold text-foreground">Render Video</h3>
+					<h3 className="text-base font-semibold text-foreground">
+						Render Video
+					</h3>
 					<p className="text-sm text-muted-foreground">
 						调整字幕样式、时间效果，然后启动渲染。
 					</p>
@@ -161,6 +181,23 @@ export function Step3Render(props: Step3RenderProps) {
 					>
 						{translationAvailable ? 'Ready' : 'Need Translation'}
 					</span>
+					{(cloudStatus?.status ||
+						typeof cloudStatus?.progress === 'number') && (
+						<CloudJobProgress
+							status={cloudStatus?.status}
+							phase={cloudStatus?.phase}
+							progress={
+								typeof cloudStatus?.progress === 'number'
+									? cloudStatus.progress
+									: null
+							}
+							jobId={cloudStatus?.jobId}
+							showPhase={Boolean(cloudStatus?.phase)}
+							showIds={Boolean(cloudStatus?.jobId)}
+							showCompactLabel={false}
+							labels={{ status: 'Render', phase: 'Phase' }}
+						/>
+					)}
 					<Button
 						onClick={() => onStart({ ...config })}
 						disabled={isRendering || !translationAvailable}
@@ -189,7 +226,10 @@ export function Step3Render(props: Step3RenderProps) {
 							onOpacityChange={handleOpacityChange}
 							onColorChange={handleColorChange}
 							onSetOpacity={(v) => {
-								const value = Math.min(Math.max(v, COLOR_CONSTANTS.OPACITY_MIN), COLOR_CONSTANTS.OPACITY_MAX)
+								const value = Math.min(
+									Math.max(v, COLOR_CONSTANTS.OPACITY_MIN),
+									COLOR_CONSTANTS.OPACITY_MAX,
+								)
 								onConfigChange({ ...config, backgroundOpacity: value })
 							}}
 						/>

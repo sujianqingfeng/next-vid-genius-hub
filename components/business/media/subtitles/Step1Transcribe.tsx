@@ -35,24 +35,30 @@ interface Step1TranscribeProps {
 	transcription: string
 	optimizedTranscription?: string
 	errorMessage?: string
-  // Optimization controls
-  mediaId?: string
-  canOptimize?: boolean
-  isOptimizing?: boolean
-  isClearingOptimized?: boolean
-  selectedAIModel?: ChatModelId
-  onOptimizeModelChange?: (model: ChatModelId) => void
-  onOptimize?: (params: { pauseThresholdMs: number; maxSentenceMs: number; maxChars: number; lightCleanup?: boolean; textCorrect?: boolean }) => void
-  // spelling/grammar correction without changing VTT structure
-  // (server will strictly preserve cues and timestamps)
-  textCorrectDefault?: boolean
-  onRestoreOriginal?: () => void
-  selectedLanguage?: TranscriptionLanguage
-  onLanguageChange?: (lang: TranscriptionLanguage) => void
-  // ASR job status (optional)
-  asrStatus?: string
-  asrPhase?: string
-  asrProgress?: number | null
+	// Optimization controls
+	mediaId?: string
+	canOptimize?: boolean
+	isOptimizing?: boolean
+	isClearingOptimized?: boolean
+	selectedAIModel?: ChatModelId
+	onOptimizeModelChange?: (model: ChatModelId) => void
+	onOptimize?: (params: {
+		pauseThresholdMs: number
+		maxSentenceMs: number
+		maxChars: number
+		lightCleanup?: boolean
+		textCorrect?: boolean
+	}) => void
+	// spelling/grammar correction without changing VTT structure
+	// (server will strictly preserve cues and timestamps)
+	textCorrectDefault?: boolean
+	onRestoreOriginal?: () => void
+	selectedLanguage?: TranscriptionLanguage
+	onLanguageChange?: (lang: TranscriptionLanguage) => void
+	// ASR job status (optional)
+	asrStatus?: string
+	asrPhase?: string
+	asrProgress?: number | null
 }
 
 export function Step1Transcribe(props: Step1TranscribeProps) {
@@ -105,7 +111,10 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 	// 使用配置化的模型信息，移除硬编码
 
 	// Optimization params with per-media persistence
-	const storageKey = useMemo(() => (mediaId ? `subtitleOptimizeParams:${mediaId}` : null), [mediaId])
+	const storageKey = useMemo(
+		() => (mediaId ? `subtitleOptimizeParams:${mediaId}` : null),
+		[mediaId],
+	)
 	const [pauseThresholdMs, setPauseThresholdMs] = useState<number>(480)
 	const [maxSentenceMs, setMaxSentenceMs] = useState<number>(8000)
 	const [maxChars, setMaxChars] = useState<number>(68)
@@ -115,14 +124,21 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 	useEffect(() => {
 		if (!storageKey) return
 		try {
-			const raw = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null
+			const raw =
+				typeof window !== 'undefined'
+					? window.localStorage.getItem(storageKey)
+					: null
 			if (raw) {
 				const obj = JSON.parse(raw)
-				if (typeof obj.pauseThresholdMs === 'number') setPauseThresholdMs(obj.pauseThresholdMs)
-				if (typeof obj.maxSentenceMs === 'number') setMaxSentenceMs(obj.maxSentenceMs)
+				if (typeof obj.pauseThresholdMs === 'number')
+					setPauseThresholdMs(obj.pauseThresholdMs)
+				if (typeof obj.maxSentenceMs === 'number')
+					setMaxSentenceMs(obj.maxSentenceMs)
 				if (typeof obj.maxChars === 'number') setMaxChars(obj.maxChars)
-				if (typeof obj.lightCleanup === 'boolean') setLightCleanup(obj.lightCleanup)
-				if (typeof obj.textCorrect === 'boolean') setTextCorrect(obj.textCorrect)
+				if (typeof obj.lightCleanup === 'boolean')
+					setLightCleanup(obj.lightCleanup)
+				if (typeof obj.textCorrect === 'boolean')
+					setTextCorrect(obj.textCorrect)
 			}
 		} catch {}
 	}, [storageKey])
@@ -131,13 +147,26 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 		if (!storageKey) return
 		try {
 			if (typeof window !== 'undefined') {
-					window.localStorage.setItem(
-						storageKey,
-						JSON.stringify({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect }),
-					)
-				}
-			} catch {}
-	}, [storageKey, pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect])
+				window.localStorage.setItem(
+					storageKey,
+					JSON.stringify({
+						pauseThresholdMs,
+						maxSentenceMs,
+						maxChars,
+						lightCleanup,
+						textCorrect,
+					}),
+				)
+			}
+		} catch {}
+	}, [
+		storageKey,
+		pauseThresholdMs,
+		maxSentenceMs,
+		maxChars,
+		lightCleanup,
+		textCorrect,
+	])
 
 	return (
 		<div className="space-y-6">
@@ -176,21 +205,21 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 						<div className="space-y-2">
 							<label className="text-sm font-medium block">
 								Language{' '}
-								{selectedModel &&
-									!supportsLanguageHint && (
-										<span className="text-xs text-muted-foreground">(当前模型不支持)</span>
-									)}
+								{selectedModel && !supportsLanguageHint && (
+									<span className="text-xs text-muted-foreground">
+										(当前模型不支持)
+									</span>
+								)}
 							</label>
 							<Select
 								value={selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
 								onValueChange={(value) =>
-									onLanguageChange?.((value as TranscriptionLanguage) ?? DEFAULT_TRANSCRIPTION_LANGUAGE)
+									onLanguageChange?.(
+										(value as TranscriptionLanguage) ??
+											DEFAULT_TRANSCRIPTION_LANGUAGE,
+									)
 								}
-								disabled={
-									isPending ||
-									(selectedModel &&
-										!supportsLanguageHint)
-								}
+								disabled={isPending || (selectedModel && !supportsLanguageHint)}
 							>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder="Auto detect" />
@@ -209,14 +238,27 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 						</div>
 					</div>
 
-					<Button
-						onClick={onStart}
-						disabled={isPending}
-						className="w-full min-w-[160px] lg:w-auto"
-					>
-						{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-						{isPending ? 'Processing...' : 'Generate'}
-					</Button>
+					<div className="flex w-full items-center gap-3 lg:w-auto">
+						<Button
+							onClick={onStart}
+							disabled={isPending}
+							className="w-full min-w-[160px] lg:w-auto"
+						>
+							{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+							{isPending ? 'Processing...' : 'Generate'}
+						</Button>
+						{(asrStatus || typeof asrProgress === 'number') && (
+							<CloudJobProgress
+								status={asrStatus}
+								phase={asrPhase}
+								progress={typeof asrProgress === 'number' ? asrProgress : null}
+								showPhase={Boolean(asrPhase)}
+								showIds={false}
+								showCompactLabel={false}
+								labels={{ status: 'ASR status', phase: 'Phase' }}
+							/>
+						)}
+					</div>
 				</div>
 
 				{/* Pipeline indicator */}
@@ -225,18 +267,6 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 						<Badge variant="secondary">ASR Pipeline: Cloud</Badge>
 						<span>降采样与转写均在 Cloudflare Worker 侧完成。</span>
 					</div>
-					{(asrStatus || typeof asrProgress === 'number') && (
-						<div className="rounded-md border border-border/40 bg-muted/40 p-2">
-							<CloudJobProgress
-								status={asrStatus}
-								phase={asrPhase}
-								progress={typeof asrProgress === 'number' ? asrProgress : null}
-								showPhase={Boolean(asrPhase)}
-								showIds={false}
-								labels={{ status: 'ASR status', phase: 'Phase' }}
-							/>
-						</div>
-					)}
 				</div>
 
 				{/* Optimization Controls - Shown when transcription exists */}
@@ -251,44 +281,58 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 									onClick={onRestoreOriginal}
 									disabled={!!isClearingOptimized}
 								>
-									{isClearingOptimized && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+									{isClearingOptimized && (
+										<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+									)}
 									Clear Optimized
 								</Button>
 							)}
 						</div>
 
 						<div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-					<div>
-						<label className="text-sm font-medium mb-1 block">AI Model</label>
-						<ChatModelSelect
-							value={effectiveAIModel}
-							onChange={(model) => onOptimizeModelChange?.(model)}
-							models={llmModelOptions}
-							disabled={isOptimizing}
-						/>
-					</div>
 							<div>
-								<label className="text-sm font-medium mb-1 block">Pause Threshold (ms)</label>
+								<label className="text-sm font-medium mb-1 block">
+									AI Model
+								</label>
+								<ChatModelSelect
+									value={effectiveAIModel}
+									onChange={(model) => onOptimizeModelChange?.(model)}
+									models={llmModelOptions}
+									disabled={isOptimizing}
+								/>
+							</div>
+							<div>
+								<label className="text-sm font-medium mb-1 block">
+									Pause Threshold (ms)
+								</label>
 								<Input
 									type="number"
 									min={0}
 									max={5000}
 									value={pauseThresholdMs}
-									onChange={(e) => setPauseThresholdMs(Number(e.target.value) || 0)}
+									onChange={(e) =>
+										setPauseThresholdMs(Number(e.target.value) || 0)
+									}
 								/>
 							</div>
 							<div>
-								<label className="text-sm font-medium mb-1 block">Max Sentence (ms)</label>
+								<label className="text-sm font-medium mb-1 block">
+									Max Sentence (ms)
+								</label>
 								<Input
 									type="number"
 									min={1000}
 									max={30000}
 									value={maxSentenceMs}
-									onChange={(e) => setMaxSentenceMs(Number(e.target.value) || 0)}
+									onChange={(e) =>
+										setMaxSentenceMs(Number(e.target.value) || 0)
+									}
 								/>
 							</div>
 							<div>
-								<label className="text-sm font-medium mb-1 block">Max Chars</label>
+								<label className="text-sm font-medium mb-1 block">
+									Max Chars
+								</label>
 								<Input
 									type="number"
 									min={10}
@@ -302,19 +346,41 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 						<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
 							<div className="flex items-center gap-4">
 								<div className="flex items-center gap-2">
-									<Switch id="light-cleanup" checked={lightCleanup} onCheckedChange={setLightCleanup} />
-									<Label htmlFor="light-cleanup" className="text-sm">Light cleanup</Label>
+									<Switch
+										id="light-cleanup"
+										checked={lightCleanup}
+										onCheckedChange={setLightCleanup}
+									/>
+									<Label htmlFor="light-cleanup" className="text-sm">
+										Light cleanup
+									</Label>
 								</div>
 								<div className="flex items-center gap-2">
-									<Switch id="text-correct" checked={textCorrect} onCheckedChange={setTextCorrect} />
-									<Label htmlFor="text-correct" className="text-sm">Spelling/grammar</Label>
+									<Switch
+										id="text-correct"
+										checked={textCorrect}
+										onCheckedChange={setTextCorrect}
+									/>
+									<Label htmlFor="text-correct" className="text-sm">
+										Spelling/grammar
+									</Label>
 								</div>
 							</div>
 							<Button
-								onClick={() => onOptimize?.({ pauseThresholdMs, maxSentenceMs, maxChars, lightCleanup, textCorrect })}
+								onClick={() =>
+									onOptimize?.({
+										pauseThresholdMs,
+										maxSentenceMs,
+										maxChars,
+										lightCleanup,
+										textCorrect,
+									})
+								}
 								disabled={isOptimizing}
 							>
-								{isOptimizing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+								{isOptimizing && (
+									<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+								)}
 								{isOptimizing ? 'Optimizing...' : 'Apply Optimization'}
 							</Button>
 						</div>
@@ -324,7 +390,8 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 				{/* Optimization unavailable message */}
 				{transcription && !canOptimize && (
 					<div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg border">
-						Optimization unavailable: per-word timings not found. Use Cloudflare transcription for optimization support.
+						Optimization unavailable: per-word timings not found. Use Cloudflare
+						transcription for optimization support.
 					</div>
 				)}
 			</div>
@@ -344,26 +411,45 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 						<h3 className="text-lg font-semibold text-foreground">Result</h3>
 					</div>
 
-					<div className={`grid gap-3 ${props.optimizedTranscription ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+					<div
+						className={`grid gap-3 ${props.optimizedTranscription ? 'md:grid-cols-2' : 'grid-cols-1'}`}
+					>
 						<div className="space-y-2">
 							<div className="flex items-center gap-2">
-								<h4 className="text-sm font-medium text-muted-foreground">Original</h4>
-								<Badge variant="secondary" className="text-xs">{transcription.split(' ').length} words</Badge>
+								<h4 className="text-sm font-medium text-muted-foreground">
+									Original
+								</h4>
+								<Badge variant="secondary" className="text-xs">
+									{transcription.split(' ').length} words
+								</Badge>
 							</div>
-							<Textarea value={transcription} readOnly rows={8} className="font-mono text-sm" />
+							<Textarea
+								value={transcription}
+								readOnly
+								rows={8}
+								className="font-mono text-sm"
+							/>
 						</div>
 
 						{props.optimizedTranscription && (
 							<div className="space-y-2">
 								<div className="flex items-center gap-2">
-									<h4 className="text-sm font-medium text-muted-foreground">Optimized</h4>
-									<Badge variant="secondary" className="text-xs">{props.optimizedTranscription.split(' ').length} words</Badge>
+									<h4 className="text-sm font-medium text-muted-foreground">
+										Optimized
+									</h4>
+									<Badge variant="secondary" className="text-xs">
+										{props.optimizedTranscription.split(' ').length} words
+									</Badge>
 								</div>
-								<Textarea value={props.optimizedTranscription} readOnly rows={8} className="font-mono text-sm" />
+								<Textarea
+									value={props.optimizedTranscription}
+									readOnly
+									rows={8}
+									className="font-mono text-sm"
+								/>
 							</div>
 						)}
 					</div>
-
 				</div>
 			)}
 		</div>

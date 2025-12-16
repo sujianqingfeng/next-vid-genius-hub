@@ -3,10 +3,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useQuery } from '@tanstack/react-query'
-import {
-	DEFAULT_CHAT_MODEL_ID,
-	type ChatModelId,
-} from '~/lib/ai/models'
+import { DEFAULT_CHAT_MODEL_ID, type ChatModelId } from '~/lib/ai/models'
 import { logger } from '~/lib/logger'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import type { WhisperModel } from '~/lib/subtitle/config/models'
@@ -80,10 +77,7 @@ export function useSubtitleActions({
 	)
 	const isVisible = usePageVisibility()
 
-	const {
-		setJobId: setAsrJobId,
-		statusQuery: asrStatusQuery,
-	} = useCloudJob({
+	const { setJobId: setAsrJobId, statusQuery: asrStatusQuery } = useCloudJob({
 		storageKey: `subtitleAsrJob:${mediaId}`,
 		enabled: isVisible && activeStep === 'step1',
 		createQueryOptions: (jobId) =>
@@ -110,6 +104,7 @@ export function useSubtitleActions({
 	}, [activeStep, mediaId, queryClient, setActiveStep])
 
 	const {
+		jobId: cloudJobId,
 		setJobId: setCloudJobId,
 		statusQuery: cloudStatusQuery,
 	} = useCloudJob({
@@ -146,10 +141,7 @@ export function useSubtitleActions({
 				})
 			},
 			onError: (error) => {
-				logger.error(
-					'transcription',
-					`Transcription failed: ${error.message}`,
-				)
+				logger.error('transcription', `Transcription failed: ${error.message}`)
 			},
 		}),
 		{
@@ -212,7 +204,9 @@ export function useSubtitleActions({
 
 	const previewCloudStatus = cloudStatusQuery.data
 		? {
+				jobId: cloudJobId,
 				status: (cloudStatusQuery.data as { status?: string }).status,
+				phase: (cloudStatusQuery.data as { phase?: string }).phase,
 				progress: (cloudStatusQuery.data as { progress?: number }).progress,
 			}
 		: null
@@ -226,25 +220,27 @@ export function useSubtitleActions({
 		: null
 
 	const handleStartTranscription = () => {
-			const selectedAsrModel = asrModels.find((m) => m.id === selectedModel)
-			const caps = selectedAsrModel?.capabilities as AsrCaps | null | undefined
-			const canHintLanguage = Boolean(caps?.supportsLanguageHint)
-			logger.info(
-				'transcription',
-				`User started transcription: cloudflare/${selectedModel} for media ${mediaId}`,
-			)
-			updateWorkflowState({
-				selectedModel,
-				transcriptionLanguage: selectedLanguage,
-			})
-			transcribeMutation.mutate({
-				mediaId,
-				model: selectedModel,
-				language:
-					canHintLanguage && selectedLanguage && selectedLanguage !== DEFAULT_TRANSCRIPTION_LANGUAGE
-						? selectedLanguage
-						: undefined,
-			})
+		const selectedAsrModel = asrModels.find((m) => m.id === selectedModel)
+		const caps = selectedAsrModel?.capabilities as AsrCaps | null | undefined
+		const canHintLanguage = Boolean(caps?.supportsLanguageHint)
+		logger.info(
+			'transcription',
+			`User started transcription: cloudflare/${selectedModel} for media ${mediaId}`,
+		)
+		updateWorkflowState({
+			selectedModel,
+			transcriptionLanguage: selectedLanguage,
+		})
+		transcribeMutation.mutate({
+			mediaId,
+			model: selectedModel,
+			language:
+				canHintLanguage &&
+				selectedLanguage &&
+				selectedLanguage !== DEFAULT_TRANSCRIPTION_LANGUAGE
+					? selectedLanguage
+					: undefined,
+		})
 	}
 
 	const handleStartTranslation = () => {

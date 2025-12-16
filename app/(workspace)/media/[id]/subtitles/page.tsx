@@ -31,7 +31,6 @@ import { useSubtitleActions } from '~/lib/subtitle/hooks/useSubtitleActions'
 import type { SubtitleStepId } from '~/lib/subtitle/types'
 import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
 import { DEFAULT_TRANSCRIPTION_LANGUAGE } from '~/lib/subtitle/config/languages'
-import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 
 export default function SubtitlesPage() {
 	const params = useParams()
@@ -166,10 +165,10 @@ export default function SubtitlesPage() {
 		>
 			<div className="pb-12">
 				{/* Always-visible preview pane */}
-				<div className="mb-8">
-					<PreviewPane
-						mediaId={mediaId}
-						translation={workflowState.translation ?? null}
+					<div className="mb-8">
+						<PreviewPane
+							mediaId={mediaId}
+							translation={workflowState.translation ?? null}
 						config={subtitleConfig}
 						hasRenderedVideo={hasRenderedVideo}
 						thumbnail={media?.thumbnail ?? undefined}
@@ -178,21 +177,9 @@ export default function SubtitlesPage() {
 						cloudStatus={previewCloudStatus}
 						onDurationChange={handleDurationChange}
 						onCurrentTimeChange={handleCurrentTimeChange}
-						onVideoRefChange={handleVideoRefChange}
-					/>
-					{(renderStatusValue || (previewCloudStatus && typeof previewCloudStatus.progress === 'number')) && (
-						<div className="mt-3">
-							<CloudJobProgress
-								status={previewCloudStatus?.status}
-								progress={typeof previewCloudStatus?.progress === 'number' ? previewCloudStatus.progress : null}
-								jobId={undefined}
-								showPhase={false}
-								showIds={false}
-								labels={{ status: 'Render status' }}
-							/>
-						</div>
-					)}
-				</div>
+							onVideoRefChange={handleVideoRefChange}
+						/>
+					</div>
 
 				{/* Step Navigation under preview (Tabs) */}
 				<Tabs
@@ -310,15 +297,16 @@ export default function SubtitlesPage() {
 									</CardDescription>
 								</CardHeader>
 								<CardContent className="pt-6">
-									<Step3Render
-										isRendering={isRenderBusy}
-										onStart={handleRenderStart}
-										errorMessage={startCloudRenderMutation.error?.message}
-										translationAvailable={!!workflowState.translation}
-										config={subtitleConfig}
-										onConfigChange={handleConfigChange}
-										mediaDuration={previewDuration}
-										currentPreviewTime={previewCurrentTime}
+										<Step3Render
+											isRendering={isRenderBusy}
+											onStart={handleRenderStart}
+											errorMessage={startCloudRenderMutation.error?.message}
+											translationAvailable={!!workflowState.translation}
+											cloudStatus={previewCloudStatus}
+											config={subtitleConfig}
+											onConfigChange={handleConfigChange}
+											mediaDuration={previewDuration}
+											currentPreviewTime={previewCurrentTime}
 										onPreviewSeek={handlePlayPreview}
 									/>
 								</CardContent>

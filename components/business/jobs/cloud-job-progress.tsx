@@ -1,7 +1,11 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import { Progress } from '~/components/ui/progress'
+import { CircularProgress } from '~/components/ui/circular-progress'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '~/components/ui/tooltip'
 import { STATUS_LABELS, PHASE_LABELS } from '~/lib/config/media-status'
 import { cn } from '~/lib/utils'
 
@@ -10,6 +14,7 @@ type CloudJobProgressLabels = {
 	phase?: string
 	jobId?: string
 	mediaId?: string
+	progress?: string
 }
 
 export interface CloudJobProgressProps {
@@ -40,13 +45,17 @@ export interface CloudJobProgressProps {
 	 */
 	showIds?: boolean
 	/**
+	 * Whether to show the status text next to the ring in compact mode.
+	 */
+	showCompactLabel?: boolean
+	/**
+	 * Whether to show the percent text next to the ring in compact mode.
+	 */
+	showCompactPercent?: boolean
+	/**
 	 * Optional override labels (for i18n).
 	 */
 	labels?: CloudJobProgressLabels
-	/**
-	 * Extra rows rendered under the IDs block (e.g. proxy info).
-	 */
-	extraRows?: ReactNode
 	className?: string
 }
 
@@ -62,12 +71,13 @@ export function CloudJobProgress({
 	idleLabel = 'Idle',
 	showPhase = true,
 	showIds = true,
+	showCompactLabel = true,
+	showCompactPercent = true,
 	labels,
-	extraRows,
 	className,
 }: CloudJobProgressProps) {
 	const resolvedStatusLabel = status
-		? STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status
+		? (STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status)
 		: idleLabel
 
 	const resolvedPhaseLabel =
@@ -81,70 +91,117 @@ export function CloudJobProgress({
 	}
 
 	const isActive =
-		jobActive ??
-		(Boolean(status) && !TERMINAL_STATUSES.has(status as string))
+		jobActive ?? (Boolean(status) && !TERMINAL_STATUSES.has(status as string))
 
-	const pillClass = isActive
-		? 'bg-primary/10 text-primary'
-		: 'bg-secondary text-muted-foreground'
+	const pctText = typeof pct === 'number' ? `${Math.round(pct)}%` : '0%'
 
-	return (
-		<div className={cn('space-y-3', className)}>
-			<div className="flex items-center justify-between text-sm">
-				<span className="font-medium text-muted-foreground">
-					{labels?.status ?? 'Status'}
-				</span>
+	const statusTone =
+		status === 'failed'
+			? 'failed'
+			: status === 'canceled'
+				? 'canceled'
+				: status === 'completed'
+					? 'completed'
+					: isActive
+						? 'active'
+						: 'idle'
+
+	const ringClass =
+		statusTone === 'failed'
+			? 'stroke-rose-500'
+			: statusTone === 'canceled'
+				? 'stroke-slate-500'
+				: statusTone === 'completed'
+					? 'stroke-emerald-500'
+					: 'stroke-primary'
+
+	const pillClass =
+		statusTone === 'failed'
+			? 'bg-rose-500/10 text-rose-600'
+			: statusTone === 'canceled'
+				? 'bg-slate-500/10 text-slate-700'
+				: statusTone === 'completed'
+					? 'bg-emerald-500/10 text-emerald-700'
+					: isActive
+						? 'bg-primary/10 text-primary'
+						: 'bg-secondary text-muted-foreground'
+
+	const tooltipDetails = (
+		<div className="space-y-2 min-w-[200px]">
+			<div className="flex items-center justify-between gap-3">
+				<span className="font-medium">{labels?.status ?? 'Status'}</span>
 				<span
 					className={cn(
-						'rounded-full px-2 py-0.5 text-xs font-semibold',
+						'rounded-full px-2 py-0.5 text-[11px] font-semibold',
 						pillClass,
 					)}
 				>
 					{resolvedStatusLabel}
 				</span>
 			</div>
-			<Progress value={pct ?? 0} className="h-2" />
-
+			<div className="flex items-center justify-between gap-3 text-[11px] opacity-90">
+				<span>{labels?.progress ?? 'Progress'}</span>
+				<span className="font-medium">{pctText}</span>
+			</div>
 			{showPhase && resolvedPhaseLabel && (
-				<div className="flex items-center justify-between text-xs text-muted-foreground">
+				<div className="flex items-center justify-between gap-3 text-[11px] opacity-90">
 					<span>{labels?.phase ?? 'Phase'}</span>
-					<span className="font-medium text-foreground">
-						{resolvedPhaseLabel}
-					</span>
+					<span className="font-medium">{resolvedPhaseLabel}</span>
 				</div>
 			)}
-
 			{showIds && (jobId || mediaId) && (
-				<div className="space-y-2 border-t border-border/40 pt-3">
+				<div className="space-y-1 border-t border-background/20 pt-2 text-[11px] opacity-90">
 					{jobId && (
-						<div className="flex items-center justify-between gap-2 text-xs">
-							<span className="text-muted-foreground">
-								{labels?.jobId ?? 'Job ID'}
-							</span>
-							<span className="rounded bg-secondary/30 px-1.5 py-0.5 font-mono text-foreground">
-								{jobId.length > 11
-									? `${jobId.slice(0, 8)}...`
-									: jobId}
-							</span>
+						<div className="flex items-center justify-between gap-3">
+							<span>{labels?.jobId ?? 'Job ID'}</span>
+							<span className="font-mono">{jobId}</span>
 						</div>
 					)}
 					{mediaId && (
-						<div className="flex items-center justify-between gap-2 text-xs">
-							<span className="text-muted-foreground">
-								{labels?.mediaId ?? 'Media ID'}
-							</span>
-							<span className="rounded bg-secondary/30 px-1.5 py-0.5 font-mono text-foreground">
-								{mediaId.length > 11
-									? `${mediaId.slice(0, 8)}...`
-									: mediaId}
-							</span>
+						<div className="flex items-center justify-between gap-3">
+							<span>{labels?.mediaId ?? 'Media ID'}</span>
+							<span className="font-mono">{mediaId}</span>
 						</div>
 					)}
 				</div>
 			)}
-
-			{extraRows}
 		</div>
 	)
-}
 
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div
+					className={cn(
+						'inline-flex items-center gap-2 rounded-full border border-border/40 bg-secondary/20 px-2 py-1 text-xs',
+						className,
+					)}
+				>
+					<CircularProgress
+						value={pct ?? 0}
+						size={18}
+						strokeWidth={2.5}
+						indicatorClassName={ringClass}
+					/>
+					{showCompactLabel && (
+						<span className="font-medium text-foreground/90">
+							{resolvedStatusLabel}
+						</span>
+					)}
+					{showCompactPercent && (
+						<span className="tabular-nums text-muted-foreground">
+							{pctText}
+						</span>
+					)}
+				</div>
+			</TooltipTrigger>
+			<TooltipContent
+				side="top"
+				sideOffset={8}
+				className="glass border-none shadow-lg"
+			>
+				{tooltipDetails}
+			</TooltipContent>
+		</Tooltip>
+	)
+}
