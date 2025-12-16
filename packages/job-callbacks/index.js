@@ -35,9 +35,11 @@ export function makeStatusCallback({ callbackUrl, secret, fetchImpl, logger = co
     if (!callbackUrl) return
     const body = { status, ts: Date.now(), nonce: defaultNonce(), ...baseFields, ...extra }
     const payload = JSON.stringify(body)
-    const signature = signHmacSHA256(secret || 'dev-secret', payload)
+    if (!secret) throw new Error('makeStatusCallback: secret is required')
+    const signature = signHmacSHA256(secret, payload)
     const headers = { 'content-type': 'application/json', 'x-signature': signature }
     const f = fetchImpl || (globalThis.fetch ? globalThis.fetch.bind(globalThis) : undefined)
+    if (!f) return
     let attempt = 0
     while (true) {
       attempt += 1
@@ -45,7 +47,7 @@ export function makeStatusCallback({ callbackUrl, secret, fetchImpl, logger = co
         const r = await f(callbackUrl, { method: 'POST', headers, body: payload })
         if (!r?.ok) {
           let msg = ''
-          try { msg = await r.text() } catch {}
+          try { msg = await r.clone().text() } catch {}
           logger?.error?.('[job-callbacks] callback non-2xx', r?.status, msg)
         }
         return
@@ -64,12 +66,14 @@ export function makeStatusCallback({ callbackUrl, secret, fetchImpl, logger = co
  */
 export async function postSignedJson(url, secret, body, { fetchImpl, headers = {}, logger = console } = {}) {
   const payload = JSON.stringify(body)
-  const signature = signHmacSHA256(secret || 'dev-secret', payload)
+  if (!secret) throw new Error('postSignedJson: secret is required')
+  const signature = signHmacSHA256(secret, payload)
   const f = fetchImpl || (globalThis.fetch ? globalThis.fetch.bind(globalThis) : undefined)
+  if (!f) throw new Error('No fetch implementation available')
   const r = await f(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-signature': signature, ...headers }, body: payload })
   if (!r.ok) {
     let msg = ''
-    try { msg = await r.text() } catch {}
+    try { msg = await r.clone().text() } catch {}
     logger?.error?.('[job-callbacks] postSignedJson non-2xx', r.status, msg)
   }
   return r
@@ -78,6 +82,7 @@ export async function postSignedJson(url, secret, body, { fetchImpl, headers = {
 export function buildSignedBody(secret, body) {
   const ts = Date.now()
   const payload = JSON.stringify({ ...body, ts })
-  const signature = signHmacSHA256(secret || 'dev-secret', payload)
+  if (!secret) throw new Error('buildSignedBody: secret is required')
+  const signature = signHmacSHA256(secret, payload)
   return { payload, signature, ts }
 }

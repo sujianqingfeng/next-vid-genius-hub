@@ -61,7 +61,10 @@ export function getBucketName(env: Env): string {
 
 export async function s3Delete(env: Env, bucket: string, key: string): Promise<void> {
 	const url = await presignS3(env, 'DELETE', bucket, key, 600)
-	const r = await fetch(url, { method: 'DELETE' })
+	const r = await fetch(url, {
+		method: 'DELETE',
+		headers: { 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
+	})
 	if (!r.ok && r.status !== 404 && r.status !== 204) {
 		let msg = ''
 		try {
@@ -71,4 +74,3 @@ export async function s3Delete(env: Env, bucket: string, key: string): Promise<v
 		throw new Error(`s3Delete failed: ${r.status}`)
 	}
 }
-
