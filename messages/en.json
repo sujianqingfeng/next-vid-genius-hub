@@ -311,7 +311,7 @@
 		"refresh": "Refresh",
 		"balance": {
 			"title": "Current Balance",
-			"hint": "Signup bonus granted. You can top up or earn points from tasks in the future.",
+			"hint": "You can top up or earn points from tasks in the future.",
 			"unit": "pts"
 		},
 		"notes": {

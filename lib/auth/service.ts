@@ -10,10 +10,7 @@ import {
 	createSessionCookie,
 	revokeSessionById,
 } from './session'
-import { addPoints, getBalance } from '~/lib/points/service'
-import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
-
-const SIGNUP_BONUS_POINTS = 100
+import { getBalance } from '~/lib/points/service'
 
 function getAdminEmails() {
 	const raw = process.env.ADMIN_EMAILS || ''
@@ -89,19 +86,8 @@ export async function signupUser(input: { email: string; password: string; nickn
 		throw new Error('Failed to create user')
 	}
 
-	let balance = 0
-	if (SIGNUP_BONUS_POINTS > 0) {
-		balance = await addPoints({
-			userId: user.id,
-			amount: SIGNUP_BONUS_POINTS,
-			type: POINT_TRANSACTION_TYPES.SIGNUP_BONUS,
-			remark: '注册奖励',
-			db,
-		})
-		logger.info('api', `[auth.signup] signup bonus granted user=${user.id} points=${SIGNUP_BONUS_POINTS} balance=${balance}`)
-	}
-
 	const { token, session } = await createSession({ userId: user.id, db })
+	const balance = await getBalance(user.id, db)
 
 	const result = { user, session, token, balance }
 
