@@ -11,6 +11,29 @@ export async function presignGetByKey(key: string): Promise<string> {
   return body.getUrl
 }
 
+export async function remoteKeyExists(key: string): Promise<boolean> {
+  try {
+    const url = await presignGetByKey(key)
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+    const timeout = setTimeout(() => controller?.abort(), 10_000)
+    try {
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { range: 'bytes=0-0' },
+        signal: controller?.signal,
+        cache: 'no-store',
+      })
+      if (res.ok || res.status === 206) return true
+      if (res.status === 404) return false
+      return false
+    } finally {
+      clearTimeout(timeout)
+    }
+  } catch {
+    return false
+  }
+}
+
 export async function deleteCloudArtifacts(input: { keys?: string[]; artifactJobIds?: string[]; prefixes?: string[] }): Promise<void> {
   const base = requireOrchestratorUrl()
   const keys = (input.keys ?? []).filter(Boolean)

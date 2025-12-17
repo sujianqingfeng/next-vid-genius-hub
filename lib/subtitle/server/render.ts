@@ -7,6 +7,7 @@ import { startCloudJob, getJobStatus, putJobManifest, type JobManifest } from '~
 import type { JobStatusResponse } from '~/lib/cloudflare'
 import { bucketPaths, TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { TASK_KINDS } from '~/lib/job/task'
+import { resolveCloudVideoKey } from '~/lib/media/resolve-cloud-video-key'
 
 export async function startCloudRender(input: { mediaId: string; subtitleConfig?: SubtitleRenderConfig }): Promise<{ jobId: string; taskId: string }> {
   const where = eq(schema.media.id, input.mediaId)
@@ -43,6 +44,18 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
     // describes the exact inputs this render should use.
     const jobId = `job_${createId()}`
 
+    const resolvedVideoKey = await resolveCloudVideoKey({
+      sourcePolicy: 'original',
+      remoteVideoKey: media.remoteVideoKey ?? null,
+      downloadJobId: media.downloadJobId ?? null,
+      filePath: media.filePath ?? null,
+    })
+    if (!resolvedVideoKey) {
+      throw new Error(
+        'Source video not found in cloud storage. Re-run cloud download for this media and retry.',
+      )
+    }
+
     const vttKey = bucketPaths.inputs.subtitles(media.id, { title: media.title ?? undefined })
     const manifest: JobManifest = {
       jobId,
@@ -51,7 +64,7 @@ export async function startCloudRender(input: { mediaId: string; subtitleConfig?
       createdAt: Date.now(),
       inputs: {
         // For subtitles burn-in we always use the canonical remote video as source.
-        videoKey: media.remoteVideoKey ?? null,
+        videoKey: resolvedVideoKey,
         vttKey,
         sourcePolicy: 'original',
       },

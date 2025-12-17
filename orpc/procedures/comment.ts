@@ -11,6 +11,7 @@ import {
 	type JobManifest,
 } from '~/lib/cloudflare'
 import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
+import { resolveCloudVideoKey } from '~/lib/media/resolve-cloud-video-key'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { logger } from '~/lib/logger'
@@ -228,6 +229,19 @@ export const startCloudRender = os
 			throw new Error('No comments found for this media')
 		}
 
+		const resolvedVideoKey = await resolveCloudVideoKey({
+			sourcePolicy: input.sourcePolicy,
+			remoteVideoKey: media.remoteVideoKey ?? null,
+			downloadJobId: media.downloadJobId ?? null,
+			filePath: media.filePath ?? null,
+			videoWithSubtitlesPath: media.videoWithSubtitlesPath ?? null,
+		})
+		if (!resolvedVideoKey) {
+			throw new Error(
+				'Source video not found in cloud storage. Re-run cloud download for this media and retry.',
+			)
+		}
+
 		const comments = media.comments
 
 		logger.info(
@@ -285,7 +299,7 @@ export const startCloudRender = os
 				engine: 'renderer-remotion',
 				createdAt: Date.now(),
 				inputs: {
-					videoKey: media.remoteVideoKey ?? null,
+					videoKey: resolvedVideoKey,
 					commentsKey: snapshotKey ?? null,
 					sourcePolicy: (input.sourcePolicy || 'auto') as any,
 				},
