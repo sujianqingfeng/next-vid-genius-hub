@@ -48,6 +48,77 @@ type CallbackPayload = {
 
 type MediaRecord = typeof schema.media.$inferSelect
 
+type RemoteProbe =
+	| { state: 'exists'; sizeBytes?: number }
+	| { state: 'missing' }
+	| { state: 'unknown' }
+
+type MetadataSummary = {
+	title?: string
+	author?: string
+	thumbnail?: string
+	viewCount?: number
+	likeCount?: number
+	durationSeconds?: number
+}
+
+function summariseRawMetadata(raw: unknown): MetadataSummary {
+	if (!raw || typeof raw !== 'object') return {}
+	const obj = raw as Record<string, unknown>
+
+	const asString = (value: unknown): string | undefined => {
+		if (typeof value === 'string' && value.trim()) return value
+		return undefined
+	}
+
+	const asNumber = (value: unknown): number | undefined => {
+		if (typeof value === 'number' && Number.isFinite(value)) return value
+		if (typeof value === 'string' && value.trim()) {
+			const parsed = Number.parseInt(value, 10)
+			if (!Number.isNaN(parsed)) return parsed
+		}
+		return undefined
+	}
+
+	let thumbnail = asString(obj.thumbnail)
+	const thumbnails = obj.thumbnails
+	if (!thumbnail && Array.isArray(thumbnails)) {
+		for (let i = thumbnails.length - 1; i >= 0; i--) {
+			const candidate = thumbnails[i]
+			if (!candidate || typeof candidate !== 'object') continue
+			const url = asString((candidate as Record<string, unknown>).url)
+			if (url) {
+				thumbnail = url
+				break
+			}
+		}
+	}
+
+	const authorKeys = ['uploader', 'channel', 'artist', 'owner'] as const
+	let author: string | undefined
+	for (const key of authorKeys) {
+		const v = asString(obj[key])
+		if (v) {
+			author = v
+			break
+		}
+	}
+
+	const durationSeconds =
+		asNumber(obj.durationSeconds) ??
+		asNumber(obj.duration) ??
+		asNumber(obj.length_seconds)
+
+	return {
+		title: asString(obj.title),
+		author,
+		thumbnail,
+		viewCount: asNumber(obj.view_count ?? obj.viewCount),
+		likeCount: asNumber(obj.like_count ?? obj.likeCount),
+		durationSeconds,
+	}
+}
+
 // Container/Worker → Next: final callback to persist status and output
 // Expected body expands per engine type (renderers keep remote references, downloader hydrates local files)
 
@@ -222,65 +293,97 @@ async function handleCloudDownloadCallback(
 		`[cf-callback.download] start job=${payload.jobId} media=${payload.mediaId} status=${payload.status}`,
 	)
 
-	async function remoteObjectExists({
-		key,
-		directUrl,
-	}: {
-		key?: string | null
-		directUrl?: string | null
-	}): Promise<boolean> {
-		const checkUrl = async (url: string, { label, logOnFailure }: { label: string; logOnFailure: boolean }) => {
-			const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
-			const timeout = setTimeout(() => controller?.abort(), 5000)
+		async function remoteObjectExists({
+			key,
+			directUrl,
+		}: {
+			key?: string | null
+			directUrl?: string | null
+		}): Promise<RemoteProbe> {
+			const parseSizeBytes = (res: Response): number | undefined => {
+				// Prefer Content-Range: "bytes 0-0/12345"
+				const contentRange = res.headers.get('content-range')
+				if (contentRange) {
+					const total = contentRange.split('/').pop()
+					if (total) {
+						const parsed = Number.parseInt(total, 10)
+						if (Number.isFinite(parsed)) return parsed
+					}
+				}
+				const contentLength = res.headers.get('content-length')
+				if (contentLength) {
+					const parsed = Number.parseInt(contentLength, 10)
+					if (Number.isFinite(parsed)) return parsed
+				}
+				return undefined
+			}
+
+			const checkUrl = async (
+				url: string,
+				{ label, logOnFailure }: { label: string; logOnFailure: boolean },
+			): Promise<RemoteProbe> => {
+				const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+				const timeout = setTimeout(() => controller?.abort(), 10_000)
+				try {
+					const res = await fetch(url, {
+						method: 'GET',
+						headers: { Range: 'bytes=0-0' },
+						signal: controller?.signal,
+						cache: 'no-store',
+					})
+					if (res.ok || res.status === 206) {
+						const sizeBytes = parseSizeBytes(res)
+						try {
+							// In case Range isn't honored and server starts sending the full body, cancel early.
+							// For 206, body is tiny and cancel is unnecessary but safe.
+							await res.body?.cancel?.()
+						} catch {}
+						if (typeof sizeBytes === 'number' && Number.isFinite(sizeBytes)) {
+							return { state: 'exists', sizeBytes }
+						}
+						return { state: 'exists' }
+					}
+					if (res.status === 404) return { state: 'missing' }
+					if (logOnFailure) {
+						logger.warn('api', `[cf-callback] remoteObjectExists unexpected status ${res.status} for ${label}`)
+					}
+					return { state: 'unknown' }
+				} catch (error) {
+					if (logOnFailure) {
+						logger.warn(
+							'api',
+							`[cf-callback] remoteObjectExists failed for ${label}: ${
+								error instanceof Error ? error.message : String(error)
+							}`,
+						)
+					}
+					return { state: 'unknown' }
+				} finally {
+					clearTimeout(timeout)
+				}
+			}
+
+			if (directUrl) {
+				const directLabel = `url=${directUrl.split('?')[0]}`
+				const res = await checkUrl(directUrl, { label: directLabel, logOnFailure: false })
+				if (res.state === 'exists') return res
+			}
+
+			if (!key) return { state: 'unknown' }
+
 			try {
-				const res = await fetch(url, {
-					method: 'GET',
-					headers: { range: 'bytes=0-0' },
-					signal: controller?.signal,
-				})
-				if (res.ok || res.status === 206) return true
-				if (res.status === 404) return false
-				if (logOnFailure) {
-					logger.warn('api', `[cf-callback] remoteObjectExists unexpected status ${res.status} for ${label}`)
-				}
-				return false
+				const url = await presignGetByKey(key)
+				return await checkUrl(url, { label: `key=${key}`, logOnFailure: true })
 			} catch (error) {
-				if (logOnFailure) {
-					logger.warn(
-						'api',
-						`[cf-callback] remoteObjectExists failed for ${label}: ${
-							error instanceof Error ? error.message : String(error)
-						}`,
-					)
-				}
-				return false
-			} finally {
-				clearTimeout(timeout)
+				logger.warn(
+					'api',
+					`[cf-callback] remoteObjectExists failed for key=${key}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+				return { state: 'unknown' }
 			}
 		}
-
-		if (directUrl) {
-			const directLabel = `url=${directUrl.split('?')[0]}`
-			if (await checkUrl(directUrl, { label: directLabel, logOnFailure: false })) {
-				return true
-			}
-		}
-
-		if (!key) return false
-
-		try {
-			const url = await presignGetByKey(key)
-			return await checkUrl(url, { label: `key=${key}`, logOnFailure: true })
-		} catch (error) {
-			logger.warn(
-				'api',
-				`[cf-callback] remoteObjectExists failed for key=${key}: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			)
-			return false
-		}
-	}
 
 	// Detect comments-only task based on outputs: metadata only, no video/audio keys.
 	const rawVideoKey = payload.outputs?.video?.key ?? null
@@ -305,10 +408,24 @@ async function handleCloudDownloadCallback(
 	const hasAudioKey = Boolean(audioProcessedKey)
 	const isCommentsOnly = hasMetadataOutput && !hasVideoKey && !hasAudioKey
 
-	const videoExists = await remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
-	const audioProcessedExists = await remoteObjectExists({ key: audioProcessedKey, directUrl: audioProcessedUrl })
-	const audioSourceExists = await remoteObjectExists({ key: audioSourceKey, directUrl: audioSourceUrl })
-	const metadataExistsWithSource = await remoteObjectExists({ key: metadataKey, directUrl: metadataUrl })
+		// Probing large objects can be flaky right after upload; only probe when we need
+		// to backfill sizes or metadata summary and we don't already have values.
+		const shouldProbeVideoForSize = typeof payload.metadata?.videoBytes !== 'number'
+		const shouldProbeAudioForSize = typeof payload.metadata?.audioBytes !== 'number'
+		const shouldProbeMetadataForSummary = !payload.metadata?.title || !payload.metadata?.author || !payload.metadata?.thumbnail
+
+		const [videoProbe, audioProcessedProbe, audioSourceProbe, metadataProbe] = await Promise.all([
+			shouldProbeVideoForSize
+				? remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
+				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
+			shouldProbeAudioForSize
+				? remoteObjectExists({ key: audioProcessedKey, directUrl: audioProcessedUrl })
+				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
+			remoteObjectExists({ key: audioSourceKey, directUrl: audioSourceUrl }),
+			shouldProbeMetadataForSummary
+				? remoteObjectExists({ key: metadataKey, directUrl: metadataUrl })
+				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
+		])
 
   
 
@@ -360,10 +477,8 @@ async function handleCloudDownloadCallback(
     return
   }
 
-  const audioProcessedExistsWithSource = audioProcessedExists
-
   const metadataFromPayload = payload.metadata
-  const durationSeconds =
+  let durationSeconds =
     typeof payload.durationMs === 'number'
       ? payload.durationMs / 1000
       : typeof metadataFromPayload?.durationSeconds === 'number'
@@ -374,6 +489,37 @@ async function handleCloudDownloadCallback(
             ? metadataFromPayload.lengthSeconds
             : 0
 
+  let fallbackSummary: MetadataSummary | null = null
+  const shouldHydrateFromRawMetadata =
+		!metadataFromPayload?.title ||
+		!metadataFromPayload?.author ||
+		!metadataFromPayload?.thumbnail ||
+		!durationSeconds
+  if (shouldHydrateFromRawMetadata && (metadataUrl || metadataKey)) {
+    try {
+      const url = metadataUrl || (metadataKey ? await presignGetByKey(metadataKey) : null)
+      if (url) {
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+        const timeout = setTimeout(() => controller?.abort(), 10_000)
+        try {
+          const res = await fetch(url, { method: 'GET', signal: controller?.signal, cache: 'no-store' })
+          if (res.ok) {
+            const raw = (await res.json()) as unknown
+            fallbackSummary = summariseRawMetadata(raw)
+          }
+        } finally {
+          clearTimeout(timeout)
+        }
+      }
+    } catch {
+      // Best-effort only
+    }
+  }
+
+  if (!durationSeconds && fallbackSummary?.durationSeconds) {
+    durationSeconds = fallbackSummary.durationSeconds
+  }
+
   const roundedDuration = Number.isFinite(durationSeconds) && durationSeconds > 0 ? Math.round(durationSeconds) : null
 
   const updates: Record<string, unknown> = {
@@ -382,13 +528,14 @@ async function handleCloudDownloadCallback(
     downloadError: null,
     downloadJobId: payload.jobId,
     downloadCompletedAt: new Date(),
-    // Prefer outputs.video.key; fall back to outputKey for backward compatibility
-    remoteVideoKey: videoExists ? (resolvedVideoKey ?? media.remoteVideoKey ?? null) : media.remoteVideoKey ?? null,
+    // Persist callback keys even if a probe temporarily returns 404 right after upload.
+    // Keep existing keys when callback doesn't include a value.
+    remoteVideoKey: resolvedVideoKey ?? media.remoteVideoKey ?? null,
     // Backward-compatible: remoteAudioKey points at processed audio.
-    remoteAudioKey: audioProcessedExistsWithSource ? (audioProcessedKey ?? media.remoteAudioKey ?? null) : media.remoteAudioKey ?? null,
-    remoteAudioProcessedKey: audioProcessedExistsWithSource ? (audioProcessedKey ?? media.remoteAudioProcessedKey ?? null) : media.remoteAudioProcessedKey ?? null,
-    remoteAudioSourceKey: audioSourceExists ? (audioSourceKey ?? media.remoteAudioSourceKey ?? null) : media.remoteAudioSourceKey ?? null,
-    remoteMetadataKey: metadataExistsWithSource ? (metadataKey ?? media.remoteMetadataKey ?? null) : media.remoteMetadataKey ?? null,
+    remoteAudioKey: audioProcessedKey ?? media.remoteAudioKey ?? null,
+    remoteAudioProcessedKey: audioProcessedKey ?? media.remoteAudioProcessedKey ?? null,
+    remoteAudioSourceKey: audioSourceKey ?? media.remoteAudioSourceKey ?? null,
+    remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
   }
 
   // Persist rounded duration on the media row when available
@@ -396,11 +543,11 @@ async function handleCloudDownloadCallback(
     updates.duration = roundedDuration
   }
 
-  const title = metadataFromPayload?.title
-  const author = metadataFromPayload?.author
-  const thumbnail = metadataFromPayload?.thumbnail
-  const viewCount = metadataFromPayload?.viewCount
-  const likeCount = metadataFromPayload?.likeCount
+  const title = metadataFromPayload?.title || fallbackSummary?.title
+  const author = metadataFromPayload?.author || fallbackSummary?.author
+  const thumbnail = metadataFromPayload?.thumbnail || fallbackSummary?.thumbnail
+  const viewCount = metadataFromPayload?.viewCount ?? fallbackSummary?.viewCount
+  const likeCount = metadataFromPayload?.likeCount ?? fallbackSummary?.likeCount
 
   if (title) updates.title = title
   if (author) updates.author = author
@@ -409,18 +556,27 @@ async function handleCloudDownloadCallback(
   if (likeCount !== undefined) updates.likeCount = likeCount
   if (metadataFromPayload?.quality) updates.quality = metadataFromPayload.quality
   if (metadataFromPayload?.source) updates.source = metadataFromPayload.source
-  if (typeof metadataFromPayload?.videoBytes === 'number' && Number.isFinite(metadataFromPayload.videoBytes)) {
-    updates.downloadVideoBytes = metadataFromPayload.videoBytes
-  }
-  if (typeof metadataFromPayload?.audioBytes === 'number' && Number.isFinite(metadataFromPayload.audioBytes)) {
-    updates.downloadAudioBytes = metadataFromPayload.audioBytes
-  }
+  const videoBytes =
+		typeof metadataFromPayload?.videoBytes === 'number' && Number.isFinite(metadataFromPayload.videoBytes)
+			? metadataFromPayload.videoBytes
+			: videoProbe.state === 'exists'
+				? videoProbe.sizeBytes
+				: undefined
+  const audioBytes =
+		typeof metadataFromPayload?.audioBytes === 'number' && Number.isFinite(metadataFromPayload.audioBytes)
+			? metadataFromPayload.audioBytes
+			: audioProcessedProbe.state === 'exists'
+				? audioProcessedProbe.sizeBytes
+				: undefined
+
+  if (typeof videoBytes === 'number' && Number.isFinite(videoBytes)) updates.downloadVideoBytes = videoBytes
+  if (typeof audioBytes === 'number' && Number.isFinite(audioBytes)) updates.downloadAudioBytes = audioBytes
 
   await db.update(schema.media).set(updates).where(where)
 
   logger.info(
     'api',
-    `[cf-callback.download] completed job=${payload.jobId} media=${payload.mediaId} duration=${roundedDuration ?? 0}s hasVideo=${videoExists} hasAudio=${audioProcessedExistsWithSource} hasMetadata=${metadataExistsWithSource}`,
+    `[cf-callback.download] completed job=${payload.jobId} media=${payload.mediaId} duration=${roundedDuration ?? 0}s hasVideo=${videoProbe.state === 'exists'} hasAudio=${audioProcessedProbe.state === 'exists'} hasMetadata=${metadataProbe.state === 'exists'}`,
   )
 
   if (media.userId && durationSeconds > 0) {

@@ -434,6 +434,15 @@ async function handleRender(req, res) {
           ? { audioSourceBytes: uploadedAudioSourceBytes }
           : {}),
       };
+      const bytesSnapshot = {
+        ...(uploadedVideoBytes != null ? { videoBytes: uploadedVideoBytes } : {}),
+        ...(uploadedAudioProcessedBytes != null
+          ? { audioBytes: uploadedAudioProcessedBytes }
+          : {}),
+        ...(uploadedAudioSourceBytes != null
+          ? { audioSourceBytes: uploadedAudioSourceBytes }
+          : {}),
+      };
       // Ensure title is present in the callback metadata (orchestrator forwards only this summary to Next).
       if (!callbackMetadata.title) {
         try {
@@ -446,6 +455,7 @@ async function handleRender(req, res) {
             ...refreshed,
             quality,
             source: engineOptions.source || "youtube",
+            ...bytesSnapshot,
           };
         } catch {}
       }
