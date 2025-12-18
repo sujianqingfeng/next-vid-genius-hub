@@ -100,6 +100,121 @@ function getByPath(obj: unknown, path: string[]): unknown {
 	return cur
 }
 
+function findMatchingBrace(input: string, openIndex: number): number {
+	let depth = 0
+	for (let i = openIndex; i < input.length; i++) {
+		const ch = input[i]
+		if (ch === '{') depth++
+		else if (ch === '}') {
+			depth--
+			if (depth === 0) return i
+		}
+	}
+	return -1
+}
+
+function parsePluralCases(body: string): Record<string, string> {
+	const cases: Record<string, string> = {}
+	let i = 0
+
+	const skipWs = () => {
+		while (i < body.length && /\s/.test(body[i] ?? '')) i++
+	}
+
+	while (i < body.length) {
+		skipWs()
+		if (i >= body.length) break
+
+		let key = ''
+		while (i < body.length && /[^\s{]/.test(body[i] ?? '')) {
+			key += body[i]
+			i++
+		}
+		skipWs()
+		if (!key || body[i] !== '{') break
+
+		const start = i
+		const end = findMatchingBrace(body, start)
+		if (end === -1) break
+		const content = body.slice(start + 1, end)
+		cases[key] = content
+		i = end + 1
+	}
+
+	return cases
+}
+
+function replaceIcuPlurals(
+	template: string,
+	locale: string,
+	params: Record<string, unknown>,
+): string {
+	if (!template.includes(', plural,')) return template
+
+	let out = ''
+	let i = 0
+	while (i < template.length) {
+		const ch = template[i]
+		if (ch !== '{') {
+			out += ch
+			i++
+			continue
+		}
+
+		const end = findMatchingBrace(template, i)
+		if (end === -1) {
+			out += ch
+			i++
+			continue
+		}
+
+		const inner = template.slice(i + 1, end)
+		const match = inner.match(/^([a-zA-Z0-9_]+)\s*,\s*plural\s*,([\s\S]*)$/)
+		if (!match) {
+			out += template.slice(i, end + 1)
+			i = end + 1
+			continue
+		}
+
+		const varName = match[1]!
+		const body = match[2]!.trim()
+		const cases = parsePluralCases(body)
+
+		const raw = params[varName]
+		const n =
+			typeof raw === 'number'
+				? raw
+				: typeof raw === 'string'
+					? Number.parseFloat(raw)
+					: Number.NaN
+
+		const pluralCategory = Number.isFinite(n)
+			? new Intl.PluralRules(locale).select(n)
+			: 'other'
+
+		const chosen = cases[pluralCategory] ?? cases.other ?? ''
+		out += chosen.replaceAll('#', Number.isFinite(n) ? String(n) : '')
+
+		i = end + 1
+	}
+
+	return out
+}
+
+function formatMessage(
+	template: string,
+	locale: string,
+	params?: Record<string, unknown>,
+): string {
+	if (!params) return template
+	const withPlurals = replaceIcuPlurals(template, locale, params)
+	return Object.entries(params).reduce((acc, [k, v]) => {
+		const safeValue =
+			v === null || v === undefined ? '' : typeof v === 'string' ? v : String(v)
+		return acc.replaceAll(`{${k}}`, safeValue)
+	}, withPlurals)
+}
+
 export function useTranslations(namespace: string) {
 	const ctx = React.useContext(I18nContext)
 	return React.useMemo(() => {
@@ -107,12 +222,7 @@ export function useTranslations(namespace: string) {
 		return (key: string, params?: Record<string, unknown>) => {
 			const value = getByPath(scope, key.split('.'))
 			const template = typeof value === 'string' ? value : `${namespace}.${key}`
-			if (!params) return template
-			return Object.entries(params).reduce((acc, [k, v]) => {
-				const safeValue =
-					v === null || v === undefined ? '' : typeof v === 'string' ? v : String(v)
-				return acc.replaceAll(`{${k}}`, safeValue)
-			}, template)
+			return formatMessage(template, ctx?.locale ?? DEFAULT_LOCALE, params)
 		}
-	}, [ctx?.messages, namespace])
+	}, [ctx?.locale, ctx?.messages, namespace])
 }

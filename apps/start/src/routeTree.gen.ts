@@ -17,11 +17,14 @@ import { Route as MediaRouteImport } from './routes/media'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChannelsRouteImport } from './routes/channels'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MediaIndexRouteImport } from './routes/media.index'
 import { Route as MediaDownloadRouteImport } from './routes/media.download'
 import { Route as MediaIdRouteImport } from './routes/media.$id'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoOrpcTodoRouteImport } from './routes/demo/orpc-todo'
+import { Route as MediaIdIndexRouteImport } from './routes/media.$id.index'
 import { Route as MediaIdSubtitlesRouteImport } from './routes/media.$id.subtitles'
+import { Route as MediaIdCommentsRouteImport } from './routes/media.$id.comments'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiTqTodosRouteImport } from './routes/demo/api.tq-todos'
@@ -71,6 +74,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MediaIndexRoute = MediaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MediaRoute,
+} as any)
 const MediaDownloadRoute = MediaDownloadRouteImport.update({
   id: '/download',
   path: '/download',
@@ -91,9 +99,19 @@ const DemoOrpcTodoRoute = DemoOrpcTodoRouteImport.update({
   path: '/demo/orpc-todo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MediaIdIndexRoute = MediaIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MediaIdRoute,
+} as any)
 const MediaIdSubtitlesRoute = MediaIdSubtitlesRouteImport.update({
   id: '/subtitles',
   path: '/subtitles',
+  getParentRoute: () => MediaIdRoute,
+} as any)
+const MediaIdCommentsRoute = MediaIdCommentsRouteImport.update({
+  id: '/comments',
+  path: '/comments',
   getParentRoute: () => MediaIdRoute,
 } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
@@ -150,11 +168,14 @@ export interface FileRoutesByFullPath {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/media/$id': typeof MediaIdRouteWithChildren
   '/media/download': typeof MediaDownloadRoute
+  '/media/': typeof MediaIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
+  '/media/$id/': typeof MediaIdIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -164,20 +185,21 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRoute
   '/login': typeof LoginRoute
-  '/media': typeof MediaRouteWithChildren
   '/points': typeof PointsRoute
   '/privacy': typeof PrivacyRoute
   '/proxy': typeof ProxyRoute
   '/tasks': typeof TasksRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
-  '/media/$id': typeof MediaIdRouteWithChildren
   '/media/download': typeof MediaDownloadRoute
+  '/media': typeof MediaIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
+  '/media/$id': typeof MediaIdIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -197,11 +219,14 @@ export interface FileRoutesById {
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/media/$id': typeof MediaIdRouteWithChildren
   '/media/download': typeof MediaDownloadRoute
+  '/media/': typeof MediaIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
+  '/media/$id/': typeof MediaIdIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -222,11 +247,14 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/media/$id'
     | '/media/download'
+    | '/media/'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/media/$id/comments'
     | '/media/$id/subtitles'
+    | '/media/$id/'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -236,20 +264,21 @@ export interface FileRouteTypes {
     | '/'
     | '/channels'
     | '/login'
-    | '/media'
     | '/points'
     | '/privacy'
     | '/proxy'
     | '/tasks'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
-    | '/media/$id'
     | '/media/download'
+    | '/media'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/media/$id/comments'
     | '/media/$id/subtitles'
+    | '/media/$id'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -268,11 +297,14 @@ export interface FileRouteTypes {
     | '/demo/tanstack-query'
     | '/media/$id'
     | '/media/download'
+    | '/media/'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/media/$id/comments'
     | '/media/$id/subtitles'
+    | '/media/$id/'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -358,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/media/': {
+      id: '/media/'
+      path: '/'
+      fullPath: '/media/'
+      preLoaderRoute: typeof MediaIndexRouteImport
+      parentRoute: typeof MediaRoute
+    }
     '/media/download': {
       id: '/media/download'
       path: '/download'
@@ -386,11 +425,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoOrpcTodoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/media/$id/': {
+      id: '/media/$id/'
+      path: '/'
+      fullPath: '/media/$id/'
+      preLoaderRoute: typeof MediaIdIndexRouteImport
+      parentRoute: typeof MediaIdRoute
+    }
     '/media/$id/subtitles': {
       id: '/media/$id/subtitles'
       path: '/subtitles'
       fullPath: '/media/$id/subtitles'
       preLoaderRoute: typeof MediaIdSubtitlesRouteImport
+      parentRoute: typeof MediaIdRoute
+    }
+    '/media/$id/comments': {
+      id: '/media/$id/comments'
+      path: '/comments'
+      fullPath: '/media/$id/comments'
+      preLoaderRoute: typeof MediaIdCommentsRouteImport
       parentRoute: typeof MediaIdRoute
     }
     '/demo/start/server-funcs': {
@@ -453,11 +506,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface MediaIdRouteChildren {
+  MediaIdCommentsRoute: typeof MediaIdCommentsRoute
   MediaIdSubtitlesRoute: typeof MediaIdSubtitlesRoute
+  MediaIdIndexRoute: typeof MediaIdIndexRoute
 }
 
 const MediaIdRouteChildren: MediaIdRouteChildren = {
+  MediaIdCommentsRoute: MediaIdCommentsRoute,
   MediaIdSubtitlesRoute: MediaIdSubtitlesRoute,
+  MediaIdIndexRoute: MediaIdIndexRoute,
 }
 
 const MediaIdRouteWithChildren =
@@ -466,11 +523,13 @@ const MediaIdRouteWithChildren =
 interface MediaRouteChildren {
   MediaIdRoute: typeof MediaIdRouteWithChildren
   MediaDownloadRoute: typeof MediaDownloadRoute
+  MediaIndexRoute: typeof MediaIndexRoute
 }
 
 const MediaRouteChildren: MediaRouteChildren = {
   MediaIdRoute: MediaIdRouteWithChildren,
   MediaDownloadRoute: MediaDownloadRoute,
+  MediaIndexRoute: MediaIndexRoute,
 }
 
 const MediaRouteWithChildren = MediaRoute._addFileChildren(MediaRouteChildren)
