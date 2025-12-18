@@ -11,7 +11,7 @@ local_protocol = "http"
 ## Durable Object migrations (inherited by envs)
 [[migrations]]
 tag = "v1-render-job-do"
-new_classes = ["RenderJobDO"]
+new_sqlite_classes = ["RenderJobDO"]
 
 [[migrations]]
 tag = "v2-containers"
