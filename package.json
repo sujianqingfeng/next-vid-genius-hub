@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "next dev --turbopack --hostname 0.0.0.0",
     "dev:host": "next dev --turbopack --hostname 0.0.0.0",
+    "dev:start": "pnpm -C apps/start dev",
     "build": "next build --webpack",
     "start": "next start",
+    "build:start": "pnpm -C apps/start build",
+    "deploy:start": "pnpm -C apps/start deploy",
     "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
@@ -92,7 +95,7 @@
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.0.15",
-    "wrangler": "^4.53.0"
+    "wrangler": "^4.55.0"
   },
   "dependenciesOverrides": {},
   "pnpm": {

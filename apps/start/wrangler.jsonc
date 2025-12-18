@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vid-genius-start",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  // Gray rollout: mount TanStack Start under /__start/*.
+  // Cloudflare will route the more specific pattern here even if the Next worker owns "/*".
+  "routes": [
+    {
+      "pattern": "vid-hub.temp-drop-files.store/__start/*",
+      "zone_name": "temp-drop-files.store"
+    }
+  ]
+}
