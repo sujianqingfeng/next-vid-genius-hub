@@ -7,6 +7,18 @@ export function sendJson(res, code, data) {
   res.end(JSON.stringify(data))
 }
 
+function createSerialQueue() {
+  let tail = Promise.resolve()
+  return (fn) => {
+    const run = async () => fn()
+    // Never break the chain on failures; log and keep going.
+    tail = tail.then(run, run).catch((e) => {
+      console.error('[callbacks] queued task failed:', e?.message || String(e))
+    })
+    return tail
+  }
+}
+
 export async function readJson(req) {
   let raw = ''
   for await (const chunk of req) raw += chunk
@@ -42,7 +54,25 @@ export function sanitizeEngineOptions(engineOptions = {}) {
 }
 
 export function createStatusHelpers({ callbackUrl, secret, jobId, fetchImpl } = {}) {
-  const postUpdate = makeStatusCallback({ callbackUrl, secret, baseFields: { jobId }, fetchImpl })
+  const basePostUpdate = makeStatusCallback({
+    callbackUrl,
+    secret,
+    baseFields: { jobId },
+    fetchImpl,
+  })
+  const enqueue = createSerialQueue()
+  const terminalStatuses = new Set(['completed', 'failed', 'canceled'])
+  let terminal = false
+
+  const postUpdate = async (status, extra = {}) => {
+    if (!callbackUrl) return
+    if (terminal && !terminalStatuses.has(status)) return
+    return enqueue(async () => {
+      if (terminal && !terminalStatuses.has(status)) return
+      await basePostUpdate(status, extra)
+      if (terminalStatuses.has(status)) terminal = true
+    })
+  }
   async function progress(phase, pct) {
     if (!callbackUrl) return
     const status = phase === 'uploading' ? 'uploading' : 'running'
