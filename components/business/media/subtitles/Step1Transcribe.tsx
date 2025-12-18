@@ -203,14 +203,14 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 						</div>
 
 						<div className="space-y-2">
-							<label className="text-sm font-medium block">
-								Language{' '}
-								{selectedModel && !supportsLanguageHint && (
-									<span className="text-xs text-muted-foreground">
-										(当前模型不支持)
-									</span>
-								)}
-							</label>
+								<label className="text-sm font-medium block">
+									Language{' '}
+									{Boolean(selectedModel) && !supportsLanguageHint && (
+										<span className="text-xs text-muted-foreground">
+											(当前模型不支持)
+										</span>
+									)}
+								</label>
 							<Select
 								value={selectedLanguage ?? DEFAULT_TRANSCRIPTION_LANGUAGE}
 								onValueChange={(value) =>
@@ -219,8 +219,8 @@ export function Step1Transcribe(props: Step1TranscribeProps) {
 											DEFAULT_TRANSCRIPTION_LANGUAGE,
 									)
 								}
-								disabled={isPending || (selectedModel && !supportsLanguageHint)}
-							>
+									disabled={isPending || (Boolean(selectedModel) && !supportsLanguageHint)}
+								>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder="Auto detect" />
 								</SelectTrigger>

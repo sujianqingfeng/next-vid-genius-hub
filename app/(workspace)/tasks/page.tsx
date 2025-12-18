@@ -5,11 +5,11 @@ import { getServerQueryClient } from '~/lib/query/client'
 import { HydrateClient } from '~/lib/query/hydration'
 
 type Props = {
-	searchParams?: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>>
+	searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function TasksRoute({ searchParams }: Props) {
-	const params = await Promise.resolve(searchParams ?? {})
+	const params = (await searchParams) ?? {}
 	const targetType =
 		(typeof params.targetType === 'string' && ['media', 'channel', 'system'].includes(params.targetType))
 			? (params.targetType as 'media' | 'channel' | 'system')

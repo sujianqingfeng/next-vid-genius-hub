@@ -57,15 +57,15 @@ import {
 	type RemotionTemplateId,
 } from '~/remotion/templates'
 import type { Comment } from '~/lib/db/schema'
-import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
+	import type { JobStatus } from '@app/media-domain'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 
-type SourceStatus = {
-	status?: string
-	progress?: number
-}
+	type SourceStatus = {
+		status?: JobStatus
+		progress?: number
+	}
 
 export default function CommentsPage() {
 	const t = useTranslations('MediaComments.page')
@@ -97,19 +97,21 @@ export default function CommentsPage() {
 		id: m.id as ChatModelId,
 		label: m.label,
 	}))
-	useQuery({
-		...queryOrpc.ai.getDefaultModel.queryOptions({
+	const llmDefaultQuery = useQuery(
+		queryOrpc.ai.getDefaultModel.queryOptions({
 			input: { kind: 'llm' },
 		}),
-		onSuccess: (data) => {
-			const id = data?.model?.id
-			if (!id) return
-			setModel((m) => (m === DEFAULT_CHAT_MODEL_ID ? (id as ChatModelId) : m))
-			setModModel((m) =>
-				m === DEFAULT_CHAT_MODEL_ID ? (id as ChatModelId) : m,
-			)
-		},
-	})
+	)
+	useEffect(() => {
+		const defaultId = llmDefaultQuery.data?.model?.id
+		if (!defaultId) return
+		setModel((m) =>
+			m === DEFAULT_CHAT_MODEL_ID ? (defaultId as ChatModelId) : m,
+		)
+		setModModel((m) =>
+			m === DEFAULT_CHAT_MODEL_ID ? (defaultId as ChatModelId) : m,
+		)
+	}, [llmDefaultQuery.data?.model?.id])
 
 	// Edit titles dialog
 	const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -128,12 +130,13 @@ export default function CommentsPage() {
 			queryOrpc.comment.getCloudCommentsStatus.queryOptions({
 				input: { jobId },
 				enabled: !!jobId,
-				refetchInterval: (q: { state: { data?: SourceStatus } }) => {
-					const s = q.state.data?.status
-					return s && TERMINAL_JOB_STATUSES.includes(s) ? false : 2000
-				},
-			}),
-	})
+					refetchInterval: (q: { state: { data?: SourceStatus } }) => {
+						const s = q.state.data?.status
+						if (s === 'completed' || s === 'failed' || s === 'canceled') return false
+						return 2000
+					},
+				}),
+		})
 
 	const proxiesQuery = useQuery({
 		...queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
@@ -344,12 +347,13 @@ export default function CommentsPage() {
 			queryOrpc.comment.getRenderStatus.queryOptions({
 				input: { jobId },
 				enabled: !!jobId,
-				refetchInterval: (q: { state: { data?: SourceStatus } }) => {
-					const s = q.state.data?.status
-					return s && TERMINAL_JOB_STATUSES.includes(s) ? false : 2000
-				},
-			}),
-	})
+					refetchInterval: (q: { state: { data?: SourceStatus } }) => {
+						const s = q.state.data?.status
+						if (s === 'completed' || s === 'failed' || s === 'canceled') return false
+						return 2000
+					},
+				}),
+		})
 
 	// Source policy selection for rendering
 	type SourcePolicy = 'auto' | 'original' | 'subtitles'
@@ -448,16 +452,16 @@ export default function CommentsPage() {
 	}, [id, renderProxyId])
 
 	// Extract video source ID from URL
-	const getVideoSourceId = () => {
-		if (!mediaQuery.data?.url) return id
+		const getVideoSourceId = () => {
+			if (!mediaQuery.data?.url) return id
 
-		if (mediaQuery.data.source === MEDIA_SOURCES.YOUTUBE) {
-			return extractVideoId(mediaQuery.data.url)
+			if (mediaQuery.data.source === MEDIA_SOURCES.YOUTUBE) {
+				return extractVideoId(mediaQuery.data.url) || id
+			}
+
+			// For TikTok or other sources, return the URL or a processed identifier
+			return mediaQuery.data.url
 		}
-
-		// For TikTok or other sources, return the URL or a processed identifier
-		return mediaQuery.data.url
-	}
 
 	const cloudRenderStatus = cloudStatusQuery.data as SourceStatus | undefined
 	const renderStatusLabel = cloudRenderStatus?.status ?? 'Starting...'

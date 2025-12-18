@@ -2,7 +2,7 @@
 
 import { History, Plus, Shield, UserCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -30,7 +30,7 @@ export default function AdminUsersPage() {
 		...queryOrpc.admin.listUsers.queryOptions({
 			input: { page, limit: ADMIN_USERS_PAGE_SIZE, q: appliedSearch || undefined },
 		}),
-		keepPreviousData: true,
+		placeholderData: keepPreviousData,
 	})
 
 	const invalidateList = () => qc.invalidateQueries({ queryKey: queryOrpc.admin.listUsers.key() })
@@ -257,11 +257,11 @@ export default function AdminUsersPage() {
 				</CardContent>
 			</Card>
 
-			<Dialog open={Boolean(selectedUserForAdd)} onOpenChange={(open) => !open && setSelectedUserForAdd(null)}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>{t('dialogs.addTitle', { email: selectedUserForAdd?.email })}</DialogTitle>
-					</DialogHeader>
+				<Dialog open={Boolean(selectedUserForAdd)} onOpenChange={(open) => !open && setSelectedUserForAdd(null)}>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>{t('dialogs.addTitle', { email: selectedUserForAdd?.email || '' })}</DialogTitle>
+						</DialogHeader>
 					<div className="space-y-3 py-2">
 						<div className="space-y-2">
 							<label className="text-sm font-medium text-foreground">积分数量</label>

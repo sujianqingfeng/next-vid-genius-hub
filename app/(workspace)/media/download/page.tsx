@@ -25,7 +25,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { orpc } from '~/lib/orpc/client'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
@@ -67,12 +66,14 @@ export default function NewDownloadPage() {
 			return await orpc.download.getCloudDownloadStatus({ jobId: cloudJobId })
 		},
 		enabled: !!cloudJobId,
-		refetchInterval: (query) => {
-			const status = query.state.data?.status
-			if (!status) return 5000
-			return status && TERMINAL_JOB_STATUSES.includes(status) ? false : 5000
-		},
-	})
+			refetchInterval: (query) => {
+				const status = query.state.data?.status
+				if (!status) return 5000
+				if (status === 'completed' || status === 'failed' || status === 'canceled')
+					return false
+				return 5000
+			},
+		})
 
 	const isSubmitting = cloudDownloadMutation.isPending
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -79,9 +79,11 @@ type Editing =
 		}
 
 function ceilDivBigInt(numerator: bigint, denominator: bigint) {
-	if (denominator <= 0n) throw new Error('denominator must be positive')
-	if (numerator <= 0n) return 0n
-	return (numerator + denominator - 1n) / denominator
+	const ZERO = BigInt(0)
+	const ONE = BigInt(1)
+	if (denominator <= ZERO) throw new Error('denominator must be positive')
+	if (numerator <= ZERO) return ZERO
+	return (numerator + denominator - ONE) / denominator
 }
 
 function formatMaybeDate(value: unknown) {
@@ -164,7 +166,7 @@ export default function AdminPointsPricingPage() {
 		...queryOrpc.admin.listPricingRules.queryOptions({
 			input: { page: 1, limit: ADMIN_PRICING_RULES_PAGE_SIZE, resourceType: kind },
 		}),
-		keepPreviousData: true,
+		placeholderData: keepPreviousData,
 	})
 
 	const providersQuery = useQuery({

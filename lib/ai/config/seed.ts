@@ -69,18 +69,18 @@ export async function ensureAiSeeded(db?: DbClient) {
 
 	const now = new Date()
 
-	await database.insert(schema.aiProviders).values(
-		PROVIDER_SEEDS.map((p) => ({
-			slug: p.slug,
-			name: p.name,
-			kind: p.kind,
-			type: p.type,
-			baseUrl: p.baseUrl ?? null,
-			apiKey: null,
-			enabled: true,
-			metadata: null,
-			createdAt: now,
-			updatedAt: now,
+		await database.insert(schema.aiProviders).values(
+			PROVIDER_SEEDS.map((p) => ({
+				slug: p.slug,
+				name: p.name,
+				kind: p.kind,
+				type: p.type,
+				baseUrl: 'baseUrl' in p ? p.baseUrl : null,
+				apiKey: null,
+				enabled: true,
+				metadata: null,
+				createdAt: now,
+				updatedAt: now,
 		})),
 	)
 

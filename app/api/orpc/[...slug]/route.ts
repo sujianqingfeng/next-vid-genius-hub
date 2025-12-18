@@ -7,9 +7,11 @@ export const runtime = 'nodejs'
 
 const handler = new RPCHandler(appRouter, {
 	interceptors: [
-		onError((error: unknown, options: { next: () => any; request?: Request }) => {
-			const method = options.request?.method ?? 'UNKNOWN'
-			const url = options.request?.url ?? 'UNKNOWN'
+		onError((error, options) => {
+			const req = (options as { request?: { method?: unknown; url?: unknown } })
+				.request
+			const method = typeof req?.method === 'string' ? req.method : 'UNKNOWN'
+			const url = typeof req?.url === 'string' ? req.url : 'UNKNOWN'
 
 			if (error instanceof ORPCError) {
 				const json = error.toJSON()

@@ -13,9 +13,11 @@ function applyMinCharge(cost: number, minCharge?: number | null) {
 }
 
 function ceilDivBigInt(numerator: bigint, denominator: bigint): bigint {
-	if (denominator <= 0n) throw new Error('denominator must be positive')
-	if (numerator <= 0n) return 0n
-	return (numerator + denominator - 1n) / denominator
+	const ZERO = BigInt(0)
+	const ONE = BigInt(1)
+	if (denominator <= ZERO) throw new Error('denominator must be positive')
+	if (numerator <= ZERO) return ZERO
+	return (numerator + denominator - ONE) / denominator
 }
 
 async function resolveRule(opts: {

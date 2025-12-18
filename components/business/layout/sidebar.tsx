@@ -252,13 +252,13 @@ export function Sidebar({ className, defaultCollapsed = false }: SidebarProps) {
 								<p className="text-xs text-sidebar-foreground/50 truncate">
 									{me?.user?.email || t('user.loginPrompt')}
 								</p>
-								<Button
-									variant="outline"
-									size="sm"
-									className="h-8 px-2 text-xs"
-									onClick={() => logoutMutation.mutate()}
-									disabled={logoutMutation.isPending}
-								>
+									<Button
+										variant="outline"
+										size="sm"
+										className="h-8 px-2 text-xs"
+										onClick={() => logoutMutation.mutate(undefined)}
+										disabled={logoutMutation.isPending}
+									>
 									<LogOut className="h-3.5 w-3.5 mr-1" />
 									{t('user.logout')}
 								</Button>

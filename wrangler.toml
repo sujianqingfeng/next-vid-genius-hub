@@ -4,6 +4,15 @@ tsconfig = "cloudflare/media-orchestrator/tsconfig.json"
 compatibility_date = "2025-10-19"
 workers_dev = true
 
+## Enable Cloudflare Logs/Observability (useful for debugging 500s)
+[observability]
+enabled = true
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
 [dev]
 port = 8787
 local_protocol = "http"
@@ -157,35 +166,3 @@ bucket_name = "vidgen-render"
 [[env.production.durable_objects.bindings]]
 name = "RENDER_JOB_DO"
 class_name = "RenderJobDO"
-
-# Containers configuration (build and run media engines inside Cloudflare)
-# Requires Workers Paid plan + Containers beta access.
-[[env.production.containers]]
-class_name = "MediaDownloaderContainer"
-image = "containers/media-downloader/Dockerfile"
-image_build_context = "."
-max_instances = 10
-
-[[env.production.containers]]
-class_name = "BurnerFfmpegContainer"
-image = "containers/burner-ffmpeg/Dockerfile"
-image_build_context = "."
-max_instances = 10
-
-[[env.production.containers]]
-class_name = "RendererRemotionContainer"
-image = "containers/renderer-remotion/Dockerfile"
-image_build_context = "."
-max_instances = 5
-
-[[env.production.durable_objects.bindings]]
-name = "MEDIA_DOWNLOADER"
-class_name = "MediaDownloaderContainer"
-
-[[env.production.durable_objects.bindings]]
-name = "BURNER_FFMPEG"
-class_name = "BurnerFfmpegContainer"
-
-[[env.production.durable_objects.bindings]]
-name = "RENDERER_REMOTION"
-class_name = "RendererRemotionContainer"

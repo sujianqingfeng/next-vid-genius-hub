@@ -18,7 +18,7 @@ import {
 } from '~/lib/ai/models'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/query-client'
-import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
+import type { JobStatus } from '@app/media-domain'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 
@@ -193,14 +193,15 @@ export default function ChannelsPage() {
 				{!!listQuery.data?.channels?.length && (
 					<div className="grid gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
 						{listQuery.data.channels.map((ch: ChannelCardProps['ch']) => (
-							<ChannelCard
-								key={ch.id}
-								ch={ch}
-								selectedProxyId={
-									selectedProxyByChannel[ch.id] ?? (ch.defaultProxyId || 'none')
-								}
-								selectedModel={
-									selectedModelByChannel[ch.id] ?? defaultChannelModel
+								<ChannelCard
+									key={ch.id}
+									ch={ch}
+									llmModelOptions={llmModelOptions}
+									selectedProxyId={
+										selectedProxyByChannel[ch.id] ?? (ch.defaultProxyId || 'none')
+									}
+									selectedModel={
+										selectedModelByChannel[ch.id] ?? defaultChannelModel
 								}
 								onSelectProxy={(v) =>
 									setSelectedProxyByChannel((m) => ({ ...m, [ch.id]: v }))
@@ -249,20 +250,21 @@ export default function ChannelsPage() {
 	)
 }
 
-interface ChannelCardProps {
-	ch: {
-		id: string
-		title: string | null
+	interface ChannelCardProps {
+		ch: {
+			id: string
+			title: string | null
 		channelUrl: string
 		channelId: string | null
 		thumbnail: string | null
 		defaultProxyId: string | null
 		lastSyncStatus: string | null
-	}
-	selectedProxyId: string
-	selectedModel: ChatModelId
-	onSelectProxy: (v: string) => void
-	onSelectModel: (v: ChatModelId) => void
+		}
+		llmModelOptions: Array<{ id: ChatModelId; label: string }>
+		selectedProxyId: string
+		selectedModel: ChatModelId
+		onSelectProxy: (v: string) => void
+		onSelectModel: (v: ChatModelId) => void
 	jobId?: string
 	status?: string
 	setStatus: (s: string) => void
@@ -274,12 +276,13 @@ interface ChannelCardProps {
 	deleting?: boolean
 }
 
-function ChannelCard({
-	ch,
-	selectedProxyId,
-	selectedModel,
-	onSelectProxy,
-	onSelectModel,
+	function ChannelCard({
+		ch,
+		llmModelOptions,
+		selectedProxyId,
+		selectedModel,
+		onSelectProxy,
+		onSelectModel,
 	jobId,
 	status,
 	setStatus,
@@ -306,17 +309,25 @@ function ChannelCard({
 					queryFn: async () => null,
 				}),
 		enabled: !!jobId,
-		refetchInterval: (q) => {
-			if (!jobId) return false
-			const s = (q.state?.data as { status?: string })?.status
-			if (!s) return 1500
-			return s && TERMINAL_JOB_STATUSES.includes(s) ? false : 1500
-		},
-	})
-	const statusValue = (statusQuery?.data as { status?: string; progress?: number } | null)?.status
+			refetchInterval: (q) => {
+				if (!jobId) return false
+				const s = (q.state?.data as { status?: JobStatus })?.status
+				if (!s) return 1500
+				if (s === 'completed' || s === 'failed' || s === 'canceled') return false
+				return 1500
+			},
+		})
+		const statusValue = (statusQuery?.data as { status?: JobStatus; progress?: number } | null)?.status
+		const effectiveStatus = statusValue ?? status
+		const isSyncing =
+			Boolean(jobId) &&
+			!!effectiveStatus &&
+			effectiveStatus !== 'completed' &&
+			effectiveStatus !== 'failed' &&
+			effectiveStatus !== 'canceled'
 
-	// Only propagate status changes when the value actually changes to avoid update loops.
-	React.useEffect(() => {
+		// Only propagate status changes when the value actually changes to avoid update loops.
+		React.useEffect(() => {
 		const s = statusValue
 		// Guard: update parent status map only when it differs from current prop
 		if (s && s !== status) {

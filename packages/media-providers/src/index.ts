@@ -224,14 +224,15 @@ export async function listChannelVideos(params: {
 
   let resolvedChannelId = extractChannelIdFromInput(channelUrlOrId)
   if (!resolvedChannelId) {
-    try {
-      const searchRes = await youtube.search(channelUrlOrId, { type: 'channel' })
-      const first = (searchRes?.results || searchRes?.items || []).find((x: any) => x?.type === 'channel' || Boolean(x?.id))
-      const cand = (first && (first.id || first.channel_id || first.channelId)) as string | undefined
-      if (cand && cand.startsWith('UC')) resolvedChannelId = cand
-    } catch (e) {
-      logger?.warn?.('[media-providers] channel-list: search resolve failed', e)
-    }
+	    try {
+	      const searchRes = await youtube.search(channelUrlOrId, { type: 'channel' })
+	      const searchAny = searchRes as any
+	      const first = (searchAny?.results || searchAny?.items || []).find((x: any) => x?.type === 'channel' || Boolean(x?.id))
+	      const cand = (first && (first.id || first.channel_id || first.channelId)) as string | undefined
+	      if (cand && cand.startsWith('UC')) resolvedChannelId = cand
+	    } catch (e) {
+	      logger?.warn?.('[media-providers] channel-list: search resolve failed', e)
+	    }
   }
 
   const results: ChannelListItem[] = []

@@ -93,3 +93,4 @@ cloudflare/**/dist
 .knip-output.json
 .tsprune.txt
 .unimported.json
+.open-next
