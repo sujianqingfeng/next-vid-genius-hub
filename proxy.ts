@@ -13,7 +13,7 @@ function decodeBase64(input: string): string {
 	return atob(input)
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
 	const enabled = process.env.WORKSPACE_PROTECT === '1'
 	if (!enabled) return NextResponse.next()
 
@@ -54,4 +54,3 @@ export function middleware(req: NextRequest) {
 export const config = {
 	matcher: ['/media/:path*', '/proxy/:path*', '/api/:path*'],
 }
-
