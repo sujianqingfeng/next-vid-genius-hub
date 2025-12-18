@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startJsonServer, createStatusHelpers, sendJson } from './shared.mjs'
 import { renderVideoWithSubtitles } from '@app/media-subtitles'
+import { verifyHmacSHA256 } from '@app/job-callbacks'
 
 const PORT = process.env.PORT || 8080
 
@@ -12,16 +13,22 @@ const PORT = process.env.PORT || 8080
 async function handleRender(req, res) {
   let body = ''
   for await (const chunk of req) body += chunk
+  const secret = process.env.JOB_CALLBACK_HMAC_SECRET
+  if (!secret) {
+    throw new Error('JOB_CALLBACK_HMAC_SECRET is required')
+  }
+  const sig = String(req.headers['x-signature'] || '')
+  if (!verifyHmacSHA256(secret, body, sig)) {
+    console.warn('[render] unauthorized request: invalid signature')
+    return sendJson(res, 401, { error: 'unauthorized' })
+  }
+
   const payload = JSON.parse(body)
   const jobId = payload?.jobId || `job_${Math.random().toString(36).slice(2, 10)}`
   console.log(`[render] job=${jobId} engineOptions=${JSON.stringify(payload.engineOptions || {})}`)
   sendJson(res, 202, { jobId })
 
   const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {}, callbackUrl } = payload
-  const secret = process.env.JOB_CALLBACK_HMAC_SECRET
-  if (!secret) {
-    throw new Error('JOB_CALLBACK_HMAC_SECRET is required')
-  }
   const { postUpdate, progress } = createStatusHelpers({ callbackUrl, secret, jobId })
 
   if (!inputVideoUrl || !inputVttUrl || !outputPutUrl) {

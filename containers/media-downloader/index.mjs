@@ -5,6 +5,7 @@ import { readFileSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import { sendJson, sanitizeEngineOptions, createStatusHelpers, uploadArtifact, ensureDirExists, startJsonServer } from "./shared.mjs";
+import { verifyHmacSHA256 } from "@app/job-callbacks";
 // Compose pipelines via shared @app/media-* packages
 // Compose pipelines with shared adapters from the monorepo packages
 import {
@@ -56,6 +57,12 @@ function parseNumber(value, fallback) {
 async function handleRender(req, res) {
   let body = "";
   for await (const chunk of req) body += chunk;
+  const sig = String(req.headers["x-signature"] || "");
+  if (!verifyHmacSHA256(CALLBACK_SECRET, body, sig)) {
+    console.warn("[media-downloader] unauthorized request: invalid signature");
+    return sendJson(res, 401, { error: "unauthorized" });
+  }
+
   const payload = JSON.parse(body);
   const {
     jobId = `job_${Math.random().toString(36).slice(2, 10)}`,

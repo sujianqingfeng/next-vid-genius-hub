@@ -1,0 +1,60 @@
+services:
+  burner-ffmpeg:
+    build:
+      context: .
+      dockerfile: containers/burner-ffmpeg/Dockerfile
+      args:
+        # Override mirrors if your Dockploy host is not in CN.
+        BASE_NODE_IMAGE: node:18-slim
+        DEBIAN_MIRROR: http://deb.debian.org/debian
+        DEBIAN_SECURITY_MIRROR: http://security.debian.org/debian-security
+        NPM_REGISTRY: https://registry.npmjs.org
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      # Must match Cloudflare Worker `JOB_CALLBACK_HMAC_SECRET`
+      JOB_CALLBACK_HMAC_SECRET: ${JOB_CALLBACK_HMAC_SECRET}
+    # Expose only if your orchestrator calls it over public internet
+    ports:
+      - "9080:8080"
+    restart: unless-stopped
+
+  renderer-remotion:
+    build:
+      context: .
+      dockerfile: containers/renderer-remotion/Dockerfile
+      args:
+        BASE_NODE_IMAGE: node:22-bookworm-slim
+        DEBIAN_MIRROR: http://deb.debian.org/debian
+        DEBIAN_SECURITY_MIRROR: http://security.debian.org/debian-security
+        NPM_REGISTRY: https://registry.npmjs.org
+    environment:
+      NODE_ENV: production
+      PORT: "8190"
+      JOB_CALLBACK_HMAC_SECRET: ${JOB_CALLBACK_HMAC_SECRET}
+    ports:
+      - "8190:8190"
+    # Chromium/Remotion is sensitive to small /dev/shm
+    shm_size: "1gb"
+    restart: unless-stopped
+
+  media-downloader:
+    build:
+      context: .
+      dockerfile: containers/media-downloader/Dockerfile
+      args:
+        BASE_NODE_IMAGE: node:22-slim
+        DEBIAN_MIRROR: http://deb.debian.org/debian
+        DEBIAN_SECURITY_MIRROR: http://security.debian.org/debian-security
+        NPM_REGISTRY: https://registry.npmjs.org
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      JOB_CALLBACK_HMAC_SECRET: ${JOB_CALLBACK_HMAC_SECRET}
+      # Optional proxy settings
+      CLASH_SUBSCRIPTION_URL: ${CLASH_SUBSCRIPTION_URL:-}
+      CLASH_MODE: ${CLASH_MODE:-Rule}
+      MIHOMO_PORT: ${MIHOMO_PORT:-7890}
+    ports:
+      - "8100:8080"
+    restart: unless-stopped

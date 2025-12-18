@@ -7,6 +7,7 @@ import { startJsonServer, createStatusHelpers, sanitizeEngineOptions, sendJson }
 import { fetch as undiciFetch } from "undici";
 import { bundle } from "@remotion/bundler";
 import { getCompositions, renderMedia } from "@remotion/renderer";
+import { verifyHmacSHA256 } from "@app/job-callbacks";
 import {
   buildCommentTimeline,
   REMOTION_FPS,
@@ -98,13 +99,19 @@ async function execFFmpegWithProgress(args, totalDurationSeconds) {
 async function handleRender(req, res) {
   let body = "";
   for await (const chunk of req) body += chunk;
-  const payload = JSON.parse(body);
-  const jobId =
-    payload?.jobId || `job_${Math.random().toString(36).slice(2, 10)}`;
   const secret = process.env.JOB_CALLBACK_HMAC_SECRET;
   if (!secret) {
     throw new Error("JOB_CALLBACK_HMAC_SECRET is required");
   }
+  const sig = String(req.headers["x-signature"] || "");
+  if (!verifyHmacSHA256(secret, body, sig)) {
+    console.warn("[remotion] unauthorized request: invalid signature");
+    return sendJson(res, 401, { error: "unauthorized" });
+  }
+
+  const payload = JSON.parse(body);
+  const jobId =
+    payload?.jobId || `job_${Math.random().toString(36).slice(2, 10)}`;
   const cbUrl = payload?.callbackUrl;
   const engineOptions = payload?.engineOptions || {};
   const safeEngineOptions = sanitizeEngineOptions(engineOptions);

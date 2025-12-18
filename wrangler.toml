@@ -128,7 +128,11 @@ name = "media-orchestrator"
 
 [env.production.vars]
 # 默认使用 Cloudflare Containers（如需外部容器平台，将此设为 "true" 并配置 CONTAINER_BASE_URL*）
-PREFER_EXTERNAL_CONTAINERS = "false"
+PREFER_EXTERNAL_CONTAINERS = "true"
+# Dockploy external containers (public base URLs)
+CONTAINER_BASE_URL = "https://burner.temp-drop-files.store"
+CONTAINER_BASE_URL_REMOTION = "https://remotion.temp-drop-files.store"
+CONTAINER_BASE_URL_DOWNLOADER = "https://downloader.temp-drop-files.store"
 # Worker 回调 Next：务必替换为你的生产域名
 NEXT_BASE_URL = "https://<your-next-app-domain>"
 # 建议通过 `wrangler secret put JOB_CALLBACK_HMAC_SECRET` 注入；此处仅占位

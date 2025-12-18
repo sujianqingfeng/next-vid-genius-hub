@@ -6,7 +6,7 @@ import { readObjectTextWithFallback } from '../storage/fallback'
 import { s3Head } from '../storage/s3'
 import { json } from '../utils/http'
 import { jobStub } from '../utils/job'
-import { requireJobCallbackSecret, verifyHmac } from '../utils/hmac'
+import { hmacHex, requireJobCallbackSecret, verifyHmac } from '../utils/hmac'
 
 async function readJobManifest(env: Env, jobId: string): Promise<JobManifest | null> {
 	const key = bucketPaths.manifests.job(jobId)
@@ -314,14 +314,22 @@ export async function handleStart(env: Env, req: Request) {
 	const contBinding = preferExternal
 		? undefined
 		: bindingForEngine(body.engine)
+
+	// Sign the container request body so external engines can verify caller authenticity.
+	const payloadText = JSON.stringify(payload)
+	const containerSig = await hmacHex(secret, payloadText)
+	const containerHeaders = {
+		'content-type': 'application/json',
+		'x-signature': containerSig,
+	}
 	try {
 		if (contBinding) {
 			// Use jobId as the container session key so each job gets its own instance
 			const inst = getContainer(contBinding, jobId)
 			const reqToContainer = new Request('http://container/render', {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(payload),
+				headers: containerHeaders,
+				body: payloadText,
 			})
 			res = await inst.fetch(reqToContainer)
 			console.log(
@@ -335,8 +343,8 @@ export async function handleStart(env: Env, req: Request) {
 			// Fire-and-forget HTTP call to external container host
 			res = await fetch(`${containerBase}/render`, {
 				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(payload),
+				headers: containerHeaders,
+				body: payloadText,
 			})
 			console.log(
 				'[orchestrator] start job',
