@@ -123,15 +123,22 @@ function summariseRawMetadata(raw: unknown): MetadataSummary {
 // Expected body expands per engine type (renderers keep remote references, downloader hydrates local files)
 
 export async function POST(req: NextRequest) {
-  try {
-    const signature = req.headers.get('x-signature') || ''
-    const bodyText = await req.text()
+	  try {
+	    const signature = req.headers.get('x-signature') || ''
+	    const bodyText = await req.text()
 
-    const secret = JOB_CALLBACK_HMAC_SECRET || 'replace-with-strong-secret'
-    if (!verifyHmacSHA256(secret, bodyText, signature)) {
-      logger.error('api', '[cf-callback] invalid signature')
-      return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
-    }
+	    const secret = JOB_CALLBACK_HMAC_SECRET
+	    if (!secret) {
+	      logger.error('api', '[cf-callback] JOB_CALLBACK_HMAC_SECRET is not configured')
+	      return NextResponse.json(
+	        { error: 'server misconfigured' },
+	        { status: 500 },
+	      )
+	    }
+	    if (!verifyHmacSHA256(secret, bodyText, signature)) {
+	      logger.error('api', '[cf-callback] invalid signature')
+	      return NextResponse.json({ error: 'invalid signature' }, { status: 401 })
+	    }
 
     const payload = JSON.parse(bodyText) as CallbackPayload
 
