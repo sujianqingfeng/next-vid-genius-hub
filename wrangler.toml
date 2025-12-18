@@ -148,8 +148,7 @@ S3_REGION = "us-east-1"
 
 [[env.production.kv_namespaces]]
 binding = "JOBS"
-# TODO: replace with your real KV namespace ID
-id = "REPLACE_WITH_PROD_JOBS_NAMESPACE_ID"
+id = "5e1efb6e74bf4fd7ba4842ea7f3f0c9c"
 
 [[env.production.r2_buckets]]
 binding = "RENDER_BUCKET"
