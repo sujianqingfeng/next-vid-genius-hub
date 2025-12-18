@@ -135,8 +135,8 @@ CONTAINER_BASE_URL_REMOTION = "https://remotion.temp-drop-files.store"
 CONTAINER_BASE_URL_DOWNLOADER = "https://downloader.temp-drop-files.store"
 # Worker 回调 Next：务必替换为你的生产域名
 NEXT_BASE_URL = "https://vid-hub.temp-drop-files.store"
-# 建议通过 `wrangler secret put JOB_CALLBACK_HMAC_SECRET` 注入；此处仅占位
-JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
+# 建议通过 `wrangler secret put JOB_CALLBACK_HMAC_SECRET` 注入（不要在 vars 里明文配置）
+# JOB_CALLBACK_HMAC_SECRET = "..."
 # 预签名 PUT 有效期（秒）
 PUT_EXPIRES = 1800
 # R2 直连（S3 兼容）
