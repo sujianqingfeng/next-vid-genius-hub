@@ -134,7 +134,7 @@ CONTAINER_BASE_URL = "https://burner.temp-drop-files.store"
 CONTAINER_BASE_URL_REMOTION = "https://remotion.temp-drop-files.store"
 CONTAINER_BASE_URL_DOWNLOADER = "https://downloader.temp-drop-files.store"
 # Worker 回调 Next：务必替换为你的生产域名
-NEXT_BASE_URL = "https://temp-drop-files.store"
+NEXT_BASE_URL = "https://vid-hub.temp-drop-files.store"
 # 建议通过 `wrangler secret put JOB_CALLBACK_HMAC_SECRET` 注入；此处仅占位
 JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 # 预签名 PUT 有效期（秒）
