@@ -1,6 +1,6 @@
 # Use DaoCloud mirror by default; override with --build-arg BASE_NODE_IMAGE=<registry>/<repo>:<tag> when needed.
 ARG BASE_NODE_IMAGE=docker.m.daocloud.io/library/node:22-slim
-FROM ${BASE_NODE_IMAGE}
+FROM ${BASE_NODE_IMAGE} AS base
 
 ARG MIHOMO_VERSION=1.18.10
 # Use the "compatible" build by default to run on CPUs without x86-64-v3/AVX2.
@@ -44,12 +44,36 @@ RUN curl -fL -o /tmp/mihomo.gz "https://github.com/MetaCubeX/mihomo/releases/dow
   && chmod +x /usr/local/bin/mihomo
 
 WORKDIR /app
+
+# ---- builder: build local @app/* packages (dist/ not committed) ----
+FROM base AS builder
+
 # Install with monorepo local package dependency
 # Expect build context at repo root so these COPY paths are valid
+COPY tsconfig.json ./tsconfig.json
+COPY tsconfig.packages.json ./tsconfig.packages.json
 COPY containers/media-downloader/package.json ./package.json
 COPY packages/media-core ./packages/media-core
 COPY packages/media-node ./packages/media-node
 COPY packages/media-providers ./packages/media-providers
+COPY packages/job-callbacks ./packages/job-callbacks
+
+RUN npm config set registry ${NPM_REGISTRY}
+RUN npm install
+RUN npm install --no-save tsdown typescript
+RUN npm --prefix packages/media-core run build
+RUN npm --prefix packages/media-node run build
+RUN npm --prefix packages/media-providers run build
+
+# ---- runtime ----
+FROM base AS runtime
+
+# Install with monorepo local package dependency
+# Expect build context at repo root so these COPY paths are valid
+COPY containers/media-downloader/package.json ./package.json
+COPY --from=builder /app/packages/media-core ./packages/media-core
+COPY --from=builder /app/packages/media-node ./packages/media-node
+COPY --from=builder /app/packages/media-providers ./packages/media-providers
 COPY packages/job-callbacks ./packages/job-callbacks
 RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev

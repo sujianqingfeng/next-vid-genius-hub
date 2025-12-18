@@ -1,5 +1,6 @@
 ARG BASE_NODE_IMAGE=docker.m.daocloud.io/library/node:18-slim
-FROM ${BASE_NODE_IMAGE}
+ARG BUILDER_NODE_IMAGE=docker.m.daocloud.io/library/node:22-slim
+FROM ${BASE_NODE_IMAGE} AS base
 ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security
 ARG NPM_REGISTRY=https://registry.npmmirror.com
@@ -25,9 +26,28 @@ RUN set -eux; \
 
 WORKDIR /app
 
+# ---- builder: build local @app/* packages (dist/ not committed) ----
+FROM ${BUILDER_NODE_IMAGE} AS builder
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+
+WORKDIR /app
+
 # Install container deps and local monorepo packages needed at runtime
+COPY tsconfig.json ./tsconfig.json
+COPY tsconfig.packages.json ./tsconfig.packages.json
 COPY containers/burner-ffmpeg/package.json ./package.json
 COPY packages/media-subtitles ./packages/media-subtitles
+COPY packages/job-callbacks ./packages/job-callbacks
+RUN npm config set registry ${NPM_REGISTRY}
+RUN npm install
+RUN npm install --no-save tsdown typescript
+RUN npm --prefix packages/media-subtitles run build
+
+# ---- runtime ----
+FROM base AS runtime
+
+COPY containers/burner-ffmpeg/package.json ./package.json
+COPY --from=builder /app/packages/media-subtitles ./packages/media-subtitles
 COPY packages/job-callbacks ./packages/job-callbacks
 RUN npm config set registry ${NPM_REGISTRY}
 RUN npm install --omit=dev

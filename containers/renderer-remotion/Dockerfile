@@ -1,6 +1,6 @@
 # Use DaoCloud mirror by default; override with BASE_NODE_IMAGE if needed
 ARG BASE_NODE_IMAGE=docker.m.daocloud.io/library/node:22-bookworm-slim
-FROM ${BASE_NODE_IMAGE}
+FROM ${BASE_NODE_IMAGE} AS base
 
 ARG MIHOMO_VERSION=1.18.10
 ARG MIHOMO_PLATFORM=linux-amd64-compatible
@@ -38,12 +38,32 @@ RUN curl -fL -o /tmp/mihomo.gz "https://github.com/MetaCubeX/mihomo/releases/dow
 
 WORKDIR /app
 
+# ---- builder: build local @app/* packages (dist/ not committed) ----
+FROM base AS builder
+
 # Install minimal deps first for better layer caching
 # When building with context at repo root, copy the container's manifest
+COPY tsconfig.json ./tsconfig.json
+COPY tsconfig.packages.json ./tsconfig.packages.json
 COPY containers/renderer-remotion/package.json ./package.json
 # Bring in local workspace package for installation via file: dependency
 COPY packages/media-comments ./packages/media-comments
 COPY packages/media-core ./packages/media-core
+COPY packages/job-callbacks ./packages/job-callbacks
+RUN npm config set registry ${NPM_REGISTRY}
+RUN npm i
+RUN npm install --no-save tsdown typescript
+RUN npm --prefix packages/media-comments run build
+RUN npm --prefix packages/media-core run build
+
+RUN mkdir -p /app/clash /app/clash/providers
+
+# ---- runtime ----
+FROM base AS runtime
+
+COPY containers/renderer-remotion/package.json ./package.json
+COPY --from=builder /app/packages/media-comments ./packages/media-comments
+COPY --from=builder /app/packages/media-core ./packages/media-core
 COPY packages/job-callbacks ./packages/job-callbacks
 RUN npm config set registry ${NPM_REGISTRY}
 RUN npm i --omit=dev

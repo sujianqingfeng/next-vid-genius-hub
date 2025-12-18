@@ -107,6 +107,9 @@ export function startJsonServer(port, handler, label = 'service') {
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, `http://localhost:${port}`)
+      if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
+        return sendJson(res, 200, { ok: true, service: label })
+      }
       if (req.method === 'POST' && url.pathname === '/render') return handler(req, res)
       return sendJson(res, 404, { error: 'not found' })
     } catch (e) {

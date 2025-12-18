@@ -6,6 +6,7 @@ services:
       args:
         # Override mirrors if your Dockploy host is not in CN.
         BASE_NODE_IMAGE: node:18-slim
+        BUILDER_NODE_IMAGE: node:22-slim
         DEBIAN_MIRROR: http://deb.debian.org/debian
         DEBIAN_SECURITY_MIRROR: http://security.debian.org/debian-security
         NPM_REGISTRY: https://registry.npmjs.org
