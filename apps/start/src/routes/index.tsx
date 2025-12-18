@@ -1,118 +1,92 @@
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  Zap,
-  Server,
-  Route as RouteIcon,
-  Shield,
-  Waves,
-  Sparkles,
-} from 'lucide-react'
+import { ArrowRight, Download, MessageSquare, Play } from 'lucide-react'
 
-export const Route = createFileRoute('/')({ component: App })
+import LanguageToggle from '../components/LanguageToggle'
+import { useTranslations } from '../integrations/i18n'
 
-function App() {
-  const features = [
-    {
-      icon: <Zap className="w-12 h-12 text-cyan-400" />,
-      title: 'Powerful Server Functions',
-      description:
-        'Write server-side code that seamlessly integrates with your client components. Type-safe, secure, and simple.',
-    },
-    {
-      icon: <Server className="w-12 h-12 text-cyan-400" />,
-      title: 'Flexible Server Side Rendering',
-      description:
-        'Full-document SSR, streaming, and progressive enhancement out of the box. Control exactly what renders where.',
-    },
-    {
-      icon: <RouteIcon className="w-12 h-12 text-cyan-400" />,
-      title: 'API Routes',
-      description:
-        'Build type-safe API endpoints alongside your application. No separate backend needed.',
-    },
-    {
-      icon: <Shield className="w-12 h-12 text-cyan-400" />,
-      title: 'Strongly Typed Everything',
-      description:
-        'End-to-end type safety from server to client. Catch errors before they reach production.',
-    },
-    {
-      icon: <Waves className="w-12 h-12 text-cyan-400" />,
-      title: 'Full Streaming Support',
-      description:
-        'Stream data from server to client progressively. Perfect for AI applications and real-time updates.',
-    },
-    {
-      icon: <Sparkles className="w-12 h-12 text-cyan-400" />,
-      title: 'Next Generation Ready',
-      description:
-        'Built from the ground up for modern web applications. Deploy anywhere JavaScript runs.',
-    },
-  ]
+import { Button } from '~/components/ui/button'
+
+export const Route = createFileRoute('/')({ component: Home })
+
+function Home() {
+  const t = useTranslations('Home')
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-      <section className="relative py-20 px-6 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10"></div>
-        <div className="relative max-w-5xl mx-auto">
-          <div className="flex items-center justify-center gap-6 mb-6">
-            <img
-              src="/tanstack-circle-logo.png"
-              alt="TanStack Logo"
-              className="w-24 h-24 md:w-32 md:h-32"
-            />
-            <h1 className="text-6xl md:text-7xl font-black text-white [letter-spacing:-0.08em]">
-              <span className="text-gray-300">TANSTACK</span>{' '}
-              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                START
-              </span>
-            </h1>
+    <div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
+      <div className="px-4 py-24 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-secondary/80 to-transparent -z-10 pointer-events-none" />
+
+        <div className="max-w-5xl mx-auto relative z-10">
+          <div className="flex justify-end mb-8">
+            <LanguageToggle />
           </div>
-          <p className="text-2xl md:text-3xl text-gray-300 mb-4 font-light">
-            The framework for next generation AI applications
-          </p>
-          <p className="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
-            Full-stack framework powered by TanStack Router for React and Solid.
-            Build modern applications with server functions, streaming, and type
-            safety.
-          </p>
-          <div className="flex flex-col items-center gap-4">
-            <a
-              href="https://tanstack.com/start"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
-            >
-              Documentation
-            </a>
-            <p className="text-gray-400 text-sm mt-2">
-              Begin your TanStack Start journey by editing{' '}
-              <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">
-                /src/routes/index.tsx
-              </code>
+
+          <div className="text-center mb-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="inline-flex items-center justify-center p-2 mb-8 rounded-full bg-secondary/50 backdrop-blur-sm border border-border/50">
+              <span className="px-3 py-1 text-xs font-medium tracking-wide uppercase text-muted-foreground">
+                {t('badge')}
+              </span>
+            </div>
+            <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-foreground mb-8">
+              {t('title')}
+            </h1>
+            <p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-light">
+              {t('hero')}
             </p>
           </div>
-        </div>
-      </section>
 
-      <section className="py-16 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10"
+          <div className="flex justify-center mb-32 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+            <Button
+              size="lg"
+              className="h-14 px-10 rounded-full text-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+              asChild
             >
-              <div className="mb-4">{feature.icon}</div>
-              <h3 className="text-xl font-semibold text-white mb-3">
-                {feature.title}
+              <a href="/media">
+                {t('cta')}
+                <ArrowRight className="ml-2 h-5 w-5" strokeWidth={1.5} />
+              </a>
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+            <div className="group p-8 rounded-3xl glass hover:bg-white/80 transition-all duration-300 hover:-translate-y-1">
+              <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <Play className="h-7 w-7 text-foreground" strokeWidth={1.5} />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                {t('features.processing.title')}
               </h3>
-              <p className="text-gray-400 leading-relaxed">
-                {feature.description}
+              <p className="text-muted-foreground leading-relaxed">
+                {t('features.processing.desc')}
               </p>
             </div>
-          ))}
+
+            <div className="group p-8 rounded-3xl glass hover:bg-white/80 transition-all duration-300 hover:-translate-y-1">
+              <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <Download className="h-7 w-7 text-foreground" strokeWidth={1.5} />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                {t('features.downloads.title')}
+              </h3>
+              <p className="text-muted-foreground leading-relaxed">
+                {t('features.downloads.desc')}
+              </p>
+            </div>
+
+            <div className="group p-8 rounded-3xl glass hover:bg-white/80 transition-all duration-300 hover:-translate-y-1">
+              <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <MessageSquare className="h-7 w-7 text-foreground" strokeWidth={1.5} />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                {t('features.comments.title')}
+              </h3>
+              <p className="text-muted-foreground leading-relaxed">
+                {t('features.comments.desc')}
+              </p>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   )
 }

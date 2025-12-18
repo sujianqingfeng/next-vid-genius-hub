@@ -1,12 +1,21 @@
 import {
   HeadContent,
+  Outlet,
   Scripts,
   createRootRouteWithContext,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import Header from '../components/Header'
+import {
+  DEFAULT_LOCALE,
+  getInitialI18n,
+  getMessages,
+  I18nProvider,
+} from '../integrations/i18n'
+import { Toaster } from 'sonner'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
@@ -19,6 +28,7 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+  loader: async () => getInitialI18n(),
   head: () => ({
     meta: [
       {
@@ -29,7 +39,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'TanStack Start Starter',
+        title: 'Vid Genius (Start)',
       },
     ],
     links: [
@@ -40,8 +50,36 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ],
   }),
 
+  component: RootLayout,
   shellComponent: RootDocument,
 })
+
+function RootLayout() {
+  const data = Route.useLoaderData()
+  const locale = data?.locale ?? DEFAULT_LOCALE
+  const messages = data?.messages ?? getMessages(locale)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const hideHeader = pathname === '/login' || pathname.endsWith('/login')
+  return (
+    <I18nProvider locale={locale} messages={messages}>
+      {!hideHeader ? <Header /> : null}
+      <Outlet />
+      <Toaster richColors />
+      <TanStackDevtools
+        config={{
+          position: 'bottom-right',
+        }}
+        plugins={[
+          {
+            name: 'Tanstack Router',
+            render: <TanStackRouterDevtoolsPanel />,
+          },
+          TanStackQueryDevtools,
+        ]}
+      />
+    </I18nProvider>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -50,20 +88,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Header />
         {children}
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-            TanStackQueryDevtools,
-          ]}
-        />
         <Scripts />
       </body>
     </html>

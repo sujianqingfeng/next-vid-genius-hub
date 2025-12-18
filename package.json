@@ -13,6 +13,8 @@
     "lint": "eslint .",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
+    "db:d1:migrate:local": "wrangler --config wrangler.json d1 migrations apply vidgen_app --local",
+    "db:d1:list:local": "wrangler --config wrangler.json d1 migrations list vidgen_app --local",
     "db:d1:migrate:remote": "wrangler --config wrangler.json d1 migrations apply vidgen_app --remote",
     "db:d1:list:remote": "wrangler --config wrangler.json d1 migrations list vidgen_app --remote",
     "test": "vitest run",

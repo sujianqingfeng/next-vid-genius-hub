@@ -26,21 +26,45 @@ export async function buildRequestContext(request: Request): Promise<RequestCont
 	const responseCookies: string[] = []
 
 	if (token) {
-		const db = await getDb()
-		const session = await findSessionByToken(token, db)
-		if (session) {
-			const user = await db.query.users.findFirst({
-				where: eq(schema.users.id, session.userId),
-			})
-			if (user && user.status !== 'banned') {
-				auth = { user, session }
+		try {
+			const db = await getDb()
+			const session = await findSessionByToken(token, db)
+			if (session) {
+				const user = await db.query.users.findFirst({
+					where: eq(schema.users.id, session.userId),
+				})
+				if (user && user.status !== 'banned') {
+					auth = { user, session }
+				} else {
+					responseCookies.push(createClearSessionCookie())
+				}
 			} else {
 				responseCookies.push(createClearSessionCookie())
 			}
-		} else {
-			responseCookies.push(createClearSessionCookie())
+		} catch (error) {
+			// When the local D1 schema hasn't been migrated yet, stale cookies can
+			// break all requests. Clear the cookie and continue as anonymous.
+			if (isDbSchemaNotReadyError(error)) {
+				responseCookies.push(createClearSessionCookie())
+			} else {
+				throw error
+			}
 		}
 	}
 
 	return { auth, responseCookies }
+}
+
+function isDbSchemaNotReadyError(error: unknown) {
+	const message = error instanceof Error ? error.message : String(error)
+	if (message.includes('Cloudflare D1 数据库未初始化')) return true
+	if (message.includes('no such table: sessions')) return true
+	if (message.includes('no such table: users')) return true
+
+	const cause = error instanceof Error ? (error as { cause?: unknown }).cause : undefined
+	const causeMessage = cause instanceof Error ? cause.message : String(cause ?? '')
+	if (causeMessage.includes('no such table: sessions')) return true
+	if (causeMessage.includes('no such table: users')) return true
+
+	return false
 }
