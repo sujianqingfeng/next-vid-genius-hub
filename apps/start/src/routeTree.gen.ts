@@ -9,11 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as ProxyRouteImport } from './routes/proxy'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PointsRouteImport } from './routes/points'
+import { Route as MediaRouteImport } from './routes/media'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ChannelsRouteImport } from './routes/channels'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MediaDownloadRouteImport } from './routes/media.download'
+import { Route as MediaIdRouteImport } from './routes/media.$id'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoOrpcTodoRouteImport } from './routes/demo/orpc-todo'
+import { Route as MediaIdSubtitlesRouteImport } from './routes/media.$id.subtitles'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiTqTodosRouteImport } from './routes/demo/api.tq-todos'
@@ -23,9 +31,29 @@ import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
 
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProxyRoute = ProxyRouteImport.update({
+  id: '/proxy',
+  path: '/proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PointsRoute = PointsRouteImport.update({
+  id: '/points',
+  path: '/points',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -33,10 +61,25 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChannelsRoute = ChannelsRouteImport.update({
+  id: '/channels',
+  path: '/channels',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const MediaDownloadRoute = MediaDownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => MediaRoute,
+} as any)
+const MediaIdRoute = MediaIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => MediaRoute,
 } as any)
 const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
   id: '/demo/tanstack-query',
@@ -47,6 +90,11 @@ const DemoOrpcTodoRoute = DemoOrpcTodoRouteImport.update({
   id: '/demo/orpc-todo',
   path: '/demo/orpc-todo',
   getParentRoute: () => rootRouteImport,
+} as any)
+const MediaIdSubtitlesRoute = MediaIdSubtitlesRouteImport.update({
+  id: '/subtitles',
+  path: '/subtitles',
+  getParentRoute: () => MediaIdRoute,
 } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
@@ -91,14 +139,22 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/channels': typeof ChannelsRoute
   '/login': typeof LoginRoute
+  '/media': typeof MediaRouteWithChildren
+  '/points': typeof PointsRoute
   '/privacy': typeof PrivacyRoute
+  '/proxy': typeof ProxyRoute
+  '/tasks': typeof TasksRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/media/$id': typeof MediaIdRouteWithChildren
+  '/media/download': typeof MediaDownloadRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -106,14 +162,22 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/channels': typeof ChannelsRoute
   '/login': typeof LoginRoute
+  '/media': typeof MediaRouteWithChildren
+  '/points': typeof PointsRoute
   '/privacy': typeof PrivacyRoute
+  '/proxy': typeof ProxyRoute
+  '/tasks': typeof TasksRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/media/$id': typeof MediaIdRouteWithChildren
+  '/media/download': typeof MediaDownloadRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -122,14 +186,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/channels': typeof ChannelsRoute
   '/login': typeof LoginRoute
+  '/media': typeof MediaRouteWithChildren
+  '/points': typeof PointsRoute
   '/privacy': typeof PrivacyRoute
+  '/proxy': typeof ProxyRoute
+  '/tasks': typeof TasksRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
+  '/media/$id': typeof MediaIdRouteWithChildren
+  '/media/download': typeof MediaDownloadRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
+  '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -139,14 +211,22 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/channels'
     | '/login'
+    | '/media'
+    | '/points'
     | '/privacy'
+    | '/proxy'
+    | '/tasks'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
+    | '/media/$id'
+    | '/media/download'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/media/$id/subtitles'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -154,14 +234,22 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/channels'
     | '/login'
+    | '/media'
+    | '/points'
     | '/privacy'
+    | '/proxy'
+    | '/tasks'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
+    | '/media/$id'
+    | '/media/download'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/media/$id/subtitles'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -169,14 +257,22 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/channels'
     | '/login'
+    | '/media'
+    | '/points'
     | '/privacy'
+    | '/proxy'
+    | '/tasks'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
+    | '/media/$id'
+    | '/media/download'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
+    | '/media/$id/subtitles'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -185,8 +281,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChannelsRoute: typeof ChannelsRoute
   LoginRoute: typeof LoginRoute
+  MediaRoute: typeof MediaRouteWithChildren
+  PointsRoute: typeof PointsRoute
   PrivacyRoute: typeof PrivacyRoute
+  ProxyRoute: typeof ProxyRoute
+  TasksRoute: typeof TasksRoute
   DemoOrpcTodoRoute: typeof DemoOrpcTodoRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
@@ -201,11 +302,39 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proxy': {
+      id: '/proxy'
+      path: '/proxy'
+      fullPath: '/proxy'
+      preLoaderRoute: typeof ProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/points': {
+      id: '/points'
+      path: '/points'
+      fullPath: '/points'
+      preLoaderRoute: typeof PointsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -215,12 +344,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/channels': {
+      id: '/channels'
+      path: '/channels'
+      fullPath: '/channels'
+      preLoaderRoute: typeof ChannelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/media/download': {
+      id: '/media/download'
+      path: '/download'
+      fullPath: '/media/download'
+      preLoaderRoute: typeof MediaDownloadRouteImport
+      parentRoute: typeof MediaRoute
+    }
+    '/media/$id': {
+      id: '/media/$id'
+      path: '/$id'
+      fullPath: '/media/$id'
+      preLoaderRoute: typeof MediaIdRouteImport
+      parentRoute: typeof MediaRoute
     }
     '/demo/tanstack-query': {
       id: '/demo/tanstack-query'
@@ -235,6 +385,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/orpc-todo'
       preLoaderRoute: typeof DemoOrpcTodoRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/media/$id/subtitles': {
+      id: '/media/$id/subtitles'
+      path: '/subtitles'
+      fullPath: '/media/$id/subtitles'
+      preLoaderRoute: typeof MediaIdSubtitlesRouteImport
+      parentRoute: typeof MediaIdRoute
     }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
@@ -295,10 +452,38 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface MediaIdRouteChildren {
+  MediaIdSubtitlesRoute: typeof MediaIdSubtitlesRoute
+}
+
+const MediaIdRouteChildren: MediaIdRouteChildren = {
+  MediaIdSubtitlesRoute: MediaIdSubtitlesRoute,
+}
+
+const MediaIdRouteWithChildren =
+  MediaIdRoute._addFileChildren(MediaIdRouteChildren)
+
+interface MediaRouteChildren {
+  MediaIdRoute: typeof MediaIdRouteWithChildren
+  MediaDownloadRoute: typeof MediaDownloadRoute
+}
+
+const MediaRouteChildren: MediaRouteChildren = {
+  MediaIdRoute: MediaIdRouteWithChildren,
+  MediaDownloadRoute: MediaDownloadRoute,
+}
+
+const MediaRouteWithChildren = MediaRoute._addFileChildren(MediaRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChannelsRoute: ChannelsRoute,
   LoginRoute: LoginRoute,
+  MediaRoute: MediaRouteWithChildren,
+  PointsRoute: PointsRoute,
   PrivacyRoute: PrivacyRoute,
+  ProxyRoute: ProxyRoute,
+  TasksRoute: TasksRoute,
   DemoOrpcTodoRoute: DemoOrpcTodoRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,

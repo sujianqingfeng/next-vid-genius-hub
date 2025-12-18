@@ -36,6 +36,11 @@ const config = defineConfig(({ mode }) => {
 					target: apiTarget,
 					changeOrigin: true,
 				},
+				// Let Start navigate to legacy Next pages during the migration (local dev only).
+				'/media': {
+					target: apiTarget,
+					changeOrigin: true,
+				},
 			},
 		},
 		plugins: [

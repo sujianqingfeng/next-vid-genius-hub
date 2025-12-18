@@ -452,6 +452,37 @@
 			}
 		}
 	},
+	"Subtitles": {
+		"title": "字幕",
+		"back": "返回",
+		"transcribe": {
+			"title": "转录",
+			"desc": "使用语音识别生成转录文本。",
+			"model": "ASR 模型",
+			"language": "语言",
+			"start": "开始转录",
+			"starting": "开始中…",
+			"started": "已开始转录",
+			"output": "转录结果"
+		},
+		"translate": {
+			"title": "翻译",
+			"desc": "将转录文本翻译为字幕。",
+			"model": "LLM 模型",
+			"defaultModel": "默认：{model}",
+			"start": "开始翻译",
+			"starting": "翻译中…",
+			"completed": "翻译完成",
+			"output": "翻译结果"
+		},
+		"render": {
+			"title": "渲染",
+			"desc": "在云端将字幕烧录到视频中。",
+			"start": "开始渲染",
+			"starting": "渲染中…",
+			"started": "已开始渲染"
+		}
+	},
 	"MediaComments": {
 		"page": {
 			"header": {

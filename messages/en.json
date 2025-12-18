@@ -453,6 +453,37 @@
 			}
 		}
 	},
+	"Subtitles": {
+		"title": "Subtitles",
+		"back": "Back",
+		"transcribe": {
+			"title": "Transcribe",
+			"desc": "Generate a transcription using ASR.",
+			"model": "ASR model",
+			"language": "Language",
+			"start": "Start transcription",
+			"starting": "Starting…",
+			"started": "Transcription started",
+			"output": "Transcription"
+		},
+		"translate": {
+			"title": "Translate",
+			"desc": "Translate the transcription to subtitles.",
+			"model": "LLM model",
+			"defaultModel": "Default: {model}",
+			"start": "Translate",
+			"starting": "Translating…",
+			"completed": "Translation completed",
+			"output": "Translation"
+		},
+		"render": {
+			"title": "Render",
+			"desc": "Burn subtitles into the video via cloud rendering.",
+			"start": "Start render",
+			"starting": "Rendering…",
+			"started": "Render started"
+		}
+	},
 	"MediaComments": {
 		"page": {
 			"header": {

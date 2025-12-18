@@ -4,9 +4,15 @@ import { useState } from 'react'
 import {
   ChevronDown,
   ChevronRight,
+  Download,
   Home,
+  ListTodo,
   Menu,
   Network,
+  PiggyBank,
+  Play,
+  Radio,
+  Server,
   SquareFunction,
   StickyNote,
   X,
@@ -93,6 +99,84 @@ export default function Header() {
           >
             <SquareFunction size={20} />
             <span className="font-medium">Login (migrated)</span>
+          </Link>
+
+          <Link
+            to="/media"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <Play size={20} />
+            <span className="font-medium">Media (migrating)</span>
+          </Link>
+
+          <Link
+            to="/media/download"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <Download size={20} />
+            <span className="font-medium">Download (migrating)</span>
+          </Link>
+
+          <Link
+            to="/tasks"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <ListTodo size={20} />
+            <span className="font-medium">Tasks (migrating)</span>
+          </Link>
+
+          <Link
+            to="/points"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <PiggyBank size={20} />
+            <span className="font-medium">Points (migrating)</span>
+          </Link>
+
+          <Link
+            to="/proxy"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <Server size={20} />
+            <span className="font-medium">Proxy (migrating)</span>
+          </Link>
+
+          <Link
+            to="/channels"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            activeProps={{
+              className:
+                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+            }}
+          >
+            <Radio size={20} />
+            <span className="font-medium">Channels (migrating)</span>
           </Link>
 
           {/* Demo Links Start */}

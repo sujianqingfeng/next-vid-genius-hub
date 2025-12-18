@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 
 import { useTranslations } from '../i18n'
@@ -17,17 +18,14 @@ type AuthRedirectOptions = {
 
 export function useLoginMutation(options?: AuthRedirectOptions) {
 	const qc = useQueryClient()
+	const navigate = useNavigate()
 	const t = useTranslations('Auth')
 
 	return useEnhancedMutation(
 		queryOrpcNext.auth.login.mutationOptions({
 			onSuccess: () => {
 				qc.invalidateQueries({ queryKey: queryOrpcNext.auth.me.queryKey() })
-				if (options?.redirectTo) {
-					window.location.replace(options.redirectTo)
-				} else {
-					window.location.replace('/media')
-				}
+				navigate({ to: options?.redirectTo ?? '/media', replace: true })
 			},
 		}),
 		{
@@ -40,17 +38,14 @@ export function useLoginMutation(options?: AuthRedirectOptions) {
 
 export function useSignupMutation(options?: AuthRedirectOptions) {
 	const qc = useQueryClient()
+	const navigate = useNavigate()
 	const t = useTranslations('Auth')
 
 	return useEnhancedMutation(
 		queryOrpcNext.auth.signup.mutationOptions({
 			onSuccess: () => {
 				qc.invalidateQueries({ queryKey: queryOrpcNext.auth.me.queryKey() })
-				if (options?.redirectTo) {
-					window.location.replace(options.redirectTo)
-				} else {
-					window.location.replace('/media')
-				}
+				navigate({ to: options?.redirectTo ?? '/media', replace: true })
 			},
 		}),
 		{

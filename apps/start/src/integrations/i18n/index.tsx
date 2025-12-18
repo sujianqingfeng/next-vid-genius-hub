@@ -11,7 +11,7 @@ import {
 import enMessages from '~/messages/en.json'
 import zhMessages from '~/messages/zh.json'
 
-type Messages = Record<string, unknown>
+type Messages = Record<string, {}>
 
 export { DEFAULT_LOCALE }
 
@@ -104,9 +104,15 @@ export function useTranslations(namespace: string) {
 	const ctx = React.useContext(I18nContext)
 	return React.useMemo(() => {
 		const scope = getByPath(ctx?.messages, [namespace])
-		return (key: string) => {
+		return (key: string, params?: Record<string, unknown>) => {
 			const value = getByPath(scope, key.split('.'))
-			return typeof value === 'string' ? value : `${namespace}.${key}`
+			const template = typeof value === 'string' ? value : `${namespace}.${key}`
+			if (!params) return template
+			return Object.entries(params).reduce((acc, [k, v]) => {
+				const safeValue =
+					v === null || v === undefined ? '' : typeof v === 'string' ? v : String(v)
+				return acc.replaceAll(`{${k}}`, safeValue)
+			}, template)
 		}
 	}, [ctx?.messages, namespace])
 }

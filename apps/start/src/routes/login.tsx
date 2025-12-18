@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
 import { Button } from '~/components/ui/button'
@@ -26,6 +26,7 @@ function LoginPage() {
 
 	const search = Route.useSearch()
 	const next = useMemo(() => getDefaultRedirect(search.next), [search.next])
+	const navigate = useNavigate()
 
 	const { data: me, isLoading: loadingMe } = useAuthQuery()
 	const loginMutation = useLoginMutation({ redirectTo: next })
@@ -42,9 +43,9 @@ function LoginPage() {
 	useEffect(() => {
 		if (loadingMe) return
 		if (me?.user) {
-			window.location.replace(next)
+			navigate({ to: next, replace: true })
 		}
-	}, [loadingMe, me?.user, next])
+	}, [loadingMe, me?.user, navigate, next])
 
 	return (
 		<div className="relative min-h-screen flex bg-gradient-to-br from-sky-50 via-white to-indigo-50">
@@ -237,4 +238,3 @@ function LoginPage() {
 		</div>
 	)
 }
-

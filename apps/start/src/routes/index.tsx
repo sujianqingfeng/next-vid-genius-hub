@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowRight, Download, MessageSquare, Play } from 'lucide-react'
 
 import LanguageToggle from '../components/LanguageToggle'
@@ -41,10 +41,10 @@ function Home() {
               className="h-14 px-10 rounded-full text-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
               asChild
             >
-              <a href="/media">
+              <Link to="/media">
                 {t('cta')}
                 <ArrowRight className="ml-2 h-5 w-5" strokeWidth={1.5} />
-              </a>
+              </Link>
             </Button>
           </div>
 
