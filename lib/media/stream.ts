@@ -79,6 +79,37 @@ export async function proxyRemoteWithRange(
   return createProxyResponse(r, options)
 }
 
+export function extractJobIdFromRemoteKey(key: string | null | undefined): string | null {
+  if (!key) return null
+  const match = key.match(/\bjob_[a-z0-9]+\b/i)
+  return match ? match[0] : null
+}
+
+export async function tryProxyRemoteWithRange(
+  remoteUrl: string,
+  request: NextRequest,
+  options?: {
+    defaultCacheSeconds?: number
+    forceDownloadName?: string | null
+    fallthroughStatusCodes?: number[]
+  },
+): Promise<NextResponse | null> {
+  const range = request.headers.get('range')
+  const passHeaders: Record<string, string> = {}
+  if (range) passHeaders['range'] = range
+  const r = await fetch(remoteUrl, { headers: passHeaders })
+  logger.debug(
+    'media',
+    `[stream.proxy] url=${remoteUrl.split('?')[0]} status=${r.status} range=${range ?? 'none'}`,
+  )
+  const fallthrough = options?.fallthroughStatusCodes ?? [404]
+  if (fallthrough.includes(r.status)) return null
+  return createProxyResponse(r, {
+    defaultCacheSeconds: options?.defaultCacheSeconds,
+    forceDownloadName: options?.forceDownloadName ?? null,
+  })
+}
+
 export async function resolveRemoteVideoUrl(media: MinimalMediaLike): Promise<string | null> {
   const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
   if (!media) return null

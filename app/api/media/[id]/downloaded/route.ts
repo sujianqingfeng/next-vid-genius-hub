@@ -4,7 +4,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDb, schema } from '~/lib/db'
 export const runtime = 'nodejs'
 import { logger } from '~/lib/logger'
-import { proxyRemoteWithRange, resolveRemoteVideoUrl } from '~/lib/media/stream'
+import {
+  extractJobIdFromRemoteKey,
+  makeOrchestratorArtifactUrl,
+  resolveRemoteVideoUrl,
+  tryProxyRemoteWithRange,
+} from '~/lib/media/stream'
 
 export async function GET(
   request: NextRequest,
@@ -34,25 +39,45 @@ export async function GET(
           title: media.title ?? null,
         })
         if (remoteUrl) {
-          logger.info('api', `[downloaded] via remoteVideoKey media=${mediaId} download=${wantDownload ? '1' : '0'}`)
-          return proxyRemoteWithRange(remoteUrl, request, {
+          const proxied = await tryProxyRemoteWithRange(remoteUrl, request, {
             defaultCacheSeconds: 60,
             forceDownloadName: downloadName,
+            fallthroughStatusCodes: [404],
           })
+          if (proxied) {
+            logger.info('api', `[downloaded] via remoteVideoKey media=${mediaId} download=${wantDownload ? '1' : '0'}`)
+            return proxied
+          }
+          const jobIdFromKey = extractJobIdFromRemoteKey(media.remoteVideoKey)
+          const artifactUrl = jobIdFromKey ? makeOrchestratorArtifactUrl(jobIdFromKey) : null
+          if (artifactUrl) {
+            const artifact = await tryProxyRemoteWithRange(artifactUrl, request, {
+              defaultCacheSeconds: 60,
+              forceDownloadName: downloadName,
+              fallthroughStatusCodes: [404],
+            })
+            if (artifact) {
+              logger.info('api', `[downloaded] via orchestrator keyJob=${jobIdFromKey} media=${mediaId} download=${wantDownload ? '1' : '0'}`)
+              return artifact
+            }
+          }
         }
       } catch (e) {
         logger.warn('api', `[downloaded] presign remoteVideoKey failed: ${e instanceof Error ? e.message : String(e)}`)
       }
     }
     if (media.downloadJobId) {
-      const base = (process.env.CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
-      if (base) {
-        const url = `${base}/artifacts/${encodeURIComponent(media.downloadJobId)}`
-        logger.info('api', `[downloaded] via orchestrator job=${media.downloadJobId} media=${mediaId} download=${wantDownload ? '1' : '0'}`)
-        return proxyRemoteWithRange(url, request, {
+      const url = makeOrchestratorArtifactUrl(media.downloadJobId)
+      if (url) {
+        const proxied = await tryProxyRemoteWithRange(url, request, {
           defaultCacheSeconds: 60,
           forceDownloadName: downloadName,
+          fallthroughStatusCodes: [404],
         })
+        if (proxied) {
+          logger.info('api', `[downloaded] via orchestrator job=${media.downloadJobId} media=${mediaId} download=${wantDownload ? '1' : '0'}`)
+          return proxied
+        }
       }
     }
 
