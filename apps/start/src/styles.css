@@ -1,5 +1,9 @@
 @import "../../../app/globals.css";
 
+@source "./**/*.{ts,tsx}";
+@source "../../../components/**/*.{ts,tsx}";
+@source "../../../lib/**/*.{ts,tsx}";
+
 :root {
 	--font-geist-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
 		'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans',

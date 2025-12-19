@@ -203,6 +203,7 @@ function ProxyRoute() {
 						<div className="flex flex-wrap gap-2">
 							<Button
 								variant="secondary"
+								type="button"
 								onClick={() => {
 									subsQuery.refetch()
 									proxiesQuery.refetch()
@@ -212,7 +213,7 @@ function ProxyRoute() {
 								<RefreshCcw className="mr-2 h-4 w-4" />
 								Refresh
 							</Button>
-							<Button onClick={() => setCreateDialogOpen(true)}>
+							<Button type="button" onClick={() => setCreateDialogOpen(true)}>
 								<Plus className="mr-2 h-4 w-4" />
 								{t("page.addSubscription")}
 							</Button>
@@ -253,7 +254,7 @@ function ProxyRoute() {
 									<div className="text-lg font-semibold">{t("subscription.list.emptyTitle")}</div>
 									<div className="mt-1 text-sm text-muted-foreground">{t("subscription.list.emptyDesc")}</div>
 									<div className="mt-6">
-										<Button onClick={() => setCreateDialogOpen(true)}>
+										<Button type="button" onClick={() => setCreateDialogOpen(true)}>
 											<Plus className="mr-2 h-4 w-4" />
 											{t("page.addSubscription")}
 										</Button>
@@ -285,6 +286,7 @@ function ProxyRoute() {
 												<div className="flex flex-wrap gap-2">
 													<Button
 														variant="secondary"
+														type="button"
 														disabled={importMutation.isPending}
 														onClick={() => importMutation.mutate({ subscriptionId: s.id })}
 													>
@@ -295,6 +297,7 @@ function ProxyRoute() {
 													</Button>
 													<Button
 														variant="destructive"
+														type="button"
 														disabled={deleteSubscriptionMutation.isPending}
 														onClick={() => {
 															if (!confirm(t("subscription.list.deleteConfirm"))) return
@@ -320,6 +323,7 @@ function ProxyRoute() {
 										<Button
 											variant="secondary"
 											size="sm"
+											type="button"
 											onClick={() =>
 												navigate({
 													search: {
@@ -337,6 +341,7 @@ function ProxyRoute() {
 												key={s.id}
 												variant={subscriptionId === s.id ? "default" : "secondary"}
 												size="sm"
+												type="button"
 												onClick={() =>
 													navigate({
 														search: {
@@ -384,6 +389,7 @@ function ProxyRoute() {
 														<Button
 															variant="secondary"
 															size="sm"
+															type="button"
 															disabled={setDefaultMutation.isPending}
 															onClick={() =>
 																setDefaultMutation.mutate({
@@ -396,6 +402,7 @@ function ProxyRoute() {
 														<Button
 															variant="destructive"
 															size="sm"
+															type="button"
 															disabled={deleteProxyMutation.isPending}
 															onClick={() => {
 																if (!confirm(t("list.deleteConfirm"))) return
@@ -417,6 +424,7 @@ function ProxyRoute() {
 								<div className="mt-6 flex items-center justify-center gap-2">
 									<Button
 										variant="secondary"
+										type="button"
 										disabled={page <= 1}
 										onClick={() =>
 											navigate({
@@ -435,6 +443,7 @@ function ProxyRoute() {
 									</div>
 									<Button
 										variant="secondary"
+										type="button"
 										disabled={page >= totalPages}
 										onClick={() =>
 											navigate({
