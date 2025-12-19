@@ -8,8 +8,8 @@
     "directory": "dist/client"
   },
   "no_bundle": true,
-  // Gray rollout: mount TanStack Start under /__start/*.
-  // Cloudflare will route the more specific pattern here even if the Next worker owns "/*".
+  // Cutover: mount TanStack Start at the site root.
+  // Pair with deploying the Next/OpenNext worker on `/api/*` only.
   "routes": [
     {
       "pattern": "vid-hub.temp-drop-files.store/api/orpc*",
@@ -32,7 +32,7 @@
       "zone_name": "temp-drop-files.store"
     },
     {
-      "pattern": "vid-hub.temp-drop-files.store/__start/*",
+      "pattern": "vid-hub.temp-drop-files.store/*",
       "zone_name": "temp-drop-files.store"
     }
   ],

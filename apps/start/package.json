@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite dev --port 3100",
     "build": "vite build",
+    "build:root": "VITE_BASEPATH=/ vite build",
     "preview": "vite preview --port 3100",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
@@ -15,7 +16,8 @@
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:root": "npm run build:root && wrangler deploy --config wrangler.root.jsonc"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.13.8",

@@ -24,6 +24,7 @@ import { Route as MediaDownloadRouteImport } from './routes/media.download'
 import { Route as MediaIdRouteImport } from './routes/media.$id'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoOrpcTodoRouteImport } from './routes/demo/orpc-todo'
+import { Route as ApiOpenapiRouteImport } from './routes/api.openapi'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminPointsPricingRouteImport } from './routes/admin.points-pricing'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
@@ -35,10 +36,19 @@ import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.se
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiTqTodosRouteImport } from './routes/demo/api.tq-todos'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as ApiRenderCfCallbackRouteImport } from './routes/api.render.cf-callback'
+import { Route as ApiOrpcSplatRouteImport } from './routes/api.orpc.$'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
+import { Route as ApiMediaIdSubtitlesRouteImport } from './routes/api.media.$id.subtitles'
+import { Route as ApiMediaIdSourceRouteImport } from './routes/api.media.$id.source'
+import { Route as ApiMediaIdRenderedInfoRouteImport } from './routes/api.media.$id.rendered-info'
+import { Route as ApiMediaIdRenderedRouteImport } from './routes/api.media.$id.rendered'
+import { Route as ApiMediaIdDownloadedRouteImport } from './routes/api.media.$id.downloaded'
+import { Route as ApiMediaIdCommentsDataRouteImport } from './routes/api.media.$id.comments-data'
+import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api.internal.ai.asr-provider'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -115,6 +125,11 @@ const DemoOrpcTodoRoute = DemoOrpcTodoRouteImport.update({
   path: '/demo/orpc-todo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
+  id: '/api/openapi',
+  path: '/api/openapi',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -170,6 +185,16 @@ const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
   path: '/demo/api/names',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRenderCfCallbackRoute = ApiRenderCfCallbackRouteImport.update({
+  id: '/api/render/cf-callback',
+  path: '/api/render/cf-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOrpcSplatRoute = ApiOrpcSplatRouteImport.update({
+  id: '/api/orpc/$',
+  path: '/api/orpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
   id: '/demo/start/ssr/',
   path: '/demo/start/ssr/',
@@ -190,6 +215,42 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
   path: '/demo/start/ssr/data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMediaIdSubtitlesRoute = ApiMediaIdSubtitlesRouteImport.update({
+  id: '/api/media/$id/subtitles',
+  path: '/api/media/$id/subtitles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaIdSourceRoute = ApiMediaIdSourceRouteImport.update({
+  id: '/api/media/$id/source',
+  path: '/api/media/$id/source',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaIdRenderedInfoRoute = ApiMediaIdRenderedInfoRouteImport.update({
+  id: '/api/media/$id/rendered-info',
+  path: '/api/media/$id/rendered-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaIdRenderedRoute = ApiMediaIdRenderedRouteImport.update({
+  id: '/api/media/$id/rendered',
+  path: '/api/media/$id/rendered',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaIdDownloadedRoute = ApiMediaIdDownloadedRouteImport.update({
+  id: '/api/media/$id/downloaded',
+  path: '/api/media/$id/downloaded',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaIdCommentsDataRoute = ApiMediaIdCommentsDataRouteImport.update({
+  id: '/api/media/$id/comments-data',
+  path: '/api/media/$id/comments-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiInternalAiAsrProviderRoute =
+  ApiInternalAiAsrProviderRouteImport.update({
+    id: '/api/internal/ai/asr-provider',
+    path: '/api/internal/ai/asr-provider',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -205,12 +266,15 @@ export interface FileRoutesByFullPath {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/openapi': typeof ApiOpenapiRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/media/$id': typeof MediaIdRouteWithChildren
   '/media/download': typeof MediaDownloadRoute
   '/admin/': typeof AdminIndexRoute
   '/media/': typeof MediaIndexRoute
+  '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
@@ -218,6 +282,13 @@ export interface FileRoutesByFullPath {
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id/': typeof MediaIdIndexRoute
+  '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
+  '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
+  '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
+  '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
+  '/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  '/api/media/$id/subtitles': typeof ApiMediaIdSubtitlesRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -235,11 +306,14 @@ export interface FileRoutesByTo {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/openapi': typeof ApiOpenapiRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/media/download': typeof MediaDownloadRoute
   '/admin': typeof AdminIndexRoute
   '/media': typeof MediaIndexRoute
+  '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
@@ -247,6 +321,13 @@ export interface FileRoutesByTo {
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id': typeof MediaIdIndexRoute
+  '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
+  '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
+  '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
+  '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
+  '/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  '/api/media/$id/subtitles': typeof ApiMediaIdSubtitlesRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -267,12 +348,15 @@ export interface FileRoutesById {
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/openapi': typeof ApiOpenapiRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/media/$id': typeof MediaIdRouteWithChildren
   '/media/download': typeof MediaDownloadRoute
   '/admin/': typeof AdminIndexRoute
   '/media/': typeof MediaIndexRoute
+  '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
@@ -280,6 +364,13 @@ export interface FileRoutesById {
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id/': typeof MediaIdIndexRoute
+  '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
+  '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
+  '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
+  '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
+  '/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  '/api/media/$id/subtitles': typeof ApiMediaIdSubtitlesRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
@@ -301,12 +392,15 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/points-pricing'
     | '/admin/users'
+    | '/api/openapi'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
     | '/media/$id'
     | '/media/download'
     | '/admin/'
     | '/media/'
+    | '/api/orpc/$'
+    | '/api/render/cf-callback'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
@@ -314,6 +408,13 @@ export interface FileRouteTypes {
     | '/media/$id/comments'
     | '/media/$id/subtitles'
     | '/media/$id/'
+    | '/api/internal/ai/asr-provider'
+    | '/api/media/$id/comments-data'
+    | '/api/media/$id/downloaded'
+    | '/api/media/$id/rendered'
+    | '/api/media/$id/rendered-info'
+    | '/api/media/$id/source'
+    | '/api/media/$id/subtitles'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -331,11 +432,14 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/points-pricing'
     | '/admin/users'
+    | '/api/openapi'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
     | '/media/download'
     | '/admin'
     | '/media'
+    | '/api/orpc/$'
+    | '/api/render/cf-callback'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
@@ -343,6 +447,13 @@ export interface FileRouteTypes {
     | '/media/$id/comments'
     | '/media/$id/subtitles'
     | '/media/$id'
+    | '/api/internal/ai/asr-provider'
+    | '/api/media/$id/comments-data'
+    | '/api/media/$id/downloaded'
+    | '/api/media/$id/rendered'
+    | '/api/media/$id/rendered-info'
+    | '/api/media/$id/source'
+    | '/api/media/$id/subtitles'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -362,12 +473,15 @@ export interface FileRouteTypes {
     | '/admin/ai-providers'
     | '/admin/points-pricing'
     | '/admin/users'
+    | '/api/openapi'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
     | '/media/$id'
     | '/media/download'
     | '/admin/'
     | '/media/'
+    | '/api/orpc/$'
+    | '/api/render/cf-callback'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
     | '/demo/start/api-request'
@@ -375,6 +489,13 @@ export interface FileRouteTypes {
     | '/media/$id/comments'
     | '/media/$id/subtitles'
     | '/media/$id/'
+    | '/api/internal/ai/asr-provider'
+    | '/api/media/$id/comments-data'
+    | '/api/media/$id/downloaded'
+    | '/api/media/$id/rendered'
+    | '/api/media/$id/rendered-info'
+    | '/api/media/$id/source'
+    | '/api/media/$id/subtitles'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
@@ -391,12 +512,22 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ProxyRoute: typeof ProxyRoute
   TasksRoute: typeof TasksRoute
+  ApiOpenapiRoute: typeof ApiOpenapiRoute
   DemoOrpcTodoRoute: typeof DemoOrpcTodoRoute
   DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
+  ApiOrpcSplatRoute: typeof ApiOrpcSplatRoute
+  ApiRenderCfCallbackRoute: typeof ApiRenderCfCallbackRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoApiTqTodosRoute: typeof DemoApiTqTodosRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
+  ApiInternalAiAsrProviderRoute: typeof ApiInternalAiAsrProviderRoute
+  ApiMediaIdCommentsDataRoute: typeof ApiMediaIdCommentsDataRoute
+  ApiMediaIdDownloadedRoute: typeof ApiMediaIdDownloadedRoute
+  ApiMediaIdRenderedRoute: typeof ApiMediaIdRenderedRoute
+  ApiMediaIdRenderedInfoRoute: typeof ApiMediaIdRenderedInfoRoute
+  ApiMediaIdSourceRoute: typeof ApiMediaIdSourceRoute
+  ApiMediaIdSubtitlesRoute: typeof ApiMediaIdSubtitlesRoute
   DemoStartSsrDataOnlyRoute: typeof DemoStartSsrDataOnlyRoute
   DemoStartSsrFullSsrRoute: typeof DemoStartSsrFullSsrRoute
   DemoStartSsrSpaModeRoute: typeof DemoStartSsrSpaModeRoute
@@ -510,6 +641,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoOrpcTodoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/openapi': {
+      id: '/api/openapi'
+      path: '/api/openapi'
+      fullPath: '/api/openapi'
+      preLoaderRoute: typeof ApiOpenapiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -587,6 +725,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoApiNamesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/render/cf-callback': {
+      id: '/api/render/cf-callback'
+      path: '/api/render/cf-callback'
+      fullPath: '/api/render/cf-callback'
+      preLoaderRoute: typeof ApiRenderCfCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/orpc/$': {
+      id: '/api/orpc/$'
+      path: '/api/orpc/$'
+      fullPath: '/api/orpc/$'
+      preLoaderRoute: typeof ApiOrpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
       path: '/demo/start/ssr'
@@ -613,6 +765,55 @@ declare module '@tanstack/react-router' {
       path: '/demo/start/ssr/data-only'
       fullPath: '/demo/start/ssr/data-only'
       preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/subtitles': {
+      id: '/api/media/$id/subtitles'
+      path: '/api/media/$id/subtitles'
+      fullPath: '/api/media/$id/subtitles'
+      preLoaderRoute: typeof ApiMediaIdSubtitlesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/source': {
+      id: '/api/media/$id/source'
+      path: '/api/media/$id/source'
+      fullPath: '/api/media/$id/source'
+      preLoaderRoute: typeof ApiMediaIdSourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/rendered-info': {
+      id: '/api/media/$id/rendered-info'
+      path: '/api/media/$id/rendered-info'
+      fullPath: '/api/media/$id/rendered-info'
+      preLoaderRoute: typeof ApiMediaIdRenderedInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/rendered': {
+      id: '/api/media/$id/rendered'
+      path: '/api/media/$id/rendered'
+      fullPath: '/api/media/$id/rendered'
+      preLoaderRoute: typeof ApiMediaIdRenderedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/downloaded': {
+      id: '/api/media/$id/downloaded'
+      path: '/api/media/$id/downloaded'
+      fullPath: '/api/media/$id/downloaded'
+      preLoaderRoute: typeof ApiMediaIdDownloadedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/comments-data': {
+      id: '/api/media/$id/comments-data'
+      path: '/api/media/$id/comments-data'
+      fullPath: '/api/media/$id/comments-data'
+      preLoaderRoute: typeof ApiMediaIdCommentsDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/ai/asr-provider': {
+      id: '/api/internal/ai/asr-provider'
+      path: '/api/internal/ai/asr-provider'
+      fullPath: '/api/internal/ai/asr-provider'
+      preLoaderRoute: typeof ApiInternalAiAsrProviderRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -675,12 +876,22 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ProxyRoute: ProxyRoute,
   TasksRoute: TasksRoute,
+  ApiOpenapiRoute: ApiOpenapiRoute,
   DemoOrpcTodoRoute: DemoOrpcTodoRoute,
   DemoTanstackQueryRoute: DemoTanstackQueryRoute,
+  ApiOrpcSplatRoute: ApiOrpcSplatRoute,
+  ApiRenderCfCallbackRoute: ApiRenderCfCallbackRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoApiTqTodosRoute: DemoApiTqTodosRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,
+  ApiInternalAiAsrProviderRoute: ApiInternalAiAsrProviderRoute,
+  ApiMediaIdCommentsDataRoute: ApiMediaIdCommentsDataRoute,
+  ApiMediaIdDownloadedRoute: ApiMediaIdDownloadedRoute,
+  ApiMediaIdRenderedRoute: ApiMediaIdRenderedRoute,
+  ApiMediaIdRenderedInfoRoute: ApiMediaIdRenderedInfoRoute,
+  ApiMediaIdSourceRoute: ApiMediaIdSourceRoute,
+  ApiMediaIdSubtitlesRoute: ApiMediaIdSubtitlesRoute,
   DemoStartSsrDataOnlyRoute: DemoStartSsrDataOnlyRoute,
   DemoStartSsrFullSsrRoute: DemoStartSsrFullSsrRoute,
   DemoStartSsrSpaModeRoute: DemoStartSsrSpaModeRoute,

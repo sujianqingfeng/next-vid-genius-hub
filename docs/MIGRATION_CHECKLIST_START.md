@@ -40,6 +40,23 @@
    - `your-domain.com/api/*` → Next Worker
    - `your-domain.com/*` → Start Worker
 
+### B1. 本仓库已准备好的 cutover 配置（推荐）
+
+为避免直接改现网配置导致误操作，这里新增了“可逆”的 wrangler 配置文件：
+
+- Start（页面）根路径：`apps/start/wrangler.root.jsonc`
+- Next/OpenNext（仅 API）：`wrangler.api.json`
+
+切流要点：
+
+- Start 构建时把 basepath 设为 `/`，否则页面可能引用到 `/__start/*` 的静态资源路径。
+- 路由变更需要 **Start/Next 两边一起改**（建议在 Cloudflare Dashboard 一次性调整 routes，或快速连续 deploy 两个 worker）。
+
+命令参考（不自动执行）：
+
+- Start root 部署：在 `apps/start` 下执行 `pnpm deploy:root`
+- Next API-only 部署：在仓库根目录执行 `wrangler deploy --config wrangler.api.json`
+
 ## C. UI 迁移顺序（按依赖复杂度）
 
 优先迁“无复杂 SSR/无动态路由”的页面，建立信心：

@@ -1,4 +1,3 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { CF_ORCHESTRATOR_URL } from '~/lib/config/env'
 import { presignGetByKey } from '~/lib/cloudflare'
 import { logger } from '~/lib/logger'
@@ -44,7 +43,7 @@ export function buildDownloadFilename(
 export function createProxyResponse(
   upstream: Response,
   options?: { defaultCacheSeconds?: number; forceDownloadName?: string | null },
-): NextResponse {
+): Response {
   const respHeaders = new Headers()
   for (const key of PROXY_HEADER_KEYS) {
     const v = upstream.headers.get(key)
@@ -57,7 +56,7 @@ export function createProxyResponse(
     respHeaders.set('Content-Disposition', buildAttachmentDisposition(options.forceDownloadName))
   }
   const body = upstream.body ?? null
-  return new NextResponse(body as unknown as BodyInit | null, {
+  return new Response(body, {
     status: upstream.status,
     headers: respHeaders,
   })
@@ -65,9 +64,9 @@ export function createProxyResponse(
 
 export async function proxyRemoteWithRange(
   remoteUrl: string,
-  request: NextRequest,
+  request: Request,
   options?: { defaultCacheSeconds?: number; forceDownloadName?: string | null },
-): Promise<NextResponse> {
+): Promise<Response> {
   const range = request.headers.get('range')
   const passHeaders: Record<string, string> = {}
   if (range) passHeaders['range'] = range
@@ -87,13 +86,13 @@ export function extractJobIdFromRemoteKey(key: string | null | undefined): strin
 
 export async function tryProxyRemoteWithRange(
   remoteUrl: string,
-  request: NextRequest,
+  request: Request,
   options?: {
     defaultCacheSeconds?: number
     forceDownloadName?: string | null
     fallthroughStatusCodes?: number[]
   },
-): Promise<NextResponse | null> {
+): Promise<Response | null> {
   const range = request.headers.get('range')
   const passHeaders: Record<string, string> = {}
   if (range) passHeaders['range'] = range
