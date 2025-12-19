@@ -218,7 +218,7 @@ function formatMessage(
 export function useTranslations(namespace: string) {
 	const ctx = React.useContext(I18nContext)
 	return React.useMemo(() => {
-		const scope = getByPath(ctx?.messages, [namespace])
+		const scope = getByPath(ctx?.messages, namespace.split('.'))
 		return (key: string, params?: Record<string, unknown>) => {
 			const value = getByPath(scope, key.split('.'))
 			const template = typeof value === 'string' ? value : `${namespace}.${key}`

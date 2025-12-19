@@ -70,13 +70,27 @@ function isWorkspacePath(pathname: string): boolean {
 	)
 }
 
+function isAdminPath(pathname: string): boolean {
+	const baseUrl =
+		import.meta.env.BASE_URL && import.meta.env.BASE_URL !== "/"
+			? import.meta.env.BASE_URL.replace(/\/$/, "")
+			: ""
+
+	const raw =
+		baseUrl && pathname.startsWith(baseUrl) ? pathname.slice(baseUrl.length) : pathname
+	const normalized = raw.endsWith("/") && raw !== "/" ? raw.slice(0, -1) : raw
+	return normalized === "/admin" || normalized.startsWith("/admin/")
+}
+
 function RootLayout() {
 	const data = Route.useLoaderData()
 	const locale = data?.locale ?? DEFAULT_LOCALE
 	const messages = data?.messages ?? getMessages(locale)
 	const pathname = useRouterState({ select: (s) => s.location.pathname })
 	const isWorkspace = isWorkspacePath(pathname)
-	const hideHeader = isWorkspace || pathname === "/login" || pathname.endsWith("/login")
+	const isAdmin = isAdminPath(pathname)
+	const hideHeader =
+		isWorkspace || isAdmin || pathname === "/login" || pathname.endsWith("/login")
 
 	const content = isWorkspace ? (
 		<WorkspaceShell>

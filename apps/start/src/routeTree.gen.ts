@@ -16,12 +16,18 @@ import { Route as PointsRouteImport } from './routes/points'
 import { Route as MediaRouteImport } from './routes/media'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChannelsRouteImport } from './routes/channels'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MediaIndexRouteImport } from './routes/media.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as MediaDownloadRouteImport } from './routes/media.download'
 import { Route as MediaIdRouteImport } from './routes/media.$id'
 import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
 import { Route as DemoOrpcTodoRouteImport } from './routes/demo/orpc-todo'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminPointsPricingRouteImport } from './routes/admin.points-pricing'
+import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
+import { Route as AdminAiModelsRouteImport } from './routes/admin.ai-models'
 import { Route as MediaIdIndexRouteImport } from './routes/media.$id.index'
 import { Route as MediaIdSubtitlesRouteImport } from './routes/media.$id.subtitles'
 import { Route as MediaIdCommentsRouteImport } from './routes/media.$id.comments'
@@ -69,6 +75,11 @@ const ChannelsRoute = ChannelsRouteImport.update({
   path: '/channels',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -78,6 +89,11 @@ const MediaIndexRoute = MediaIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => MediaRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const MediaDownloadRoute = MediaDownloadRouteImport.update({
   id: '/download',
@@ -98,6 +114,26 @@ const DemoOrpcTodoRoute = DemoOrpcTodoRouteImport.update({
   id: '/demo/orpc-todo',
   path: '/demo/orpc-todo',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPointsPricingRoute = AdminPointsPricingRouteImport.update({
+  id: '/points-pricing',
+  path: '/points-pricing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAiProvidersRoute = AdminAiProvidersRouteImport.update({
+  id: '/ai-providers',
+  path: '/ai-providers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAiModelsRoute = AdminAiModelsRouteImport.update({
+  id: '/ai-models',
+  path: '/ai-models',
+  getParentRoute: () => AdminRoute,
 } as any)
 const MediaIdIndexRoute = MediaIdIndexRouteImport.update({
   id: '/',
@@ -157,6 +193,7 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/channels': typeof ChannelsRoute
   '/login': typeof LoginRoute
   '/media': typeof MediaRouteWithChildren
@@ -164,10 +201,15 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/proxy': typeof ProxyRoute
   '/tasks': typeof TasksRoute
+  '/admin/ai-models': typeof AdminAiModelsRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/users': typeof AdminUsersRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/media/$id': typeof MediaIdRouteWithChildren
   '/media/download': typeof MediaDownloadRoute
+  '/admin/': typeof AdminIndexRoute
   '/media/': typeof MediaIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
@@ -189,9 +231,14 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/proxy': typeof ProxyRoute
   '/tasks': typeof TasksRoute
+  '/admin/ai-models': typeof AdminAiModelsRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/users': typeof AdminUsersRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/media/download': typeof MediaDownloadRoute
+  '/admin': typeof AdminIndexRoute
   '/media': typeof MediaIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
@@ -208,6 +255,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/channels': typeof ChannelsRoute
   '/login': typeof LoginRoute
   '/media': typeof MediaRouteWithChildren
@@ -215,10 +263,15 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/proxy': typeof ProxyRoute
   '/tasks': typeof TasksRoute
+  '/admin/ai-models': typeof AdminAiModelsRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/users': typeof AdminUsersRoute
   '/demo/orpc-todo': typeof DemoOrpcTodoRoute
   '/demo/tanstack-query': typeof DemoTanstackQueryRoute
   '/media/$id': typeof MediaIdRouteWithChildren
   '/media/download': typeof MediaDownloadRoute
+  '/admin/': typeof AdminIndexRoute
   '/media/': typeof MediaIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/api/tq-todos': typeof DemoApiTqTodosRoute
@@ -236,6 +289,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/channels'
     | '/login'
     | '/media'
@@ -243,10 +297,15 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/proxy'
     | '/tasks'
+    | '/admin/ai-models'
+    | '/admin/ai-providers'
+    | '/admin/points-pricing'
+    | '/admin/users'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
     | '/media/$id'
     | '/media/download'
+    | '/admin/'
     | '/media/'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
@@ -268,9 +327,14 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/proxy'
     | '/tasks'
+    | '/admin/ai-models'
+    | '/admin/ai-providers'
+    | '/admin/points-pricing'
+    | '/admin/users'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
     | '/media/download'
+    | '/admin'
     | '/media'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
@@ -286,6 +350,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/channels'
     | '/login'
     | '/media'
@@ -293,10 +358,15 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/proxy'
     | '/tasks'
+    | '/admin/ai-models'
+    | '/admin/ai-providers'
+    | '/admin/points-pricing'
+    | '/admin/users'
     | '/demo/orpc-todo'
     | '/demo/tanstack-query'
     | '/media/$id'
     | '/media/download'
+    | '/admin/'
     | '/media/'
     | '/demo/api/names'
     | '/demo/api/tq-todos'
@@ -313,6 +383,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ChannelsRoute: typeof ChannelsRoute
   LoginRoute: typeof LoginRoute
   MediaRoute: typeof MediaRouteWithChildren
@@ -383,6 +454,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChannelsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -396,6 +474,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/media/'
       preLoaderRoute: typeof MediaIndexRouteImport
       parentRoute: typeof MediaRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/media/download': {
       id: '/media/download'
@@ -424,6 +509,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/orpc-todo'
       preLoaderRoute: typeof DemoOrpcTodoRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/points-pricing': {
+      id: '/admin/points-pricing'
+      path: '/points-pricing'
+      fullPath: '/admin/points-pricing'
+      preLoaderRoute: typeof AdminPointsPricingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ai-providers': {
+      id: '/admin/ai-providers'
+      path: '/ai-providers'
+      fullPath: '/admin/ai-providers'
+      preLoaderRoute: typeof AdminAiProvidersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ai-models': {
+      id: '/admin/ai-models'
+      path: '/ai-models'
+      fullPath: '/admin/ai-models'
+      preLoaderRoute: typeof AdminAiModelsRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/media/$id/': {
       id: '/media/$id/'
@@ -505,6 +618,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminAiModelsRoute: typeof AdminAiModelsRoute
+  AdminAiProvidersRoute: typeof AdminAiProvidersRoute
+  AdminPointsPricingRoute: typeof AdminPointsPricingRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAiModelsRoute: AdminAiModelsRoute,
+  AdminAiProvidersRoute: AdminAiProvidersRoute,
+  AdminPointsPricingRoute: AdminPointsPricingRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface MediaIdRouteChildren {
   MediaIdCommentsRoute: typeof MediaIdCommentsRoute
   MediaIdSubtitlesRoute: typeof MediaIdSubtitlesRoute
@@ -536,6 +667,7 @@ const MediaRouteWithChildren = MediaRoute._addFileChildren(MediaRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   ChannelsRoute: ChannelsRoute,
   LoginRoute: LoginRoute,
   MediaRoute: MediaRouteWithChildren,

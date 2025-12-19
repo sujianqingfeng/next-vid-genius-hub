@@ -24,6 +24,17 @@ const config = defineConfig(({ mode }) => {
 
 	return {
 		base,
+		optimizeDeps: {
+			// TanStack Start provides virtual entry modules via the Vite plugin.
+			// Pre-bundling @tanstack/start-server-core in dev can fail because it
+			// contains dynamic imports like `import('#tanstack-start-entry')`.
+			exclude: ['@tanstack/start-server-core'],
+		},
+		ssr: {
+			optimizeDeps: {
+				exclude: ['@tanstack/start-server-core'],
+			},
+		},
 		resolve: {
 			alias: [{ find: /^~\//, replacement: `${repoRoot}/` }],
 		},
