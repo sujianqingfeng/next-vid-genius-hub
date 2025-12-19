@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { ListChecks, RefreshCw, Search, SquarePen } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '~/lib/i18n'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { PageHeader } from '~/components/business/layout/page-header'

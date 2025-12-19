@@ -1,11 +1,11 @@
 import { BarChart3, Download, FileVideo, TrendingUp } from 'lucide-react'
-import { getTranslations } from 'next-intl/server'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { PageHeader } from '~/components/business/layout/page-header'
 import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
+import { getServerTranslations } from '~/lib/i18n/next-server'
 
 export default async function DashboardPage() {
-	const t = await getTranslations('Dashboard')
+	const t = await getServerTranslations('Dashboard')
 
 	return (
 		<WorkspacePageShell

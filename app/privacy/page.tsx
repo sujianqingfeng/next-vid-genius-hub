@@ -1,11 +1,11 @@
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
 import { Button } from '~/components/ui/button'
 import { HomeLanguageToggle } from '~/components/business/home/home-language-toggle'
+import { getServerTranslations } from '~/lib/i18n/next-server'
 
 export default async function PrivacyPage() {
-	const t = await getTranslations('Privacy')
+	const t = await getServerTranslations('Privacy')
 
 	return (
 		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">

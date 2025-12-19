@@ -12,7 +12,7 @@ import {
 	DialogTitle,
 	DialogDescription,
 } from '~/components/ui/dialog'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '~/lib/i18n'
 
 type ConfirmDialogOptions = {
 	title?: React.ReactNode
@@ -123,4 +123,3 @@ export function useConfirmDialog() {
 	}
 	return ctx
 }
-

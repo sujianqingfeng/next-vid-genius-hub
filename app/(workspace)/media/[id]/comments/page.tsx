@@ -17,7 +17,7 @@ import {
 import { useParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useLocale, useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from '~/lib/i18n'
 import { PageHeader } from '~/components/business/layout/page-header'
 import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { CommentCard } from '~/components/business/media/comment-card'

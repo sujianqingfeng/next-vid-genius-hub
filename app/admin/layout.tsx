@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { AdminAuthGate } from '~/components/auth/admin-auth-gate'
 import { cn } from '~/lib/utils'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '~/lib/i18n'
 import { ArrowLeft, Shield } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import {

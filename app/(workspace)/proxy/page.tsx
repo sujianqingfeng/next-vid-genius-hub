@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Plus, Shield, Server } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '~/lib/i18n'
 import { PageHeader } from '~/components/business/layout/page-header'
 import { WorkspacePageShell } from '~/components/business/layout/workspace-page-shell'
 import { Button } from '~/components/ui/button'

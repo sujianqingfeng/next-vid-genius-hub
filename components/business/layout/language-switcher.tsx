@@ -1,7 +1,6 @@
 'use client'
 
 import { Languages } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { setLocale } from '~/app/(workspace)/_actions/set-locale'
@@ -12,10 +11,10 @@ import {
 	TooltipTrigger,
 } from '~/components/ui/tooltip'
 import {
-	LOCALE_COOKIE_NAME,
 	SUPPORTED_LOCALES,
 	type Locale,
 } from '~/i18n/config'
+import { setLocaleCookie, useLocale, useTranslations } from '~/lib/i18n'
 
 function getCurrentLocale(locale: string): Locale {
 	return SUPPORTED_LOCALES.includes(locale as Locale) ? (locale as Locale) : 'zh'
@@ -37,13 +36,7 @@ export function LanguageSwitcher({ collapsed = false }: { collapsed?: boolean })
 		if (nextLocale === locale || isPending) return
 
 		startTransition(() => {
-			// Client-side fallback to ensure cookie is set even if server runtime
-			// does not support mutating cookies() (e.g., some edge runtimes).
-			if (typeof document !== 'undefined') {
-				document.cookie = `${LOCALE_COOKIE_NAME}=${nextLocale}; path=/; max-age=${
-					60 * 60 * 24 * 365
-				}`
-			}
+			if (typeof document !== 'undefined') setLocaleCookie(nextLocale)
 
 			void setLocale(nextLocale).finally(() => {
 				// Refresh to pull the new locale from cookies on the server.

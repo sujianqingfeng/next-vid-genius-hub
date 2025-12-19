@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { Button } from '~/components/ui/button'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '~/lib/i18n'
 
 type Props = {
   channelId: string

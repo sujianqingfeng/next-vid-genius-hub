@@ -14,7 +14,7 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '~/lib/i18n'
 import { LanguageSwitcher } from '~/components/business/layout/language-switcher'
 import { Button } from '~/components/ui/button'
 import {

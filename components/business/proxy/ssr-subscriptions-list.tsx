@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { Link, Trash2, RefreshCw } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from '~/lib/i18n'
 import { Button } from '~/components/ui/button'
 import { queryOrpc } from '~/lib/orpc/query-client'
 import { useProxySubscriptionMutation } from '~/lib/proxy/useProxySubscriptionMutation'

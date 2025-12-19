@@ -1,16 +1,15 @@
 'use client'
 
 import { Languages } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { setLocale } from '~/app/(workspace)/_actions/set-locale'
 import { Button } from '~/components/ui/button'
 import {
-	LOCALE_COOKIE_NAME,
 	SUPPORTED_LOCALES,
 	type Locale,
 } from '~/i18n/config'
+import { setLocaleCookie, useLocale, useTranslations } from '~/lib/i18n'
 import {
 	Tooltip,
 	TooltipContent,
@@ -37,13 +36,7 @@ export function HomeLanguageToggle() {
 		if (nextLocale === locale || isPending) return
 
 		startTransition(() => {
-			// Ensure cookie is set on the client as a fallback for runtimes
-			// where mutating cookies() on the server might not be supported.
-			if (typeof document !== 'undefined') {
-				document.cookie = `${LOCALE_COOKIE_NAME}=${nextLocale}; path=/; max-age=${
-					60 * 60 * 24 * 365
-				}`
-			}
+			if (typeof document !== 'undefined') setLocaleCookie(nextLocale)
 
 			void setLocale(nextLocale).finally(() => {
 				// Refresh to pull the new locale from cookies on the server.
@@ -79,4 +72,3 @@ export function HomeLanguageToggle() {
 		</Tooltip>
 	)
 }
-

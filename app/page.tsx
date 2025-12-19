@@ -1,11 +1,11 @@
 import { ArrowRight, Download, MessageSquare, Play } from 'lucide-react'
 import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
 import { Button } from '~/components/ui/button'
 import { HomeLanguageToggle } from '~/components/business/home/home-language-toggle'
+import { getServerTranslations } from '~/lib/i18n/next-server'
 
 export default async function Home() {
-	const t = await getTranslations('Home')
+	const t = await getServerTranslations('Home')
 
 	return (
 		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">

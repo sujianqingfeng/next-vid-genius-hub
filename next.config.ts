@@ -1,13 +1,10 @@
 import type { NextConfig } from 'next'
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare'
-import createNextIntlPlugin from 'next-intl/plugin'
 // Initialize Cloudflare bindings for Next dev as early as possible
 // Use the D1 binding defined in wrangler.json and the "local" env
 if (process.env.NODE_ENV !== 'production') {
 	initOpenNextCloudflareForDev({ environment: 'local', configPath: './wrangler.json' })
 }
-
-const withNextIntl = createNextIntlPlugin()
 
 const nextConfig: NextConfig = {
 	experimental: {
@@ -85,4 +82,4 @@ const nextConfig: NextConfig = {
 	],
 }
 
-export default withNextIntl(nextConfig)
+export default nextConfig
