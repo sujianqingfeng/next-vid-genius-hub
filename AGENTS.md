@@ -23,7 +23,7 @@ Cloudflare deployment is wired through `wrangler.json` / `wrangler.toml` and `op
 - `pnpm db:generate`, `pnpm db:studio`, `pnpm db:d1:migrate:remote`, `pnpm db:d1:list:remote` — manage Drizzle schema changes and inspect D1 state (including applied/pending migrations) against remote.
 - `pnpm dev:stack` / `pnpm dev:stack:down` — start or tear down the media containers defined in `docker-compose.dev.yml`.
 - `pnpm dev:stack:rebuild-*` / `pnpm dev:stack:restart-*` / `pnpm dev:stack:restart-all` — rebuild and restart individual containers or the full media stack.
-- `pnpm cf:dev` / `pnpm cf:dev:lite` — run the Cloudflare Worker stack for the media orchestrator (full vs lite local env); `pnpm cf:deploy` deploys to production.
+- `pnpm cf:dev` — run the Cloudflare Worker stack for the media orchestrator (local-lite, external containers); `pnpm cf:deploy` deploys to production.
 - `pnpm build:packages`, `pnpm typecheck:packages` — build and type‑check all `@app/*` workspace packages.
 
 ## Coding Style & Naming Conventions

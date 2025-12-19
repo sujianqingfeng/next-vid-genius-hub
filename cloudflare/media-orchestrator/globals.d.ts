@@ -54,12 +54,7 @@ declare interface KVNamespace {
 }
 
 // ---------------- R2 ----------------
-type R2PutValue =
-	| ReadableStream
-	| ArrayBuffer
-	| ArrayBufferView
-	| Blob
-	| string
+type R2PutValue = ReadableStream | ArrayBuffer | ArrayBufferView | Blob | string
 
 interface R2HTTPMetadata {
 	contentType?: string
@@ -130,11 +125,7 @@ interface R2Objects {
 declare interface R2Bucket {
 	head(key: string): Promise<R2Object | null>
 	get(key: string, options?: R2GetOptions): Promise<R2ObjectBody | null>
-	put(
-		key: string,
-		value: R2PutValue,
-		options?: R2PutOptions,
-	): Promise<R2Object>
+	put(key: string, value: R2PutValue, options?: R2PutOptions): Promise<R2Object>
 	delete(key: string | string[]): Promise<void>
 	list(options?: R2ListOptions): Promise<R2Objects>
 }
@@ -157,6 +148,8 @@ interface DurableObjectStorage {
 	put<T = unknown>(key: string, value: T): Promise<void>
 	delete(key: string): Promise<boolean>
 	list<T = unknown>(options?: unknown): Promise<Map<string, T>>
+	// Durable Objects alarms API (subset)
+	setAlarm(scheduledTime: number): Promise<void>
 }
 
 interface DurableObjectState {

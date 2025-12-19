@@ -91,7 +91,8 @@ JOB_TTL_SECONDS = 86400
 CONTAINER_BASE_URL = "http://localhost:9080"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
-NEXT_BASE_URL = "http://localhost:3000"
+# TanStack Start 默认 `pnpm dev` 跑在 3100；如用 Next 本地开发，可改为 3000。
+NEXT_BASE_URL = "http://localhost:3100"
 JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 PUT_EXPIRES = 600
 
@@ -106,15 +107,16 @@ ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
 
 > 注意：本地默认 `S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY` 建议通过 `wrangler secret` 注入，而不是写在 `wrangler.toml`。
 
-### 本地环境切换（env.local / env.local-lite）
+### 推荐启动方式（外部容器）
+
+- 启动 orchestrator：`pnpm cf:dev`
+- 启动外部容器：`pnpm dev:stack`
+
+### 本地环境（env.local-lite）
 
 `wrangler.toml` 中提供了两个开发环境：
 
 ```toml
-[env.local.vars]
-PREFER_EXTERNAL_CONTAINERS = "true"
-NO_CF_CONTAINERS = "false"
-
 [env.local-lite.vars]
 PREFER_EXTERNAL_CONTAINERS = "true"
 NO_CF_CONTAINERS = "true"
@@ -128,23 +130,18 @@ NO_CF_CONTAINERS = "true"
 
 因此当前行为是：
 
-- `pnpm cf:dev`（env.local）
-  - 启动本地 Worker，使用外部 Docker 容器（与 `docker-compose.dev.yml` 对齐）；
-  - 同时声明了 Cloudflare Containers 配置，但默认不会实际走 Cloudflare Containers。
-- `pnpm cf:dev:lite`（env.local-lite）
-  - 同样只使用外部 Docker 容器；
-  - 并且通过 `NO_CF_CONTAINERS` 禁用掉 Cloudflare Containers 相关逻辑。
+目前只保留 `env.local-lite`：
 
-若未来需要在本地验证 Cloudflare Containers，可以手动改 `wrangler.toml`：
+- `pnpm cf:dev`（env.local-lite）
+  - 启动本地 Worker，只使用外部 Docker 容器（与 `docker-compose.dev.yml` 对齐）；
+  - 通过 `NO_CF_CONTAINERS` 禁用 Cloudflare Containers 相关逻辑。
 
-- 将 `[env.local.vars]` 中 `PREFER_EXTERNAL_CONTAINERS` 设为 `"false"`，`NO_CF_CONTAINERS` 删除或设为 `"false"`。
+若未来需要在本地验证 Cloudflare Containers，可以再补回 `wrangler.toml` 的 `[[containers]]` 与对应 DO bindings。
 
 运行 Worker：
 
 ```bash
-pnpm cf:dev      # 本地 Worker + R2 + 外部 Docker 容器
-# 或
-pnpm cf:dev:lite # 轻量模式，仍然使用外部 Docker 容器，但跳过 CF Containers 配置构建
+pnpm cf:dev # 使用外部 Docker 容器，不使用 CF Containers
 ```
 
 ### Workers AI（ASR）凭据（方案 A）

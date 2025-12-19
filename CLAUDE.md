@@ -5,7 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build, Test, and Development Commands
 
 ```bash
-pnpm dev                    # Start Next.js dev server (Turbopack, 0.0.0.0:3000)
+pnpm dev                    # Start TanStack Start dev server (Cloudflare Worker, :3100)
+pnpm dev:next               # Start Next.js dev server (Turbopack, 0.0.0.0:3000)
 pnpm build                  # Production build
 pnpm lint                   # ESLint
 pnpm test                   # Vitest (add --watch for dev loop)
@@ -22,8 +23,7 @@ pnpm dev:stack:down         # Stop and clean up containers
 pnpm dev:stack:restart-*    # Rebuild and restart individual containers (burner, remotion, downloader)
 
 # Cloudflare Worker (media-orchestrator)
-pnpm cf:dev                 # Run Worker locally (full mode)
-pnpm cf:dev:lite            # Run Worker locally (lite mode, no CF Containers)
+pnpm cf:dev                 # Run Worker locally (external containers, no CF Containers)
 pnpm cf:deploy              # Deploy to production
 
 # Workspace packages

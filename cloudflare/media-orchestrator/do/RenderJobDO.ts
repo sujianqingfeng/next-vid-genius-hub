@@ -1,12 +1,5 @@
-import type { Env } from '../types'
-import { TERMINAL_STATUSES } from '../types'
-import { runAsrForPipeline } from '../asr/pipeline'
 import { bucketPaths } from '@app/media-domain'
-import { putObjectStreamToStorage, readObjectArrayBufferWithFallback } from '../storage/fallback'
-import { presignS3 } from '../storage/presign'
-import { s3Head } from '../storage/s3'
-import { jobStub } from '../utils/job'
-import { hmacHex, requireJobCallbackSecret } from '../utils/hmac'
+import { runAsrForPipeline } from '../asr/pipeline'
 import {
 	fetchWhisperApiConfigFromNext,
 	getWhisperJobResult,
@@ -15,6 +8,16 @@ import {
 	resolveWhisperProgressFraction,
 	submitWhisperTranscriptionJob,
 } from '../asr/whisper-api-jobs'
+import {
+	putObjectStreamToStorage,
+	readObjectArrayBufferWithFallback,
+} from '../storage/fallback'
+import { presignS3 } from '../storage/presign'
+import { s3Head } from '../storage/s3'
+import type { Env } from '../types'
+import { TERMINAL_STATUSES } from '../types'
+import { hmacHex, requireJobCallbackSecret } from '../utils/hmac'
+import { jobStub } from '../utils/job'
 
 // ---------------- Durable Object for strong-consistent job state ----------------
 export class RenderJobDO {
@@ -23,6 +26,15 @@ export class RenderJobDO {
 	constructor(state: DurableObjectState, env: Env) {
 		this.state = state
 		this.env = env
+	}
+
+	private shouldNotifyNext(doc: any) {
+		if (!doc) return false
+		if (!TERMINAL_STATUSES.includes(doc.status)) return false
+		if (doc.nextNotified) return false
+		if (doc.status !== 'completed') return true
+		if (doc.engine === 'asr-pipeline') return Boolean(doc.outputs?.vtt?.key)
+		return Boolean(doc.outputKey)
 	}
 
 	async fetch(req: Request): Promise<Response> {
@@ -68,8 +80,10 @@ export class RenderJobDO {
 				error: body.error ?? doc.error,
 				outputKey: body.outputKey ?? doc.outputKey,
 				outputAudioKey: body.outputAudioKey ?? doc.outputAudioKey,
-				outputAudioSourceKey: body.outputAudioSourceKey ?? doc.outputAudioSourceKey,
-				outputAudioProcessedKey: body.outputAudioProcessedKey ?? doc.outputAudioProcessedKey,
+				outputAudioSourceKey:
+					body.outputAudioSourceKey ?? doc.outputAudioSourceKey,
+				outputAudioProcessedKey:
+					body.outputAudioProcessedKey ?? doc.outputAudioProcessedKey,
 				outputMetadataKey: body.outputMetadataKey ?? doc.outputMetadataKey,
 				outputs: body.outputs ?? doc.outputs,
 				metadata: body.metadata ?? doc.metadata,
@@ -84,8 +98,17 @@ export class RenderJobDO {
 						? Boolean(next.outputs?.vtt?.key)
 						: Boolean(next.outputKey)))
 			if (shouldNotify) {
-				await this.notifyNext(next)
-				next.nextNotified = true
+				const ok = await this.notifyNext(next)
+				if (ok) {
+					next.nextNotified = true
+					next.nextNotifyPending = false
+				} else {
+					next.nextNotifyPending = true
+					next.nextNotifyAttempts = (next.nextNotifyAttempts || 0) + 1
+					try {
+						await this.state.storage.setAlarm(Date.now() + 5000)
+					} catch {}
+				}
 				await this.state.storage.put('job', next)
 			}
 			return new Response(JSON.stringify({ ok: true }), {
@@ -146,7 +169,10 @@ export class RenderJobDO {
 						await runAsrForPipeline(this.env, doc)
 					} catch (e) {
 						const msg = (e as Error)?.message || String(e)
-						console.error('[asr-pipeline] background error', { jobId: doc.jobId, msg })
+						console.error('[asr-pipeline] background error', {
+							jobId: doc.jobId,
+							msg,
+						})
 						try {
 							const stub = jobStub(this.env, doc.jobId)
 							if (stub) {
@@ -318,11 +344,47 @@ export class RenderJobDO {
 	// Durable Object alarms: used for polling external async ASR providers.
 	async alarm() {
 		const doc = (await this.state.storage.get('job')) as any
-		if (!doc || doc.engine !== 'asr-pipeline' || !doc.jobId) return
+		if (!doc || !doc.jobId) return
+
+		// Retry Next callback delivery for terminal jobs.
+		if (doc.nextNotifyPending && this.shouldNotifyNext(doc)) {
+			const maxAttempts = 20
+			const attempts =
+				typeof doc.nextNotifyAttempts === 'number' ? doc.nextNotifyAttempts : 0
+			if (attempts >= maxAttempts) {
+				console.warn('[orchestrator] notifyNext exceeded max attempts', {
+					jobId: doc.jobId,
+					attempts,
+				})
+				doc.nextNotifyPending = false
+			} else {
+				const ok = await this.notifyNext(doc)
+				if (ok) {
+					doc.nextNotified = true
+					doc.nextNotifyPending = false
+				} else {
+					doc.nextNotifyAttempts = attempts + 1
+					const delayMs = Math.min(
+						60_000,
+						2000 * 2 ** Math.min(doc.nextNotifyAttempts, 5),
+					)
+					try {
+						await this.state.storage.setAlarm(Date.now() + delayMs)
+					} catch {}
+				}
+			}
+			await this.state.storage.put('job', doc)
+		}
+
+		// Existing ASR polling logic (only).
+		if (doc.engine !== 'asr-pipeline') return
 		if (TERMINAL_STATUSES.includes(doc.status) || doc.outputs?.vtt?.key) return
 		if (doc?.metadata?.providerType !== 'whisper_api') return
 
-		const whisperJobId = typeof doc?.metadata?.whisperJobId === 'string' ? doc.metadata.whisperJobId : null
+		const whisperJobId =
+			typeof doc?.metadata?.whisperJobId === 'string'
+				? doc.metadata.whisperJobId
+				: null
 		if (!whisperJobId) return
 
 		try {
@@ -332,7 +394,10 @@ export class RenderJobDO {
 				throw new Error('whisper_api missing providerId/model')
 			}
 
-			const cfg = await fetchWhisperApiConfigFromNext(this.env, { providerId, modelId })
+			const cfg = await fetchWhisperApiConfigFromNext(this.env, {
+				providerId,
+				modelId,
+			})
 			const status = await getWhisperJobStatus({
 				baseUrl: cfg.baseUrl,
 				apiKey: cfg.apiKey,
@@ -360,7 +425,10 @@ export class RenderJobDO {
 							jobId: doc.jobId,
 							status: mappedStatus === 'completed' ? 'running' : mappedStatus,
 							phase,
-							progress: typeof status.progressFraction === 'number' ? status.progressFraction : undefined,
+							progress:
+								typeof status.progressFraction === 'number'
+									? status.progressFraction
+									: undefined,
 							error: status.error ?? undefined,
 							metadata: { ...(doc.metadata || {}), whisperJobId },
 							ts: Date.now(),
@@ -402,7 +470,9 @@ export class RenderJobDO {
 
 				const extractWords = (payload: any) => {
 					const out: Array<{ word: string; start: number; end: number }> = []
-					const segments = Array.isArray(payload?.segments) ? payload.segments : []
+					const segments = Array.isArray(payload?.segments)
+						? payload.segments
+						: []
 					for (const seg of segments) {
 						const words = Array.isArray(seg?.words) ? seg.words : []
 						for (const w of words) {
@@ -422,14 +492,32 @@ export class RenderJobDO {
 				const mediaId = doc.mediaId || 'unknown'
 				const title = doc?.title as string | undefined
 				const pathOptions = { title }
-				const vttKey = bucketPaths.asr.results.transcript(mediaId, doc.jobId, pathOptions)
-				await putObjectStreamToStorage(this.env, vttKey, 'text/vtt', String(vtt))
+				const vttKey = bucketPaths.asr.results.transcript(
+					mediaId,
+					doc.jobId,
+					pathOptions,
+				)
+				await putObjectStreamToStorage(
+					this.env,
+					vttKey,
+					'text/vtt',
+					String(vtt),
+				)
 
 				let wordsKey: string | undefined
 				const words = extractWords(json)
 				if (words && words.length > 0) {
-					wordsKey = bucketPaths.asr.results.words(mediaId, doc.jobId, pathOptions)
-					await putObjectStreamToStorage(this.env, wordsKey, 'application/json', JSON.stringify(words))
+					wordsKey = bucketPaths.asr.results.words(
+						mediaId,
+						doc.jobId,
+						pathOptions,
+					)
+					await putObjectStreamToStorage(
+						this.env,
+						wordsKey,
+						'application/json',
+						JSON.stringify(words),
+					)
 				}
 
 				const stub = jobStub(this.env, doc.jobId)
@@ -454,7 +542,10 @@ export class RenderJobDO {
 			}
 		} catch (e) {
 			const msg = (e as Error)?.message || String(e)
-			console.error('[asr-pipeline.whisper_api] poll error', { jobId: doc.jobId, msg })
+			console.error('[asr-pipeline.whisper_api] poll error', {
+				jobId: doc.jobId,
+				msg,
+			})
 		}
 
 		// Not finished yet: schedule another poll.
@@ -470,15 +561,22 @@ export class RenderJobDO {
 			throw new Error('whisper_api missing providerId/model')
 		}
 
-		const audioKey: string | undefined = doc.outputAudioKey || doc.outputs?.audio?.key
-		if (!audioKey) throw new Error('asr-pipeline.whisper_api: missing outputAudioKey')
+		const audioKey: string | undefined =
+			doc.outputAudioKey || doc.outputs?.audio?.key
+		if (!audioKey)
+			throw new Error('asr-pipeline.whisper_api: missing outputAudioKey')
 
-		const cfg = await fetchWhisperApiConfigFromNext(this.env, { providerId, modelId })
+		const cfg = await fetchWhisperApiConfigFromNext(this.env, {
+			providerId,
+			modelId,
+		})
 		const audio = await readObjectArrayBufferWithFallback(this.env, audioKey)
-		if (!audio) throw new Error(`asr-pipeline.whisper_api: audio not found: ${audioKey}`)
+		if (!audio)
+			throw new Error(`asr-pipeline.whisper_api: audio not found: ${audioKey}`)
 
 		const language =
-			typeof doc?.metadata?.language === 'string' && doc.metadata.language !== 'auto'
+			typeof doc?.metadata?.language === 'string' &&
+			doc.metadata.language !== 'auto'
 				? doc.metadata.language
 				: undefined
 
@@ -569,13 +667,7 @@ export class RenderJobDO {
 			if (metadataKey) {
 				outputs.metadata = {
 					key: metadataKey,
-					url: await presignS3(
-						this.env,
-						'GET',
-						bucket,
-						metadataKey,
-						600,
-					),
+					url: await presignS3(this.env, 'GET', bucket, metadataKey, 600),
 				}
 			}
 			payload.outputs = outputs
@@ -613,13 +705,31 @@ export class RenderJobDO {
 
 		const secret = requireJobCallbackSecret(this.env)
 		const signature = await hmacHex(secret, JSON.stringify(payload))
-		await fetch(cbUrl, {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				'x-signature': signature,
-			},
-			body: JSON.stringify(payload),
-		}).catch(() => {})
+		try {
+			const res = await fetch(cbUrl, {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					'x-signature': signature,
+				},
+				body: JSON.stringify(payload),
+			})
+			if (!res.ok) {
+				console.warn('[orchestrator] notifyNext non-2xx', {
+					jobId: doc.jobId,
+					status: res.status,
+					cbUrl,
+				})
+				return false
+			}
+			return true
+		} catch (e) {
+			console.warn('[orchestrator] notifyNext error', {
+				jobId: doc.jobId,
+				cbUrl,
+				msg: (e as Error)?.message || String(e),
+			})
+			return false
+		}
 	}
 }
