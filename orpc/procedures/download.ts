@@ -1,4 +1,4 @@
-import { createId } from '@paralleldrive/cuid2'
+import { createId } from '~/lib/utils/id'
 import { os } from '@orpc/server'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'

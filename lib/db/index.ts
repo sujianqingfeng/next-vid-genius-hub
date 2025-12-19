@@ -20,6 +20,80 @@ type DbGlobals = {
 	__VIDGEN_D1_DB__?: D1Database
 }
 
+function getLimitOffsetPlaceholderIndices(sql: string): number[] {
+	const indices: number[] = []
+
+	const addMatches = (re: RegExp) => {
+		re.lastIndex = 0
+		let match: RegExpExecArray | null
+		while ((match = re.exec(sql))) {
+			const text = match[0]
+			const qPos = match.index + text.lastIndexOf('?')
+			// Placeholder index is the count of '?' up to (and including) qPos - 1
+			let placeholderIndex = -1
+			for (let i = 0; i <= qPos; i++) {
+				if (sql[i] === '?') placeholderIndex++
+			}
+			if (placeholderIndex >= 0) indices.push(placeholderIndex)
+		}
+	}
+
+	addMatches(/\blimit\s+\?/gi)
+	addMatches(/\boffset\s+\?/gi)
+
+	return Array.from(new Set(indices)).sort((a, b) => b - a)
+}
+
+function replaceNthPlaceholder(sql: string, placeholderIndex: number, replacement: string) {
+	let seen = 0
+	for (let i = 0; i < sql.length; i++) {
+		if (sql[i] !== '?') continue
+		if (seen === placeholderIndex) {
+			return `${sql.slice(0, i)}${replacement}${sql.slice(i + 1)}`
+		}
+		seen++
+	}
+	return sql
+}
+
+function wrapD1Database(d1: D1Database): D1Database {
+	return {
+		exec: (sql) => d1.exec(sql),
+		prepare: (sql) => {
+			const stmt: any = d1.prepare(sql)
+			const inlineIndices = getLimitOffsetPlaceholderIndices(sql)
+			if (inlineIndices.length === 0) return stmt as D1PreparedStatement
+
+			return new Proxy(stmt, {
+				get(target, prop, receiver) {
+					if (prop !== 'bind') return Reflect.get(target, prop, receiver)
+					return (...args: unknown[]) => {
+						let rewrittenSql = sql
+						const rewrittenArgs = args.slice()
+
+						for (const idx of inlineIndices) {
+							const raw = rewrittenArgs[idx]
+							const n =
+								typeof raw === 'number' ? raw : Number.parseInt(String(raw), 10)
+
+							if (!Number.isFinite(n) || n < 0) {
+								// Fallback to original behavior if values are unexpected.
+								return (target as any).bind(...args)
+							}
+
+							rewrittenSql = replaceNthPlaceholder(rewrittenSql, idx, String(Math.trunc(n)))
+							rewrittenArgs.splice(idx, 1)
+						}
+
+						const rewrittenStmt: any = d1.prepare(rewrittenSql)
+						return rewrittenStmt.bind(...rewrittenArgs)
+					}
+				},
+			}) as unknown as D1PreparedStatement
+		},
+	}
+}
+
 function getInjectedD1Database(): D1Database | undefined {
 	return (globalThis as unknown as DbGlobals).__VIDGEN_D1_DB__
 }
@@ -38,7 +112,8 @@ export async function getDb(): Promise<DbClient> {
 	cachedDbPromise = (async () => {
 		try {
 			const injectedD1 = getInjectedD1Database()
-			const d1 = injectedD1 ?? (await getD1FromOpenNext())
+			const rawD1 = injectedD1 ?? (await getD1FromOpenNext())
+			const d1 = rawD1 ? wrapD1Database(rawD1) : undefined
 			if (!d1) {
 				throw new Error(
 					[
@@ -70,7 +145,9 @@ export async function getDb(): Promise<DbClient> {
 async function getD1FromOpenNext(): Promise<D1Database | undefined> {
 	try {
 		// Prefer async context fetch to work across Next dev processes
-		const { getCloudflareContext } = await import('@opennextjs/cloudflare')
+		const moduleName = '@opennextjs/cloudflare'
+		// Avoid bundlers treating this as a hard dependency in non-Next runtimes.
+		const { getCloudflareContext } = await import(/* @vite-ignore */ moduleName)
 		const { env } = await getCloudflareContext({ async: true })
 		return (env as { DB?: D1Database } | undefined)?.DB
 	} catch {

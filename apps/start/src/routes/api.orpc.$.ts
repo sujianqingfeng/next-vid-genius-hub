@@ -12,6 +12,14 @@ type CfEnv = {
 	DB?: D1Database
 }
 
+function getErrorCauseMessage(error: unknown): string | undefined {
+	if (!(error instanceof Error)) return undefined
+	const cause = (error as { cause?: unknown }).cause
+	if (!cause) return undefined
+	if (cause instanceof Error) return `${cause.name}: ${cause.message}`
+	return String(cause)
+}
+
 const handler = new RPCHandler(appRouter, {
 	interceptors: [
 		onError((error, options) => {
@@ -33,7 +41,11 @@ const handler = new RPCHandler(appRouter, {
 			}
 
 			const msg = error instanceof Error ? error.message : String(error)
-			logger.error('api', `[ORPC] Handler error: ${msg} method=${method} url=${url}`)
+			const causeText = getErrorCauseMessage(error)
+			logger.error(
+				'api',
+				`[ORPC] Handler error: ${msg} method=${method} url=${url}${causeText ? ` cause=${causeText}` : ''}`,
+			)
 		}),
 	],
 })

@@ -1,4 +1,4 @@
-import { createId } from '@paralleldrive/cuid2'
+import { createId } from '~/lib/utils/id'
 import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export type ModerationSeverity = 'low' | 'medium' | 'high'

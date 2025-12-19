@@ -1,7 +1,7 @@
 import { os } from '@orpc/server'
 import { z } from 'zod'
 import { and, desc, eq } from 'drizzle-orm'
-import { createId } from '@paralleldrive/cuid2'
+import { createId } from '~/lib/utils/id'
 import { getDb, schema } from '~/lib/db'
 import { translateTextWithUsage } from '~/lib/ai/translate'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
@@ -33,7 +33,7 @@ export const createChannel = os
 		const ctx = context as RequestContext
 		const userId = ctx.auth.user!.id
 		const now = new Date()
-		const id = (await import('@paralleldrive/cuid2')).createId()
+		const id = createId()
 		const channelUrl = input.channelUrlOrId
 		const provider: 'youtube' = MEDIA_SOURCES.YOUTUBE
 

@@ -1,4 +1,4 @@
-import { createId } from '@paralleldrive/cuid2'
+import { createId } from '~/lib/utils/id'
 import { z } from 'zod'
 import { logger } from '~/lib/logger'
 

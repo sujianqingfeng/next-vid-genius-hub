@@ -52,5 +52,12 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-	matcher: ['/media/:path*', '/proxy/:path*', '/api/:path*'],
+	matcher: [
+		'/media/:path*',
+		'/channels/:path*',
+		'/proxy/:path*',
+		'/points/:path*',
+		'/tasks/:path*',
+		'/api/:path*',
+	],
 }

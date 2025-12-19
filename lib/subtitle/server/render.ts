@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { createId } from '@paralleldrive/cuid2'
+import { createId } from '~/lib/utils/id'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'

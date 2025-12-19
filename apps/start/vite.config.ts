@@ -15,12 +15,15 @@ function normalizeBasePath(input: string): string {
 }
 
 const config = defineConfig(({ mode }) => {
-	const env = loadEnv(mode, process.cwd(), '')
-	// Gray rollout: serve Start under /__start/* by default.
-	// Override at build time via VITE_BASEPATH (e.g. "/__start").
-	const base = normalizeBasePath(env.VITE_BASEPATH ?? '/__start')
+	const fileEnv = loadEnv(mode, process.cwd(), '')
+	// `loadEnv` only reads .env files. Merge with `process.env` so values injected
+	// from npm scripts (e.g. `VITE_BASEPATH=/ ...`) are honored.
+	const env = { ...fileEnv, ...process.env } as Record<string, string | undefined>
+	// Default dev/build basepath for gray rollout. Root cutover uses `vite.root.config.ts`.
+	const base = normalizeBasePath('/__start')
 	const repoRoot = path.resolve(__dirname, '../..')
-	const apiTarget = env.VITE_NEXT_API_ORIGIN || 'http://localhost:3000'
+	const enableLegacyProxy = env.VITE_PROXY_NEXT === '1'
+	const legacyTarget = env.VITE_NEXT_API_ORIGIN || 'http://localhost:3000'
 
 	return {
 		base,
@@ -36,38 +39,62 @@ const config = defineConfig(({ mode }) => {
 			},
 		},
 		resolve: {
-			alias: [{ find: /^~\//, replacement: `${repoRoot}/` }],
+			alias: [
+				{ find: /^~\//, replacement: `${repoRoot}/` },
+				{
+					find: '@paralleldrive/cuid2',
+					replacement: path.resolve(__dirname, './src/shims/cuid2.ts'),
+				},
+			],
+			dedupe: ['react', 'react-dom', '@tanstack/react-query'],
+		},
+		build: {
+			rollupOptions: {
+				output: {
+					// Avoid extremely long filenames on macOS/Windows when TanStack Start
+					// generates virtual chunks (e.g. _tanstack-start-manifest_*).
+					chunkFileNames: 'assets/[hash].js',
+					assetFileNames: 'assets/[hash][extname]',
+				},
+			},
 		},
 		server: {
 			fs: {
 				allow: [repoRoot],
 			},
-			proxy: {
-				'/api': {
-					target: apiTarget,
-					changeOrigin: true,
-				},
-				// Let Start navigate to legacy Next pages during the migration (local dev only).
-				'/media': {
-					target: apiTarget,
-					changeOrigin: true,
-				},
-			},
+			...(enableLegacyProxy
+				? {
+						proxy: {
+							'/api': {
+								target: legacyTarget,
+								changeOrigin: true,
+							},
+							// Let Start navigate to legacy Next pages during migration (local dev only).
+							'/media': {
+								target: legacyTarget,
+								changeOrigin: true,
+							},
+						},
+					}
+				: {}),
 		},
-		plugins: [
-			// Disable the devtools server event bus (defaults to port 42069) to avoid
-			// conflicts with other running dev servers/processes.
-			devtools({ eventBusConfig: { enabled: false } }),
-			cloudflare({ viteEnvironment: { name: 'ssr' } }),
+			plugins: [
+				// Disable the devtools server event bus (defaults to port 42069) to avoid
+				// conflicts with other running dev servers/processes.
+				devtools({ eventBusConfig: { enabled: false } }),
+				cloudflare({
+					configPath: 'wrangler.vite.jsonc',
+					viteEnvironment: { name: 'ssr' },
+				}),
 			// this is the plugin that enables path aliases
-			viteTsConfigPaths({
-				projects: ['./tsconfig.json'],
-			}),
-			tailwindcss(),
-			tanstackStart(),
-			viteReact(),
-		],
-	}
-})
+				viteTsConfigPaths({
+					projects: ['./tsconfig.json'],
+				}),
+				tailwindcss(),
+				tanstackStart(),
+				viteReact(),
+			],
+		}
+	})
 
 export default config

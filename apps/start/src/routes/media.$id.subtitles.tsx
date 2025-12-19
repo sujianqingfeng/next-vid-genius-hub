@@ -26,7 +26,7 @@ export const Route = createFileRoute("/media/$id/subtitles")({
 			queryOrpcNext.auth.me.queryOptions(),
 		)
 		if (!me.user) {
-			const next = `${location.pathname}${location.search}`
+			const next = location.href
 			throw redirect({ to: "/login", search: { next } })
 		}
 

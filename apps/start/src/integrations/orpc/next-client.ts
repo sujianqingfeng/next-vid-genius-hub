@@ -18,15 +18,17 @@ export function getDefaultRedirect(next: string | undefined | null): string {
 }
 
 const getNextApiClient = createIsomorphicFn()
-	.server(async (): Promise<RouterClient<AppRouter>> => {
-		const { getRequestHeaders, getRequestUrl } = await import(
-			'@tanstack/start-server-core'
-		)
-
-		const origin = new URL(getRequestUrl()).origin
+	.server((): RouterClient<AppRouter> => {
 		const link = new RPCLink({
-			url: `${origin}/api/orpc`,
-			headers: async () => Object.fromEntries(getRequestHeaders()),
+			url: async () => {
+				const { getRequestUrl } = await import('@tanstack/start-server-core')
+				const origin = new URL(getRequestUrl()).origin
+				return `${origin}/api/orpc`
+			},
+			headers: async () => {
+				const { getRequestHeaders } = await import('@tanstack/start-server-core')
+				return Object.fromEntries(getRequestHeaders())
+			},
 		})
 		return createORPCClient(link) as RouterClient<AppRouter>
 	})
@@ -39,4 +41,3 @@ const getNextApiClient = createIsomorphicFn()
 
 export const orpcNext: RouterClient<AppRouter> = getNextApiClient()
 export const queryOrpcNext = createTanstackQueryUtils(orpcNext)
-

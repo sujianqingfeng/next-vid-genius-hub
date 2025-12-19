@@ -1,4 +1,4 @@
-import { createId } from '@paralleldrive/cuid2'
+import { createId } from '~/lib/utils/id'
 import { desc, eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'

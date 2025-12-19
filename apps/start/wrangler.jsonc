@@ -7,7 +7,6 @@
   "assets": {
     "directory": "dist/client"
   },
-  "no_bundle": true,
   // Gray rollout: mount TanStack Start under /__start/*.
   // Cloudflare will route the more specific pattern here even if the Next worker owns "/*".
   "routes": [
@@ -50,6 +49,8 @@
   },
   "env": {
     "local": {
+      // Local dev doesn't use Cloudflare routing; avoid noisy assets+routes warning.
+      "routes": [],
       "d1_databases": [
         {
           "binding": "DB",
@@ -59,7 +60,7 @@
       ],
       "vars": {
         "NODE_ENV": "development",
-        "NEXT_PUBLIC_APP_URL": "http://localhost:3000",
+        "NEXT_PUBLIC_APP_URL": "http://localhost:3100",
         "CF_ORCHESTRATOR_URL": "http://localhost:8787",
         "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret"
       }

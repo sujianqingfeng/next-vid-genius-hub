@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vid-genius-start",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  // Used by `@cloudflare/vite-plugin` to infer bindings/types.
+  // Runtime scripts (`wrangler dev/deploy`) use `wrangler*.jsonc` which point at `dist/server/index.js`.
+  "main": "src/worker.ts",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vidgen_app",
+      "database_id": "cb3d8c21-4b76-4bdf-b02d-eea938db23c8"
+    }
+  ],
+  "vars": {
+    "NODE_ENV": "development",
+    "NEXT_PUBLIC_APP_URL": "http://localhost:3100",
+    "CF_ORCHESTRATOR_URL": "http://localhost:8787",
+    "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret"
+  }
+}
+
