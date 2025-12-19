@@ -465,6 +465,18 @@
 			"started": "已开始转录",
 			"output": "转录结果"
 		},
+		"optimize": {
+			"title": "优化",
+			"desc": "使用大模型优化分句与可读性（可选）。需要 ASR 提供逐词时间戳。",
+			"model": "LLM 模型",
+			"start": "优化转录",
+			"starting": "优化中…",
+			"completed": "优化完成",
+			"restore": "恢复原始",
+			"restoring": "恢复中…",
+			"restored": "已恢复",
+			"requiresWords": "优化需要逐词时间戳（transcriptionWords）。请使用会返回 words 的 Cloudflare ASR 模型重新转录。"
+		},
 		"translate": {
 			"title": "翻译",
 			"desc": "将转录文本翻译为字幕。",

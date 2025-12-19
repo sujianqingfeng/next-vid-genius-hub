@@ -466,6 +466,18 @@
 			"started": "Transcription started",
 			"output": "Transcription"
 		},
+		"optimize": {
+			"title": "Optimize",
+			"desc": "Improve segmentation and readability using an LLM. Requires per-word timings from ASR.",
+			"model": "LLM model",
+			"start": "Optimize transcription",
+			"starting": "Optimizing…",
+			"completed": "Optimization completed",
+			"restore": "Restore original",
+			"restoring": "Restoring…",
+			"restored": "Restored",
+			"requiresWords": "Optimization requires word timings (transcriptionWords). Re-run transcription with a Cloudflare ASR model that returns words."
+		},
 		"translate": {
 			"title": "Translate",
 			"desc": "Translate the transcription to subtitles.",

@@ -23,6 +23,7 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools"
 import appCss from "../styles.css?url"
 
 import type { QueryClient } from "@tanstack/react-query"
+import { TooltipProvider } from "~/components/ui/tooltip"
 
 interface MyRouterContext {
 	queryClient: QueryClient
@@ -102,21 +103,23 @@ function RootLayout() {
 
 	return (
 		<I18nProvider locale={locale} messages={messages}>
-			{!hideHeader ? <Header /> : null}
-			{content}
-			<Toaster richColors />
-			<TanStackDevtools
-				config={{
-					position: "bottom-right",
-				}}
-				plugins={[
-					{
-						name: "Tanstack Router",
-						render: <TanStackRouterDevtoolsPanel />,
-					},
-					TanStackQueryDevtools,
-				]}
-			/>
+			<TooltipProvider delayDuration={300}>
+				{!hideHeader ? <Header /> : null}
+				{content}
+				<Toaster richColors />
+				<TanStackDevtools
+					config={{
+						position: "bottom-right",
+					}}
+					plugins={[
+						{
+							name: "Tanstack Router",
+							render: <TanStackRouterDevtoolsPanel />,
+						},
+						TanStackQueryDevtools,
+					]}
+				/>
+			</TooltipProvider>
 		</I18nProvider>
 	)
 }

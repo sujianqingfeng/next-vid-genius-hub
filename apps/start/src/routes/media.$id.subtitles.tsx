@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Link, createFileRoute, notFound, redirect } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { FileText, Languages, Loader2, Video } from "lucide-react"
+import { FileText, Languages, Loader2, Sparkles, Video } from "lucide-react"
 
 import { Button } from "~/components/ui/button"
 import {
@@ -132,6 +132,34 @@ function SubtitlesRoute() {
 		},
 	)
 
+	const optimizeMutation = useEnhancedMutation(
+		queryOrpcNext.subtitle.optimizeTranscription.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({
+					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: t("optimize.completed"),
+			errorToast: ({ error }) => (error instanceof Error ? error.message : "Failed"),
+		},
+	)
+
+	const clearOptimizedMutation = useEnhancedMutation(
+		queryOrpcNext.subtitle.clearOptimizedTranscription.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({
+					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: t("optimize.restored"),
+			errorToast: ({ error }) => (error instanceof Error ? error.message : "Failed"),
+		},
+	)
+
 	const renderMutation = useEnhancedMutation(
 		queryOrpcNext.subtitle.startCloudRender.mutationOptions({
 			onSuccess: (data) => {
@@ -206,6 +234,11 @@ function SubtitlesRoute() {
 			</div>
 		)
 	}
+
+	const transcriptionWords = (media as any)?.transcriptionWords
+	const canOptimize =
+		Array.isArray(transcriptionWords) && transcriptionWords.length > 0
+	const hasOptimized = Boolean((media as any)?.optimizedTranscription)
 
 	return (
 		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
@@ -316,6 +349,90 @@ function SubtitlesRoute() {
 								</pre>
 							</div>
 						) : null}
+					</div>
+
+					<div className="glass rounded-2xl p-6">
+						<div className="flex items-start justify-between gap-4">
+							<div className="space-y-1">
+								<div className="flex items-center gap-2 text-lg font-semibold">
+									<Sparkles className="h-5 w-5" />
+									{t("optimize.title")}
+								</div>
+								<div className="text-sm text-muted-foreground">
+									{t("optimize.desc")}
+								</div>
+							</div>
+						</div>
+
+						<div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<div className="space-y-2">
+								<div className="text-xs font-medium text-muted-foreground">
+									{t("optimize.model")}
+								</div>
+								<Select
+									value={llmModel}
+									onValueChange={setLlmModel}
+									disabled={
+										optimizeMutation.isPending || clearOptimizedMutation.isPending
+									}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder={t("optimize.model")} />
+									</SelectTrigger>
+									<SelectContent>
+										{(llmModelsQuery.data?.items ?? []).map((m) => (
+											<SelectItem key={m.id} value={String(m.id)}>
+												{m.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+
+						{!canOptimize ? (
+							<div className="mt-3 text-sm text-muted-foreground">
+								{t("optimize.requiresWords")}
+							</div>
+						) : null}
+
+						<div className="mt-4 flex flex-wrap gap-2">
+							<Button
+								variant="secondary"
+								onClick={() =>
+									optimizeMutation.mutate({ mediaId: id, model: llmModel || undefined })
+								}
+								disabled={
+									optimizeMutation.isPending ||
+									clearOptimizedMutation.isPending ||
+									!canOptimize
+								}
+							>
+								{optimizeMutation.isPending ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										{t("optimize.starting")}
+									</>
+								) : (
+									t("optimize.start")
+								)}
+							</Button>
+
+							{hasOptimized ? (
+								<Button
+									variant="outline"
+									onClick={() => clearOptimizedMutation.mutate({ mediaId: id })}
+									disabled={
+										optimizeMutation.isPending ||
+										clearOptimizedMutation.isPending
+									}
+								>
+									{clearOptimizedMutation.isPending
+										? t("optimize.restoring")
+										: t("optimize.restore")}
+								</Button>
+							) : null}
+						</div>
 					</div>
 
 					<div className="glass rounded-2xl p-6">

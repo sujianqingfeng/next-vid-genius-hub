@@ -1,19 +1,23 @@
-import { os } from '@orpc/server'
+import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
+import { ORPCError, os } from '@orpc/server'
 import { and, asc, count, desc, eq, isNull, like, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
-import { getDb, schema } from '~/lib/db'
-import { addPoints, listTransactions } from '~/lib/points/service'
-import { ADMIN_PRICING_RULES_PAGE_SIZE, ADMIN_USERS_PAGE_SIZE, DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
-import type { PointResourceType } from '~/lib/db/schema'
-import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
+import { generateText } from '~/lib/ai/chat'
 import {
+	getDefaultAiModel,
 	invalidateAiConfigCache,
 	listAiModels as listAiModelsFromConfig,
 	listAiProviders as listAiProvidersFromConfig,
-	getDefaultAiModel,
 } from '~/lib/ai/config/service'
-import { generateText } from '~/lib/ai/chat'
-import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
+import { getDb, schema } from '~/lib/db'
+import type { PointResourceType } from '~/lib/db/schema'
+import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
+import {
+	ADMIN_PRICING_RULES_PAGE_SIZE,
+	ADMIN_USERS_PAGE_SIZE,
+	DEFAULT_PAGE_LIMIT,
+} from '~/lib/pagination'
+import { addPoints, listTransactions } from '~/lib/points/service'
 
 const ListUsersSchema = z.object({
 	page: z.number().int().min(1).default(1),
@@ -43,7 +47,11 @@ export const listUsers = os
 		}
 
 		const whereClause =
-			filters.length === 1 ? filters[0] : filters.length > 1 ? and(...filters) : undefined
+			filters.length === 1
+				? filters[0]
+				: filters.length > 1
+					? and(...filters)
+					: undefined
 
 		const totalRows = await db
 			.select({ value: count() })
@@ -160,7 +168,12 @@ export const listUserTransactions = os
 
 const ListPricingRulesSchema = z.object({
 	page: z.number().int().min(1).default(1),
-	limit: z.number().int().min(1).max(ADMIN_PRICING_RULES_PAGE_SIZE).default(DEFAULT_PAGE_LIMIT),
+	limit: z
+		.number()
+		.int()
+		.min(1)
+		.max(ADMIN_PRICING_RULES_PAGE_SIZE)
+		.default(DEFAULT_PAGE_LIMIT),
 	resourceType: z.custom<PointResourceType>().optional(),
 })
 
@@ -175,11 +188,17 @@ export const listPricingRules = os
 
 		const filters = []
 		if (input.resourceType) {
-			filters.push(eq(schema.pointPricingRules.resourceType, input.resourceType))
+			filters.push(
+				eq(schema.pointPricingRules.resourceType, input.resourceType),
+			)
 		}
 
 		const whereClause =
-			filters.length === 1 ? filters[0] : filters.length > 1 ? and(...filters) : undefined
+			filters.length === 1
+				? filters[0]
+				: filters.length > 1
+					? and(...filters)
+					: undefined
 
 		const totalRows = await db
 			.select({ value: count() })
@@ -234,7 +253,9 @@ export const upsertPricingRule = os
 			})
 			if (!model) throw new Error('Model not found')
 			if (model.kind !== input.resourceType) {
-				throw new Error(`Model kind mismatch: model=${model.kind} pricing=${input.resourceType}`)
+				throw new Error(
+					`Model kind mismatch: model=${model.kind} pricing=${input.resourceType}`,
+				)
 			}
 			if (normalizedProviderId && normalizedProviderId !== model.providerId) {
 				throw new Error('Provider mismatch for model pricing rule')
@@ -246,7 +267,9 @@ export const upsertPricingRule = os
 			})
 			if (!provider) throw new Error('Provider not found')
 			if (provider.kind !== input.resourceType) {
-				throw new Error(`Provider kind mismatch: provider=${provider.kind} pricing=${input.resourceType}`)
+				throw new Error(
+					`Provider kind mismatch: provider=${provider.kind} pricing=${input.resourceType}`,
+				)
 			}
 		}
 
@@ -260,7 +283,9 @@ export const upsertPricingRule = os
 				throw new Error('LLM pricing rule unit must be token')
 			}
 			if (input.inputPricePerUnit == null || input.outputPricePerUnit == null) {
-				throw new Error('LLM pricing rules require both inputPricePerUnit and outputPricePerUnit')
+				throw new Error(
+					'LLM pricing rules require both inputPricePerUnit and outputPricePerUnit',
+				)
 			}
 		}
 
@@ -273,8 +298,14 @@ export const upsertPricingRule = os
 					modelId: normalizedModelId,
 					unit: input.unit,
 					pricePerUnit: input.pricePerUnit,
-					inputPricePerUnit: input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
-					outputPricePerUnit: input.resourceType === 'llm' ? (input.outputPricePerUnit ?? null) : null,
+					inputPricePerUnit:
+						input.resourceType === 'llm'
+							? (input.inputPricePerUnit ?? null)
+							: null,
+					outputPricePerUnit:
+						input.resourceType === 'llm'
+							? (input.outputPricePerUnit ?? null)
+							: null,
 					minCharge: input.minCharge ?? null,
 					updatedAt: now,
 				})
@@ -310,7 +341,9 @@ export const upsertPricingRule = os
 								eq(schema.pointPricingRules.modelId, normalizedModelId ?? ''),
 							)
 
-		const existing = await db.query.pointPricingRules.findFirst({ where: whereClause })
+		const existing = await db.query.pointPricingRules.findFirst({
+			where: whereClause,
+		})
 		if (existing) {
 			await db
 				.update(schema.pointPricingRules)
@@ -320,8 +353,14 @@ export const upsertPricingRule = os
 					modelId: normalizedModelId,
 					unit: input.unit,
 					pricePerUnit: input.pricePerUnit,
-					inputPricePerUnit: input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
-					outputPricePerUnit: input.resourceType === 'llm' ? (input.outputPricePerUnit ?? null) : null,
+					inputPricePerUnit:
+						input.resourceType === 'llm'
+							? (input.inputPricePerUnit ?? null)
+							: null,
+					outputPricePerUnit:
+						input.resourceType === 'llm'
+							? (input.outputPricePerUnit ?? null)
+							: null,
 					minCharge: input.minCharge ?? null,
 					updatedAt: now,
 				})
@@ -335,8 +374,12 @@ export const upsertPricingRule = os
 			modelId: normalizedModelId,
 			unit: input.unit,
 			pricePerUnit: input.pricePerUnit,
-			inputPricePerUnit: input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
-			outputPricePerUnit: input.resourceType === 'llm' ? (input.outputPricePerUnit ?? null) : null,
+			inputPricePerUnit:
+				input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
+			outputPricePerUnit:
+				input.resourceType === 'llm'
+					? (input.outputPricePerUnit ?? null)
+					: null,
 			minCharge: input.minCharge ?? null,
 			createdAt: now,
 			updatedAt: now,
@@ -371,7 +414,10 @@ const AI_PROVIDER_TYPES = [
 	'whisper_api',
 ] as const
 
-function assertProviderKindType(kind: (typeof AI_PROVIDER_KINDS)[number], type: (typeof AI_PROVIDER_TYPES)[number]) {
+function assertProviderKindType(
+	kind: (typeof AI_PROVIDER_KINDS)[number],
+	type: (typeof AI_PROVIDER_TYPES)[number],
+) {
 	if (kind === 'llm') {
 		if (type !== 'openai_compat' && type !== 'deepseek_native') {
 			throw new Error(`Invalid LLM provider type: ${type}`)
@@ -451,10 +497,12 @@ export const upsertAiProvider = os
 					name: input.name,
 					kind: input.kind,
 					type: input.type,
-					baseUrl: input.baseUrl === undefined ? existing.baseUrl : input.baseUrl,
+					baseUrl:
+						input.baseUrl === undefined ? existing.baseUrl : input.baseUrl,
 					apiKey: input.apiKey === undefined ? existing.apiKey : input.apiKey,
 					enabled: input.enabled ?? existing.enabled,
-					metadata: input.metadata === undefined ? existing.metadata : input.metadata,
+					metadata:
+						input.metadata === undefined ? existing.metadata : input.metadata,
 					updatedAt: now,
 				})
 				.where(eq(schema.aiProviders.id, input.id))
@@ -519,7 +567,9 @@ export const deleteAiProvider = os
 			throw new Error('Cannot delete provider: models still reference it')
 		}
 
-		await db.delete(schema.aiProviders).where(eq(schema.aiProviders.id, input.id))
+		await db
+			.delete(schema.aiProviders)
+			.where(eq(schema.aiProviders.id, input.id))
 
 		invalidateAiConfigCache()
 		return { success: true }
@@ -540,7 +590,10 @@ export const testAiProvider = os
 		if (!provider) throw new Error('Provider not found')
 		if (provider.kind !== 'llm') {
 			if (provider.type === 'cloudflare_asr') {
-				return { success: true, message: 'Cloudflare ASR provider config OK (no direct test).' }
+				return {
+					success: true,
+					message: 'Cloudflare ASR provider config OK (no direct test).',
+				}
 			}
 
 			if (provider.type === 'whisper_api') {
@@ -548,12 +601,20 @@ export const testAiProvider = os
 					typeof provider.baseUrl === 'string'
 						? provider.baseUrl.trim().replace(/\/$/, '')
 						: ''
-				if (!baseUrl) throw new Error('Whisper API baseUrl is not configured for this provider')
+				if (!baseUrl)
+					throw new Error(
+						'Whisper API baseUrl is not configured for this provider',
+					)
 
-				const apiKey = typeof provider.apiKey === 'string' ? provider.apiKey.trim() : ''
-				if (!apiKey) throw new Error('Whisper API token is not configured for this provider')
+				const apiKey =
+					typeof provider.apiKey === 'string' ? provider.apiKey.trim() : ''
+				if (!apiKey)
+					throw new Error(
+						'Whisper API token is not configured for this provider',
+					)
 
-				const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+				const controller =
+					typeof AbortController !== 'undefined' ? new AbortController() : null
 				const timeout = setTimeout(() => controller?.abort(), 5000)
 				try {
 					const r = await fetch(`${baseUrl}/health`, {
@@ -565,7 +626,9 @@ export const testAiProvider = os
 						throw new Error(`Whisper API health check failed: ${r.status} ${t}`)
 					}
 					const json = (await r.json().catch(() => null)) as any
-					const modelCount = Array.isArray(json?.models) ? json.models.length : undefined
+					const modelCount = Array.isArray(json?.models)
+						? json.models.length
+						: undefined
 					return {
 						success: true,
 						message:
@@ -624,21 +687,32 @@ export const listAiModels = os
 		const db = await getDb()
 
 		if (input.kind === 'asr') {
-			const all = await listAiModelsFromConfig({ kind: 'asr', enabledOnly: false, db })
+			const all = await listAiModelsFromConfig({
+				kind: 'asr',
+				enabledOnly: false,
+				db,
+			})
 			const filtered = all
-				.filter((m) => (input.providerId ? m.providerId === input.providerId : true))
+				.filter((m) =>
+					input.providerId ? m.providerId === input.providerId : true,
+				)
 				.filter((m) => (input.enabledOnly ? Boolean(m.enabled) : true))
 			return { items: filtered }
 		}
 
 		// Prefer config cache for the common "list all models by kind" path.
 		if (!input.providerId && !input.enabledOnly) {
-			const items = await listAiModelsFromConfig({ kind: input.kind, enabledOnly: false, db })
+			const items = await listAiModelsFromConfig({
+				kind: input.kind,
+				enabledOnly: false,
+				db,
+			})
 			return { items }
 		}
 
 		const filters = [eq(schema.aiModels.kind, input.kind)]
-		if (input.providerId) filters.push(eq(schema.aiModels.providerId, input.providerId))
+		if (input.providerId)
+			filters.push(eq(schema.aiModels.providerId, input.providerId))
 		if (input.enabledOnly) filters.push(eq(schema.aiModels.enabled, true))
 		const whereClause = filters.length === 1 ? filters[0] : and(...filters)
 
@@ -673,28 +747,65 @@ export const upsertAiModel = os
 		})
 		if (!provider) throw new Error('Provider not found')
 		if (provider.kind !== input.kind) {
-			throw new Error(`Provider kind mismatch: provider=${provider.kind} model=${input.kind}`)
+			throw new Error(
+				`Provider kind mismatch: provider=${provider.kind} model=${input.kind}`,
+			)
 		}
+
+		let modelId = input.id
+		let remoteModelId = input.remoteModelId
+		if (provider.type === 'cloudflare_asr') {
+			// Accept both "@cf/..." and "cf/..." (common input mistake) and normalize.
+			if (modelId.startsWith('cf/')) modelId = `@${modelId}`
+			if (remoteModelId.startsWith('cf/')) remoteModelId = `@${remoteModelId}`
+		}
+
 		if (input.kind === 'asr') {
 			if (provider.type === 'cloudflare_asr') {
-				if (input.remoteModelId !== input.id) {
-					throw new Error('Cloudflare ASR remoteModelId must equal id (Cloudflare run id)')
+				if (remoteModelId !== modelId) {
+					throw new ORPCError('INVALID_INPUT', {
+						status: 400,
+						message:
+							'Cloudflare ASR remoteModelId must equal id (Cloudflare run id, e.g. @cf/openai/whisper-large-v3-turbo)',
+						data: { reason: 'CLOUDFLARE_ASR_MODEL_ID_MISMATCH' },
+					})
 				}
 				// Validate modelId; ASR capabilities are derived from modelId and cannot be overridden.
-				deriveCloudflareAsrCapabilities(input.id)
-			} else if (provider.type === 'whisper_api') {
-				if (!input.id.startsWith('whisper/')) {
-					throw new Error('Whisper ASR model id must be namespaced as whisper/<remoteModelId>')
+				try {
+					deriveCloudflareAsrCapabilities(modelId)
+				} catch (error) {
+					const msg = error instanceof Error ? error.message : String(error)
+					throw new ORPCError('INVALID_INPUT', {
+						status: 400,
+						message: msg,
+						data: {
+							reason: 'UNKNOWN_CLOUDFLARE_ASR_MODEL_ID',
+							hint: 'Use Cloudflare Workers AI run ids like @cf/openai/whisper, @cf/openai/whisper-tiny-en, @cf/openai/whisper-large-v3-turbo.',
+						},
+					})
 				}
-				const expected = `whisper/${input.remoteModelId}`
-				if (input.id !== expected) {
-					throw new Error(`Whisper ASR model id must equal whisper/<remoteModelId>: expected ${expected}`)
+			} else if (provider.type === 'whisper_api') {
+				if (!modelId.startsWith('whisper/')) {
+					throw new ORPCError('INVALID_INPUT', {
+						status: 400,
+						message:
+							'Whisper ASR model id must be namespaced as whisper/<remoteModelId>',
+						data: { reason: 'WHISPER_ASR_MODEL_ID_NOT_NAMESPACED' },
+					})
+				}
+				const expected = `whisper/${remoteModelId}`
+				if (modelId !== expected) {
+					throw new ORPCError('INVALID_INPUT', {
+						status: 400,
+						message: `Whisper ASR model id must equal whisper/<remoteModelId>: expected ${expected}`,
+						data: { reason: 'WHISPER_ASR_MODEL_ID_MISMATCH' },
+					})
 				}
 			}
 		}
 
 		const existing = await db.query.aiModels.findFirst({
-			where: eq(schema.aiModels.id, input.id),
+			where: eq(schema.aiModels.id, modelId),
 		})
 
 		const enabled = input.enabled ?? existing?.enabled ?? true
@@ -704,7 +815,13 @@ export const upsertAiModel = os
 			await db
 				.update(schema.aiModels)
 				.set({ isDefault: false, updatedAt: now })
-				.where(and(eq(schema.aiModels.kind, input.kind), eq(schema.aiModels.isDefault, true), ne(schema.aiModels.id, input.id)))
+				.where(
+					and(
+						eq(schema.aiModels.kind, input.kind),
+						eq(schema.aiModels.isDefault, true),
+						ne(schema.aiModels.id, modelId),
+					),
+				)
 		}
 
 		if (existing) {
@@ -713,26 +830,28 @@ export const upsertAiModel = os
 				.set({
 					providerId: input.providerId,
 					kind: input.kind,
-					remoteModelId: input.remoteModelId,
+					remoteModelId,
 					label: input.label,
 					description: input.description ?? null,
 					enabled,
 					isDefault,
-					capabilities: input.kind === 'asr' ? null : (input.capabilities ?? null),
+					capabilities:
+						input.kind === 'asr' ? null : (input.capabilities ?? null),
 					updatedAt: now,
 				})
-				.where(eq(schema.aiModels.id, input.id))
+				.where(eq(schema.aiModels.id, modelId))
 		} else {
 			await db.insert(schema.aiModels).values({
-				id: input.id,
+				id: modelId,
 				providerId: input.providerId,
 				kind: input.kind,
-				remoteModelId: input.remoteModelId,
+				remoteModelId,
 				label: input.label,
 				description: input.description ?? null,
 				enabled,
 				isDefault,
-				capabilities: input.kind === 'asr' ? null : (input.capabilities ?? null),
+				capabilities:
+					input.kind === 'asr' ? null : (input.capabilities ?? null),
 				createdAt: now,
 				updatedAt: now,
 			})
@@ -779,7 +898,13 @@ export const setDefaultAiModel = os
 		await db
 			.update(schema.aiModels)
 			.set({ isDefault: false, updatedAt: now })
-			.where(and(eq(schema.aiModels.kind, input.kind), eq(schema.aiModels.isDefault, true), ne(schema.aiModels.id, input.id)))
+			.where(
+				and(
+					eq(schema.aiModels.kind, input.kind),
+					eq(schema.aiModels.isDefault, true),
+					ne(schema.aiModels.id, input.id),
+				),
+			)
 
 		await db
 			.update(schema.aiModels)
