@@ -3,6 +3,8 @@ import type { EngineId, JobStatus, JobTerminalStatus } from '@app/media-domain'
 export interface Env {
 	JOBS: KVNamespace
 	RENDER_BUCKET?: R2Bucket
+	// When true, skip R2 binding and use S3-compatible API only (useful in local dev where R2 is Miniflare-backed).
+	FORCE_S3_STORAGE?: string
 	JOB_TTL_SECONDS?: string
 	CONTAINER_BASE_URL?: string
 	CONTAINER_BASE_URL_REMOTION?: string

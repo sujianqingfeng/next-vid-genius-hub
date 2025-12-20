@@ -37,6 +37,8 @@ name = "media-orchestrator-local-lite"
 [env.local-lite.vars]
 PREFER_EXTERNAL_CONTAINERS = "true"
 NO_CF_CONTAINERS = "true"
+# Use remote R2 (via S3-compatible API) for all storage access in local dev.
+FORCE_S3_STORAGE = "true"
 CONTAINER_BASE_URL = "http://localhost:9080"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"

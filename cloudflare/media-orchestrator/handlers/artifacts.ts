@@ -128,7 +128,7 @@ export async function handleArtifactGet(env: Env, req: Request, jobId: string) {
 	const range = req.headers.get('range')
 
 	// R2 绑定直读（生产常见路径）；若不可用或对象不存在则回退到 S3 直连
-	if (env.RENDER_BUCKET) {
+	if (env.RENDER_BUCKET && env.FORCE_S3_STORAGE !== 'true') {
 		try {
 			if (range) {
 				const m = range.match(/bytes=(\d*)-(\d*)/)
