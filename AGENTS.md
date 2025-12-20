@@ -13,13 +13,13 @@
 - `containers/` defines media job containers (e.g. `burner-ffmpeg`, `renderer-remotion`, `media-downloader`) that compose the `@app/*` packages.
 - `cloudflare/` hosts Workers (e.g. `media-orchestrator`) plus Worker-specific React components/templates; `remotion/` contains the Remotion project used by renderer containers.
 
-Cloudflare deployment is wired through `wrangler.root.jsonc` / `wrangler.jsonc` (app Worker) and `wrangler.toml` (orchestrator Worker) at the repository root.
+Cloudflare deployment is wired through `wrangler.root.jsonc` (app Worker) and `wrangler.toml` (orchestrator Worker) at the repository root.
 
 ## Build, Test, and Development Commands
 - `pnpm dev` — local app dev via `wrangler dev` (closest to production Worker runtime).
 - `pnpm dev:vite` — Vite dev server for fast UI iteration (not identical to Worker runtime).
 - `pnpm build` / `pnpm preview` — build and preview the production bundle locally (Vite).
-- `pnpm deploy:root` / `pnpm deploy:gray` — deploy the app Worker to Cloudflare with root/gray routing configs.
+- `pnpm deploy:root` — deploy the app Worker to Cloudflare with root routing config.
 - `pnpm lint` — run Biome checks; fix or annotate warnings.
 - `pnpm test` — run Vitest; add `--watch` for local loops and `--coverage` on persistence‑heavy changes.
 - `pnpm db:generate`, `pnpm db:studio`, `pnpm db:d1:migrate:*`, `pnpm db:d1:list:*` — manage Drizzle schema changes and apply/list D1 migrations.

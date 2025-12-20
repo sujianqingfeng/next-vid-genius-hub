@@ -45,28 +45,14 @@ function decodeBase64(input: string): string {
 	throw new Error('No base64 decoder available')
 }
 
-function stripKnownBasePath(pathname: string): string {
-	const basePrefixes = ['/__start']
-	for (const base of basePrefixes) {
-		if (pathname === base) return '/'
-		if (pathname.startsWith(`${base}/`)) {
-			const rest = pathname.slice(base.length)
-			return rest ? rest : '/'
-		}
-	}
-	return pathname
-}
-
 function shouldProtectPath(pathname: string): boolean {
-	const normalized = stripKnownBasePath(pathname)
-
-	if (ALLOWLIST_PREFIXES.some((p) => normalized.startsWith(p))) {
+	if (ALLOWLIST_PREFIXES.some((p) => pathname.startsWith(p))) {
 		return false
 	}
 
-	if (normalized.startsWith('/api')) return true
+	if (pathname.startsWith('/api')) return true
 	return WORKSPACE_PREFIXES.some(
-		(prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+		(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
 	)
 }
 

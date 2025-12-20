@@ -220,7 +220,7 @@ docker push <registry>/<project>/burner-ffmpeg:<tag>
 
 应用运行在 Cloudflare Workers（wrangler）中：
 
-- 非敏感配置放在 `wrangler.root.jsonc` / `wrangler.jsonc` 的 `vars`（例如 `CF_ORCHESTRATOR_URL`）。
+- 非敏感配置放在 `wrangler.root.jsonc` 的 `vars`（例如 `CF_ORCHESTRATOR_URL`）。
 - 密钥用 `wrangler secret put` 注入（例如 `JOB_CALLBACK_HMAC_SECRET`）。
 
 示例（以 root 挂载为例）：
@@ -243,7 +243,6 @@ wrangler secret put WORKSPACE_AUTH_PASSWORD --config wrangler.root.jsonc
 - 部署目标：Cloudflare Workers（wrangler）。
 - 相关配置与脚本：
   - `wrangler.root.jsonc` + `pnpm deploy:root`：将应用挂载到站点根路径（`/*`）。
-  - `wrangler.jsonc` + `pnpm deploy:gray`：灰度发布，将应用挂载到 `/__start/*`。
 - 生产前检查：
   - `CF_ORCHESTRATOR_URL` 指向生产 orchestrator Worker；
   - `JOB_CALLBACK_HMAC_SECRET` 与 orchestrator/容器回调保持一致；

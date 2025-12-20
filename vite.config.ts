@@ -22,8 +22,8 @@ const config = defineConfig(({ mode }) => {
 		string,
 		string | undefined
 	>
-	// Default dev/build basepath for gray rollout. Root cutover uses `vite.root.config.ts`.
-	const base = normalizeBasePath(env.VITE_BASEPATH || '/__start')
+	// Default dev/build basepath is root. (Optional override via VITE_BASEPATH=/foo)
+	const base = normalizeBasePath(env.VITE_BASEPATH || '/')
 
 	return {
 		base,

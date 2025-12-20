@@ -10,7 +10,8 @@
     {
       "binding": "DB",
       "database_name": "vidgen_app",
-      "database_id": "cb3d8c21-4b76-4bdf-b02d-eea938db23c8"
+      "database_id": "cb3d8c21-4b76-4bdf-b02d-eea938db23c8",
+      "migrations_dir": "drizzle"
     }
   ],
   "vars": {
@@ -20,4 +21,3 @@
     "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret"
   }
 }
-
