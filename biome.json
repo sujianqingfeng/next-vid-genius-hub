@@ -7,7 +7,12 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!!**/.next/**", "!!**/drizzle/**"]
+		"includes": [
+			"**",
+			"!!**/.next/**",
+			"!!**/drizzle/**",
+			"!!src/routeTree.gen.ts"
+		]
 	},
 	"formatter": {
 		"enabled": true,

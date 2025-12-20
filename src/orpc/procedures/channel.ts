@@ -13,12 +13,14 @@ import {
 	putObjectByKey,
 	startCloudJob,
 } from '~/lib/cloudflare'
+import { TRANSLATE_CONCURRENCY } from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
 import { TASK_KINDS } from '~/lib/job/task'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
+import { mapWithConcurrency } from '~/lib/utils/concurrency'
 import { createId } from '~/lib/utils/id'
 
 const CreateChannelInput = z.object({
@@ -548,8 +550,10 @@ export const translateVideoTitles = os
 
 		let totalInputTokens = 0
 		let totalOutputTokens = 0
-		const translations = await Promise.all(
-			rows.map(async (r) => {
+		const translations = await mapWithConcurrency(
+			rows,
+			TRANSLATE_CONCURRENCY,
+			async (r) => {
 				const text = r.title || ''
 				if (!text.trim()) {
 					return { id: r.id, translation: '' }
@@ -558,7 +562,7 @@ export const translateVideoTitles = os
 				totalInputTokens += res.usage.inputTokens
 				totalOutputTokens += res.usage.outputTokens
 				return { id: r.id, translation: res.translation }
-			}),
+			},
 		)
 
 		try {

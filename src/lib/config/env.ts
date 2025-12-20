@@ -17,3 +17,12 @@ export const ASR_SAMPLE_RATE = Number(process.env.ASR_SAMPLE_RATE || 16_000)
 export const CF_ORCHESTRATOR_URL = process.env.CF_ORCHESTRATOR_URL
 
 export const JOB_CALLBACK_HMAC_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET
+
+// LLM translation (comments/channel titles) concurrency limiter.
+// 429 errors can happen when too many requests are in-flight (e.g. provider cap is 10).
+export const TRANSLATE_CONCURRENCY = (() => {
+	const raw = Number(process.env.TRANSLATE_CONCURRENCY || '')
+	const fallback = 6
+	const value = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback
+	return Math.max(1, Math.min(10, value))
+})()

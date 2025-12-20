@@ -14,6 +14,7 @@ import {
 	putJobManifest,
 	startCloudJob,
 } from '~/lib/cloudflare'
+import { TRANSLATE_CONCURRENCY } from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
 import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
@@ -23,6 +24,7 @@ import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
 import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
+import { mapWithConcurrency } from '~/lib/utils/concurrency'
 import { createId } from '~/lib/utils/id'
 
 export const translateComments = os
@@ -63,8 +65,10 @@ export const translateComments = os
 		}
 
 		// 翻译评论
-		const translatedComments = await Promise.all(
-			media.comments.map(async (comment) => {
+		const translatedComments = await mapWithConcurrency(
+			media.comments,
+			TRANSLATE_CONCURRENCY,
+			async (comment) => {
 				if (!comment.content) {
 					return comment
 				}
@@ -80,7 +84,7 @@ export const translateComments = os
 					...comment,
 					translatedContent,
 				}
-			}),
+			},
 		)
 
 		// Charge once for all LLM translation calls
