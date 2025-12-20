@@ -1,7 +1,7 @@
 import { bucketPaths } from '@app/media-domain'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { generateObjectWithUsage } from '~/lib/ai/chat'
+import { streamObjectWithUsage } from '~/lib/ai/chat'
 import type { AIModelId } from '~/lib/ai/models'
 import { translateTextWithUsage } from '~/lib/ai/translate'
 import { putObjectByKey } from '~/lib/cloudflare'
@@ -52,22 +52,9 @@ function logStructuredTranslationError(args: {
 		const err = error as Record<string, unknown>
 		debugDetails = { mediaId, model }
 
-		const rawResponse =
-			err.response ??
-			(err.cause && typeof err.cause === 'object'
-				? (err.cause as Record<string, unknown>).response
-				: undefined)
-
-		const rawBody =
-			rawResponse && typeof rawResponse === 'object'
-				? (rawResponse as Record<string, unknown>).body
-				: undefined
-
-		const text = extractAssistantTextFromError(error)
-
-		if (rawResponse) debugDetails.rawResponse = rawResponse
-		if (rawBody) debugDetails.rawBody = rawBody
-		if (text) debugDetails.sourceText = text
+		debugDetails.errorName = (error as { name?: unknown }).name
+		if (err.cause && typeof err.cause === 'object')
+			debugDetails.causeName = (err.cause as { name?: unknown }).name
 		debugDetails.errorMessage =
 			(err.message as string | undefined) ??
 			(err.cause as { message?: string } | undefined)?.message
@@ -107,7 +94,7 @@ async function translateBatchStructured(args: {
 	const prompt = `Original cues (i + timestamps + text):\n${JSON.stringify(batch)}\n\nReturn JSON with shape {"cues":[{"i":number,"zh":string}]} only.`
 
 	try {
-		const res = await generateObjectWithUsage({
+		const res = await streamObjectWithUsage({
 			model,
 			system,
 			prompt,

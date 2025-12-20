@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { generateObjectWithUsage, generateTextWithUsage } from './chat'
+import { streamObjectWithUsage, streamTextWithUsage } from './chat'
 import { logger } from '~/lib/logger'
 import { AIModelId } from './models'
 
@@ -39,7 +39,7 @@ export async function translateTextWithUsage(
 
 	if (!unsupportedStructuredModels.has(modelId)) {
 		try {
-			const res = await generateObjectWithUsage({
+			const res = await streamObjectWithUsage({
 				model: modelId,
 				system: translationSystemPrompt,
 				prompt,
@@ -100,7 +100,7 @@ export async function translateTextWithUsage(
 		text,
 	].join('\n')
 
-	const fallback = await generateTextWithUsage({
+	const fallback = await streamTextWithUsage({
 		model: modelId,
 		system: fallbackSystem,
 		prompt: fallbackPrompt,
