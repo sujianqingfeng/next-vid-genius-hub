@@ -8,11 +8,10 @@ import {
 	useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { ThemeProvider } from 'next-themes'
 import { ConfirmDialogProvider } from '~/components/business/layout/confirm-dialog-provider'
 import { Toaster } from '~/components/ui/sonner'
 import { TooltipProvider } from '~/components/ui/tooltip'
-import Header from '../components/Header'
+import { ThemeProvider, ThemeScript } from '~/integrations/theme'
 import WorkspaceShell from '../components/workspace/workspace-shell'
 import {
 	DEFAULT_LOCALE,
@@ -71,32 +70,12 @@ function isWorkspacePath(pathname: string): boolean {
 	)
 }
 
-function isAdminPath(pathname: string): boolean {
-	const baseUrl =
-		import.meta.env.BASE_URL && import.meta.env.BASE_URL !== '/'
-			? import.meta.env.BASE_URL.replace(/\/$/, '')
-			: ''
-
-	const raw =
-		baseUrl && pathname.startsWith(baseUrl)
-			? pathname.slice(baseUrl.length)
-			: pathname
-	const normalized = raw.endsWith('/') && raw !== '/' ? raw.slice(0, -1) : raw
-	return normalized === '/admin' || normalized.startsWith('/admin/')
-}
-
 function RootLayout() {
 	const data = Route.useLoaderData()
 	const locale = data?.locale ?? DEFAULT_LOCALE
 	const messages = data?.messages ?? getMessages(locale)
 	const pathname = useRouterState({ select: (s) => s.location.pathname })
 	const isWorkspace = isWorkspacePath(pathname)
-	const isAdmin = isAdminPath(pathname)
-	const hideHeader =
-		isWorkspace ||
-		isAdmin ||
-		pathname === '/login' ||
-		pathname.endsWith('/login')
 
 	const content = isWorkspace ? (
 		<WorkspaceShell>
@@ -107,16 +86,10 @@ function RootLayout() {
 	)
 
 	return (
-		<ThemeProvider
-			attribute="class"
-			defaultTheme="system"
-			enableSystem
-			disableTransitionOnChange
-		>
+		<ThemeProvider defaultTheme="system" enableSystem disableTransitionOnChange>
 			<I18nProvider locale={locale} messages={messages}>
 				<TooltipProvider delayDuration={300}>
 					<ConfirmDialogProvider>
-						{!hideHeader ? <Header /> : null}
 						{content}
 						<Toaster richColors position="top-right" />
 						<TanStackDevtools
@@ -144,6 +117,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang={locale} suppressHydrationWarning>
 			<head>
+				<ThemeScript />
 				<HeadContent />
 				{/* Vite/esbuild may emit `__name(...)` helpers inside TanStack Start's inline
 				SSR payload scripts. Those scripts execute in classic script context (not
