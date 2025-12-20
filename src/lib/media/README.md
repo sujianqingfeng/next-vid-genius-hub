@@ -1,14 +1,14 @@
 # Media Module
 
-This directory contains **application‑facing media helpers** for Next Vid Genius Hub.
-Heavy FFmpeg / yt‑dlp / Remotion logic lives in `packages/*`; `lib/media` stays
-focused on types, manifests, and orchestration helpers that the Next app
+This directory contains **application‑facing media helpers** for Vid Genius Hub.
+Heavy FFmpeg / yt‑dlp / Remotion logic lives in `packages/*`; `src/lib/media` stays
+focused on types, manifests, and orchestration helpers that the app Worker
 directly consumes.
 
 ## Structure
 
 ```
-lib/media/
+src/lib/media/
 ├── comments-snapshot.ts  # Persist comments + videoInfo snapshot to object storage
 ├── stream.ts             # Helpers for streaming/ proxying media via the orchestrator
 ├── types/                # Shared data contracts (VideoInfo, Comment, ...)
@@ -24,7 +24,7 @@ lib/media/
   and `@app/media-comments` helpers.
 
 These types are used by:
-- Next API routes under `app/api/media/**`
+- App routes under `src/routes/api.media.*`
 - Remotion compositions under `remotion/`
 - Cloudflare orchestrator callbacks (via manifest payloads)
 
@@ -45,13 +45,13 @@ the single source of truth for comments‑driven renders.
   2. R2 key via `presignGetByKey(remoteVideoKey)`
 - `proxyRemoteWithRange(url, request)` – Fetch a remote video (Worker proxy or
   R2) while preserving `Range` headers and key caching headers.
-- `createProxyResponse(upstream, options)` – Normalize headers for `NextResponse`
+- `createProxyResponse(upstream, options)` – Normalize headers for a browser `Response`
   and optionally force a download filename.
 - `buildDownloadFilename(title, fallbackBase, ext)` – Build a safe,
   RFC‑5987‑compatible attachment filename.
 
-These helpers are used by `app/api/media/[id]/downloaded` / `rendered` routes to
-stream artifacts back to the browser.
+These helpers are used by `src/routes/api.media.$id.downloaded.ts` / `src/routes/api.media.$id.rendered.ts`
+to stream artifacts back to the browser.
 
 ## Relationship to `packages/*`
 
@@ -66,18 +66,18 @@ Runtime media processing has been pushed down into workspace packages:
 - `@app/media-subtitles` – Subtitle burn‑in and ASS/WebVTT conversion built on
   top of `ffmpeg`.
 
-`lib/media` should **not** grow new FFmpeg or yt‑dlp helpers. When you need new
+`src/lib/media` should **not** grow new FFmpeg or yt‑dlp helpers. When you need new
 media functionality:
 
 1. Add or extend the appropriate package in `packages/*`.
-2. Expose any app‑specific glue or types here under `lib/media` (or via
-   `lib/types`) so Next routes / ORPC procedures can consume them.
+2. Expose any app‑specific glue or types here under `src/lib/media` (or via
+   `src/lib/types`) so app routes / ORPC procedures can consume them.
 
 ## Maintenance Notes
 
-1. Keep `lib/media` small and focused on **types and orchestration helpers**.
+1. Keep `src/lib/media` small and focused on **types and orchestration helpers**.
 2. Prefer importing Remotion‑related helpers from `@app/media-comments` rather
    than duplicating timeline logic here.
 3. When manifests or snapshot shapes change, update both:
-   - `lib/media/types`
-   - Any consumers under `app/api/**`, `remotion/**`, and `orpc/**`.
+   - `src/lib/media/types`
+   - Any consumers under `src/routes/**`, `remotion/**`, and `src/orpc/**`.

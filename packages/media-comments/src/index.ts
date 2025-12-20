@@ -32,7 +32,7 @@ import {
 } from './core/shared'
 
 // Note: Do NOT import Node-only libs at module top-level.
-// This package is consumed by both Node (Next server/containers) and browser (Remotion composition bundling).
+// This package is consumed by both Node (server/containers) and browser (Remotion composition bundling).
 // We dynamically load `undici` inside functions when running in Node and only if needed (e.g., proxy).
 
 // ---------------- Remote image inlining (Node-friendly) ----------------

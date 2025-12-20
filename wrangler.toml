@@ -42,7 +42,7 @@ FORCE_S3_STORAGE = "true"
 CONTAINER_BASE_URL = "http://localhost:9080"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
-# TanStack Start 本地默认跑在 3100（根目录 `pnpm dev`）。如使用 Next 本地开发，可改回 3000。
+# 业务应用（TanStack Start）本地默认跑在 3100（根目录 `pnpm dev`）。
 NEXT_BASE_URL = "http://localhost:3100"
 JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 PUT_EXPIRES = 600
@@ -78,7 +78,7 @@ PREFER_EXTERNAL_CONTAINERS = "true"
 CONTAINER_BASE_URL = "https://burner.temp-drop-files.store"
 CONTAINER_BASE_URL_REMOTION = "https://remotion.temp-drop-files.store"
 CONTAINER_BASE_URL_DOWNLOADER = "https://downloader.temp-drop-files.store"
-# Worker 回调 Next：务必替换为你的生产域名
+# Worker 回调业务应用：务必替换为你的生产域名（变量名为历史遗留）
 NEXT_BASE_URL = "https://vid-hub.temp-drop-files.store"
 # 建议通过 `wrangler secret put JOB_CALLBACK_HMAC_SECRET` 注入（不要在 vars 里明文配置）
 # JOB_CALLBACK_HMAC_SECRET = "..."

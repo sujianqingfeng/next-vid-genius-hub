@@ -62,8 +62,8 @@ export async function handleStart(env: Env, req: Request) {
 		env.ORCHESTRATOR_BASE_URL_CONTAINER || new URL(req.url).origin
 	).replace(/\/$/, '')
 
-	// Prepare payload for container
-	// Ensure inputs exist in R2 (Worker fetches from Next, container不会访问Next)
+		// Prepare payload for container
+		// Ensure inputs exist in R2 (bucket-first; container不会访问业务应用)
 	const bucketName = env.S3_BUCKET_NAME || 'vidgen-render'
 	const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
 	const pathOptions = { title: body.title ?? undefined }
@@ -122,8 +122,8 @@ export async function handleStart(env: Env, req: Request) {
 	let inputVttUrl: string | undefined
 	let inputDataUrl: string | undefined
 	if (!isDownloader && !isAsrPipeline) {
-		// Resolve inputs exclusively from per-job manifest written by Next. The
-		// Worker no longer consults the media-level manifest when starting jobs.
+			// Resolve inputs exclusively from per-job manifest written by the app. The
+			// Worker no longer consults the media-level manifest when starting jobs.
 		const jobManifest = await readJobManifest(env, jobId)
 		if (!jobManifest) {
 			return json(
@@ -203,12 +203,12 @@ export async function handleStart(env: Env, req: Request) {
 				{
 					error: 'missing_inputs',
 					details: {
-						missing,
-						// 标记已经使用 GET-range 探测，便于从 Next 日志中区分新旧 Worker 版本
-						hint:
-							'Materialize inputs in bucket/manifest (checked via GET-range)',
+							missing,
+							// 标记已经使用 GET-range 探测，便于从应用日志中区分新旧 Worker 版本
+							hint:
+								'Materialize inputs in bucket/manifest (checked via GET-range)',
+						},
 					},
-				},
 				{ status: 400 },
 			)
 		}

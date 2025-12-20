@@ -1,6 +1,6 @@
 {
 	"Layout": {
-		"title": "Next Vid Genius Hub",
+		"title": "Video Genius Hub",
 		"description": "视频下载与处理平台",
 		"nav": {
 			"dashboard": "仪表盘",
@@ -96,7 +96,7 @@
 			}
 		},
 		"tech": {
-			"next": "Next.js",
+			"next": "TanStack Start",
 			"ts": "TypeScript",
 			"tailwind": "Tailwind CSS"
 		}

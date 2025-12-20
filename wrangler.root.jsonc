@@ -8,7 +8,6 @@
     "directory": "dist/client"
   },
   // Cutover: mount TanStack Start at the site root.
-  // Pair with deploying the Next/OpenNext worker on `/api/*` only.
   "routes": [
     {
       "pattern": "vid-hub.temp-drop-files.store/api/orpc*",

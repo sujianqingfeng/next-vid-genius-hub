@@ -28,7 +28,7 @@ export const COLOR_CONSTANTS = {
  */
 // 环境感知的轮询配置
 function resolveInterval(devMs: number, prodMs: number) {
-	// 在浏览器端可用的 env: process.env.NODE_ENV 由 Next 编译期注入
+	// 在浏览器端可用的 env: process.env.NODE_ENV 由 Vite/TanStack Start 注入
 	const env = process.env.NODE_ENV || 'development'
 	return env === 'development' ? devMs : prodMs
 }

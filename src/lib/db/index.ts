@@ -1,7 +1,7 @@
 import { drizzle as drizzleD1 } from 'drizzle-orm/d1'
 import * as schema from './schema'
 
-// Prefer Cloudflare D1 when available (wrangler dev / OpenNext Cloudflare)
+// Prefer Cloudflare D1 when available (wrangler dev / Worker runtime)
 // Fallback to libsql (file/turso) when no CF binding is present.
 type D1PreparedStatement = {
 	bind: (...args: unknown[]) => {
@@ -120,13 +120,11 @@ export async function getDb(): Promise<DbClient> {
 	cachedDbPromise = (async () => {
 		try {
 			const injectedD1 = getInjectedD1Database()
-			const rawD1 = injectedD1 ?? (await getD1FromOpenNext())
-			const d1 = rawD1 ? wrapD1Database(rawD1) : undefined
+			const d1 = injectedD1 ? wrapD1Database(injectedD1) : undefined
 			if (!d1) {
 				throw new Error(
 					[
 						'Cloudflare D1 绑定未找到：请在 wrangler 配置中设置 d1_databases 绑定名为 DB。',
-						'Next/OpenNext：确保 next.config.ts 调用 initOpenNextCloudflareForDev()，或线上 Worker 有 DB 绑定。',
 						'TanStack Start：确保 worker entry 将 env.DB 注入到应用（例如通过 setInjectedD1Database(env.DB)）。',
 					].join('\n'),
 				)
@@ -148,19 +146,6 @@ export async function getDb(): Promise<DbClient> {
 	})()
 
 	return cachedDbPromise
-}
-
-async function getD1FromOpenNext(): Promise<D1Database | undefined> {
-	try {
-		// Prefer async context fetch to work across Next dev processes
-		const moduleName = '@opennextjs/cloudflare'
-		// Avoid bundlers treating this as a hard dependency in non-Next runtimes.
-		const { getCloudflareContext } = await import(/* @vite-ignore */ moduleName)
-		const { env } = await getCloudflareContext({ async: true })
-		return (env as { DB?: D1Database } | undefined)?.DB
-	} catch {
-		return undefined
-	}
 }
 
 async function assertD1SchemaReady(d1: D1Database, requiredTables: string[]) {

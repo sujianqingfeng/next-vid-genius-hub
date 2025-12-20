@@ -36,10 +36,10 @@ export interface Env {
 
 export const TERMINAL_STATUSES: JobTerminalStatus[] = ['completed', 'failed', 'canceled']
 
-// Per-job manifest: immutable snapshot of what a single async job needs.
-// This is written by the Next app at job-start time so that the Worker and
-// containers never have to reach into the primary DB.
-export interface JobManifest {
+	// Per-job manifest: immutable snapshot of what a single async job needs.
+	// This is written by the app at job-start time so that the Worker and
+	// containers never have to reach into the primary DB.
+	export interface JobManifest {
 	jobId: string
 	mediaId: string
 	engine: EngineId | string

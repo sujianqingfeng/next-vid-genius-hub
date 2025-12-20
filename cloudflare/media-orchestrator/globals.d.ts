@@ -1,6 +1,6 @@
-// Ambient Cloudflare Workers types for local/Next builds.
+// Ambient Cloudflare Workers types for local builds.
 // Keep this file scoped to the worker directory to avoid pulling in full
-// @cloudflare/workers-types in the Next runtime.
+// @cloudflare/workers-types in the app/worker runtime.
 
 // ---------------- KV ----------------
 type KVGetType = 'text' | 'json' | 'arrayBuffer' | 'stream'

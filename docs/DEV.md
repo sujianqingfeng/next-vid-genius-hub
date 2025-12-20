@@ -1,6 +1,6 @@
 # 本地开发同生产的同构方案（Cloudflare R2 直连）
 
-目标：让本地开发与生产路径尽量一致，容器仅访问对象存储（S3 兼容）与编排（Worker），不再直接访问 Next。Next 主要负责业务 UI、DB 和写入 per-job manifest。
+目标：让本地开发与生产路径尽量一致，容器仅访问对象存储（S3 兼容）与编排（Worker），不再直接访问业务应用。业务应用（TanStack Start）主要负责 UI、DB 和写入 per-job manifest。
 
 ## 组件
 
@@ -10,26 +10,26 @@
   - `renderer-remotion`：评论视频渲染。
   - `media-downloader`：云端下载（yt-dlp + ffmpeg）。
 - Worker（`cloudflare/media-orchestrator`，wrangler dev）负责（桶优先）：
-  - 只通过 per-job manifest + R2 HEAD 检测输入，不再从 Next 拉取文件；
+  - 只通过 per-job manifest + R2 HEAD 检测输入，不再从业务应用拉取文件；
   - 生成 S3 预签名 URL（GET/PUT），只把 URL 下发给容器；
   - 触发容器 `/render` 并在 Durable Object 中维护强一致状态；
-  - 轮询时通过 HEAD 检测桶内产物；完成后回调 Next 落库；
+  - 轮询时通过 HEAD 检测桶内产物；完成后回调业务应用落库；
   - ASR（`asr-pipeline`）由 Worker 直接调用 Workers AI 并写回产物。
-- Next 应用（本仓库）：
+- 业务应用（本仓库，TanStack Start / Cloudflare Workers）：
   - 提供 UI / API；
   - 通过 ORPC 创建云任务、写入 per-job manifest、让 Worker 编排；
   - 通过 `CF_ORCHESTRATOR_URL` 访问 orchestrator（例如 `http://localhost:8787` 或生产域名）。
 
-### lib 目录约定
+### `src/lib` 目录约定
 
 - 领域模块：`auth` / `media` / `subtitle`（含 ASR） / `points` / `providers` / `ai` / `job`
 - 基础设施：`config` / `db` / `logger` / `storage` / `proxy` / `orpc` / `query` / `cloudflare`
 - 横切：`errors` / `hooks` / `utils` / `types`
 - 规则：
-  - 领域内的 types/hooks/utils/server 均放在 `lib/<domain>/**`。
-  - `lib/types` 仅放跨领域类型（例如 provider 类型）；领域内类型放在各自 `lib/<domain>/types`。
-  - `lib/utils` / `lib/hooks` 只放真正通用的工具；不要在这里新增领域特定逻辑。
-  - 与 Cloudflare orchestrator / R2 交互的代码统一放在 `lib/cloudflare/**`。
+  - 领域内的 types/hooks/utils/server 均放在 `src/lib/<domain>/**`。
+  - `src/lib/types` 仅放跨领域类型（例如 provider 类型）；领域内类型放在各自 `src/lib/<domain>/types`。
+  - `src/lib/utils` / `src/lib/hooks` 只放真正通用的工具；不要在这里新增领域特定逻辑。
+  - 与 Cloudflare orchestrator / R2 交互的代码统一放在 `src/lib/cloudflare/**`。
 
 ## 启动本地容器
 
@@ -91,7 +91,7 @@ JOB_TTL_SECONDS = 86400
 CONTAINER_BASE_URL = "http://localhost:9080"
 CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
-# TanStack Start 默认 `pnpm dev` 跑在 3100；如用 Next 本地开发，可改为 3000。
+# 业务应用（TanStack Start）默认 `pnpm dev` 跑在 3100。
 NEXT_BASE_URL = "http://localhost:3100"
 JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 PUT_EXPIRES = 600
@@ -114,7 +114,7 @@ ORCHESTRATOR_BASE_URL_CONTAINER = "http://host.docker.internal:8787"
 
 ### 本地环境（env.local-lite）
 
-`wrangler.toml` 中提供了两个开发环境：
+`wrangler.toml` 中提供了多个环境（例如 `local-lite`、`production`）。本地开发推荐使用 `local-lite`（外部 Docker 容器 + R2 直连）：
 
 ```toml
 [env.local-lite.vars]
@@ -128,9 +128,7 @@ NO_CF_CONTAINERS = "true"
   - 就直接通过 `CONTAINER_BASE_URL*` 的 HTTP 地址调用外部 Docker 容器；
   - 而不是使用 Cloudflare Containers 的 Durable Object binding。
 
-因此当前行为是：
-
-目前只保留 `env.local-lite`：
+因此当前本地行为是（`env.local-lite`）：
 
 - `pnpm cf:dev`（env.local-lite）
   - 启动本地 Worker，只使用外部 Docker 容器（与 `docker-compose.dev.yml` 对齐）；
@@ -146,13 +144,13 @@ pnpm cf:dev # 使用外部 Docker 容器，不使用 CF Containers
 
 ### Workers AI（ASR）凭据（方案 A）
 
-字幕 Step 1 若选择 Cloud（触发 `asr-pipeline`），Workers AI 的凭据由 **Next 从 DB 读取**：
+字幕 Step 1 若选择 Cloud（触发 `asr-pipeline`），Workers AI 的凭据由 **业务应用从 DB 读取**：
 
 - Admin → AI providers → ASR Providers → `cloudflare`：
   - `Account ID`：Cloudflare account id
   - `API token`：具有 Workers AI 访问权限的 API Token
 
-未配置会在 Worker 触发 ASR 时由 Next 接口返回错误：`Cloudflare ASR provider credentials not configured in DB`。
+未配置会在 Worker 触发 ASR 时由业务应用接口返回错误：`Cloudflare ASR provider credentials not configured in DB`。
 
 验证方式：
 
@@ -168,17 +166,28 @@ pnpm cf:dev # 使用外部 Docker 容器，不使用 CF Containers
 - 历史遗留的 `ai_models.capabilities`（ASR）字段会被忽略；如需清理可执行：
   - `UPDATE ai_models SET capabilities = NULL WHERE kind = 'asr';`
 
-## Next 本地
+## 业务应用（TanStack Start）本地
 
-Next 使用 OpenNext Cloudflare 集成，通过 `wrangler.json` 绑定 D1 / R2。
+本仓库的业务应用基于 TanStack Start，运行在 Cloudflare Workers（`nodejs_compat`）上：
 
-启动 Next dev：
+- Worker 入口：`src/worker.ts`（负责注入 D1 并启动 TanStack Start handler）。
+- 本地启动配置：`wrangler.root.jsonc`（`env.local`）。
+- 构建产物：`dist/server/index.js` + `dist/client/**`（Vite 构建）。
+- DB：Cloudflare D1（`binding = "DB"`）。本地/远端迁移命令见 `package.json` 的 `db:d1:*` scripts。
+
+启动（推荐，最接近生产 Worker 行为）：
 
 ```bash
-pnpm dev        # 或 pnpm dev:host
+pnpm dev
 ```
 
-当前脚本均监听 `0.0.0.0:3000`，便于容器和远程浏览器访问。Next 不再承担媒体输入中转，所有媒体 IO 通过 Worker + R2 完成。
+可选：仅在需要更快的前端迭代时使用 Vite dev server（与 Worker 行为存在差异）：
+
+```bash
+pnpm dev:vite
+```
+
+业务应用不再承担媒体文件中转，所有媒体 IO 通过 orchestrator Worker + R2 完成。
 
 ## 桶优先与每任务清单（Job Manifest）
 
@@ -239,7 +248,7 @@ pnpm dev        # 或 pnpm dev:host
 
 物化职责：
 
-- Next：
+- 业务应用：
   - 转写完成后写入：`media/{mediaId}-{slug}/inputs/subtitles/subtitles.vtt`；
   - 评论下载/翻译后写入：`media/{mediaId}-{slug}/inputs/comments/latest.json`；
   - 云下载回调时更新 DB 中的 `remoteVideoKey` / `remoteAudioKey` / `remoteMetadataKey`；
@@ -251,9 +260,9 @@ pnpm dev        # 或 pnpm dev:host
 
 ### Source Policy（视频源策略）
 
-`renderer-remotion` 引擎（用于“评论视频渲染”）的 `sourcePolicy` 逻辑完全在 Next 侧完成：
+`renderer-remotion` 引擎（用于“评论视频渲染”）的 `sourcePolicy` 逻辑完全在业务应用侧完成：
 
-- Next 根据 `sourcePolicy` 和 R2 当前状态选择：
+- 业务应用根据 `sourcePolicy` 和 R2 当前状态选择：
   - 使用下载结果：`media/{mediaId}-{slug}/downloads/{jobId}/video.mp4`；或
   - 使用已渲染的“带字幕视频”变体：`media/{mediaId}-{slug}/inputs/video/subtitles.mp4`。
 - 选择结果写入 `JobManifest.inputs.videoKey`（必要时附带 `subtitlesInputKey` 或其它辅助字段）；
@@ -273,9 +282,9 @@ pnpm dev        # 或 pnpm dev:host
 1. 启动容器和 Worker：
    - `pnpm dev:stack`
    - `pnpm cf:dev`
-2. 启动 Next：
+2. 启动业务应用：
    - `pnpm dev`
 3. 上传 10–30 秒小样视频，选择 Cloud 流程触发字幕渲染：
    - 确认 Worker 日志有 `start job ...`，容器日志有进度与心跳；
    - `/jobs/:id` 状态从 `queued` → `running` → `completed`；
-   - Next 页面能通过 orchestrator `/artifacts/:jobId` 顺利播放。
+   - 页面能通过 orchestrator `/artifacts/:jobId` 顺利播放。

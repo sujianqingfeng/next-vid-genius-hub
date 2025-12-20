@@ -21,7 +21,7 @@ describe('whisper-api-jobs', () => {
 		expect(resolveWhisperProgressFraction({ id: '1', status: 'running', progress: -10 })).toBe(0)
 	})
 
-	it('fetches whisper_api config from Next with HMAC header', async () => {
+	it('fetches whisper_api config from app with HMAC header', async () => {
 		const env = {
 			NEXT_BASE_URL: 'http://localhost:3000',
 			JOB_CALLBACK_HMAC_SECRET: 'test-secret',
@@ -58,4 +58,3 @@ describe('whisper-api-jobs', () => {
 		}
 	})
 })
-

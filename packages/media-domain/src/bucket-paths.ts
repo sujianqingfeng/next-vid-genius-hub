@@ -34,13 +34,13 @@ function channelRoot(channelId: string, options?: MediaPathOptions): string {
 	return `channels/${channelId}-${slug}`
 }
 
-/**
- * Centralized helpers for every well-known bucket key we write/read.
- * These keep path conventions in one place so Worker、Next 服务与容器不会各自硬编码。
- *
- * All media-related keys are now grouped under:
- *   media/{mediaId}-{slug}/...
- * where slug comes from the media title (best-effort). This makes it easier
+	/**
+	 * Centralized helpers for every well-known bucket key we write/read.
+	 * These keep path conventions in one place so Worker、业务应用与容器不会各自硬编码。
+	 *
+	 * All media-related keys are now grouped under:
+	 *   media/{mediaId}-{slug}/...
+	 * where slug comes from the media title (best-effort). This makes it easier
  * to visually locate objects in the R2 console.
  */
 export const bucketPaths = {

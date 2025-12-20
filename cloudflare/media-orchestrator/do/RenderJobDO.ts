@@ -269,7 +269,7 @@ export class RenderJobDO {
 					doc.ts = Date.now()
 					await this.state.storage.put('job', doc)
 
-					// Mirror progress handler gating: only notify Next on completed when a video output exists
+					// Mirror progress handler gating: only notify the app on completed when a video output exists
 					const shouldNotify =
 						TERMINAL_STATUSES.includes(doc.status) &&
 						!doc.nextNotified &&
@@ -346,7 +346,7 @@ export class RenderJobDO {
 		const doc = (await this.state.storage.get('job')) as any
 		if (!doc || !doc.jobId) return
 
-		// Retry Next callback delivery for terminal jobs.
+		// Retry app callback delivery for terminal jobs.
 		if (doc.nextNotifyPending && this.shouldNotifyNext(doc)) {
 			const maxAttempts = 20
 			const attempts =

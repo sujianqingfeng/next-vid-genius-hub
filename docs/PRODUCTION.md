@@ -5,17 +5,17 @@
 - Cloudflare Workers 作为编排（orchestrator）；
 - Cloudflare R2 作为对象存储；
 - 容器平台（如 Cloudflare Containers 或任意容器平台）作为执行单元；
-- Next 应用（本仓库）作为业务前台和数据库读写者。
+- 业务应用（本仓库，TanStack Start / Cloudflare Workers）作为业务前台和数据库读写者。
 
 ## 总览架构
 
-- Next 应用（本仓库）：
+- 业务应用（本仓库，TanStack Start / Cloudflare Workers）：
   - 提供业务 UI/接口；
   - 在 Step 3 触发云渲染（字幕、评论、云下载等）；
   - 在终态回调中更新 DB，Step 4 以 `/artifacts/:jobId` 或 R2 预签 URL 提供播放。
 - Worker（`cloudflare/media-orchestrator`，桶优先）：
   - `POST /jobs`：创建作业 → 从 per-job manifest 解析输入 key → 检查 R2 是否存在 → 生成 R2 预签名 URL → 触发容器 `/render`；
-  - `GET /jobs/:id`：供前端轮询；若 R2 产物就绪则回调 Next 落库；
+  - `GET /jobs/:id`：供前端轮询；若 R2 产物就绪则回调业务应用落库；
   - `POST /upload/:id`（可选兜底）：容器可直接 POST 成品；Worker 写入 R2；
   - `GET /artifacts/:id`：从 R2 读取产物（播放/下载代理），支持 Range。
 - R2（按媒体聚合 + 含标题 slug）典型结构：
@@ -31,9 +31,9 @@
   - `/render`：接受 Worker 提供的 R2 预签 GET/PUT URL，执行字幕烧录后写回产物；
   - 日志：每 10% 打印一次进度（如 `30%`），每 30 秒打印一次心跳（`running… <x>%`，可通过 `RENDER_HEARTBEAT_MS` 自定义，设为 `0` 关闭）。
 
-> 说明：旧版本使用过“Next 直连 fallback URL”，已移除。生产环境统一只走 R2 预签 URL。
+> 说明：旧版本使用过“业务应用直连 fallback URL”，已移除。生产环境统一只走 R2 预签 URL。
 
-生产推荐模式是“仅 R2 直连 + 桶优先输入”：容器只访问 R2，Worker 负责编排与完成检测；Next 不再承担文件中转。
+生产推荐模式是“仅 R2 直连 + 桶优先输入”：容器只访问 R2，Worker 负责编排与完成检测；业务应用不再承担文件中转。
 
 ## 先决条件
 
@@ -73,7 +73,7 @@ JOB_TTL_SECONDS = 86400
 	CONTAINER_BASE_URL_REMOTION = "https://<remotion-container-endpoint>"
 	CONTAINER_BASE_URL_DOWNLOADER = "https://<media-downloader-endpoint>"
 
-NEXT_BASE_URL = "https://<your-next-app-domain>"              # Worker 回调 Next
+NEXT_BASE_URL = "https://<your-app-domain>"              # Worker 回调业务应用（变量名为历史遗留）
 ORCHESTRATOR_BASE_URL_CONTAINER = "https://<your-worker-domain>" # 容器向 Worker 回调时使用的对外地址
 
 # R2 直连（S3 兼容）
@@ -100,7 +100,7 @@ Worker 内部会根据 `PREFER_EXTERNAL_CONTAINERS` / `NO_CF_CONTAINERS` 判断�
 
 ### 2）桶优先输入与 Job Manifest
 
-每个云任务在启动前，Next 会写入一份仅针对该任务的清单：`manifests/jobs/<jobId>.json`。结构与开发环境一致：
+每个云任务在启动前，业务应用会写入一份仅针对该任务的清单：`manifests/jobs/<jobId>.json`。结构与开发环境一致：
 
 - `inputs`：本次任务需要访问的 R2 对象 key（视频、字幕、评论、ASR 音频等）；
 - `outputs`：本次任务预期写入的 key（调试用）；
@@ -108,19 +108,19 @@ Worker 内部会根据 `PREFER_EXTERNAL_CONTAINERS` / `NO_CF_CONTAINERS` 判断�
 
 物化职责：
 
-- Next：
+- 业务应用：
   - 转写完成 → 写入 `media/{mediaId}-{slug}/inputs/subtitles/subtitles.vtt`；
   - 评论下载/翻译完成 → 写入 `media/{mediaId}-{slug}/inputs/comments/latest.json`；
   - 云下载回调 → 更新 DB 中的 `remoteVideoKey` / `remoteAudioKey` / `remoteMetadataKey`；
   - 启动任务前，根据 DB + 固定路径 + 业务规则生成 `JobManifest` 并写入 `manifests/jobs/<jobId>.json`。
 - Worker：
   - 启动任务时只读取该 job 的 manifest，检查 `inputs.*Key` 所指对象是否存在（R2 HEAD + 预签 GET）；
-  - 任意必需输入缺失时返回 `missing_inputs`，Next / 前端根据错误决定如何提示/重试；
+  - 任意必需输入缺失时返回 `missing_inputs`，前端根据错误决定如何提示/重试；
   - 不再依赖 `media/{mediaId}/manifest.json` 之类的 media-level manifest。
 
 #### Source Policy（视频源策略）
 
-`renderer-remotion`（评论视频渲染）的 sourcePolicy 决策完全在 Next：
+`renderer-remotion`（评论视频渲染）的 sourcePolicy 决策完全在业务应用：
 
 - 根据 `sourcePolicy` 和 R2 当前状态选择：
   - 使用云下载结果：`media/{mediaId}-{slug}/downloads/{jobId}/video.mp4`；或
@@ -133,12 +133,12 @@ Worker 内部会根据 `PREFER_EXTERNAL_CONTAINERS` / `NO_CF_CONTAINERS` 判断�
 在仓库根目录执行：
 
 ```bash
-wrangler secret put JOB_CALLBACK_HMAC_SECRET   # 与 Next 的 .env 同值
+wrangler secret put JOB_CALLBACK_HMAC_SECRET   # 与业务应用一致
 wrangler secret put S3_ACCESS_KEY_ID
 wrangler secret put S3_SECRET_ACCESS_KEY
 ```
 
-Workers AI（ASR）凭据不再作为 Worker secret 配置；由 Next 从 DB 读取：
+Workers AI（ASR）凭据不再作为 Worker secret 配置；由业务应用从 DB 读取：
 
 - Admin → AI providers → ASR Providers → `cloudflare`：
   - `Account ID`
@@ -214,26 +214,40 @@ docker push <registry>/<project>/burner-ffmpeg:<tag>
 
 - 对外暴露 `/render`（POST），Worker 使用对应的 `CONTAINER_BASE_URL`（或 Cloudflare Containers）调用。
 
-## Next（本仓库）生产配置
+## 业务应用（TanStack Start）生产配置
 
-1）环境变量（.env / 部署平台变量）
+1）环境变量（Cloudflare Workers vars/secrets）
+
+应用运行在 Cloudflare Workers（wrangler）中：
+
+- 非敏感配置放在 `wrangler.root.jsonc` / `wrangler.jsonc` 的 `vars`（例如 `CF_ORCHESTRATOR_URL`）。
+- 密钥用 `wrangler secret put` 注入（例如 `JOB_CALLBACK_HMAC_SECRET`）。
+
+示例（以 root 挂载为例）：
 
 ```bash
-CF_ORCHESTRATOR_URL=https://orchestrator.example.com
-JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
-
-# 可选：R2_PUBLIC_BASE_URL=
-# 当前版本代码未直接使用该变量，仅作为未来直连 R2 播放的预留项。
+wrangler secret put JOB_CALLBACK_HMAC_SECRET --config wrangler.root.jsonc
 ```
+
+可选：启用工作区 Basic Auth（见 `src/worker.ts`）：
+
+```bash
+wrangler secret put WORKSPACE_AUTH_USERNAME --config wrangler.root.jsonc
+wrangler secret put WORKSPACE_AUTH_PASSWORD --config wrangler.root.jsonc
+```
+
+并在对应 `wrangler*.jsonc` 的 `vars` 中设置：`WORKSPACE_PROTECT = "1"`。
 
 2）部署方式
 
-- 可选平台：
-  - Cloudflare Pages + Workers（通过 open-next）；
-  - Vercel / 自建 Next Server / 其他平台；
-- 要求：
-  - 允许 Next 能访问 orchestrator Worker（`CF_ORCHESTRATOR_URL`）；
-  - 将 `JOB_CALLBACK_HMAC_SECRET` 与 Worker 保持一致。
+- 部署目标：Cloudflare Workers（wrangler）。
+- 相关配置与脚本：
+  - `wrangler.root.jsonc` + `pnpm deploy:root`：将应用挂载到站点根路径（`/*`）。
+  - `wrangler.jsonc` + `pnpm deploy:gray`：灰度发布，将应用挂载到 `/__start/*`。
+- 生产前检查：
+  - `CF_ORCHESTRATOR_URL` 指向生产 orchestrator Worker；
+  - `JOB_CALLBACK_HMAC_SECRET` 与 orchestrator/容器回调保持一致；
+  - D1 `DB` 绑定配置正确，并已执行迁移（`pnpm db:d1:migrate:remote`）。
 
 ## 运行时开关与安全建议
 
@@ -252,7 +266,7 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
 ### 安全建议
 
 - HMAC：
-  - Worker ↔ Next、容器 ↔ Worker 回调统一使用 `JOB_CALLBACK_HMAC_SECRET` 验签；
+  - Worker ↔ 业务应用、容器 ↔ Worker 回调统一使用 `JOB_CALLBACK_HMAC_SECRET` 验签；
   - 回调体包含 `ts` / `nonce` 等字段，Worker KV 可实现一定的防重放。
 - 最小权限：
   - R2 预签名 URL 建议只赋予单对象 GET/PUT 权限；
@@ -262,16 +276,16 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
   - 容器内部也应限制同时运行的作业数，避免资源耗尽。
 - 访问控制：
   - `/callbacks/container` 与 `/upload/:jobId` 最好只在内网或 Zero Trust 后面开放；
-  - 生产推荐只走 R2 直连，减少 Next/容器对外暴露面。
+  - 生产推荐只走 R2 直连，减少业务应用/容器对外暴露面。
 
 ## 观测与告警
 
 - 指标：
   - 作业时长 P50 / P95、失败率、队列深度（如有队列）、容器并发数、R2 出入带宽/存储。
 - 日志：
-  - 统一打 `jobId`，便于串联 Worker、容器、Next；
+  - 统一打 `jobId`，便于串联 Worker、容器、业务应用；
   - 记录阶段（`preparing` / `running` / `uploading` / `completed`）和耗时；
-  - Next 回调成功/失败均打印。
+  - 业务应用回调成功/失败均打印。
 - 告警：
   - 失败率/时长阈值告警；
   - R2 存储/出网费用阈值提醒。
@@ -283,7 +297,7 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
   - 在开关级别记录 metrics 标签，便于比较效果。
 - 快速回滚：
   - 通过特性开关或环境变量临时关闭字幕渲染入口（Step 3），停用 `/jobs` 调度；
-  - 必要时回滚至上一版本 Worker / Next 代码。
+  - 必要时回滚至上一版本 Worker / 业务应用代码。
 
 ## 冒烟测试（生产）
 
@@ -293,14 +307,14 @@ JOB_CALLBACK_HMAC_SECRET=<与 Worker 一致>
    - 容器日志有 `inputs ready`、`xx%`、心跳日志。
 3. `GET /jobs/:id`：
    - 状态从 `queued` → `running`（或 `preparing`）→ 检测到 R2 `outputs/...` → `completed`。
-4. Next 日志：
+4. 业务应用日志：
    - 出现 `[cf-callback] recorded remote artifact for job <jobId>`；
    - 页面自动跳转至 Step 4，并能通过 orchestrator `/artifacts/:jobId` 播放。
 5. 针对云端下载：
    - 在下载页面选择 Cloud；
    - 确认 `/jobs/:id` 从 `queued` → `running` → `completed`；
    - R2 中出现 `downloads/<mediaId>/<jobId>/{video.mp4,audio.mp3,metadata.json}`；
-   - Next 日志有 “Cloud download completed” 类似信息。
+   - 业务应用日志有 “Cloud download completed” 类似信息。
 
 ## 常见问题
 

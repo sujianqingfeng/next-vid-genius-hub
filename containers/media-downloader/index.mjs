@@ -450,7 +450,7 @@ async function handleRender(req, res) {
           ? { audioSourceBytes: uploadedAudioSourceBytes }
           : {}),
       };
-      // Ensure title is present in the callback metadata (orchestrator forwards only this summary to Next).
+      // Ensure title is present in the callback metadata (orchestrator forwards only this summary to the app).
       if (!callbackMetadata.title) {
         try {
           const { fetchVideoMetadata } = await import("@app/media-node");

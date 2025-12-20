@@ -11,7 +11,7 @@ import {
   useCurrentFrame,
 } from "remotion";
 import type { CommentVideoInputProps } from "./types";
-// Use relative import to avoid Next.js path alias in Remotion bundler
+// Use relative import to avoid TS/Vite path aliases in Remotion bundler
 import { formatCount } from "./utils/format";
 
 // 与横屏 CommentsVideo 模板共享的布局与配色

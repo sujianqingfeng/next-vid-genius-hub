@@ -8,7 +8,7 @@
     "directory": "dist/client"
   },
   // Gray rollout: mount TanStack Start under /__start/*.
-  // Cloudflare will route the more specific pattern here even if the Next worker owns "/*".
+  // Cloudflare will route the more specific pattern here even if another worker owns "/*".
   "routes": [
     {
       "pattern": "vid-hub.temp-drop-files.store/api/orpc*",
