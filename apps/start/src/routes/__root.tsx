@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
+import { ThemeProvider } from "next-themes"
 
 import Header from "../components/Header"
 import WorkspaceShell from "../components/workspace/workspace-shell"
@@ -16,7 +17,8 @@ import {
 	getMessages,
 	I18nProvider,
 } from "../integrations/i18n"
-import { Toaster } from "sonner"
+import { ConfirmDialogProvider } from "~/components/business/layout/confirm-dialog-provider"
+import { Toaster } from "~/components/ui/sonner"
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools"
 
@@ -102,31 +104,42 @@ function RootLayout() {
 	)
 
 	return (
-		<I18nProvider locale={locale} messages={messages}>
-			<TooltipProvider delayDuration={300}>
-				{!hideHeader ? <Header /> : null}
-				{content}
-				<Toaster richColors />
-				<TanStackDevtools
-					config={{
-						position: "bottom-right",
-					}}
-					plugins={[
-						{
-							name: "Tanstack Router",
-							render: <TanStackRouterDevtoolsPanel />,
-						},
-						TanStackQueryDevtools,
-					]}
-				/>
-			</TooltipProvider>
-		</I18nProvider>
+		<ThemeProvider
+			attribute="class"
+			defaultTheme="system"
+			enableSystem
+			disableTransitionOnChange
+		>
+			<I18nProvider locale={locale} messages={messages}>
+				<TooltipProvider delayDuration={300}>
+					<ConfirmDialogProvider>
+						{!hideHeader ? <Header /> : null}
+						{content}
+						<Toaster richColors position="top-right" />
+						<TanStackDevtools
+							config={{
+								position: "bottom-right",
+							}}
+							plugins={[
+								{
+									name: "Tanstack Router",
+									render: <TanStackRouterDevtoolsPanel />,
+								},
+								TanStackQueryDevtools,
+							]}
+						/>
+					</ConfirmDialogProvider>
+				</TooltipProvider>
+			</I18nProvider>
+		</ThemeProvider>
 	)
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+	const data = Route.useLoaderData()
+	const locale = data?.locale ?? DEFAULT_LOCALE
 	return (
-		<html lang="en">
+		<html lang={locale} suppressHydrationWarning>
 			<head>
 				<HeadContent />
 				{/* Vite/esbuild may emit `__name(...)` helpers inside TanStack Start's inline

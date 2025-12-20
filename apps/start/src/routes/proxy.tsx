@@ -12,6 +12,7 @@ import { Label } from "~/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { DEFAULT_PAGE_LIMIT } from "~/lib/pagination"
 import { useEnhancedMutation } from "~/lib/hooks/useEnhancedMutation"
+import { useConfirmDialog } from "~/components/business/layout/confirm-dialog-provider"
 
 import { queryOrpcNext } from "../integrations/orpc/next-client"
 import { useTranslations } from "../integrations/i18n"
@@ -76,6 +77,7 @@ function ProxyRoute() {
 	const t = useTranslations("Proxy")
 	const navigate = Route.useNavigate()
 	const qc = useQueryClient()
+	const confirmDialog = useConfirmDialog()
 
 	const { tab, subscriptionId, page } = Route.useSearch()
 
@@ -299,10 +301,16 @@ function ProxyRoute() {
 														variant="destructive"
 														type="button"
 														disabled={deleteSubscriptionMutation.isPending}
-														onClick={() => {
-															if (!confirm(t("subscription.list.deleteConfirm"))) return
-															deleteSubscriptionMutation.mutate({ id: s.id })
-														}}
+														onClick={() =>
+															void (async () => {
+																const ok = await confirmDialog({
+																	description: t("subscription.list.deleteConfirm"),
+																	variant: "destructive",
+																})
+																if (!ok) return
+																deleteSubscriptionMutation.mutate({ id: s.id })
+															})()
+														}
 													>
 														<Trash2 className="mr-2 h-4 w-4" />
 														Delete
@@ -404,10 +412,16 @@ function ProxyRoute() {
 															size="sm"
 															type="button"
 															disabled={deleteProxyMutation.isPending}
-															onClick={() => {
-																if (!confirm(t("list.deleteConfirm"))) return
-																deleteProxyMutation.mutate({ id: p.id })
-															}}
+															onClick={() =>
+																void (async () => {
+																	const ok = await confirmDialog({
+																		description: t("list.deleteConfirm"),
+																		variant: "destructive",
+																	})
+																	if (!ok) return
+																	deleteProxyMutation.mutate({ id: p.id })
+																})()
+															}
 														>
 															<Trash2 className="mr-2 h-4 w-4" />
 															Delete

@@ -17,6 +17,7 @@ import { DEFAULT_CHAT_MODEL_ID, type ChatModelId } from "~/lib/ai/models"
 import { useEnhancedMutation } from "~/lib/hooks/useEnhancedMutation"
 
 import { CloudJobProgress } from "~/components/business/jobs/cloud-job-progress"
+import { useConfirmDialog } from "~/components/business/layout/confirm-dialog-provider"
 
 import { queryOrpcNext } from "../integrations/orpc/next-client"
 import { useTranslations } from "../integrations/i18n"
@@ -90,6 +91,7 @@ function ChannelsRoute() {
 	const tVideos = useTranslations("Channels.videos")
 
 	const qc = useQueryClient()
+	const confirmDialog = useConfirmDialog()
 
 	const [newInput, setNewInput] = React.useState("")
 	const [expanded, setExpanded] = React.useState<Record<string, boolean>>({})
@@ -290,8 +292,14 @@ function ChannelsRoute() {
 									}
 									onDelete={() => {
 										if (deleteMutation.isPending) return
-										if (!confirm(t("deleteConfirm"))) return
-										deleteMutation.mutate({ id: ch.id })
+										void (async () => {
+											const ok = await confirmDialog({
+												description: t("deleteConfirm"),
+												variant: "destructive",
+											})
+											if (!ok) return
+											deleteMutation.mutate({ id: ch.id })
+										})()
 									}}
 									deleting={deleteMutation.isPending}
 									onSync={() => {

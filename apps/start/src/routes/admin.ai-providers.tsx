@@ -24,6 +24,7 @@ import {
 import { Switch } from '~/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 
 import { useTranslations } from '../integrations/i18n'
 import { queryOrpcNext } from '../integrations/orpc/next-client'
@@ -77,6 +78,7 @@ export const Route = createFileRoute('/admin/ai-providers')({
 function AdminAiProvidersPage() {
 	const t = useTranslations('Admin.aiProviders')
 	const qc = useQueryClient()
+	const confirmDialog = useConfirmDialog()
 	const [kind, setKind] = useState<ProviderKind>('llm')
 	const [editing, setEditing] = useState<EditingProvider | null>(null)
 
@@ -215,11 +217,16 @@ function AdminAiProvidersPage() {
 														variant="destructive"
 														size="sm"
 														disabled={deleteProvider.isPending}
-														onClick={() => {
-															const ok = window.confirm(t('confirm.delete', { name: p.name }))
-															if (!ok) return
-															deleteProvider.mutate({ id: p.id })
-														}}
+														onClick={() =>
+															void (async () => {
+																const ok = await confirmDialog({
+																	description: t('confirm.delete', { name: p.name }),
+																	variant: 'destructive',
+																})
+																if (!ok) return
+																deleteProvider.mutate({ id: p.id })
+															})()
+														}
 													>
 														{t('actions.delete')}
 													</Button>
@@ -403,4 +410,3 @@ function AdminAiProvidersPage() {
 		</div>
 	)
 }
-
