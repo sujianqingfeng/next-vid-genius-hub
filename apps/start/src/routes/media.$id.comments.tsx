@@ -3,9 +3,13 @@ import { Link, createFileRoute, notFound, redirect } from "@tanstack/react-route
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
 	CheckSquare,
+	Copy,
 	Download,
+	Edit,
+	Info,
 	LanguagesIcon,
 	Loader2,
+	MessageCircle,
 	Play,
 	ShieldAlert,
 	Square,
@@ -14,9 +18,19 @@ import {
 import { toast } from "sonner"
 import { z } from "zod"
 
+import { RemotionPreviewCardStart } from "~/components/business/media/remotion-preview-card-start"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { CloudJobProgress } from "~/components/business/jobs/cloud-job-progress"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import {
@@ -32,9 +46,12 @@ import { useCloudJob } from "~/lib/hooks/useCloudJob"
 import { useEnhancedMutation } from "~/lib/hooks/useEnhancedMutation"
 
 import { DEFAULT_CHAT_MODEL_ID, type ChatModelId } from "~/lib/ai/models"
+import { extractVideoId } from "@app/media-providers"
+import { MEDIA_SOURCES } from "~/lib/media/source"
+import { DEFAULT_TEMPLATE_ID, listTemplates, type RemotionTemplateId } from "~/remotion/templates"
 
 import { queryOrpcNext } from "../integrations/orpc/next-client"
-import { useTranslations } from "../integrations/i18n"
+import { useLocale, useTranslations } from "../integrations/i18n"
 
 type SourcePolicy = "auto" | "original" | "subtitles"
 
@@ -138,8 +155,23 @@ function resolveAvatarFallback(author?: string) {
 	return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
+async function copyToClipboard(
+	value: string,
+): Promise<"ok" | "unavailable" | "failed"> {
+	if (typeof navigator === "undefined" || !navigator.clipboard) {
+		return "unavailable"
+	}
+	try {
+		await navigator.clipboard.writeText(value)
+		return "ok"
+	} catch {
+		return "failed"
+	}
+}
+
 function MediaCommentsRoute() {
 	const t = useTranslations("MediaComments.page")
+	const locale = useLocale()
 	const qc = useQueryClient()
 	const navigate = Route.useNavigate()
 
@@ -220,6 +252,97 @@ function MediaCommentsRoute() {
 		label: m.label,
 	}))
 
+	// ---------- Template + titles ----------
+	const [templateId, setTemplateId] = React.useState<RemotionTemplateId>(DEFAULT_TEMPLATE_ID)
+
+	React.useEffect(() => {
+		const tid =
+			(mediaQuery.data?.commentsTemplate as RemotionTemplateId | undefined) ||
+			DEFAULT_TEMPLATE_ID
+		setTemplateId(tid)
+	}, [mediaQuery.data?.commentsTemplate])
+
+	const updateRenderSettingsMutation = useEnhancedMutation(
+		queryOrpcNext.media.updateRenderSettings.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({
+					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: t("toasts.templateSaved"),
+			errorToast: ({ error }) =>
+				t("errors.templateSaveFailed", {
+					message: error instanceof Error ? error.message : String(error),
+				}),
+		},
+	)
+
+	const [editDialogOpen, setEditDialogOpen] = React.useState(false)
+	const [editTitle, setEditTitle] = React.useState("")
+	const [editTranslatedTitle, setEditTranslatedTitle] = React.useState("")
+
+	const updateTitlesMutation = useEnhancedMutation(
+		queryOrpcNext.media.updateTitles.mutationOptions({
+			onSuccess: async () => {
+				setEditDialogOpen(false)
+				await qc.invalidateQueries({
+					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: t("toasts.titlesUpdated"),
+			errorToast: ({ error }) =>
+				t("errors.titlesUpdateFailed", {
+					message: error instanceof Error ? error.message : String(error),
+				}),
+		},
+	)
+
+	const handleEditClick = () => {
+		setEditTitle(String(mediaQuery.data?.title ?? ""))
+		setEditTranslatedTitle(String(mediaQuery.data?.translatedTitle ?? ""))
+		setEditDialogOpen(true)
+	}
+
+	const handleSaveTitles = () => {
+		updateTitlesMutation.mutate({
+			id,
+			title: editTitle,
+			translatedTitle: editTranslatedTitle,
+		})
+	}
+
+	const copyTitleValue = async (
+		value: string | null | undefined,
+		label: string,
+	) => {
+		if (!value) {
+			toast.error(t("toasts.valueMissing", { label }))
+			return
+		}
+		const res = await copyToClipboard(value)
+		if (res === "ok") {
+			toast.success(t("toasts.copiedToClipboard", { label }))
+			return
+		}
+		if (res === "unavailable") {
+			toast.error(t("toasts.clipboardUnavailable"))
+			return
+		}
+		toast.error(t("toasts.copyFailed", { label }))
+	}
+
+	const getVideoSourceId = () => {
+		const url = (mediaQuery.data as any)?.url as string | undefined
+		const source = (mediaQuery.data as any)?.source as string | undefined
+		if (!url) return id
+		if (source === MEDIA_SOURCES.YOUTUBE) return extractVideoId(url) || id
+		return url
+	}
+
 	// ---------- Proxy selection ----------
 	const availableProxies =
 		proxiesQuery.data?.proxies?.filter((p) => p.id !== "none") ?? []
@@ -254,7 +377,7 @@ function MediaCommentsRoute() {
 		jobId: commentsCloudJobId,
 		setJobId: setCommentsCloudJobId,
 		statusQuery: cloudCommentsStatusQuery,
-	} = useCloudJob<CloudStatus>({
+	} = useCloudJob<CloudStatus, Error>({
 		storageKey: `commentsDownloadCloudJob:${id}`,
 		enabled: true,
 		autoClearOnComplete: false,
@@ -391,10 +514,8 @@ function MediaCommentsRoute() {
 
 	const handleBulkDelete = async () => {
 		if (!hasSelection) return
-		const ids = Array.from(selectedCommentIds)
-		const ok = window.confirm(t("bulkDelete.confirm.description", { count: ids.length }))
-		if (!ok) return
-		deleteCommentsMutation.mutate({ mediaId: id, commentIds: ids })
+		setConfirmDeleteIds(Array.from(selectedCommentIds))
+		setConfirmDeleteOpen(true)
 	}
 
 	// ---------- Cloud render ----------
@@ -415,7 +536,7 @@ function MediaCommentsRoute() {
 		jobId: renderJobId,
 		setJobId: setRenderJobId,
 		statusQuery: renderStatusQuery,
-	} = useCloudJob<CloudStatus>({
+	} = useCloudJob<CloudStatus, Error>({
 		storageKey: `commentsCloudJob:${id}`,
 		enabled: true,
 		completeStatuses: ["completed"],
@@ -449,6 +570,19 @@ function MediaCommentsRoute() {
 	const hasRenderedCommentsVideo = Boolean(mediaQuery.data?.videoWithInfoPath)
 	const renderedDownloadUrl = `/api/media/${encodeURIComponent(id)}/rendered-info?download=1`
 
+	const previewVideoInfo = mediaQuery.data
+		? {
+				title: mediaQuery.data.title ?? undefined,
+				translatedTitle: mediaQuery.data.translatedTitle ?? undefined,
+				viewCount: mediaQuery.data.viewCount ?? undefined,
+				author: mediaQuery.data.author ?? undefined,
+				thumbnail: mediaQuery.data.thumbnail ?? undefined,
+			}
+		: null
+
+	const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false)
+	const [confirmDeleteIds, setConfirmDeleteIds] = React.useState<string[]>([])
+
 	const isBusy =
 		mediaQuery.isLoading ||
 		startCloudCommentsMutation.isPending ||
@@ -462,6 +596,85 @@ function MediaCommentsRoute() {
 		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
 			<div className="px-4 py-10 sm:px-6 lg:px-8">
 				<div className="mx-auto max-w-6xl space-y-6">
+					<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>{t("editDialog.title")}</DialogTitle>
+								<DialogDescription>{t("editDialog.description")}</DialogDescription>
+							</DialogHeader>
+							<div className="space-y-4 py-2">
+								<div className="space-y-2">
+									<Label htmlFor="title">{t("editDialog.fields.originalLabel")}</Label>
+									<Input
+										id="title"
+										value={editTitle}
+										onChange={(e) => setEditTitle(e.target.value)}
+										placeholder={t("editDialog.fields.originalPlaceholder")}
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="translatedTitle">
+										{t("editDialog.fields.translatedLabel")}
+									</Label>
+									<Input
+										id="translatedTitle"
+										value={editTranslatedTitle}
+										onChange={(e) => setEditTranslatedTitle(e.target.value)}
+										placeholder={t("editDialog.fields.translatedPlaceholder")}
+									/>
+								</div>
+							</div>
+							<DialogFooter>
+								<Button
+									variant="ghost"
+									onClick={() => setEditDialogOpen(false)}
+								>
+									{t("editDialog.actions.cancel")}
+								</Button>
+								<Button
+									onClick={handleSaveTitles}
+									disabled={updateTitlesMutation.isPending}
+								>
+									{updateTitlesMutation.isPending
+										? t("editDialog.actions.saving")
+										: t("editDialog.actions.save")}
+								</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
+
+					<Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+						<DialogContent>
+							<DialogHeader>
+								<DialogTitle>{t("bulkDelete.confirm.title")}</DialogTitle>
+								<DialogDescription>
+									{t("bulkDelete.confirm.description", { count: confirmDeleteIds.length })}
+								</DialogDescription>
+							</DialogHeader>
+							<DialogFooter>
+								<Button
+									variant="ghost"
+									onClick={() => setConfirmDeleteOpen(false)}
+									disabled={deleteCommentsMutation.isPending}
+								>
+									{t("editDialog.actions.cancel")}
+								</Button>
+								<Button
+									variant="destructive"
+									onClick={() => {
+										const ids = confirmDeleteIds
+										setConfirmDeleteOpen(false)
+										if (ids.length === 0) return
+										deleteCommentsMutation.mutate({ mediaId: id, commentIds: ids })
+									}}
+									disabled={deleteCommentsMutation.isPending || confirmDeleteIds.length === 0}
+								>
+									{deleteCommentsMutation.isPending ? t("comments.deleting") : t("comments.deleteSelected")}
+								</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
+
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 						<div className="space-y-1">
 							<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -496,6 +709,16 @@ function MediaCommentsRoute() {
 						</div>
 
 						<div className="flex flex-wrap gap-2">
+							{mediaQuery.data?.translatedTitle ? (
+								<Button
+									variant="secondary"
+									onClick={handleEditClick}
+									disabled={mediaQuery.isLoading}
+								>
+									<Edit className="mr-2 h-4 w-4" />
+									{t("header.editTitles")}
+								</Button>
+							) : null}
 							<Button variant="secondary" asChild>
 								<Link to="/media/$id" params={{ id }}>
 									{t("header.back")}
@@ -525,26 +748,172 @@ function MediaCommentsRoute() {
 						<div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
 							Failed to load media.
 						</div>
-					) : (
-						<Tabs
-							value={tab}
-							onValueChange={(next) =>
-								navigate({
-									search: (prev) => ({ ...prev, tab: next as any }),
-									replace: true,
-								})
-							}
-							className="space-y-4"
-						>
-							<TabsList>
-								<TabsTrigger value="basics">{t("tabs.basics")}</TabsTrigger>
-								<TabsTrigger value="download">{t("tabs.download")}</TabsTrigger>
-								<TabsTrigger value="translate">{t("tabs.translate")}</TabsTrigger>
-								<TabsTrigger value="moderate">{t("tabs.moderate")}</TabsTrigger>
+						) : (
+							<div className="space-y-4">
+								<div className="glass rounded-2xl p-6">
+									<RemotionPreviewCardStart
+										videoInfo={previewVideoInfo}
+										comments={comments as any}
+										isLoading={mediaQuery.isLoading}
+										templateId={templateId}
+									/>
+								</div>
+	
+								<Tabs
+									value={tab}
+									onValueChange={(next) =>
+										navigate({
+											search: (prev) => ({ ...prev, tab: next as any }),
+											replace: true,
+										})
+									}
+									className="space-y-4"
+								>
+								<TabsList>
+									<TabsTrigger value="basics">{t("tabs.basics")}</TabsTrigger>
+									<TabsTrigger value="download">{t("tabs.download")}</TabsTrigger>
+									<TabsTrigger value="translate">{t("tabs.translate")}</TabsTrigger>
+									<TabsTrigger value="moderate">{t("tabs.moderate")}</TabsTrigger>
 								<TabsTrigger value="render">{t("tabs.render")}</TabsTrigger>
 							</TabsList>
 
 							<TabsContent value="basics" className="space-y-4">
+								<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+									<Card className="glass border-none shadow-sm">
+										<CardHeader className="border-b border-border/40 pb-4">
+											<CardTitle className="text-lg flex items-center gap-2">
+												<Info className="h-5 w-5 text-primary" />
+												{t("basics.translatedTitle.label")}
+											</CardTitle>
+										</CardHeader>
+										<CardContent className="pt-6 space-y-4">
+											<div className="space-y-2">
+												<div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+													{t("basics.translatedTitle.label")}
+												</div>
+												<div className="rounded-lg bg-white/50 p-3 text-sm font-medium shadow-sm border border-white/20">
+													{mediaQuery.data?.translatedTitle ??
+														t("basics.translatedTitle.empty")}
+												</div>
+												<Button
+													variant="ghost"
+													size="sm"
+													className="h-8 w-full justify-start text-xs text-muted-foreground hover:text-foreground"
+													disabled={!mediaQuery.data?.translatedTitle}
+													onClick={() =>
+														void copyTitleValue(
+															mediaQuery.data?.translatedTitle,
+															t("labels.englishTitle"),
+														)
+													}
+												>
+													<Copy className="mr-2 h-3 w-3" />
+													{t("basics.translatedTitle.copy")}
+												</Button>
+											</div>
+
+											<div className="space-y-2 pt-2 border-t border-border/40">
+												<div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+													{t("basics.originalTitle.label")}
+												</div>
+												<div className="rounded-lg bg-white/50 p-3 text-sm text-muted-foreground shadow-sm border border-white/20">
+													{mediaQuery.data?.title ?? t("basics.originalTitle.empty")}
+												</div>
+												<Button
+													variant="ghost"
+													size="sm"
+													className="h-8 w-full justify-start text-xs text-muted-foreground hover:text-foreground"
+													disabled={!mediaQuery.data?.title}
+													onClick={() =>
+														void copyTitleValue(
+															mediaQuery.data?.title,
+															t("labels.originalTitle"),
+														)
+													}
+												>
+													<Copy className="mr-2 h-3 w-3" />
+													{t("basics.originalTitle.copy")}
+												</Button>
+											</div>
+										</CardContent>
+									</Card>
+
+									<Card className="glass border-none shadow-sm">
+										<CardHeader className="border-b border-border/40 pb-4">
+											<CardTitle className="text-lg flex items-center gap-2">
+												<MessageCircle className="h-5 w-5 text-primary" />
+												{t("videoInfo.title")}
+											</CardTitle>
+										</CardHeader>
+										<CardContent className="pt-6 space-y-4">
+											<div className="space-y-2">
+												<div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+													{t("videoInfo.sourceId")}
+												</div>
+												<div className="rounded-lg bg-white/50 p-3 text-sm font-mono shadow-sm border border-white/20 break-all">
+													{getVideoSourceId()}
+												</div>
+											</div>
+
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() => {
+													const dateLocale = locale === "zh" ? "zh-CN" : "en-US"
+													const collectedAt =
+														mediaQuery.data?.comments &&
+														(mediaQuery.data?.comments as any[])?.length > 0 &&
+														(mediaQuery.data as any)?.commentsDownloadedAt
+															? new Date(
+																	(mediaQuery.data as any).commentsDownloadedAt,
+																).toLocaleString(dateLocale, {
+																	year: "numeric",
+																	month: "2-digit",
+																	day: "2-digit",
+																	hour: "2-digit",
+																	minute: "2-digit",
+																})
+															: null
+
+													const disclaimerLines = [
+														t("disclaimer.title"),
+														"",
+														t("disclaimer.body1"),
+														t("disclaimer.body2"),
+														"",
+														t("disclaimer.sourceVideo", { sourceId: getVideoSourceId() }),
+														collectedAt
+															? t("disclaimer.collectedAt", { datetime: collectedAt })
+															: null,
+													].filter((x): x is string => Boolean(x))
+
+													const text = disclaimerLines.join("\n")
+													void (async () => {
+														const res = await copyToClipboard(text)
+														if (res === "ok") {
+															toast.success(t("toasts.disclaimerCopied"))
+															return
+														}
+														if (res === "unavailable") {
+															toast.error(t("toasts.clipboardUnavailable"))
+															return
+														}
+														toast.error(
+															t("toasts.copyFailed", {
+																label: t("videoInfo.copyDisclaimer"),
+															}),
+														)
+													})()
+												}}
+												className="w-full justify-start text-xs text-muted-foreground hover:text-foreground"
+											>
+												<Copy className="mr-2 h-3 w-3" />
+												{t("videoInfo.copyDisclaimer")}
+											</Button>
+										</CardContent>
+									</Card>
+								</div>
+
 								<div className="glass rounded-2xl p-5">
 									<div className="flex flex-wrap items-center justify-between gap-3">
 										<div className="text-sm font-semibold">
@@ -790,6 +1159,33 @@ function MediaCommentsRoute() {
 								<div className="glass rounded-2xl p-5 space-y-4">
 									<div className="text-sm font-semibold">{t("tabs.render")}</div>
 
+									<div className="space-y-2">
+										<Label>{t("render.template")}</Label>
+										<Select
+											value={templateId}
+											onValueChange={(v) => {
+												const tid = v as RemotionTemplateId
+												setTemplateId(tid)
+												updateRenderSettingsMutation.mutate({
+													id,
+													commentsTemplate: tid,
+												})
+											}}
+											disabled={isBusy}
+										>
+											<SelectTrigger>
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												{listTemplates().map((tpl) => (
+													<SelectItem key={tpl.id} value={tpl.id}>
+														{tpl.name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
 									<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 										<div className="space-y-2">
 											<Label>{t("render.sourcePolicy.label")}</Label>
@@ -841,6 +1237,7 @@ function MediaCommentsRoute() {
 													mediaId: id,
 													proxyId: renderProxyId,
 													sourcePolicy,
+													templateId,
 												})
 											}}
 											disabled={startCloudRenderMutation.isPending || !canQueueRender || isBusy}
@@ -877,6 +1274,7 @@ function MediaCommentsRoute() {
 								</div>
 							</TabsContent>
 						</Tabs>
+							</div>
 					)}
 				</div>
 			</div>
@@ -1024,7 +1422,6 @@ function CommentRow({
 	onDelete,
 	deleting,
 }: {
-	mediaId: string
 	comment: Comment
 	selected: boolean
 	onSelectChange: (checked: boolean) => void
