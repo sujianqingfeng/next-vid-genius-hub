@@ -19,5 +19,14 @@
     "NEXT_PUBLIC_APP_URL": "http://localhost:3100",
     "CF_ORCHESTRATOR_URL": "http://localhost:8787",
     "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    }
   }
 }

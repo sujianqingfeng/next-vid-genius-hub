@@ -14,6 +14,17 @@ function normalizeBasePath(input: string): string {
 	return withLeading.endsWith('/') ? withLeading : `${withLeading}/`
 }
 
+function externalizeNodeProtocolImports() {
+	return {
+		name: 'externalize-node-protocol-imports',
+		setup(build: any) {
+			build.onResolve({ filter: /^node:/ }, (args: any) => {
+				return { path: args.path, external: true }
+			})
+		},
+	}
+}
+
 const config = defineConfig(({ mode }) => {
 	const fileEnv = loadEnv(mode, process.cwd(), '')
 	// `loadEnv` only reads .env files. Merge with `process.env` so values injected
@@ -32,10 +43,19 @@ const config = defineConfig(({ mode }) => {
 			// Pre-bundling @tanstack/start-server-core in dev can fail because it
 			// contains dynamic imports like `import('#tanstack-start-entry')`.
 			exclude: ['@tanstack/start-server-core'],
+			// Some dependencies (e.g. `undici`) reference Node built-ins via the
+			// `node:` protocol (like `node:sqlite`). In non-Node targets (Workers),
+			// esbuild's prebundle step can incorrectly try to read them as files.
+			esbuildOptions: {
+				plugins: [externalizeNodeProtocolImports()],
+			},
 		},
 		ssr: {
 			optimizeDeps: {
 				exclude: ['@tanstack/start-server-core'],
+				esbuildOptions: {
+					plugins: [externalizeNodeProtocolImports()],
+				},
 			},
 		},
 		resolve: {

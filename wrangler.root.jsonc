@@ -47,6 +47,15 @@
     "NEXT_PUBLIC_APP_URL": "https://vid-hub.temp-drop-files.store",
     "CF_ORCHESTRATOR_URL": "https://media-orchestrator.nieshuanghe.workers.dev"
   },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
   "env": {
     "local": {
       // Local dev doesn't use Cloudflare routing; avoid noisy assets+routes warning.

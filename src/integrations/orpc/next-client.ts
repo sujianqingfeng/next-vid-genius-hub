@@ -16,22 +16,52 @@ export function getDefaultRedirect(next: string | undefined | null): string {
 	return isSafeRelativeNext(next) ? next : '/media'
 }
 
+function createLazyRouterClient<T extends RouterClient<any>>(
+	clientPromise: Promise<T>,
+	path: string[] = [],
+): T {
+	const caller = (...args: any[]) =>
+		clientPromise.then((client: any) => {
+			let target: any = client
+			for (const seg of path) target = target?.[seg]
+			if (typeof target !== 'function') {
+				throw new Error(`ORPC client path is not callable: ${path.join('.')}`)
+			}
+			return target(...args)
+		})
+
+	return new Proxy(caller as any, {
+		get(_target, prop) {
+			// Prevent treating this proxy as a Promise/thenable.
+			if (prop === 'then') return undefined
+			if (typeof prop !== 'string') return (caller as any)[prop]
+			return createLazyRouterClient(clientPromise, [...path, prop])
+		},
+	}) as any
+}
+
 const getNextApiClient = createIsomorphicFn()
 	.server((): RouterClient<AppRouter> => {
-		const link = new RPCLink({
-			url: async () => {
-				const { getRequestUrl } = await import('@tanstack/start-server-core')
-				const origin = new URL(getRequestUrl()).origin
-				return `${origin}/api/orpc`
-			},
-			headers: async () => {
-				const { getRequestHeaders } = await import(
-					'@tanstack/start-server-core'
-				)
-				return Object.fromEntries(getRequestHeaders())
-			},
-		})
-		return createORPCClient(link) as RouterClient<AppRouter>
+		// Server-side: avoid an HTTP self-fetch to `/api/orpc` (which can hang in
+		// Workers due to subrequest/header restrictions). Call the router directly.
+		const clientPromise = (async () => {
+			const [
+				{ createRouterClient },
+				{ getRequest },
+				{ buildRequestContext },
+				{ appRouter },
+			] = await Promise.all([
+				import('@orpc/server'),
+				import('@tanstack/start-server-core'),
+				import('~/lib/auth/context'),
+				import('~/orpc/router'),
+			])
+			return createRouterClient(appRouter, {
+				context: async () => buildRequestContext(getRequest()),
+			}) as RouterClient<AppRouter>
+		})()
+
+		return createLazyRouterClient(clientPromise)
 	})
 	.client((): RouterClient<AppRouter> => {
 		const link = new RPCLink({

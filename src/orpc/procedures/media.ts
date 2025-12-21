@@ -1,5 +1,3 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
 import { bucketPaths } from '@app/media-domain'
 import { os } from '@orpc/server'
 import { and, desc, eq, sql } from 'drizzle-orm'
@@ -20,9 +18,6 @@ import { MEDIA_SOURCES } from '~/lib/media/source'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { createId } from '~/lib/utils/id'
-
-// Local operations workspace (used for best-effort cleanup when deleting media)
-const OPERATIONS_DIR = './operations'
 
 export const list = os
 	.input(
@@ -444,10 +439,6 @@ export const deleteById = os
 		await db
 			.delete(schema.media)
 			.where(and(eq(schema.media.id, id), eq(schema.media.userId, userId)))
-
-		// 4) Remove local operation directory
-		const operationDir = path.join(OPERATIONS_DIR, id)
-		await fs.rm(operationDir, { recursive: true, force: true })
 
 		return { success: true }
 	})
