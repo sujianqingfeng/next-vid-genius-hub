@@ -64,7 +64,7 @@ function isWorkspacePath(pathname: string): boolean {
 			? pathname.slice(baseUrl.length)
 			: pathname
 	const normalized = raw.endsWith('/') && raw !== '/' ? raw.slice(0, -1) : raw
-	const prefixes = ['/media', '/channels', '/proxy', '/points', '/tasks']
+	const prefixes = ['/media', '/channels', '/points', '/tasks']
 	return prefixes.some(
 		(prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
 	)

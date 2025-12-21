@@ -27,13 +27,7 @@ function getStartHandler() {
 }
 
 const ALLOWLIST_PREFIXES = ['/api/render/cf-callback']
-const WORKSPACE_PREFIXES = [
-	'/media',
-	'/channels',
-	'/proxy',
-	'/points',
-	'/tasks',
-]
+const WORKSPACE_PREFIXES = ['/media', '/channels', '/points', '/tasks']
 
 function decodeBase64(input: string): string {
 	if (typeof atob === 'function') return atob(input)

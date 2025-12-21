@@ -1,4 +1,3 @@
-import { os } from '@orpc/server'
 import { desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
@@ -10,6 +9,9 @@ import {
 	ProxyProtocolEnum,
 	parseSSRSubscription,
 } from '~/lib/proxy/parser'
+import { os, requireAdmin } from '~/orpc/base'
+
+const adminOnly = os.use(requireAdmin)
 
 // Schemas
 const CreateSSRSubscriptionSchema = z.object({
@@ -102,7 +104,7 @@ export const getDefaultProxy = os.input(z.void()).handler(async () => {
 	return { defaultProxyId }
 })
 
-export const setDefaultProxy = os
+export const setDefaultProxy = adminOnly
 	.input(z.object({ proxyId: z.string().nullable() }))
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -119,49 +121,51 @@ export const setDefaultProxy = os
 	})
 
 // SSR Subscription Operations
-export const getSSRSubscriptions = os.input(z.void()).handler(async () => {
-	try {
-		const db = await getDb()
-		// Get subscriptions without relations first
-		const subscriptions = await db.query.ssrSubscriptions.findMany({
-			orderBy: [desc(schema.ssrSubscriptions.createdAt)],
-		})
+export const getSSRSubscriptions = adminOnly
+	.input(z.void())
+	.handler(async () => {
+		try {
+			const db = await getDb()
+			// Get subscriptions without relations first
+			const subscriptions = await db.query.ssrSubscriptions.findMany({
+				orderBy: [desc(schema.ssrSubscriptions.createdAt)],
+			})
 
-		// Get proxies for each subscription separately
-		const subscriptionsWithProxies = await Promise.all(
-			subscriptions.map(async (subscription) => {
-				const proxyList = await db.query.proxies.findMany({
-					where: eq(schema.proxies.subscriptionId, subscription.id),
-					columns: {
-						id: true,
-						name: true,
-						server: true,
-						port: true,
-						protocol: true,
-					},
-				})
+			// Get proxies for each subscription separately
+			const subscriptionsWithProxies = await Promise.all(
+				subscriptions.map(async (subscription) => {
+					const proxyList = await db.query.proxies.findMany({
+						where: eq(schema.proxies.subscriptionId, subscription.id),
+						columns: {
+							id: true,
+							name: true,
+							server: true,
+							port: true,
+							protocol: true,
+						},
+					})
 
-				return {
-					...subscription,
-					proxies: proxyList,
-				}
-			}),
-		)
+					return {
+						...subscription,
+						proxies: proxyList,
+					}
+				}),
+			)
 
-		logger.info(
-			'proxy',
-			`Fetched subscriptions: ${subscriptionsWithProxies.length}`,
-		)
-		return { subscriptions: subscriptionsWithProxies }
-	} catch (error) {
-		logger.error('proxy', `Error in getSSRSubscriptions: ${error}`)
-		throw new Error(
-			`Failed to fetch SSR subscriptions: ${error instanceof Error ? error.message : 'Unknown error'}`,
-		)
-	}
-})
+			logger.info(
+				'proxy',
+				`Fetched subscriptions: ${subscriptionsWithProxies.length}`,
+			)
+			return { subscriptions: subscriptionsWithProxies }
+		} catch (error) {
+			logger.error('proxy', `Error in getSSRSubscriptions: ${error}`)
+			throw new Error(
+				`Failed to fetch SSR subscriptions: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			)
+		}
+	})
 
-export const getSSRSubscription = os
+export const getSSRSubscription = adminOnly
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -183,7 +187,7 @@ export const getSSRSubscription = os
 		return { subscription }
 	})
 
-export const createSSRSubscription = os
+export const createSSRSubscription = adminOnly
 	.input(CreateSSRSubscriptionSchema)
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -195,7 +199,7 @@ export const createSSRSubscription = os
 		return { subscription }
 	})
 
-export const updateSSRSubscription = os
+export const updateSSRSubscription = adminOnly
 	.input(UpdateSSRSubscriptionSchema)
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -222,7 +226,7 @@ export const updateSSRSubscription = os
 		return { subscription }
 	})
 
-export const deleteSSRSubscription = os
+export const deleteSSRSubscription = adminOnly
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -252,7 +256,7 @@ export const deleteSSRSubscription = os
 	})
 
 // Proxy Operations
-export const getProxies = os
+export const getProxies = adminOnly
 	.input(
 		z.object({
 			subscriptionId: z.string().optional(),
@@ -295,7 +299,7 @@ export const getProxies = os
 		}
 	})
 
-export const getProxy = os
+export const getProxy = adminOnly
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -312,7 +316,7 @@ export const getProxy = os
 		return { proxy }
 	})
 
-export const createProxy = os
+export const createProxy = adminOnly
 	.input(CreateProxySchema)
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -321,7 +325,7 @@ export const createProxy = os
 		return { proxy }
 	})
 
-export const updateProxy = os
+export const updateProxy = adminOnly
 	.input(UpdateProxySchema)
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -349,7 +353,7 @@ export const updateProxy = os
 		return { proxy }
 	})
 
-export const deleteProxy = os
+export const deleteProxy = adminOnly
 	.input(z.object({ id: z.string() }))
 	.handler(async ({ input }) => {
 		const db = await getDb()
@@ -373,7 +377,7 @@ export const deleteProxy = os
 	})
 
 // SSR Import Operations
-export const importSSRFromSubscription = os
+export const importSSRFromSubscription = adminOnly
 	.input(
 		z.object({
 			subscriptionId: z.string(),

@@ -4,7 +4,6 @@ import {
 	ChevronRight,
 	Coins,
 	FileVideo,
-	Globe,
 	ListChecks,
 	ListVideo,
 	LogOut,
@@ -38,11 +37,6 @@ const baseMenuItems = [
 		key: 'channels',
 		to: '/channels',
 		icon: ListVideo,
-	},
-	{
-		key: 'proxy',
-		to: '/proxy',
-		icon: Globe,
 	},
 	{
 		key: 'points',

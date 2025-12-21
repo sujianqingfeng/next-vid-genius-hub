@@ -693,6 +693,7 @@
 			},
 			"nav": {
 				"users": "用户管理",
+				"proxy": "代理管理",
 				"aiProviders": "AI 提供商",
 				"aiModels": "AI 模型",
 				"pricing": "计价规则"

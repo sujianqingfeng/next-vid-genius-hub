@@ -24,6 +24,7 @@ import { Route as MediaDownloadRouteImport } from './routes/media.download'
 import { Route as MediaIdRouteImport } from './routes/media.$id'
 import { Route as ApiOpenapiRouteImport } from './routes/api.openapi'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminProxyRouteImport } from './routes/admin.proxy'
 import { Route as AdminPointsPricingRouteImport } from './routes/admin.points-pricing'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as AdminAiModelsRouteImport } from './routes/admin.ai-models'
@@ -113,6 +114,11 @@ const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminProxyRoute = AdminProxyRouteImport.update({
+  id: '/proxy',
+  path: '/proxy',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminPointsPricingRoute = AdminPointsPricingRouteImport.update({
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/media/$id': typeof MediaIdRouteWithChildren
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/media/download': typeof MediaDownloadRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/openapi': typeof ApiOpenapiRoute
   '/media/$id': typeof MediaIdRouteWithChildren
@@ -301,6 +310,7 @@ export interface FileRouteTypes {
     | '/admin/ai-models'
     | '/admin/ai-providers'
     | '/admin/points-pricing'
+    | '/admin/proxy'
     | '/admin/users'
     | '/api/openapi'
     | '/media/$id'
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/admin/ai-models'
     | '/admin/ai-providers'
     | '/admin/points-pricing'
+    | '/admin/proxy'
     | '/admin/users'
     | '/api/openapi'
     | '/media/download'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/admin/ai-models'
     | '/admin/ai-providers'
     | '/admin/points-pricing'
+    | '/admin/proxy'
     | '/admin/users'
     | '/api/openapi'
     | '/media/$id'
@@ -511,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/proxy': {
+      id: '/admin/proxy'
+      path: '/proxy'
+      fullPath: '/admin/proxy'
+      preLoaderRoute: typeof AdminProxyRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/points-pricing': {
       id: '/admin/points-pricing'
       path: '/points-pricing'
@@ -623,6 +642,7 @@ interface AdminRouteChildren {
   AdminAiModelsRoute: typeof AdminAiModelsRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminPointsPricingRoute: typeof AdminPointsPricingRoute
+  AdminProxyRoute: typeof AdminProxyRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -631,6 +651,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAiModelsRoute: AdminAiModelsRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminPointsPricingRoute: AdminPointsPricingRoute,
+  AdminProxyRoute: AdminProxyRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

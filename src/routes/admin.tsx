@@ -23,6 +23,7 @@ import { queryOrpcNext } from '../integrations/orpc/next-client'
 
 const navItems = [
 	{ key: 'users', href: '/admin/users' },
+	{ key: 'proxy', href: '/admin/proxy' },
 	{ key: 'aiProviders', href: '/admin/ai-providers' },
 	{ key: 'aiModels', href: '/admin/ai-models' },
 	{ key: 'pricing', href: '/admin/points-pricing' },

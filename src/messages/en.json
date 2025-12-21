@@ -693,6 +693,7 @@
 			},
 			"nav": {
 				"users": "Users",
+				"proxy": "Proxy",
 				"aiProviders": "AI providers",
 				"aiModels": "AI models",
 				"pricing": "Points pricing"
