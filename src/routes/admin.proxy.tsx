@@ -19,6 +19,7 @@ import { Label } from '~/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
+import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
 import { useTranslations } from '../integrations/i18n'
 import { queryOrpcNext } from '../integrations/orpc/next-client'
 
@@ -424,6 +425,8 @@ function ProxyRoute() {
 								<div className="space-y-3">
 									{proxies.map((p) => {
 										const isDefault = defaultProxyId && p.id === defaultProxyId
+										const hostKind = classifyHost(p.server)
+										const hostLabel = hostKindLabel(hostKind)
 										return (
 											<div key={p.id} className="glass rounded-2xl p-4">
 												<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -432,6 +435,11 @@ function ProxyRoute() {
 															<div className="font-semibold">
 																{p.name || p.server}
 															</div>
+															{hostLabel ? (
+																<span className="rounded-md bg-secondary px-2 py-1 text-xs">
+																	{hostLabel}
+																</span>
+															) : null}
 															{isDefault ? (
 																<span className="rounded-md bg-secondary px-2 py-1 text-xs">
 																	{t('list.defaultBadge')}
@@ -439,7 +447,8 @@ function ProxyRoute() {
 															) : null}
 														</div>
 														<div className="text-xs text-muted-foreground">
-															{p.protocol}://{p.server}:{p.port}
+															{p.protocol}://
+															{formatHostPort(p.server, p.port)}
 														</div>
 													</div>
 

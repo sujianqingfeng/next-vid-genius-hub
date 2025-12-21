@@ -56,6 +56,7 @@ import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/ai/models'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { MEDIA_SOURCES } from '~/lib/media/source'
+import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
 import { useLocale, useTranslations } from '../integrations/i18n'
 import { queryOrpcNext } from '../integrations/orpc/next-client'
 
@@ -1340,11 +1341,12 @@ function ProxySelect({
 						const isDefault = Boolean(
 							defaultProxyId && proxy.id === defaultProxyId,
 						)
+						const hostLabel = hostKindLabel(classifyHost(proxy.server))
 						const display =
 							proxy.name ||
 							(proxy.id === 'none'
 								? 'No Proxy'
-								: `${proxy.protocol ?? 'http'}://${proxy.server ?? ''}:${proxy.port ?? ''}`)
+								: `${proxy.protocol ?? 'http'}://${formatHostPort(proxy.server, proxy.port)}${hostLabel ? ` (${hostLabel})` : ''}`)
 						return (
 							<SelectItem key={proxy.id} value={proxy.id}>
 								<span className="inline-flex items-center gap-2">

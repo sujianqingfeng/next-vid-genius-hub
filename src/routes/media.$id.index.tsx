@@ -30,6 +30,7 @@ import {
 import { Skeleton } from '~/components/ui/skeleton'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import type { MediaItem } from '~/lib/media/types'
+import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
 import { formatBytes, formatNumber } from '~/lib/utils/format/format'
 import { useTranslations } from '../integrations/i18n'
 import { queryOrpcNext } from '../integrations/orpc/next-client'
@@ -432,7 +433,14 @@ function MediaDetailIndexRoute() {
 														{p.id === 'none'
 															? tProxySelector('direct')
 															: p.name ||
-																`${p.protocol ?? 'http'}://${p.server ?? ''}:${p.port ?? ''}`}
+																(() => {
+																	const label = hostKindLabel(
+																		classifyHost(p.server),
+																	)
+																	const addr = formatHostPort(p.server, p.port)
+																	const base = `${p.protocol ?? 'http'}://${addr}`
+																	return label ? `${base} (${label})` : base
+																})()}
 													</SelectItem>
 												))}
 											</SelectContent>

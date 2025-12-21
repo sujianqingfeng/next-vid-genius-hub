@@ -149,6 +149,9 @@ importers:
       undici:
         specifier: ^7.16.0
         version: 7.16.0
+      yaml:
+        specifier: ^2.8.2
+        version: 2.8.2
       youtubei.js:
         specifier: ^16.0.1
         version: 16.0.1

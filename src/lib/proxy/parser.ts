@@ -1,3 +1,4 @@
+import YAML from 'yaml'
 import { z } from 'zod'
 import { logger } from '~/lib/logger'
 import { createId } from '~/lib/utils/id'
@@ -317,6 +318,25 @@ function parseClashSubscription(rawContent: string): ParsedProxy[] {
 	return proxies
 }
 
+function parseClashSubscriptionYaml(rawContent: string): ParsedProxy[] {
+	try {
+		const doc = YAML.parse(rawContent) as unknown
+		if (!doc || typeof doc !== 'object') return []
+		const proxiesRaw = (doc as any).proxies as unknown
+		if (!Array.isArray(proxiesRaw) || proxiesRaw.length === 0) return []
+
+		const proxies: ParsedProxy[] = []
+		for (const entry of proxiesRaw) {
+			if (!entry || typeof entry !== 'object') continue
+			const parsed = convertClashProxy(entry as ClashProxyRaw)
+			if (parsed) proxies.push(parsed)
+		}
+		return proxies
+	} catch {
+		return []
+	}
+}
+
 function extractClashProxiesBlock(content: string): string | null {
 	const lines = content.split(/\r?\n/)
 	let inside = false
@@ -386,6 +406,22 @@ function splitClashProxyEntries(block: string): string[] {
 }
 
 type ClashProxyRaw = Record<string, unknown>
+
+function getClashRecord(value: unknown): Record<string, unknown> | undefined {
+	if (!value || typeof value !== 'object' || Array.isArray(value))
+		return undefined
+	return value as Record<string, unknown>
+}
+
+function looksLikeClashYaml(content: string): boolean {
+	const trimmed = content.trim()
+	if (!trimmed) return false
+	return (
+		/\bproxies:\s*$/im.test(trimmed) ||
+		/\bproxy-groups:\s*$/im.test(trimmed) ||
+		/^\s*port:\s*\d+\s*$/im.test(trimmed)
+	)
+}
 
 function parseClashProxyEntry(entry: string): ClashProxyRaw | null {
 	const trimmed = entry.trim()
@@ -577,6 +613,15 @@ function ensureLeadingSlashPath(path: string): string {
 	return path.startsWith('/') ? path : `/${path}`
 }
 
+function formatHostForUrlAuthority(host: string): string {
+	const trimmed = host.trim()
+	if (!trimmed) return trimmed
+	// Node's WHATWG URL requires IPv6 literals in brackets when used in authority.
+	if (trimmed.startsWith('[') && trimmed.endsWith(']')) return trimmed
+	if (trimmed.includes(':')) return `[${trimmed}]`
+	return trimmed
+}
+
 function mapClashTypeToProxyProtocol(
 	typeValue: string | undefined,
 ): ProxyProtocol | null {
@@ -633,15 +678,35 @@ function convertClashProxy(raw: ClashProxyRaw): ParsedProxy | null {
 				raw.servername ??
 				raw.server_name,
 		) ?? (undefined as string | undefined)
-	const network = toClashString(raw.network ?? raw.type ?? raw['network-type'])
+	const network = toClashString(raw.network ?? raw['network-type'])
 	const alpn = toClashStringArray(raw.alpn ?? raw.ALPNS)
 	const mux = toClashBoolean(raw.mux)
-	const wsPath = toClashString(raw.path ?? raw['ws-path'] ?? raw['ws_path'])
-	const hostHeader = toClashString(raw.host_header ?? raw.host ?? raw.authority)
-	const grpcServiceName = toClashString(
-		raw['grpc-service-name'] ?? raw['service-name'] ?? raw['grpc_service_name'],
+
+	const wsOpts = getClashRecord(raw['ws-opts'] ?? raw.ws_opts ?? raw.wsOpts)
+	const wsHeaders = getClashRecord(wsOpts?.headers ?? wsOpts?.header)
+	const wsPath =
+		toClashString(wsOpts?.path) ??
+		toClashString(raw.path ?? raw['ws-path'] ?? raw['ws_path'])
+	const hostHeader =
+		toClashString(wsHeaders?.Host ?? wsHeaders?.host) ??
+		toClashString(raw.host_header ?? raw.host ?? raw.authority)
+
+	const grpcOpts = getClashRecord(
+		raw['grpc-opts'] ?? raw.grpc_opts ?? raw.grpcOpts,
 	)
-	const grpcMode = toClashString(raw['grpc-mode'] ?? raw['mode'])
+	const grpcServiceName =
+		toClashString(grpcOpts?.['grpc-service-name'] ?? grpcOpts?.serviceName) ??
+		toClashString(
+			raw['grpc-service-name'] ??
+				raw['service-name'] ??
+				raw['grpc_service_name'],
+		)
+	const grpcMode =
+		toClashString(grpcOpts?.mode) ?? toClashString(raw['grpc-mode'] ?? raw.mode)
+
+	const transport = (
+		network ?? (wsOpts ? 'ws' : grpcOpts ? 'grpc' : undefined)
+	)?.toLowerCase()
 
 	switch (protocol) {
 		case 'trojan':
@@ -694,14 +759,14 @@ function convertClashProxy(raw: ClashProxyRaw): ParsedProxy | null {
 		if (alpn?.length) {
 			params.set('alpn', alpn.join(','))
 		}
-		if (network && network.toLowerCase() !== 'tcp') {
-			params.set('type', network.toLowerCase())
+		if (transport && transport !== 'tcp') {
+			params.set('type', transport)
 		}
-		if (network && network.toLowerCase() === 'ws') {
+		if (transport === 'ws') {
 			if (wsPath) params.set('path', ensureLeadingSlashPath(wsPath))
 			if (hostHeader) params.set('host', hostHeader)
 		}
-		if (network && network.toLowerCase() === 'grpc') {
+		if (transport === 'grpc') {
 			if (grpcServiceName) params.set('serviceName', grpcServiceName)
 			if (grpcMode) params.set('mode', grpcMode)
 		}
@@ -714,7 +779,100 @@ function convertClashProxy(raw: ClashProxyRaw): ParsedProxy | null {
 			: encodeURIComponent(password)
 		const query = params.toString()
 
-		nodeUrl = `trojan://${credential}@${server}:${port}${query ? `?${query}` : ''}#${encodeURIComponent(name)}`
+		nodeUrl = `trojan://${credential}@${formatHostForUrlAuthority(server)}:${port}${query ? `?${query}` : ''}#${encodeURIComponent(name)}`
+	}
+
+	if (protocol === 'vless' && username) {
+		const params = new URLSearchParams()
+
+		const encryption = toClashString(raw.encryption) ?? 'none'
+		params.set('encryption', encryption)
+
+		const tls = toClashBoolean(raw.tls ?? raw['tls-enabled'] ?? raw.tls_enabled)
+		const realityOpts = getClashRecord(
+			raw['reality-opts'] ?? raw.reality_opts ?? raw.realityOpts ?? raw.reality,
+		)
+		const hasReality =
+			Boolean(realityOpts) ||
+			toClashBoolean(raw.reality) === true ||
+			toClashBoolean((raw as any)['reality-enabled']) === true
+
+		if (hasReality) {
+			params.set('security', 'reality')
+			const publicKey = toClashString(
+				realityOpts?.['public-key'] ??
+					realityOpts?.publicKey ??
+					realityOpts?.pbk ??
+					raw.pbk ??
+					raw.publickey ??
+					raw['public-key'],
+			)
+			const shortId = toClashString(
+				realityOpts?.['short-id'] ??
+					realityOpts?.shortId ??
+					realityOpts?.sid ??
+					raw.sid ??
+					raw.shortid ??
+					raw['short-id'],
+			)
+			const spiderX = toClashString(
+				realityOpts?.['spider-x'] ??
+					realityOpts?.spiderX ??
+					raw.spx ??
+					raw.spiderx ??
+					raw['spider-x'],
+			)
+			if (publicKey) params.set('pbk', publicKey)
+			if (shortId) params.set('sid', shortId)
+			if (spiderX) params.set('spx', spiderX)
+		} else if (tls) {
+			params.set('security', 'tls')
+		}
+
+		if (skipCertVerify !== undefined) {
+			params.set('allowInsecure', skipCertVerify ? '1' : '0')
+		}
+
+		if (sni) {
+			params.set('sni', sni)
+		}
+
+		const fingerprint = toClashString(
+			raw['client-fingerprint'] ?? raw.fingerprint ?? raw.fp,
+		)
+		if (fingerprint) {
+			params.set('fp', fingerprint)
+		}
+
+		const flow = toClashString(raw.flow)
+		if (flow) {
+			params.set('flow', flow)
+		}
+
+		if (alpn?.length) {
+			params.set('alpn', alpn.join(','))
+		}
+
+		if (mux !== undefined) {
+			params.set('mux', mux ? '1' : '0')
+		}
+
+		if (transport && transport !== 'tcp') {
+			params.set('type', transport)
+		}
+
+		if (transport === 'ws') {
+			if (wsPath) params.set('path', ensureLeadingSlashPath(wsPath))
+			if (hostHeader) params.set('host', hostHeader)
+		}
+
+		if (transport === 'grpc') {
+			if (grpcServiceName) params.set('serviceName', grpcServiceName)
+			if (grpcMode) params.set('mode', grpcMode)
+		}
+
+		const query = params.toString()
+		nodeUrl = `vless://${encodeURIComponent(username)}@${formatHostForUrlAuthority(server)}:${port}${query ? `?${query}` : ''}#${encodeURIComponent(name)}`
 	}
 
 	return {
@@ -739,16 +897,26 @@ export async function parseSSRSubscription(
 		}
 
 		const content = await response.text()
-		const clashProxies = parseClashSubscription(content)
+		const clashProxies = parseClashSubscriptionYaml(content)
 		if (clashProxies.length) {
 			return clashProxies
+		}
+		const legacyClashProxies = parseClashSubscription(content)
+		if (legacyClashProxies.length) {
+			return legacyClashProxies
 		}
 
 		const normalizedContent = normalizeSubscriptionPayload(content)
 		if (normalizedContent !== content) {
-			const normalizedClashProxies = parseClashSubscription(normalizedContent)
+			const normalizedClashProxies =
+				parseClashSubscriptionYaml(normalizedContent)
 			if (normalizedClashProxies.length) {
 				return normalizedClashProxies
+			}
+			const normalizedLegacyClashProxies =
+				parseClashSubscription(normalizedContent)
+			if (normalizedLegacyClashProxies.length) {
+				return normalizedLegacyClashProxies
 			}
 		}
 
@@ -814,6 +982,10 @@ function normalizeSubscriptionPayload(rawContent: string): string {
 		return trimmedContent
 	}
 
+	if (looksLikeClashYaml(trimmedContent)) {
+		return trimmedContent
+	}
+
 	const decodedLinesFromOriginal = trimmedContent
 		.split(/\r?\n/)
 		.map((line) => decodeLineCandidate(line))
@@ -832,6 +1004,9 @@ function normalizeSubscriptionPayload(rawContent: string): string {
 			.toString('utf-8')
 			.trim()
 		if (containsSupportedScheme(decoded)) {
+			return decoded
+		}
+		if (looksLikeClashYaml(decoded)) {
 			return decoded
 		}
 

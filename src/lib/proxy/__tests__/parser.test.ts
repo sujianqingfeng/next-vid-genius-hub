@@ -45,6 +45,32 @@ proxies:
     type: trojan
     password: HK-PASS-20003
     udp: true
+  - name: VLESS WS TLS | 01
+    server: vless.example.com
+    port: 443
+    type: vless
+    uuid: 1d9ea67e-d583-49aa-81ce-ec66b3f81ba6
+    udp: true
+    tls: true
+    servername: sni.example.com
+    network: ws
+    skip-cert-verify: true
+    ws-opts:
+      path: /ws
+      headers:
+        Host: host.example.com
+  - name: VLESS IPv6 WS TLS | 02
+    server: 2606:4700:4400::4968:6c8e
+    port: 443
+    type: vless
+    uuid: fef41949-89d1-441e-ae16-153c62697ef5
+    tls: true
+    servername: cfv.temp-drop-files.store
+    network: ws
+    ws-opts:
+      path: "/?ed=2048"
+      headers:
+        Host: cfv.temp-drop-files.store
 proxy-groups:
   - name: Auto Select
     type: url-test
@@ -179,7 +205,7 @@ describe('parseSSRSubscription', () => {
 
 		const result = await parseSSRSubscription('https://subscription.test/clash')
 
-		expect(result).toHaveLength(2)
+		expect(result).toHaveLength(4)
 
 		const firstNode = result[0]
 		expect(firstNode).toMatchObject({
@@ -198,5 +224,39 @@ describe('parseSSRSubscription', () => {
 			protocol: 'trojan',
 			password: 'HK-PASS-20003',
 		})
+
+		const vless = result.find((proxy) => proxy.protocol === 'vless')
+		expect(vless).toBeDefined()
+		expect(vless).toMatchObject({
+			name: 'VLESS WS TLS | 01',
+			server: 'vless.example.com',
+			port: 443,
+			protocol: 'vless',
+			username: '1d9ea67e-d583-49aa-81ce-ec66b3f81ba6',
+		})
+		expect(vless?.nodeUrl).toContain('vless://')
+		expect(vless?.nodeUrl).toContain('@vless.example.com:443')
+		expect(vless?.nodeUrl).toContain('type=ws')
+		expect(vless?.nodeUrl).toContain('security=tls')
+		expect(vless?.nodeUrl).toContain('host=host.example.com')
+		expect(vless?.nodeUrl).toContain('path=%2Fws')
+
+		const vlessIpv6 = result.find((proxy) =>
+			proxy.name?.includes('IPv6'),
+		)
+		expect(vlessIpv6).toBeDefined()
+		expect(vlessIpv6).toMatchObject({
+			server: '2606:4700:4400::4968:6c8e',
+			port: 443,
+			protocol: 'vless',
+			username: 'fef41949-89d1-441e-ae16-153c62697ef5',
+		})
+		expect(vlessIpv6?.nodeUrl).toContain(
+			'@[2606:4700:4400::4968:6c8e]:443',
+		)
+		expect(vlessIpv6?.nodeUrl).toContain('type=ws')
+		expect(vlessIpv6?.nodeUrl).toContain('security=tls')
+		expect(vlessIpv6?.nodeUrl).toContain('host=cfv.temp-drop-files.store')
+		expect(vlessIpv6?.nodeUrl).toContain('path=%2F%3Fed%3D2048')
 	})
 })
