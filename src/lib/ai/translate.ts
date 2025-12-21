@@ -9,6 +9,10 @@ const translationSchema = z.object({
 	translation: z.string().min(1),
 })
 
+const translationsSchema = z.object({
+	translations: z.array(z.string()),
+})
+
 const translationSystemPrompt = [
 	'You are a professional translator that must respond with JSON only.',
 	'Every reply MUST be a single JSON object that matches this exact schema: {"translation": "string"}.',
@@ -17,6 +21,16 @@ const translationSystemPrompt = [
 	'Do NOT wrap the JSON in quotes; emit raw JSON like {"translation":"示例"}.',
 	'Trim leading/trailing whitespace and avoid commentary or metadata.',
 	'If the source is already Chinese, still return {"translation":"<original text>"} with identical content.',
+].join(' ')
+
+const translationsSystemPrompt = [
+	'You are a professional translator that must respond with JSON only.',
+	'Every reply MUST be a single JSON object that matches this exact schema: {"translations": ["string", ...]}.',
+	'The value of "translations" must be an array with the EXACT same length and order as the input texts.',
+	'Each item must be fluent Simplified Chinese; preserve non-Chinese proper nouns or symbols only when necessary.',
+	'Do NOT output markdown, code fences, prose, or extra keys.',
+	'Do NOT wrap the JSON in quotes; emit raw JSON only.',
+	'If an input item is already Chinese, output it unchanged at the same index.',
 ].join(' ')
 
 export async function translateTextWithUsage(
@@ -130,6 +144,105 @@ export async function translateTextWithUsage(
 		translation: normalized.length > 0 ? normalized : text,
 		usage,
 	}
+}
+
+export async function translateTextsWithUsage(
+	texts: string[],
+	modelId: AIModelId,
+): Promise<{
+	translations: string[]
+	usage: { inputTokens: number; outputTokens: number; totalTokens: number }
+}> {
+	if (texts.length === 0) {
+		return {
+			translations: [],
+			usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+		}
+	}
+
+	const prompt = [
+		'Task: translate each provided text into natural Simplified Chinese.',
+		'Output requirement: respond with EXACTLY one JSON object: {"translations":["..."]} (no markdown, no prose).',
+		'The translations array MUST have the same length and order as the input.',
+		'Input JSON:',
+		JSON.stringify({ texts }),
+	].join('\n')
+
+	let usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+
+	const parseResult = (
+		value: unknown,
+		nextUsage: {
+			inputTokens: number
+			outputTokens: number
+			totalTokens: number
+		},
+	) => {
+		const parsed = translationsSchema.safeParse(value)
+		if (!parsed.success) {
+			throw new Error('Translation response did not match expected schema')
+		}
+		if (parsed.data.translations.length !== texts.length) {
+			throw new Error(
+				`Translation response length mismatch (expected ${texts.length}, got ${parsed.data.translations.length})`,
+			)
+		}
+		const normalized = parsed.data.translations.map((t, i) => {
+			const v = String(t ?? '').trim()
+			return v.length > 0 ? v : texts[i]
+		})
+		return { translations: normalized, usage: nextUsage }
+	}
+
+	if (!unsupportedStructuredModels.has(modelId)) {
+		try {
+			const res = await streamObjectWithUsage({
+				model: modelId,
+				system: translationsSystemPrompt,
+				prompt,
+				schema: translationsSchema,
+			})
+			usage = {
+				inputTokens: usage.inputTokens + (res.usage?.inputTokens ?? 0),
+				outputTokens: usage.outputTokens + (res.usage?.outputTokens ?? 0),
+				totalTokens: usage.totalTokens + (res.usage?.totalTokens ?? 0),
+			}
+			return parseResult(res.object, usage)
+		} catch (error) {
+			logger.warn(
+				'translation',
+				'[translateTexts] Structured translation failed, falling back to JSON text mode.',
+			)
+			unsupportedStructuredModels.add(modelId)
+		}
+	}
+
+	const fallback = await streamTextWithUsage({
+		model: modelId,
+		system: translationsSystemPrompt,
+		prompt,
+	})
+	usage = {
+		inputTokens: usage.inputTokens + (fallback.usage?.inputTokens ?? 0),
+		outputTokens: usage.outputTokens + (fallback.usage?.outputTokens ?? 0),
+		totalTokens: usage.totalTokens + (fallback.usage?.totalTokens ?? 0),
+	}
+
+	const raw = (fallback.text ?? '').trim()
+	const firstBrace = raw.indexOf('{')
+	const lastBrace = raw.lastIndexOf('}')
+	const candidate =
+		firstBrace >= 0 && lastBrace > firstBrace
+			? raw.slice(firstBrace, lastBrace + 1)
+			: raw
+
+	let json: unknown
+	try {
+		json = JSON.parse(candidate)
+	} catch {
+		throw new Error('Translation response was not valid JSON')
+	}
+	return parseResult(json, usage)
 }
 
 export async function translateText(text: string, modelId: AIModelId) {

@@ -4,7 +4,10 @@ import { DEFAULT_TEMPLATE_ID } from '@remotion/templates'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDefaultAiModel, isEnabledModel } from '~/lib/ai/config/service'
-import { translateTextWithUsage } from '~/lib/ai/translate'
+import {
+	translateTextsWithUsage,
+	translateTextWithUsage,
+} from '~/lib/ai/translate'
 import type { RequestContext } from '~/lib/auth/types'
 import {
 	getJobStatus,
@@ -52,6 +55,8 @@ export const translateComments = os
 			throw new Error('Media or comments not found')
 		}
 
+		const comments = media.comments
+
 		// 翻译标题
 		let translatedTitle = media.translatedTitle
 		let totalInputTokens = 0
@@ -64,27 +69,75 @@ export const translateComments = os
 		}
 
 		// 翻译评论
-		const translatedComments = await mapWithConcurrency(
-			media.comments,
-			TRANSLATE_CONCURRENCY,
-			async (comment) => {
-				if (!comment.content) {
-					return comment
-				}
-				// 如果评论已经有翻译内容，跳过翻译
-				if (comment.translatedContent && !force) {
-					return comment
-				}
-				const res = await translateTextWithUsage(comment.content, modelId)
-				totalInputTokens += res.usage.inputTokens
-				totalOutputTokens += res.usage.outputTokens
-				const translatedContent = res.translation
-				return {
-					...comment,
-					translatedContent,
-				}
+		const translatedComments = [...comments]
+		const pendingIndices: number[] = []
+		for (let i = 0; i < comments.length; i++) {
+			const comment = comments[i]
+			if (!comment?.content) continue
+			if (comment.translatedContent && !force) continue
+			pendingIndices.push(i)
+		}
+
+		// Cloudflare Workers has a strict subrequest limit per invocation.
+		// A naive per-comment translation quickly exceeds it. Batch translations
+		// to keep the number of outbound requests bounded.
+		const MAX_BATCH_ITEMS = 20
+		const MAX_BATCH_CHARS = 6000
+		const MAX_BATCHES_PER_REQUEST = 20
+
+		const batches: number[][] = []
+		let current: number[] = []
+		let currentChars = 0
+
+		const pushCurrent = () => {
+			if (current.length === 0) return
+			batches.push(current)
+			current = []
+			currentChars = 0
+		}
+
+		for (const idx of pendingIndices) {
+			if (batches.length >= MAX_BATCHES_PER_REQUEST) break
+			const text = String(comments[idx]?.content ?? '')
+			const textChars = text.length
+			const wouldOverflow =
+				current.length >= MAX_BATCH_ITEMS ||
+				(current.length > 0 && currentChars + textChars > MAX_BATCH_CHARS)
+
+			if (wouldOverflow) pushCurrent()
+			if (batches.length >= MAX_BATCHES_PER_REQUEST) break
+
+			current.push(idx)
+			currentChars += textChars
+		}
+		pushCurrent()
+
+		let translatedCount = 0
+		const batchConcurrency = Math.min(TRANSLATE_CONCURRENCY, 3)
+		const batchResults = await mapWithConcurrency(
+			batches,
+			Math.max(1, batchConcurrency),
+			async (batch) => {
+				const texts = batch.map((i) => String(comments[i]?.content ?? ''))
+				return translateTextsWithUsage(texts, modelId)
 			},
 		)
+
+		for (let i = 0; i < batches.length; i++) {
+			const batch = batches[i]
+			const res = batchResults[i]
+			totalInputTokens += res.usage.inputTokens
+			totalOutputTokens += res.usage.outputTokens
+			for (let j = 0; j < batch.length; j++) {
+				const idx = batch[j]
+				const existing = comments[idx]
+				translatedComments[idx] = {
+					...existing,
+					translatedContent: res.translations[j],
+				}
+				translatedCount++
+			}
+		}
 
 		// Charge once for all LLM translation calls
 		try {
@@ -113,7 +166,13 @@ export const translateComments = os
 			})
 			.where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
 
-		return { success: true }
+		return {
+			success: true,
+			translatedCount,
+			remainingCount: Math.max(0, pendingIndices.length - translatedCount),
+			batches: batches.length,
+			concurrency: Math.min(batchConcurrency, batches.length || 1),
+		}
 	})
 
 export const deleteComment = os
