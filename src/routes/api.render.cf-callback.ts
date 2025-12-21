@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { presignGetByKey } from '~/lib/cloudflare'
 import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
+import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
 import {
 	chargeAsrUsage,
@@ -506,10 +507,11 @@ export const Route = createFileRoute('/api/render/cf-callback')({
 
 					const db = await getDb()
 
+					const task = await db.query.tasks.findFirst({
+						where: eq(schema.tasks.jobId, payload.jobId),
+					})
+
 					try {
-						const task = await db.query.tasks.findFirst({
-							where: eq(schema.tasks.jobId, payload.jobId),
-						})
 						if (task) {
 							await db
 								.update(schema.tasks)
@@ -528,6 +530,20 @@ export const Route = createFileRoute('/api/render/cf-callback')({
 							'api',
 							`[cf-callback] task sync skipped: ${err instanceof Error ? err.message : String(err)}`,
 						)
+					}
+
+					// media-downloader is also used for non-download tasks (comments-only, metadata refresh, channel sync).
+					// Those jobs should not mutate the media's download fields.
+					if (
+						payload.engine === 'media-downloader' &&
+						task?.kind &&
+						task.kind !== TASK_KINDS.DOWNLOAD
+					) {
+						logger.info(
+							'api',
+							`[cf-callback] non-download media-downloader job ignored job=${payload.jobId} kind=${task.kind}`,
+						)
+						return Response.json({ ok: true, ignored: true })
 					}
 
 					const media = await db.query.media.findFirst({

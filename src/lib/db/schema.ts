@@ -6,18 +6,6 @@ import {
 } from 'drizzle-orm/sqlite-core'
 import { createId } from '~/lib/utils/id'
 
-export type ModerationSeverity = 'low' | 'medium' | 'high'
-
-export interface CommentModeration {
-	flagged: boolean
-	labels: string[]
-	severity: ModerationSeverity
-	reason: string
-	runId: string
-	modelId: string
-	moderatedAt: string // ISO string
-}
-
 export interface Comment {
 	id: string
 	author: string
@@ -26,7 +14,6 @@ export interface Comment {
 	translatedContent?: string
 	likes: number
 	replyCount?: number
-	moderation?: CommentModeration
 }
 
 export interface TranscriptionWord {
@@ -268,14 +255,6 @@ export const media = sqliteTable(
 		commentsDownloadedAt: integer('comments_downloaded_at', {
 			mode: 'timestamp',
 		}),
-		commentsModeratedAt: integer('comments_moderated_at', {
-			mode: 'timestamp',
-		}),
-		commentsModerationModel: text('comments_moderation_model'),
-		commentsFlaggedCount: integer('comments_flagged_count').default(0),
-		commentsModerationSummary: text('comments_moderation_summary', {
-			mode: 'json',
-		}).$type<Record<string, number>>(),
 		downloadBackend: text('download_backend', { enum: ['local', 'cloud'] })
 			.default('local')
 			.notNull(),

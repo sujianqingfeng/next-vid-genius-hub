@@ -66,6 +66,14 @@
 	"Media": {
 		"title": "Media Library",
 		"downloadCta": "Download Media",
+		"actions": {
+			"delete": "Delete"
+		},
+		"confirmDelete": "Delete \"{title}\"? This will remove the media and related artifacts.",
+		"toasts": {
+			"deleteSuccess": "Media deleted",
+			"deleteFail": "Failed to delete media: {message}"
+		},
 		"error": {
 			"title": "Failed to load media",
 			"body": "There was an error loading your media library. Please try again.",
@@ -523,7 +531,6 @@
 				"basics": "Base",
 				"download": "Get",
 				"translate": "Trans",
-				"moderate": "Mod",
 				"render": "Render"
 			},
 			"labels": {
@@ -556,10 +563,6 @@
 			"translate": {
 				"translate": "Translate",
 				"translating": "Translating..."
-			},
-			"moderate": {
-				"run": "Run Moderation",
-				"moderating": "Moderating..."
 			},
 			"render": {
 				"template": "Template",
@@ -623,7 +626,6 @@
 				"cloudCommentsQueued": "Cloud comments download queued",
 				"commentsDownloaded": "Comments downloaded!",
 				"commentsTranslated": "Comments translated!",
-				"moderationDone": "Moderation done: {count} flagged",
 				"commentsDeleted": "Deleted {count, plural, one {# comment} other {# comments}}",
 				"cloudRenderQueued": "Cloud render queued",
 				"disclaimerCopied": "Disclaimer copied to clipboard"
@@ -634,7 +636,6 @@
 				"templateSaveFailed": "Failed to save template: {message}",
 				"titlesUpdateFailed": "Failed to update titles: {message}",
 				"translateFailed": "Failed to translate comments: {message}",
-				"moderateFailed": "Failed to moderate: {message}",
 				"deleteFailed": "Failed to delete comments: {message}"
 			}
 		}

@@ -21,7 +21,6 @@ import {
 	Loader2,
 	MessageCircle,
 	Play,
-	ShieldAlert,
 	Square,
 	Trash2,
 } from 'lucide-react'
@@ -70,15 +69,6 @@ type Comment = {
 	translatedContent?: string
 	likes: number
 	replyCount?: number
-	moderation?: {
-		flagged: boolean
-		labels: string[]
-		severity: 'low' | 'medium' | 'high'
-		reason: string
-		runId: string
-		modelId: string
-		moderatedAt: string
-	}
 }
 
 type CloudStatus = {
@@ -89,10 +79,13 @@ type CloudStatus = {
 }
 
 const SearchSchema = z.object({
-	tab: z
-		.enum(['basics', 'download', 'translate', 'moderate', 'render'])
-		.optional()
-		.default('basics'),
+	tab: z.preprocess(
+		(value) => (value === 'moderate' ? 'basics' : value),
+		z
+			.enum(['basics', 'download', 'translate', 'render'])
+			.optional()
+			.default('basics'),
+	),
 })
 
 export const Route = createFileRoute('/media/$id/comments')({
@@ -185,7 +178,8 @@ function MediaCommentsRoute() {
 	const navigate = Route.useNavigate()
 
 	const { id } = Route.useParams()
-	const { tab } = Route.useSearch()
+	const { tab: rawTab } = Route.useSearch()
+	const tab = rawTab === 'moderate' ? 'basics' : rawTab
 
 	const mediaQuery = useQuery(
 		queryOrpcNext.media.byId.queryOptions({ input: { id } }),
@@ -245,18 +239,11 @@ function MediaCommentsRoute() {
 	// ---------- Model selection ----------
 	const [model, setModel] = React.useState<ChatModelId>(DEFAULT_CHAT_MODEL_ID)
 	const [forceTranslate, setForceTranslate] = React.useState(false)
-	const [modModel, setModModel] = React.useState<ChatModelId>(
-		DEFAULT_CHAT_MODEL_ID,
-	)
-	const [overwriteModeration, setOverwriteModeration] = React.useState(false)
 
 	React.useEffect(() => {
 		const defaultId = llmDefaultQuery.data?.model?.id
 		if (!defaultId) return
 		setModel((cur) =>
-			cur === DEFAULT_CHAT_MODEL_ID ? (defaultId as ChatModelId) : cur,
-		)
-		setModModel((cur) =>
 			cur === DEFAULT_CHAT_MODEL_ID ? (defaultId as ChatModelId) : cur,
 		)
 	}, [llmDefaultQuery.data?.model?.id])
@@ -456,7 +443,7 @@ function MediaCommentsRoute() {
 		id,
 	])
 
-	// ---------- Translation / moderation ----------
+	// ---------- Translation ----------
 	const translateCommentsMutation = useEnhancedMutation(
 		queryOrpcNext.comment.translateComments.mutationOptions({
 			onSuccess: async () => {
@@ -469,23 +456,6 @@ function MediaCommentsRoute() {
 			successToast: t('toasts.commentsTranslated'),
 			errorToast: ({ error }) =>
 				t('errors.translateFailed', {
-					message: error instanceof Error ? error.message : String(error),
-				}),
-		},
-	)
-
-	const moderateCommentsMutation = useEnhancedMutation(
-		queryOrpcNext.comment.moderateComments.mutationOptions({
-			onSuccess: async (data) => {
-				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
-				})
-				toast.success(t('toasts.moderationDone', { count: data.flaggedCount }))
-			},
-		}),
-		{
-			errorToast: ({ error }) =>
-				t('errors.moderateFailed', {
 					message: error instanceof Error ? error.message : String(error),
 				}),
 		},
@@ -610,7 +580,6 @@ function MediaCommentsRoute() {
 		startCloudCommentsMutation.isPending ||
 		finalizeCloudCommentsMutation.isPending ||
 		translateCommentsMutation.isPending ||
-		moderateCommentsMutation.isPending ||
 		deleteCommentsMutation.isPending ||
 		startCloudRenderMutation.isPending
 
@@ -812,9 +781,6 @@ function MediaCommentsRoute() {
 									</TabsTrigger>
 									<TabsTrigger value="translate">
 										{t('tabs.translate')}
-									</TabsTrigger>
-									<TabsTrigger value="moderate">
-										{t('tabs.moderate')}
 									</TabsTrigger>
 									<TabsTrigger value="render">{t('tabs.render')}</TabsTrigger>
 								</TabsList>
@@ -1167,60 +1133,6 @@ function MediaCommentsRoute() {
 									</div>
 								</TabsContent>
 
-								<TabsContent value="moderate" className="space-y-4">
-									<div className="glass rounded-2xl p-5 space-y-4">
-										<div className="text-sm font-semibold">
-											{t('tabs.moderate')}
-										</div>
-										<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-											<ModelSelect
-												label={t('fields.aiModel')}
-												value={modModel}
-												onValueChange={(v) => setModModel(v as ChatModelId)}
-												options={llmModelOptions}
-												disabled={isBusy}
-											/>
-											<div className="space-y-2">
-												<div className="flex items-center justify-between gap-3">
-													<Label>{t('fields.overwriteExisting')}</Label>
-													<Switch
-														checked={overwriteModeration}
-														onCheckedChange={setOverwriteModeration}
-														disabled={isBusy}
-													/>
-												</div>
-											</div>
-										</div>
-										<Button
-											variant="secondary"
-											onClick={() => {
-												if (comments.length === 0) {
-													toast.error(t('empty.description'))
-													return
-												}
-												moderateCommentsMutation.mutate({
-													mediaId: id,
-													model: modModel,
-													overwrite: overwriteModeration,
-												})
-											}}
-											disabled={moderateCommentsMutation.isPending || isBusy}
-										>
-											{moderateCommentsMutation.isPending ? (
-												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													{t('moderate.moderating')}
-												</>
-											) : (
-												<>
-													<ShieldAlert className="mr-2 h-4 w-4" />
-													{t('moderate.run')}
-												</>
-											)}
-										</Button>
-									</div>
-								</TabsContent>
-
 								<TabsContent value="render" className="space-y-4">
 									<div className="glass rounded-2xl p-5 space-y-4">
 										<div className="text-sm font-semibold">
@@ -1516,21 +1428,11 @@ function CommentRow({
 	const showFallback = avatarError || !comment.authorThumbnail
 	const initials = resolveAvatarFallback(comment.author)
 
-	const flagged = Boolean(comment.moderation?.flagged)
-	const severity = comment.moderation?.severity ?? 'low'
-
-	const severityClass = flagged
-		? severity === 'high'
-			? 'bg-destructive/10 border-l-2 border-destructive/60'
-			: severity === 'medium'
-				? 'bg-amber-100/20 dark:bg-amber-900/10 border-l-2 border-amber-400/50'
-				: 'bg-primary/5 border-l-2 border-primary/30'
-		: ''
 	const selectionClass = selected ? 'bg-primary/5 ring-1 ring-primary/20' : ''
 
 	return (
 		<div
-			className={`group glass flex items-start gap-3 rounded-2xl px-4 py-3 transition-all duration-200 hover:bg-muted/40 ${severityClass} ${selectionClass}`}
+			className={`group glass flex items-start gap-3 rounded-2xl px-4 py-3 transition-all duration-200 hover:bg-muted/40 ${selectionClass}`}
 		>
 			<Button
 				variant="ghost"
@@ -1577,17 +1479,6 @@ function CommentRow({
 								) : null}
 							</div>
 						</div>
-						{flagged ? (
-							<div className="flex items-center gap-2">
-								<Badge
-									variant={severity === 'high' ? 'destructive' : 'secondary'}
-									className="h-4 px-1.5 text-[10px]"
-									title={comment.moderation?.reason ?? ''}
-								>
-									{comment.moderation?.labels?.join(', ') ?? 'flagged'}
-								</Badge>
-							</div>
-						) : null}
 					</div>
 
 					<Button

@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { FolderOpen, Loader2 } from 'lucide-react'
+import { FolderOpen, Loader2, Trash2 } from 'lucide-react'
 import { z } from 'zod'
 
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 import { Button } from '~/components/ui/button'
+import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { MEDIA_PAGE_SIZE } from '~/lib/pagination'
 import { useTranslations } from '../integrations/i18n'
 import { queryOrpcNext } from '../integrations/orpc/next-client'
@@ -44,7 +46,10 @@ function toDateLabel(input: unknown): string {
 
 function MediaIndexRoute() {
 	const t = useTranslations('Media')
+	const navigate = Route.useNavigate()
 	const { page } = Route.useSearch()
+	const qc = useQueryClient()
+	const confirmDialog = useConfirmDialog()
 
 	const listQuery = useQuery(
 		queryOrpcNext.media.list.queryOptions({
@@ -52,9 +57,32 @@ function MediaIndexRoute() {
 		}),
 	)
 
+	const deleteMutation = useEnhancedMutation(
+		queryOrpcNext.media.deleteById.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({ queryKey: queryOrpcNext.media.list.key() })
+				const refreshed = await listQuery.refetch()
+				const nextItems = refreshed.data?.items ?? []
+				if (page > 1 && nextItems.length === 0) {
+					await navigate({ to: '/media', search: { page: page - 1 } })
+				}
+			},
+		}),
+		{
+			successToast: t('toasts.deleteSuccess'),
+			errorToast: ({ error }) =>
+				t('toasts.deleteFail', {
+					message: error instanceof Error ? error.message : 'Unknown',
+				}),
+		},
+	)
+
 	const items = listQuery.data?.items ?? []
 	const total = listQuery.data?.total ?? 0
 	const pageCount = Math.max(1, Math.ceil(total / MEDIA_PAGE_SIZE))
+	const deletingId = deleteMutation.isPending
+		? deleteMutation.variables?.id
+		: null
 
 	return (
 		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
@@ -116,45 +144,79 @@ function MediaIndexRoute() {
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							{items.map((item) => {
 								const createdAt = toDateLabel(item.createdAt)
+								const title =
+									item.translatedTitle || item.title || item.id || 'Untitled'
+								const isDeleting = deletingId === item.id
 								return (
-									<Link
-										key={item.id}
-										to="/media/$id"
-										params={{ id: item.id }}
-										className="glass group block overflow-hidden rounded-2xl transition-transform duration-200 hover:-translate-y-0.5"
-									>
-										<div className="aspect-video w-full bg-secondary/60">
-											{item.thumbnail ? (
-												<img
-													src={item.thumbnail}
-													alt={item.title}
-													className="h-full w-full object-cover"
-													loading="lazy"
-												/>
-											) : null}
-										</div>
-										<div className="p-4">
-											<div className="line-clamp-2 text-base font-semibold leading-snug text-foreground group-hover:underline">
-												{item.translatedTitle || item.title}
+									<div key={item.id} className="group relative">
+										<Link
+											to="/media/$id"
+											params={{ id: item.id }}
+											className="glass block overflow-hidden rounded-2xl transition-transform duration-200 hover:-translate-y-0.5"
+										>
+											<div className="aspect-video w-full bg-secondary/60">
+												{item.thumbnail ? (
+													<img
+														src={item.thumbnail}
+														alt={title}
+														className="h-full w-full object-cover"
+														loading="lazy"
+													/>
+												) : null}
 											</div>
-											<div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-												<span className="rounded-md bg-secondary px-2 py-1 text-foreground/80">
-													{item.source}
-												</span>
-												<span className="rounded-md bg-secondary px-2 py-1 text-foreground/80">
-													{item.quality}
-												</span>
-												{item.downloadStatus ? (
+											<div className="p-4">
+												<div className="line-clamp-2 text-base font-semibold leading-snug text-foreground group-hover:underline">
+													{title}
+												</div>
+												<div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
 													<span className="rounded-md bg-secondary px-2 py-1 text-foreground/80">
-														{item.downloadStatus}
+														{item.source}
 													</span>
-												) : null}
-												{createdAt ? (
-													<span className="ml-auto">{createdAt}</span>
-												) : null}
+													<span className="rounded-md bg-secondary px-2 py-1 text-foreground/80">
+														{item.quality}
+													</span>
+													{item.downloadStatus ? (
+														<span className="rounded-md bg-secondary px-2 py-1 text-foreground/80">
+															{item.downloadStatus}
+														</span>
+													) : null}
+													{createdAt ? (
+														<span className="ml-auto">{createdAt}</span>
+													) : null}
+												</div>
 											</div>
-										</div>
-									</Link>
+										</Link>
+
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon-sm"
+											className="absolute right-3 top-3 z-10 rounded-full bg-background/70 text-destructive backdrop-blur hover:bg-background/90 focus-visible:ring-destructive/30"
+											aria-label={t('actions.delete')}
+											disabled={isDeleting}
+											onClick={(e) => {
+												e.preventDefault()
+												e.stopPropagation()
+												if (deleteMutation.isPending) return
+												void (async () => {
+													const ok = await confirmDialog({
+														title: t('actions.delete'),
+														description: t('confirmDelete', { title }),
+														confirmText: t('actions.delete'),
+														variant: 'destructive',
+													})
+													if (!ok) return
+													deleteMutation.mutate({ id: item.id })
+												})()
+											}}
+										>
+											{isDeleting ? (
+												<Loader2 className="h-4 w-4 animate-spin" />
+											) : (
+												<Trash2 className="h-4 w-4" />
+											)}
+										</Button>
+									</div>
 								)
 							})}
 						</div>

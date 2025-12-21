@@ -66,6 +66,14 @@
 	"Media": {
 		"title": "媒体库",
 		"downloadCta": "下载媒体",
+		"actions": {
+			"delete": "删除"
+		},
+		"confirmDelete": "删除“{title}”？这将删除媒体及相关产物。",
+		"toasts": {
+			"deleteSuccess": "媒体已删除",
+			"deleteFail": "删除失败：{message}"
+		},
 		"error": {
 			"title": "媒体加载失败",
 			"body": "加载媒体库时出错，请重试。",
@@ -523,7 +531,6 @@
 				"basics": "基础",
 				"download": "获取",
 				"translate": "翻译",
-				"moderate": "审核",
 				"render": "渲染"
 			},
 			"labels": {
@@ -556,10 +563,6 @@
 			"translate": {
 				"translate": "开始翻译",
 				"translating": "翻译中…"
-			},
-			"moderate": {
-				"run": "运行审核",
-				"moderating": "审核中…"
 			},
 			"render": {
 				"template": "模板",
@@ -623,7 +626,6 @@
 				"cloudCommentsQueued": "云端评论下载已排队",
 				"commentsDownloaded": "评论已下载！",
 				"commentsTranslated": "评论已翻译！",
-				"moderationDone": "审核完成：标记 {count} 条",
 				"commentsDeleted": "已删除 {count} 条评论",
 				"cloudRenderQueued": "云端渲染已排队",
 				"disclaimerCopied": "声明已复制到剪贴板"
@@ -634,7 +636,6 @@
 				"templateSaveFailed": "保存模板失败：{message}",
 				"titlesUpdateFailed": "更新标题失败：{message}",
 				"translateFailed": "翻译评论失败：{message}",
-				"moderateFailed": "审核失败：{message}",
 				"deleteFailed": "删除评论失败：{message}"
 			}
 		}
