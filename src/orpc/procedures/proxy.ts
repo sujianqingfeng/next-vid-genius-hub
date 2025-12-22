@@ -4,6 +4,7 @@ import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import { DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
 import { getDefaultProxyId, setDefaultProxyId } from '~/lib/proxy/default-proxy'
+import { filterOutIpv6Proxies } from '~/lib/proxy/filter'
 import {
 	ProxyNodeUrlSchema,
 	ProxyProtocolEnum,
@@ -401,11 +402,17 @@ export const importSSRFromSubscription = adminOnly
 				`Fetching SSR subscription from: ${subscription.url}`,
 			)
 			const parsedProxies = await parseSSRSubscription(subscription.url)
-			logger.info('proxy', `Parsed proxies count: ${parsedProxies.length}`)
+			const { proxies, filteredIpv6Count } = filterOutIpv6Proxies(parsedProxies)
+			logger.info(
+				'proxy',
+				`Parsed proxies count: ${parsedProxies.length} (filtered IPv6: ${filteredIpv6Count})`,
+			)
 
-			if (parsedProxies.length === 0) {
+			if (proxies.length === 0) {
 				throw new Error(
-					'No proxy servers found in the subscription. The URL may be invalid or the subscription may be empty.',
+					parsedProxies.length === 0
+						? 'No proxy servers found in the subscription. The URL may be invalid or the subscription may be empty.'
+						: 'All proxies were IPv6 and were filtered out.',
 				)
 			}
 
@@ -414,7 +421,7 @@ export const importSSRFromSubscription = adminOnly
 				.delete(schema.proxies)
 				.where(eq(schema.proxies.subscriptionId, input.subscriptionId))
 
-			const rows = parsedProxies.map((proxy) => ({
+			const rows = proxies.map((proxy) => ({
 				id: proxy.id,
 				name: proxy.name,
 				server: proxy.server,
