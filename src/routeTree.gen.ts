@@ -32,6 +32,8 @@ import { Route as MediaIdIndexRouteImport } from './routes/media.$id.index'
 import { Route as MediaIdSubtitlesRouteImport } from './routes/media.$id.subtitles'
 import { Route as MediaIdCommentsRouteImport } from './routes/media.$id.comments'
 import { Route as ApiRenderCfCallbackRouteImport } from './routes/api.render.cf-callback'
+import { Route as ApiProxyCheckRunOneRouteImport } from './routes/api.proxy-check.run-one'
+import { Route as ApiProxyCheckRunRouteImport } from './routes/api.proxy-check.run'
 import { Route as ApiOrpcSplatRouteImport } from './routes/api.orpc.$'
 import { Route as ApiMediaIdSubtitlesRouteImport } from './routes/api.media.$id.subtitles'
 import { Route as ApiMediaIdSourceRouteImport } from './routes/api.media.$id.source'
@@ -156,6 +158,16 @@ const ApiRenderCfCallbackRoute = ApiRenderCfCallbackRouteImport.update({
   path: '/api/render/cf-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiProxyCheckRunOneRoute = ApiProxyCheckRunOneRouteImport.update({
+  id: '/api/proxy-check/run-one',
+  path: '/api/proxy-check/run-one',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProxyCheckRunRoute = ApiProxyCheckRunRouteImport.update({
+  id: '/api/proxy-check/run',
+  path: '/api/proxy-check/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOrpcSplatRoute = ApiOrpcSplatRouteImport.update({
   id: '/api/orpc/$',
   path: '/api/orpc/$',
@@ -219,6 +231,8 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/media/': typeof MediaIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
+  '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
   '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
@@ -249,6 +263,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/media': typeof MediaIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
+  '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
   '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
@@ -283,6 +299,8 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/media/': typeof MediaIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
+  '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
   '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
@@ -318,6 +336,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/media/'
     | '/api/orpc/$'
+    | '/api/proxy-check/run'
+    | '/api/proxy-check/run-one'
     | '/api/render/cf-callback'
     | '/media/$id/comments'
     | '/media/$id/subtitles'
@@ -348,6 +368,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/media'
     | '/api/orpc/$'
+    | '/api/proxy-check/run'
+    | '/api/proxy-check/run-one'
     | '/api/render/cf-callback'
     | '/media/$id/comments'
     | '/media/$id/subtitles'
@@ -381,6 +403,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/media/'
     | '/api/orpc/$'
+    | '/api/proxy-check/run'
+    | '/api/proxy-check/run-one'
     | '/api/render/cf-callback'
     | '/media/$id/comments'
     | '/media/$id/subtitles'
@@ -406,6 +430,8 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   ApiOrpcSplatRoute: typeof ApiOrpcSplatRoute
+  ApiProxyCheckRunRoute: typeof ApiProxyCheckRunRoute
+  ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
   ApiRenderCfCallbackRoute: typeof ApiRenderCfCallbackRoute
   ApiInternalAiAsrProviderRoute: typeof ApiInternalAiAsrProviderRoute
   ApiMediaIdCommentsDataRoute: typeof ApiMediaIdCommentsDataRoute
@@ -579,6 +605,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRenderCfCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/proxy-check/run-one': {
+      id: '/api/proxy-check/run-one'
+      path: '/api/proxy-check/run-one'
+      fullPath: '/api/proxy-check/run-one'
+      preLoaderRoute: typeof ApiProxyCheckRunOneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proxy-check/run': {
+      id: '/api/proxy-check/run'
+      path: '/api/proxy-check/run'
+      fullPath: '/api/proxy-check/run'
+      preLoaderRoute: typeof ApiProxyCheckRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/orpc/$': {
       id: '/api/orpc/$'
       path: '/api/orpc/$'
@@ -699,6 +739,8 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   ApiOrpcSplatRoute: ApiOrpcSplatRoute,
+  ApiProxyCheckRunRoute: ApiProxyCheckRunRoute,
+  ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,
   ApiRenderCfCallbackRoute: ApiRenderCfCallbackRoute,
   ApiInternalAiAsrProviderRoute: ApiInternalAiAsrProviderRoute,
   ApiMediaIdCommentsDataRoute: ApiMediaIdCommentsDataRoute,

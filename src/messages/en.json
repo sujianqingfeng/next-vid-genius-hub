@@ -244,7 +244,11 @@
 				"subscriptions": "Subscriptions",
 				"proxies": "Proxies"
 			},
-			"addSubscription": "Add Subscription"
+			"addSubscription": "Add Subscription",
+			"runChecks": "Run Checks",
+			"runChecksRunning": "Running...",
+			"runChecksQueued": "Proxy checks queued (run: {runId})",
+			"runChecksError": "Failed to start proxy checks: {message}"
 		},
 		"list": {
 			"search": "Search proxies...",
@@ -252,9 +256,19 @@
 				"title": "No proxies found",
 				"desc": "Try adjusting your search or add a new subscription."
 			},
+			"check": "Check",
+			"checkQueued": "Proxy check queued (run: {runId})",
+			"checkError": "Failed to start proxy check: {message}",
 			"setDefault": "Set default",
 			"clearDefault": "Clear default",
 			"defaultBadge": "Default",
+			"status": {
+				"pending": "Pending",
+				"success": "OK",
+				"failed": "Failed"
+			},
+			"lastTested": "Last tested {date}",
+			"rtt": "RTT {ms}ms",
 			"deleteConfirm": "Are you sure you want to delete this proxy?",
 			"deleteSuccess": "Proxy deleted successfully",
 			"deleteError": "Failed to delete proxy: {message}",

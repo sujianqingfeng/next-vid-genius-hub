@@ -507,6 +507,61 @@ export const Route = createFileRoute('/api/render/cf-callback')({
 
 					const db = await getDb()
 
+					// System-level proxy checks: update proxy status without touching media/tasks.
+					if (payload.metadata?.kind === 'proxy-check') {
+						const proxyId =
+							typeof (payload.metadata as any)?.proxyId === 'string'
+								? ((payload.metadata as any).proxyId as string)
+								: undefined
+						const responseTimeMs =
+							typeof (payload.metadata as any)?.responseTimeMs === 'number'
+								? ((payload.metadata as any).responseTimeMs as number)
+								: undefined
+						const okFlag =
+							typeof (payload.metadata as any)?.ok === 'boolean'
+								? ((payload.metadata as any).ok as boolean)
+								: undefined
+						const errorMessage =
+							typeof (payload.metadata as any)?.error === 'string'
+								? ((payload.metadata as any).error as string)
+								: undefined
+
+						if (!proxyId) {
+							logger.warn(
+								'api',
+								`[cf-callback.proxy-check] missing proxyId job=${payload.jobId}`,
+							)
+							return Response.json(
+								{ ok: false, error: 'missing proxyId' },
+								{ status: 400 },
+							)
+						}
+
+						const status =
+							payload.status === 'completed' && okFlag !== false
+								? 'success'
+								: 'failed'
+
+						await db
+							.update(schema.proxies)
+							.set({
+								lastTestedAt: new Date(),
+								testStatus: status,
+								responseTime:
+									typeof responseTimeMs === 'number' &&
+									Number.isFinite(responseTimeMs)
+										? Math.max(0, Math.trunc(responseTimeMs))
+										: null,
+							})
+							.where(eq(schema.proxies.id, proxyId))
+
+						logger.info(
+							'api',
+							`[cf-callback.proxy-check] updated proxy=${proxyId} status=${status} rttMs=${responseTimeMs ?? 'n/a'} job=${payload.jobId} err=${errorMessage ?? 'n/a'}`,
+						)
+						return Response.json({ ok: true })
+					}
+
 					const task = await db.query.tasks.findFirst({
 						where: eq(schema.tasks.jobId, payload.jobId),
 					})

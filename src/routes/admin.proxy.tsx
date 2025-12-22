@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Plus, RefreshCcw, Shield, Trash2 } from 'lucide-react'
+import { Activity, Plus, RefreshCcw, Shield, Trash2 } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -77,6 +77,16 @@ function toDateLabel(input: unknown): string {
 		if (!Number.isNaN(d.getTime())) return d.toLocaleString()
 	}
 	return ''
+}
+
+function proxyStatusBadgeClass(status: string | null | undefined): string {
+	if (status === 'success') {
+		return 'bg-emerald-500/15 text-emerald-500'
+	}
+	if (status === 'failed') {
+		return 'bg-destructive/15 text-destructive'
+	}
+	return 'bg-secondary text-foreground/80'
 }
 
 function ProxyRoute() {
@@ -171,6 +181,65 @@ function ProxyRoute() {
 		},
 	)
 
+	const runChecksMutation = useEnhancedMutation(
+		{
+			mutationFn: async () => {
+				const res = await fetch('/api/proxy-check/run', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ concurrency: 5 }),
+				})
+				if (!res.ok) {
+					const text = await res.text().catch(() => '')
+					throw new Error(text || `HTTP ${res.status}`)
+				}
+				return (await res.json()) as { ok?: boolean; runId?: string }
+			},
+		},
+		{
+			successToast: ({ data }) =>
+				t('page.runChecksQueued', { runId: data.runId ?? '' }),
+			errorToast: ({ error }) =>
+				t('page.runChecksError', {
+					message: error instanceof Error ? error.message : String(error),
+				}),
+		},
+	)
+
+	const runOneCheckMutation = useEnhancedMutation(
+		{
+			mutationFn: async (variables: { proxyId: string }) => {
+				const res = await fetch('/api/proxy-check/run-one', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ proxyId: variables.proxyId }),
+				})
+				if (!res.ok) {
+					const text = await res.text().catch(() => '')
+					throw new Error(text || `HTTP ${res.status}`)
+				}
+				return (await res.json()) as {
+					ok?: boolean
+					runId?: string
+					jobId?: string
+				}
+			},
+		},
+		{
+			successToast: ({ data }) =>
+				t('list.checkQueued', { runId: data.runId ?? '' }),
+			errorToast: ({ error }) =>
+				t('list.checkError', {
+					message: error instanceof Error ? error.message : String(error),
+				}),
+		},
+	)
+
+	function queueSingleCheck(proxyId: string) {
+		if (runOneCheckMutation.isPending) return
+		runOneCheckMutation.mutate({ proxyId })
+	}
+
 	const setDefaultMutation = useEnhancedMutation(
 		queryOrpc.proxy.setDefaultProxy.mutationOptions({
 			onSuccess: async (data) => {
@@ -240,6 +309,17 @@ function ProxyRoute() {
 							>
 								<RefreshCcw className="mr-2 h-4 w-4" />
 								Refresh
+							</Button>
+							<Button
+								variant="secondary"
+								type="button"
+								disabled={runChecksMutation.isPending}
+								onClick={() => runChecksMutation.mutate()}
+							>
+								<Activity className="mr-2 h-4 w-4" />
+								{runChecksMutation.isPending
+									? t('page.runChecksRunning')
+									: t('page.runChecks')}
 							</Button>
 							<Button type="button" onClick={() => setCreateDialogOpen(true)}>
 								<Plus className="mr-2 h-4 w-4" />
@@ -423,14 +503,50 @@ function ProxyRoute() {
 										const isDefault = defaultProxyId && p.id === defaultProxyId
 										const hostKind = classifyHost(p.server)
 										const hostLabel = hostKindLabel(hostKind)
+										const lastTestedLabel = p.lastTestedAt
+											? t('list.lastTested', {
+													date: toDateLabel(p.lastTestedAt),
+												})
+											: ''
+										const rttLabel =
+											typeof p.responseTime === 'number' &&
+											Number.isFinite(p.responseTime)
+												? t('list.rtt', {
+														ms: Math.max(0, Math.trunc(p.responseTime)),
+													})
+												: ''
 										return (
-											<div key={p.id} className="glass rounded-2xl p-4">
+											<div
+												key={p.id}
+												className="glass cursor-pointer rounded-2xl p-4 transition-colors hover:bg-secondary/20"
+												role="button"
+												tabIndex={0}
+												aria-disabled={runOneCheckMutation.isPending}
+												onClick={() => queueSingleCheck(p.id)}
+												onKeyDown={(e) => {
+													if (e.key === 'Enter' || e.key === ' ') {
+														e.preventDefault()
+														queueSingleCheck(p.id)
+													}
+												}}
+											>
 												<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 													<div className="space-y-1">
 														<div className="flex flex-wrap items-center gap-2">
 															<div className="font-semibold">
 																{p.name || p.server}
 															</div>
+															<span
+																className={`rounded-md px-2 py-1 text-xs ${proxyStatusBadgeClass(
+																	p.testStatus,
+																)}`}
+															>
+																{p.testStatus === 'success'
+																	? t('list.status.success')
+																	: p.testStatus === 'failed'
+																		? t('list.status.failed')
+																		: t('list.status.pending')}
+															</span>
 															{hostLabel ? (
 																<span className="rounded-md bg-secondary px-2 py-1 text-xs">
 																	{hostLabel}
@@ -443,8 +559,19 @@ function ProxyRoute() {
 															) : null}
 														</div>
 														<div className="text-xs text-muted-foreground">
-															{p.protocol}://
-															{formatHostPort(p.server, p.port)}
+															{p.protocol}://{formatHostPort(p.server, p.port)}
+															{lastTestedLabel ? (
+																<>
+																	{' · '}
+																	{lastTestedLabel}
+																</>
+															) : null}
+															{rttLabel ? (
+																<>
+																	{' · '}
+																	{rttLabel}
+																</>
+															) : null}
 														</div>
 													</div>
 
@@ -453,12 +580,25 @@ function ProxyRoute() {
 															variant="secondary"
 															size="sm"
 															type="button"
+															disabled={runOneCheckMutation.isPending}
+															onClick={(e) => {
+																e.stopPropagation()
+																queueSingleCheck(p.id)
+															}}
+														>
+															{t('list.check')}
+														</Button>
+														<Button
+															variant="secondary"
+															size="sm"
+															type="button"
 															disabled={setDefaultMutation.isPending}
-															onClick={() =>
+															onClick={(e) => {
+																e.stopPropagation()
 																setDefaultMutation.mutate({
 																	proxyId: isDefault ? null : p.id,
 																})
-															}
+															}}
 														>
 															{isDefault
 																? t('list.clearDefault')
@@ -469,7 +609,8 @@ function ProxyRoute() {
 															size="sm"
 															type="button"
 															disabled={deleteProxyMutation.isPending}
-															onClick={() =>
+															onClick={(e) => {
+																e.stopPropagation()
 																void (async () => {
 																	const ok = await confirmDialog({
 																		description: t('list.deleteConfirm'),
@@ -478,7 +619,7 @@ function ProxyRoute() {
 																	if (!ok) return
 																	deleteProxyMutation.mutate({ id: p.id })
 																})()
-															}
+															}}
 														>
 															<Trash2 className="mr-2 h-4 w-4" />
 															Delete

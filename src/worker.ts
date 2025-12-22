@@ -4,6 +4,7 @@ import {
 } from '@tanstack/react-start/server'
 import type { D1Database } from '~/lib/db'
 import { setInjectedD1Database } from '~/lib/db'
+import { runScheduledProxyChecks } from '~/lib/proxy/check'
 
 type WorkerEnv = {
 	DB?: D1Database
@@ -95,5 +96,15 @@ export default {
 		}
 
 		return getStartHandler()(request, { context: { env, ctx } })
+	},
+	async scheduled(
+		_event: unknown,
+		env: WorkerEnv,
+		ctx: { waitUntil: (p: Promise<unknown>) => void },
+	) {
+		if (env?.DB) {
+			setInjectedD1Database(env.DB)
+		}
+		ctx.waitUntil(runScheduledProxyChecks())
 	},
 }

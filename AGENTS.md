@@ -57,3 +57,6 @@ These are read from `process.env` under `src/lib/config/env.ts` and used across 
 - `ASR_SAMPLE_RATE` — target audio sample rate for ASR; default `16000`.
 - `CF_ORCHESTRATOR_URL` — public URL of the orchestrator Worker; used for `/artifacts/:jobId` and debug presign endpoints.
 - `JOB_CALLBACK_HMAC_SECRET` — shared secret used for HMAC between the app and the orchestrator (callbacks, debug delete, etc.).
+- `PROXY_CHECK_TEST_URL` — test video URL used by scheduled proxy health checks (must be a stable, publicly reachable URL).
+- `PROXY_CHECK_TIMEOUT_MS` — per-proxy probe timeout in milliseconds; default `20000`.
+- `PROXY_CHECK_PROBE_BYTES` — number of bytes to range-download for probe; default `65536`.

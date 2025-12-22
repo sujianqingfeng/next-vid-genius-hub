@@ -6,6 +6,7 @@ ARG MIHOMO_VERSION=1.18.10
 # Use the "compatible" build by default to run on CPUs without x86-64-v3/AVX2.
 # Can be overridden at build time with --build-arg MIHOMO_PLATFORM=linux-amd64 if desired.
 ARG MIHOMO_PLATFORM=linux-amd64-compatible
+ARG TARGETARCH
 ARG DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ARG DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security
 ARG NPM_REGISTRY=https://registry.npmmirror.com
@@ -37,6 +38,23 @@ RUN set -eux; \
 # Install latest yt-dlp binary (apt package may lag behind and break YouTube downloads)
 RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
   && chmod +x /usr/local/bin/yt-dlp
+
+# Install Deno (yt-dlp YouTube extraction may require a JS runtime / EJS).
+RUN set -eux; \
+  arch="${TARGETARCH:-}"; \
+  if [ -z "$arch" ]; then \
+    m="$(uname -m)"; \
+    if [ "$m" = "aarch64" ] || [ "$m" = "arm64" ]; then arch="arm64"; else arch="amd64"; fi; \
+  fi; \
+  case "$arch" in \
+    arm64) deno_platform="aarch64-unknown-linux-gnu" ;; \
+    amd64) deno_platform="x86_64-unknown-linux-gnu" ;; \
+    *) echo "unsupported TARGETARCH=$arch for deno" >&2; exit 1 ;; \
+  esac; \
+  curl -fsSL "https://github.com/denoland/deno/releases/latest/download/deno-${deno_platform}.zip" -o /tmp/deno.zip \
+  && unzip /tmp/deno.zip -d /usr/local/bin \
+  && chmod +x /usr/local/bin/deno \
+  && rm -f /tmp/deno.zip
 
 RUN curl -fL -o /tmp/mihomo.gz "https://github.com/MetaCubeX/mihomo/releases/download/v${MIHOMO_VERSION}/mihomo-${MIHOMO_PLATFORM}-v${MIHOMO_VERSION}.gz" \
   && gunzip /tmp/mihomo.gz \

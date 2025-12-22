@@ -244,7 +244,11 @@
 				"subscriptions": "订阅",
 				"proxies": "代理"
 			},
-			"addSubscription": "新增订阅"
+			"addSubscription": "新增订阅",
+			"runChecks": "手动检测",
+			"runChecksRunning": "检测中…",
+			"runChecksQueued": "已触发代理检测（批次：{runId}）",
+			"runChecksError": "触发代理检测失败：{message}"
 		},
 		"list": {
 			"search": "搜索代理...",
@@ -252,9 +256,19 @@
 				"title": "暂无代理",
 				"desc": "尝试调整搜索或添加新的订阅。"
 			},
+			"check": "检测",
+			"checkQueued": "已触发代理检测（批次：{runId}）",
+			"checkError": "触发代理检测失败：{message}",
 			"setDefault": "设为默认",
 			"clearDefault": "清除默认",
 			"defaultBadge": "默认",
+			"status": {
+				"pending": "未检测",
+				"success": "可用",
+				"failed": "失败"
+			},
+			"lastTested": "最近检测 {date}",
+			"rtt": "延迟 {ms}ms",
 			"deleteConfirm": "确定删除这个代理吗？",
 			"deleteSuccess": "代理删除成功",
 			"deleteError": "删除代理失败：{message}",

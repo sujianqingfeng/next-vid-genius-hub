@@ -18,6 +18,13 @@ export const CF_ORCHESTRATOR_URL = process.env.CF_ORCHESTRATOR_URL
 
 export const JOB_CALLBACK_HMAC_SECRET = process.env.JOB_CALLBACK_HMAC_SECRET
 
+// Proxy health checks (scheduled)
+export const PROXY_CHECK_TEST_URL = process.env.PROXY_CHECK_TEST_URL
+export const PROXY_CHECK_TIMEOUT_MS =
+	Number(process.env.PROXY_CHECK_TIMEOUT_MS || '') || 60_000
+export const PROXY_CHECK_PROBE_BYTES =
+	Number(process.env.PROXY_CHECK_PROBE_BYTES || '') || 65_536
+
 // LLM translation (comments/channel titles) concurrency limiter.
 // 429 errors can happen when too many requests are in-flight (e.g. provider cap is 10).
 export const TRANSLATE_CONCURRENCY = (() => {

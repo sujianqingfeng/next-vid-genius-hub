@@ -17,7 +17,10 @@
   "vars": {
     "NODE_ENV": "development",
     "CF_ORCHESTRATOR_URL": "http://localhost:8787",
-    "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret"
+    "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret",
+    "PROXY_CHECK_TEST_URL": "http://www.youtube.com/watch?v=SbI5EWTE4Uk",
+    "PROXY_CHECK_TIMEOUT_MS": "60000",
+    "PROXY_CHECK_PROBE_BYTES": "65536"
   },
   "observability": {
     "enabled": true,
