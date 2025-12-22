@@ -4,7 +4,7 @@ import {
 	useQueryClient,
 } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { History, Plus, Shield, UserCheck } from 'lucide-react'
+import { History, Plus, Shield, Trash2, UserCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { Badge } from '~/components/ui/badge'
@@ -48,6 +48,10 @@ function AdminUsersPage() {
 		email: string
 	}>(null)
 	const [selectedUserForAdd, setSelectedUserForAdd] = useState<null | {
+		id: string
+		email: string
+	}>(null)
+	const [selectedUserForDelete, setSelectedUserForDelete] = useState<null | {
 		id: string
 		email: string
 	}>(null)
@@ -116,12 +120,32 @@ function AdminUsersPage() {
 		},
 	)
 
+	const deleteUserMutation = useEnhancedMutation(
+		queryOrpc.admin.deleteUser.mutationOptions({
+			onSuccess: () => {
+				invalidateList()
+				setSelectedUserForDelete(null)
+			},
+		}),
+		{
+			successToast: t('toast.userDeleted'),
+			errorToast: ({ error }) => {
+				const message = (error as Error)?.message
+				if (message === 'CANNOT_DELETE_SELF') return t('toast.deleteSelfError')
+				if (message === 'CANNOT_DELETE_LAST_ADMIN')
+					return t('toast.deleteLastAdminError')
+				return message || t('toast.userDeleteError')
+			},
+		},
+	)
+
 	const users = listQuery.data?.items ?? []
 	const pageCount = listQuery.data?.pageCount ?? 1
 	const isUpdating =
 		updateRole.isPending ||
 		updateStatus.isPending ||
-		addPointsMutation.isPending
+		addPointsMutation.isPending ||
+		deleteUserMutation.isPending
 
 	const handleSearch = (e: React.FormEvent) => {
 		e.preventDefault()
@@ -284,6 +308,21 @@ function AdminUsersPage() {
 													{user.role === 'admin'
 														? t('actions.toggleRoleToUser')
 														: t('actions.toggleRoleToAdmin')}
+												</Button>
+												<Button
+													size="sm"
+													variant="destructive"
+													className="gap-2"
+													onClick={() =>
+														setSelectedUserForDelete({
+															id: user.id,
+															email: user.email,
+														})
+													}
+													disabled={isUpdating}
+												>
+													<Trash2 className="h-4 w-4" />
+													{t('actions.delete')}
 												</Button>
 											</div>
 										</td>
@@ -466,6 +505,45 @@ function AdminUsersPage() {
 							onClick={() => setSelectedUserForLog(null)}
 						>
 							关闭
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog
+				open={Boolean(selectedUserForDelete)}
+				onOpenChange={(open) => !open && setSelectedUserForDelete(null)}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>
+							{t('dialogs.deleteTitle', {
+								email: selectedUserForDelete?.email || '',
+							})}
+						</DialogTitle>
+					</DialogHeader>
+					<p className="py-2 text-sm text-muted-foreground">
+						{t('dialogs.deleteDescription')}
+					</p>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => setSelectedUserForDelete(null)}
+							disabled={deleteUserMutation.isPending}
+						>
+							{t('dialogs.deleteCancel')}
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={() => {
+								if (!selectedUserForDelete) return
+								deleteUserMutation.mutate({ userId: selectedUserForDelete.id })
+							}}
+							disabled={!selectedUserForDelete || deleteUserMutation.isPending}
+						>
+							{deleteUserMutation.isPending
+								? t('dialogs.deleting')
+								: t('dialogs.deleteConfirm')}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

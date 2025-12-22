@@ -9,6 +9,7 @@ import {
 	listAiModels as listAiModelsFromConfig,
 	listAiProviders as listAiProvidersFromConfig,
 } from '~/lib/ai/config/service'
+import type { RequestContext } from '~/lib/auth/types'
 import { getDb, schema } from '~/lib/db'
 import type { PointResourceType } from '~/lib/db/schema'
 import { POINT_TRANSACTION_TYPES } from '~/lib/job/task'
@@ -164,6 +165,77 @@ export const listUserTransactions = os
 			offset: input.offset,
 		})
 		return { items }
+	})
+
+const DeleteUserSchema = z.object({
+	userId: z.string().min(1),
+})
+
+export const deleteUser = os
+	.input(DeleteUserSchema)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const requesterId = ctx.auth?.user?.id
+		if (!requesterId) {
+			throw new ORPCError('UNAUTHORIZED', {
+				status: 401,
+				message: 'UNAUTHORIZED',
+			})
+		}
+
+		if (requesterId === input.userId) {
+			throw new Error('CANNOT_DELETE_SELF')
+		}
+
+		const db = await getDb()
+
+		const target = await db.query.users.findFirst({
+			where: eq(schema.users.id, input.userId),
+			columns: { id: true, role: true },
+		})
+		if (!target) {
+			throw new ORPCError('NOT_FOUND', { status: 404, message: 'NOT_FOUND' })
+		}
+
+		if (target.role === 'admin') {
+			const adminCountRows = await db
+				.select({ value: count() })
+				.from(schema.users)
+				.where(
+					and(eq(schema.users.role, 'admin'), ne(schema.users.id, target.id)),
+				)
+			const otherAdminCount = adminCountRows?.[0]?.value ?? 0
+			if (otherAdminCount <= 0) {
+				throw new Error('CANNOT_DELETE_LAST_ADMIN')
+			}
+		}
+
+		// Detach user-owned resources so the rest of the system can keep working.
+		await db
+			.update(schema.media)
+			.set({ userId: null })
+			.where(eq(schema.media.userId, target.id))
+		await db
+			.update(schema.channels)
+			.set({ userId: null, updatedAt: new Date() })
+			.where(eq(schema.channels.userId, target.id))
+
+		// Remove user-scoped operational data.
+		await db.delete(schema.tasks).where(eq(schema.tasks.userId, target.id))
+		await db
+			.delete(schema.sessions)
+			.where(eq(schema.sessions.userId, target.id))
+		await db
+			.delete(schema.pointTransactions)
+			.where(eq(schema.pointTransactions.userId, target.id))
+		await db
+			.delete(schema.pointAccounts)
+			.where(eq(schema.pointAccounts.userId, target.id))
+
+		// Finally remove the user itself.
+		await db.delete(schema.users).where(eq(schema.users.id, target.id))
+
+		return { success: true }
 	})
 
 const ListPricingRulesSchema = z.object({

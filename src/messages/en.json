@@ -818,6 +818,7 @@
 				"transactions": "Transactions",
 				"toggleRoleToUser": "Demote to user",
 				"toggleRoleToAdmin": "Promote to admin",
+				"delete": "Delete",
 				"ariaToggle": "Toggle status for {email}"
 			},
 			"empty": "No users found",
@@ -827,7 +828,12 @@
 			"prev": "Previous",
 			"next": "Next",
 			"dialogs": {
-				"addTitle": "Add points to {email}"
+				"addTitle": "Add points to {email}",
+				"deleteTitle": "Delete user: {email}",
+				"deleteDescription": "This will delete the account and remove its login sessions, points account, and transactions. User-owned media/channels will be kept but detached.",
+				"deleteCancel": "Cancel",
+				"deleteConfirm": "Delete",
+				"deleting": "Deleting…"
 			},
 			"toast": {
 				"roleUpdated": "Role updated",
@@ -836,7 +842,11 @@
 				"statusUpdatedBanned": "Banned",
 				"statusUpdateError": "Failed to update status",
 				"pointsAdded": "Points added",
-				"pointsAddError": "Failed to add points"
+				"pointsAddError": "Failed to add points",
+				"userDeleted": "User deleted",
+				"userDeleteError": "Failed to delete user",
+				"deleteSelfError": "You cannot delete your own account",
+				"deleteLastAdminError": "You cannot delete the last admin account"
 			},
 			"labels": {
 				"points": "pts",
