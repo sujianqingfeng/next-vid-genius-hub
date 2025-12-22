@@ -12,7 +12,7 @@ function bytesToBase64Url(bytes: Uint8Array): string {
 	// Browser/Worker fallback
 	let binary = ''
 	for (const b of bytes) binary += String.fromCharCode(b)
-	// biome-ignore lint/suspicious/noExplicitAny: btoa is a browser/worker global
+	// oxlint-disable-next-line typescript/no-explicit-any: btoa is a browser/worker global
 	const base64 = (globalThis as any).btoa(binary) as string
 	return base64.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
 }

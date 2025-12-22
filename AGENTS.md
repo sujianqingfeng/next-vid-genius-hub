@@ -20,7 +20,8 @@ Cloudflare deployment is wired through `wrangler.root.jsonc` (app Worker) and `w
 - `pnpm dev:vite` — Vite dev server for fast UI iteration (not identical to Worker runtime).
 - `pnpm build` / `pnpm preview` — build and preview the production bundle locally (Vite).
 - `pnpm deploy:root` — deploy the app Worker to Cloudflare with root routing config.
-- `pnpm lint` — run Biome checks; fix or annotate warnings.
+- `pnpm lint` — run `oxlint` checks; fix or annotate warnings.
+- `pnpm format` — run `oxfmt` formatting.
 - `pnpm test` — run Vitest; add `--watch` for local loops and `--coverage` on persistence‑heavy changes.
 - `pnpm db:generate`, `pnpm db:studio`, `pnpm db:d1:migrate:*`, `pnpm db:d1:list:*` — manage Drizzle schema changes and apply/list D1 migrations.
 - `pnpm dev:stack` / `pnpm dev:stack:down` — start or tear down the media containers defined in `docker-compose.dev.yml`.
@@ -30,7 +31,7 @@ Cloudflare deployment is wired through `wrangler.root.jsonc` (app Worker) and `w
 
 ## Coding Style & Naming Conventions
 - Prefer TypeScript; keep client-only logic isolated where interactivity is required.
-- Biome formatting: tab indentation, single quotes, minimal semicolons. Run the formatter before commits.
+- Oxc formatting (oxfmt): tab indentation, single quotes, minimal semicolons. Run the formatter before commits.
 - Naming: components `PascalCase`; hooks/utilities `camelCase`; environment variables `UPPER_SNAKE_CASE`.
 - Group new features under `src/routes` and colocate reusable UI logic in `components/business`.
 

@@ -29,6 +29,7 @@ import { cn } from '~/lib/utils'
 ### 样式工具
 
 #### `cn(...inputs: ClassValue[])`
+
 合并 Tailwind CSS 类名，支持条件类和去重。
 
 ```typescript
@@ -38,6 +39,7 @@ cn('base-class', condition && 'conditional-class', 'another-class')
 ### 格式化工具
 
 #### `formatNumber(num)`
+
 使用 `Intl.NumberFormat` 的千分位格式化数字。
 
 ```typescript

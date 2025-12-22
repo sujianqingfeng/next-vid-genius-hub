@@ -124,7 +124,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				module scope), so provide a tiny global shim to prevent a hard crash that
 				results in a blank page. */}
 				<script
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: intentional tiny runtime shim
+					// oxlint-disable-next-line react/no-danger: intentional tiny runtime shim
 					dangerouslySetInnerHTML={{
 						__html:
 							'globalThis.__name=globalThis.__name||function(t,n){try{Object.defineProperty(t,\"name\",{value:n,configurable:!0})}catch{}return t};',

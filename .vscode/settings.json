@@ -13,10 +13,10 @@
 		"youtubei"
 	],
 	"editor.formatOnSave": true,
-	"editor.defaultFormatter": "biomejs.biome",
+	"editor.defaultFormatter": "oxc.oxc-vscode",
 	"editor.codeActionsOnSave": {
 		"source.fixAll.eslint": "explicit",
-		"source.organizeImports.biome": "explicit"
+		"source.organizeImports": "explicit"
 	},
 	"kiroAgent.configureMCP": "Disabled"
 }

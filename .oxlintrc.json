@@ -1,0 +1,18 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"categories": {
+		"correctness": "warn"
+	},
+	"env": {
+		"browser": true,
+		"node": true,
+		"es2021": true
+	},
+	"ignorePatterns": [
+		"dist/**",
+		"drizzle/**",
+		"packages/**/dist/**",
+		"cloudflare/**/dist/**",
+		"src/routeTree.gen.ts"
+	]
+}

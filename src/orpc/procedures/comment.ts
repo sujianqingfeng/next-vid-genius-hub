@@ -278,9 +278,9 @@ export const startCloudRender = os
 		// 需要存在一个可用的源：本地文件、已完成的云下载（downloadStatus=completed）、已存在的远端 key，或已有渲染成品。
 		const hasAnySource = Boolean(
 			media.filePath ||
-				media.videoWithSubtitlesPath ||
-				media.remoteVideoKey ||
-				(media.downloadJobId && media.downloadStatus === 'completed'),
+			media.videoWithSubtitlesPath ||
+			media.remoteVideoKey ||
+			(media.downloadJobId && media.downloadStatus === 'completed'),
 		)
 		if (!hasAnySource) {
 			throw new Error(

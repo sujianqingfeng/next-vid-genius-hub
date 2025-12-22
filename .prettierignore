@@ -1,0 +1,9 @@
+node_modules/
+
+dist/
+packages/**/dist/
+cloudflare/**/dist/
+drizzle/
+.wrangler/
+
+src/routeTree.gen.ts

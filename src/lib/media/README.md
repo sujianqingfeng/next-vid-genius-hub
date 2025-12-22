@@ -18,17 +18,20 @@ src/lib/media/
 ## Key Modules
 
 ### `types/`
+
 - `VideoInfo` – Title, author, counts, thumbnail, and series metadata consumed by
   Remotion and front‑end components.
 - `Comment` – Structured comment payload aligned with the Remotion composition
   and `@app/media-comments` helpers.
 
 These types are used by:
+
 - App routes under `src/routes/api.media.*`
 - Remotion compositions under `remotion/`
 - Cloudflare orchestrator callbacks (via manifest payloads)
 
 ### `comments-snapshot.ts`
+
 - `buildCommentsSnapshot(media, { comments, translatedTitle? })`
   - Builds a `videoInfo` object from the current `media` row
   - Persists `{ videoInfo, comments }` JSON to object storage using a stable key
@@ -39,6 +42,7 @@ Downstream consumers (Remotion containers, preview UI) treat this JSON shape as
 the single source of truth for comments‑driven renders.
 
 ### `stream.ts`
+
 - `resolveRemoteVideoUrl(media)` – Resolve the best playback URL for a media item,
   preferring:
   1. Cloudflare orchestrator artifact URL (by `filePath`/`downloadJobId`)

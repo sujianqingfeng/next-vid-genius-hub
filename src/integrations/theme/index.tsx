@@ -144,7 +144,7 @@ export function ThemeScript({ storageKey = 'theme' }: { storageKey?: string }) {
 
 	return (
 		<script
-			// biome-ignore lint/security/noDangerouslySetInnerHtml: intentional early theme sync to avoid flash
+			// oxlint-disable-next-line react/no-danger: intentional early theme sync to avoid flash
 			dangerouslySetInnerHTML={{ __html: script }}
 		/>
 	)
