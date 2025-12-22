@@ -1,7 +1,6 @@
 import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
-import { ensureAiSeeded } from './seed'
 
 export type AIProviderKind = 'llm' | 'asr'
 
@@ -44,7 +43,6 @@ function isFresh(entry?: CacheEntry<unknown>) {
 
 async function getDatabase(db?: DbClient) {
 	const database = db ?? (await getDb())
-	await ensureAiSeeded(database)
 	return database
 }
 
