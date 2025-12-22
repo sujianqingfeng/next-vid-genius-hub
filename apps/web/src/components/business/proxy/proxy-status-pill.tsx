@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 
-import { useTranslations } from '~/integrations/i18n'
+import { useTranslations } from '~/lib/i18n'
 import { cn } from '~/lib/utils'
 
 export type ProxyTestStatus =

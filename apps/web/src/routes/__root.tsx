@@ -9,18 +9,18 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { ConfirmDialogProvider } from '~/components/business/layout/confirm-dialog-provider'
+import WorkspaceShell from '~/components/business/layout/workspace-shell'
 import { Toaster } from '~/components/ui/sonner'
 import { TooltipProvider } from '~/components/ui/tooltip'
-import { ThemeProvider, ThemeScript } from '~/integrations/theme'
-import WorkspaceShell from '../components/workspace/workspace-shell'
+import { ThemeProvider, ThemeScript } from '~/lib/theme'
 import {
 	DEFAULT_LOCALE,
 	getInitialI18n,
 	getMessages,
 	I18nProvider,
-} from '../integrations/i18n'
-import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
-import appCss from '../styles.css?url'
+} from '~/lib/i18n/start'
+import TanStackQueryDevtools from '~/lib/query/devtools'
+import appCss from '~/styles.css?url'
 
 interface MyRouterContext {
 	queryClient: QueryClient

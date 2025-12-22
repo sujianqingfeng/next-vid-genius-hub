@@ -5,7 +5,7 @@ import {
 	getValidLocale,
 	LOCALE_COOKIE_NAME,
 	type Locale,
-} from '~/i18n/config'
+} from './config'
 
 import enMessages from '~/messages/en.json'
 import zhMessages from '~/messages/zh.json'
@@ -13,6 +13,7 @@ import zhMessages from '~/messages/zh.json'
 export type Messages = Record<string, unknown>
 
 export { DEFAULT_LOCALE }
+export type { Locale } from './config'
 
 const messagesByLocale: Record<Locale, Messages> = {
 	en: enMessages as Messages,

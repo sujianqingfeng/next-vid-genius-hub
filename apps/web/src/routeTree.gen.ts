@@ -9,104 +9,99 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TasksRouteImport } from './routes/tasks'
-import { Route as ProxyRouteImport } from './routes/proxy'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as PointsRouteImport } from './routes/points'
-import { Route as MediaRouteImport } from './routes/media'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ChannelsRouteImport } from './routes/channels'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as MediaIndexRouteImport } from './routes/media.index'
-import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as MediaDownloadRouteImport } from './routes/media.download'
-import { Route as MediaIdRouteImport } from './routes/media.$id'
-import { Route as ApiOpenapiRouteImport } from './routes/api.openapi'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminProxyRouteImport } from './routes/admin.proxy'
-import { Route as AdminPointsPricingRouteImport } from './routes/admin.points-pricing'
-import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
-import { Route as AdminAiModelsRouteImport } from './routes/admin.ai-models'
-import { Route as MediaIdIndexRouteImport } from './routes/media.$id.index'
-import { Route as MediaIdSubtitlesRouteImport } from './routes/media.$id.subtitles'
-import { Route as MediaIdCommentsRouteImport } from './routes/media.$id.comments'
-import { Route as ApiRenderCfCallbackRouteImport } from './routes/api.render.cf-callback'
-import { Route as ApiProxyCheckRunOneRouteImport } from './routes/api.proxy-check.run-one'
-import { Route as ApiProxyCheckRunRouteImport } from './routes/api.proxy-check.run'
-import { Route as ApiOrpcSplatRouteImport } from './routes/api.orpc.$'
-import { Route as ApiMediaIdSubtitlesRouteImport } from './routes/api.media.$id.subtitles'
-import { Route as ApiMediaIdSourceRouteImport } from './routes/api.media.$id.source'
-import { Route as ApiMediaIdRenderedInfoRouteImport } from './routes/api.media.$id.rendered-info'
-import { Route as ApiMediaIdRenderedRouteImport } from './routes/api.media.$id.rendered'
-import { Route as ApiMediaIdDownloadedRouteImport } from './routes/api.media.$id.downloaded'
-import { Route as ApiMediaIdCommentsDataRouteImport } from './routes/api.media.$id.comments-data'
-import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api.internal.ai.asr-provider'
+import { Route as TasksRouteRouteImport } from './routes/tasks/route'
+import { Route as ProxyRouteRouteImport } from './routes/proxy/route'
+import { Route as PointsRouteRouteImport } from './routes/points/route'
+import { Route as MediaRouteRouteImport } from './routes/media/route'
+import { Route as ChannelsRouteRouteImport } from './routes/channels/route'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as MediaIndexRouteImport } from './routes/media/index'
+import { Route as MarketingIndexRouteImport } from './routes/marketing/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as MediaDownloadRouteImport } from './routes/media/download'
+import { Route as LegalPrivacyRouteImport } from './routes/legal/privacy'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminProxyRouteImport } from './routes/admin/proxy'
+import { Route as AdminPointsPricingRouteImport } from './routes/admin/points-pricing'
+import { Route as AdminAiProvidersRouteImport } from './routes/admin/ai-providers'
+import { Route as AdminAiModelsRouteImport } from './routes/admin/ai-models'
+import { Route as MediaIdRouteRouteImport } from './routes/media/$id/route'
+import { Route as MediaIdIndexRouteImport } from './routes/media/$id/index'
+import { Route as MediaIdSubtitlesRouteImport } from './routes/media/$id/subtitles'
+import { Route as MediaIdCommentsRouteImport } from './routes/media/$id/comments'
+import { Route as ApiRenderCfCallbackRouteImport } from './routes/api/render/cf-callback'
+import { Route as ApiProxyCheckRunOneRouteImport } from './routes/api/proxy-check/run-one'
+import { Route as ApiProxyCheckRunRouteImport } from './routes/api/proxy-check/run'
+import { Route as ApiOrpcSplatRouteImport } from './routes/api/orpc/$'
+import { Route as ApiMediaIdSubtitlesRouteImport } from './routes/api/media/$id/subtitles'
+import { Route as ApiMediaIdSourceRouteImport } from './routes/api/media/$id/source'
+import { Route as ApiMediaIdRenderedInfoRouteImport } from './routes/api/media/$id/rendered-info'
+import { Route as ApiMediaIdRenderedRouteImport } from './routes/api/media/$id/rendered'
+import { Route as ApiMediaIdDownloadedRouteImport } from './routes/api/media/$id/downloaded'
+import { Route as ApiMediaIdCommentsDataRouteImport } from './routes/api/media/$id/comments-data'
+import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api/internal/ai/asr-provider'
 
-const TasksRoute = TasksRouteImport.update({
+const TasksRouteRoute = TasksRouteRouteImport.update({
   id: '/tasks',
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProxyRoute = ProxyRouteImport.update({
+const ProxyRouteRoute = ProxyRouteRouteImport.update({
   id: '/proxy',
   path: '/proxy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PointsRoute = PointsRouteImport.update({
+const PointsRouteRoute = PointsRouteRouteImport.update({
   id: '/points',
   path: '/points',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MediaRoute = MediaRouteImport.update({
+const MediaRouteRoute = MediaRouteRouteImport.update({
   id: '/media',
   path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChannelsRoute = ChannelsRouteImport.update({
+const ChannelsRouteRoute = ChannelsRouteRouteImport.update({
   id: '/channels',
   path: '/channels',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
+const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MediaIndexRoute = MediaIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => MediaRoute,
+  getParentRoute: () => MediaRouteRoute,
+} as any)
+const MarketingIndexRoute = MarketingIndexRouteImport.update({
+  id: '/marketing/',
+  path: '/marketing/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AdminRoute,
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const MediaDownloadRoute = MediaDownloadRouteImport.update({
   id: '/download',
   path: '/download',
-  getParentRoute: () => MediaRoute,
+  getParentRoute: () => MediaRouteRoute,
 } as any)
-const MediaIdRoute = MediaIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => MediaRoute,
+const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
+  id: '/legal/privacy',
+  path: '/legal/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
   id: '/api/openapi',
@@ -116,42 +111,47 @@ const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
-  getParentRoute: () => AdminRoute,
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminProxyRoute = AdminProxyRouteImport.update({
   id: '/proxy',
   path: '/proxy',
-  getParentRoute: () => AdminRoute,
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminPointsPricingRoute = AdminPointsPricingRouteImport.update({
   id: '/points-pricing',
   path: '/points-pricing',
-  getParentRoute: () => AdminRoute,
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAiProvidersRoute = AdminAiProvidersRouteImport.update({
   id: '/ai-providers',
   path: '/ai-providers',
-  getParentRoute: () => AdminRoute,
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAiModelsRoute = AdminAiModelsRouteImport.update({
   id: '/ai-models',
   path: '/ai-models',
-  getParentRoute: () => AdminRoute,
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const MediaIdRouteRoute = MediaIdRouteRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => MediaRouteRoute,
 } as any)
 const MediaIdIndexRoute = MediaIdIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => MediaIdRoute,
+  getParentRoute: () => MediaIdRouteRoute,
 } as any)
 const MediaIdSubtitlesRoute = MediaIdSubtitlesRouteImport.update({
   id: '/subtitles',
   path: '/subtitles',
-  getParentRoute: () => MediaIdRoute,
+  getParentRoute: () => MediaIdRouteRoute,
 } as any)
 const MediaIdCommentsRoute = MediaIdCommentsRouteImport.update({
   id: '/comments',
   path: '/comments',
-  getParentRoute: () => MediaIdRoute,
+  getParentRoute: () => MediaIdRouteRoute,
 } as any)
 const ApiRenderCfCallbackRoute = ApiRenderCfCallbackRouteImport.update({
   id: '/api/render/cf-callback',
@@ -211,24 +211,24 @@ const ApiInternalAiAsrProviderRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/channels': typeof ChannelsRoute
-  '/login': typeof LoginRoute
-  '/media': typeof MediaRouteWithChildren
-  '/points': typeof PointsRoute
-  '/privacy': typeof PrivacyRoute
-  '/proxy': typeof ProxyRoute
-  '/tasks': typeof TasksRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/channels': typeof ChannelsRouteRoute
+  '/media': typeof MediaRouteRouteWithChildren
+  '/points': typeof PointsRouteRoute
+  '/proxy': typeof ProxyRouteRoute
+  '/tasks': typeof TasksRouteRoute
+  '/media/$id': typeof MediaIdRouteRouteWithChildren
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/openapi': typeof ApiOpenapiRoute
-  '/media/$id': typeof MediaIdRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
   '/media/download': typeof MediaDownloadRoute
   '/admin/': typeof AdminIndexRoute
+  '/marketing': typeof MarketingIndexRoute
   '/media/': typeof MediaIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
@@ -246,21 +246,21 @@ export interface FileRoutesByFullPath {
   '/api/media/$id/subtitles': typeof ApiMediaIdSubtitlesRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/channels': typeof ChannelsRoute
-  '/login': typeof LoginRoute
-  '/points': typeof PointsRoute
-  '/privacy': typeof PrivacyRoute
-  '/proxy': typeof ProxyRoute
-  '/tasks': typeof TasksRoute
+  '/channels': typeof ChannelsRouteRoute
+  '/points': typeof PointsRouteRoute
+  '/proxy': typeof ProxyRouteRoute
+  '/tasks': typeof TasksRouteRoute
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/openapi': typeof ApiOpenapiRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
   '/media/download': typeof MediaDownloadRoute
   '/admin': typeof AdminIndexRoute
+  '/marketing': typeof MarketingIndexRoute
   '/media': typeof MediaIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
@@ -279,24 +279,24 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/channels': typeof ChannelsRoute
-  '/login': typeof LoginRoute
-  '/media': typeof MediaRouteWithChildren
-  '/points': typeof PointsRoute
-  '/privacy': typeof PrivacyRoute
-  '/proxy': typeof ProxyRoute
-  '/tasks': typeof TasksRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/channels': typeof ChannelsRouteRoute
+  '/media': typeof MediaRouteRouteWithChildren
+  '/points': typeof PointsRouteRoute
+  '/proxy': typeof ProxyRouteRoute
+  '/tasks': typeof TasksRouteRoute
+  '/media/$id': typeof MediaIdRouteRouteWithChildren
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/openapi': typeof ApiOpenapiRoute
-  '/media/$id': typeof MediaIdRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
   '/media/download': typeof MediaDownloadRoute
   '/admin/': typeof AdminIndexRoute
+  '/marketing/': typeof MarketingIndexRoute
   '/media/': typeof MediaIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
@@ -316,24 +316,24 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/admin'
     | '/channels'
-    | '/login'
     | '/media'
     | '/points'
-    | '/privacy'
     | '/proxy'
     | '/tasks'
+    | '/media/$id'
     | '/admin/ai-models'
     | '/admin/ai-providers'
     | '/admin/points-pricing'
     | '/admin/proxy'
     | '/admin/users'
     | '/api/openapi'
-    | '/media/$id'
+    | '/auth/login'
+    | '/legal/privacy'
     | '/media/download'
     | '/admin/'
+    | '/marketing'
     | '/media/'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
@@ -351,11 +351,8 @@ export interface FileRouteTypes {
     | '/api/media/$id/subtitles'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/channels'
-    | '/login'
     | '/points'
-    | '/privacy'
     | '/proxy'
     | '/tasks'
     | '/admin/ai-models'
@@ -364,8 +361,11 @@ export interface FileRouteTypes {
     | '/admin/proxy'
     | '/admin/users'
     | '/api/openapi'
+    | '/auth/login'
+    | '/legal/privacy'
     | '/media/download'
     | '/admin'
+    | '/marketing'
     | '/media'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
@@ -383,24 +383,24 @@ export interface FileRouteTypes {
     | '/api/media/$id/subtitles'
   id:
     | '__root__'
-    | '/'
     | '/admin'
     | '/channels'
-    | '/login'
     | '/media'
     | '/points'
-    | '/privacy'
     | '/proxy'
     | '/tasks'
+    | '/media/$id'
     | '/admin/ai-models'
     | '/admin/ai-providers'
     | '/admin/points-pricing'
     | '/admin/proxy'
     | '/admin/users'
     | '/api/openapi'
-    | '/media/$id'
+    | '/auth/login'
+    | '/legal/privacy'
     | '/media/download'
     | '/admin/'
+    | '/marketing/'
     | '/media/'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
@@ -419,16 +419,16 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRouteWithChildren
-  ChannelsRoute: typeof ChannelsRoute
-  LoginRoute: typeof LoginRoute
-  MediaRoute: typeof MediaRouteWithChildren
-  PointsRoute: typeof PointsRoute
-  PrivacyRoute: typeof PrivacyRoute
-  ProxyRoute: typeof ProxyRoute
-  TasksRoute: typeof TasksRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  ChannelsRouteRoute: typeof ChannelsRouteRoute
+  MediaRouteRoute: typeof MediaRouteRouteWithChildren
+  PointsRouteRoute: typeof PointsRouteRoute
+  ProxyRouteRoute: typeof ProxyRouteRoute
+  TasksRouteRoute: typeof TasksRouteRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  LegalPrivacyRoute: typeof LegalPrivacyRoute
+  MarketingIndexRoute: typeof MarketingIndexRoute
   ApiOrpcSplatRoute: typeof ApiOrpcSplatRoute
   ApiProxyCheckRunRoute: typeof ApiProxyCheckRunRoute
   ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
@@ -448,63 +448,42 @@ declare module '@tanstack/react-router' {
       id: '/tasks'
       path: '/tasks'
       fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
+      preLoaderRoute: typeof TasksRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/proxy': {
       id: '/proxy'
       path: '/proxy'
       fullPath: '/proxy'
-      preLoaderRoute: typeof ProxyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
+      preLoaderRoute: typeof ProxyRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/points': {
       id: '/points'
       path: '/points'
       fullPath: '/points'
-      preLoaderRoute: typeof PointsRouteImport
+      preLoaderRoute: typeof PointsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/media': {
       id: '/media'
       path: '/media'
       fullPath: '/media'
-      preLoaderRoute: typeof MediaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+      preLoaderRoute: typeof MediaRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/channels': {
       id: '/channels'
       path: '/channels'
       fullPath: '/channels'
-      preLoaderRoute: typeof ChannelsRouteImport
+      preLoaderRoute: typeof ChannelsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/media/': {
@@ -512,28 +491,42 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/media/'
       preLoaderRoute: typeof MediaIndexRouteImport
-      parentRoute: typeof MediaRoute
+      parentRoute: typeof MediaRouteRoute
+    }
+    '/marketing/': {
+      id: '/marketing/'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof MarketingIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminRouteRoute
     }
     '/media/download': {
       id: '/media/download'
       path: '/download'
       fullPath: '/media/download'
       preLoaderRoute: typeof MediaDownloadRouteImport
-      parentRoute: typeof MediaRoute
+      parentRoute: typeof MediaRouteRoute
     }
-    '/media/$id': {
-      id: '/media/$id'
-      path: '/$id'
-      fullPath: '/media/$id'
-      preLoaderRoute: typeof MediaIdRouteImport
-      parentRoute: typeof MediaRoute
+    '/legal/privacy': {
+      id: '/legal/privacy'
+      path: '/legal/privacy'
+      fullPath: '/legal/privacy'
+      preLoaderRoute: typeof LegalPrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/openapi': {
       id: '/api/openapi'
@@ -547,56 +540,63 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/proxy': {
       id: '/admin/proxy'
       path: '/proxy'
       fullPath: '/admin/proxy'
       preLoaderRoute: typeof AdminProxyRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/points-pricing': {
       id: '/admin/points-pricing'
       path: '/points-pricing'
       fullPath: '/admin/points-pricing'
       preLoaderRoute: typeof AdminPointsPricingRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/ai-providers': {
       id: '/admin/ai-providers'
       path: '/ai-providers'
       fullPath: '/admin/ai-providers'
       preLoaderRoute: typeof AdminAiProvidersRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/ai-models': {
       id: '/admin/ai-models'
       path: '/ai-models'
       fullPath: '/admin/ai-models'
       preLoaderRoute: typeof AdminAiModelsRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/media/$id': {
+      id: '/media/$id'
+      path: '/$id'
+      fullPath: '/media/$id'
+      preLoaderRoute: typeof MediaIdRouteRouteImport
+      parentRoute: typeof MediaRouteRoute
     }
     '/media/$id/': {
       id: '/media/$id/'
       path: '/'
       fullPath: '/media/$id/'
       preLoaderRoute: typeof MediaIdIndexRouteImport
-      parentRoute: typeof MediaIdRoute
+      parentRoute: typeof MediaIdRouteRoute
     }
     '/media/$id/subtitles': {
       id: '/media/$id/subtitles'
       path: '/subtitles'
       fullPath: '/media/$id/subtitles'
       preLoaderRoute: typeof MediaIdSubtitlesRouteImport
-      parentRoute: typeof MediaIdRoute
+      parentRoute: typeof MediaIdRouteRoute
     }
     '/media/$id/comments': {
       id: '/media/$id/comments'
       path: '/comments'
       fullPath: '/media/$id/comments'
       preLoaderRoute: typeof MediaIdCommentsRouteImport
-      parentRoute: typeof MediaIdRoute
+      parentRoute: typeof MediaIdRouteRoute
     }
     '/api/render/cf-callback': {
       id: '/api/render/cf-callback'
@@ -678,7 +678,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AdminRouteChildren {
+interface AdminRouteRouteChildren {
   AdminAiModelsRoute: typeof AdminAiModelsRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminPointsPricingRoute: typeof AdminPointsPricingRoute
@@ -687,7 +687,7 @@ interface AdminRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
-const AdminRouteChildren: AdminRouteChildren = {
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAiModelsRoute: AdminAiModelsRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminPointsPricingRoute: AdminPointsPricingRoute,
@@ -696,48 +696,53 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
 }
 
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
 
-interface MediaIdRouteChildren {
+interface MediaIdRouteRouteChildren {
   MediaIdCommentsRoute: typeof MediaIdCommentsRoute
   MediaIdSubtitlesRoute: typeof MediaIdSubtitlesRoute
   MediaIdIndexRoute: typeof MediaIdIndexRoute
 }
 
-const MediaIdRouteChildren: MediaIdRouteChildren = {
+const MediaIdRouteRouteChildren: MediaIdRouteRouteChildren = {
   MediaIdCommentsRoute: MediaIdCommentsRoute,
   MediaIdSubtitlesRoute: MediaIdSubtitlesRoute,
   MediaIdIndexRoute: MediaIdIndexRoute,
 }
 
-const MediaIdRouteWithChildren =
-  MediaIdRoute._addFileChildren(MediaIdRouteChildren)
+const MediaIdRouteRouteWithChildren = MediaIdRouteRoute._addFileChildren(
+  MediaIdRouteRouteChildren,
+)
 
-interface MediaRouteChildren {
-  MediaIdRoute: typeof MediaIdRouteWithChildren
+interface MediaRouteRouteChildren {
+  MediaIdRouteRoute: typeof MediaIdRouteRouteWithChildren
   MediaDownloadRoute: typeof MediaDownloadRoute
   MediaIndexRoute: typeof MediaIndexRoute
 }
 
-const MediaRouteChildren: MediaRouteChildren = {
-  MediaIdRoute: MediaIdRouteWithChildren,
+const MediaRouteRouteChildren: MediaRouteRouteChildren = {
+  MediaIdRouteRoute: MediaIdRouteRouteWithChildren,
   MediaDownloadRoute: MediaDownloadRoute,
   MediaIndexRoute: MediaIndexRoute,
 }
 
-const MediaRouteWithChildren = MediaRoute._addFileChildren(MediaRouteChildren)
+const MediaRouteRouteWithChildren = MediaRouteRoute._addFileChildren(
+  MediaRouteRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AdminRoute: AdminRouteWithChildren,
-  ChannelsRoute: ChannelsRoute,
-  LoginRoute: LoginRoute,
-  MediaRoute: MediaRouteWithChildren,
-  PointsRoute: PointsRoute,
-  PrivacyRoute: PrivacyRoute,
-  ProxyRoute: ProxyRoute,
-  TasksRoute: TasksRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  ChannelsRouteRoute: ChannelsRouteRoute,
+  MediaRouteRoute: MediaRouteRouteWithChildren,
+  PointsRouteRoute: PointsRouteRoute,
+  ProxyRouteRoute: ProxyRouteRoute,
+  TasksRouteRoute: TasksRouteRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  LegalPrivacyRoute: LegalPrivacyRoute,
+  MarketingIndexRoute: MarketingIndexRoute,
   ApiOrpcSplatRoute: ApiOrpcSplatRoute,
   ApiProxyCheckRunRoute: ApiProxyCheckRunRoute,
   ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,

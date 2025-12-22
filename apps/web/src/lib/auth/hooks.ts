@@ -1,0 +1,92 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
+import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+
+import { useTranslations } from '~/lib/i18n'
+import { queryOrpc } from '~/lib/orpc/client'
+
+export function useAuthQuery() {
+	return useQuery({
+		...queryOrpc.auth.me.queryOptions(),
+		staleTime: 60 * 1000,
+	})
+}
+
+type AuthRedirectOptions = {
+	redirectTo?: string
+	redirectSearch?: Record<string, unknown>
+}
+
+export function useLoginMutation(options?: AuthRedirectOptions) {
+	const qc = useQueryClient()
+	const navigate = useNavigate()
+	const t = useTranslations('Auth')
+
+	return useEnhancedMutation(
+		queryOrpc.auth.login.mutationOptions({
+			onSuccess: () => {
+				qc.invalidateQueries({ queryKey: queryOrpc.auth.me.queryKey() })
+				navigate({
+					to: options?.redirectTo ?? '/media',
+					search: options?.redirectSearch,
+					replace: true,
+				})
+			},
+		}),
+		{
+			successToast: t('loginSuccess'),
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : t('loginError'),
+		},
+	)
+}
+
+export function useSignupMutation(options?: AuthRedirectOptions) {
+	const qc = useQueryClient()
+	const navigate = useNavigate()
+	const t = useTranslations('Auth')
+
+	return useEnhancedMutation(
+		queryOrpc.auth.signup.mutationOptions({
+			onSuccess: () => {
+				qc.invalidateQueries({ queryKey: queryOrpc.auth.me.queryKey() })
+				navigate({
+					to: options?.redirectTo ?? '/media',
+					search: options?.redirectSearch,
+					replace: true,
+				})
+			},
+		}),
+		{
+			successToast: t('signupSuccess'),
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : t('signupError'),
+		},
+	)
+}
+
+export function useLogoutMutation(options?: AuthRedirectOptions) {
+	const qc = useQueryClient()
+	const navigate = useNavigate()
+	const t = useTranslations('Auth')
+
+	return useEnhancedMutation(
+		queryOrpc.auth.logout.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({
+					queryKey: queryOrpc.auth.me.queryKey(),
+				})
+				navigate({
+					to: options?.redirectTo ?? '/login',
+					search: options?.redirectSearch,
+					replace: true,
+				})
+			},
+		}),
+		{
+			successToast: t('logoutSuccess'),
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : t('logoutError'),
+		},
+	)
+}
