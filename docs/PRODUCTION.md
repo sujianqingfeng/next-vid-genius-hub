@@ -13,7 +13,7 @@
   - 提供业务 UI/接口；
   - 在 Step 3 触发云渲染（字幕、评论、云下载等）；
   - 在终态回调中更新 DB，Step 4 以 `/artifacts/:jobId` 或 R2 预签 URL 提供播放。
-- Worker（`cloudflare/media-orchestrator`，桶优先）：
+- Worker（`workers/media-orchestrator`，桶优先）：
   - `POST /jobs`：创建作业 → 从 per-job manifest 解析输入 key → 检查 R2 是否存在 → 生成 R2 预签名 URL → 触发容器 `/render`；
   - `GET /jobs/:id`：供前端轮询；若 R2 产物就绪则回调业务应用落库；
   - `POST /upload/:id`（可选兜底）：容器可直接 POST 成品；Worker 写入 R2；
@@ -38,15 +38,15 @@
 ## 先决条件
 
 - 已开启 Workers 与 R2 的 Cloudflare 账号；
-- 创建 R2 桶：建议名 `vidgen-render`（可按需调整；需同步 `wrangler.toml` 中的 `S3_BUCKET_NAME` 和 `r2_buckets` 配置）；
+- 创建 R2 桶：建议名 `vidgen-render`（可按需调整；需同步 `workers/media-orchestrator/wrangler.toml` 中的 `S3_BUCKET_NAME` 和 `r2_buckets` 配置）；
 - 可用容器平台：
   - Cloudflare Containers（Workers Paid + Containers Beta）；或
   - 其他容器平台，能暴露一个 Worker 可访问的 HTTPS 端点。
 
 ## Worker（Orchestrator）生产配置
 
-代码目录：`cloudflare/media-orchestrator/`  
-配置文件：仓库根目录的 `wrangler.toml`。
+代码目录：`workers/media-orchestrator/`  
+配置文件：`workers/media-orchestrator/wrangler.toml`。
 
 ### 1）绑定 KV、R2 与容器端点
 
@@ -54,7 +54,7 @@
 
 ```toml
 name = "media-orchestrator"
-main = "cloudflare/media-orchestrator/index.ts"
+main = "index.ts"
 compatibility_date = "2025-10-19"
 
 [[kv_namespaces]]
@@ -92,7 +92,7 @@ PUT_EXPIRES = 600
 Worker 内部会根据 `PREFER_EXTERNAL_CONTAINERS` / `NO_CF_CONTAINERS` 判断是否使用 Cloudflare Containers 还是直接访问上面的 `CONTAINER_BASE_URL*`。生产典型方案：
 
 - 使用 Cloudflare Containers：
-  - 配置 `[[containers]]` 与 `[[durable_objects.bindings]]`（见仓库当前 `wrangler.toml`）；
+  - 配置 `[[containers]]` 与 `[[durable_objects.bindings]]`（见 `workers/media-orchestrator/wrangler.toml`）；
   - 在 production 环境变量中保持 `PREFER_EXTERNAL_CONTAINERS = "false"`（默认）；
 - 使用外部容器平台：
   - 不配置 `[[containers]]`，只配置 `CONTAINER_BASE_URL*`；
@@ -220,20 +220,20 @@ docker push <registry>/<project>/burner-ffmpeg:<tag>
 
 应用运行在 Cloudflare Workers（wrangler）中：
 
-- 非敏感配置放在 `wrangler.root.jsonc` 的 `vars`（例如 `CF_ORCHESTRATOR_URL`）。
+- 非敏感配置放在 `apps/web/wrangler.root.jsonc` 的 `vars`（例如 `CF_ORCHESTRATOR_URL`）。
 - 密钥用 `wrangler secret put` 注入（例如 `JOB_CALLBACK_HMAC_SECRET`）。
 
 示例（以 root 挂载为例）：
 
 ```bash
-wrangler secret put JOB_CALLBACK_HMAC_SECRET --config wrangler.root.jsonc
+wrangler secret put JOB_CALLBACK_HMAC_SECRET --config apps/web/wrangler.root.jsonc
 ```
 
-可选：启用工作区 Basic Auth（见 `src/worker.ts`）：
+可选：启用工作区 Basic Auth（见 `apps/web/src/worker.ts`）：
 
 ```bash
-wrangler secret put WORKSPACE_AUTH_USERNAME --config wrangler.root.jsonc
-wrangler secret put WORKSPACE_AUTH_PASSWORD --config wrangler.root.jsonc
+wrangler secret put WORKSPACE_AUTH_USERNAME --config apps/web/wrangler.root.jsonc
+wrangler secret put WORKSPACE_AUTH_PASSWORD --config apps/web/wrangler.root.jsonc
 ```
 
 并在对应 `wrangler*.jsonc` 的 `vars` 中设置：`WORKSPACE_PROTECT = "1"`。
@@ -242,11 +242,11 @@ wrangler secret put WORKSPACE_AUTH_PASSWORD --config wrangler.root.jsonc
 
 - 部署目标：Cloudflare Workers（wrangler）。
 - 相关配置与脚本：
-  - `wrangler.root.jsonc` + `pnpm deploy:root`：将应用挂载到站点根路径（`/*`）。
+  - `apps/web/wrangler.root.jsonc` + `pnpm deploy:web`：将应用挂载到站点根路径（`/*`）。
 - 生产前检查：
   - `CF_ORCHESTRATOR_URL` 指向生产 orchestrator Worker；
   - `JOB_CALLBACK_HMAC_SECRET` 与 orchestrator/容器回调保持一致；
-  - D1 `DB` 绑定配置正确，并已执行迁移（`pnpm db:d1:migrate:remote`）。
+  - D1 `DB` 绑定配置正确，并已执行迁移（`pnpm -C apps/web db:d1:migrate:remote`）。
 
 ## 运行时开关与安全建议
 

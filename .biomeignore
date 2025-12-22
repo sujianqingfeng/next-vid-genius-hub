@@ -2,5 +2,5 @@
 .next/**
 node_modules/
 node_modules/**
-drizzle/
-drizzle/** 
+apps/web/drizzle/
+apps/web/drizzle/** 

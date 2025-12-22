@@ -1,32 +1,9 @@
 {
+	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
-		"target": "ES2022",
-		"lib": ["DOM", "DOM.Iterable", "ES2022"],
-		"types": ["vite/client"],
-		"allowJs": true,
-		"skipLibCheck": true,
-		"strict": true,
-		"noEmit": true,
-		"esModuleInterop": true,
-		"module": "ESNext",
-		"moduleResolution": "bundler",
-		"resolveJsonModule": true,
-		"isolatedModules": true,
-		"jsx": "react-jsx",
-		"incremental": true,
-		"baseUrl": ".",
-		"allowImportingTsExtensions": true,
-		"verbatimModuleSyntax": false,
-		"paths": {
-			"~/*": ["./src/*"],
-			"@remotion/*": ["./remotion/*"]
-		}
+		"noEmit": true
 	},
-	"include": [
-		"src/**/*.ts",
-		"src/**/*.tsx",
-		"drizzle.config.ts",
-		"vitest.config.ts"
-	],
-	"exclude": ["node_modules", "cloudflare/**"]
+	"include": [],
+	"exclude": ["node_modules"]
 }
+

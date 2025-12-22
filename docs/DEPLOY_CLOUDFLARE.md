@@ -20,10 +20,10 @@
 ## 1. 关键配置文件
 
 - 业务应用（Worker App）
-  - Root 挂载（`/*`）：`wrangler.root.jsonc`
-  - Vite base：`vite.config.ts`（默认 `/`）
+  - Root 挂载（`/*`）：`apps/web/wrangler.root.jsonc`
+  - Vite base：`apps/web/vite.config.ts`（默认 `/`）
 - Orchestrator（Worker）
-  - `wrangler.toml`（使用 `env.production`）
+  - `workers/media-orchestrator/wrangler.toml`（使用 `env.production`）
 - D1 migrations
   - migrations 目录是 `drizzle/`（wrangler 配置已在 `d1_databases[*].migrations_dir` 指向 `drizzle`）
 
@@ -32,7 +32,7 @@
 1) 确保生产域名已接入 Cloudflare（不然 Worker routes 无法绑定）。
 
 2) D1
-- 创建 D1 数据库（例如 `vidgen_app`），并在 `wrangler.root.jsonc` 的 `d1_databases` 中填写 `database_id`。
+- 创建 D1 数据库（例如 `vidgen_app`），并在 `apps/web/wrangler.root.jsonc` 的 `d1_databases` 中填写 `database_id`。
 
 3) R2
 - 创建 bucket：`vidgen-render`（与 `wrangler.toml` 一致）。
@@ -58,7 +58,7 @@
 
 ### 4.1 部署 Orchestrator（media-orchestrator）
 
-1) 确认 `wrangler.toml`（production）关键项：
+1) 确认 `workers/media-orchestrator/wrangler.toml`（production）关键项：
 - 外部容器基址：`CONTAINER_BASE_URL*`
 - 回调业务应用：`APP_BASE_URL`（例如 `https://vid-hub.temp-drop-files.store`）
 - R2 S3 endpoint：`S3_ENDPOINT` / `S3_INTERNAL_ENDPOINT`
@@ -68,9 +68,9 @@
 2) 注入 secrets（不要写进仓库）
 
 ```bash
-pnpm exec wrangler secret put JOB_CALLBACK_HMAC_SECRET --config wrangler.toml --env production
-pnpm exec wrangler secret put S3_ACCESS_KEY_ID --config wrangler.toml --env production
-pnpm exec wrangler secret put S3_SECRET_ACCESS_KEY --config wrangler.toml --env production
+pnpm exec wrangler --cwd workers/media-orchestrator secret put JOB_CALLBACK_HMAC_SECRET --config wrangler.toml --env production
+pnpm exec wrangler --cwd workers/media-orchestrator secret put S3_ACCESS_KEY_ID --config wrangler.toml --env production
+pnpm exec wrangler --cwd workers/media-orchestrator secret put S3_SECRET_ACCESS_KEY --config wrangler.toml --env production
 ```
 
 3) 部署
@@ -90,12 +90,12 @@ curl -i 'https://media-orchestrator.<your>.workers.dev/debug/presign?key=debug/t
 1) 先注入回调验签 secret（生产建议用 `wrangler secret`，不要写入 `vars`）
 
 ```bash
-pnpm exec wrangler secret put JOB_CALLBACK_HMAC_SECRET --config wrangler.root.jsonc
+pnpm exec wrangler secret put JOB_CALLBACK_HMAC_SECRET --config apps/web/wrangler.root.jsonc
 ```
 
 2) 确认生产变量
-- `CF_ORCHESTRATOR_URL`：指向生产 orchestrator（在 `wrangler.root.jsonc` 的 `vars`）
-- 业务应用域名本身由 Cloudflare `routes` 绑定（见 `wrangler.root.jsonc` 的 `routes` 配置）
+- `CF_ORCHESTRATOR_URL`：指向生产 orchestrator（在 `apps/web/wrangler.root.jsonc` 的 `vars`）
+- 业务应用域名本身由 Cloudflare `routes` 绑定（见 `apps/web/wrangler.root.jsonc` 的 `routes` 配置）
 
 3) 运行 D1 迁移（如需要）
 
@@ -107,12 +107,12 @@ pnpm db:d1:migrate:remote
 4) 切根部署（挂载 `/*`）
 
 ```bash
-pnpm deploy:root
+pnpm deploy:web
 ```
 
 ## 5. 路由冲突与切换/回滚
 
-如果生产域名的 `vid-hub.temp-drop-files.store/*` 已经被另一个 Worker 占用，`pnpm deploy:root` 会报错：
+如果生产域名的 `vid-hub.temp-drop-files.store/*` 已经被另一个 Worker 占用，`pnpm deploy:web` 会报错：
 
 > Can't deploy routes that are assigned to another worker.
 
@@ -123,7 +123,7 @@ pnpm deploy:root
 ```bash
 pnpm exec wrangler deployments list --name <old-worker-name>
 pnpm exec wrangler triggers deploy --name <old-worker-name> --routes 'vid-hub.temp-drop-files.store/__legacy/*'
-pnpm deploy:root
+pnpm deploy:web
 ```
 
 回滚：把旧 Worker 的 routes 改回 `vid-hub.temp-drop-files.store/*`，或在 Cloudflare Dashboard 里调整 route 归属。

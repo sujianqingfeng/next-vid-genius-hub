@@ -1,6 +1,6 @@
 import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { os } from '@orpc/server'
-import { DEFAULT_TEMPLATE_ID } from '@remotion/templates'
+import { DEFAULT_TEMPLATE_ID } from '@app/remotion-project/templates'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDefaultAiModel, isEnabledModel } from '~/lib/ai/config/service'

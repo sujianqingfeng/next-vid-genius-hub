@@ -1,0 +1,24 @@
+{
+	"name": "@app/remotion-project",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@app/media-comments": "workspace:*",
+		"@app/media-domain": "workspace:*",
+		"lucide-react": "^0.556.0",
+		"react": "19.2.1",
+		"react-dom": "19.2.1",
+		"remotion": "^4.0.382"
+	},
+	"scripts": {
+		"build": "tsc -p tsconfig.json --noEmit",
+		"typecheck": "tsc -p tsconfig.json --noEmit"
+	},
+	"exports": {
+		".": "./remotion/index.ts",
+		"./entry": "./remotion/index.ts",
+		"./templates": "./remotion/templates/index.ts",
+		"./types": "./remotion/types.ts"
+	}
+}

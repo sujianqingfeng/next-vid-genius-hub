@@ -1,4 +1,4 @@
-import type { Comment, VideoInfo } from '../lib/media/types'
+import type { Comment, VideoInfo } from '@app/media-domain'
 
 export interface CommentVideoInputProps extends Record<string, unknown> {
   videoInfo: VideoInfo

@@ -62,11 +62,11 @@ frames
 **/__tests__/artifacts/
 
 # Worker/Cloudflare local artifacts
-cloudflare/media-orchestrator/.wrangler
-cloudflare/media-orchestrator/.mf
-cloudflare/media-orchestrator/.dev.vars
-cloudflare/media-orchestrator/orchestrator.log
-cloudflare/media-orchestrator/*.js
+workers/media-orchestrator/.wrangler
+workers/media-orchestrator/.mf
+workers/media-orchestrator/.dev.vars
+workers/media-orchestrator/orchestrator.log
+workers/media-orchestrator/*.js
 
 # Root-level Cloudflare Wrangler state
 /.wrangler
@@ -87,10 +87,21 @@ packages/**/dist
 
 # Other build outputs
 /dist
-cloudflare/**/dist
+workers/**/dist
+apps/web/dist
 
 # Static analysis & explorer outputs
 .depcheck.json
 .knip-output.json
 .tsprune.txt
 .unimported.json
+
+# App-local wrangler state (apps/web)
+apps/web/.wrangler
+
+# App runtime dirs (APP_CONFIG.paths) when running from apps/web
+apps/web/uploads
+apps/web/temp
+apps/web/cache
+apps/web/logs
+apps/web/exports

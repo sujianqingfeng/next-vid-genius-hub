@@ -1,6 +1,6 @@
 name = "media-orchestrator"
-main = "cloudflare/media-orchestrator/index.ts"
-tsconfig = "cloudflare/media-orchestrator/tsconfig.json"
+main = "index.ts"
+tsconfig = "tsconfig.json"
 compatibility_date = "2025-10-19"
 workers_dev = true
 

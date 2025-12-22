@@ -1,0 +1,10 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"lib": ["DOM", "ES2022"]
+	},
+	"include": ["remotion/**/*.ts", "remotion/**/*.tsx"],
+	"exclude": ["node_modules", "dist"]
+}
+

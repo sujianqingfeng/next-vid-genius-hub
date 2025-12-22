@@ -6,4 +6,4 @@ cloudflare/**/dist/
 drizzle/
 .wrangler/
 
-src/routeTree.gen.ts
+apps/web/src/routeTree.gen.ts

@@ -3,7 +3,7 @@ import {
 	DEFAULT_TEMPLATE_ID,
 	listTemplates,
 	type RemotionTemplateId,
-} from '@remotion/templates'
+} from '@app/remotion-project/templates'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
 	createFileRoute,

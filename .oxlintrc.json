@@ -9,10 +9,10 @@
 		"es2021": true
 	},
 	"ignorePatterns": [
-		"dist/**",
-		"drizzle/**",
+		"apps/web/dist/**",
+		"apps/web/drizzle/**",
 		"packages/**/dist/**",
-		"cloudflare/**/dist/**",
-		"src/routeTree.gen.ts"
+		"workers/**/dist/**",
+		"apps/web/src/routeTree.gen.ts"
 	]
 }

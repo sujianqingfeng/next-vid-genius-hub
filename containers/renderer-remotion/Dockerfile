@@ -74,8 +74,8 @@ RUN mkdir -p /app/clash /app/clash/providers
 COPY containers/renderer-remotion/index.mjs ./index.mjs
 COPY containers/shared.mjs ./shared.mjs
 # Copy Remotion project (from repo root)
-COPY remotion ./remotion
-COPY public ./public
+COPY packages/remotion-project/remotion ./remotion
+COPY apps/web/public ./public
 
 # Pre-download headless browser at build time to avoid runtime download
 ENV XDG_CACHE_HOME=/opt/.cache \

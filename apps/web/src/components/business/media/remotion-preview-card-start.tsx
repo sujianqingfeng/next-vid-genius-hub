@@ -6,8 +6,8 @@ import {
 	DEFAULT_TEMPLATE_ID,
 	getTemplate,
 	type RemotionTemplateId,
-} from '@remotion/templates'
-import type { CommentVideoInputProps } from '@remotion/types'
+} from '@app/remotion-project/templates'
+import type { CommentVideoInputProps } from '@app/remotion-project/types'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import * as React from 'react'
 import { Card, CardContent } from '~/components/ui/card'

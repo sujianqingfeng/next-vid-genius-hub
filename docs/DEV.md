@@ -9,7 +9,7 @@
   - `burner-ffmpeg`：字幕烧录渲染。
   - `renderer-remotion`：评论视频渲染。
   - `media-downloader`：云端下载（yt-dlp + ffmpeg）。
-- Worker（`cloudflare/media-orchestrator`，wrangler dev）负责（桶优先）：
+- Worker（`workers/media-orchestrator`，wrangler dev）负责（桶优先）：
   - 只通过 per-job manifest + R2 HEAD 检测输入，不再从业务应用拉取文件；
   - 生成 S3 预签名 URL（GET/PUT），只把 URL 下发给容器；
   - 触发容器 `/render` 并在 Durable Object 中维护强一致状态；
@@ -29,7 +29,7 @@
   - 领域内的 types/hooks/utils/server 均放在 `src/lib/<domain>/**`。
   - `src/lib/types` 仅放跨领域类型（例如 provider 类型）；领域内类型放在各自 `src/lib/<domain>/types`。
   - `src/lib/utils` / `src/lib/hooks` 只放真正通用的工具；不要在这里新增领域特定逻辑。
-  - 与 Cloudflare orchestrator / R2 交互的代码统一放在 `src/lib/cloudflare/**`。
+  - 与 Cloudflare orchestrator / R2 交互的代码统一放在 `apps/web/src/lib/cloudflare/**`。
 
 ## 启动本地容器
 
@@ -70,12 +70,12 @@ Compose 只负责拉起各类媒体容器；对象存储直接指向 Cloudflare 
 
 ## Worker 本地配置
 
-仓库根目录的 `wrangler.toml` 已配置：
+`workers/media-orchestrator/wrangler.toml` 已配置：
 
 ```toml
 name = "media-orchestrator"
-main = "cloudflare/media-orchestrator/index.ts"
-tsconfig = "cloudflare/media-orchestrator/tsconfig.json"
+main = "index.ts"
+tsconfig = "tsconfig.json"
 compatibility_date = "2025-10-19"
 
 [dev]
@@ -91,7 +91,7 @@ JOB_TTL_SECONDS = 86400
 	CONTAINER_BASE_URL = "http://localhost:9080"
 	CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
 	CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
-	# 业务应用（TanStack Start）默认 `pnpm dev` 跑在 3100。
+	# 业务应用（TanStack Start）默认 `pnpm dev:web` 跑在 3100（根目录 `pnpm dev` 也会转发到 web）。
 	APP_BASE_URL = "http://localhost:3100"
 	JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
 	PUT_EXPIRES = 600
@@ -170,21 +170,21 @@ pnpm cf:dev # 使用外部 Docker 容器，不使用 CF Containers
 
 本仓库的业务应用基于 TanStack Start，运行在 Cloudflare Workers（`nodejs_compat`）上：
 
-- Worker 入口：`src/worker.ts`（负责注入 D1 并启动 TanStack Start handler）。
-- 本地启动配置：`wrangler.root.jsonc`（`env.local`）。
+- Worker 入口：`apps/web/src/worker.ts`（负责注入 D1 并启动 TanStack Start handler）。
+- 本地启动配置：`apps/web/wrangler.root.jsonc`（`env.local`）。
 - 构建产物：`dist/server/index.js` + `dist/client/**`（Vite 构建）。
 - DB：Cloudflare D1（`binding = "DB"`）。本地/远端迁移命令见 `package.json` 的 `db:d1:*` scripts。
 
 启动（推荐，最接近生产 Worker 行为）：
 
 ```bash
-pnpm dev
+pnpm dev:web
 ```
 
 可选：仅在需要更快的前端迭代时使用 Vite dev server（与 Worker 行为存在差异）：
 
 ```bash
-pnpm dev:vite
+pnpm dev:web:vite
 ```
 
 业务应用不再承担媒体文件中转，所有媒体 IO 通过 orchestrator Worker + R2 完成。
@@ -283,7 +283,7 @@ pnpm dev:vite
    - `pnpm dev:stack`
    - `pnpm cf:dev`
 2. 启动业务应用：
-   - `pnpm dev`
+   - `pnpm dev:web`（或根目录 `pnpm dev`）
 3. 上传 10–30 秒小样视频，选择 Cloud 流程触发字幕渲染：
    - 确认 Worker 日志有 `start job ...`，容器日志有进度与心跳；
    - `/jobs/:id` 状态从 `queued` → `running` → `completed`；
