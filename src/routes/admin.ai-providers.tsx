@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 type ProviderKind = 'llm' | 'asr'
 type ProviderType =
@@ -70,7 +70,7 @@ function isEditingProviderValid(editing: EditingProvider | null): boolean {
 export const Route = createFileRoute('/admin/ai-providers')({
 	loader: async ({ context }) => {
 		await context.queryClient.prefetchQuery(
-			queryOrpcNext.admin.listAiProviders.queryOptions({
+			queryOrpc.admin.listAiProviders.queryOptions({
 				input: { kind: 'llm', enabledOnly: false },
 			}),
 		)
@@ -86,7 +86,7 @@ function AdminAiProvidersPage() {
 	const [editing, setEditing] = useState<EditingProvider | null>(null)
 
 	const listQuery = useQuery(
-		queryOrpcNext.admin.listAiProviders.queryOptions({
+		queryOrpc.admin.listAiProviders.queryOptions({
 			input: { kind, enabledOnly: false },
 		}),
 	)
@@ -95,13 +95,13 @@ function AdminAiProvidersPage() {
 
 	const invalidateList = () =>
 		qc.invalidateQueries({
-			queryKey: queryOrpcNext.admin.listAiProviders.queryKey({
+			queryKey: queryOrpc.admin.listAiProviders.queryKey({
 				input: { kind, enabledOnly: false },
 			}),
 		})
 
 	const upsertProvider = useEnhancedMutation(
-		queryOrpcNext.admin.upsertAiProvider.mutationOptions({
+		queryOrpc.admin.upsertAiProvider.mutationOptions({
 			onSuccess: () => {
 				invalidateList()
 				setEditing(null)
@@ -111,13 +111,13 @@ function AdminAiProvidersPage() {
 	)
 
 	const toggleProvider = useEnhancedMutation(
-		queryOrpcNext.admin.toggleAiProvider.mutationOptions({
+		queryOrpc.admin.toggleAiProvider.mutationOptions({
 			onSuccess: () => invalidateList(),
 		}),
 	)
 
 	const testProvider = useEnhancedMutation(
-		queryOrpcNext.admin.testAiProvider.mutationOptions(),
+		queryOrpc.admin.testAiProvider.mutationOptions(),
 		{
 			successToast: ({ data }) => data?.message || t('toast.testOk'),
 			errorToast: t('toast.testFail'),
@@ -125,7 +125,7 @@ function AdminAiProvidersPage() {
 	)
 
 	const deleteProvider = useEnhancedMutation(
-		queryOrpcNext.admin.deleteAiProvider.mutationOptions({
+		queryOrpc.admin.deleteAiProvider.mutationOptions({
 			onSuccess: () => invalidateList(),
 		}),
 		{ successToast: t('toast.deleted'), errorToast: t('toast.deleteFail') },

@@ -4,14 +4,14 @@ import { Loader2 } from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 const RECENT_LIMIT = 50
 
 export const Route = createFileRoute('/tasks')({
 	loader: async ({ context, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -19,7 +19,7 @@ export const Route = createFileRoute('/tasks')({
 		}
 
 		await context.queryClient.prefetchQuery(
-			queryOrpcNext.task.listRecent.queryOptions({
+			queryOrpc.task.listRecent.queryOptions({
 				input: { limit: RECENT_LIMIT, offset: 0 },
 			}),
 		)
@@ -40,7 +40,7 @@ function TasksRoute() {
 	const t = useTranslations('Tasks')
 
 	const tasksQuery = useQuery(
-		queryOrpcNext.task.listRecent.queryOptions({
+		queryOrpc.task.listRecent.queryOptions({
 			input: { limit: RECENT_LIMIT, offset: 0 },
 		}),
 	)

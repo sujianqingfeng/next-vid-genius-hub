@@ -73,7 +73,7 @@ JOB_TTL_SECONDS = 86400
 	CONTAINER_BASE_URL_REMOTION = "https://<remotion-container-endpoint>"
 	CONTAINER_BASE_URL_DOWNLOADER = "https://<media-downloader-endpoint>"
 
-NEXT_BASE_URL = "https://<your-app-domain>"              # Worker 回调业务应用（变量名为历史遗留）
+APP_BASE_URL = "https://<your-app-domain>"              # Worker 回调业务应用
 ORCHESTRATOR_BASE_URL_CONTAINER = "https://<your-worker-domain>" # 容器向 Worker 回调时使用的对外地址
 
 # R2 直连（S3 兼容）

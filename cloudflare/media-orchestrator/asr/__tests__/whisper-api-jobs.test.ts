@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-	fetchWhisperApiConfigFromNext,
+	fetchWhisperApiConfigFromApp,
 	mapWhisperStatusToJobStatus,
 	resolveWhisperProgressFraction,
 } from '../whisper-api-jobs'
@@ -23,7 +23,7 @@ describe('whisper-api-jobs', () => {
 
 	it('fetches whisper_api config from app with HMAC header', async () => {
 		const env = {
-			NEXT_BASE_URL: 'http://localhost:3000',
+			APP_BASE_URL: 'http://localhost:3000',
 			JOB_CALLBACK_HMAC_SECRET: 'test-secret',
 		} as any
 
@@ -44,7 +44,7 @@ describe('whisper-api-jobs', () => {
 
 		vi.stubGlobal('fetch', fetchSpy as any)
 		try {
-			const cfg = await fetchWhisperApiConfigFromNext(env, {
+			const cfg = await fetchWhisperApiConfigFromApp(env, {
 				providerId: 'p1',
 				modelId: 'whisper/distil-large-v3',
 			})

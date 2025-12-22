@@ -31,4 +31,3 @@ describe('proxy host helpers', () => {
 		expect(formatHostPort('example.com', 443)).toBe('example.com:443')
 	})
 })
-

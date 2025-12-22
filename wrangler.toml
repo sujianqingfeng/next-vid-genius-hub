@@ -39,13 +39,13 @@ PREFER_EXTERNAL_CONTAINERS = "true"
 NO_CF_CONTAINERS = "true"
 # Use remote R2 (via S3-compatible API) for all storage access in local dev.
 FORCE_S3_STORAGE = "true"
-CONTAINER_BASE_URL = "http://localhost:9080"
-CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
-CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
-# 业务应用（TanStack Start）本地默认跑在 3100（根目录 `pnpm dev`）。
-NEXT_BASE_URL = "http://localhost:3100"
-JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
-PUT_EXPIRES = 600
+	CONTAINER_BASE_URL = "http://localhost:9080"
+	CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
+	CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
+	# 业务应用（TanStack Start）本地默认跑在 3100（根目录 `pnpm dev`）。
+	APP_BASE_URL = "http://localhost:3100"
+	JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
+	PUT_EXPIRES = 600
 S3_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
 S3_INTERNAL_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
 S3_BUCKET_NAME = "vidgen-render"
@@ -75,15 +75,15 @@ name = "media-orchestrator"
 # 默认使用 Cloudflare Containers（如需外部容器平台，将此设为 "true" 并配置 CONTAINER_BASE_URL*）
 PREFER_EXTERNAL_CONTAINERS = "true"
 # Dockploy external containers (public base URLs)
-CONTAINER_BASE_URL = "https://burner.temp-drop-files.store"
-CONTAINER_BASE_URL_REMOTION = "https://remotion.temp-drop-files.store"
-CONTAINER_BASE_URL_DOWNLOADER = "https://downloader.temp-drop-files.store"
-# Worker 回调业务应用：务必替换为你的生产域名（变量名为历史遗留）
-NEXT_BASE_URL = "https://vid-hub.temp-drop-files.store"
-# 建议通过 `wrangler secret put JOB_CALLBACK_HMAC_SECRET` 注入（不要在 vars 里明文配置）
-# JOB_CALLBACK_HMAC_SECRET = "..."
-# 预签名 PUT 有效期（秒）
-PUT_EXPIRES = 1800
+	CONTAINER_BASE_URL = "https://burner.temp-drop-files.store"
+	CONTAINER_BASE_URL_REMOTION = "https://remotion.temp-drop-files.store"
+	CONTAINER_BASE_URL_DOWNLOADER = "https://downloader.temp-drop-files.store"
+	# Worker 回调业务应用：务必替换为你的生产域名
+	APP_BASE_URL = "https://vid-hub.temp-drop-files.store"
+	# 建议通过 `wrangler secret put JOB_CALLBACK_HMAC_SECRET` 注入（不要在 vars 里明文配置）
+	# JOB_CALLBACK_HMAC_SECRET = "..."
+	# 预签名 PUT 有效期（秒）
+	PUT_EXPIRES = 1800
 # R2 直连（S3 兼容）
 S3_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
 S3_INTERNAL_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"

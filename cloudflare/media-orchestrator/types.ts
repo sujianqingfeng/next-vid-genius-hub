@@ -9,7 +9,7 @@ export interface Env {
 	CONTAINER_BASE_URL?: string
 	CONTAINER_BASE_URL_REMOTION?: string
 	CONTAINER_BASE_URL_DOWNLOADER?: string
-	NEXT_BASE_URL?: string
+	APP_BASE_URL?: string
 	JOB_CALLBACK_HMAC_SECRET?: string
 	// Workers AI (REST credentials) for ASR pipeline
 	CF_AI_ACCOUNT_ID?: string

@@ -35,7 +35,7 @@ import {
 } from '~/lib/points/units'
 
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 type Kind = 'llm' | 'asr' | 'download'
 
@@ -170,7 +170,7 @@ export const Route = createFileRoute('/admin/points-pricing')({
 	loader: async ({ context }) => {
 		await Promise.all([
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.admin.listPricingRules.queryOptions({
+				queryOrpc.admin.listPricingRules.queryOptions({
 					input: {
 						page: 1,
 						limit: ADMIN_PRICING_RULES_PAGE_SIZE,
@@ -179,12 +179,12 @@ export const Route = createFileRoute('/admin/points-pricing')({
 				}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.admin.listAiProviders.queryOptions({
+				queryOrpc.admin.listAiProviders.queryOptions({
 					input: { kind: 'llm', enabledOnly: false },
 				}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.admin.listAiModels.queryOptions({
+				queryOrpc.admin.listAiModels.queryOptions({
 					input: { kind: 'llm', enabledOnly: false },
 				}),
 			),
@@ -200,7 +200,7 @@ function AdminPointsPricingPage() {
 	const [editing, setEditing] = useState<Editing | null>(null)
 
 	const rulesQuery = useQuery({
-		...queryOrpcNext.admin.listPricingRules.queryOptions({
+		...queryOrpc.admin.listPricingRules.queryOptions({
 			input: {
 				page: 1,
 				limit: ADMIN_PRICING_RULES_PAGE_SIZE,
@@ -211,14 +211,14 @@ function AdminPointsPricingPage() {
 	})
 
 	const providersQuery = useQuery({
-		...queryOrpcNext.admin.listAiProviders.queryOptions({
+		...queryOrpc.admin.listAiProviders.queryOptions({
 			input: { kind: kind === 'asr' ? 'asr' : 'llm', enabledOnly: false },
 		}),
 		enabled: kind !== 'download',
 	})
 
 	const modelsQuery = useQuery({
-		...queryOrpcNext.admin.listAiModels.queryOptions({
+		...queryOrpc.admin.listAiModels.queryOptions({
 			input: { kind: kind === 'asr' ? 'asr' : 'llm', enabledOnly: false },
 		}),
 		enabled: kind !== 'download',
@@ -262,12 +262,12 @@ function AdminPointsPricingPage() {
 
 	const invalidate = () => {
 		qc.invalidateQueries({
-			queryKey: queryOrpcNext.admin.listPricingRules.key(),
+			queryKey: queryOrpc.admin.listPricingRules.key(),
 		})
 	}
 
 	const upsertRule = useEnhancedMutation(
-		queryOrpcNext.admin.upsertPricingRule.mutationOptions({
+		queryOrpc.admin.upsertPricingRule.mutationOptions({
 			onSuccess: () => {
 				invalidate()
 				setEditing(null)
@@ -281,7 +281,7 @@ function AdminPointsPricingPage() {
 	)
 
 	const deleteRule = useEnhancedMutation(
-		queryOrpcNext.admin.deletePricingRule.mutationOptions({
+		queryOrpc.admin.deletePricingRule.mutationOptions({
 			onSuccess: () => invalidate(),
 		}),
 		{

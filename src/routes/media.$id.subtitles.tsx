@@ -42,7 +42,7 @@ import { DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'canceled'])
 
@@ -59,7 +59,7 @@ type OptimizeParams = {
 export const Route = createFileRoute('/media/$id/subtitles')({
 	loader: async ({ context, params, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -67,28 +67,28 @@ export const Route = createFileRoute('/media/$id/subtitles')({
 		}
 
 		const item = await context.queryClient.ensureQueryData(
-			queryOrpcNext.media.byId.queryOptions({ input: { id: params.id } }),
+			queryOrpc.media.byId.queryOptions({ input: { id: params.id } }),
 		)
 		if (!item) throw notFound()
 
 		await Promise.all([
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.ai.listModels.queryOptions({
+				queryOrpc.ai.listModels.queryOptions({
 					input: { kind: 'asr', enabledOnly: true },
 				}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.ai.getDefaultModel.queryOptions({
+				queryOrpc.ai.getDefaultModel.queryOptions({
 					input: { kind: 'asr' },
 				}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.ai.listModels.queryOptions({
+				queryOrpc.ai.listModels.queryOptions({
 					input: { kind: 'llm', enabledOnly: true },
 				}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.ai.getDefaultModel.queryOptions({
+				queryOrpc.ai.getDefaultModel.queryOptions({
 					input: { kind: 'llm' },
 				}),
 			),
@@ -104,7 +104,7 @@ function SubtitlesRoute() {
 	const { id } = Route.useParams()
 
 	const mediaQuery = useQuery({
-		...queryOrpcNext.media.byId.queryOptions({ input: { id } }),
+		...queryOrpc.media.byId.queryOptions({ input: { id } }),
 		refetchInterval: (q) => {
 			const media = q.state.data as any
 			const hasTranscription = Boolean(
@@ -115,20 +115,20 @@ function SubtitlesRoute() {
 	})
 
 	const asrModelsQuery = useQuery(
-		queryOrpcNext.ai.listModels.queryOptions({
+		queryOrpc.ai.listModels.queryOptions({
 			input: { kind: 'asr', enabledOnly: true },
 		}),
 	)
 	const asrDefaultQuery = useQuery(
-		queryOrpcNext.ai.getDefaultModel.queryOptions({ input: { kind: 'asr' } }),
+		queryOrpc.ai.getDefaultModel.queryOptions({ input: { kind: 'asr' } }),
 	)
 	const llmModelsQuery = useQuery(
-		queryOrpcNext.ai.listModels.queryOptions({
+		queryOrpc.ai.listModels.queryOptions({
 			input: { kind: 'llm', enabledOnly: true },
 		}),
 	)
 	const llmDefaultQuery = useQuery(
-		queryOrpcNext.ai.getDefaultModel.queryOptions({ input: { kind: 'llm' } }),
+		queryOrpc.ai.getDefaultModel.queryOptions({ input: { kind: 'llm' } }),
 	)
 
 	const asrDefaultId = String(asrDefaultQuery.data?.model?.id ?? '')
@@ -184,7 +184,7 @@ function SubtitlesRoute() {
 	} = useCloudJob<any, Error>({
 		storageKey: `subtitleAsrJob:${id}`,
 		createQueryOptions: (jobId) => ({
-			...queryOrpcNext.subtitle.getAsrStatus.queryOptions({
+			...queryOrpc.subtitle.getAsrStatus.queryOptions({
 				input: { jobId },
 			}),
 			enabled: Boolean(jobId),
@@ -196,14 +196,14 @@ function SubtitlesRoute() {
 		}),
 		onCompleted: async () => {
 			await qc.invalidateQueries({
-				queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			})
-			await qc.invalidateQueries({ queryKey: queryOrpcNext.media.list.key() })
+			await qc.invalidateQueries({ queryKey: queryOrpc.media.list.key() })
 		},
 	})
 
 	const transcribeMutation = useEnhancedMutation(
-		queryOrpcNext.subtitle.transcribe.mutationOptions({
+		queryOrpc.subtitle.transcribe.mutationOptions({
 			onSuccess: (data) => {
 				setAsrJobId(data.jobId)
 			},
@@ -216,11 +216,11 @@ function SubtitlesRoute() {
 	)
 
 	const translateMutation = useEnhancedMutation(
-		queryOrpcNext.subtitle.translate.mutationOptions({
+		queryOrpc.subtitle.translate.mutationOptions({
 			onSuccess: async (data) => {
 				setTranslationDraft(data.translation)
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 			},
 		}),
@@ -232,7 +232,7 @@ function SubtitlesRoute() {
 	)
 
 	const deleteCueMutation = useEnhancedMutation(
-		queryOrpcNext.subtitle.deleteTranslationCue.mutationOptions({
+		queryOrpc.subtitle.deleteTranslationCue.mutationOptions({
 			onSuccess: (data) => {
 				setTranslationDraft(data.translation)
 			},
@@ -244,10 +244,10 @@ function SubtitlesRoute() {
 	)
 
 	const updateTranslationMutation = useEnhancedMutation(
-		queryOrpcNext.subtitle.updateTranslation.mutationOptions({
+		queryOrpc.subtitle.updateTranslation.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 			},
 		}),
@@ -259,10 +259,10 @@ function SubtitlesRoute() {
 	)
 
 	const optimizeMutation = useEnhancedMutation(
-		queryOrpcNext.subtitle.optimizeTranscription.mutationOptions({
+		queryOrpc.subtitle.optimizeTranscription.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 			},
 		}),
@@ -274,10 +274,10 @@ function SubtitlesRoute() {
 	)
 
 	const clearOptimizedMutation = useEnhancedMutation(
-		queryOrpcNext.subtitle.clearOptimizedTranscription.mutationOptions({
+		queryOrpc.subtitle.clearOptimizedTranscription.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 			},
 		}),
@@ -295,7 +295,7 @@ function SubtitlesRoute() {
 	} = useCloudJob<any, Error>({
 		storageKey: `subtitleRenderJob:${id}`,
 		createQueryOptions: (jobId) => ({
-			...queryOrpcNext.subtitle.getRenderStatus.queryOptions({
+			...queryOrpc.subtitle.getRenderStatus.queryOptions({
 				input: { jobId },
 			}),
 			enabled: Boolean(jobId),
@@ -309,14 +309,14 @@ function SubtitlesRoute() {
 			setPreviewVersion(Date.now())
 			setActiveStep('step4')
 			await qc.invalidateQueries({
-				queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			})
-			await qc.invalidateQueries({ queryKey: queryOrpcNext.media.list.key() })
+			await qc.invalidateQueries({ queryKey: queryOrpc.media.list.key() })
 		},
 	})
 
 	const renderMutation = useEnhancedMutation(
-		queryOrpcNext.subtitle.startCloudRender.mutationOptions({
+		queryOrpc.subtitle.startCloudRender.mutationOptions({
 			onSuccess: (data) => {
 				setRenderJobId(data.jobId)
 			},

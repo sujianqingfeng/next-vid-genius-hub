@@ -17,7 +17,7 @@ import {
 import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/ai/models'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 type ChannelRow = {
 	id: string
@@ -36,7 +36,7 @@ const SYNC_VIDEO_LIMIT = 20
 export const Route = createFileRoute('/channels')({
 	loader: async ({ context, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -45,18 +45,18 @@ export const Route = createFileRoute('/channels')({
 
 		await Promise.all([
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.channel.listChannels.queryOptions({}),
+				queryOrpc.channel.listChannels.queryOptions({}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.proxy.getActiveProxiesForDownload.queryOptions(),
+				queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.ai.listModels.queryOptions({
+				queryOrpc.ai.listModels.queryOptions({
 					input: { kind: 'llm', enabledOnly: true },
 				}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.ai.getDefaultModel.queryOptions({
+				queryOrpc.ai.getDefaultModel.queryOptions({
 					input: { kind: 'llm' },
 				}),
 			),
@@ -104,12 +104,12 @@ function ChannelsRoute() {
 		React.useState<Record<string, boolean>>({})
 
 	const channelsQuery = useQuery(
-		queryOrpcNext.channel.listChannels.queryOptions({}),
+		queryOrpc.channel.listChannels.queryOptions({}),
 	)
 	const channels = (channelsQuery.data?.channels ?? []) as ChannelRow[]
 
 	const proxiesQuery = useQuery(
-		queryOrpcNext.proxy.getActiveProxiesForDownload.queryOptions(),
+		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
 	const proxies = React.useMemo(() => {
 		const raw = proxiesQuery.data?.proxies ?? [
@@ -128,12 +128,12 @@ function ChannelsRoute() {
 	}, [proxiesQuery.data?.proxies])
 
 	const llmModelsQuery = useQuery(
-		queryOrpcNext.ai.listModels.queryOptions({
+		queryOrpc.ai.listModels.queryOptions({
 			input: { kind: 'llm', enabledOnly: true },
 		}),
 	)
 	const llmDefaultQuery = useQuery(
-		queryOrpcNext.ai.getDefaultModel.queryOptions({ input: { kind: 'llm' } }),
+		queryOrpc.ai.getDefaultModel.queryOptions({ input: { kind: 'llm' } }),
 	)
 
 	const llmDefaultId =
@@ -141,11 +141,11 @@ function ChannelsRoute() {
 		DEFAULT_CHAT_MODEL_ID
 
 	const createMutation = useEnhancedMutation(
-		queryOrpcNext.channel.createChannel.mutationOptions({
+		queryOrpc.channel.createChannel.mutationOptions({
 			onSuccess: async () => {
 				setNewInput('')
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.channel.listChannels.queryKey({}),
+					queryKey: queryOrpc.channel.listChannels.queryKey({}),
 				})
 			},
 		}),
@@ -158,10 +158,10 @@ function ChannelsRoute() {
 	)
 
 	const deleteMutation = useEnhancedMutation(
-		queryOrpcNext.channel.deleteChannel.mutationOptions({
+		queryOrpc.channel.deleteChannel.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.channel.listChannels.queryKey({}),
+					queryKey: queryOrpc.channel.listChannels.queryKey({}),
 				})
 				toast.success(t('deleteSuccess'))
 			},
@@ -175,24 +175,24 @@ function ChannelsRoute() {
 	)
 
 	const startSyncMutation = useMutation(
-		queryOrpcNext.channel.startCloudSync.mutationOptions({
+		queryOrpc.channel.startCloudSync.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.channel.listChannels.queryKey({}),
+					queryKey: queryOrpc.channel.listChannels.queryKey({}),
 				})
 			},
 		}),
 	)
 
 	const finalizeMutation = useEnhancedMutation(
-		queryOrpcNext.channel.finalizeCloudSync.mutationOptions({
+		queryOrpc.channel.finalizeCloudSync.mutationOptions({
 			onSuccess: async (_res, variables) => {
 				await Promise.all([
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.channel.listChannels.queryKey({}),
+						queryKey: queryOrpc.channel.listChannels.queryKey({}),
 					}),
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.channel.listChannelVideos.queryKey({
+						queryKey: queryOrpc.channel.listChannelVideos.queryKey({
 							input: { id: variables.id, limit: SYNC_VIDEO_LIMIT },
 						}),
 					}),
@@ -208,7 +208,7 @@ function ChannelsRoute() {
 	)
 
 	const translateMutation = useEnhancedMutation(
-		queryOrpcNext.channel.translateVideoTitles.mutationOptions({
+		queryOrpc.channel.translateVideoTitles.mutationOptions({
 			onSuccess: (res, variables) => {
 				const map: Record<string, string> = {}
 				for (const item of res.items) {
@@ -420,7 +420,7 @@ function ChannelCard({
 
 	// Re-create query with polling only when jobId exists.
 	const polledStatusQuery = useQuery({
-		...queryOrpcNext.channel.getCloudSyncStatus.queryOptions({
+		...queryOrpc.channel.getCloudSyncStatus.queryOptions({
 			input: { jobId: jobId || '' },
 		}),
 		enabled: Boolean(jobId),
@@ -438,7 +438,7 @@ function ChannelCard({
 	const canFinalize = Boolean(jobId) && effectiveStatus === 'completed'
 
 	const videosQuery = useQuery({
-		...queryOrpcNext.channel.listChannelVideos.queryOptions({
+		...queryOrpc.channel.listChannelVideos.queryOptions({
 			input: { id: ch.id, limit: SYNC_VIDEO_LIMIT },
 		}),
 		enabled: expanded,

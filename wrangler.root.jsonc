@@ -44,7 +44,6 @@
   ],
   "vars": {
     "NODE_ENV": "production",
-    "NEXT_PUBLIC_APP_URL": "https://vid-hub.temp-drop-files.store",
     "CF_ORCHESTRATOR_URL": "https://media-orchestrator.nieshuanghe.workers.dev"
   },
   "observability": {
@@ -70,7 +69,6 @@
       ],
       "vars": {
         "NODE_ENV": "development",
-        "NEXT_PUBLIC_APP_URL": "http://localhost:3100",
         "CF_ORCHESTRATOR_URL": "http://localhost:8787",
         "JOB_CALLBACK_HMAC_SECRET": "replace-with-strong-secret"
       }

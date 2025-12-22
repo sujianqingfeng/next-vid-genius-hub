@@ -19,7 +19,7 @@ import {
 import { cn } from '~/lib/utils'
 
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 const navItems = [
 	{ key: 'users', href: '/admin/users' },
@@ -42,7 +42,7 @@ function stripBasePath(pathname: string): string {
 export const Route = createFileRoute('/admin')({
 	loader: async ({ context, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 
 		if (!me.user) {

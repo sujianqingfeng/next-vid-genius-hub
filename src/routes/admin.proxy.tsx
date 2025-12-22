@@ -21,7 +21,7 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
 import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 const SearchSchema = z.object({
 	tab: z.enum(['subscriptions', 'proxies']).optional().default('subscriptions'),
@@ -42,7 +42,7 @@ export const Route = createFileRoute('/admin/proxy')({
 	}),
 	loader: async ({ context, deps, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -51,13 +51,13 @@ export const Route = createFileRoute('/admin/proxy')({
 
 		await Promise.all([
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.proxy.getSSRSubscriptions.queryOptions(),
+				queryOrpc.proxy.getSSRSubscriptions.queryOptions(),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.proxy.getDefaultProxy.queryOptions(),
+				queryOrpc.proxy.getDefaultProxy.queryOptions(),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.proxy.getProxies.queryOptions({
+				queryOrpc.proxy.getProxies.queryOptions({
 					input: {
 						subscriptionId: deps.subscriptionId,
 						page: deps.page,
@@ -91,14 +91,10 @@ function ProxyRoute() {
 	const [newName, setNewName] = React.useState('')
 	const [newUrl, setNewUrl] = React.useState('')
 
-	const subsQuery = useQuery(
-		queryOrpcNext.proxy.getSSRSubscriptions.queryOptions(),
-	)
-	const defaultQuery = useQuery(
-		queryOrpcNext.proxy.getDefaultProxy.queryOptions(),
-	)
+	const subsQuery = useQuery(queryOrpc.proxy.getSSRSubscriptions.queryOptions())
+	const defaultQuery = useQuery(queryOrpc.proxy.getDefaultProxy.queryOptions())
 	const proxiesQuery = useQuery(
-		queryOrpcNext.proxy.getProxies.queryOptions({
+		queryOrpc.proxy.getProxies.queryOptions({
 			input: { subscriptionId, page, limit: DEFAULT_PAGE_LIMIT },
 		}),
 	)
@@ -110,13 +106,13 @@ function ProxyRoute() {
 	const defaultProxyId = defaultQuery.data?.defaultProxyId ?? null
 
 	const createSubscriptionMutation = useEnhancedMutation(
-		queryOrpcNext.proxy.createSSRSubscription.mutationOptions({
+		queryOrpc.proxy.createSSRSubscription.mutationOptions({
 			onSuccess: async () => {
 				setCreateDialogOpen(false)
 				setNewName('')
 				setNewUrl('')
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.proxy.getSSRSubscriptions.key(),
+					queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
 				})
 			},
 		}),
@@ -130,14 +126,14 @@ function ProxyRoute() {
 	)
 
 	const deleteSubscriptionMutation = useEnhancedMutation(
-		queryOrpcNext.proxy.deleteSSRSubscription.mutationOptions({
+		queryOrpc.proxy.deleteSSRSubscription.mutationOptions({
 			onSuccess: async () => {
 				await Promise.all([
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.proxy.getSSRSubscriptions.key(),
+						queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
 					}),
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.proxy.getProxies.key(),
+						queryKey: queryOrpc.proxy.getProxies.key(),
 					}),
 				])
 			},
@@ -152,14 +148,14 @@ function ProxyRoute() {
 	)
 
 	const importMutation = useEnhancedMutation(
-		queryOrpcNext.proxy.importSSRFromSubscription.mutationOptions({
+		queryOrpc.proxy.importSSRFromSubscription.mutationOptions({
 			onSuccess: async (data) => {
 				await Promise.all([
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.proxy.getSSRSubscriptions.key(),
+						queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
 					}),
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.proxy.getProxies.key(),
+						queryKey: queryOrpc.proxy.getProxies.key(),
 					}),
 				])
 				toast.success(
@@ -176,10 +172,10 @@ function ProxyRoute() {
 	)
 
 	const setDefaultMutation = useEnhancedMutation(
-		queryOrpcNext.proxy.setDefaultProxy.mutationOptions({
+		queryOrpc.proxy.setDefaultProxy.mutationOptions({
 			onSuccess: async (data) => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.proxy.getDefaultProxy.key(),
+					queryKey: queryOrpc.proxy.getDefaultProxy.key(),
 				})
 				const nextId = data.defaultProxyId ?? null
 				toast.success(
@@ -198,17 +194,17 @@ function ProxyRoute() {
 	)
 
 	const deleteProxyMutation = useEnhancedMutation(
-		queryOrpcNext.proxy.deleteProxy.mutationOptions({
+		queryOrpc.proxy.deleteProxy.mutationOptions({
 			onSuccess: async () => {
 				await Promise.all([
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.proxy.getProxies.key(),
+						queryKey: queryOrpc.proxy.getProxies.key(),
 					}),
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.proxy.getDefaultProxy.key(),
+						queryKey: queryOrpc.proxy.getDefaultProxy.key(),
 					}),
 					qc.invalidateQueries({
-						queryKey: queryOrpcNext.proxy.getSSRSubscriptions.key(),
+						queryKey: queryOrpc.proxy.getSSRSubscriptions.key(),
 					}),
 				])
 			},

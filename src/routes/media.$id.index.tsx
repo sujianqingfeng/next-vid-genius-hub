@@ -33,12 +33,12 @@ import type { MediaItem } from '~/lib/media/types'
 import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
 import { formatBytes, formatNumber } from '~/lib/utils/format/format'
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 export const Route = createFileRoute('/media/$id/')({
 	loader: async ({ context, params, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -46,7 +46,7 @@ export const Route = createFileRoute('/media/$id/')({
 		}
 
 		const item = await context.queryClient.ensureQueryData(
-			queryOrpcNext.media.byId.queryOptions({ input: { id: params.id } }),
+			queryOrpc.media.byId.queryOptions({ input: { id: params.id } }),
 		)
 
 		if (!item) throw notFound()
@@ -90,10 +90,10 @@ function MediaDetailIndexRoute() {
 	const { id } = Route.useParams()
 
 	const mediaQuery = useQuery(
-		queryOrpcNext.media.byId.queryOptions({ input: { id } }),
+		queryOrpc.media.byId.queryOptions({ input: { id } }),
 	)
 	const proxiesQuery = useQuery(
-		queryOrpcNext.proxy.getActiveProxiesForDownload.queryOptions(),
+		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
 
 	const proxies = (proxiesQuery.data?.proxies ?? []) as ProxyRow[]
@@ -111,12 +111,12 @@ function MediaDetailIndexRoute() {
 	}, [defaultProxyId, proxies])
 
 	const refreshMutation = useEnhancedMutation(
-		queryOrpcNext.media.refreshMetadata.mutationOptions({
+		queryOrpc.media.refreshMetadata.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
-				await qc.invalidateQueries({ queryKey: queryOrpcNext.media.list.key() })
+				await qc.invalidateQueries({ queryKey: queryOrpc.media.list.key() })
 			},
 		}),
 		{

@@ -5,7 +5,9 @@ import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { createIsomorphicFn } from '@tanstack/react-start'
 import type { AppRouter } from '~/orpc/router'
 
-function isSafeRelativeNext(value: string | undefined | null): value is string {
+function isSafeRelativeRedirect(
+	value: string | undefined | null,
+): value is string {
 	if (!value) return false
 	if (!value.startsWith('/')) return false
 	if (value.startsWith('//')) return false
@@ -13,7 +15,7 @@ function isSafeRelativeNext(value: string | undefined | null): value is string {
 }
 
 export function getDefaultRedirect(next: string | undefined | null): string {
-	return isSafeRelativeNext(next) ? next : '/media'
+	return isSafeRelativeRedirect(next) ? next : '/media'
 }
 
 function createLazyRouterClient<T extends RouterClient<any>>(
@@ -40,7 +42,7 @@ function createLazyRouterClient<T extends RouterClient<any>>(
 	}) as any
 }
 
-const getNextApiClient = createIsomorphicFn()
+const getOrpcClient = createIsomorphicFn()
 	.server((): RouterClient<AppRouter> => {
 		// Server-side: avoid an HTTP self-fetch to `/api/orpc` (which can hang in
 		// Workers due to subrequest/header restrictions). Call the router directly.
@@ -70,5 +72,5 @@ const getNextApiClient = createIsomorphicFn()
 		return createORPCClient(link) as RouterClient<AppRouter>
 	})
 
-export const orpcNext: RouterClient<AppRouter> = getNextApiClient()
-export const queryOrpcNext = createTanstackQueryUtils(orpcNext)
+export const orpcClient: RouterClient<AppRouter> = getOrpcClient()
+export const queryOrpc = createTanstackQueryUtils(orpcClient)

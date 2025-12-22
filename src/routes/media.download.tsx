@@ -20,7 +20,7 @@ import {
 } from '~/components/ui/select'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 const FormSchema = z.object({
 	url: z.string().url(),
@@ -31,7 +31,7 @@ const FormSchema = z.object({
 export const Route = createFileRoute('/media/download')({
 	loader: async ({ context, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -39,7 +39,7 @@ export const Route = createFileRoute('/media/download')({
 		}
 
 		await context.queryClient.prefetchQuery(
-			queryOrpcNext.proxy.getActiveProxiesForDownload.queryOptions(),
+			queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 		)
 	},
 	component: MediaDownloadRoute,
@@ -51,7 +51,7 @@ function MediaDownloadRoute() {
 	const navigate = useNavigate()
 
 	const proxiesQuery = useQuery(
-		queryOrpcNext.proxy.getActiveProxiesForDownload.queryOptions(),
+		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
 	const proxies = proxiesQuery.data?.proxies ?? [
 		{ id: 'none', name: 'No Proxy' },
@@ -59,7 +59,7 @@ function MediaDownloadRoute() {
 	const defaultProxyId = proxiesQuery.data?.defaultProxyId ?? 'none'
 
 	const startMutation = useEnhancedMutation(
-		queryOrpcNext.download.startCloudDownload.mutationOptions({
+		queryOrpc.download.startCloudDownload.mutationOptions({
 			onSuccess: (data) => {
 				navigate({
 					to: '/media/$id',

@@ -8,7 +8,7 @@ import { Button } from '~/components/ui/button'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { MEDIA_PAGE_SIZE } from '~/lib/pagination'
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 const SearchSchema = z.object({
 	page: z.coerce.number().int().min(1).optional().default(1),
@@ -19,7 +19,7 @@ export const Route = createFileRoute('/media/')({
 	loaderDeps: ({ search }) => ({ page: search.page }),
 	loader: async ({ context, deps, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/media/')({
 		}
 
 		await context.queryClient.prefetchQuery(
-			queryOrpcNext.media.list.queryOptions({
+			queryOrpc.media.list.queryOptions({
 				input: { page: deps.page, limit: MEDIA_PAGE_SIZE },
 			}),
 		)
@@ -52,15 +52,15 @@ function MediaIndexRoute() {
 	const confirmDialog = useConfirmDialog()
 
 	const listQuery = useQuery(
-		queryOrpcNext.media.list.queryOptions({
+		queryOrpc.media.list.queryOptions({
 			input: { page, limit: MEDIA_PAGE_SIZE },
 		}),
 	)
 
 	const deleteMutation = useEnhancedMutation(
-		queryOrpcNext.media.deleteById.mutationOptions({
+		queryOrpc.media.deleteById.mutationOptions({
 			onSuccess: async () => {
-				await qc.invalidateQueries({ queryKey: queryOrpcNext.media.list.key() })
+				await qc.invalidateQueries({ queryKey: queryOrpc.media.list.key() })
 				const refreshed = await listQuery.refetch()
 				const nextItems = refreshed.data?.items ?? []
 				if (page > 1 && nextItems.length === 0) {

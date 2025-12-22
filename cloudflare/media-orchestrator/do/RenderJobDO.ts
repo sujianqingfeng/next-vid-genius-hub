@@ -1,7 +1,7 @@
 import { bucketPaths } from '@app/media-domain'
 import { runAsrForPipeline } from '../asr/pipeline'
 import {
-	fetchWhisperApiConfigFromNext,
+	fetchWhisperApiConfigFromApp,
 	getWhisperJobResult,
 	getWhisperJobStatus,
 	mapWhisperStatusToJobStatus,
@@ -28,10 +28,10 @@ export class RenderJobDO {
 		this.env = env
 	}
 
-	private shouldNotifyNext(doc: any) {
+	private shouldNotifyApp(doc: any) {
 		if (!doc) return false
 		if (!TERMINAL_STATUSES.includes(doc.status)) return false
-		if (doc.nextNotified) return false
+		if (doc.appNotified || doc.nextNotified) return false
 		if (doc.status !== 'completed') return true
 		if (doc.engine === 'asr-pipeline') return Boolean(doc.outputs?.vtt?.key)
 		return Boolean(doc.outputKey)
@@ -92,17 +92,23 @@ export class RenderJobDO {
 			await this.state.storage.put('job', next)
 			const shouldNotify =
 				TERMINAL_STATUSES.includes(next.status) &&
-				!next.nextNotified &&
+				!(next.appNotified || next.nextNotified) &&
 				(next.status !== 'completed' ||
 					(next.engine === 'asr-pipeline'
 						? Boolean(next.outputs?.vtt?.key)
 						: Boolean(next.outputKey)))
 			if (shouldNotify) {
-				const ok = await this.notifyNext(next)
+				const ok = await this.notifyApp(next)
 				if (ok) {
+					next.appNotified = true
+					next.appNotifyPending = false
+					// Backward compatible for older deploys/rollbacks.
 					next.nextNotified = true
 					next.nextNotifyPending = false
 				} else {
+					next.appNotifyPending = true
+					next.appNotifyAttempts = (next.appNotifyAttempts || 0) + 1
+					// Backward compatible for older deploys/rollbacks.
 					next.nextNotifyPending = true
 					next.nextNotifyAttempts = (next.nextNotifyAttempts || 0) + 1
 					try {
@@ -272,11 +278,13 @@ export class RenderJobDO {
 					// Mirror progress handler gating: only notify the app on completed when a video output exists
 					const shouldNotify =
 						TERMINAL_STATUSES.includes(doc.status) &&
-						!doc.nextNotified &&
+						!(doc.appNotified || doc.nextNotified) &&
 						(doc.status !== 'completed' || Boolean(doc.outputKey))
 
 					if (shouldNotify) {
-						await this.notifyNext(doc)
+						await this.notifyApp(doc)
+						doc.appNotified = true
+						// Backward compatible for older deploys/rollbacks.
 						doc.nextNotified = true
 						await this.state.storage.put('job', doc)
 					}
@@ -347,26 +355,37 @@ export class RenderJobDO {
 		if (!doc || !doc.jobId) return
 
 		// Retry app callback delivery for terminal jobs.
-		if (doc.nextNotifyPending && this.shouldNotifyNext(doc)) {
+		if ((doc.appNotifyPending || doc.nextNotifyPending) && this.shouldNotifyApp(doc)) {
 			const maxAttempts = 20
 			const attempts =
-				typeof doc.nextNotifyAttempts === 'number' ? doc.nextNotifyAttempts : 0
+				typeof doc.appNotifyAttempts === 'number'
+					? doc.appNotifyAttempts
+					: typeof doc.nextNotifyAttempts === 'number'
+						? doc.nextNotifyAttempts
+						: 0
 			if (attempts >= maxAttempts) {
-				console.warn('[orchestrator] notifyNext exceeded max attempts', {
+				console.warn('[orchestrator] notifyApp exceeded max attempts', {
 					jobId: doc.jobId,
 					attempts,
 				})
+				doc.appNotifyPending = false
+				// Backward compatible for older deploys/rollbacks.
 				doc.nextNotifyPending = false
 			} else {
-				const ok = await this.notifyNext(doc)
+				const ok = await this.notifyApp(doc)
 				if (ok) {
+					doc.appNotified = true
+					doc.appNotifyPending = false
+					// Backward compatible for older deploys/rollbacks.
 					doc.nextNotified = true
 					doc.nextNotifyPending = false
 				} else {
+					doc.appNotifyAttempts = attempts + 1
+					// Backward compatible for older deploys/rollbacks.
 					doc.nextNotifyAttempts = attempts + 1
 					const delayMs = Math.min(
 						60_000,
-						2000 * 2 ** Math.min(doc.nextNotifyAttempts, 5),
+						2000 * 2 ** Math.min(doc.appNotifyAttempts, 5),
 					)
 					try {
 						await this.state.storage.setAlarm(Date.now() + delayMs)
@@ -394,7 +413,7 @@ export class RenderJobDO {
 				throw new Error('whisper_api missing providerId/model')
 			}
 
-			const cfg = await fetchWhisperApiConfigFromNext(this.env, {
+			const cfg = await fetchWhisperApiConfigFromApp(this.env, {
 				providerId,
 				modelId,
 			})
@@ -566,7 +585,7 @@ export class RenderJobDO {
 		if (!audioKey)
 			throw new Error('asr-pipeline.whisper_api: missing outputAudioKey')
 
-		const cfg = await fetchWhisperApiConfigFromNext(this.env, {
+		const cfg = await fetchWhisperApiConfigFromApp(this.env, {
 			providerId,
 			modelId,
 		})
@@ -611,11 +630,11 @@ export class RenderJobDO {
 		} catch {}
 	}
 
-	private async notifyNext(doc: any) {
-		const nextBase = (
-			this.env.NEXT_BASE_URL || 'http://localhost:3000'
+	private async notifyApp(doc: any) {
+		const appBase = (
+			this.env.APP_BASE_URL || 'http://localhost:3000'
 		).replace(/\/$/, '')
-		const cbUrl = `${nextBase}/api/render/cf-callback`
+		const cbUrl = `${appBase}/api/render/cf-callback`
 		const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
 		const payload: Record<string, unknown> = {
 			jobId: doc.jobId,
@@ -715,7 +734,7 @@ export class RenderJobDO {
 				body: JSON.stringify(payload),
 			})
 			if (!res.ok) {
-				console.warn('[orchestrator] notifyNext non-2xx', {
+				console.warn('[orchestrator] notifyApp non-2xx', {
 					jobId: doc.jobId,
 					status: res.status,
 					cbUrl,
@@ -724,7 +743,7 @@ export class RenderJobDO {
 			}
 			return true
 		} catch (e) {
-			console.warn('[orchestrator] notifyNext error', {
+			console.warn('[orchestrator] notifyApp error', {
 				jobId: doc.jobId,
 				cbUrl,
 				msg: (e as Error)?.message || String(e),

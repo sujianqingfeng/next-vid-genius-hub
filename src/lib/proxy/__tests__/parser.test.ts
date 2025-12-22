@@ -241,9 +241,7 @@ describe('parseSSRSubscription', () => {
 		expect(vless?.nodeUrl).toContain('host=host.example.com')
 		expect(vless?.nodeUrl).toContain('path=%2Fws')
 
-		const vlessIpv6 = result.find((proxy) =>
-			proxy.name?.includes('IPv6'),
-		)
+		const vlessIpv6 = result.find((proxy) => proxy.name?.includes('IPv6'))
 		expect(vlessIpv6).toBeDefined()
 		expect(vlessIpv6).toMatchObject({
 			server: '2606:4700:4400::4968:6c8e',
@@ -251,9 +249,7 @@ describe('parseSSRSubscription', () => {
 			protocol: 'vless',
 			username: 'fef41949-89d1-441e-ae16-153c62697ef5',
 		})
-		expect(vlessIpv6?.nodeUrl).toContain(
-			'@[2606:4700:4400::4968:6c8e]:443',
-		)
+		expect(vlessIpv6?.nodeUrl).toContain('@[2606:4700:4400::4968:6c8e]:443')
 		expect(vlessIpv6?.nodeUrl).toContain('type=ws')
 		expect(vlessIpv6?.nodeUrl).toContain('security=tls')
 		expect(vlessIpv6?.nodeUrl).toContain('host=cfv.temp-drop-files.store')

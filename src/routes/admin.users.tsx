@@ -24,12 +24,12 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { ADMIN_USERS_PAGE_SIZE } from '~/lib/pagination'
 
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 export const Route = createFileRoute('/admin/users')({
 	loader: async ({ context }) => {
 		await context.queryClient.prefetchQuery(
-			queryOrpcNext.admin.listUsers.queryOptions({
+			queryOrpc.admin.listUsers.queryOptions({
 				input: { page: 1, limit: ADMIN_USERS_PAGE_SIZE, q: undefined },
 			}),
 		)
@@ -55,7 +55,7 @@ function AdminUsersPage() {
 	const [addRemark, setAddRemark] = useState('')
 
 	const listQuery = useQuery({
-		...queryOrpcNext.admin.listUsers.queryOptions({
+		...queryOrpc.admin.listUsers.queryOptions({
 			input: {
 				page,
 				limit: ADMIN_USERS_PAGE_SIZE,
@@ -66,16 +66,16 @@ function AdminUsersPage() {
 	})
 
 	const invalidateList = () =>
-		qc.invalidateQueries({ queryKey: queryOrpcNext.admin.listUsers.key() })
+		qc.invalidateQueries({ queryKey: queryOrpc.admin.listUsers.key() })
 	const invalidateTransactions = (userId: string) =>
 		qc.invalidateQueries({
-			queryKey: queryOrpcNext.admin.listUserTransactions.queryKey({
+			queryKey: queryOrpc.admin.listUserTransactions.queryKey({
 				input: { userId },
 			}),
 		})
 
 	const updateRole = useEnhancedMutation(
-		queryOrpcNext.admin.updateUserRole.mutationOptions({
+		queryOrpc.admin.updateUserRole.mutationOptions({
 			onSuccess: invalidateList,
 		}),
 		{
@@ -86,7 +86,7 @@ function AdminUsersPage() {
 	)
 
 	const updateStatus = useEnhancedMutation(
-		queryOrpcNext.admin.updateUserStatus.mutationOptions({
+		queryOrpc.admin.updateUserStatus.mutationOptions({
 			onSuccess: invalidateList,
 		}),
 		{
@@ -100,7 +100,7 @@ function AdminUsersPage() {
 	)
 
 	const addPointsMutation = useEnhancedMutation(
-		queryOrpcNext.admin.addUserPoints.mutationOptions({
+		queryOrpc.admin.addUserPoints.mutationOptions({
 			onSuccess: (_, variables) => {
 				invalidateList()
 				invalidateTransactions(variables.userId)
@@ -130,7 +130,7 @@ function AdminUsersPage() {
 	}
 
 	const transactionsQuery = useQuery({
-		...queryOrpcNext.admin.listUserTransactions.queryOptions({
+		...queryOrpc.admin.listUserTransactions.queryOptions({
 			input: { userId: selectedUserForLog?.id || '', limit: 20, offset: 0 },
 		}),
 		enabled: Boolean(selectedUserForLog?.id),

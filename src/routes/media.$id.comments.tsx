@@ -58,7 +58,7 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
 import { useLocale, useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 type SourcePolicy = 'auto' | 'original' | 'subtitles'
 
@@ -93,7 +93,7 @@ export const Route = createFileRoute('/media/$id/comments')({
 	validateSearch: SearchSchema,
 	loader: async ({ context, params, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -101,21 +101,21 @@ export const Route = createFileRoute('/media/$id/comments')({
 		}
 
 		const item = await context.queryClient.ensureQueryData(
-			queryOrpcNext.media.byId.queryOptions({ input: { id: params.id } }),
+			queryOrpc.media.byId.queryOptions({ input: { id: params.id } }),
 		)
 		if (!item) throw notFound()
 
 		await Promise.all([
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.proxy.getActiveProxiesForDownload.queryOptions(),
+				queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.ai.listModels.queryOptions({
+				queryOrpc.ai.listModels.queryOptions({
 					input: { kind: 'llm', enabledOnly: true },
 				}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.ai.getDefaultModel.queryOptions({
+				queryOrpc.ai.getDefaultModel.queryOptions({
 					input: { kind: 'llm' },
 				}),
 			),
@@ -183,18 +183,18 @@ function MediaCommentsRoute() {
 	const tab = rawTab === 'moderate' ? 'basics' : rawTab
 
 	const mediaQuery = useQuery(
-		queryOrpcNext.media.byId.queryOptions({ input: { id } }),
+		queryOrpc.media.byId.queryOptions({ input: { id } }),
 	)
 	const proxiesQuery = useQuery(
-		queryOrpcNext.proxy.getActiveProxiesForDownload.queryOptions(),
+		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
 	const llmModelsQuery = useQuery(
-		queryOrpcNext.ai.listModels.queryOptions({
+		queryOrpc.ai.listModels.queryOptions({
 			input: { kind: 'llm', enabledOnly: true },
 		}),
 	)
 	const llmDefaultQuery = useQuery(
-		queryOrpcNext.ai.getDefaultModel.queryOptions({ input: { kind: 'llm' } }),
+		queryOrpc.ai.getDefaultModel.queryOptions({ input: { kind: 'llm' } }),
 	)
 
 	const comments: Comment[] =
@@ -266,10 +266,10 @@ function MediaCommentsRoute() {
 	}, [mediaQuery.data?.commentsTemplate])
 
 	const updateRenderSettingsMutation = useEnhancedMutation(
-		queryOrpcNext.media.updateRenderSettings.mutationOptions({
+		queryOrpc.media.updateRenderSettings.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 			},
 		}),
@@ -287,11 +287,11 @@ function MediaCommentsRoute() {
 	const [editTranslatedTitle, setEditTranslatedTitle] = React.useState('')
 
 	const updateTitlesMutation = useEnhancedMutation(
-		queryOrpcNext.media.updateTitles.mutationOptions({
+		queryOrpc.media.updateTitles.mutationOptions({
 			onSuccess: async () => {
 				setEditDialogOpen(false)
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 			},
 		}),
@@ -388,7 +388,7 @@ function MediaCommentsRoute() {
 		autoClearOnComplete: false,
 		completeStatuses: ['completed', 'failed', 'canceled'],
 		createQueryOptions: (jobId) =>
-			queryOrpcNext.comment.getCloudCommentsStatus.queryOptions({
+			queryOrpc.comment.getCloudCommentsStatus.queryOptions({
 				input: { jobId },
 				enabled: !!jobId,
 				refetchInterval: (q: { state: { data?: CloudStatus } }) => {
@@ -401,7 +401,7 @@ function MediaCommentsRoute() {
 	})
 
 	const startCloudCommentsMutation = useEnhancedMutation(
-		queryOrpcNext.comment.startCloudCommentsDownload.mutationOptions({
+		queryOrpc.comment.startCloudCommentsDownload.mutationOptions({
 			onSuccess: (data) => setCommentsCloudJobId(data.jobId),
 		}),
 		{
@@ -412,11 +412,11 @@ function MediaCommentsRoute() {
 	)
 
 	const finalizeCloudCommentsMutation = useEnhancedMutation(
-		queryOrpcNext.comment.finalizeCloudCommentsDownload.mutationOptions({
+		queryOrpc.comment.finalizeCloudCommentsDownload.mutationOptions({
 			onSuccess: async () => {
 				setCommentsCloudJobId(null)
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 			},
 		}),
@@ -446,10 +446,10 @@ function MediaCommentsRoute() {
 
 	// ---------- Translation ----------
 	const translateCommentsMutation = useEnhancedMutation(
-		queryOrpcNext.comment.translateComments.mutationOptions({
+		queryOrpc.comment.translateComments.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 			},
 		}),
@@ -464,11 +464,11 @@ function MediaCommentsRoute() {
 
 	// ---------- Delete ----------
 	const deleteCommentsMutation = useEnhancedMutation(
-		queryOrpcNext.comment.deleteComments.mutationOptions({
+		queryOrpc.comment.deleteComments.mutationOptions({
 			onSuccess: async (data, variables) => {
 				setSelectedCommentIds(new Set())
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 				toast.success(
 					t('toasts.commentsDeleted', { count: variables.commentIds.length }),
@@ -484,10 +484,10 @@ function MediaCommentsRoute() {
 	)
 
 	const deleteOneMutation = useEnhancedMutation(
-		queryOrpcNext.comment.deleteComment.mutationOptions({
+		queryOrpc.comment.deleteComment.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 				})
 				toast.success(t('toasts.commentsDeleted', { count: 1 }))
 			},
@@ -533,11 +533,11 @@ function MediaCommentsRoute() {
 		completeStatuses: ['completed'],
 		onCompleted: async () => {
 			await qc.invalidateQueries({
-				queryKey: queryOrpcNext.media.byId.queryKey({ input: { id } }),
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
 			})
 		},
 		createQueryOptions: (jobId) =>
-			queryOrpcNext.comment.getRenderStatus.queryOptions({
+			queryOrpc.comment.getRenderStatus.queryOptions({
 				input: { jobId },
 				enabled: !!jobId,
 				refetchInterval: (q: { state: { data?: CloudStatus } }) => {
@@ -550,7 +550,7 @@ function MediaCommentsRoute() {
 	})
 
 	const startCloudRenderMutation = useEnhancedMutation(
-		queryOrpcNext.comment.startCloudRender.mutationOptions({
+		queryOrpc.comment.startCloudRender.mutationOptions({
 			onSuccess: (data) => setRenderJobId(data.jobId),
 		}),
 		{

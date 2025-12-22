@@ -60,7 +60,7 @@
 
 1) 确认 `wrangler.toml`（production）关键项：
 - 外部容器基址：`CONTAINER_BASE_URL*`
-- 回调业务应用：`NEXT_BASE_URL`（例如 `https://vid-hub.temp-drop-files.store`）
+- 回调业务应用：`APP_BASE_URL`（例如 `https://vid-hub.temp-drop-files.store`）
 - R2 S3 endpoint：`S3_ENDPOINT` / `S3_INTERNAL_ENDPOINT`
 - bucket：`S3_BUCKET_NAME=vidgen-render`
 - KV / R2 bindings 与 DO bindings 正确
@@ -95,7 +95,7 @@ pnpm exec wrangler secret put JOB_CALLBACK_HMAC_SECRET --config wrangler.root.js
 
 2) 确认生产变量
 - `CF_ORCHESTRATOR_URL`：指向生产 orchestrator（在 `wrangler.root.jsonc` 的 `vars`）
-- `NEXT_PUBLIC_APP_URL`：指向生产域名
+- 业务应用域名本身由 Cloudflare `routes` 绑定（见 `wrangler.root.jsonc` 的 `routes` 配置）
 
 3) 运行 D1 迁移（如需要）
 

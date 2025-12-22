@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 const SearchSchema = z.object({
 	tab: z.enum(['subscriptions', 'proxies']).optional().default('subscriptions'),
@@ -17,7 +17,7 @@ export const Route = createFileRoute('/proxy')({
 	}),
 	loader: async ({ context, deps, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href

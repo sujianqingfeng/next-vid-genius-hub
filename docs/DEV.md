@@ -88,13 +88,13 @@ bucket_name = "vidgen-render"
 
 [vars]
 JOB_TTL_SECONDS = 86400
-CONTAINER_BASE_URL = "http://localhost:9080"
-CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
-CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
-# 业务应用（TanStack Start）默认 `pnpm dev` 跑在 3100。
-NEXT_BASE_URL = "http://localhost:3100"
-JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
-PUT_EXPIRES = 600
+	CONTAINER_BASE_URL = "http://localhost:9080"
+	CONTAINER_BASE_URL_REMOTION = "http://localhost:8190"
+	CONTAINER_BASE_URL_DOWNLOADER = "http://localhost:8100"
+	# 业务应用（TanStack Start）默认 `pnpm dev` 跑在 3100。
+	APP_BASE_URL = "http://localhost:3100"
+	JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
+	PUT_EXPIRES = 600
 
 # R2 直连
 S3_ENDPOINT = "https://<account>.r2.cloudflarestorage.com"

@@ -11,7 +11,7 @@ import {
 	useSignupMutation,
 } from '../integrations/auth/hooks'
 import { useTranslations } from '../integrations/i18n'
-import { getDefaultRedirect } from '../integrations/orpc/next-client'
+import { getDefaultRedirect } from '../integrations/orpc/client'
 
 const SearchSchema = z.object({
 	next: z.string().optional(),

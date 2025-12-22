@@ -6,14 +6,14 @@ import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 const TX_LIMIT = 50
 
 export const Route = createFileRoute('/points')({
 	loader: async ({ context, location }) => {
 		const me = await context.queryClient.ensureQueryData(
-			queryOrpcNext.auth.me.queryOptions(),
+			queryOrpc.auth.me.queryOptions(),
 		)
 		if (!me.user) {
 			const next = location.href
@@ -22,10 +22,10 @@ export const Route = createFileRoute('/points')({
 
 		await Promise.all([
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.points.getMyBalance.queryOptions(),
+				queryOrpc.points.getMyBalance.queryOptions(),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.points.listMyTransactions.queryOptions({
+				queryOrpc.points.listMyTransactions.queryOptions({
 					input: { limit: TX_LIMIT, offset: 0 },
 				}),
 			),
@@ -37,11 +37,9 @@ export const Route = createFileRoute('/points')({
 function PointsRoute() {
 	const t = useTranslations('Points')
 
-	const balanceQuery = useQuery(
-		queryOrpcNext.points.getMyBalance.queryOptions(),
-	)
+	const balanceQuery = useQuery(queryOrpc.points.getMyBalance.queryOptions())
 	const txQuery = useQuery(
-		queryOrpcNext.points.listMyTransactions.queryOptions({
+		queryOrpc.points.listMyTransactions.queryOptions({
 			input: { limit: TX_LIMIT, offset: 0 },
 		}),
 	)

@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 
 import { useTranslations } from '../integrations/i18n'
-import { queryOrpcNext } from '../integrations/orpc/next-client'
+import { queryOrpc } from '../integrations/orpc/client'
 
 type ModelKind = 'llm' | 'asr'
 
@@ -61,12 +61,12 @@ export const Route = createFileRoute('/admin/ai-models')({
 	loader: async ({ context }) => {
 		await Promise.all([
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.admin.listAiProviders.queryOptions({
+				queryOrpc.admin.listAiProviders.queryOptions({
 					input: { kind: 'llm', enabledOnly: false },
 				}),
 			),
 			context.queryClient.prefetchQuery(
-				queryOrpcNext.admin.listAiModels.queryOptions({
+				queryOrpc.admin.listAiModels.queryOptions({
 					input: { kind: 'llm', enabledOnly: false },
 				}),
 			),
@@ -82,14 +82,14 @@ function AdminAiModelsPage() {
 	const [editing, setEditing] = useState<EditingModel | null>(null)
 
 	const providersQuery = useQuery(
-		queryOrpcNext.admin.listAiProviders.queryOptions({
+		queryOrpc.admin.listAiProviders.queryOptions({
 			input: { kind, enabledOnly: false },
 		}),
 	)
 	const providers = providersQuery.data?.items ?? []
 
 	const modelsQuery = useQuery(
-		queryOrpcNext.admin.listAiModels.queryOptions({
+		queryOrpc.admin.listAiModels.queryOptions({
 			input: { kind, enabledOnly: false },
 		}),
 	)
@@ -97,13 +97,13 @@ function AdminAiModelsPage() {
 
 	const invalidateList = () =>
 		qc.invalidateQueries({
-			queryKey: queryOrpcNext.admin.listAiModels.queryKey({
+			queryKey: queryOrpc.admin.listAiModels.queryKey({
 				input: { kind, enabledOnly: false },
 			}),
 		})
 
 	const upsertModel = useEnhancedMutation(
-		queryOrpcNext.admin.upsertAiModel.mutationOptions({
+		queryOrpc.admin.upsertAiModel.mutationOptions({
 			onSuccess: () => {
 				invalidateList()
 				setEditing(null)
@@ -113,13 +113,13 @@ function AdminAiModelsPage() {
 	)
 
 	const toggleModel = useEnhancedMutation(
-		queryOrpcNext.admin.toggleAiModel.mutationOptions({
+		queryOrpc.admin.toggleAiModel.mutationOptions({
 			onSuccess: () => invalidateList(),
 		}),
 	)
 
 	const setDefault = useEnhancedMutation(
-		queryOrpcNext.admin.setDefaultAiModel.mutationOptions({
+		queryOrpc.admin.setDefaultAiModel.mutationOptions({
 			onSuccess: () => invalidateList(),
 		}),
 		{ successToast: t('toast.defaultSet') },

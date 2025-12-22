@@ -3,11 +3,11 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 
 import { useTranslations } from '../i18n'
-import { queryOrpcNext } from '../orpc/next-client'
+import { queryOrpc } from '../orpc/client'
 
 export function useAuthQuery() {
 	return useQuery({
-		...queryOrpcNext.auth.me.queryOptions(),
+		...queryOrpc.auth.me.queryOptions(),
 		staleTime: 60 * 1000,
 	})
 }
@@ -23,9 +23,9 @@ export function useLoginMutation(options?: AuthRedirectOptions) {
 	const t = useTranslations('Auth')
 
 	return useEnhancedMutation(
-		queryOrpcNext.auth.login.mutationOptions({
+		queryOrpc.auth.login.mutationOptions({
 			onSuccess: () => {
-				qc.invalidateQueries({ queryKey: queryOrpcNext.auth.me.queryKey() })
+				qc.invalidateQueries({ queryKey: queryOrpc.auth.me.queryKey() })
 				navigate({
 					to: options?.redirectTo ?? '/media',
 					search: options?.redirectSearch,
@@ -47,9 +47,9 @@ export function useSignupMutation(options?: AuthRedirectOptions) {
 	const t = useTranslations('Auth')
 
 	return useEnhancedMutation(
-		queryOrpcNext.auth.signup.mutationOptions({
+		queryOrpc.auth.signup.mutationOptions({
 			onSuccess: () => {
-				qc.invalidateQueries({ queryKey: queryOrpcNext.auth.me.queryKey() })
+				qc.invalidateQueries({ queryKey: queryOrpc.auth.me.queryKey() })
 				navigate({
 					to: options?.redirectTo ?? '/media',
 					search: options?.redirectSearch,
@@ -71,10 +71,10 @@ export function useLogoutMutation(options?: AuthRedirectOptions) {
 	const t = useTranslations('Auth')
 
 	return useEnhancedMutation(
-		queryOrpcNext.auth.logout.mutationOptions({
+		queryOrpc.auth.logout.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
-					queryKey: queryOrpcNext.auth.me.queryKey(),
+					queryKey: queryOrpc.auth.me.queryKey(),
 				})
 				navigate({
 					to: options?.redirectTo ?? '/login',

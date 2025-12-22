@@ -36,12 +36,12 @@ export function mapWhisperStatusToJobStatus(status: WhisperJobStatus): 'queued' 
 	return 'running'
 }
 
-export async function fetchWhisperApiConfigFromNext(env: Env, opts: {
+export async function fetchWhisperApiConfigFromApp(env: Env, opts: {
 	providerId: string
 	modelId: string
 }): Promise<{ baseUrl: string; apiKey: string; remoteModelId: string }> {
-	const nextBase = (env.NEXT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
-	const url = `${nextBase}/api/internal/ai/asr-provider`
+	const appBase = (env.APP_BASE_URL || 'http://localhost:3000').replace(/\/$/, '')
+	const url = `${appBase}/api/internal/ai/asr-provider`
 	const payload = {
 		providerId: opts.providerId,
 		modelId: opts.modelId,
@@ -73,6 +73,7 @@ export async function fetchWhisperApiConfigFromNext(env: Env, opts: {
 		remoteModelId: String(json.remoteModelId),
 	}
 }
+
 
 export async function submitWhisperTranscriptionJob(opts: {
 	baseUrl: string
