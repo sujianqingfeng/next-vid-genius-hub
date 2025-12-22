@@ -8,6 +8,7 @@ import {
 import { Loader2, Play, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { ProxyStatusPill } from '~/components/business/proxy/proxy-status-pill'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
@@ -21,6 +22,13 @@ import {
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '../integrations/i18n'
 import { queryOrpc } from '../integrations/orpc/client'
+
+type ProxyRow = {
+	id: string
+	name?: string | null
+	testStatus?: 'pending' | 'success' | 'failed' | null
+	responseTime?: number | null
+}
 
 const FormSchema = z.object({
 	url: z.string().url(),
@@ -48,14 +56,15 @@ export const Route = createFileRoute('/media/download')({
 function MediaDownloadRoute() {
 	const t = useTranslations('Download')
 	const tMediaDetail = useTranslations('MediaDetail')
+	const tProxySelector = useTranslations('Proxy.selector')
 	const navigate = useNavigate()
 
 	const proxiesQuery = useQuery(
 		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
-	const proxies = proxiesQuery.data?.proxies ?? [
-		{ id: 'none', name: 'No Proxy' },
-	]
+	const proxies = (proxiesQuery.data?.proxies ?? [
+		{ id: 'none', name: 'No Proxy', testStatus: null, responseTime: null },
+	]) as ProxyRow[]
 	const defaultProxyId = proxiesQuery.data?.defaultProxyId ?? 'none'
 
 	const startMutation = useEnhancedMutation(
@@ -177,7 +186,19 @@ function MediaDownloadRoute() {
 									<SelectContent>
 										{proxies.map((p) => (
 											<SelectItem key={p.id} value={p.id}>
-												{p.name || p.id}
+												<span className="flex w-full items-center justify-between gap-2">
+													<span className="truncate">
+														{p.id === 'none'
+															? tProxySelector('direct')
+															: p.name || p.id}
+													</span>
+													{p.id !== 'none' ? (
+														<ProxyStatusPill
+															status={p.testStatus}
+															responseTime={p.responseTime}
+														/>
+													) : null}
+												</span>
 											</SelectItem>
 										))}
 									</SelectContent>

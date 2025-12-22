@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm'
+import { asc, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
@@ -54,7 +54,13 @@ export const getActiveProxiesForDownload = os
 	.handler(async () => {
 		try {
 			const db = await getDb()
-			// Return a simple list: "No Proxy" + all stored proxies (no test status)
+			// Return a simple list: "No Proxy" + all stored proxies (includes test status)
+			const statusOrder = sql<number>`case
+				when ${schema.proxies.testStatus} = 'success' then 0
+				when ${schema.proxies.testStatus} = 'pending' then 1
+				when ${schema.proxies.testStatus} = 'failed' then 2
+				else 3
+			end`
 			const [proxyList, defaultProxyId] = await Promise.all([
 				db.query.proxies.findMany({
 					columns: {
@@ -63,8 +69,11 @@ export const getActiveProxiesForDownload = os
 						server: true,
 						port: true,
 						protocol: true,
+						lastTestedAt: true,
+						testStatus: true,
+						responseTime: true,
 					},
-					orderBy: [desc(schema.proxies.createdAt)],
+					orderBy: [asc(statusOrder), desc(schema.proxies.createdAt)],
 				}),
 				getDefaultProxyId(db),
 			])
@@ -78,6 +87,9 @@ export const getActiveProxiesForDownload = os
 						server: '',
 						port: 0,
 						protocol: 'http' as const,
+						lastTestedAt: null,
+						testStatus: null,
+						responseTime: null,
 					},
 					...proxyList,
 				],
@@ -93,6 +105,9 @@ export const getActiveProxiesForDownload = os
 						server: '',
 						port: 0,
 						protocol: 'http' as const,
+						lastTestedAt: null,
+						testStatus: null,
+						responseTime: null,
 					},
 				],
 			}

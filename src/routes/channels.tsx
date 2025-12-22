@@ -5,6 +5,7 @@ import * as React from 'react'
 import { toast } from 'sonner'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
+import { ProxyStatusPill } from '~/components/business/proxy/proxy-status-pill'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import {
@@ -86,6 +87,7 @@ function toDateLabel(input: unknown): string {
 function ChannelsRoute() {
 	const t = useTranslations('Channels.page')
 	const tVideos = useTranslations('Channels.videos')
+	const tProxySelector = useTranslations('Proxy.selector')
 
 	const qc = useQueryClient()
 	const confirmDialog = useConfirmDialog()
@@ -112,20 +114,33 @@ function ChannelsRoute() {
 		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
 	const proxies = React.useMemo(() => {
-		const raw = proxiesQuery.data?.proxies ?? [
+		const raw = (proxiesQuery.data?.proxies ?? [
 			{
 				id: 'none',
 				name: 'No Proxy',
 				server: '',
 				port: 0,
 				protocol: 'http' as const,
+				testStatus: null,
+				responseTime: null,
 			},
-		]
+		]) as Array<{
+			id: string
+			name?: string | null
+			server?: string | null
+			testStatus?: 'pending' | 'success' | 'failed' | null
+			responseTime?: number | null
+		}>
 		return raw.map((p) => ({
 			id: p.id,
-			name: p.name ?? p.server ?? p.id,
+			name:
+				p.id === 'none'
+					? tProxySelector('direct')
+					: (p.name ?? p.server ?? p.id),
+			testStatus: p.testStatus,
+			responseTime: p.responseTime,
 		}))
-	}, [proxiesQuery.data?.proxies])
+	}, [proxiesQuery.data?.proxies, tProxySelector])
 
 	const llmModelsQuery = useQuery(
 		queryOrpc.ai.listModels.queryOptions({
@@ -367,6 +382,8 @@ function ChannelsRoute() {
 type ProxyOption = {
 	id: string
 	name: string
+	testStatus?: 'pending' | 'success' | 'failed' | null
+	responseTime?: number | null
 }
 
 function ChannelCard({
@@ -513,7 +530,15 @@ function ChannelCard({
 								<SelectContent>
 									{proxies.map((p) => (
 										<SelectItem key={p.id} value={p.id}>
-											{p.name || p.id}
+											<span className="flex w-full items-center justify-between gap-2">
+												<span className="truncate">{p.name || p.id}</span>
+												{p.id !== 'none' ? (
+													<ProxyStatusPill
+														status={p.testStatus}
+														responseTime={p.responseTime}
+													/>
+												) : null}
+											</span>
 										</SelectItem>
 									))}
 								</SelectContent>

@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 import { RemotionPreviewCardStart } from '~/components/business/media/remotion-preview-card-start'
+import { ProxyStatusPill } from '~/components/business/proxy/proxy-status-pill'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -1321,6 +1322,8 @@ function ProxySelect({
 		server?: string | null
 		port?: number | null
 		protocol?: string | null
+		testStatus?: 'pending' | 'success' | 'failed' | null
+		responseTime?: number | null
 	}>
 	defaultProxyId: string | null
 	value: string
@@ -1351,6 +1354,12 @@ function ProxySelect({
 							<SelectItem key={proxy.id} value={proxy.id}>
 								<span className="inline-flex items-center gap-2">
 									<span className="truncate">{display}</span>
+									{proxy.id !== 'none' ? (
+										<ProxyStatusPill
+											status={proxy.testStatus}
+											responseTime={proxy.responseTime}
+										/>
+									) : null}
 									{isDefault ? (
 										<span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
 											Default

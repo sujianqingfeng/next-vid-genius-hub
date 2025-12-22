@@ -16,7 +16,7 @@ import {
 	RefreshCw,
 } from 'lucide-react'
 import * as React from 'react'
-
+import { ProxyStatusPill } from '~/components/business/proxy/proxy-status-pill'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -80,6 +80,8 @@ type ProxyRow = {
 	server?: string | null
 	port?: number | null
 	protocol?: string | null
+	testStatus?: 'pending' | 'success' | 'failed' | null
+	responseTime?: number | null
 }
 
 function MediaDetailIndexRoute() {
@@ -430,17 +432,30 @@ function MediaDetailIndexRoute() {
 											<SelectContent>
 												{proxies.map((p) => (
 													<SelectItem key={p.id} value={p.id}>
-														{p.id === 'none'
-															? tProxySelector('direct')
-															: p.name ||
-																(() => {
-																	const label = hostKindLabel(
-																		classifyHost(p.server),
-																	)
-																	const addr = formatHostPort(p.server, p.port)
-																	const base = `${p.protocol ?? 'http'}://${addr}`
-																	return label ? `${base} (${label})` : base
-																})()}
+														<span className="flex w-full items-center justify-between gap-2">
+															<span className="truncate">
+																{p.id === 'none'
+																	? tProxySelector('direct')
+																	: p.name ||
+																		(() => {
+																			const label = hostKindLabel(
+																				classifyHost(p.server),
+																			)
+																			const addr = formatHostPort(
+																				p.server,
+																				p.port,
+																			)
+																			const base = `${p.protocol ?? 'http'}://${addr}`
+																			return label ? `${base} (${label})` : base
+																		})()}
+															</span>
+															{p.id !== 'none' ? (
+																<ProxyStatusPill
+																	status={p.testStatus}
+																	responseTime={p.responseTime}
+																/>
+															) : null}
+														</span>
 													</SelectItem>
 												))}
 											</SelectContent>
