@@ -24,7 +24,7 @@ import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
 import { resolveCloudVideoKey } from '~/lib/media/resolve-cloud-video-key'
 import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
-import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
+import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { mapWithConcurrency } from '~/lib/utils/concurrency'
 import { createId } from '~/lib/utils/id'
@@ -327,8 +327,10 @@ export const startCloudRender = os
 			throw new Error('Failed to prepare comments metadata for cloud render')
 		}
 
-		const { proxyId: effectiveProxyId, proxyRecord } =
-			await resolveProxyWithDefault({ db, proxyId })
+		const { proxyId: effectiveProxyId, proxyRecord } = await resolveSuccessProxy({
+			db,
+			requestedProxyId: proxyId,
+		})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		const taskId = createId()
@@ -480,8 +482,10 @@ export const startCloudCommentsDownload = os
 		if (!media) throw new Error('Media not found')
 		if (!media.url) throw new Error('Media URL missing')
 
-		const { proxyId: effectiveProxyId, proxyRecord } =
-			await resolveProxyWithDefault({ db, proxyId })
+		const { proxyId: effectiveProxyId, proxyRecord } = await resolveSuccessProxy({
+			db,
+			requestedProxyId: proxyId,
+		})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		logger.info(

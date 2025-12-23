@@ -19,6 +19,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
+import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
@@ -33,7 +34,7 @@ type ProxyRow = {
 const FormSchema = z.object({
 	url: z.string().url(),
 	quality: z.enum(['1080p', '720p']).default('1080p'),
-	proxyId: z.string().optional(),
+	proxyId: z.string().optional().default('none'),
 })
 
 export const Route = createFileRoute('/media/download')({
@@ -56,7 +57,6 @@ export const Route = createFileRoute('/media/download')({
 function MediaDownloadRoute() {
 	const t = useTranslations('Download')
 	const tMediaDetail = useTranslations('MediaDetail')
-	const tProxySelector = useTranslations('Proxy.selector')
 	const navigate = useNavigate()
 
 	const proxiesQuery = useQuery(
@@ -66,6 +66,18 @@ function MediaDownloadRoute() {
 		{ id: 'none', name: 'No Proxy', testStatus: null, responseTime: null },
 	]) as ProxyRow[]
 	const defaultProxyId = proxiesQuery.data?.defaultProxyId ?? 'none'
+	const defaultProxy =
+		defaultProxyId && defaultProxyId !== 'none'
+			? proxies.find((p) => p.id === defaultProxyId)
+			: undefined
+	const effectiveDefaultProxyId =
+		defaultProxy?.testStatus === 'success' ? defaultProxyId : 'none'
+	const successProxyIds = new Set(
+		proxies
+			.filter((p) => p.id !== 'none' && p.testStatus === 'success')
+			.map((p) => p.id),
+	)
+	const hasSuccessProxy = successProxyIds.size > 0
 
 	const startMutation = useEnhancedMutation(
 		queryOrpc.download.startCloudDownload.mutationOptions({
@@ -79,8 +91,7 @@ function MediaDownloadRoute() {
 		}),
 		{
 			successToast: t('page.toasts.queued'),
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
+			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
 
@@ -106,6 +117,11 @@ function MediaDownloadRoute() {
 						className="glass rounded-2xl p-6"
 						onSubmit={(e) => {
 							e.preventDefault()
+							if (!proxiesQuery.isLoading && !hasSuccessProxy) {
+								toast.error(t('page.errors.noProxy'))
+								startMutation.reset()
+								return
+							}
 							const form = e.currentTarget
 							const formData = new FormData(form)
 							const raw = {
@@ -176,8 +192,8 @@ function MediaDownloadRoute() {
 								<Label htmlFor="proxyId">{t('page.form.proxyLabel')}</Label>
 								<Select
 									name="proxyId"
-									key={defaultProxyId ?? 'none'}
-									defaultValue={defaultProxyId ?? 'none'}
+									key={effectiveDefaultProxyId ?? 'none'}
+									defaultValue={effectiveDefaultProxyId ?? 'none'}
 									disabled={startMutation.isPending || proxiesQuery.isLoading}
 								>
 									<SelectTrigger id="proxyId" className="w-full">
@@ -185,11 +201,17 @@ function MediaDownloadRoute() {
 									</SelectTrigger>
 									<SelectContent>
 										{proxies.map((p) => (
-											<SelectItem key={p.id} value={p.id}>
+											<SelectItem
+												key={p.id}
+												value={p.id}
+												disabled={
+													p.id !== 'none' && !successProxyIds.has(p.id)
+												}
+											>
 												<span className="flex w-full items-center justify-between gap-2">
 													<span className="truncate">
 														{p.id === 'none'
-															? tProxySelector('direct')
+															? t('page.form.proxyAuto')
 															: p.name || p.id}
 													</span>
 													{p.id !== 'none' ? (
@@ -203,6 +225,11 @@ function MediaDownloadRoute() {
 										))}
 									</SelectContent>
 								</Select>
+								{!proxiesQuery.isLoading && !hasSuccessProxy ? (
+									<p className="text-xs text-destructive">
+										{t('page.errors.noProxy')}
+									</p>
+								) : null}
 								{proxiesQuery.isLoading ? (
 									<div className="flex items-center gap-2 text-xs text-muted-foreground">
 										<Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -216,7 +243,10 @@ function MediaDownloadRoute() {
 							<Button
 								type="submit"
 								className="h-11 flex-1"
-								disabled={startMutation.isPending}
+								disabled={
+									startMutation.isPending ||
+									(!proxiesQuery.isLoading && !hasSuccessProxy)
+								}
 							>
 								{startMutation.isPending ? (
 									<>

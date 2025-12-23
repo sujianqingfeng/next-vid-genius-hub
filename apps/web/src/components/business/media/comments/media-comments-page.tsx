@@ -48,6 +48,7 @@ import { Switch } from '~/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 
 import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/ai/models'
+import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { MEDIA_SOURCES } from '~/lib/media/source'
@@ -302,9 +303,15 @@ export function MediaCommentsPage({
 	}
 
 	// ---------- Proxy selection ----------
-	const availableProxies =
-		proxiesQuery.data?.proxies?.filter((p) => p.id !== 'none') ?? []
-	const hasAvailableProxies = availableProxies.length > 0
+	const successProxies =
+		proxiesQuery.data?.proxies?.filter(
+			(p) => p.id !== 'none' && p.testStatus === 'success',
+		) ?? []
+	const hasSuccessProxies = successProxies.length > 0
+	const successProxyIds = React.useMemo(
+		() => new Set(successProxies.map((p) => p.id)),
+		[successProxies],
+	)
 
 	const [downloadProxyId, setDownloadProxyId] = React.useState<string>('none')
 	const [renderProxyId, setRenderProxyId] = React.useState<string>('none')
@@ -321,14 +328,19 @@ export function MediaCommentsPage({
 		)
 	}, [id, renderProxyId])
 
-	const hasDownloadProxySelected =
-		Boolean(downloadProxyId) && downloadProxyId !== 'none'
-	const hasRenderProxySelected =
-		Boolean(renderProxyId) && renderProxyId !== 'none'
+	React.useEffect(() => {
+		setDownloadProxyId((cur) => {
+			if (!cur || cur === 'none') return 'none'
+			return successProxyIds.has(cur) ? cur : 'none'
+		})
+		setRenderProxyId((cur) => {
+			if (!cur || cur === 'none') return 'none'
+			return successProxyIds.has(cur) ? cur : 'none'
+		})
+	}, [successProxyIds])
 
-	const canQueueCommentsDownload =
-		hasAvailableProxies && hasDownloadProxySelected
-	const canQueueRender = hasAvailableProxies && hasRenderProxySelected
+	const canQueueCommentsDownload = hasSuccessProxies
+	const canQueueRender = hasSuccessProxies
 
 	// ---------- Cloud comments download ----------
 	const [pages, setPages] = React.useState('3')
@@ -361,8 +373,7 @@ export function MediaCommentsPage({
 		}),
 		{
 			successToast: t('toasts.cloudCommentsQueued'),
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Error',
+			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
 
@@ -377,8 +388,7 @@ export function MediaCommentsPage({
 		}),
 		{
 			successToast: t('toasts.commentsDownloaded'),
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Error',
+			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
 
@@ -510,8 +520,7 @@ export function MediaCommentsPage({
 		}),
 		{
 			successToast: t('toasts.cloudRenderQueued'),
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Error',
+			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
 
@@ -966,7 +975,7 @@ export function MediaCommentsPage({
 													onValueChange={setDownloadProxyId}
 													disabled={isBusy}
 													help={
-														!hasAvailableProxies
+														!hasSuccessProxies
 															? t('errors.noProxiesAvailable')
 															: undefined
 													}
@@ -983,13 +992,16 @@ export function MediaCommentsPage({
 													)
 													setPages(String(n))
 													if (!canQueueCommentsDownload) {
-														toast.error(t('errors.selectProxyFirst'))
+														toast.error(t('errors.noProxiesAvailable'))
 														return
 													}
 													startCloudCommentsMutation.mutate({
 														mediaId: id,
 														pages: n,
-														proxyId: downloadProxyId,
+														proxyId:
+															downloadProxyId && downloadProxyId !== 'none'
+																? downloadProxyId
+																: undefined,
 													})
 												}}
 												disabled={
@@ -1154,7 +1166,7 @@ export function MediaCommentsPage({
 												onValueChange={setRenderProxyId}
 												disabled={isBusy}
 												help={
-													!hasAvailableProxies
+													!hasSuccessProxies
 														? t('errors.noProxiesAvailable')
 														: undefined
 												}
@@ -1165,12 +1177,15 @@ export function MediaCommentsPage({
 											<Button
 												onClick={() => {
 													if (!canQueueRender) {
-														toast.error(t('errors.selectProxyFirst'))
+														toast.error(t('errors.noProxiesAvailable'))
 														return
 													}
 													startCloudRenderMutation.mutate({
 														mediaId: id,
-														proxyId: renderProxyId,
+														proxyId:
+															renderProxyId && renderProxyId !== 'none'
+																? renderProxyId
+																: undefined,
 														sourcePolicy,
 														templateId,
 													})
@@ -1280,13 +1295,19 @@ function ProxySelect({
 	disabled?: boolean
 	help?: string
 }) {
+	const tProxySelector = useTranslations('Proxy.selector')
+	const successProxyIds = new Set(
+		proxies
+			.filter((p) => p.id !== 'none' && p.testStatus === 'success')
+			.map((p) => p.id),
+	)
 	const options = proxies
 	return (
 		<div className="space-y-2">
 			<Label>{label}</Label>
 			<Select value={value} onValueChange={onValueChange} disabled={disabled}>
 				<SelectTrigger>
-					<SelectValue placeholder="Select a proxy" />
+					<SelectValue placeholder={tProxySelector('selectPlaceholder')} />
 				</SelectTrigger>
 				<SelectContent>
 					{options.map((proxy) => {
@@ -1297,10 +1318,14 @@ function ProxySelect({
 						const display =
 							proxy.name ||
 							(proxy.id === 'none'
-								? 'No Proxy'
+								? tProxySelector('auto')
 								: `${proxy.protocol ?? 'http'}://${formatHostPort(proxy.server, proxy.port)}${hostLabel ? ` (${hostLabel})` : ''}`)
 						return (
-							<SelectItem key={proxy.id} value={proxy.id}>
+							<SelectItem
+								key={proxy.id}
+								value={proxy.id}
+								disabled={proxy.id !== 'none' && !successProxyIds.has(proxy.id)}
+							>
 								<span className="inline-flex items-center gap-2">
 									<span className="truncate">{display}</span>
 									{proxy.id !== 'none' ? (
@@ -1311,7 +1336,7 @@ function ProxySelect({
 									) : null}
 									{isDefault ? (
 										<span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
-											Default
+											{tProxySelector('defaultBadge')}
 										</span>
 									) : null}
 								</span>

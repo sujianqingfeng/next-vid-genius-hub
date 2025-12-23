@@ -14,7 +14,7 @@ import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
-import { resolveProxyWithDefault } from '~/lib/proxy/default-proxy'
+import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { createId } from '~/lib/utils/id'
 
@@ -89,15 +89,16 @@ export const startCloudDownload = os
 				.where(eq(schema.media.id, existing.id))
 		}
 
-		const { proxyId: effectiveProxyId, proxyRecord } =
-			await resolveProxyWithDefault({ db, proxyId })
-		const proxyPayload = toProxyJobPayload(proxyRecord)
 		const taskId = createId()
 		// Generate a stable jobId so we can create a per-job manifest before
 		// calling the orchestrator.
 		const jobId = `job_${createId()}`
 
 		try {
+			const { proxyId: effectiveProxyId, proxyRecord } =
+				await resolveSuccessProxy({ db, requestedProxyId: proxyId })
+			const proxyPayload = toProxyJobPayload(proxyRecord)
+
 			await db.insert(schema.tasks).values({
 				id: taskId,
 				userId,
@@ -144,7 +145,7 @@ export const startCloudDownload = os
 
 			logger.info(
 				'media',
-				`[download.job] queued media=${mediaId} job=${job.jobId} user=${userId} source=${source} quality=${quality} proxyId=${effectiveProxyId ?? 'none'}`,
+				`[download.job] queued media=${mediaId} job=${job.jobId} user=${userId} source=${source} quality=${quality} requestedProxyId=${proxyId ?? 'none'} proxyId=${effectiveProxyId ?? 'none'}`,
 			)
 
 			await db

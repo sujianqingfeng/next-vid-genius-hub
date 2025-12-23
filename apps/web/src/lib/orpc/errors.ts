@@ -2,6 +2,8 @@ import { ORPCError } from '@orpc/server'
 
 export const INSUFFICIENT_POINTS_CODE = 'INSUFFICIENT_POINTS' as const
 export const ASR_TIMEOUT_CODE = 'TIMEOUT' as const
+export const NO_SUCCESS_PROXY_CODE = 'NO_SUCCESS_PROXY' as const
+export const PROXY_NOT_SUCCESS_CODE = 'PROXY_NOT_SUCCESS' as const
 
 /**
  * Helper for throwing a standardized "insufficient points" ORPC error.
@@ -28,5 +30,21 @@ export function throwAsrTimeoutError(message?: string): never {
 		status: 504,
 		message: message ?? 'Cloud transcription is still running',
 		data: { reason: ASR_TIMEOUT_CODE },
+	})
+}
+
+export function throwNoSuccessProxyError(message?: string): never {
+	throw new ORPCError(NO_SUCCESS_PROXY_CODE, {
+		status: 503,
+		message: message ?? 'No success proxy available',
+		data: { reason: NO_SUCCESS_PROXY_CODE },
+	})
+}
+
+export function throwProxyNotSuccessError(message?: string): never {
+	throw new ORPCError(PROXY_NOT_SUCCESS_CODE, {
+		status: 400,
+		message: message ?? 'Proxy is not in success state',
+		data: { reason: PROXY_NOT_SUCCESS_CODE },
 	})
 }

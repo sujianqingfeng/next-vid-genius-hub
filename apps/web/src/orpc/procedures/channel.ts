@@ -19,6 +19,7 @@ import { TASK_KINDS } from '~/lib/job/task'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
+import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { mapWithConcurrency } from '~/lib/utils/concurrency'
 import { createId } from '~/lib/utils/id'
@@ -125,14 +126,12 @@ export const startCloudSync = os
 		if (!channel) throw new Error('Channel not found')
 		const channelUrlOrId = channel.channelUrl || channel.channelId || input.id
 
-		let proxyPayload: ReturnType<typeof toProxyJobPayload> | undefined
-		const proxyId = input.proxyId || channel.defaultProxyId || undefined
-		if (proxyId) {
-			const proxy = await db.query.proxies.findFirst({
-				where: eq(schema.proxies.id, proxyId),
-			})
-			proxyPayload = toProxyJobPayload(proxy)
-		}
+		const { proxyId: effectiveProxyId, proxyRecord } = await resolveSuccessProxy({
+			db,
+			requestedProxyId: input.proxyId,
+			preferredProxyId: channel.defaultProxyId ?? null,
+		})
+		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		const taskId = createId()
 		const jobId = `job_${createId()}`
@@ -148,7 +147,7 @@ export const startCloudSync = os
 			progress: 0,
 			payload: {
 				limit: input.limit,
-				proxyId: proxyId ?? null,
+				proxyId: effectiveProxyId ?? null,
 				channelUrlOrId,
 			},
 			createdAt: new Date(),
@@ -167,7 +166,7 @@ export const startCloudSync = os
 					source: MEDIA_SOURCES.YOUTUBE,
 					channelUrlOrId,
 					limit: input.limit,
-					proxyId: proxyId ?? null,
+					proxyId: effectiveProxyId ?? null,
 				},
 			}
 			await putJobManifest(jobId, manifest)

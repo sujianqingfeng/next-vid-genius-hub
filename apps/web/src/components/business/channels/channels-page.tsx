@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronUp, Loader2, Trash2 } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/ai/models'
+import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
@@ -90,6 +91,35 @@ export function ChannelsPage() {
 	const proxiesQuery = useQuery(
 		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
+	const rawProxyRows = (proxiesQuery.data?.proxies ?? [
+		{
+			id: 'none',
+			name: 'No Proxy',
+			server: '',
+			port: 0,
+			protocol: 'http' as const,
+			testStatus: null,
+			responseTime: null,
+		},
+	]) as Array<{
+		id: string
+		name?: string | null
+		server?: string | null
+		testStatus?: 'pending' | 'success' | 'failed' | null
+		responseTime?: number | null
+	}>
+
+	const successProxyIds = React.useMemo(
+		() =>
+			new Set(
+				rawProxyRows
+					.filter((p) => p.id !== 'none' && p.testStatus === 'success')
+					.map((p) => p.id),
+			),
+		[rawProxyRows],
+	)
+	const hasSuccessProxy = successProxyIds.size > 0
+
 	const proxies = React.useMemo(() => {
 		const raw = (proxiesQuery.data?.proxies ?? [
 			{
@@ -113,7 +143,7 @@ export function ChannelsPage() {
 			id: p.id,
 			name:
 				p.id === 'none'
-					? tProxySelector('direct')
+					? tProxySelector('auto')
 					: (p.name ?? p.server ?? p.id),
 			testStatus: p.testStatus,
 			responseTime: p.responseTime,
@@ -167,7 +197,7 @@ export function ChannelsPage() {
 		},
 	)
 
-	const startSyncMutation = useMutation(
+	const startSyncMutation = useEnhancedMutation(
 		queryOrpc.channel.startCloudSync.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
@@ -175,6 +205,9 @@ export function ChannelsPage() {
 				})
 			},
 		}),
+		{
+			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
+		},
 	)
 
 	const finalizeMutation = useEnhancedMutation(
@@ -281,9 +314,13 @@ export function ChannelsPage() {
 									key={ch.id}
 									ch={ch}
 									proxies={proxies}
+									successProxyIds={successProxyIds}
+									hasSuccessProxy={hasSuccessProxy}
 									selectedProxyId={
 										selectedProxyByChannel[ch.id] ??
-										(ch.defaultProxyId || 'none')
+										(ch.defaultProxyId && successProxyIds.has(ch.defaultProxyId)
+											? ch.defaultProxyId
+											: 'none')
 									}
 									onSelectProxy={(v) =>
 										setSelectedProxyByChannel((m) => ({ ...m, [ch.id]: v }))
@@ -321,9 +358,13 @@ export function ChannelsPage() {
 									}}
 									deleting={deleteMutation.isPending}
 									onSync={() => {
+										if (!hasSuccessProxy) return
 										const sel =
 											selectedProxyByChannel[ch.id] ??
-											ch.defaultProxyId ??
+											(ch.defaultProxyId &&
+											successProxyIds.has(ch.defaultProxyId)
+												? ch.defaultProxyId
+												: null) ??
 											'none'
 										startSyncMutation.mutate({
 											id: ch.id,
@@ -360,6 +401,8 @@ export function ChannelsPage() {
 function ChannelCard({
 	ch,
 	proxies,
+	successProxyIds,
+	hasSuccessProxy,
 	selectedProxyId,
 	onSelectProxy,
 	modelOptions,
@@ -383,6 +426,8 @@ function ChannelCard({
 }: {
 	ch: ChannelRow
 	proxies: ProxyOption[]
+	successProxyIds: ReadonlySet<string>
+	hasSuccessProxy: boolean
 	selectedProxyId: string
 	onSelectProxy: (id: string) => void
 	modelOptions: { id: ChatModelId; label: string }[]
@@ -405,6 +450,7 @@ function ChannelCard({
 	tVideos: ReturnType<typeof useTranslations>
 }) {
 	const jobId = ch.lastJobId || null
+	const tProxySelector = useTranslations('Proxy.selector')
 
 	const polledStatusQuery = useQuery({
 		...queryOrpc.channel.getCloudSyncStatus.queryOptions({
@@ -497,9 +543,13 @@ function ChannelCard({
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder="Proxy" />
 								</SelectTrigger>
-								<SelectContent>
+							<SelectContent>
 									{proxies.map((p) => (
-										<SelectItem key={p.id} value={p.id}>
+										<SelectItem
+											key={p.id}
+											value={p.id}
+											disabled={p.id !== 'none' && !successProxyIds.has(p.id)}
+										>
 											<span className="flex w-full items-center justify-between gap-2">
 												<span className="truncate">{p.name || p.id}</span>
 												{p.id !== 'none' ? (
@@ -513,6 +563,11 @@ function ChannelCard({
 									))}
 								</SelectContent>
 							</Select>
+							{!hasSuccessProxy ? (
+								<div className="text-[11px] text-destructive">
+									{tProxySelector('noneAvailable')}
+								</div>
+							) : null}
 							<div className="text-[11px] text-muted-foreground">
 								{t('actions.syncDesc')}
 							</div>
@@ -560,7 +615,11 @@ function ChannelCard({
 							)}
 						</Button>
 
-						<Button variant="secondary" onClick={onSync} disabled={syncing}>
+						<Button
+							variant="secondary"
+							onClick={onSync}
+							disabled={syncing || !hasSuccessProxy}
+						>
 							{syncing ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />

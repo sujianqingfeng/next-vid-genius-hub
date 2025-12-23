@@ -16,6 +16,7 @@ import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
+import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { createId } from '~/lib/utils/id'
 
@@ -106,13 +107,10 @@ export const refreshMetadata = os
 			`[metadata.refresh.start] media=${record.id} user=${userId} source=${source} proxyId=${input.proxyId ?? 'none'}`,
 		)
 
-		const proxyRecord =
-			input.proxyId && input.proxyId !== 'none'
-				? await db.query.proxies.findFirst({
-						where: eq(schema.proxies.id, input.proxyId),
-					})
-				: null
-
+		const { proxyId: effectiveProxyId, proxyRecord } = await resolveSuccessProxy({
+			db,
+			requestedProxyId: input.proxyId,
+		})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		const taskId = createId()
@@ -130,7 +128,7 @@ export const refreshMetadata = os
 				url: record.url,
 				quality: record.quality || '1080p',
 				source,
-				proxyId: input.proxyId ?? null,
+				proxyId: effectiveProxyId ?? null,
 			},
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -149,7 +147,7 @@ export const refreshMetadata = os
 					url: record.url,
 					quality: record.quality || '1080p',
 					source,
-					proxyId: input.proxyId ?? null,
+					proxyId: effectiveProxyId ?? null,
 				},
 			}
 			await putJobManifest(jobId, manifest)

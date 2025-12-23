@@ -228,7 +228,7 @@
 				"view": "View videos",
 				"hide": "Hide videos",
 				"syncTitle": "Sync",
-				"syncDesc": "Select a proxy and fetch the newest uploads.",
+				"syncDesc": "Proxy is optional (auto-selects an available proxy).",
 				"sync": "Sync latest",
 				"syncing": "Syncing…",
 				"translateTitle": "Translate",
@@ -296,9 +296,10 @@
 				"required": "Proxy (Required)"
 			},
 			"selectPlaceholder": "Select proxy",
+			"auto": "Auto select (Recommended)",
 			"direct": "No Proxy (Direct Connection)",
 			"loading": "Loading proxies...",
-			"noneAvailable": "No proxies available. Please add one first.",
+			"noneAvailable": "No available proxies (status is OK). Please run checks/add one first.",
 			"loadError": "Failed to load proxies. Please try again.",
 			"defaultBadge": "Default"
 		},
@@ -369,10 +370,11 @@
 			"title": "Cloud Video Download",
 			"form": {
 				"title": "New Job",
-				"desc": "Paste a link, select quality, and pick a proxy.",
+				"desc": "Paste a link, select quality; proxy is optional (auto-selects an available proxy).",
 				"urlLabel": "Video URL",
 				"urlPlaceholder": "https://example.com/video",
 				"proxyLabel": "Proxy",
+				"proxyAuto": "Auto select (Recommended)",
 				"quality": "Quality",
 				"quality1080": "1080p",
 				"quality720": "720p",
@@ -652,7 +654,7 @@
 			},
 			"errors": {
 				"selectProxyFirst": "Please select a proxy first.",
-				"noProxiesAvailable": "No proxies available.",
+				"noProxiesAvailable": "No available proxies (status is OK).",
 				"templateSaveFailed": "Failed to save template: {message}",
 				"titlesUpdateFailed": "Failed to update titles: {message}",
 				"translateFailed": "Failed to translate comments: {message}",

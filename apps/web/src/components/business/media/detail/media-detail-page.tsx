@@ -23,6 +23,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Skeleton } from '~/components/ui/skeleton'
+import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import type { MediaItem } from '~/lib/media/types'
 import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
@@ -77,14 +78,31 @@ export function MediaDetailPage({ id }: { id: string }) {
 
 	const [selectedProxyId, setSelectedProxyId] = React.useState<string>('none')
 
+	const defaultProxy =
+		defaultProxyId && defaultProxyId !== 'none'
+			? proxies.find((p) => p.id === defaultProxyId)
+			: undefined
+	const effectiveDefaultProxyId =
+		defaultProxy?.testStatus === 'success' ? defaultProxyId : 'none'
+	const successProxyIds = React.useMemo(
+		() =>
+			new Set(
+				proxies
+					.filter((p) => p.id !== 'none' && p.testStatus === 'success')
+					.map((p) => p.id),
+			),
+		[proxies],
+	)
+	const hasSuccessProxy = successProxyIds.size > 0
+
 	React.useEffect(() => {
 		setSelectedProxyId((cur) => {
-			if (cur && cur !== 'none') return cur
-			if (defaultProxyId && proxies.some((p) => p.id === defaultProxyId))
-				return defaultProxyId
-			return cur
+			if (cur && cur !== 'none') return successProxyIds.has(cur) ? cur : 'none'
+			if (effectiveDefaultProxyId && effectiveDefaultProxyId !== 'none')
+				return effectiveDefaultProxyId
+			return 'none'
 		})
-	}, [defaultProxyId, proxies])
+	}, [effectiveDefaultProxyId, successProxyIds])
 
 	const refreshMutation = useEnhancedMutation(
 		queryOrpc.media.refreshMetadata.mutationOptions({
@@ -97,8 +115,7 @@ export function MediaDetailPage({ id }: { id: string }) {
 		}),
 		{
 			successToast: t('actions.syncSuccess'),
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : t('error'),
+			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
 
@@ -403,13 +420,19 @@ export function MediaDetailPage({ id }: { id: string }) {
 													placeholder={tProxySelector('selectPlaceholder')}
 												/>
 											</SelectTrigger>
-											<SelectContent>
+										<SelectContent>
 												{proxies.map((p) => (
-													<SelectItem key={p.id} value={p.id}>
+													<SelectItem
+														key={p.id}
+														value={p.id}
+														disabled={
+															p.id !== 'none' && !successProxyIds.has(p.id)
+														}
+													>
 														<span className="flex w-full items-center justify-between gap-2">
 															<span className="truncate">
 																{p.id === 'none'
-																	? tProxySelector('direct')
+																	? tProxySelector('auto')
 																	: p.name ||
 																		(() => {
 																			const label = hostKindLabel(
@@ -432,19 +455,27 @@ export function MediaDetailPage({ id }: { id: string }) {
 														</span>
 													</SelectItem>
 												))}
-											</SelectContent>
-										</Select>
-										{proxiesQuery.isLoading ? (
-											<div className="text-xs text-muted-foreground">
-												{tProxySelector('loading')}
-											</div>
-										) : null}
-									</div>
+										</SelectContent>
+									</Select>
+									{proxiesQuery.isLoading ? (
+										<div className="text-xs text-muted-foreground">
+											{tProxySelector('loading')}
+										</div>
+									) : !hasSuccessProxy ? (
+										<div className="text-xs text-destructive">
+											{tProxySelector('noneAvailable')}
+										</div>
+									) : null}
+								</div>
 
 									<Button
 										type="button"
 										variant="outline"
-										disabled={refreshMutation.isPending || !item.url}
+										disabled={
+											refreshMutation.isPending ||
+											!item.url ||
+											(!proxiesQuery.isLoading && !hasSuccessProxy)
+										}
 										onClick={() =>
 											refreshMutation.mutate({
 												id,

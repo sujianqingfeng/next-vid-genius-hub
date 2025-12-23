@@ -228,7 +228,7 @@
 				"view": "查看视频",
 				"hide": "收起视频",
 				"syncTitle": "同步",
-				"syncDesc": "选择代理并拉取最新上传。",
+				"syncDesc": "代理可选，不选则自动选择可用代理。",
 				"sync": "同步最新",
 				"syncing": "同步中…",
 				"translateTitle": "翻译",
@@ -296,9 +296,10 @@
 				"required": "代理（必选）"
 			},
 			"selectPlaceholder": "选择代理",
+			"auto": "自动选择（推荐）",
 			"direct": "直连（不使用代理）",
 			"loading": "代理加载中...",
-			"noneAvailable": "没有可用代理，请先添加。",
+			"noneAvailable": "暂无可用代理（状态为“可用”），请先检测/添加。",
 			"loadError": "加载代理失败，请重试。",
 			"defaultBadge": "默认"
 		},
@@ -369,10 +370,11 @@
 			"title": "云端视频下载",
 			"form": {
 				"title": "新建任务",
-				"desc": "粘贴链接、选择清晰度并选择代理。",
+				"desc": "粘贴链接、选择清晰度；代理可选，不选则自动选择可用代理。",
 				"urlLabel": "视频链接",
 				"urlPlaceholder": "https://example.com/video",
 				"proxyLabel": "代理",
+				"proxyAuto": "自动选择（推荐）",
 				"quality": "清晰度",
 				"quality1080": "1080p",
 				"quality720": "720p",
@@ -652,7 +654,7 @@
 			},
 			"errors": {
 				"selectProxyFirst": "请先选择代理。",
-				"noProxiesAvailable": "暂无可用代理。",
+				"noProxiesAvailable": "暂无可用代理（状态为“可用”）。",
 				"templateSaveFailed": "保存模板失败：{message}",
 				"titlesUpdateFailed": "更新标题失败：{message}",
 				"translateFailed": "翻译评论失败：{message}",
