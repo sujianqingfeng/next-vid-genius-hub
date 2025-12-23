@@ -9,12 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as TasksRouteRouteImport } from './routes/tasks/route'
 import { Route as ProxyRouteRouteImport } from './routes/proxy/route'
 import { Route as PointsRouteRouteImport } from './routes/points/route'
 import { Route as MediaRouteRouteImport } from './routes/media/route'
 import { Route as ChannelsRouteRouteImport } from './routes/channels/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as MediaIndexRouteImport } from './routes/media/index'
 import { Route as MarketingIndexRouteImport } from './routes/marketing/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -43,6 +45,11 @@ import { Route as ApiMediaIdDownloadedRouteImport } from './routes/api/media/$id
 import { Route as ApiMediaIdCommentsDataRouteImport } from './routes/api/media/$id/comments-data'
 import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api/internal/ai/asr-provider'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TasksRouteRoute = TasksRouteRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -71,6 +78,11 @@ const ChannelsRouteRoute = ChannelsRouteRouteImport.update({
 const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MediaIndexRoute = MediaIndexRouteImport.update({
@@ -211,12 +223,14 @@ const ApiInternalAiAsrProviderRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/channels': typeof ChannelsRouteRoute
   '/media': typeof MediaRouteRouteWithChildren
   '/points': typeof PointsRouteRoute
   '/proxy': typeof ProxyRouteRoute
   '/tasks': typeof TasksRouteRoute
+  '/login': typeof LoginRoute
   '/media/$id': typeof MediaIdRouteRouteWithChildren
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
@@ -246,10 +260,12 @@ export interface FileRoutesByFullPath {
   '/api/media/$id/subtitles': typeof ApiMediaIdSubtitlesRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRoute
   '/points': typeof PointsRouteRoute
   '/proxy': typeof ProxyRouteRoute
   '/tasks': typeof TasksRouteRoute
+  '/login': typeof LoginRoute
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
@@ -279,12 +295,14 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/channels': typeof ChannelsRouteRoute
   '/media': typeof MediaRouteRouteWithChildren
   '/points': typeof PointsRouteRoute
   '/proxy': typeof ProxyRouteRoute
   '/tasks': typeof TasksRouteRoute
+  '/login': typeof LoginRoute
   '/media/$id': typeof MediaIdRouteRouteWithChildren
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
@@ -316,12 +334,14 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/admin'
     | '/channels'
     | '/media'
     | '/points'
     | '/proxy'
     | '/tasks'
+    | '/login'
     | '/media/$id'
     | '/admin/ai-models'
     | '/admin/ai-providers'
@@ -351,10 +371,12 @@ export interface FileRouteTypes {
     | '/api/media/$id/subtitles'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/channels'
     | '/points'
     | '/proxy'
     | '/tasks'
+    | '/login'
     | '/admin/ai-models'
     | '/admin/ai-providers'
     | '/admin/points-pricing'
@@ -383,12 +405,14 @@ export interface FileRouteTypes {
     | '/api/media/$id/subtitles'
   id:
     | '__root__'
+    | '/'
     | '/admin'
     | '/channels'
     | '/media'
     | '/points'
     | '/proxy'
     | '/tasks'
+    | '/login'
     | '/media/$id'
     | '/admin/ai-models'
     | '/admin/ai-providers'
@@ -419,12 +443,14 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   ChannelsRouteRoute: typeof ChannelsRouteRoute
   MediaRouteRoute: typeof MediaRouteRouteWithChildren
   PointsRouteRoute: typeof PointsRouteRoute
   ProxyRouteRoute: typeof ProxyRouteRoute
   TasksRouteRoute: typeof TasksRouteRoute
+  LoginRoute: typeof LoginRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   AuthLoginRoute: typeof AuthLoginRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
@@ -444,6 +470,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tasks': {
       id: '/tasks'
       path: '/tasks'
@@ -484,6 +517,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/media/': {
@@ -733,12 +773,14 @@ const MediaRouteRouteWithChildren = MediaRouteRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   ChannelsRouteRoute: ChannelsRouteRoute,
   MediaRouteRoute: MediaRouteRouteWithChildren,
   PointsRouteRoute: PointsRouteRoute,
   ProxyRouteRoute: ProxyRouteRoute,
   TasksRouteRoute: TasksRouteRoute,
+  LoginRoute: LoginRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   AuthLoginRoute: AuthLoginRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,

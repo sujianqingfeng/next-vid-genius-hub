@@ -3,6 +3,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import {
 	createRootRouteWithContext,
 	HeadContent,
+	Link,
 	Outlet,
 	Scripts,
 	useRouterState,
@@ -10,8 +11,10 @@ import {
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { ConfirmDialogProvider } from '~/components/business/layout/confirm-dialog-provider'
 import WorkspaceShell from '~/components/business/layout/workspace-shell'
+import { Button } from '~/components/ui/button'
 import { Toaster } from '~/components/ui/sonner'
 import { TooltipProvider } from '~/components/ui/tooltip'
+import { useTranslations } from '~/lib/i18n'
 import { ThemeProvider, ThemeScript } from '~/lib/theme'
 import {
 	DEFAULT_LOCALE,
@@ -51,6 +54,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 	component: RootLayout,
 	shellComponent: RootDocument,
+	notFoundComponent: NotFoundPage,
 })
 
 function isWorkspacePath(pathname: string): boolean {
@@ -127,7 +131,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 					// oxlint-disable-next-line react/no-danger: intentional tiny runtime shim
 					dangerouslySetInnerHTML={{
 						__html:
-							'globalThis.__name=globalThis.__name||function(t,n){try{Object.defineProperty(t,\"name\",{value:n,configurable:!0})}catch{}return t};',
+							'globalThis.__name=globalThis.__name||function(t,n){try{Object.defineProperty(t,"name",{value:n,configurable:!0})}catch{}return t};',
 					}}
 				/>
 			</head>
@@ -136,5 +140,41 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<Scripts />
 			</body>
 		</html>
+	)
+}
+
+function NotFoundPage() {
+	const t = useTranslations('NotFound')
+	const pathname = useRouterState({ select: (s) => s.location.pathname })
+
+	return (
+		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
+			<div className="px-4 py-16 sm:px-6 lg:px-8">
+				<div className="mx-auto max-w-xl">
+					<div className="glass rounded-2xl p-10 text-center">
+						<div className="text-sm font-medium text-muted-foreground">404</div>
+						<h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+							{t('title')}
+						</h1>
+						<p className="mt-2 text-sm text-muted-foreground">{t('body')}</p>
+						<p className="mt-4 break-all text-xs text-muted-foreground">
+							{pathname}
+						</p>
+						<div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+							<Button asChild>
+								<Link to="/">{t('home')}</Link>
+							</Button>
+							<Button
+								type="button"
+								variant="secondary"
+								onClick={() => window.history.back()}
+							>
+								{t('back')}
+							</Button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 	)
 }
