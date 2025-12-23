@@ -34,6 +34,7 @@ WORKDIR /app
 
 # Install container deps and local monorepo packages needed at runtime
 COPY tsconfig.json ./tsconfig.json
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY tsconfig.packages.json ./tsconfig.packages.json
 COPY containers/burner-ffmpeg/package.json ./package.json
 COPY packages/media-subtitles ./packages/media-subtitles

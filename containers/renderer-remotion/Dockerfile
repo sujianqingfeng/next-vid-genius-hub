@@ -44,6 +44,7 @@ FROM base AS builder
 # Install minimal deps first for better layer caching
 # When building with context at repo root, copy the container's manifest
 COPY tsconfig.json ./tsconfig.json
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY tsconfig.packages.json ./tsconfig.packages.json
 COPY containers/renderer-remotion/package.json ./package.json
 # Bring in local workspace package for installation via file: dependency
@@ -81,8 +82,30 @@ COPY apps/web/public ./public
 ENV XDG_CACHE_HOME=/opt/.cache \
     PUPPETEER_CACHE_DIR=/opt/.cache/puppeteer \
     REMOTION_BROWSER_DOWNLOADS_DIR=/opt/remotion-browser
-RUN mkdir -p "$XDG_CACHE_HOME" "$PUPPETEER_CACHE_DIR" "$REMOTION_BROWSER_DOWNLOADS_DIR" \
-  && npm exec -- remotion browser ensure --log=verbose
+RUN set -eux; \
+  mkdir -p "$XDG_CACHE_HOME" "$PUPPETEER_CACHE_DIR" "$REMOTION_BROWSER_DOWNLOADS_DIR"; \
+  arch="$(node -p 'process.arch')"; \
+  platform="linux64"; \
+  if [ "$arch" = "arm64" ]; then platform="linux-arm64"; fi; \
+  if [ "$platform" = "linux-arm64" ]; then \
+    version="$(node -e 'const fs=require("node:fs");const path=require("node:path");const pkg=require.resolve("@remotion/renderer/package.json");const p=path.join(path.dirname(pkg),"dist/esm/index.mjs");const txt=fs.readFileSync(p,"utf8");const m=txt.match(/var PLAYWRIGHT_VERSION = "([0-9]+)"/);if(!m) throw new Error("PLAYWRIGHT_VERSION not found");process.stdout.write(m[1]);')"; \
+    url="https://cdn.npmmirror.com/binaries/playwright/builds/chromium/${version}/chromium-headless-shell-linux-arm64.zip"; \
+    dest="/app/node_modules/.remotion/chrome-headless-shell/${platform}"; \
+    if [ -x "$dest/chrome-headless-shell-${platform}/headless_shell" ]; then \
+      echo "Remotion browser already present at $dest"; \
+      exit 0; \
+    fi; \
+    tmp="$(mktemp -d)"; \
+    curl -L --fail --retry 10 --retry-delay 2 --connect-timeout 10 --max-time 1800 -o "$tmp/chrome.zip" "$url"; \
+    mkdir -p "$dest"; \
+    unzip -q "$tmp/chrome.zip" -d "$dest"; \
+    rm -rf "$tmp"; \
+    if [ -d "$dest/chrome-linux" ]; then mv "$dest/chrome-linux" "$dest/chrome-headless-shell-${platform}"; fi; \
+    chmod +x "$dest/chrome-headless-shell-${platform}/headless_shell"; \
+    echo "Has browser at $dest/chrome-headless-shell-${platform}/headless_shell"; \
+  else \
+    npm exec -- remotion browser ensure --log=verbose; \
+  fi
 
 EXPOSE 8190
 CMD ["node", "index.mjs"]

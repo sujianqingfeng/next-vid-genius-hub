@@ -69,6 +69,7 @@ FROM base AS builder
 # Install with monorepo local package dependency
 # Expect build context at repo root so these COPY paths are valid
 COPY tsconfig.json ./tsconfig.json
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY tsconfig.packages.json ./tsconfig.packages.json
 COPY containers/media-downloader/package.json ./package.json
 COPY packages/media-core ./packages/media-core
