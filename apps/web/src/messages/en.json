@@ -438,6 +438,7 @@
 		"error": "Failed to load media details. Please try again.",
 		"actions": {
 			"title": "Actions",
+			"open": "Open",
 			"sync": "Sync info",
 			"syncing": "Syncing…",
 			"syncSuccess": "Metadata synced from source.",

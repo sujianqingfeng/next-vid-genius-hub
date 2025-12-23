@@ -438,6 +438,7 @@
 		"error": "媒体详情加载失败，请重试。",
 		"actions": {
 			"title": "操作",
+			"open": "打开",
 			"sync": "同步信息",
 			"syncing": "同步中…",
 			"syncSuccess": "元数据已从源同步。",
