@@ -290,6 +290,7 @@ async function handleRender(req, res) {
       coverDurationInFrames,
       commentDurationsInFrames,
       fps: REMOTION_FPS,
+      templateConfig: engineOptions && engineOptions.templateConfig != null ? engineOptions.templateConfig : undefined,
     };
     console.log("[remotion] getting compositions...");
     const compositions = await getCompositions(serveUrl, { inputProps });

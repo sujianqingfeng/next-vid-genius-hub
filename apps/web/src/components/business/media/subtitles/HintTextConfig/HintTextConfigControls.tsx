@@ -1,7 +1,7 @@
 'use client'
 
 import { Video } from 'lucide-react'
-import { ColorPickerGrid } from '~/components/business/media/subtitles/ColorPickerGrid'
+import { ColorPickerGrid } from '~/components/ui/color-picker-grid'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import {

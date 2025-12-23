@@ -7,7 +7,10 @@ import {
 	getTemplate,
 	type RemotionTemplateId,
 } from '@app/remotion-project/templates'
-import type { CommentVideoInputProps } from '@app/remotion-project/types'
+import type {
+	CommentVideoInputProps,
+	CommentsTemplateConfig,
+} from '@app/remotion-project/types'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import * as React from 'react'
 import { Card, CardContent } from '~/components/ui/card'
@@ -24,6 +27,7 @@ interface RemotionPreviewCardStartProps {
 	comments: Comment[]
 	isLoading: boolean
 	templateId?: RemotionTemplateId
+	templateConfig?: CommentsTemplateConfig
 }
 
 function mapVideoInfo(
@@ -46,6 +50,7 @@ export function RemotionPreviewCardStart({
 	comments,
 	isLoading,
 	templateId = DEFAULT_TEMPLATE_ID,
+	templateConfig,
 }: RemotionPreviewCardStartProps) {
 	const isClient = typeof window !== 'undefined'
 	const mediaInfo = React.useMemo(() => mapVideoInfo(videoInfo), [videoInfo])
@@ -62,8 +67,9 @@ export function RemotionPreviewCardStart({
 			coverDurationInFrames: timeline.coverDurationInFrames,
 			commentDurationsInFrames: timeline.commentDurationsInFrames,
 			fps: REMOTION_FPS,
+			templateConfig,
 		}
-	}, [comments, mediaInfo, timeline])
+	}, [comments, mediaInfo, templateConfig, timeline])
 
 	const template = getTemplate(templateId)
 	const TemplateComponent = template.component

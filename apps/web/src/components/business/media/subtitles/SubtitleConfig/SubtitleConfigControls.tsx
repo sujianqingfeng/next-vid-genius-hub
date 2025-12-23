@@ -2,7 +2,7 @@
 
 import { Palette, SlidersHorizontal } from 'lucide-react'
 import { type ChangeEvent } from 'react'
-import { ColorPickerGrid } from '~/components/business/media/subtitles/ColorPickerGrid'
+import { ColorPickerGrid } from '~/components/ui/color-picker-grid'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'

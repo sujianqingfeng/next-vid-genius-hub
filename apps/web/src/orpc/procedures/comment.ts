@@ -26,6 +26,7 @@ import { throwInsufficientPointsError } from '~/lib/orpc/errors'
 import { chargeLlmUsage, InsufficientPointsError } from '~/lib/points/billing'
 import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
+import { CommentsTemplateConfigSchema } from '~/lib/remotion/comments-template-config'
 import { mapWithConcurrency } from '~/lib/utils/concurrency'
 import { createId } from '~/lib/utils/id'
 
@@ -261,6 +262,7 @@ export const startCloudRender = os
 				.optional()
 				.default('auto'),
 			templateId: z.string().optional(),
+			templateConfig: z.unknown().optional().nullable(),
 		}),
 	)
 	.handler(async ({ input, context }) => {
@@ -305,6 +307,20 @@ export const startCloudRender = os
 		}
 
 		const comments = media.comments
+		const resolvedTemplateConfig =
+			typeof input.templateConfig !== 'undefined'
+				? input.templateConfig === null
+					? null
+					: (() => {
+							const parsed = CommentsTemplateConfigSchema.safeParse(
+								input.templateConfig,
+							)
+							if (!parsed.success) {
+								throw new Error('Invalid templateConfig')
+							}
+							return parsed.data
+						})()
+				: media.commentsTemplateConfig ?? null
 
 		logger.info(
 			'rendering',
@@ -347,6 +363,7 @@ export const startCloudRender = os
 			payload: {
 				templateId:
 					input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
+				templateConfig: resolvedTemplateConfig,
 				sourcePolicy: input.sourcePolicy || 'auto',
 				proxyId: effectiveProxyId ?? null,
 			},
@@ -372,6 +389,7 @@ export const startCloudRender = os
 					sourcePolicy: input.sourcePolicy || 'auto',
 					templateId:
 						input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
+					templateConfig: resolvedTemplateConfig,
 				},
 			}
 			await putJobManifest(jobId, manifest)
@@ -386,6 +404,7 @@ export const startCloudRender = os
 					sourcePolicy: input.sourcePolicy || 'auto',
 					templateId:
 						input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
+					templateConfig: resolvedTemplateConfig,
 				},
 			})
 

@@ -1,6 +1,13 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { ThumbsUp } from "lucide-react";
 import {
   AbsoluteFill,
@@ -56,11 +63,77 @@ const baseFontStack = [
 
 const baseFont = baseFontStack.join(", ");
 
+const MotionContext = createContext<{ enabled: boolean; multiplier: number }>({
+  enabled: true,
+  multiplier: 1,
+});
+
+function resolveFontFamily(preset?: string | null): string {
+  if (preset === "inter") {
+    return [
+      '"Inter"',
+      '"Helvetica Neue"',
+      "system-ui",
+      "-apple-system",
+      '"Segoe UI Emoji"',
+      '"Apple Color Emoji"',
+      '"Noto Color Emoji"',
+      "sans-serif",
+    ].join(", ");
+  }
+  if (preset === "system") {
+    return [
+      "system-ui",
+      "-apple-system",
+      '"Segoe UI"',
+      '"Helvetica Neue"',
+      '"Arial"',
+      '"Segoe UI Emoji"',
+      '"Apple Color Emoji"',
+      '"Noto Color Emoji"',
+      "sans-serif",
+    ].join(", ");
+  }
+  return baseFont;
+}
+
+function buildCssVars(
+  cfg: CommentVideoInputProps["templateConfig"],
+): CSSProperties {
+  const theme = cfg?.theme ?? {};
+  const lay = cfg?.layout ?? {};
+  const typo = cfg?.typography ?? {};
+
+  const paddingX = typeof lay.paddingX === "number" ? lay.paddingX : layout.paddingX;
+  const paddingY = typeof lay.paddingY === "number" ? lay.paddingY : layout.paddingY;
+  const infoPanelWidth =
+    typeof lay.infoPanelWidth === "number" ? lay.infoPanelWidth : layout.infoPanelWidth;
+
+  const fontScale = typeof typo.fontScale === "number" ? typo.fontScale : 1;
+  const fontFamily = resolveFontFamily(typo.fontPreset ?? "noto");
+
+  return {
+    "--tt-bg": theme.background ?? palette.background,
+    "--tt-surface": theme.surface ?? palette.surface,
+    "--tt-border": theme.border ?? palette.border,
+    "--tt-text-primary": theme.textPrimary ?? palette.textPrimary,
+    "--tt-text-secondary": theme.textSecondary ?? palette.textSecondary,
+    "--tt-text-muted": theme.textMuted ?? palette.textMuted,
+    "--tt-accent": theme.accent ?? palette.accent,
+    "--tt-accent-glow": theme.accentGlow ?? palette.accentGlow,
+    "--tt-font-family": fontFamily,
+    "--tt-font-scale": String(fontScale),
+    "--tt-padding-x": `${paddingX}px`,
+    "--tt-padding-y": `${paddingY}px`,
+    "--tt-info-width": `${infoPanelWidth}px`,
+  } as unknown as CSSProperties;
+}
+
 const containerStyle: CSSProperties = {
-  backgroundColor: palette.background,
-  color: palette.textPrimary,
-  fontFamily: baseFont,
-  padding: `${layout.paddingY}px ${layout.paddingX}px`,
+  backgroundColor: "var(--tt-bg)",
+  color: "var(--tt-text-primary)",
+  fontFamily: "var(--tt-font-family)",
+  padding: "var(--tt-padding-y) var(--tt-padding-x)",
   display: "flex",
   flexDirection: "column",
   gap: layout.rowGap,
@@ -85,17 +158,17 @@ const sectionLabelStyle: CSSProperties = {
   fontSize: 14,
   letterSpacing: "0.24em",
   textTransform: "uppercase",
-  color: palette.accent,
+  color: "var(--tt-accent)",
   fontWeight: 900,
-  textShadow: `0 0 20px ${palette.accentGlow}`,
+  textShadow: "0 0 20px var(--tt-accent-glow)",
 };
 
 // Removed metaListStyle - now using inline compact horizontal layout
 
 const commentBodyStyle: CSSProperties = {
-  fontSize: 28,
+  fontSize: "calc(28px * var(--tt-font-scale))",
   lineHeight: 1.6,
-  color: palette.textPrimary,
+  color: "var(--tt-text-primary)",
   whiteSpace: "pre-wrap",
   margin: 0,
   width: "100%",
@@ -107,10 +180,10 @@ const translatedStyle: CSSProperties = {
   padding: "24px 0 24px 24px",
   borderRadius: 0,
   backgroundColor: "transparent",
-  color: palette.textSecondary,
-  borderLeft: `3px solid ${palette.accent}`,
+  color: "var(--tt-text-secondary)",
+  borderLeft: "3px solid var(--tt-accent)",
   whiteSpace: "pre-wrap",
-  fontSize: 26,
+  fontSize: "calc(26px * var(--tt-font-scale))",
   lineHeight: 1.6,
   fontWeight: 300,
 };
@@ -127,7 +200,17 @@ export const CommentsVideo: React.FC<CommentVideoInputProps> = ({
   coverDurationInFrames,
   commentDurationsInFrames,
   fps,
+  templateConfig,
 }) => {
+  const motionEnabled = templateConfig?.motion?.enabled ?? true;
+  const motionIntensity = templateConfig?.motion?.intensity ?? "normal";
+  const motionMultiplier = !motionEnabled
+    ? 0
+    : motionIntensity === "subtle"
+      ? 0.7
+      : motionIntensity === "strong"
+        ? 1.3
+        : 1;
   const sequences = commentDurationsInFrames.reduce<
     {
       startFrame: number;
@@ -153,26 +236,56 @@ export const CommentsVideo: React.FC<CommentVideoInputProps> = ({
   const mainDuration = Math.max(commentsTotalDuration, fps);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: palette.background }}>
-      <Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
-        <CoverSlide
-          videoInfo={videoInfo}
-          commentCount={comments.length}
-          fps={fps}
-        />
-      </Sequence>
-      <Sequence
-        layout="none"
-        from={coverDurationInFrames}
-        durationInFrames={mainDuration}
+    <AbsoluteFill
+      style={{
+        backgroundColor: "var(--tt-bg)",
+        ...(buildCssVars(templateConfig) as any),
+      }}
+    >
+      <MotionContext.Provider
+        value={{ enabled: motionEnabled, multiplier: motionMultiplier }}
       >
-        <MainLayout
-          videoInfo={videoInfo}
-          comments={comments}
-          sequences={sequences}
-          fps={fps}
-        />
-      </Sequence>
+        <Sequence
+          layout="none"
+          from={0}
+          durationInFrames={coverDurationInFrames}
+        >
+          <CoverSlide
+            videoInfo={videoInfo}
+            commentCount={comments.length}
+            fps={fps}
+          />
+        </Sequence>
+        <Sequence
+          layout="none"
+          from={coverDurationInFrames}
+          durationInFrames={mainDuration}
+        >
+          <MainLayout
+            videoInfo={videoInfo}
+            comments={comments}
+            sequences={sequences}
+            fps={fps}
+          />
+        </Sequence>
+        {templateConfig?.brand?.showWatermark ? (
+          <div
+            style={{
+              position: "absolute",
+              right: "var(--tt-padding-x)",
+              bottom: "calc(var(--tt-padding-y) * 0.6)",
+              fontFamily: "var(--tt-font-family)",
+              fontSize: "calc(12px * var(--tt-font-scale))",
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "var(--tt-text-muted)",
+              opacity: 0.6,
+            }}
+          >
+            {templateConfig?.brand?.watermarkText || "TubeTweet Studio"}
+          </div>
+        ) : null}
+      </MotionContext.Provider>
     </AbsoluteFill>
   );
 };
@@ -191,7 +304,7 @@ const MainLayout: React.FC<{
     <AbsoluteFill
       style={{
         ...containerStyle,
-        background: palette.background,
+        background: "var(--tt-bg)",
         position: "relative",
       }}
     >
@@ -201,8 +314,8 @@ const MainLayout: React.FC<{
           position: "absolute",
           inset: 0,
           backgroundImage: `
-            linear-gradient(0deg, ${palette.border} 1px, transparent 1px),
-            linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
+            linear-gradient(0deg, var(--tt-border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--tt-border) 1px, transparent 1px)
           `,
           backgroundSize: "40px 40px",
           opacity: 0.1,
@@ -219,7 +332,8 @@ const MainLayout: React.FC<{
           width: "340px",
           height: "340px",
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          background:
+            "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
           filter: "blur(70px)",
           pointerEvents: "none",
         }}
@@ -232,7 +346,8 @@ const MainLayout: React.FC<{
           width: "420px",
           height: "420px",
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          background:
+            "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
           filter: "blur(90px)",
           pointerEvents: "none",
         }}
@@ -258,8 +373,8 @@ const MainLayout: React.FC<{
             style={{
               width: 4,
               height: 24,
-              backgroundColor: palette.accent,
-              boxShadow: `0 0 20px ${palette.accentGlow}`,
+              backgroundColor: "var(--tt-accent)",
+              boxShadow: "0 0 20px var(--tt-accent-glow)",
             }}
           />
           <span style={sectionLabelStyle}>AUDIENCE VOICE</span>
@@ -292,7 +407,7 @@ const InfoPanel: React.FC<{
   return (
     <div
       style={{
-        width: layout.infoPanelWidth,
+        width: "var(--tt-info-width)",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -308,8 +423,8 @@ const InfoPanel: React.FC<{
           left: -20,
           width: 50,
           height: 50,
-          borderTop: `3px solid ${palette.accent}`,
-          borderLeft: `3px solid ${palette.accent}`,
+          borderTop: "3px solid var(--tt-accent)",
+          borderLeft: "3px solid var(--tt-accent)",
           opacity: 0.5,
         }}
       />
@@ -320,8 +435,8 @@ const InfoPanel: React.FC<{
             style={{
               width: 3,
               height: 16,
-              backgroundColor: palette.accent,
-              boxShadow: `0 0 15px ${palette.accentGlow}`,
+              backgroundColor: "var(--tt-accent)",
+              boxShadow: "0 0 15px var(--tt-accent-glow)",
             }}
           />
           <span style={{ ...sectionLabelStyle, fontSize: 11 }}>CREATOR SPOTLIGHT</span>
@@ -332,10 +447,10 @@ const InfoPanel: React.FC<{
               fontSize: 36,
               fontWeight: 900,
               letterSpacing: "-0.02em",
-              color: palette.accent,
+              color: "var(--tt-accent)",
               lineHeight: 1.15,
               textTransform: "uppercase",
-              textShadow: `0 4px 30px ${palette.accentGlow}`,
+              textShadow: "0 4px 30px var(--tt-accent-glow)",
             }}
           >
             {videoInfo.translatedTitle ?? videoInfo.title}
@@ -351,10 +466,10 @@ const InfoPanel: React.FC<{
           <div
             style={{
               padding: "6px 12px",
-              backgroundColor: palette.surface,
-              border: `1px solid ${palette.border}`,
+              backgroundColor: "var(--tt-surface)",
+              border: "1px solid var(--tt-border)",
               fontSize: 14,
-              color: palette.textSecondary,
+              color: "var(--tt-text-secondary)",
               fontWeight: 600,
               letterSpacing: "0.03em",
             }}
@@ -364,7 +479,7 @@ const InfoPanel: React.FC<{
           <div
             style={{
               fontSize: 11,
-              color: palette.textMuted,
+              color: "var(--tt-text-muted)",
               letterSpacing: "0.15em",
               textTransform: "uppercase",
               fontWeight: 700,
@@ -382,7 +497,7 @@ const InfoPanel: React.FC<{
           alignItems: "center",
           gap: 20,
           paddingTop: 12,
-          borderTop: `1px solid ${palette.border}`,
+          borderTop: "1px solid var(--tt-border)",
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -391,7 +506,7 @@ const InfoPanel: React.FC<{
               fontSize: 9,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
-              color: palette.textMuted,
+              color: "var(--tt-text-muted)",
               fontWeight: 700,
             }}
           >
@@ -400,7 +515,7 @@ const InfoPanel: React.FC<{
           <span
             style={{
               fontSize: 18,
-              color: palette.accent,
+              color: "var(--tt-accent)",
               fontWeight: 800,
               letterSpacing: "-0.01em",
             }}
@@ -412,7 +527,7 @@ const InfoPanel: React.FC<{
           style={{
             width: 1,
             height: 16,
-            backgroundColor: palette.border,
+            backgroundColor: "var(--tt-border)",
           }}
         />
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -421,7 +536,7 @@ const InfoPanel: React.FC<{
               fontSize: 9,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
-              color: palette.textMuted,
+              color: "var(--tt-text-muted)",
               fontWeight: 700,
             }}
           >
@@ -430,7 +545,7 @@ const InfoPanel: React.FC<{
           <span
             style={{
               fontSize: 18,
-              color: palette.accent,
+              color: "var(--tt-accent)",
               fontWeight: 800,
               letterSpacing: "-0.01em",
             }}
@@ -442,7 +557,7 @@ const InfoPanel: React.FC<{
           style={{
             width: 1,
             height: 16,
-            backgroundColor: palette.border,
+            backgroundColor: "var(--tt-border)",
           }}
         />
         <div
@@ -450,7 +565,7 @@ const InfoPanel: React.FC<{
             fontSize: 9,
             letterSpacing: "0.2em",
             textTransform: "uppercase",
-            color: palette.textMuted,
+            color: "var(--tt-text-muted)",
             fontWeight: 700,
           }}
         >
@@ -481,13 +596,14 @@ const CoverSlide: React.FC<{
   commentCount: number;
   fps: number;
 }> = ({ videoInfo, commentCount, fps }) => {
+  const motion = useContext(MotionContext);
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, fps * 0.5], [0, 1], {
+  const opacity = motion.multiplier === 0 ? 1 : interpolate(frame, [0, fps * 0.5], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
   
-  const titleSlide = interpolate(frame, [fps * 0.3, fps * 0.8], [-50, 0], {
+  const titleSlide = motion.multiplier === 0 ? 0 : interpolate(frame, [fps * 0.3, fps * 0.8], [-50 * motion.multiplier, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
@@ -496,12 +612,12 @@ const CoverSlide: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        background: palette.background,
+        background: "var(--tt-bg)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: palette.textPrimary,
-        fontFamily: baseFont,
+        color: "var(--tt-text-primary)",
+        fontFamily: "var(--tt-font-family)",
         padding: "0 100px",
         boxSizing: "border-box",
         opacity,
@@ -515,8 +631,8 @@ const CoverSlide: React.FC<{
           position: "absolute",
           inset: 0,
           backgroundImage: `
-            linear-gradient(0deg, ${palette.border} 1px, transparent 1px),
-            linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
+            linear-gradient(0deg, var(--tt-border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--tt-border) 1px, transparent 1px)
           `,
           backgroundSize: "50px 50px",
           opacity: 0.12,
@@ -532,7 +648,8 @@ const CoverSlide: React.FC<{
           width: "430px",
           height: "430px",
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          background:
+            "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
           filter: "blur(80px)",
         }}
       />
@@ -544,7 +661,8 @@ const CoverSlide: React.FC<{
           width: "520px",
           height: "520px",
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          background:
+            "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
           filter: "blur(95px)",
         }}
       />
@@ -557,8 +675,8 @@ const CoverSlide: React.FC<{
           left: 60,
           width: 100,
           height: 100,
-          borderTop: `4px solid ${palette.accent}`,
-          borderLeft: `4px solid ${palette.accent}`,
+          borderTop: "4px solid var(--tt-accent)",
+          borderLeft: "4px solid var(--tt-accent)",
           opacity: 0.4,
         }}
       />
@@ -569,8 +687,8 @@ const CoverSlide: React.FC<{
           right: 60,
           width: 100,
           height: 100,
-          borderTop: `4px solid ${palette.accent}`,
-          borderRight: `4px solid ${palette.accent}`,
+          borderTop: "4px solid var(--tt-accent)",
+          borderRight: "4px solid var(--tt-accent)",
           opacity: 0.4,
         }}
       />
@@ -995,25 +1113,33 @@ const CommentSlide: React.FC<{
   durationInFrames: number;
   fps: number;
 }> = ({ comment, durationInFrames, fps }) => {
+  const motion = useContext(MotionContext);
   const frame = useCurrentFrame();
 
   // Use shorter fade times to match scrolling component
-  const fadeTime = Math.min(fps * 0.8, 12);
-  const appear = interpolate(frame, [0, fadeTime], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const fadeTimeBase = Math.min(fps * 0.8, 12);
+  const fadeTime = Math.max(1, fadeTimeBase * (motion.multiplier || 1));
+  const appear =
+    motion.multiplier === 0
+      ? 1
+      : interpolate(frame, [0, fadeTime], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        });
   const exitStart = Math.max(durationInFrames - fadeTime, 0);
-  const disappear = interpolate(frame, [exitStart, durationInFrames], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const opacity = Math.min(appear, disappear);
+  const disappear =
+    motion.multiplier === 0
+      ? 1
+      : interpolate(frame, [exitStart, durationInFrames], [1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        });
+  const opacity = motion.multiplier === 0 ? 1 : Math.min(appear, disappear);
 
   // Calculate countdown timer
   const remainingFrames = Math.max(0, durationInFrames - frame);
   const remainingSeconds = Math.ceil(remainingFrames / fps);
-  const countdownOpacity = interpolate(
+  const countdownOpacity = motion.multiplier === 0 ? 0 : interpolate(
     frame,
     [durationInFrames - fps * 3, durationInFrames - fps * 2],
     [0, 1],
@@ -1029,9 +1155,10 @@ const CommentSlide: React.FC<{
     fontSize: isChinesePrimary ? 56 : 28,
     lineHeight: isChinesePrimary ? 1.4 : 1.6,
     letterSpacing: isChinesePrimary ? "0.02em" : "normal",
-    color: isChinesePrimary ? palette.accent : palette.textPrimary,
+    color: isChinesePrimary ? "var(--tt-accent)" : "var(--tt-text-primary)",
     fontWeight: isChinesePrimary ? 700 : 400,
-    textShadow: isChinesePrimary ? `0 0 12px ${palette.accentGlow}` : "none",
+    textShadow:
+      isChinesePrimary ? "0 0 12px var(--tt-accent-glow)" : "none",
   };
 
   const commentText = comment.content;
@@ -1049,8 +1176,8 @@ const CommentSlide: React.FC<{
         height: "100%",
         position: "relative",
         padding: "32px 40px",
-        backgroundColor: palette.surface,
-        border: `2px solid ${palette.border}`,
+        backgroundColor: "var(--tt-surface)",
+        border: "2px solid var(--tt-border)",
       }}
     >
       {/* Decorative corner frame */}
@@ -1061,8 +1188,8 @@ const CommentSlide: React.FC<{
           left: 0,
           width: 40,
           height: 40,
-          borderTop: `3px solid ${palette.accent}`,
-          borderLeft: `3px solid ${palette.accent}`,
+          borderTop: "3px solid var(--tt-accent)",
+          borderLeft: "3px solid var(--tt-accent)",
           opacity: 0.6,
         }}
       />
@@ -1073,8 +1200,8 @@ const CommentSlide: React.FC<{
           right: 0,
           width: 40,
           height: 40,
-          borderBottom: `3px solid ${palette.accent}`,
-          borderRight: `3px solid ${palette.accent}`,
+          borderBottom: "3px solid var(--tt-accent)",
+          borderRight: "3px solid var(--tt-accent)",
           opacity: 0.6,
         }}
       />
@@ -1090,10 +1217,10 @@ const CommentSlide: React.FC<{
           alignItems: "center",
           gap: 8,
           fontSize: 14,
-          color: palette.textMuted,
-          backgroundColor: palette.background,
+          color: "var(--tt-text-muted)",
+          backgroundColor: "var(--tt-bg)",
           padding: "8px 14px",
-          border: `1px solid ${palette.border}`,
+          border: "1px solid var(--tt-border)",
           fontWeight: 700,
           letterSpacing: "0.1em",
         }}
@@ -1103,10 +1230,10 @@ const CommentSlide: React.FC<{
             width: 10,
             height: 10,
             backgroundColor:
-              remainingSeconds <= 2 ? palette.accent : palette.textMuted,
+              remainingSeconds <= 2 ? "var(--tt-accent)" : "var(--tt-text-muted)",
             boxShadow:
               remainingSeconds <= 2
-                ? `0 0 15px ${palette.accentGlow}`
+                ? "0 0 15px var(--tt-accent-glow)"
                 : "none",
           }}
         />
@@ -1130,7 +1257,7 @@ const CommentSlide: React.FC<{
               margin: 0,
               fontSize: 26,
               fontWeight: 800,
-              color: palette.textPrimary,
+              color: "var(--tt-text-primary)",
               letterSpacing: "-0.01em",
             }}
           >
@@ -1141,7 +1268,7 @@ const CommentSlide: React.FC<{
               display: "flex",
               alignItems: "center",
               gap: 10,
-              color: palette.textMuted,
+              color: "var(--tt-text-muted)",
               fontSize: 16,
             }}
           >

@@ -19,6 +19,7 @@ import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { createId } from '~/lib/utils/id'
+import { CommentsTemplateConfigSchema } from '~/lib/remotion/comments-template-config'
 
 export const list = os
 	.input(
@@ -347,15 +348,26 @@ export const updateRenderSettings = os
 		z.object({
 			id: z.string(),
 			commentsTemplate: z.string().optional(),
+			commentsTemplateConfig: z.unknown().optional().nullable(),
 		}),
 	)
 	.handler(async ({ input, context }) => {
-		const { id, commentsTemplate } = input
+		const { id, commentsTemplate, commentsTemplateConfig } = input
 		const ctx = context as RequestContext
 		const userId = ctx.auth.user!.id
 		const updates: Record<string, unknown> = {}
 		if (typeof commentsTemplate !== 'undefined')
 			updates.commentsTemplate = commentsTemplate
+		if (typeof commentsTemplateConfig !== 'undefined') {
+			if (commentsTemplateConfig === null) {
+				updates.commentsTemplateConfig = null
+			} else {
+				const parsed =
+					CommentsTemplateConfigSchema.safeParse(commentsTemplateConfig)
+				if (!parsed.success) throw new Error('Invalid commentsTemplateConfig')
+				updates.commentsTemplateConfig = parsed.data
+			}
+		}
 		const db = await getDb()
 		await db
 			.update(schema.media)

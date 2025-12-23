@@ -36,6 +36,7 @@ export function sanitizeEngineOptions(engineOptions = {}) {
     quality: eo.quality,
     source: eo.source,
     templateId: eo.templateId,
+    hasTemplateConfig: Boolean(eo.templateConfig),
     hasDefaultProxy: Boolean(eo.defaultProxyUrl),
     proxy: eo.proxy
       ? {

@@ -588,6 +588,33 @@
 			},
 			"render": {
 				"template": "模板",
+				"config": {
+					"title": "样式",
+					"save": "保存",
+					"saving": "保存中…",
+					"reset": "使用模板默认",
+					"theme": "配色",
+					"typography": "字体",
+					"layout": "布局",
+					"brand": "品牌",
+					"motion": "动效",
+					"fields": {
+						"background": "背景",
+						"surface": "卡片",
+						"textPrimary": "正文",
+						"textSecondary": "正文（次要）",
+						"accent": "强调色",
+						"fontPreset": "字体",
+						"fontScale": "字体缩放",
+						"paddingX": "左右边距",
+						"paddingY": "上下边距",
+						"infoPanelWidth": "信息栏宽度",
+						"watermark": "水印",
+						"watermarkText": "水印文字",
+						"motionEnabled": "启用动效",
+						"motionIntensity": "强度"
+					}
+				},
 				"start": "开始渲染",
 				"queuing": "排队中…",
 				"sourcePolicy": {

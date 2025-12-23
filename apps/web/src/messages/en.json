@@ -588,6 +588,33 @@
 			},
 			"render": {
 				"template": "Template",
+				"config": {
+					"title": "Style",
+					"save": "Save",
+					"saving": "Saving...",
+					"reset": "Use template defaults",
+					"theme": "Colors",
+					"typography": "Typography",
+					"layout": "Layout",
+					"brand": "Brand",
+					"motion": "Motion",
+					"fields": {
+						"background": "Background",
+						"surface": "Surface",
+						"textPrimary": "Text",
+						"textSecondary": "Text (secondary)",
+						"accent": "Accent",
+						"fontPreset": "Font",
+						"fontScale": "Font scale",
+						"paddingX": "Padding X",
+						"paddingY": "Padding Y",
+						"infoPanelWidth": "Info width",
+						"watermark": "Watermark",
+						"watermarkText": "Watermark text",
+						"motionEnabled": "Enable motion",
+						"motionIntensity": "Intensity"
+					}
+				},
 				"start": "Start Render",
 				"queuing": "Queuing...",
 				"sourcePolicy": {

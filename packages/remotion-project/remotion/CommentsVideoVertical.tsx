@@ -1,6 +1,13 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { ThumbsUp } from "lucide-react";
 import {
   AbsoluteFill,
@@ -56,11 +63,77 @@ const baseFontStack = [
 
 const baseFont = baseFontStack.join(", ");
 
+const MotionContext = createContext<{ enabled: boolean; multiplier: number }>({
+  enabled: true,
+  multiplier: 1,
+});
+
+function resolveFontFamily(preset?: string | null): string {
+  if (preset === "inter") {
+    return [
+      '"Inter"',
+      '"Helvetica Neue"',
+      "system-ui",
+      "-apple-system",
+      '"Segoe UI Emoji"',
+      '"Apple Color Emoji"',
+      '"Noto Color Emoji"',
+      "sans-serif",
+    ].join(", ");
+  }
+  if (preset === "system") {
+    return [
+      "system-ui",
+      "-apple-system",
+      '"Segoe UI"',
+      '"Helvetica Neue"',
+      '"Arial"',
+      '"Segoe UI Emoji"',
+      '"Apple Color Emoji"',
+      '"Noto Color Emoji"',
+      "sans-serif",
+    ].join(", ");
+  }
+  return baseFont;
+}
+
+function buildCssVars(
+  cfg: CommentVideoInputProps["templateConfig"],
+): CSSProperties {
+  const theme = cfg?.theme ?? {};
+  const lay = cfg?.layout ?? {};
+  const typo = cfg?.typography ?? {};
+
+  const paddingX = typeof lay.paddingX === "number" ? lay.paddingX : layout.paddingX;
+  const paddingY = typeof lay.paddingY === "number" ? lay.paddingY : layout.paddingY;
+  const infoPanelWidth =
+    typeof lay.infoPanelWidth === "number" ? lay.infoPanelWidth : layout.infoPanelWidth;
+
+  const fontScale = typeof typo.fontScale === "number" ? typo.fontScale : 1;
+  const fontFamily = resolveFontFamily(typo.fontPreset ?? "noto");
+
+  return {
+    "--tt-bg": theme.background ?? palette.background,
+    "--tt-surface": theme.surface ?? palette.surface,
+    "--tt-border": theme.border ?? palette.border,
+    "--tt-text-primary": theme.textPrimary ?? palette.textPrimary,
+    "--tt-text-secondary": theme.textSecondary ?? palette.textSecondary,
+    "--tt-text-muted": theme.textMuted ?? palette.textMuted,
+    "--tt-accent": theme.accent ?? palette.accent,
+    "--tt-accent-glow": theme.accentGlow ?? palette.accentGlow,
+    "--tt-font-family": fontFamily,
+    "--tt-font-scale": String(fontScale),
+    "--tt-padding-x": `${paddingX}px`,
+    "--tt-padding-y": `${paddingY}px`,
+    "--tt-info-width": `${infoPanelWidth}px`,
+  } as unknown as CSSProperties;
+}
+
 const containerStyle: CSSProperties = {
-  backgroundColor: palette.background,
-  color: palette.textPrimary,
-  fontFamily: baseFont,
-  padding: `${layout.paddingY}px ${layout.paddingX}px`,
+  backgroundColor: "var(--tt-bg)",
+  color: "var(--tt-text-primary)",
+  fontFamily: "var(--tt-font-family)",
+  padding: "var(--tt-padding-y) var(--tt-padding-x)",
   display: "flex",
   flexDirection: "column",
   gap: layout.rowGap,
@@ -70,9 +143,9 @@ const containerStyle: CSSProperties = {
 
 // 与横屏模板一致的正文与翻译样式
 const commentBodyStyle: CSSProperties = {
-  fontSize: 28,
+  fontSize: "calc(28px * var(--tt-font-scale))",
   lineHeight: 1.6,
-  color: palette.textPrimary,
+  color: "var(--tt-text-primary)",
   whiteSpace: "pre-wrap",
   margin: 0,
   width: "100%",
@@ -84,10 +157,10 @@ const translatedStyle: CSSProperties = {
   padding: "24px 0 24px 24px",
   borderRadius: 0,
   backgroundColor: "transparent",
-  color: palette.textSecondary,
-  borderLeft: `3px solid ${palette.accent}`,
+  color: "var(--tt-text-secondary)",
+  borderLeft: "3px solid var(--tt-accent)",
   whiteSpace: "pre-wrap",
-  fontSize: 26,
+  fontSize: "calc(26px * var(--tt-font-scale))",
   lineHeight: 1.6,
   fontWeight: 300,
 };
@@ -105,7 +178,17 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
   coverDurationInFrames,
   commentDurationsInFrames,
   fps,
+  templateConfig,
 }) => {
+  const motionEnabled = templateConfig?.motion?.enabled ?? true;
+  const motionIntensity = templateConfig?.motion?.intensity ?? "normal";
+  const motionMultiplier = !motionEnabled
+    ? 0
+    : motionIntensity === "subtle"
+      ? 0.7
+      : motionIntensity === "strong"
+        ? 1.3
+        : 1;
   const sequences = commentDurationsInFrames.reduce<
     {
       startFrame: number;
@@ -123,126 +206,175 @@ export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
   const mainDuration = Math.max(commentsTotalDuration, fps)
 
   return (
-    <AbsoluteFill style={{ backgroundColor: palette.background }}>
-      {/* 封面场景（统一为与横屏模板一致的电影质感封面） */}
-      <Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
-        <VerticalCover videoInfo={videoInfo} commentCount={comments.length} fps={fps} />
-      </Sequence>
-
-      {/* 主场景：横屏画布，左竖屏视频，右评论 */}
-      <Sequence layout="none" from={coverDurationInFrames} durationInFrames={mainDuration}>
-        <AbsoluteFill
-          style={{
-            ...containerStyle,
-            background: palette.background,
-            position: "relative",
-          }}
+    <AbsoluteFill
+      style={{
+        backgroundColor: "var(--tt-bg)",
+        ...(buildCssVars(templateConfig) as any),
+      }}
+    >
+      <MotionContext.Provider
+        value={{ enabled: motionEnabled, multiplier: motionMultiplier }}
+      >
+        {/* 封面场景（统一为与横屏模板一致的电影质感封面） */}
+        <Sequence
+          layout="none"
+          from={0}
+          durationInFrames={coverDurationInFrames}
         >
-          {/* 背景网格 + 光晕，与横屏模板统一 */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: `
-                linear-gradient(0deg, ${palette.border} 1px, transparent 1px),
-                linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
-              `,
-              backgroundSize: "40px 40px",
-              opacity: 0.1,
-              pointerEvents: "none",
-            }}
+          <VerticalCover
+            videoInfo={videoInfo}
+            commentCount={comments.length}
+            fps={fps}
           />
-          <div
-            style={{
-              position: "absolute",
-              top: "15%",
-              left: "-8%",
-              width: "320px",
-              height: "320px",
-              borderRadius: "50%",
-              background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
-              filter: "blur(70px)",
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: "10%",
-              right: "-5%",
-              width: "380px",
-              height: "380px",
-              borderRadius: "50%",
-              background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
-              filter: "blur(90px)",
-              pointerEvents: "none",
-            }}
-          />
+        </Sequence>
 
-          <div
+        {/* 主场景：横屏画布，左竖屏视频，右评论 */}
+        <Sequence
+          layout="none"
+          from={coverDurationInFrames}
+          durationInFrames={mainDuration}
+        >
+          <AbsoluteFill
             style={{
-              flex: 1,
-              display: "grid",
-              gridTemplateColumns: "560px 1fr",
-              gridTemplateRows: "1fr",
-              gap: 28,
-              alignItems: "stretch",
-              minHeight: 0,
+              ...containerStyle,
+              background: "var(--tt-bg)",
               position: "relative",
-              zIndex: 1,
             }}
           >
-            {/* 左侧竖屏视频占位（9:16） */}
+            {/* 背景网格 + 光晕，与横屏模板统一 */}
             <div
               style={{
-                borderRadius: 24,
-                backgroundColor: palette.surface,
-                border: `2px solid ${palette.border}`,
-                overflow: "hidden",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                position: "absolute",
+                inset: 0,
+                backgroundImage: `
+                  linear-gradient(0deg, var(--tt-border) 1px, transparent 1px),
+                  linear-gradient(90deg, var(--tt-border) 1px, transparent 1px)
+                `,
+                backgroundSize: "40px 40px",
+                opacity: 0.1,
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: "15%",
+                left: "-8%",
+                width: "320px",
+                height: "320px",
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
+                filter: "blur(70px)",
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: "10%",
+                right: "-5%",
+                width: "380px",
+                height: "380px",
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
+                filter: "blur(90px)",
+                pointerEvents: "none",
+              }}
+            />
+
+            <div
+              style={{
+                flex: 1,
+                display: "grid",
+                gridTemplateColumns: "560px 1fr",
+                gridTemplateRows: "1fr",
+                gap: 28,
+                alignItems: "stretch",
+                minHeight: 0,
+                position: "relative",
+                zIndex: 1,
               }}
             >
+              {/* 左侧竖屏视频占位（9:16） */}
               <div
                 style={{
-                  width: 540,
-                  height: 960,
-                  borderRadius: 20,
-                  border: `2px solid ${palette.border}`,
+                  borderRadius: 24,
+                  backgroundColor: "var(--tt-surface)",
+                  border: "2px solid var(--tt-border)",
                   overflow: "hidden",
-                  backgroundImage: `
-                    linear-gradient(135deg, ${palette.surface} 0%, ${palette.background} 100%)
-                  `,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: palette.textMuted,
-                  fontSize: 18,
-                  fontFamily: baseFont,
                 }}
               >
-                竖屏视频占位
+                <div
+                  style={{
+                    width: 540,
+                    height: 960,
+                    borderRadius: 20,
+                    border: "2px solid var(--tt-border)",
+                    overflow: "hidden",
+                    backgroundImage: `
+                      linear-gradient(135deg, var(--tt-surface) 0%, var(--tt-bg) 100%)
+                    `,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--tt-text-muted)",
+                    fontSize: 18,
+                    fontFamily: "var(--tt-font-family)",
+                  }}
+                >
+                  竖屏视频占位
+                </div>
+              </div>
+
+              {/* 右侧评论区域：样式与默认模板一致 */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                }}
+              >
+                {sequences.map(({ startFrame, durationInFrames, comment }) => (
+                  <Sequence
+                    key={comment.id}
+                    layout="none"
+                    from={startFrame}
+                    durationInFrames={durationInFrames}
+                  >
+                    <VerticalCommentSlide
+                      comment={comment}
+                      durationInFrames={durationInFrames}
+                      fps={fps}
+                    />
+                  </Sequence>
+                ))}
               </div>
             </div>
-
-            {/* 右侧评论区域：样式与默认模板一致 */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-              }}
-            >
-              {sequences.map(({ startFrame, durationInFrames, comment }) => (
-                <Sequence key={comment.id} layout="none" from={startFrame} durationInFrames={durationInFrames}>
-                  <VerticalCommentSlide comment={comment} durationInFrames={durationInFrames} fps={fps} />
-                </Sequence>
-              ))}
-            </div>
-          </div>
-        </AbsoluteFill>
-      </Sequence>
+          </AbsoluteFill>
+        </Sequence>
+      </MotionContext.Provider>
+      {templateConfig?.brand?.showWatermark ? (
+        <div
+          style={{
+            position: "absolute",
+            right: "var(--tt-padding-x)",
+            bottom: "calc(var(--tt-padding-y) * 0.6)",
+            fontFamily: "var(--tt-font-family)",
+            fontSize: "calc(12px * var(--tt-font-scale))",
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "var(--tt-text-muted)",
+            opacity: 0.6,
+          }}
+        >
+          {templateConfig?.brand?.watermarkText || "TubeTweet Studio"}
+        </div>
+      ) : null}
     </AbsoluteFill>
   )
 }
@@ -253,13 +385,14 @@ const VerticalCover: React.FC<{
   commentCount: number;
   fps: number;
 }> = ({ videoInfo, commentCount, fps }) => {
+  const motion = useContext(MotionContext);
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, fps * 0.5], [0, 1], {
+  const opacity = motion.multiplier === 0 ? 1 : interpolate(frame, [0, fps * 0.5], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const titleSlide = interpolate(frame, [fps * 0.3, fps * 0.8], [-50, 0], {
+  const titleSlide = motion.multiplier === 0 ? 0 : interpolate(frame, [fps * 0.3, fps * 0.8], [-50 * motion.multiplier, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
@@ -268,12 +401,12 @@ const VerticalCover: React.FC<{
   return (
     <AbsoluteFill
       style={{
-        background: palette.background,
+        background: "var(--tt-bg)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: palette.textPrimary,
-        fontFamily: baseFont,
+        color: "var(--tt-text-primary)",
+        fontFamily: "var(--tt-font-family)",
         padding: "0 100px",
         boxSizing: "border-box",
         opacity,
@@ -287,8 +420,8 @@ const VerticalCover: React.FC<{
           position: "absolute",
           inset: 0,
           backgroundImage: `
-            linear-gradient(0deg, ${palette.border} 1px, transparent 1px),
-            linear-gradient(90deg, ${palette.border} 1px, transparent 1px)
+            linear-gradient(0deg, var(--tt-border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--tt-border) 1px, transparent 1px)
           `,
           backgroundSize: "50px 50px",
           opacity: 0.12,
@@ -304,7 +437,8 @@ const VerticalCover: React.FC<{
           width: "430px",
           height: "430px",
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          background:
+            "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
           filter: "blur(80px)",
         }}
       />
@@ -316,7 +450,8 @@ const VerticalCover: React.FC<{
           width: "520px",
           height: "520px",
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${palette.accentGlow} 0%, transparent 70%)`,
+          background:
+            "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
           filter: "blur(95px)",
         }}
       />
@@ -329,8 +464,8 @@ const VerticalCover: React.FC<{
           left: 60,
           width: 100,
           height: 100,
-          borderTop: `4px solid ${palette.accent}`,
-          borderLeft: `4px solid ${palette.accent}`,
+          borderTop: "4px solid var(--tt-accent)",
+          borderLeft: "4px solid var(--tt-accent)",
           opacity: 0.4,
         }}
       />
@@ -341,8 +476,8 @@ const VerticalCover: React.FC<{
           right: 60,
           width: 100,
           height: 100,
-          borderTop: `4px solid ${palette.accent}`,
-          borderRight: `4px solid ${palette.accent}`,
+          borderTop: "4px solid var(--tt-accent)",
+          borderRight: "4px solid var(--tt-accent)",
           opacity: 0.4,
         }}
       />
@@ -610,17 +745,31 @@ const VerticalCommentSlide: React.FC<{
   durationInFrames: number
   fps: number
 }> = ({ comment, durationInFrames, fps }) => {
+  const motion = useContext(MotionContext)
   const frame = useCurrentFrame()
 
-  const fadeTime = Math.min(fps * 0.8, 12)
-  const appear = interpolate(frame, [0, fadeTime], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+  const fadeTimeBase = Math.min(fps * 0.8, 12)
+  const fadeTime = Math.max(1, fadeTimeBase * (motion.multiplier || 1))
+  const appear =
+    motion.multiplier === 0
+      ? 1
+      : interpolate(frame, [0, fadeTime], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
   const exitStart = Math.max(durationInFrames - fadeTime, 0)
-  const disappear = interpolate(frame, [exitStart, durationInFrames], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-  const opacity = Math.min(appear, disappear)
+  const disappear =
+    motion.multiplier === 0
+      ? 1
+      : interpolate(frame, [exitStart, durationInFrames], [1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
+  const opacity = motion.multiplier === 0 ? 1 : Math.min(appear, disappear)
 
   const remainingFrames = Math.max(0, durationInFrames - frame)
   const remainingSeconds = Math.ceil(remainingFrames / fps)
-  const countdownOpacity = interpolate(frame, [durationInFrames - fps * 3, durationInFrames - fps * 2], [0, 1], {
+  const countdownOpacity = motion.multiplier === 0 ? 0 : interpolate(frame, [durationInFrames - fps * 3, durationInFrames - fps * 2], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   })
@@ -631,9 +780,10 @@ const VerticalCommentSlide: React.FC<{
     fontSize: isChinesePrimary ? 56 : 28,
     lineHeight: isChinesePrimary ? 1.4 : 1.6,
     letterSpacing: isChinesePrimary ? "0.02em" : "normal",
-    color: isChinesePrimary ? palette.accent : palette.textPrimary,
+    color: isChinesePrimary ? "var(--tt-accent)" : "var(--tt-text-primary)",
     fontWeight: isChinesePrimary ? 700 : 400,
-    textShadow: isChinesePrimary ? `0 0 12px ${palette.accentGlow}` : "none",
+    textShadow:
+      isChinesePrimary ? "0 0 12px var(--tt-accent-glow)" : "none",
   }
 
   const totalTextLength = comment.content.length + (comment.translatedContent?.length || 0)
@@ -649,8 +799,8 @@ const VerticalCommentSlide: React.FC<{
         height: "100%",
         position: "relative",
         padding: "32px 40px",
-        backgroundColor: palette.surface,
-        border: `2px solid ${palette.border}`,
+        backgroundColor: "var(--tt-surface)",
+        border: "2px solid var(--tt-border)",
       }}
     >
       {/* Decorative corner frame */}
@@ -661,8 +811,8 @@ const VerticalCommentSlide: React.FC<{
           left: 0,
           width: 40,
           height: 40,
-          borderTop: `3px solid ${palette.accent}`,
-          borderLeft: `3px solid ${palette.accent}`,
+          borderTop: "3px solid var(--tt-accent)",
+          borderLeft: "3px solid var(--tt-accent)",
           opacity: 0.6,
         }}
       />
@@ -673,8 +823,8 @@ const VerticalCommentSlide: React.FC<{
           right: 0,
           width: 40,
           height: 40,
-          borderBottom: `3px solid ${palette.accent}`,
-          borderRight: `3px solid ${palette.accent}`,
+          borderBottom: "3px solid var(--tt-accent)",
+          borderRight: "3px solid var(--tt-accent)",
           opacity: 0.6,
         }}
       />

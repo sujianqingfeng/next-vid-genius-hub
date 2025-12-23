@@ -4,6 +4,7 @@ import {
 	listTemplates,
 	type RemotionTemplateId,
 } from '@app/remotion-project/templates'
+import type { CommentsTemplateConfig } from '@app/remotion-project/types'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
@@ -46,6 +47,7 @@ import {
 } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
+import { ColorPickerGrid } from '~/components/ui/color-picker-grid'
 
 import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/ai/models'
 import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
@@ -55,6 +57,11 @@ import { MEDIA_SOURCES } from '~/lib/media/source'
 import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
 import { useLocale, useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
+import {
+	DEFAULT_COMMENTS_TEMPLATE_CONFIG,
+	mergeCommentsTemplateConfig,
+	parseCommentsTemplateConfig,
+} from '~/lib/remotion/comments-template-config'
 
 type SourcePolicy = 'auto' | 'original' | 'subtitles'
 
@@ -213,6 +220,8 @@ export function MediaCommentsPage({
 	// ---------- Template + titles ----------
 	const [templateId, setTemplateId] =
 		React.useState<RemotionTemplateId>(DEFAULT_TEMPLATE_ID)
+	const [templateConfig, setTemplateConfig] =
+		React.useState<CommentsTemplateConfig | null>(null)
 
 	React.useEffect(() => {
 		const tid =
@@ -220,6 +229,22 @@ export function MediaCommentsPage({
 			DEFAULT_TEMPLATE_ID
 		setTemplateId(tid)
 	}, [mediaQuery.data?.commentsTemplate])
+
+	React.useEffect(() => {
+		const raw = mediaQuery.data?.commentsTemplateConfig
+		if (!raw) {
+			setTemplateConfig(null)
+			return
+		}
+		setTemplateConfig(parseCommentsTemplateConfig(raw, {}))
+	}, [mediaQuery.data?.commentsTemplateConfig])
+
+	const effectiveTemplateConfig = React.useMemo(() => {
+		return mergeCommentsTemplateConfig(
+			DEFAULT_COMMENTS_TEMPLATE_CONFIG,
+			templateConfig ?? {},
+		)
+	}, [templateConfig])
 
 	const updateRenderSettingsMutation = useEnhancedMutation(
 		queryOrpc.media.updateRenderSettings.mutationOptions({
@@ -548,6 +573,89 @@ export function MediaCommentsPage({
 		deleteCommentsMutation.isPending ||
 		startCloudRenderMutation.isPending
 
+	const setTemplateTheme = (
+		patch: NonNullable<CommentsTemplateConfig['theme']>,
+	) => {
+		setTemplateConfig((prev) => {
+			const base = mergeCommentsTemplateConfig(
+				DEFAULT_COMMENTS_TEMPLATE_CONFIG,
+				prev ?? {},
+			)
+			return {
+				...base,
+				theme: { ...(base.theme as NonNullable<CommentsTemplateConfig['theme']>), ...patch },
+			}
+		})
+	}
+
+	const setTemplateTypography = (
+		patch: NonNullable<CommentsTemplateConfig['typography']>,
+	) => {
+		setTemplateConfig((prev) => {
+			const base = mergeCommentsTemplateConfig(
+				DEFAULT_COMMENTS_TEMPLATE_CONFIG,
+				prev ?? {},
+			)
+			return {
+				...base,
+				typography: {
+					...(base.typography as NonNullable<
+						CommentsTemplateConfig['typography']
+					>),
+					...patch,
+				},
+			}
+		})
+	}
+
+	const setTemplateLayout = (
+		patch: NonNullable<CommentsTemplateConfig['layout']>,
+	) => {
+		setTemplateConfig((prev) => {
+			const base = mergeCommentsTemplateConfig(
+				DEFAULT_COMMENTS_TEMPLATE_CONFIG,
+				prev ?? {},
+			)
+			return {
+				...base,
+				layout: {
+					...(base.layout as NonNullable<CommentsTemplateConfig['layout']>),
+					...patch,
+				},
+			}
+		})
+	}
+
+	const setTemplateBrand = (
+		patch: NonNullable<CommentsTemplateConfig['brand']>,
+	) => {
+		setTemplateConfig((prev) => {
+			const base = mergeCommentsTemplateConfig(
+				DEFAULT_COMMENTS_TEMPLATE_CONFIG,
+				prev ?? {},
+			)
+			return {
+				...base,
+				brand: { ...(base.brand as NonNullable<CommentsTemplateConfig['brand']>), ...patch },
+			}
+		})
+	}
+
+	const setTemplateMotion = (
+		patch: NonNullable<CommentsTemplateConfig['motion']>,
+	) => {
+		setTemplateConfig((prev) => {
+			const base = mergeCommentsTemplateConfig(
+				DEFAULT_COMMENTS_TEMPLATE_CONFIG,
+				prev ?? {},
+			)
+			return {
+				...base,
+				motion: { ...(base.motion as NonNullable<CommentsTemplateConfig['motion']>), ...patch },
+			}
+		})
+	}
+
 	return (
 		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
 			<div className="px-4 py-10 sm:px-6 lg:px-8">
@@ -726,6 +834,9 @@ export function MediaCommentsPage({
 									comments={comments as any}
 									isLoading={mediaQuery.isLoading}
 									templateId={templateId}
+									templateConfig={
+										templateConfig === null ? undefined : effectiveTemplateConfig
+									}
 								/>
 							</div>
 
@@ -1129,6 +1240,288 @@ export function MediaCommentsPage({
 											</Select>
 										</div>
 
+										<div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
+											<div className="flex flex-wrap items-center justify-between gap-3">
+												<div className="text-sm font-semibold">
+													{t('render.config.title')}
+												</div>
+												<div className="flex flex-wrap gap-2">
+													<Button
+														variant="ghost"
+														size="sm"
+														onClick={() => {
+															setTemplateConfig(null)
+															updateRenderSettingsMutation.mutate({
+																id,
+																commentsTemplateConfig: null,
+															})
+														}}
+														disabled={isBusy || updateRenderSettingsMutation.isPending}
+													>
+														{t('render.config.reset')}
+													</Button>
+													<Button
+														size="sm"
+														onClick={() => {
+															updateRenderSettingsMutation.mutate({
+																id,
+																commentsTemplateConfig:
+																	templateConfig === null
+																		? null
+																		: templateConfig,
+															})
+														}}
+														disabled={isBusy || updateRenderSettingsMutation.isPending}
+													>
+														{updateRenderSettingsMutation.isPending
+															? t('render.config.saving')
+															: t('render.config.save')}
+													</Button>
+												</div>
+											</div>
+
+											<div className="space-y-2">
+												<Label>{t('render.config.theme')}</Label>
+												<ColorPickerGrid
+													fields={[
+														{
+															id: 'commentsThemeBackground',
+															label: t('render.config.fields.background'),
+															value: effectiveTemplateConfig.theme?.background ?? '#000000',
+															onChange: (e) =>
+																setTemplateTheme({
+																	background: e.target.value,
+																}),
+														},
+														{
+															id: 'commentsThemeSurface',
+															label: t('render.config.fields.surface'),
+															value: effectiveTemplateConfig.theme?.surface ?? '#ffffff',
+															onChange: (e) =>
+																setTemplateTheme({ surface: e.target.value }),
+														},
+														{
+															id: 'commentsThemeText',
+															label: t('render.config.fields.textPrimary'),
+															value:
+																effectiveTemplateConfig.theme?.textPrimary ?? '#111111',
+															onChange: (e) =>
+																setTemplateTheme({
+																	textPrimary: e.target.value,
+																}),
+														},
+														{
+															id: 'commentsThemeText2',
+															label: t('render.config.fields.textSecondary'),
+															value:
+																effectiveTemplateConfig.theme?.textSecondary ??
+																'#333333',
+															onChange: (e) =>
+																setTemplateTheme({
+																	textSecondary: e.target.value,
+																}),
+														},
+														{
+															id: 'commentsThemeAccent',
+															label: t('render.config.fields.accent'),
+															value: effectiveTemplateConfig.theme?.accent ?? '#ff0000',
+															onChange: (e) =>
+																setTemplateTheme({ accent: e.target.value }),
+														},
+													]}
+												/>
+											</div>
+
+											<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+												<div className="space-y-2">
+													<Label>{t('render.config.typography')}</Label>
+													<div className="space-y-2">
+														<div className="space-y-2">
+															<Label className="text-xs text-muted-foreground">
+																{t('render.config.fields.fontPreset')}
+															</Label>
+															<Select
+																value={
+																	effectiveTemplateConfig.typography?.fontPreset ?? 'noto'
+																}
+																onValueChange={(v) =>
+																	setTemplateTypography({
+																		fontPreset: v as any,
+																	})
+																}
+																disabled={isBusy}
+															>
+																<SelectTrigger>
+																	<SelectValue />
+																</SelectTrigger>
+																<SelectContent>
+																	<SelectItem value="noto">Noto (CJK)</SelectItem>
+																	<SelectItem value="inter">Inter</SelectItem>
+																	<SelectItem value="system">System</SelectItem>
+																</SelectContent>
+															</Select>
+														</div>
+														<div className="space-y-2">
+															<Label className="text-xs text-muted-foreground">
+																{t('render.config.fields.fontScale')}
+															</Label>
+															<Input
+																type="number"
+																step="0.05"
+																min="0.5"
+																max="2"
+																value={String(
+																	effectiveTemplateConfig.typography?.fontScale ?? 1,
+																)}
+																onChange={(e) => {
+																	const v = Number.parseFloat(e.target.value)
+																	setTemplateTypography({
+																		fontScale: Number.isFinite(v) ? v : 1,
+																	})
+																}}
+																disabled={isBusy}
+															/>
+														</div>
+													</div>
+												</div>
+
+												<div className="space-y-2">
+													<Label>{t('render.config.layout')}</Label>
+													<div className="grid grid-cols-3 gap-2">
+														<div className="space-y-1">
+															<Label className="text-xs text-muted-foreground">
+																{t('render.config.fields.paddingX')}
+															</Label>
+															<Input
+																type="number"
+																value={String(
+																	effectiveTemplateConfig.layout?.paddingX ?? 80,
+																)}
+																onChange={(e) =>
+																	setTemplateLayout({
+																		paddingX: safeParseInt(e.target.value, 80),
+																	})
+																}
+																disabled={isBusy}
+															/>
+														</div>
+														<div className="space-y-1">
+															<Label className="text-xs text-muted-foreground">
+																{t('render.config.fields.paddingY')}
+															</Label>
+															<Input
+																type="number"
+																value={String(
+																	effectiveTemplateConfig.layout?.paddingY ?? 60,
+																)}
+																onChange={(e) =>
+																	setTemplateLayout({
+																		paddingY: safeParseInt(e.target.value, 60),
+																	})
+																}
+																disabled={isBusy}
+															/>
+														</div>
+														<div className="space-y-1">
+															<Label className="text-xs text-muted-foreground">
+																{t('render.config.fields.infoPanelWidth')}
+															</Label>
+															<Input
+																type="number"
+																value={String(
+																	effectiveTemplateConfig.layout?.infoPanelWidth ?? 680,
+																)}
+																onChange={(e) =>
+																	setTemplateLayout({
+																		infoPanelWidth: safeParseInt(e.target.value, 680),
+																	})
+																}
+																disabled={isBusy}
+															/>
+														</div>
+													</div>
+												</div>
+											</div>
+
+											<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+												<div className="space-y-2">
+													<Label>{t('render.config.brand')}</Label>
+													<div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
+														<div className="text-sm">
+															{t('render.config.fields.watermark')}
+														</div>
+														<Switch
+															checked={Boolean(
+																effectiveTemplateConfig.brand?.showWatermark,
+															)}
+															onCheckedChange={(checked) =>
+																setTemplateBrand({ showWatermark: checked })
+															}
+															disabled={isBusy}
+														/>
+													</div>
+													<Input
+														placeholder={t('render.config.fields.watermarkText')}
+														value={String(
+															effectiveTemplateConfig.brand?.watermarkText ?? '',
+														)}
+														onChange={(e) =>
+															setTemplateBrand({ watermarkText: e.target.value })
+														}
+														disabled={
+															isBusy ||
+															!effectiveTemplateConfig.brand?.showWatermark
+														}
+													/>
+												</div>
+
+												<div className="space-y-2">
+													<Label>{t('render.config.motion')}</Label>
+													<div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
+														<div className="text-sm">
+															{t('render.config.fields.motionEnabled')}
+														</div>
+														<Switch
+															checked={Boolean(
+																effectiveTemplateConfig.motion?.enabled ?? true,
+															)}
+															onCheckedChange={(checked) =>
+																setTemplateMotion({ enabled: checked })
+															}
+															disabled={isBusy}
+														/>
+													</div>
+													<div className="space-y-2">
+														<Label className="text-xs text-muted-foreground">
+															{t('render.config.fields.motionIntensity')}
+														</Label>
+														<Select
+															value={
+																effectiveTemplateConfig.motion?.intensity ?? 'normal'
+															}
+															onValueChange={(v) =>
+																setTemplateMotion({
+																	intensity: v as any,
+																})
+															}
+															disabled={
+																isBusy || effectiveTemplateConfig.motion?.enabled === false
+															}
+														>
+															<SelectTrigger>
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value="subtle">Subtle</SelectItem>
+																<SelectItem value="normal">Normal</SelectItem>
+																<SelectItem value="strong">Strong</SelectItem>
+															</SelectContent>
+														</Select>
+													</div>
+												</div>
+											</div>
+										</div>
+
 										<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 											<div className="space-y-2">
 												<Label>{t('render.sourcePolicy.label')}</Label>
@@ -1188,6 +1581,8 @@ export function MediaCommentsPage({
 																: undefined,
 														sourcePolicy,
 														templateId,
+														templateConfig:
+															templateConfig === null ? null : templateConfig,
 													})
 												}}
 												disabled={

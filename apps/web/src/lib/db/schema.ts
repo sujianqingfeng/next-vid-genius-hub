@@ -4,6 +4,7 @@ import {
 	text,
 	uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
+import type { CommentsTemplateConfig } from '@app/remotion-project/types'
 import { createId } from '~/lib/utils/id'
 
 export interface Comment {
@@ -251,6 +252,9 @@ export const media = sqliteTable(
 		videoWithInfoPath: text('video_with_info_path'),
 		// 渲染配置：评论视频 Remotion 模板
 		commentsTemplate: text('comments_template'),
+		// 渲染配置：评论模板参数（配色/字体/布局等）
+		commentsTemplateConfig: text('comments_template_config', { mode: 'json' })
+			.$type<CommentsTemplateConfig>(),
 		comments: text('comments', { mode: 'json' }).$type<Comment[]>(),
 		commentsDownloadedAt: integer('comments_downloaded_at', {
 			mode: 'timestamp',
