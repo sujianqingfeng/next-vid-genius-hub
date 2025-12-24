@@ -536,9 +536,9 @@
 				"title": "Edit Titles",
 				"description": "Update the original and translated titles for this media.",
 				"fields": {
-					"originalLabel": "Original Title (Chinese)",
+					"originalLabel": "Original Title",
 					"originalPlaceholder": "Enter original title",
-					"translatedLabel": "Translated Title (English)",
+					"translatedLabel": "Translated Title",
 					"translatedPlaceholder": "Enter translated title"
 				},
 				"actions": {
@@ -557,7 +557,7 @@
 				"render": "Render"
 			},
 			"labels": {
-				"englishTitle": "English title",
+				"englishTitle": "Translated title",
 				"originalTitle": "Original title"
 			},
 			"fields": {
@@ -569,7 +569,7 @@
 				"translatedTitle": {
 					"label": "Translated Title",
 					"empty": "No translated title",
-					"copy": "Copy English Title"
+					"copy": "Copy translated title"
 				},
 				"originalTitle": {
 					"label": "Original Title",
@@ -638,7 +638,9 @@
 			},
 			"videoInfo": {
 				"title": "Video Info",
-				"sourceId": "Source ID",
+				"sourceId": "Source",
+				"openSource": "Open source",
+				"copySourceLink": "Copy source link",
 				"copyDisclaimer": "Copy Disclaimer"
 			},
 			"disclaimer": {

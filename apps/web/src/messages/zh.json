@@ -536,9 +536,9 @@
 				"title": "编辑标题",
 				"description": "更新该媒体的原标题和译文标题。",
 				"fields": {
-					"originalLabel": "原标题（中文）",
+					"originalLabel": "原标题",
 					"originalPlaceholder": "请输入原标题",
-					"translatedLabel": "译文标题（英文）",
+					"translatedLabel": "译文标题",
 					"translatedPlaceholder": "请输入译文标题"
 				},
 				"actions": {
@@ -557,7 +557,7 @@
 				"render": "渲染"
 			},
 			"labels": {
-				"englishTitle": "英文标题",
+				"englishTitle": "译文标题",
 				"originalTitle": "原标题"
 			},
 			"fields": {
@@ -569,7 +569,7 @@
 				"translatedTitle": {
 					"label": "译文标题",
 					"empty": "暂无译文标题",
-					"copy": "复制英文标题"
+					"copy": "复制译文标题"
 				},
 				"originalTitle": {
 					"label": "原标题",
@@ -638,7 +638,9 @@
 			},
 			"videoInfo": {
 				"title": "视频信息",
-				"sourceId": "源 ID",
+				"sourceId": "来源",
+				"openSource": "打开原视频",
+				"copySourceLink": "复制原视频链接",
 				"copyDisclaimer": "复制声明"
 			},
 			"disclaimer": {
