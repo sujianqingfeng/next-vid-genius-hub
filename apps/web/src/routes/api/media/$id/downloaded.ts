@@ -4,7 +4,6 @@ import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import {
-	extractJobIdFromRemoteKey,
 	makeOrchestratorArtifactUrl,
 	resolveRemoteVideoUrl,
 	tryProxyRemoteWithRange,
@@ -56,31 +55,6 @@ export const Route = createFileRoute('/api/media/$id/downloaded')({
 										`[downloaded] via remoteVideoKey media=${mediaId} download=${wantDownload ? '1' : '0'}`,
 									)
 									return proxied
-								}
-
-								const jobIdFromKey = extractJobIdFromRemoteKey(
-									media.remoteVideoKey,
-								)
-								const artifactUrl = jobIdFromKey
-									? makeOrchestratorArtifactUrl(jobIdFromKey)
-									: null
-								if (artifactUrl) {
-									const artifact = await tryProxyRemoteWithRange(
-										artifactUrl,
-										request,
-										{
-											defaultCacheSeconds: 60,
-											forceDownloadName: downloadName,
-											fallthroughStatusCodes: [404],
-										},
-									)
-									if (artifact) {
-										logger.info(
-											'api',
-											`[downloaded] via orchestrator keyJob=${jobIdFromKey} media=${mediaId} download=${wantDownload ? '1' : '0'}`,
-										)
-										return artifact
-									}
 								}
 							}
 						} catch (e) {

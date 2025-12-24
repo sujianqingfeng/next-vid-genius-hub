@@ -97,14 +97,6 @@ export async function proxyRemoteWithRange(
 	return createProxyResponse(r, options)
 }
 
-export function extractJobIdFromRemoteKey(
-	key: string | null | undefined,
-): string | null {
-	if (!key) return null
-	const match = key.match(/\bjob_[a-z0-9]+\b/i)
-	return match ? match[0] : null
-}
-
 export async function tryProxyRemoteWithRange(
 	remoteUrl: string,
 	request: Request,

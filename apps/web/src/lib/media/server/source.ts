@@ -2,8 +2,6 @@ import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import {
-	createProxyResponse,
-	extractJobIdFromRemoteKey,
 	extractOrchestratorUrlFromPath,
 	makeOrchestratorArtifactUrl,
 	resolveRemoteVideoUrl,
@@ -47,27 +45,6 @@ export async function handleMediaSourceRequest(
 								`[source] original via remoteVideoKey media=${mediaId}`,
 							)
 							return proxied
-						}
-						const jobIdFromKey = extractJobIdFromRemoteKey(media.remoteVideoKey)
-						const artifactUrl = jobIdFromKey
-							? makeOrchestratorArtifactUrl(jobIdFromKey)
-							: null
-						if (artifactUrl) {
-							const artifact = await tryProxyRemoteWithRange(
-								artifactUrl,
-								request,
-								{
-									defaultCacheSeconds: 60,
-									fallthroughStatusCodes: [404],
-								},
-							)
-							if (artifact) {
-								logger.info(
-									'api',
-									`[source] original via orchestrator keyJob=${jobIdFromKey} media=${mediaId}`,
-								)
-								return artifact
-							}
 						}
 					}
 				} catch (e) {
@@ -137,29 +114,28 @@ export async function handleMediaSourceRequest(
 			)
 		}
 
-		const preferRendered =
-			media.videoWithSubtitlesPath || media.videoWithInfoPath
-		if (preferRendered) {
-			const renderedPath = preferRendered
-			if (renderedPath.startsWith('remote:orchestrator:')) {
+		// variant=auto: prefer subtitles (if available), otherwise fall back to original source.
+		if (variant === 'auto') {
+			const renderedPath = media.videoWithSubtitlesPath
+			if (renderedPath && renderedPath.startsWith('remote:orchestrator:')) {
 				const remoteUrl = extractOrchestratorUrlFromPath(renderedPath)
-				if (!remoteUrl) {
-					return Response.json(
-						{ error: 'Orchestrator URL not configured' },
-						{ status: 500 },
-					)
-				}
-
-				const range = request.headers.get('range')
-				const passHeaders: Record<string, string> = {}
-				if (range) passHeaders.range = range
-				const r = await fetch(remoteUrl, { headers: passHeaders })
-				if (r.ok) {
-					logger.info(
+				if (remoteUrl) {
+					const proxied = await tryProxyRemoteWithRange(remoteUrl, request, {
+						defaultCacheSeconds: 60,
+						fallthroughStatusCodes: [404],
+					})
+					if (proxied) {
+						logger.info(
+							'api',
+							`[source] auto via subtitles orchestrator media=${mediaId}`,
+						)
+						return proxied
+					}
+				} else {
+					logger.warn(
 						'api',
-						`[source] auto via rendered orchestrator media=${mediaId}`,
+						`[source] auto: subtitles path set but orchestrator URL not configured media=${mediaId}`,
 					)
-					return createProxyResponse(r, { defaultCacheSeconds: 60 })
 				}
 			}
 		}
@@ -183,28 +159,6 @@ export async function handleMediaSourceRequest(
 							`[source] auto via remoteVideoKey media=${mediaId}`,
 						)
 						return proxied
-					}
-
-					const jobIdFromKey = extractJobIdFromRemoteKey(media.remoteVideoKey)
-					const artifactUrl = jobIdFromKey
-						? makeOrchestratorArtifactUrl(jobIdFromKey)
-						: null
-					if (artifactUrl) {
-						const artifact = await tryProxyRemoteWithRange(
-							artifactUrl,
-							request,
-							{
-								defaultCacheSeconds: 60,
-								fallthroughStatusCodes: [404],
-							},
-						)
-						if (artifact) {
-							logger.info(
-								'api',
-								`[source] auto via orchestrator keyJob=${jobIdFromKey} media=${mediaId}`,
-							)
-							return artifact
-						}
 					}
 				}
 			} catch (e) {
