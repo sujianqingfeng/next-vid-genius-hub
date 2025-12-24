@@ -37,7 +37,6 @@ import { Route as ApiRenderCfCallbackRouteImport } from './routes/api/render/cf-
 import { Route as ApiProxyCheckRunOneRouteImport } from './routes/api/proxy-check/run-one'
 import { Route as ApiProxyCheckRunRouteImport } from './routes/api/proxy-check/run'
 import { Route as ApiOrpcSplatRouteImport } from './routes/api/orpc/$'
-import { Route as ApiMediaIdSubtitlesRouteImport } from './routes/api/media/$id/subtitles'
 import { Route as ApiMediaIdSourceRouteImport } from './routes/api/media/$id/source'
 import { Route as ApiMediaIdRenderedInfoRouteImport } from './routes/api/media/$id/rendered-info'
 import { Route as ApiMediaIdRenderedRouteImport } from './routes/api/media/$id/rendered'
@@ -185,11 +184,6 @@ const ApiOrpcSplatRoute = ApiOrpcSplatRouteImport.update({
   path: '/api/orpc/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiMediaIdSubtitlesRoute = ApiMediaIdSubtitlesRouteImport.update({
-  id: '/api/media/$id/subtitles',
-  path: '/api/media/$id/subtitles',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiMediaIdSourceRoute = ApiMediaIdSourceRouteImport.update({
   id: '/api/media/$id/source',
   path: '/api/media/$id/source',
@@ -257,7 +251,6 @@ export interface FileRoutesByFullPath {
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
   '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
   '/api/media/$id/source': typeof ApiMediaIdSourceRoute
-  '/api/media/$id/subtitles': typeof ApiMediaIdSubtitlesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -291,7 +284,6 @@ export interface FileRoutesByTo {
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
   '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
   '/api/media/$id/source': typeof ApiMediaIdSourceRoute
-  '/api/media/$id/subtitles': typeof ApiMediaIdSubtitlesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -329,7 +321,6 @@ export interface FileRoutesById {
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
   '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
   '/api/media/$id/source': typeof ApiMediaIdSourceRoute
-  '/api/media/$id/subtitles': typeof ApiMediaIdSubtitlesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -368,7 +359,6 @@ export interface FileRouteTypes {
     | '/api/media/$id/rendered'
     | '/api/media/$id/rendered-info'
     | '/api/media/$id/source'
-    | '/api/media/$id/subtitles'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -402,7 +392,6 @@ export interface FileRouteTypes {
     | '/api/media/$id/rendered'
     | '/api/media/$id/rendered-info'
     | '/api/media/$id/source'
-    | '/api/media/$id/subtitles'
   id:
     | '__root__'
     | '/'
@@ -439,7 +428,6 @@ export interface FileRouteTypes {
     | '/api/media/$id/rendered'
     | '/api/media/$id/rendered-info'
     | '/api/media/$id/source'
-    | '/api/media/$id/subtitles'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -465,7 +453,6 @@ export interface RootRouteChildren {
   ApiMediaIdRenderedRoute: typeof ApiMediaIdRenderedRoute
   ApiMediaIdRenderedInfoRoute: typeof ApiMediaIdRenderedInfoRoute
   ApiMediaIdSourceRoute: typeof ApiMediaIdSourceRoute
-  ApiMediaIdSubtitlesRoute: typeof ApiMediaIdSubtitlesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -666,13 +653,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOrpcSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/media/$id/subtitles': {
-      id: '/api/media/$id/subtitles'
-      path: '/api/media/$id/subtitles'
-      fullPath: '/api/media/$id/subtitles'
-      preLoaderRoute: typeof ApiMediaIdSubtitlesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/media/$id/source': {
       id: '/api/media/$id/source'
       path: '/api/media/$id/source'
@@ -795,7 +775,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMediaIdRenderedRoute: ApiMediaIdRenderedRoute,
   ApiMediaIdRenderedInfoRoute: ApiMediaIdRenderedInfoRoute,
   ApiMediaIdSourceRoute: ApiMediaIdSourceRoute,
-  ApiMediaIdSubtitlesRoute: ApiMediaIdSubtitlesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

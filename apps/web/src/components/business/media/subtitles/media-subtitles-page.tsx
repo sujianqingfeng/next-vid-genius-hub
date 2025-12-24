@@ -768,7 +768,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 										</div>
 									</div>
 
-									<div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+									<div className="mt-6 grid grid-cols-1 gap-4">
 										<div className="space-y-2">
 											<div className="text-xs font-medium text-muted-foreground">
 												{t('translate.model')}
@@ -794,22 +794,6 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 													{t('translate.defaultModel', { model: llmDefaultId })}
 												</div>
 											) : null}
-										</div>
-
-										<div className="space-y-2">
-											<div className="text-xs font-medium text-muted-foreground">
-												Download
-											</div>
-											<Button asChild variant="outline" className="w-full">
-												<a
-													href={`/api/media/${id}/subtitles`}
-													target="_blank"
-													rel="noreferrer"
-												>
-													<Download className="mr-2 h-4 w-4" />
-													VTT
-												</a>
-											</Button>
 										</div>
 									</div>
 
@@ -963,7 +947,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 												Export
 											</div>
 											<div className="text-sm text-muted-foreground">
-												Download the rendered MP4 and the VTT.
+												Download the rendered MP4.
 											</div>
 										</div>
 										{hasRenderedVideo ? (
@@ -973,7 +957,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 										)}
 									</div>
 
-									<div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+									<div className="mt-6 grid grid-cols-1 gap-3">
 										{hasRenderedVideo ? (
 											<Button asChild size="lg" className="h-11">
 												<a
@@ -987,29 +971,6 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 											<Button size="lg" className="h-11" disabled>
 												<Video className="mr-2 h-4 w-4" />
 												Download Video
-											</Button>
-										)}
-										{translationText ? (
-											<Button
-												asChild
-												variant="outline"
-												size="lg"
-												className="h-11"
-											>
-												<a href={`/api/media/${id}/subtitles?download=1`}>
-													<FileText className="mr-2 h-4 w-4" />
-													Download VTT
-												</a>
-											</Button>
-										) : (
-											<Button
-												variant="outline"
-												size="lg"
-												className="h-11"
-												disabled
-											>
-												<FileText className="mr-2 h-4 w-4" />
-												Download VTT
 											</Button>
 										)}
 									</div>
