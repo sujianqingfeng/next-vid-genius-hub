@@ -1,6 +1,11 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+	keepPreviousData,
+	useQuery,
+	useQueryClient,
+} from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ExternalLink, Loader2, RefreshCw } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -34,10 +39,21 @@ function mediaPreviewUrl(media: MediaItem, id: string): string | null {
 export function MediaDetailPage({ id }: { id: string }) {
 	const t = useTranslations('MediaDetail')
 	const qc = useQueryClient()
+	const [txPage, setTxPage] = useState(1)
+	const txLimit = 20
 
 	const mediaQuery = useQuery(
 		queryOrpc.media.byId.queryOptions({ input: { id } }),
 	)
+
+	const txOffset = (txPage - 1) * txLimit
+	const transactionsQuery = useQuery({
+		...queryOrpc.media.listPointTransactions.queryOptions({
+			input: { id, limit: txLimit, offset: txOffset },
+		}),
+		placeholderData: keepPreviousData,
+		enabled: mediaQuery.isSuccess,
+	})
 
 	const refreshMutation = useEnhancedMutation(
 		queryOrpc.media.refreshMetadata.mutationOptions({
@@ -94,6 +110,20 @@ export function MediaDetailPage({ id }: { id: string }) {
 	const createdAt = toDateLabel(item.createdAt)
 	const previewUrl = mediaPreviewUrl(item, id)
 	const title = item.translatedTitle || item.title || id
+	const txItems = transactionsQuery.data?.items ?? []
+	const txTotal = transactionsQuery.data?.total ?? 0
+	const txNetDelta = transactionsQuery.data?.netDelta ?? 0
+	const txPageCount = Math.max(1, Math.ceil(txTotal / txLimit))
+
+	const formattedTransactions = useMemo(
+		() =>
+			txItems.map((tx) => ({
+				...tx,
+				sign: tx.delta >= 0 ? '+' : '-',
+				abs: Math.abs(tx.delta),
+			})),
+		[txItems],
+	)
 
 	return (
 		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
@@ -213,6 +243,103 @@ export function MediaDetailPage({ id }: { id: string }) {
 							</Card>
 						</div>
 					</div>
+
+					<Card className="border-border/60 shadow-sm">
+						<CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+							<CardTitle className="text-base">{t('points.title')}</CardTitle>
+							<div className="flex items-center gap-2 text-sm">
+								<span className="text-muted-foreground">{t('points.net')}</span>
+								<span
+									className={
+										txNetDelta >= 0 ? 'text-emerald-600' : 'text-red-500'
+									}
+								>
+									{txNetDelta >= 0 ? '+' : ''}
+									{txNetDelta}
+								</span>
+							</div>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<div className="grid grid-cols-5 border-b border-border/60 pb-2 text-xs font-medium text-muted-foreground">
+								<div>{t('points.table.headers.time')}</div>
+								<div>{t('points.table.headers.type')}</div>
+								<div>{t('points.table.headers.delta')}</div>
+								<div>{t('points.table.headers.balance')}</div>
+								<div>{t('points.table.headers.remark')}</div>
+							</div>
+							<div className="divide-y divide-border/60">
+								{formattedTransactions.length === 0 ? (
+									<div className="py-6 text-center text-sm text-muted-foreground">
+										{transactionsQuery.isError
+											? t('points.table.error')
+											: transactionsQuery.isLoading ||
+												  transactionsQuery.isFetching
+												? t('points.table.loading')
+												: t('points.table.empty')}
+									</div>
+								) : null}
+								{formattedTransactions.map((tx) => (
+									<div
+										key={tx.id}
+										className="grid grid-cols-5 items-center py-3 text-sm"
+									>
+										<div className="text-xs text-muted-foreground">
+											{new Date(tx.createdAt).toLocaleString()}
+										</div>
+										<div>
+											<Badge variant="secondary" className="capitalize">
+												{String(tx.type).replace('_', ' ')}
+											</Badge>
+										</div>
+										<div
+											className={
+												tx.delta >= 0 ? 'text-emerald-600' : 'text-red-500'
+											}
+										>
+											{tx.sign}
+											{tx.abs}
+										</div>
+										<div>{tx.balanceAfter}</div>
+										<div className="text-xs text-muted-foreground">
+											{tx.remark || tx.refType || '-'}
+										</div>
+									</div>
+								))}
+							</div>
+
+							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+								<p className="text-xs text-muted-foreground">
+									{t('points.pagination', {
+										page: txPage,
+										pages: txPageCount,
+										total: txTotal,
+									})}
+								</p>
+								<div className="flex gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={txPage <= 1 || transactionsQuery.isFetching}
+										onClick={() => setTxPage((p) => Math.max(1, p - 1))}
+									>
+										{t('points.prev')}
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={
+											txPage >= txPageCount || transactionsQuery.isFetching
+										}
+										onClick={() =>
+											setTxPage((p) => Math.min(txPageCount, p + 1))
+										}
+									>
+										{t('points.next')}
+									</Button>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
 				</div>
 			</div>
 		</div>

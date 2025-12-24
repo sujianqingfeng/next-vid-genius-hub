@@ -480,6 +480,25 @@
 				"sourceAudioKey": "Source audio key",
 				"metadataKey": "Metadata key"
 			}
+		},
+		"points": {
+			"title": "Points Activity",
+			"net": "Net",
+			"table": {
+				"headers": {
+					"time": "Time",
+					"type": "Type",
+					"delta": "Delta",
+					"balance": "Balance",
+					"remark": "Remark"
+				},
+				"loading": "Loading…",
+				"empty": "No transactions",
+				"error": "Failed to load"
+			},
+			"pagination": "Page {page}/{pages}, {total} total",
+			"prev": "Prev",
+			"next": "Next"
 		}
 	},
 	"Subtitles": {

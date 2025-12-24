@@ -480,6 +480,25 @@
 				"sourceAudioKey": "原始音频 Key",
 				"metadataKey": "元数据 Key"
 			}
+		},
+		"points": {
+			"title": "积分流水",
+			"net": "净变化",
+			"table": {
+				"headers": {
+					"time": "时间",
+					"type": "类型",
+					"delta": "变化",
+					"balance": "余额",
+					"remark": "备注"
+				},
+				"loading": "加载中…",
+				"empty": "暂无记录",
+				"error": "加载失败"
+			},
+			"pagination": "第 {page}/{pages} 页，共 {total} 条",
+			"prev": "上一页",
+			"next": "下一页"
 		}
 	},
 	"Subtitles": {

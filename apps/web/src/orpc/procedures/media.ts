@@ -15,6 +15,10 @@ import { getDb, schema } from '~/lib/db'
 import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
 import { MEDIA_SOURCES } from '~/lib/media/source'
+import {
+	listTransactionsByRef,
+	summarizeTransactionsByRef,
+} from '~/lib/points/service'
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
@@ -71,6 +75,50 @@ export const byId = os
 		return item
 	})
 
+export const listPointTransactions = os
+	.input(
+		z.object({
+			id: z.string().min(1),
+			limit: z.number().int().min(1).max(100).default(50),
+			offset: z.number().int().min(0).default(0),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+
+		const media = await db.query.media.findFirst({
+			where: and(
+				eq(schema.media.id, input.id),
+				eq(schema.media.userId, userId),
+			),
+			columns: { id: true },
+		})
+		if (!media) {
+			throw new Error('Media not found')
+		}
+
+		const [summary, items] = await Promise.all([
+			summarizeTransactionsByRef({ userId, refId: media.id, db }),
+			listTransactionsByRef({
+				userId,
+				refId: media.id,
+				limit: input.limit,
+				offset: input.offset,
+				db,
+			}),
+		])
+
+		return {
+			items,
+			total: summary.total,
+			netDelta: summary.netDelta,
+			limit: input.limit,
+			offset: input.offset,
+		}
+	})
+
 // Refresh metadata from upstream provider via cloud downloader (no video re-download)
 export const refreshMetadata = os
 	.input(
@@ -108,10 +156,11 @@ export const refreshMetadata = os
 			`[metadata.refresh.start] media=${record.id} user=${userId} source=${source} proxyId=${input.proxyId ?? 'none'}`,
 		)
 
-		const { proxyId: effectiveProxyId, proxyRecord } = await resolveSuccessProxy({
-			db,
-			requestedProxyId: input.proxyId,
-		})
+		const { proxyId: effectiveProxyId, proxyRecord } =
+			await resolveSuccessProxy({
+				db,
+				requestedProxyId: input.proxyId,
+			})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		const taskId = createId()
@@ -362,8 +411,9 @@ export const updateRenderSettings = os
 			if (commentsTemplateConfig === null) {
 				updates.commentsTemplateConfig = null
 			} else {
-				const parsed =
-					CommentsTemplateConfigSchema.safeParse(commentsTemplateConfig)
+				const parsed = CommentsTemplateConfigSchema.safeParse(
+					commentsTemplateConfig,
+				)
 				if (!parsed.success) throw new Error('Invalid commentsTemplateConfig')
 				updates.commentsTemplateConfig = parsed.data
 			}

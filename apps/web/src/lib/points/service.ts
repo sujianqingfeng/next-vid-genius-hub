@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import type { PointTransactionType } from '~/lib/db/schema'
 import { logger } from '~/lib/logger'
@@ -159,4 +159,49 @@ export async function listTransactions(opts: {
 		offset: opts.offset ?? 0,
 	})
 	return items
+}
+
+export async function listTransactionsByRef(opts: {
+	userId: string
+	refId: string
+	limit?: number
+	offset?: number
+	db?: DbClient
+}) {
+	const client = opts.db ?? (await getDb())
+	const items = await client.query.pointTransactions.findMany({
+		where: and(
+			eq(schema.pointTransactions.userId, opts.userId),
+			eq(schema.pointTransactions.refId, opts.refId),
+		),
+		orderBy: desc(schema.pointTransactions.createdAt),
+		limit: opts.limit ?? 50,
+		offset: opts.offset ?? 0,
+	})
+	return items
+}
+
+export async function summarizeTransactionsByRef(opts: {
+	userId: string
+	refId: string
+	db?: DbClient
+}) {
+	const client = opts.db ?? (await getDb())
+	const [row] = await client
+		.select({
+			total: sql<number>`count(*)`,
+			netDelta: sql<number>`coalesce(sum(${schema.pointTransactions.delta}), 0)`,
+		})
+		.from(schema.pointTransactions)
+		.where(
+			and(
+				eq(schema.pointTransactions.userId, opts.userId),
+				eq(schema.pointTransactions.refId, opts.refId),
+			),
+		)
+
+	return {
+		total: Number(row?.total ?? 0),
+		netDelta: Number(row?.netDelta ?? 0),
+	}
 }
