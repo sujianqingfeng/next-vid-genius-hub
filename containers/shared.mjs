@@ -90,17 +90,90 @@ export async function ensureDirExists(dir) {
   }
 }
 
-export async function uploadArtifact(url, bufferOrStream, contentType = 'application/octet-stream', headers = {}) {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function shouldSetDuplexHalf(body) {
+  if (!body) return false
+  if (typeof body === 'string') return false
+  // Buffer/typed arrays are fine without duplex.
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(body)) return false
+  if (body instanceof ArrayBuffer) return false
+  if (body instanceof Uint8Array) return false
+  // AsyncIterable/streams require duplex in Node fetch.
+  return (
+    typeof body.getReader === 'function' ||
+    typeof body.pipe === 'function' ||
+    typeof body[Symbol.asyncIterator] === 'function'
+  )
+}
+
+function isRetryableUploadStatus(status) {
+  return status === 408 || status === 429 || (status >= 500 && status <= 599)
+}
+
+export async function uploadArtifact(
+  url,
+  bodyOrFactory,
+  contentType = 'application/octet-stream',
+  headers = {},
+  options = {},
+) {
   if (!url) return
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: { 'content-type': contentType, 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD', ...headers },
-    body: bufferOrStream,
-  })
-  if (!res.ok) {
-    let msg = ''
-    try { msg = await res.text() } catch {}
-    throw new Error(`upload failed: ${res.status} ${msg}`)
+  const maxAttempts =
+    Number.isFinite(options?.maxAttempts) && options.maxAttempts > 0
+      ? Math.floor(options.maxAttempts)
+      : 3
+  const baseDelayMs =
+    Number.isFinite(options?.baseDelayMs) && options.baseDelayMs > 0
+      ? Math.floor(options.baseDelayMs)
+      : 1000
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const body = typeof bodyOrFactory === 'function' ? bodyOrFactory() : bodyOrFactory
+    try {
+      const init = {
+        method: 'PUT',
+        headers: {
+          'content-type': contentType,
+          'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
+          ...headers,
+        },
+        body,
+      }
+      if (shouldSetDuplexHalf(body)) init.duplex = 'half'
+
+      const res = await fetch(url, init)
+      if (res.ok) return
+
+      let msg = ''
+      try {
+        msg = await res.text()
+      } catch {}
+
+      if (attempt < maxAttempts && isRetryableUploadStatus(res.status)) {
+        const delayMs = Math.min(30_000, baseDelayMs * 2 ** (attempt - 1))
+        console.warn(
+          `[upload] retrying attempt=${attempt + 1}/${maxAttempts} status=${res.status} delayMs=${delayMs}`,
+        )
+        await sleep(delayMs)
+        continue
+      }
+
+      throw new Error(`upload failed: ${res.status} ${msg}`)
+    } catch (error) {
+      const msg = error?.message || String(error)
+      if (attempt < maxAttempts) {
+        const delayMs = Math.min(30_000, baseDelayMs * 2 ** (attempt - 1))
+        console.warn(
+          `[upload] retrying attempt=${attempt + 1}/${maxAttempts} error=${msg} delayMs=${delayMs}`,
+        )
+        await sleep(delayMs)
+        continue
+      }
+      throw error
+    }
   }
 }
 

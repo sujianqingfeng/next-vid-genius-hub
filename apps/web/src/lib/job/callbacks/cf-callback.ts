@@ -329,6 +329,59 @@ async function handleCloudDownloadCallback(
 		return
 	}
 
+	// If the job claims completion but the requested artifacts aren't actually readable,
+	// fail fast so downstream renders don't get stuck on missing sources.
+	if (hasVideoKey && videoProbe.state === 'missing') {
+		await db
+			.update(schema.media)
+			.set({
+				downloadBackend: 'cloud',
+				downloadStatus: 'failed',
+				downloadError:
+					'Video artifact missing in cloud storage (upload failed). Please retry cloud download.',
+				downloadJobId: payload.jobId,
+				downloadCompletedAt: null,
+				remoteVideoKey: null,
+				remoteAudioKey: audioProcessedKey ?? media.remoteAudioKey ?? null,
+				remoteAudioProcessedKey:
+					audioProcessedKey ?? media.remoteAudioProcessedKey ?? null,
+				remoteAudioSourceKey:
+					audioSourceKey ?? media.remoteAudioSourceKey ?? null,
+				remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
+			})
+			.where(where)
+		logger.error(
+			'api',
+			`[cf-callback.download] completed but video missing job=${payload.jobId} media=${payload.mediaId} key=${resolvedVideoKey ?? 'null'}`,
+		)
+		return
+	}
+
+	if (hasAudioKey && audioProcessedProbe.state === 'missing') {
+		await db
+			.update(schema.media)
+			.set({
+				downloadBackend: 'cloud',
+				downloadStatus: 'failed',
+				downloadError:
+					'Audio artifact missing in cloud storage (upload failed). Please retry cloud download.',
+				downloadJobId: payload.jobId,
+				downloadCompletedAt: null,
+				remoteVideoKey: resolvedVideoKey ?? media.remoteVideoKey ?? null,
+				remoteAudioKey: null,
+				remoteAudioProcessedKey: null,
+				remoteAudioSourceKey:
+					audioSourceKey ?? media.remoteAudioSourceKey ?? null,
+				remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
+			})
+			.where(where)
+		logger.error(
+			'api',
+			`[cf-callback.download] completed but audio missing job=${payload.jobId} media=${payload.mediaId} key=${audioProcessedKey ?? 'null'}`,
+		)
+		return
+	}
+
 	const metadataFromPayload = payload.metadata
 	let durationSeconds =
 		typeof payload.durationMs === 'number'

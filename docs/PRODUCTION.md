@@ -84,7 +84,7 @@ S3_STYLE = "vhost"
 S3_REGION = "auto"   # 仓库默认是 "us-east-1"，可根据实际 region 调整
 
 # 签名 URL 有效期（秒）
-PUT_EXPIRES = 600
+PUT_EXPIRES = 1800
 ```
 
 > 注意：`S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` 等敏感信息建议通过 `wrangler secret` 注入，而不是写入 `[vars]`。

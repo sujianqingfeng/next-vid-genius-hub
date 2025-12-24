@@ -1,7 +1,7 @@
 import http from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readFileSync, unlinkSync } from "node:fs";
+import { createReadStream, readFileSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import { sendJson, sanitizeEngineOptions, createStatusHelpers, uploadArtifact, ensureDirExists, startJsonServer } from "./shared.mjs";
@@ -581,11 +581,7 @@ async function handleRender(req, res) {
                 JSON.stringify({ comments }, null, 2),
                 "utf8",
               );
-              await uploadArtifact(
-                outputMetadataPutUrl,
-                buf,
-                "application/json",
-              );
+              await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
             },
           },
         },
@@ -675,11 +671,7 @@ async function handleRender(req, res) {
             uploadMetadata: async (data) => {
               if (!outputMetadataPutUrl) return;
               const buf = Buffer.from(JSON.stringify(data, null, 2), "utf8");
-              await uploadArtifact(
-                outputMetadataPutUrl,
-                buf,
-                "application/json",
-              );
+              await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
             },
             uploadVideo: async (path) => {
               const stat = await fsPromises.stat(path);
@@ -690,13 +682,17 @@ async function handleRender(req, res) {
                 outputVideoKey,
                 videoPutUrl: maskUrl(outputVideoPutUrl),
               });
-              const buf = readFileSync(path);
               try {
-                await uploadArtifact(outputVideoPutUrl, buf, "video/mp4");
+                await uploadArtifact(
+                  outputVideoPutUrl,
+                  () => createReadStream(path),
+                  "video/mp4",
+                  { "content-length": String(stat.size) },
+                );
                 uploadedVideoBytes = stat.size;
                 console.log("[media-downloader] upload video success", {
                   jobId,
-                  bytes: buf.length,
+                  bytes: stat.size,
                   outputVideoKey,
                 });
               } catch (err) {
@@ -718,13 +714,17 @@ async function handleRender(req, res) {
                 outputAudioKey,
                 audioPutUrl: maskUrl(outputAudioPutUrl),
               });
-              const buf = readFileSync(path);
               try {
-                await uploadArtifact(outputAudioPutUrl, buf, "audio/wav");
+                await uploadArtifact(
+                  outputAudioPutUrl,
+                  () => createReadStream(path),
+                  "audio/wav",
+                  { "content-length": String(stat.size) },
+                );
                 uploadedAudioProcessedBytes = stat.size;
                 console.log("[media-downloader] upload audio success", {
                   jobId,
-                  bytes: buf.length,
+                  bytes: stat.size,
                   outputAudioKey,
                 });
               } catch (err) {
@@ -757,12 +757,16 @@ async function handleRender(req, res) {
           outputAudioSourceKey,
           audioSourcePutUrl: maskUrl(outputAudioSourcePutUrl),
         });
-        const buf = readFileSync(audioSourcePath);
-        await uploadArtifact(outputAudioSourcePutUrl, buf, "audio/x-matroska");
+        await uploadArtifact(
+          outputAudioSourcePutUrl,
+          () => createReadStream(audioSourcePath),
+          "audio/x-matroska",
+          { "content-length": String(stat.size) },
+        );
         uploadedAudioSourceBytes = stat.size;
         console.log("[media-downloader] upload audio source success", {
           jobId,
-          bytes: buf.length,
+          bytes: stat.size,
           outputAudioSourceKey,
         });
       }

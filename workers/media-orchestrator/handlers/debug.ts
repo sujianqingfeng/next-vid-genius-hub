@@ -10,8 +10,9 @@ export async function handleDebugPresign(env: Env, req: Request): Promise<Respon
 	const contentType = url.searchParams.get('contentType') || 'text/plain'
 	try {
 		const bucket = env.S3_BUCKET_NAME || 'vidgen-render'
-		const putUrl = await presignS3(env, 'PUT', bucket, key, 600, contentType)
-		const getUrl = await presignS3(env, 'GET', bucket, key, 600)
+		const ttl = Number(env.PUT_EXPIRES || 600)
+		const putUrl = await presignS3(env, 'PUT', bucket, key, ttl, contentType)
+		const getUrl = await presignS3(env, 'GET', bucket, key, ttl)
 		return json({
 			key,
 			style: env.S3_STYLE || 'vhost',
@@ -113,4 +114,3 @@ export async function handleDebugDeletePrefixes(env: Env, req: Request) {
 		{ status: hasErrors ? 500 : 200 },
 	)
 }
-

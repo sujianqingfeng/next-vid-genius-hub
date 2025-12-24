@@ -94,7 +94,7 @@ JOB_TTL_SECONDS = 86400
 	# 业务应用（TanStack Start）默认 `pnpm dev:web` 跑在 3100（根目录 `pnpm dev` 也会转发到 web）。
 	APP_BASE_URL = "http://localhost:3100"
 	JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
-	PUT_EXPIRES = 600
+	PUT_EXPIRES = 7200
 
 # R2 直连
 S3_ENDPOINT = "https://<account>.r2.cloudflarestorage.com"

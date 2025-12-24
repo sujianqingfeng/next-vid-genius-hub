@@ -71,14 +71,10 @@ export async function runDownloadPipeline(
       } catch {}
     }
     if (artifactStore.uploadVideo) {
-      try {
-        await artifactStore.uploadVideo(videoPath)
-      } catch {}
+      await artifactStore.uploadVideo(videoPath)
     }
     if (artifactStore.uploadAudio && audioPath) {
-      try {
-        await artifactStore.uploadAudio(audioPath)
-      } catch {}
+      await artifactStore.uploadAudio(audioPath)
     }
     safeReport(progress, { stage: 'uploading', progress: 0.95 })
   }

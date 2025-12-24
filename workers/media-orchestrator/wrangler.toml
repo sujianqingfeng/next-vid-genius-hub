@@ -45,7 +45,7 @@ FORCE_S3_STORAGE = "true"
 	# 业务应用（TanStack Start）本地默认跑在 3100（根目录 `pnpm dev`）。
 	APP_BASE_URL = "http://localhost:3100"
 	JOB_CALLBACK_HMAC_SECRET = "replace-with-strong-secret"
-	PUT_EXPIRES = 600
+	PUT_EXPIRES = 7200
 S3_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
 S3_INTERNAL_ENDPOINT = "https://f191bfcfdbc84185ae742e69847082e0.r2.cloudflarestorage.com"
 S3_BUCKET_NAME = "vidgen-render"
