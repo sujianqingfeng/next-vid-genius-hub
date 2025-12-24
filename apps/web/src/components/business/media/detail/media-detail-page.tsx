@@ -9,6 +9,13 @@ import { useMemo, useState } from 'react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import {
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from '~/components/ui/sheet'
 import { Skeleton } from '~/components/ui/skeleton'
 import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
@@ -39,6 +46,7 @@ function mediaPreviewUrl(media: MediaItem, id: string): string | null {
 export function MediaDetailPage({ id }: { id: string }) {
 	const t = useTranslations('MediaDetail')
 	const qc = useQueryClient()
+	const [pointsOpen, setPointsOpen] = useState(false)
 	const [txPage, setTxPage] = useState(1)
 	const txLimit = 20
 
@@ -52,7 +60,7 @@ export function MediaDetailPage({ id }: { id: string }) {
 			input: { id, limit: txLimit, offset: txOffset },
 		}),
 		placeholderData: keepPreviousData,
-		enabled: mediaQuery.isSuccess,
+		enabled: mediaQuery.isSuccess && pointsOpen,
 	})
 
 	const refreshMutation = useEnhancedMutation(
@@ -239,107 +247,145 @@ export function MediaDetailPage({ id }: { id: string }) {
 											{t('tabs.commentsAction')}
 										</Link>
 									</Button>
+									<Sheet open={pointsOpen} onOpenChange={setPointsOpen}>
+										<SheetTrigger asChild>
+											<Button
+												variant="outline"
+												className="w-full justify-start"
+											>
+												{t('points.title')}
+											</Button>
+										</SheetTrigger>
+										<SheetContent className="flex flex-col p-0">
+											<div className="border-border/60 border-b p-6 pr-12">
+												<SheetHeader>
+													<SheetTitle>{t('points.title')}</SheetTitle>
+													<div className="flex items-center gap-2 text-sm">
+														<span className="text-muted-foreground">
+															{t('points.net')}
+														</span>
+														{transactionsQuery.isFetching ? (
+															<Skeleton className="h-4 w-16" />
+														) : (
+															<span
+																className={
+																	txNetDelta >= 0
+																		? 'text-emerald-600'
+																		: 'text-red-500'
+																}
+															>
+																{txNetDelta >= 0 ? '+' : ''}
+																{txNetDelta}
+															</span>
+														)}
+													</div>
+												</SheetHeader>
+											</div>
+
+											<div className="flex-1 overflow-auto p-6">
+												<div className="space-y-4">
+													<div className="overflow-x-auto">
+														<div className="min-w-[560px]">
+															<div className="grid grid-cols-5 border-border/60 border-b pb-2 text-xs font-medium text-muted-foreground">
+																<div>{t('points.table.headers.time')}</div>
+																<div>{t('points.table.headers.type')}</div>
+																<div>{t('points.table.headers.delta')}</div>
+																<div>{t('points.table.headers.balance')}</div>
+																<div>{t('points.table.headers.remark')}</div>
+															</div>
+															<div className="divide-y divide-border/60">
+																{formattedTransactions.length === 0 ? (
+																	<div className="py-6 text-center text-sm text-muted-foreground">
+																		{transactionsQuery.isError
+																			? t('points.table.error')
+																			: transactionsQuery.isLoading ||
+																				  transactionsQuery.isFetching
+																				? t('points.table.loading')
+																				: t('points.table.empty')}
+																	</div>
+																) : null}
+																{formattedTransactions.map((tx) => (
+																	<div
+																		key={tx.id}
+																		className="grid grid-cols-5 items-center py-3 text-sm"
+																	>
+																		<div className="text-xs text-muted-foreground">
+																			{new Date(tx.createdAt).toLocaleString()}
+																		</div>
+																		<div>
+																			<Badge
+																				variant="secondary"
+																				className="capitalize"
+																			>
+																				{String(tx.type).replace('_', ' ')}
+																			</Badge>
+																		</div>
+																		<div
+																			className={
+																				tx.delta >= 0
+																					? 'text-emerald-600'
+																					: 'text-red-500'
+																			}
+																		>
+																			{tx.sign}
+																			{tx.abs}
+																		</div>
+																		<div>{tx.balanceAfter}</div>
+																		<div className="text-xs text-muted-foreground">
+																			{tx.remark || tx.refType || '-'}
+																		</div>
+																	</div>
+																))}
+															</div>
+														</div>
+													</div>
+
+													<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+														<p className="text-xs text-muted-foreground">
+															{t('points.pagination', {
+																page: txPage,
+																pages: txPageCount,
+																total: txTotal,
+															})}
+														</p>
+														<div className="flex gap-2">
+															<Button
+																variant="outline"
+																size="sm"
+																disabled={
+																	txPage <= 1 || transactionsQuery.isFetching
+																}
+																onClick={() =>
+																	setTxPage((p) => Math.max(1, p - 1))
+																}
+															>
+																{t('points.prev')}
+															</Button>
+															<Button
+																variant="outline"
+																size="sm"
+																disabled={
+																	txPage >= txPageCount ||
+																	transactionsQuery.isFetching
+																}
+																onClick={() =>
+																	setTxPage((p) =>
+																		Math.min(txPageCount, p + 1),
+																	)
+																}
+															>
+																{t('points.next')}
+															</Button>
+														</div>
+													</div>
+												</div>
+											</div>
+										</SheetContent>
+									</Sheet>
 								</CardContent>
 							</Card>
 						</div>
 					</div>
-
-					<Card className="border-border/60 shadow-sm">
-						<CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-							<CardTitle className="text-base">{t('points.title')}</CardTitle>
-							<div className="flex items-center gap-2 text-sm">
-								<span className="text-muted-foreground">{t('points.net')}</span>
-								<span
-									className={
-										txNetDelta >= 0 ? 'text-emerald-600' : 'text-red-500'
-									}
-								>
-									{txNetDelta >= 0 ? '+' : ''}
-									{txNetDelta}
-								</span>
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="grid grid-cols-5 border-b border-border/60 pb-2 text-xs font-medium text-muted-foreground">
-								<div>{t('points.table.headers.time')}</div>
-								<div>{t('points.table.headers.type')}</div>
-								<div>{t('points.table.headers.delta')}</div>
-								<div>{t('points.table.headers.balance')}</div>
-								<div>{t('points.table.headers.remark')}</div>
-							</div>
-							<div className="divide-y divide-border/60">
-								{formattedTransactions.length === 0 ? (
-									<div className="py-6 text-center text-sm text-muted-foreground">
-										{transactionsQuery.isError
-											? t('points.table.error')
-											: transactionsQuery.isLoading ||
-												  transactionsQuery.isFetching
-												? t('points.table.loading')
-												: t('points.table.empty')}
-									</div>
-								) : null}
-								{formattedTransactions.map((tx) => (
-									<div
-										key={tx.id}
-										className="grid grid-cols-5 items-center py-3 text-sm"
-									>
-										<div className="text-xs text-muted-foreground">
-											{new Date(tx.createdAt).toLocaleString()}
-										</div>
-										<div>
-											<Badge variant="secondary" className="capitalize">
-												{String(tx.type).replace('_', ' ')}
-											</Badge>
-										</div>
-										<div
-											className={
-												tx.delta >= 0 ? 'text-emerald-600' : 'text-red-500'
-											}
-										>
-											{tx.sign}
-											{tx.abs}
-										</div>
-										<div>{tx.balanceAfter}</div>
-										<div className="text-xs text-muted-foreground">
-											{tx.remark || tx.refType || '-'}
-										</div>
-									</div>
-								))}
-							</div>
-
-							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-								<p className="text-xs text-muted-foreground">
-									{t('points.pagination', {
-										page: txPage,
-										pages: txPageCount,
-										total: txTotal,
-									})}
-								</p>
-								<div className="flex gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={txPage <= 1 || transactionsQuery.isFetching}
-										onClick={() => setTxPage((p) => Math.max(1, p - 1))}
-									>
-										{t('points.prev')}
-									</Button>
-									<Button
-										variant="outline"
-										size="sm"
-										disabled={
-											txPage >= txPageCount || transactionsQuery.isFetching
-										}
-										onClick={() =>
-											setTxPage((p) => Math.min(txPageCount, p + 1))
-										}
-									>
-										{t('points.next')}
-									</Button>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
 				</div>
 			</div>
 		</div>
