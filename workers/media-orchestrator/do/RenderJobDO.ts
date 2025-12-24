@@ -13,7 +13,6 @@ import {
 	readObjectArrayBufferWithFallback,
 } from '../storage/fallback'
 import { presignS3 } from '../storage/presign'
-import { s3Head } from '../storage/s3'
 import type { Env } from '../types'
 import { TERMINAL_STATUSES } from '../types'
 import { hmacHex, requireJobCallbackSecret } from '../utils/hmac'
@@ -26,15 +25,6 @@ export class RenderJobDO {
 	constructor(state: DurableObjectState, env: Env) {
 		this.state = state
 		this.env = env
-	}
-
-	private shouldNotifyApp(doc: any) {
-		if (!doc) return false
-		if (!TERMINAL_STATUSES.includes(doc.status)) return false
-		if (doc.appNotified || doc.nextNotified) return false
-		if (doc.status !== 'completed') return true
-		if (doc.engine === 'asr-pipeline') return Boolean(doc.outputs?.vtt?.key)
-		return Boolean(doc.outputKey)
 	}
 
 	async fetch(req: Request): Promise<Response> {
@@ -97,29 +87,18 @@ export class RenderJobDO {
 					(next.engine === 'asr-pipeline'
 						? Boolean(next.outputs?.vtt?.key)
 						: Boolean(next.outputKey)))
-			if (shouldNotify) {
-				const ok = await this.notifyApp(next)
-				if (ok) {
-					next.appNotified = true
-					next.appNotifyPending = false
-					// Backward compatible for older deploys/rollbacks.
-					next.nextNotified = true
-					next.nextNotifyPending = false
-				} else {
-					next.appNotifyPending = true
-					next.appNotifyAttempts = (next.appNotifyAttempts || 0) + 1
-					// Backward compatible for older deploys/rollbacks.
-					next.nextNotifyPending = true
-					next.nextNotifyAttempts = (next.nextNotifyAttempts || 0) + 1
-					try {
-						await this.state.storage.setAlarm(Date.now() + 5000)
-					} catch {}
+				if (shouldNotify) {
+					const ok = await this.notifyApp(next)
+					if (ok) {
+						next.appNotified = true
+						// Backward compatible for older deploys/rollbacks.
+						next.nextNotified = true
+						await this.state.storage.put('job', next)
+					}
 				}
-				await this.state.storage.put('job', next)
-			}
-			return new Response(JSON.stringify({ ok: true }), {
-				headers: { 'content-type': 'application/json' },
-			})
+				return new Response(JSON.stringify({ ok: true }), {
+					headers: { 'content-type': 'application/json' },
+				})
 		}
 		if (req.method === 'POST' && path.endsWith('/start-asr')) {
 			const doc = (await this.state.storage.get('job')) as any
@@ -268,51 +247,10 @@ export class RenderJobDO {
 		})
 	}
 
-	// Durable Object alarms: used for polling external async ASR providers.
+		// Durable Object alarms: used for polling external async ASR providers.
 	async alarm() {
 		const doc = (await this.state.storage.get('job')) as any
 		if (!doc || !doc.jobId) return
-
-		// Retry app callback delivery for terminal jobs.
-		if ((doc.appNotifyPending || doc.nextNotifyPending) && this.shouldNotifyApp(doc)) {
-			const maxAttempts = 20
-			const attempts =
-				typeof doc.appNotifyAttempts === 'number'
-					? doc.appNotifyAttempts
-					: typeof doc.nextNotifyAttempts === 'number'
-						? doc.nextNotifyAttempts
-						: 0
-			if (attempts >= maxAttempts) {
-				console.warn('[orchestrator] notifyApp exceeded max attempts', {
-					jobId: doc.jobId,
-					attempts,
-				})
-				doc.appNotifyPending = false
-				// Backward compatible for older deploys/rollbacks.
-				doc.nextNotifyPending = false
-			} else {
-				const ok = await this.notifyApp(doc)
-				if (ok) {
-					doc.appNotified = true
-					doc.appNotifyPending = false
-					// Backward compatible for older deploys/rollbacks.
-					doc.nextNotified = true
-					doc.nextNotifyPending = false
-				} else {
-					doc.appNotifyAttempts = attempts + 1
-					// Backward compatible for older deploys/rollbacks.
-					doc.nextNotifyAttempts = attempts + 1
-					const delayMs = Math.min(
-						60_000,
-						2000 * 2 ** Math.min(doc.appNotifyAttempts, 5),
-					)
-					try {
-						await this.state.storage.setAlarm(Date.now() + delayMs)
-					} catch {}
-				}
-			}
-			await this.state.storage.put('job', doc)
-		}
 
 		// Existing ASR polling logic (only).
 		if (doc.engine !== 'asr-pipeline') return
