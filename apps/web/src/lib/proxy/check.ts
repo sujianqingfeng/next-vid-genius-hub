@@ -1,12 +1,8 @@
 import { desc } from 'drizzle-orm'
 import { startCloudJob } from '~/lib/cloudflare/jobs'
-import {
-	PROXY_CHECK_PROBE_BYTES,
-	PROXY_CHECK_TEST_URL,
-	PROXY_CHECK_TIMEOUT_MS,
-} from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
+import { getProxyCheckSettings } from '~/lib/proxy/proxy-settings'
 import { createId } from '~/lib/utils/id'
 import { toProxyJobPayload } from './utils'
 
@@ -55,11 +51,14 @@ export async function runScheduledProxyChecks(opts?: {
 	const windowStartMs = getRunWindowStart(nowMs)
 	const runId = makeProxyCheckRunId(windowStartMs)
 
-	const testUrl = (opts?.testUrl ?? PROXY_CHECK_TEST_URL ?? '').trim()
+	const db = await getDb()
+	const settings = await getProxyCheckSettings(db)
+
+	const testUrl = (opts?.testUrl ?? settings.testUrl ?? '').trim()
 	if (!testUrl) {
 		logger.warn(
 			'proxy',
-			`[proxy-check] skipped: PROXY_CHECK_TEST_URL not configured run=${runId}`,
+			`[proxy-check] skipped: testUrl not configured run=${runId}`,
 		)
 		return { ok: false as const, runId, reason: 'missing_test_url' as const }
 	}
@@ -67,17 +66,16 @@ export async function runScheduledProxyChecks(opts?: {
 	const timeoutMs =
 		typeof opts?.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs)
 			? Math.max(1_000, Math.trunc(opts.timeoutMs))
-			: PROXY_CHECK_TIMEOUT_MS
+			: settings.timeoutMs
 	const probeBytes =
 		typeof opts?.probeBytes === 'number' && Number.isFinite(opts.probeBytes)
 			? Math.max(1_024, Math.trunc(opts.probeBytes))
-			: PROXY_CHECK_PROBE_BYTES
+			: settings.probeBytes
 	const concurrency =
 		typeof opts?.concurrency === 'number' && Number.isFinite(opts.concurrency)
 			? Math.max(1, Math.trunc(opts.concurrency))
-			: 5
+			: settings.concurrency
 
-	const db = await getDb()
 	const proxies = await db.query.proxies.findMany({
 		orderBy: [desc(schema.proxies.createdAt)],
 	})
@@ -140,11 +138,14 @@ export async function runProxyChecksNow(opts?: {
 }) {
 	const runId = (opts?.runId ?? `proxycheck_manual_${createId()}`).trim()
 
-	const testUrl = (opts?.testUrl ?? PROXY_CHECK_TEST_URL ?? '').trim()
+	const db = await getDb()
+	const settings = await getProxyCheckSettings(db)
+
+	const testUrl = (opts?.testUrl ?? settings.testUrl ?? '').trim()
 	if (!testUrl) {
 		logger.warn(
 			'proxy',
-			`[proxy-check] skipped: PROXY_CHECK_TEST_URL not configured run=${runId}`,
+			`[proxy-check] skipped: testUrl not configured run=${runId}`,
 		)
 		return { ok: false as const, runId, reason: 'missing_test_url' as const }
 	}
@@ -152,17 +153,16 @@ export async function runProxyChecksNow(opts?: {
 	const timeoutMs =
 		typeof opts?.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs)
 			? Math.max(1_000, Math.trunc(opts.timeoutMs))
-			: PROXY_CHECK_TIMEOUT_MS
+			: settings.timeoutMs
 	const probeBytes =
 		typeof opts?.probeBytes === 'number' && Number.isFinite(opts.probeBytes)
 			? Math.max(1_024, Math.trunc(opts.probeBytes))
-			: PROXY_CHECK_PROBE_BYTES
+			: settings.probeBytes
 	const concurrency =
 		typeof opts?.concurrency === 'number' && Number.isFinite(opts.concurrency)
 			? Math.max(1, Math.trunc(opts.concurrency))
-			: 5
+			: settings.concurrency
 
-	const db = await getDb()
 	const proxies = await db.query.proxies.findMany({
 		orderBy: [desc(schema.proxies.createdAt)],
 	})

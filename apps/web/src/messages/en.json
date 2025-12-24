@@ -250,12 +250,26 @@
 				"subscriptions": "Subscriptions",
 				"proxies": "Proxies"
 			},
-			"addSubscription": "Add Subscription",
-			"runChecks": "Run Checks",
-			"runChecksRunning": "Running...",
-			"runChecksQueued": "Proxy checks queued (run: {runId})",
-			"runChecksError": "Failed to start proxy checks: {message}"
+		"addSubscription": "Add Subscription",
+		"runChecks": "Run Checks",
+		"runChecksRunning": "Running...",
+		"runChecksQueued": "Proxy checks queued (run: {runId})",
+		"runChecksError": "Failed to start proxy checks: {message}",
+		"checkSettings": "Check Settings",
+		"checkSettingsTitle": "Proxy Check Settings",
+		"checkSettingsDesc": "Configure the test URL and limits used by proxy availability checks.",
+		"checkSettingsFields": {
+			"testUrl": "Test URL",
+			"timeoutMs": "Timeout (ms)",
+			"probeBytes": "Probe Bytes",
+			"concurrency": "Concurrency"
 		},
+		"checkSettingsBadNumber": "Please enter valid numbers.",
+		"checkSettingsSave": "Save",
+		"checkSettingsSaving": "Saving...",
+		"checkSettingsSaved": "Proxy check settings saved",
+		"checkSettingsSaveError": "Failed to save proxy check settings: {message}"
+	},
 		"list": {
 			"search": "Search proxies...",
 			"empty": {

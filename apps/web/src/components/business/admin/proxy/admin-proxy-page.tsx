@@ -73,9 +73,19 @@ export function AdminProxyPage({
 	const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
 	const [newName, setNewName] = React.useState('')
 	const [newUrl, setNewUrl] = React.useState('')
+	const [checkSettingsDialogOpen, setCheckSettingsDialogOpen] =
+		React.useState(false)
+
+	const [checkTestUrl, setCheckTestUrl] = React.useState('')
+	const [checkTimeoutMs, setCheckTimeoutMs] = React.useState('60000')
+	const [checkProbeBytes, setCheckProbeBytes] = React.useState('65536')
+	const [checkConcurrency, setCheckConcurrency] = React.useState('5')
 
 	const subsQuery = useQuery(queryOrpc.proxy.getSSRSubscriptions.queryOptions())
 	const defaultQuery = useQuery(queryOrpc.proxy.getDefaultProxy.queryOptions())
+	const checkSettingsQuery = useQuery(
+		queryOrpc.proxy.getProxyCheckSettings.queryOptions(),
+	)
 	const proxiesQuery = useQuery(
 		queryOrpc.proxy.getProxies.queryOptions({
 			input: { subscriptionId, page, limit: DEFAULT_PAGE_LIMIT },
@@ -157,11 +167,7 @@ export function AdminProxyPage({
 	const runChecksMutation = useEnhancedMutation(
 		{
 			mutationFn: async () => {
-				const res = await fetch('/api/proxy-check/run', {
-					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ concurrency: 5 }),
-				})
+				const res = await fetch('/api/proxy-check/run', { method: 'POST' })
 				if (!res.ok) {
 					const text = await res.text().catch(() => '')
 					throw new Error(text || `HTTP ${res.status}`)
@@ -207,6 +213,35 @@ export function AdminProxyPage({
 				}),
 		},
 	)
+
+	const saveCheckSettingsMutation = useEnhancedMutation(
+		queryOrpc.proxy.updateProxyCheckSettings.mutationOptions({
+			onSuccess: async () => {
+				setCheckSettingsDialogOpen(false)
+				await qc.invalidateQueries({
+					queryKey: queryOrpc.proxy.getProxyCheckSettings.key(),
+				})
+			},
+		}),
+		{
+			successToast: t('page.checkSettingsSaved'),
+			errorToast: ({ error }) =>
+				t('page.checkSettingsSaveError', {
+					message: error instanceof Error ? error.message : String(error),
+				}),
+		},
+	)
+
+	React.useEffect(() => {
+		if (!checkSettingsDialogOpen) return
+		const settings = checkSettingsQuery.data?.settings
+		if (!settings) return
+
+		setCheckTestUrl(settings.testUrl ?? '')
+		setCheckTimeoutMs(String(settings.timeoutMs ?? 60_000))
+		setCheckProbeBytes(String(settings.probeBytes ?? 65_536))
+		setCheckConcurrency(String(settings.concurrency ?? 5))
+	}, [checkSettingsDialogOpen, checkSettingsQuery.data?.settings])
 
 	function queueSingleCheck(proxyId: string) {
 		if (runOneCheckMutation.isPending) return
@@ -293,6 +328,14 @@ export function AdminProxyPage({
 								{runChecksMutation.isPending
 									? t('page.runChecksRunning')
 									: t('page.runChecks')}
+							</Button>
+							<Button
+								variant="secondary"
+								type="button"
+								onClick={() => setCheckSettingsDialogOpen(true)}
+							>
+								<Shield className="mr-2 h-4 w-4" />
+								{t('page.checkSettings')}
 							</Button>
 							<Button type="button" onClick={() => setCreateDialogOpen(true)}>
 								<Plus className="mr-2 h-4 w-4" />
@@ -716,6 +759,117 @@ export function AdminProxyPage({
 							{createSubscriptionMutation.isPending
 								? t('subscription.dialog.creating')
 								: t('subscription.dialog.create')}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			<Dialog
+				open={checkSettingsDialogOpen}
+				onOpenChange={setCheckSettingsDialogOpen}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>{t('page.checkSettingsTitle')}</DialogTitle>
+						<DialogDescription>
+							{t('page.checkSettingsDesc')}
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-4">
+						<div className="space-y-2">
+							<Label htmlFor="proxy-check-test-url">
+								{t('page.checkSettingsFields.testUrl')}
+							</Label>
+							<Input
+								id="proxy-check-test-url"
+								value={checkTestUrl}
+								onChange={(e) => setCheckTestUrl(e.target.value)}
+								placeholder="https://example.com/video.mp4"
+							/>
+						</div>
+
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+							<div className="space-y-2">
+								<Label htmlFor="proxy-check-timeout">
+									{t('page.checkSettingsFields.timeoutMs')}
+								</Label>
+								<Input
+									id="proxy-check-timeout"
+									type="number"
+									inputMode="numeric"
+									value={checkTimeoutMs}
+									onChange={(e) => setCheckTimeoutMs(e.target.value)}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="proxy-check-probe-bytes">
+									{t('page.checkSettingsFields.probeBytes')}
+								</Label>
+								<Input
+									id="proxy-check-probe-bytes"
+									type="number"
+									inputMode="numeric"
+									value={checkProbeBytes}
+									onChange={(e) => setCheckProbeBytes(e.target.value)}
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="proxy-check-concurrency">
+									{t('page.checkSettingsFields.concurrency')}
+								</Label>
+								<Input
+									id="proxy-check-concurrency"
+									type="number"
+									inputMode="numeric"
+									value={checkConcurrency}
+									onChange={(e) => setCheckConcurrency(e.target.value)}
+								/>
+							</div>
+						</div>
+					</div>
+
+					<DialogFooter>
+						<Button
+							variant="secondary"
+							type="button"
+							onClick={() => setCheckSettingsDialogOpen(false)}
+							disabled={saveCheckSettingsMutation.isPending}
+						>
+							{t('subscription.dialog.cancel')}
+						</Button>
+						<Button
+							type="button"
+							disabled={
+								saveCheckSettingsMutation.isPending ||
+								checkSettingsQuery.isLoading ||
+								!checkSettingsQuery.data?.settings
+							}
+							onClick={() => {
+								const timeoutMs = Number(checkTimeoutMs)
+								const probeBytes = Number(checkProbeBytes)
+								const concurrency = Number(checkConcurrency)
+
+								if (
+									!Number.isFinite(timeoutMs) ||
+									!Number.isFinite(probeBytes) ||
+									!Number.isFinite(concurrency)
+								) {
+									toast.error(t('page.checkSettingsBadNumber'))
+									return
+								}
+
+								saveCheckSettingsMutation.mutate({
+									testUrl: checkTestUrl,
+									timeoutMs,
+									probeBytes,
+									concurrency,
+								})
+							}}
+						>
+							{saveCheckSettingsMutation.isPending
+								? t('page.checkSettingsSaving')
+								: t('page.checkSettingsSave')}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

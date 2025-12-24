@@ -345,6 +345,19 @@ export const userSettings = sqliteTable('user_settings', {
 		.$defaultFn(() => new Date()),
 })
 
+export const proxySettings = sqliteTable('proxy_settings', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => 'default'),
+	proxyCheckTestUrl: text('proxy_check_test_url'),
+	proxyCheckTimeoutMs: integer('proxy_check_timeout_ms'),
+	proxyCheckProbeBytes: integer('proxy_check_probe_bytes'),
+	proxyCheckConcurrency: integer('proxy_check_concurrency'),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
+
 // ---------------- Channels & Channel Videos ----------------
 export const channels = sqliteTable('channels', {
 	id: text('id')

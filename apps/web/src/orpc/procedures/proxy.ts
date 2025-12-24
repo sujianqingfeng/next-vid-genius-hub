@@ -10,6 +10,11 @@ import {
 	ProxyProtocolEnum,
 	parseSSRSubscription,
 } from '~/lib/proxy/parser'
+import {
+	ProxyCheckSettingsInputSchema,
+	getProxyCheckSettings as getProxyCheckSettingsFromDb,
+	setProxyCheckSettings as setProxyCheckSettingsFromDb,
+} from '~/lib/proxy/proxy-settings'
 import { os, requireAdmin } from '~/orpc/base'
 
 const adminOnly = os.use(requireAdmin)
@@ -134,6 +139,21 @@ export const setDefaultProxy = adminOnly
 		const defaultProxyId = await setDefaultProxyId(input.proxyId, db)
 		logger.info('proxy', `Updated default proxy to ${defaultProxyId ?? 'null'}`)
 		return { defaultProxyId }
+	})
+
+export const getProxyCheckSettings = adminOnly
+	.input(z.void())
+	.handler(async () => {
+		const settings = await getProxyCheckSettingsFromDb()
+		return { settings }
+	})
+
+export const updateProxyCheckSettings = adminOnly
+	.input(ProxyCheckSettingsInputSchema)
+	.handler(async ({ input }) => {
+		const settings = await setProxyCheckSettingsFromDb(input)
+		logger.info('proxy', 'Updated proxy check settings')
+		return { settings }
 	})
 
 // SSR Subscription Operations

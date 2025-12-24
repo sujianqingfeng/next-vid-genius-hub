@@ -1,13 +1,9 @@
 import { z } from 'zod'
 import { buildRequestContext } from '~/lib/auth/context'
 import { startCloudJob } from '~/lib/cloudflare/jobs'
-import {
-	PROXY_CHECK_PROBE_BYTES,
-	PROXY_CHECK_TEST_URL,
-	PROXY_CHECK_TIMEOUT_MS,
-} from '~/lib/config/env'
 import { getDb } from '~/lib/db'
 import { runProxyChecksNow } from '~/lib/proxy/check'
+import { getProxyCheckSettings } from '~/lib/proxy/proxy-settings'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { createId } from '~/lib/utils/id'
 
@@ -91,12 +87,14 @@ export async function handleProxyCheckRunOne(
 	const ensured = await ensureAdminRequestContext(request)
 	if (ensured.response) return ensured.response
 
-	const testUrl = (PROXY_CHECK_TEST_URL ?? '').trim()
+	const db = await getDb()
+	const settings = await getProxyCheckSettings(db)
+	const testUrl = (settings.testUrl ?? '').trim()
 	if (!testUrl) {
 		return withResponseCookies(
 			ensured.ctx,
 			Response.json(
-				{ error: 'PROXY_CHECK_TEST_URL not configured' },
+				{ error: 'Proxy check testUrl not configured' },
 				{ status: 500 },
 			),
 		)
@@ -114,7 +112,6 @@ export async function handleProxyCheckRunOne(
 		)
 	}
 
-	const db = await getDb()
 	const proxy = await db.query.proxies.findFirst({
 		where: (proxies, { eq }) => eq(proxies.id, parsed.data.proxyId),
 	})
@@ -147,8 +144,8 @@ export async function handleProxyCheckRunOne(
 			proxy: proxyPayload,
 			runId,
 			proxyId: proxy.id,
-			timeoutMs: PROXY_CHECK_TIMEOUT_MS,
-			probeBytes: PROXY_CHECK_PROBE_BYTES,
+			timeoutMs: settings.timeoutMs,
+			probeBytes: settings.probeBytes,
 		},
 	})
 
