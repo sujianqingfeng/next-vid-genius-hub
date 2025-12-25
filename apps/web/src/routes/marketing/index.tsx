@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowRight, Download, MessageSquare, Play } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import LanguageToggle from '~/components/business/layout/language-toggle'
 import { useTranslations } from '~/lib/i18n'
@@ -10,87 +10,123 @@ function Home() {
 	const t = useTranslations('Home')
 
 	return (
-		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
-			<div className="px-4 py-24 sm:px-6 lg:px-8 relative overflow-hidden">
-				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-gradient-to-b from-secondary/80 to-transparent -z-10 pointer-events-none" />
+		<div className="min-h-screen bg-background text-foreground font-sans">
+			{/* Top Bar */}
+			<header className="h-14 border-b border-border flex items-center justify-between px-6 bg-background">
+				<div className="flex items-center gap-4">
+					<span className="text-sm font-bold uppercase tracking-wider">
+						VidGenius Hub
+					</span>
+					<span className="font-mono text-xs text-muted-foreground border border-border px-1.5 py-0.5">
+						v1.0.0
+					</span>
+				</div>
+				<div className="flex items-center gap-4">
+					<LanguageToggle />
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-8 rounded-none border-border text-xs uppercase tracking-wide hover:bg-secondary hover:text-secondary-foreground"
+						asChild
+					>
+						<Link to="/auth/login">Login</Link>
+					</Button>
+				</div>
+			</header>
 
-				<div className="max-w-5xl mx-auto relative z-10">
-					<div className="flex justify-end mb-8">
-						<LanguageToggle />
-					</div>
-
-					<div className="text-center mb-24 animate-in fade-in slide-in-from-bottom-8 duration-700">
-						<div className="inline-flex items-center justify-center p-2 mb-8 rounded-full bg-secondary/50 backdrop-blur-sm border border-border/50">
-							<span className="px-3 py-1 text-xs font-medium tracking-wide uppercase text-muted-foreground">
+			{/* Main Canvas */}
+			<main className="p-6 md:p-12 lg:p-24">
+				<div className="border border-border bg-card max-w-7xl mx-auto">
+					{/* Hero Section */}
+					<div className="py-24 px-8 text-center border-b border-border">
+						<div className="inline-block border border-border px-3 py-1 mb-8 bg-secondary/50">
+							<span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
 								{t('badge')}
 							</span>
 						</div>
-						<h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-foreground mb-8">
+						
+						<h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 uppercase">
 							{t('title')}
 						</h1>
-						<p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-light">
+						
+						<p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-mono mb-12">
 							{t('hero')}
 						</p>
+						
+						<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+							<Button
+								size="lg"
+								className="h-12 px-8 rounded-none bg-primary text-primary-foreground hover:bg-primary/90 text-sm uppercase tracking-wide border border-transparent"
+								asChild
+							>
+								<Link to="/media">
+									{t('cta')}
+									<ArrowRight className="ml-2 h-4 w-4" />
+								</Link>
+							</Button>
+							
+							<Button
+								variant="outline"
+								size="lg"
+								className="h-12 px-8 rounded-none border-border hover:bg-secondary hover:text-secondary-foreground text-sm uppercase tracking-wide"
+								asChild
+							>
+								<a href="https://github.com/your-repo" target="_blank" rel="noopener noreferrer">
+									Documentation
+								</a>
+							</Button>
+						</div>
 					</div>
 
-					<div className="flex justify-center mb-32 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-						<Button
-							size="lg"
-							className="h-14 px-10 rounded-full text-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-							asChild
-						>
-							<Link to="/media">
-								{t('cta')}
-								<ArrowRight className="ml-2 h-5 w-5" strokeWidth={1.5} />
-							</Link>
-						</Button>
-					</div>
-
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-						<div className="group p-8 rounded-3xl glass hover:bg-white/80 transition-all duration-300 hover:-translate-y-1">
-							<div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-								<Play className="h-7 w-7 text-foreground" strokeWidth={1.5} />
+					{/* Features Grid */}
+					<div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
+						{/* Feature 1 */}
+						<div className="p-8 md:p-12 hover:bg-secondary/5 transition-colors duration-200">
+							<div className="mb-6">
+								<span className="text-xs font-mono border border-border px-2 py-1 text-muted-foreground">
+									01
+								</span>
 							</div>
-							<h3 className="text-xl font-semibold text-foreground mb-3">
+							<h3 className="text-lg font-bold uppercase tracking-wide mb-4">
 								{t('features.processing.title')}
 							</h3>
-							<p className="text-muted-foreground leading-relaxed">
+							<p className="text-sm text-muted-foreground leading-relaxed font-mono">
 								{t('features.processing.desc')}
 							</p>
 						</div>
 
-						<div className="group p-8 rounded-3xl glass hover:bg-white/80 transition-all duration-300 hover:-translate-y-1">
-							<div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-								<Download
-									className="h-7 w-7 text-foreground"
-									strokeWidth={1.5}
-								/>
+						{/* Feature 2 */}
+						<div className="p-8 md:p-12 hover:bg-secondary/5 transition-colors duration-200">
+							<div className="mb-6">
+								<span className="text-xs font-mono border border-border px-2 py-1 text-muted-foreground">
+									02
+								</span>
 							</div>
-							<h3 className="text-xl font-semibold text-foreground mb-3">
+							<h3 className="text-lg font-bold uppercase tracking-wide mb-4">
 								{t('features.downloads.title')}
 							</h3>
-							<p className="text-muted-foreground leading-relaxed">
+							<p className="text-sm text-muted-foreground leading-relaxed font-mono">
 								{t('features.downloads.desc')}
 							</p>
 						</div>
 
-						<div className="group p-8 rounded-3xl glass hover:bg-white/80 transition-all duration-300 hover:-translate-y-1">
-							<div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-								<MessageSquare
-									className="h-7 w-7 text-foreground"
-									strokeWidth={1.5}
-								/>
+						{/* Feature 3 */}
+						<div className="p-8 md:p-12 hover:bg-secondary/5 transition-colors duration-200">
+							<div className="mb-6">
+								<span className="text-xs font-mono border border-border px-2 py-1 text-muted-foreground">
+									03
+								</span>
 							</div>
-							<h3 className="text-xl font-semibold text-foreground mb-3">
+							<h3 className="text-lg font-bold uppercase tracking-wide mb-4">
 								{t('features.comments.title')}
 							</h3>
-							<p className="text-muted-foreground leading-relaxed">
+							<p className="text-sm text-muted-foreground leading-relaxed font-mono">
 								{t('features.comments.desc')}
 							</p>
 						</div>
 					</div>
 				</div>
-			</div>
+			</main>
 		</div>
 	)
 }
