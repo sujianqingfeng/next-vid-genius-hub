@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { cn } from '~/lib/utils'
 
@@ -135,12 +134,11 @@ export default function WorkspaceSidebar({
 			key={item.to}
 			to={item.to}
 			className={cn(
-				'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-300',
-				'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:backdrop-blur-sm',
+				'group flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wide transition-colors duration-200 border-l-2',
 				isActive
-					? 'bg-sidebar-primary/10 text-sidebar-primary shadow-none ring-1 ring-sidebar-primary/20'
-					: 'text-sidebar-foreground/80 hover:text-sidebar-foreground',
-				collapsed && 'justify-center',
+					? 'bg-secondary border-primary text-foreground font-bold'
+					: 'border-transparent text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:border-border',
+				collapsed && 'justify-center px-2',
 			)}
 			aria-current={isActive ? 'page' : undefined}
 			aria-label={item.title}
@@ -148,8 +146,8 @@ export default function WorkspaceSidebar({
 			<item.icon
 				strokeWidth={1.5}
 				className={cn(
-					'h-5 w-5 flex-shrink-0 transition-transform duration-300',
-					isActive && 'scale-105',
+					'h-4 w-4 flex-shrink-0',
+					isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
 				)}
 			/>
 			{!collapsed ? <span className="block truncate">{item.title}</span> : null}
@@ -159,104 +157,114 @@ export default function WorkspaceSidebar({
 	return (
 		<div
 			className={cn(
-				'relative glass border-r border-sidebar-border/50',
-				'transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
-				collapsed ? 'w-20' : 'w-72',
+				'relative bg-sidebar border-r border-border flex flex-col',
+				'transition-all duration-300 ease-in-out',
+				collapsed ? 'w-16' : 'w-64',
 			)}
 		>
-			<div className="flex h-full flex-col">
-				<div className="flex h-20 items-center justify-between px-6">
-					{!collapsed ? (
-						<div className="flex items-center gap-3 animate-in fade-in duration-500">
-							<div className="h-9 w-9 rounded-xl bg-sidebar-primary/10 flex items-center justify-center ring-1 ring-sidebar-primary/20">
-								<FileVideo
-									strokeWidth={1.5}
-									className="h-5 w-5 text-sidebar-primary"
-								/>
-							</div>
-							<span className="text-lg font-semibold tracking-tight">
-								{t('brand')}
-							</span>
+			{/* Brand Header */}
+			<div className="h-14 flex items-center justify-between px-4 border-b border-border bg-secondary/10">
+				{!collapsed ? (
+					<div className="flex items-center gap-2 overflow-hidden">
+						<div className="h-6 w-6 border border-foreground bg-foreground text-background flex items-center justify-center">
+							<FileVideo className="h-3 w-3" />
 						</div>
-					) : (
-						<div />
-					)}
+						<span className="text-sm font-bold uppercase tracking-wider truncate">
+							{t('brand')}
+						</span>
+					</div>
+				) : (
+					<div className="mx-auto">
+						<div className="h-6 w-6 border border-foreground bg-foreground text-background flex items-center justify-center">
+							<FileVideo className="h-3 w-3" />
+						</div>
+					</div>
+				)}
+			</div>
 
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						className="h-8 w-8 text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors rounded-full"
-						onClick={() => setCollapsed((v) => !v)}
-						aria-label={collapsed ? t('toggle.expand') : t('toggle.collapse')}
-					>
-						{collapsed ? (
-							<ChevronRight strokeWidth={1.5} className="h-4 w-4" />
-						) : (
-							<ChevronLeft strokeWidth={1.5} className="h-4 w-4" />
-						)}
-					</Button>
-				</div>
+			{/* Toggle Button (Absolute) */}
+			<button
+				type="button"
+				className="absolute -right-3 top-16 z-10 flex h-6 w-6 items-center justify-center border border-border bg-background text-muted-foreground hover:text-foreground transition-colors"
+				onClick={() => setCollapsed((v) => !v)}
+				aria-label={collapsed ? t('toggle.expand') : t('toggle.collapse')}
+			>
+				{collapsed ? (
+					<ChevronRight className="h-3 w-3" />
+				) : (
+					<ChevronLeft className="h-3 w-3" />
+				)}
+			</button>
 
-				<nav className="flex-1 space-y-2 px-4 py-4">
-					{menuItems.map((item) =>
-						renderMenuItem(item, normalizePathname(item.to) === activeHref),
-					)}
-				</nav>
-
-				{bottomMenuItems.length > 0 ? (
-					<nav className="space-y-2 px-4 py-4 border-t border-sidebar-border/30">
+			{/* Navigation */}
+			<nav className="flex-1 overflow-y-auto py-6 space-y-1">
+				{menuItems.map((item) =>
+					renderMenuItem(item, normalizePathname(item.to) === activeHref),
+				)}
+				
+				{bottomMenuItems.length > 0 && (
+					<>
+						<div className="my-4 border-t border-border mx-4" />
 						{bottomMenuItems.map((item) =>
 							renderMenuItem(item, normalizePathname(item.to) === activeHref),
 						)}
-					</nav>
-				) : null}
+					</>
+				)}
+			</nav>
 
-				<div className="p-4 space-y-3">
-					<div
-						className={collapsed ? 'flex justify-center' : 'flex justify-end'}
-					>
+			{/* Footer / User Profile */}
+			<div className="border-t border-border bg-secondary/5">
+				<div className="p-4 space-y-4">
+					<div className={cn("flex", collapsed ? "justify-center" : "justify-end")}>
 						<LanguageToggle />
 					</div>
 
-					<div
-						className={cn(
-							'flex items-center gap-3 rounded-xl p-3 transition-all duration-300 hover:bg-sidebar-accent/40',
-							collapsed && 'justify-center',
-						)}
-					>
-						<div className="h-9 w-9 rounded-full bg-gradient-to-br from-sidebar-primary/10 to-sidebar-primary/5 ring-1 ring-sidebar-primary/20 flex items-center justify-center">
-							<span className="text-xs font-semibold text-sidebar-primary">
-								{me?.user?.nickname?.[0]?.toUpperCase() ||
-									me?.user?.email?.[0]?.toUpperCase() ||
-									'U'}
-							</span>
-						</div>
-
+					<div className={cn(
+						"border border-border p-3 bg-background",
+						collapsed && "p-2 flex justify-center border-none bg-transparent"
+					)}>
 						{!collapsed ? (
-							<div className="flex-1 min-w-0 space-y-1 animate-in fade-in duration-300">
-								<div className="flex items-center gap-2">
-									<p className="text-sm font-medium truncate text-sidebar-foreground/90">
-										{me?.user?.nickname || me?.user?.email || t('user.guest')}
-									</p>
-									{typeof me?.balance === 'number' ? (
-										<Badge variant="secondary" className="text-[11px]">
-											{me.balance} {t('user.pointsSuffix')}
-										</Badge>
-									) : null}
+							<div className="space-y-3">
+								<div className="flex items-center gap-3">
+									<div className="h-8 w-8 bg-secondary flex items-center justify-center border border-border">
+										<span className="text-xs font-bold font-mono">
+											{me?.user?.nickname?.[0]?.toUpperCase() || 'U'}
+										</span>
+									</div>
+									<div className="min-w-0">
+										<p className="text-xs font-bold uppercase truncate">
+											{me?.user?.nickname || 'Guest'}
+										</p>
+										<p className="text-[10px] font-mono text-muted-foreground truncate">
+											{me?.user?.email}
+										</p>
+									</div>
 								</div>
-								<p className="text-xs text-sidebar-foreground/50 truncate">
-									{me?.user?.email || t('user.loginPrompt')}
-								</p>
+								
+								{typeof me?.balance === 'number' && (
+									<div className="flex items-center justify-between border-t border-border pt-2">
+										<span className="text-[10px] uppercase text-muted-foreground">Credits</span>
+										<span className="text-xs font-mono font-bold">{me.balance}</span>
+									</div>
+								)}
 							</div>
-						) : null}
+						) : (
+							<div className="h-8 w-8 bg-secondary flex items-center justify-center border border-border" title={me?.user?.email}>
+								<span className="text-xs font-bold font-mono">
+									{me?.user?.nickname?.[0]?.toUpperCase() || 'U'}
+								</span>
+							</div>
+						)}
 					</div>
 
 					<Button
 						type="button"
 						variant="outline"
 						size="sm"
-						className={cn('h-9 w-full', collapsed && 'px-0')}
+						className={cn(
+							'w-full rounded-none border-border h-9 uppercase text-xs hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors',
+							collapsed && 'px-0 border-transparent hover:border-transparent bg-transparent'
+						)}
 						onClick={() => logoutMutation.mutate(undefined)}
 						disabled={logoutMutation.isPending}
 					>
