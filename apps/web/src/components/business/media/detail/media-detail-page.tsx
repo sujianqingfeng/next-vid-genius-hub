@@ -4,11 +4,9 @@ import {
 	useQueryClient,
 } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ExternalLink, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Loader2, RefreshCw, Terminal } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
 	Sheet,
 	SheetContent,
@@ -80,16 +78,15 @@ export function MediaDetailPage({ id }: { id: string }) {
 
 	if (mediaQuery.isLoading) {
 		return (
-			<div className="min-h-screen bg-background px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2">
-					<div className="space-y-4">
-						<Skeleton className="aspect-video w-full rounded-2xl" />
-						<Skeleton className="h-6 w-3/4" />
-						<Skeleton className="h-4 w-1/2" />
-					</div>
-					<div className="space-y-4">
-						<Skeleton className="h-10 w-3/4" />
-						<Skeleton className="h-40 w-full rounded-2xl" />
+			<div className="min-h-screen bg-background p-6 lg:p-12">
+				<div className="mx-auto max-w-7xl border border-border bg-card p-6 space-y-6">
+					<div className="flex gap-6">
+						<Skeleton className="h-64 w-2/3 rounded-none" />
+						<div className="w-1/3 space-y-4">
+							<Skeleton className="h-8 w-full rounded-none" />
+							<Skeleton className="h-4 w-1/2 rounded-none" />
+							<Skeleton className="h-32 w-full rounded-none" />
+						</div>
 					</div>
 				</div>
 			</div>
@@ -98,16 +95,17 @@ export function MediaDetailPage({ id }: { id: string }) {
 
 	if (mediaQuery.isError || !mediaQuery.data) {
 		return (
-			<div className="min-h-screen bg-background px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-5xl">
-					<div className="glass rounded-2xl p-6">
-						<div className="text-sm text-muted-foreground">{t('error')}</div>
-						<div className="mt-4 flex gap-2">
-							<Button variant="secondary" asChild>
-								<Link to="/media">{t('back')}</Link>
-							</Button>
-							<Button onClick={() => mediaQuery.refetch()}>Retry</Button>
-						</div>
+			<div className="min-h-screen bg-background p-6 lg:p-12">
+				<div className="mx-auto max-w-7xl border border-destructive/50 bg-destructive/5 p-12 text-center">
+					<div className="flex justify-center mb-4">
+						<Terminal className="h-8 w-8 text-destructive" />
+					</div>
+					<div className="text-lg font-bold uppercase tracking-wide text-destructive mb-2">{t('error')}</div>
+					<div className="flex justify-center gap-4 mt-8">
+						<Button variant="outline" className="rounded-none border-destructive/50 text-destructive hover:bg-destructive/10 uppercase" asChild>
+							<Link to="/media">{t('back')}</Link>
+						</Button>
+						<Button className="rounded-none uppercase" onClick={() => mediaQuery.refetch()}>Retry</Button>
 					</div>
 				</div>
 			</div>
@@ -134,91 +132,89 @@ export function MediaDetailPage({ id }: { id: string }) {
 	)
 
 	return (
-		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
-			<div className="px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-5xl space-y-6">
-					<div className="flex items-center justify-between gap-3">
-						<Button variant="secondary" asChild>
-							<Link to="/media">{t('back')}</Link>
-						</Button>
-						<div className="flex items-center gap-2">
-							{item.url ? (
-								<Button variant="secondary" asChild>
-									<a href={item.url} target="_blank" rel="noreferrer">
-										<ExternalLink className="mr-2 h-4 w-4" />
-										{t('actions.open')}
-									</a>
-								</Button>
-							) : null}
-							<Button
-								variant="secondary"
-								disabled={refreshMutation.isPending || !item.url}
-								onClick={() => refreshMutation.mutate({ id })}
-							>
-								{refreshMutation.isPending ? (
-									<>
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-										{t('actions.syncing')}
-									</>
-								) : (
-									<>
-										<RefreshCw className="mr-2 h-4 w-4" />
-										{t('actions.sync')}
-									</>
-								)}
+		<div className="min-h-screen bg-background text-foreground font-sans p-6 md:p-12">
+			<div className="mx-auto max-w-7xl border border-border bg-card">
+				{/* Header */}
+				<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-6 bg-secondary/5">
+					<Button 
+						variant="outline" 
+						size="sm" 
+						className="rounded-none border-border uppercase tracking-wide text-xs h-9 px-4"
+						asChild
+					>
+						<Link to="/media">
+							<ArrowLeft className="mr-2 h-3.5 w-3.5" />
+							{t('back')}
+						</Link>
+					</Button>
+					
+					<div className="flex items-center gap-2">
+						{item.url ? (
+							<Button variant="outline" size="sm" className="rounded-none border-border uppercase tracking-wide text-xs h-9" asChild>
+								<a href={item.url} target="_blank" rel="noreferrer">
+									<ExternalLink className="mr-2 h-3.5 w-3.5" />
+									{t('actions.open')}
+								</a>
 							</Button>
-						</div>
+						) : null}
+						<Button
+							variant="outline"
+							size="sm"
+							className="rounded-none border-border uppercase tracking-wide text-xs h-9"
+							disabled={refreshMutation.isPending || !item.url}
+							onClick={() => refreshMutation.mutate({ id })}
+						>
+							{refreshMutation.isPending ? (
+								<>
+									<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+									{t('actions.syncing')}
+								</>
+							) : (
+								<>
+									<RefreshCw className="mr-2 h-3.5 w-3.5" />
+									{t('actions.sync')}
+								</>
+							)}
+						</Button>
+					</div>
+				</div>
+
+				<div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] divide-y lg:divide-y-0 lg:divide-x divide-border">
+					{/* Left Column: Video */}
+					<div className="p-0 bg-black/5">
+						{previewUrl ? (
+							<video
+								className="aspect-video w-full bg-black"
+								controls
+								playsInline
+								preload="metadata"
+								poster={item.thumbnail ?? undefined}
+								src={previewUrl}
+							/>
+						) : item.thumbnail ? (
+							<img
+								src={item.thumbnail}
+								alt={t('video.thumbnailAlt')}
+								className="aspect-video w-full object-cover"
+								loading="lazy"
+							/>
+						) : (
+							<div className="aspect-video w-full flex items-center justify-center bg-secondary/10 text-muted-foreground uppercase tracking-widest font-mono text-sm">
+								No Preview Available
+							</div>
+						)}
 					</div>
 
-					<div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-						<Card className="overflow-hidden">
-							<CardContent className="p-0">
-								{previewUrl ? (
-									<video
-										className="aspect-video w-full bg-black"
-										controls
-										playsInline
-										preload="metadata"
-										poster={item.thumbnail ?? undefined}
-										src={previewUrl}
-									/>
-								) : item.thumbnail ? (
-									<img
-										src={item.thumbnail}
-										alt={t('video.thumbnailAlt')}
-										className="aspect-video w-full object-cover"
-										loading="lazy"
-									/>
-								) : (
-									<div className="aspect-video w-full bg-secondary/50" />
-								)}
-							</CardContent>
-						</Card>
-
-						<div className="space-y-4">
-							<div className="space-y-2">
-								<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-									<Badge variant="secondary" className="capitalize">
-										{item.source}
-									</Badge>
-									<Badge variant="outline" className="capitalize">
-										{item.quality}
-									</Badge>
-									{item.downloadStatus ? (
-										<Badge variant="secondary" className="capitalize">
-											{item.downloadStatus}
-										</Badge>
-									) : null}
-									{createdAt ? (
-										<span className="ml-auto">{createdAt}</span>
-									) : null}
-								</div>
-
-								<h1 className="text-2xl font-semibold leading-snug tracking-tight">
+					{/* Right Column: Details */}
+					<div className="flex flex-col">
+						{/* Meta Header */}
+						<div className="p-6 border-b border-border space-y-4">
+							<div className="space-y-1">
+								<h1 className="text-xl font-bold uppercase leading-tight tracking-wide">
 									{title}
 								</h1>
 								{item.translatedTitle && item.title ? (
-									<div className="text-sm text-muted-foreground">
+									<div className="text-sm font-mono text-muted-foreground break-words">
 										{item.translatedTitle === title
 											? item.title
 											: item.translatedTitle}
@@ -226,164 +222,190 @@ export function MediaDetailPage({ id }: { id: string }) {
 								) : null}
 							</div>
 
-							<Card>
-								<CardHeader>
-									<CardTitle className="text-base">
-										{t('actions.title')}
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="flex flex-col gap-2">
-									<Button className="w-full justify-start" asChild>
-										<Link to="/media/$id/subtitles" params={{ id }}>
-											{t('tabs.subtitlesAction')}
-										</Link>
-									</Button>
-									<Button
-										variant="secondary"
-										className="w-full justify-start"
-										asChild
-									>
-										<Link to="/media/$id/comments" params={{ id }}>
-											{t('tabs.commentsAction')}
-										</Link>
-									</Button>
-									<Sheet open={pointsOpen} onOpenChange={setPointsOpen}>
-										<SheetTrigger asChild>
-											<Button
-												variant="outline"
-												className="w-full justify-start"
-											>
-												{t('points.title')}
-											</Button>
-										</SheetTrigger>
-										<SheetContent className="flex flex-col p-0">
-											<div className="border-border/60 border-b p-6 pr-12">
-												<SheetHeader>
-													<SheetTitle>{t('points.title')}</SheetTitle>
-													<div className="flex items-center gap-2 text-sm">
-														<span className="text-muted-foreground">
-															{t('points.net')}
-														</span>
-														{transactionsQuery.isFetching ? (
-															<Skeleton className="h-4 w-16" />
-														) : (
-															<span
-																className={
-																	txNetDelta >= 0
-																		? 'text-emerald-600'
-																		: 'text-red-500'
-																}
-															>
-																{txNetDelta >= 0 ? '+' : ''}
-																{txNetDelta}
-															</span>
-														)}
-													</div>
-												</SheetHeader>
+							<div className="grid grid-cols-2 gap-px bg-border border border-border">
+								<div className="bg-background p-2">
+									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Source</span>
+									<span className="text-xs font-bold uppercase">{item.source || '-'}</span>
+								</div>
+								<div className="bg-background p-2">
+									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Quality</span>
+									<span className="text-xs font-bold uppercase">{item.quality || '-'}</span>
+								</div>
+								<div className="bg-background p-2">
+									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Status</span>
+									<span className="text-xs font-bold uppercase">{item.downloadStatus || '-'}</span>
+								</div>
+								<div className="bg-background p-2">
+									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Date</span>
+									<span className="text-xs font-mono">{createdAt ? createdAt.split(',')[0] : '-'}</span>
+								</div>
+							</div>
+						</div>
+
+						{/* Actions Panel */}
+						<div className="p-6 flex-1 bg-secondary/5">
+							<h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
+								{t('actions.title')}
+							</h2>
+							<div className="space-y-3">
+								<Button 
+									className="w-full justify-start rounded-none h-12 uppercase tracking-wide font-bold border border-border bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+									variant="ghost"
+									asChild
+								>
+									<Link to="/media/$id/subtitles" params={{ id }}>
+										<span className="mr-auto">{t('tabs.subtitlesAction')}</span>
+										<ArrowLeft className="h-4 w-4 rotate-180" />
+									</Link>
+								</Button>
+								<Button
+									className="w-full justify-start rounded-none h-12 uppercase tracking-wide font-bold border border-border bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+									variant="ghost"
+									asChild
+								>
+									<Link to="/media/$id/comments" params={{ id }}>
+										<span className="mr-auto">{t('tabs.commentsAction')}</span>
+										<ArrowLeft className="h-4 w-4 rotate-180" />
+									</Link>
+								</Button>
+								
+								<Sheet open={pointsOpen} onOpenChange={setPointsOpen}>
+									<SheetTrigger asChild>
+										<Button
+											variant="ghost"
+											className="w-full justify-start rounded-none h-12 uppercase tracking-wide font-bold border border-border bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+										>
+											<span className="mr-auto">{t('points.title')}</span>
+											<Terminal className="h-4 w-4" />
+										</Button>
+									</SheetTrigger>
+									<SheetContent className="flex flex-col p-0 border-l border-border bg-background sm:max-w-xl">
+										<div className="h-14 flex items-center justify-between px-6 border-b border-border bg-secondary/5">
+											<SheetTitle className="text-sm font-bold uppercase tracking-wider">{t('points.title')}</SheetTitle>
+											<div className="flex items-center gap-2 text-xs font-mono">
+												<span className="text-muted-foreground uppercase">
+													{t('points.net')}:
+												</span>
+												{transactionsQuery.isFetching ? (
+													<Skeleton className="h-4 w-12 rounded-none" />
+												) : (
+													<span
+														className={
+															txNetDelta >= 0
+																? 'text-emerald-600 font-bold'
+																: 'text-red-500 font-bold'
+														}
+													>
+														{txNetDelta >= 0 ? '+' : ''}
+														{txNetDelta}
+													</span>
+												)}
 											</div>
+										</div>
 
-											<div className="flex-1 overflow-auto p-6">
-												<div className="space-y-4">
-													<div className="overflow-x-auto">
-														<div className="min-w-[560px]">
-															<div className="grid grid-cols-5 border-border/60 border-b pb-2 text-xs font-medium text-muted-foreground">
-																<div>{t('points.table.headers.time')}</div>
-																<div>{t('points.table.headers.type')}</div>
-																<div>{t('points.table.headers.delta')}</div>
-																<div>{t('points.table.headers.balance')}</div>
-																<div>{t('points.table.headers.remark')}</div>
-															</div>
-															<div className="divide-y divide-border/60">
-																{formattedTransactions.length === 0 ? (
-																	<div className="py-6 text-center text-sm text-muted-foreground">
-																		{transactionsQuery.isError
-																			? t('points.table.error')
-																			: transactionsQuery.isLoading ||
-																				  transactionsQuery.isFetching
-																				? t('points.table.loading')
-																				: t('points.table.empty')}
-																	</div>
-																) : null}
-																{formattedTransactions.map((tx) => (
-																	<div
-																		key={tx.id}
-																		className="grid grid-cols-5 items-center py-3 text-sm"
-																	>
-																		<div className="text-xs text-muted-foreground">
-																			{new Date(tx.createdAt).toLocaleString()}
-																		</div>
-																		<div>
-																			<Badge
-																				variant="secondary"
-																				className="capitalize"
-																			>
-																				{String(tx.type).replace('_', ' ')}
-																			</Badge>
-																		</div>
-																		<div
-																			className={
-																				tx.delta >= 0
-																					? 'text-emerald-600'
-																					: 'text-red-500'
-																			}
-																		>
-																			{tx.sign}
-																			{tx.abs}
-																		</div>
-																		<div>{tx.balanceAfter}</div>
-																		<div className="text-xs text-muted-foreground">
-																			{tx.remark || tx.refType || '-'}
-																		</div>
-																	</div>
-																))}
-															</div>
-														</div>
+										<div className="flex-1 overflow-auto p-6">
+											<div className="space-y-6">
+												<div className="border border-border">
+													<div className="grid grid-cols-[auto_1fr_auto] gap-px bg-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+														<div className="bg-secondary/10 p-2">{t('points.table.headers.time')}</div>
+														<div className="bg-secondary/10 p-2">{t('points.table.headers.type')} / {t('points.table.headers.remark')}</div>
+														<div className="bg-secondary/10 p-2 text-right">{t('points.table.headers.delta')}</div>
 													</div>
+													
+													<div className="divide-y divide-border bg-background">
+														{formattedTransactions.length === 0 ? (
+															<div className="py-8 text-center text-xs font-mono text-muted-foreground uppercase">
+																{transactionsQuery.isError
+																	? t('points.table.error')
+																	: transactionsQuery.isLoading ||
+																		  transactionsQuery.isFetching
+																		? t('points.table.loading')
+																		: t('points.table.empty')}
+															</div>
+														) : null}
+														{formattedTransactions.map((tx) => (
+															<div
+																key={tx.id}
+																className="grid grid-cols-[auto_1fr_auto] items-center text-xs hover:bg-secondary/5 transition-colors"
+															>
+																<div className="p-3 font-mono text-muted-foreground border-r border-border/50">
+																	<div className="whitespace-nowrap">{new Date(tx.createdAt).toLocaleDateString()}</div>
+																	<div className="whitespace-nowrap text-[10px] opacity-70">{new Date(tx.createdAt).toLocaleTimeString()}</div>
+																</div>
+																<div className="p-3 border-r border-border/50 min-w-0">
+																	<div className="flex items-center gap-2 mb-1">
+																		<span className="inline-block border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-secondary/20">
+																			{String(tx.type).replace('_', ' ')}
+																		</span>
+																	</div>
+																	<div className="text-[10px] text-muted-foreground truncate font-mono">
+																		{tx.remark || tx.refType || '-'}
+																	</div>
+																</div>
+																<div className="p-3 text-right font-mono">
+																	<div
+																		className={
+																			tx.delta >= 0
+																				? 'text-emerald-600 font-bold'
+																				: 'text-red-500 font-bold'
+																		}
+																	>
+																		{tx.sign}{tx.abs}
+																	</div>
+																	<div className="text-[10px] text-muted-foreground">
+																		Bal: {tx.balanceAfter}
+																	</div>
+																</div>
+															</div>
+														))}
+													</div>
+												</div>
 
-													<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-														<p className="text-xs text-muted-foreground">
-															{t('points.pagination', {
-																page: txPage,
-																pages: txPageCount,
-																total: txTotal,
-															})}
-														</p>
-														<div className="flex gap-2">
-															<Button
-																variant="outline"
-																size="sm"
-																disabled={
-																	txPage <= 1 || transactionsQuery.isFetching
-																}
-																onClick={() =>
-																	setTxPage((p) => Math.max(1, p - 1))
-																}
-															>
-																{t('points.prev')}
-															</Button>
-															<Button
-																variant="outline"
-																size="sm"
-																disabled={
-																	txPage >= txPageCount ||
-																	transactionsQuery.isFetching
-																}
-																onClick={() =>
-																	setTxPage((p) =>
-																		Math.min(txPageCount, p + 1),
-																	)
-																}
-															>
-																{t('points.next')}
-															</Button>
-														</div>
+												<div className="flex items-center justify-between border-t border-border pt-4">
+													<div className="text-[10px] font-mono text-muted-foreground uppercase">
+														{t('points.pagination', {
+															page: txPage,
+															pages: txPageCount,
+															total: txTotal,
+														})}
+													</div>
+													<div className="flex gap-2">
+														<Button
+															variant="outline"
+															size="sm"
+															className="rounded-none border-border h-7 text-xs uppercase"
+															disabled={
+																txPage <= 1 || transactionsQuery.isFetching
+															}
+															onClick={() =>
+																setTxPage((p) => Math.max(1, p - 1))
+															}
+														>
+															{t('points.prev')}
+														</Button>
+														<Button
+															variant="outline"
+															size="sm"
+															className="rounded-none border-border h-7 text-xs uppercase"
+															disabled={
+																txPage >= txPageCount ||
+																transactionsQuery.isFetching
+															}
+															onClick={() =>
+																setTxPage((p) =>
+																	Math.min(txPageCount, p + 1),
+																)
+															}
+														>
+															{t('points.next')}
+														</Button>
 													</div>
 												</div>
 											</div>
-										</SheetContent>
-									</Sheet>
-								</CardContent>
-							</Card>
+										</div>
+									</SheetContent>
+								</Sheet>
+							</div>
 						</div>
 					</div>
 				</div>
