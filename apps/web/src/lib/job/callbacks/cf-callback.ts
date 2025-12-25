@@ -233,11 +233,13 @@ async function handleCloudDownloadCallback(
 			const label = `key=${key}`
 			let probe = await checkUrl(url, { label, logOnFailure: true })
 			if (probe.state === 'missing') {
-				for (const delayMs of [250, 750, 1500]) {
+				// R2 can occasionally return transient 404s immediately after a successful PUT
+				// (especially for large artifacts). Give it a little longer before failing the job.
+				for (const delayMs of [250, 750, 1500, 3000, 5000, 8000]) {
 					await sleep(delayMs)
 					probe = await checkUrl(url, {
 						label,
-						logOnFailure: delayMs === 1500,
+						logOnFailure: delayMs === 8000,
 					})
 					if (probe.state !== 'missing') break
 				}
@@ -278,32 +280,6 @@ async function handleCloudDownloadCallback(
 	const hasVideoKey = Boolean(resolvedVideoKey)
 	const hasAudioKey = Boolean(audioProcessedKey)
 	const isCommentsOnly = hasMetadataOutput && !hasVideoKey && !hasAudioKey
-
-	const shouldProbeVideoForSize =
-		typeof payload.metadata?.videoBytes !== 'number'
-	const shouldProbeAudioForSize =
-		typeof payload.metadata?.audioBytes !== 'number'
-	const shouldProbeMetadataForSummary =
-		!payload.metadata?.title ||
-		!payload.metadata?.author ||
-		!payload.metadata?.thumbnail
-
-	const [videoProbe, audioProcessedProbe, _audioSourceProbe, metadataProbe] =
-		await Promise.all([
-			shouldProbeVideoForSize
-				? remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
-				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
-			shouldProbeAudioForSize
-				? remoteObjectExists({
-						key: audioProcessedKey,
-						directUrl: audioProcessedUrl,
-					})
-				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
-			remoteObjectExists({ key: audioSourceKey, directUrl: audioSourceUrl }),
-			shouldProbeMetadataForSummary
-				? remoteObjectExists({ key: metadataKey, directUrl: metadataUrl })
-				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
-		])
 
 	if (payload.status !== 'completed') {
 		await db
@@ -346,6 +322,32 @@ async function handleCloudDownloadCallback(
 		)
 		return
 	}
+
+	const shouldProbeVideoForSize =
+		typeof payload.metadata?.videoBytes !== 'number'
+	const shouldProbeAudioForSize =
+		typeof payload.metadata?.audioBytes !== 'number'
+	const shouldProbeMetadataForSummary =
+		!payload.metadata?.title ||
+		!payload.metadata?.author ||
+		!payload.metadata?.thumbnail
+
+	const [videoProbe, audioProcessedProbe, _audioSourceProbe, metadataProbe] =
+		await Promise.all([
+			shouldProbeVideoForSize
+				? remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
+				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
+			shouldProbeAudioForSize
+				? remoteObjectExists({
+						key: audioProcessedKey,
+						directUrl: audioProcessedUrl,
+					})
+				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
+			remoteObjectExists({ key: audioSourceKey, directUrl: audioSourceUrl }),
+			shouldProbeMetadataForSummary
+				? remoteObjectExists({ key: metadataKey, directUrl: metadataUrl })
+				: Promise.resolve<RemoteProbe>({ state: 'unknown' }),
+		])
 
 	// If the job claims completion but the requested artifacts aren't actually readable,
 	// fail fast so downstream renders don't get stuck on missing sources.
