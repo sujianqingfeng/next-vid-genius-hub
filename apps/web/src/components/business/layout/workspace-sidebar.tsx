@@ -18,6 +18,7 @@ import { useAuthQuery, useLogoutMutation } from '~/lib/auth/hooks'
 import { useTranslations } from '~/lib/i18n'
 
 import LanguageToggle from './language-toggle'
+import ThemeToggle from './theme-toggle'
 
 type MenuItem = {
 	key: string
@@ -215,7 +216,11 @@ export default function WorkspaceSidebar({
 			{/* Footer / User Profile */}
 			<div className="border-t border-border bg-secondary/5">
 				<div className="p-4 space-y-4">
-					<div className={cn("flex", collapsed ? "justify-center" : "justify-end")}>
+					<div className={cn(
+						"flex",
+						collapsed ? "flex-col gap-2 items-center" : "justify-between items-center"
+					)}>
+						<ThemeToggle collapsed={collapsed} />
 						<LanguageToggle collapsed={collapsed} />
 					</div>
 
