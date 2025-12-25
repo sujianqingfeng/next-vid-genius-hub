@@ -26,9 +26,17 @@ export async function remoteKeyExists(key: string): Promise<boolean> {
 				signal: controller?.signal,
 				cache: 'no-store',
 			})
-			if (res.ok || res.status === 206) return true
-			if (res.status === 404) return false
-			return false
+			try {
+				if (res.ok || res.status === 206) return true
+				if (res.status === 404) return false
+				return false
+			} finally {
+				if (!res.bodyUsed) {
+					try {
+						await res.body?.cancel?.()
+					} catch {}
+				}
+			}
 		} finally {
 			clearTimeout(timeout)
 		}

@@ -147,6 +147,9 @@ async function handleCloudDownloadCallback(
 		key?: string | null
 		directUrl?: string | null
 	}): Promise<RemoteProbe> {
+		const sleep = (ms: number) =>
+			new Promise<void>((resolve) => setTimeout(resolve, ms))
+
 		const parseSizeBytes = (res: Response): number | undefined => {
 			const contentRange = res.headers.get('content-range')
 			if (contentRange) {
@@ -171,8 +174,9 @@ async function handleCloudDownloadCallback(
 			const controller =
 				typeof AbortController !== 'undefined' ? new AbortController() : null
 			const timeout = setTimeout(() => controller?.abort(), 10_000)
+			let res: Response | null = null
 			try {
-				const res = await fetch(url, {
+				res = await fetch(url, {
 					method: 'GET',
 					headers: { Range: 'bytes=0-0' },
 					signal: controller?.signal,
@@ -180,9 +184,6 @@ async function handleCloudDownloadCallback(
 				})
 				if (res.ok || res.status === 206) {
 					const sizeBytes = parseSizeBytes(res)
-					try {
-						await res.body?.cancel?.()
-					} catch {}
 					if (typeof sizeBytes === 'number' && Number.isFinite(sizeBytes)) {
 						return { state: 'exists', sizeBytes }
 					}
@@ -207,6 +208,11 @@ async function handleCloudDownloadCallback(
 				}
 				return { state: 'unknown' }
 			} finally {
+				if (res && !res.bodyUsed) {
+					try {
+						await res.body?.cancel?.()
+					} catch {}
+				}
 				clearTimeout(timeout)
 			}
 		}
@@ -224,7 +230,19 @@ async function handleCloudDownloadCallback(
 
 		try {
 			const url = await presignGetByKey(key)
-			return await checkUrl(url, { label: `key=${key}`, logOnFailure: true })
+			const label = `key=${key}`
+			let probe = await checkUrl(url, { label, logOnFailure: true })
+			if (probe.state === 'missing') {
+				for (const delayMs of [250, 750, 1500]) {
+					await sleep(delayMs)
+					probe = await checkUrl(url, {
+						label,
+						logOnFailure: delayMs === 1500,
+					})
+					if (probe.state !== 'missing') break
+				}
+			}
+			return probe
 		} catch (error) {
 			logger.warn(
 				'api',
@@ -270,7 +288,7 @@ async function handleCloudDownloadCallback(
 		!payload.metadata?.author ||
 		!payload.metadata?.thumbnail
 
-	const [videoProbe, audioProcessedProbe, audioSourceProbe, metadataProbe] =
+	const [videoProbe, audioProcessedProbe, _audioSourceProbe, metadataProbe] =
 		await Promise.all([
 			shouldProbeVideoForSize
 				? remoteObjectExists({ key: resolvedVideoKey, directUrl: videoUrl })
@@ -415,9 +433,17 @@ async function handleCloudDownloadCallback(
 						signal: controller?.signal,
 						cache: 'no-store',
 					})
-					if (res.ok) {
-						const raw = (await res.json()) as unknown
-						fallbackSummary = summariseRawMetadata(raw)
+					try {
+						if (res.ok) {
+							const raw = (await res.json()) as unknown
+							fallbackSummary = summariseRawMetadata(raw)
+						}
+					} finally {
+						if (!res.bodyUsed) {
+							try {
+								await res.body?.cancel?.()
+							} catch {}
+						}
 					}
 				} finally {
 					clearTimeout(timeout)
