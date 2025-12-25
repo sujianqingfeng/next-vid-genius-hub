@@ -85,89 +85,100 @@ function MediaIndexRoute() {
 		: null
 
 	return (
-		<div className="min-h-screen bg-background text-foreground font-sans p-6 md:p-12">
-			<div className="mx-auto max-w-7xl border border-border bg-card">
-				{/* Header */}
-				<div className="flex flex-col gap-4 border-b border-border p-6 sm:flex-row sm:items-center sm:justify-between bg-secondary/5">
-					<div className="space-y-1">
-						<div className="flex items-center gap-2">
-							<h1 className="text-xl font-bold uppercase tracking-wide">
-								{t('title')}
-							</h1>
-							<span className="border border-border bg-background px-2 py-0.5 text-xs font-mono text-muted-foreground">
-								PAGE {page}
-							</span>
+		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
+			{/* Header Section */}
+			<div className="border-b border-border bg-card">
+				<div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+								<span className="flex items-center gap-1">
+									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+									Library System
+								</span>
+								<span>/</span>
+								<span>Media Inventory</span>
+							</div>
+							<div className="flex items-center gap-3">
+								<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
+									{t('title')}
+								</h1>
+								<span className="border border-border bg-background px-2 py-0.5 font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+									VOL_PAGE_{page}
+								</span>
+							</div>
+							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground opacity-70">
+								Total_Records: <span className="text-foreground">{total}</span>
+							</div>
 						</div>
-						<p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
-							Total Items: {total}
-						</p>
-					</div>
-					<Button
-						asChild
-						className="rounded-none h-10 px-6 uppercase tracking-wide text-xs font-bold"
-					>
-						<Link to="/media/download">
-							<Plus className="mr-2 h-4 w-4" />
-							{t('downloadCta')}
-						</Link>
-					</Button>
-				</div>
 
-				<div className="p-6">
+						<Button
+							asChild
+							variant="outline"
+							className="h-9 rounded-none border-border font-mono text-xs uppercase tracking-widest px-6"
+						>
+							<Link to="/media/download">
+								<Plus className="mr-2 h-3 w-3" />
+								{t('downloadCta')}
+							</Link>
+						</Button>
+					</div>
+				</div>
+			</div>
+
+			<div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+				<div className="space-y-8">
 					{listQuery.isLoading ? (
-						<div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground font-mono uppercase tracking-wide">
+						<div className="flex h-64 items-center justify-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
 							<Loader2 className="h-4 w-4 animate-spin" />
-							Loading Data...
+							Polling_Storage_System...
 						</div>
 					) : null}
 
 					{listQuery.isError ? (
-						<div className="border border-destructive/50 bg-destructive/5 p-8 text-center">
-							<div className="text-lg font-bold uppercase tracking-wide text-destructive">
-								{t('error.title')}
+						<div className="border border-destructive/50 bg-destructive/5 p-8 text-center border-dashed">
+							<div className="font-mono text-sm font-bold uppercase tracking-widest text-destructive mb-2">
+								System_Fault: Interface_Failure
 							</div>
-							<div className="mt-2 text-sm font-mono text-destructive/80">
+							<div className="font-mono text-[10px] uppercase text-destructive/80 mb-6">
 								{t('error.body')}
 							</div>
-							<div className="mt-6">
-								<Button
-									onClick={() => listQuery.refetch()}
-									variant="outline"
-									className="rounded-none border-destructive/50 text-destructive hover:bg-destructive/10 uppercase text-xs"
-								>
-									{t('error.retry')}
-								</Button>
-							</div>
+							<Button
+								onClick={() => listQuery.refetch()}
+								variant="outline"
+								className="rounded-none border-destructive text-destructive hover:bg-destructive/10 font-mono text-[10px] uppercase tracking-widest"
+							>
+								[ RETRY_HANDSHAKE ]
+							</Button>
 						</div>
 					) : null}
 
 					{!listQuery.isLoading && !listQuery.isError && items.length === 0 ? (
-						<div className="border border-dashed border-border p-12 text-center bg-secondary/5">
+						<div className="border border-dashed border-border p-20 text-center bg-muted/5">
 							<div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center border border-border bg-background">
 								<FolderOpen
-									className="h-8 w-8 text-muted-foreground"
+									className="h-8 w-8 text-muted-foreground opacity-30"
 									strokeWidth={1}
 								/>
 							</div>
-							<div className="text-lg font-bold uppercase tracking-wide">
+							<div className="font-mono text-sm font-bold uppercase tracking-widest mb-2">
 								{t('empty.title')}
 							</div>
-							<div className="mt-2 text-sm font-mono text-muted-foreground">
+							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-8">
 								{t('empty.body')}
 							</div>
-							<div className="mt-8">
-								<Button
-									asChild
-									className="rounded-none uppercase tracking-wide text-xs"
-								>
-									<Link to="/media/download">{t('downloadCta')}</Link>
-								</Button>
-							</div>
+							<Button
+								asChild
+								variant="outline"
+								className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+							>
+								<Link to="/media/download">[ INITIATE_INGESTION ]</Link>
+							</Button>
 						</div>
 					) : null}
 
 					{items.length > 0 ? (
-						<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
 							{items.map((item) => {
 								const createdAt = toDateLabel(item.createdAt)
 								const title =
@@ -176,7 +187,7 @@ function MediaIndexRoute() {
 								return (
 									<div
 										key={item.id}
-										className="group relative border border-border bg-background transition-colors hover:border-primary/50"
+										className="group relative border border-border bg-card transition-colors hover:border-primary"
 									>
 										<Link
 											to="/media/$id"
@@ -184,12 +195,12 @@ function MediaIndexRoute() {
 											className="block"
 										>
 											{/* Thumbnail Area */}
-											<div className="aspect-video w-full border-b border-border bg-secondary/10 relative overflow-hidden">
+											<div className="aspect-video w-full border-b border-border bg-muted relative overflow-hidden">
 												{item.thumbnail ? (
 													<img
 														src={item.thumbnail}
 														alt={title}
-														className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+														className="h-full w-full object-cover grayscale opacity-80 transition-all duration-500 group-hover:opacity-100 group-hover:scale-105"
 														loading="lazy"
 													/>
 												) : (
@@ -201,33 +212,39 @@ function MediaIndexRoute() {
 												{/* Overlay Status Badges */}
 												<div className="absolute bottom-2 left-2 flex gap-1">
 													{item.quality && (
-														<span className="bg-background/90 backdrop-blur-sm border border-border px-1.5 py-0.5 text-[10px] font-mono uppercase text-foreground">
+														<span className="bg-background border border-border px-1.5 py-0.5 text-[8px] font-mono uppercase font-bold tracking-tighter text-foreground">
 															{item.quality}
 														</span>
 													)}
 												</div>
+
+												<div className="absolute top-2 left-2">
+													<div className="bg-background/80 border border-border px-1.5 py-0.5 text-[8px] font-mono uppercase tracking-tighter text-muted-foreground">
+														ID: {item.id.slice(0, 8)}
+													</div>
+												</div>
 											</div>
 
 											{/* Card Content */}
-											<div className="p-4 space-y-3">
-												<div className="line-clamp-2 text-sm font-medium leading-relaxed uppercase tracking-wide group-hover:text-primary transition-colors h-10">
+											<div className="p-4 space-y-4">
+												<div className="line-clamp-2 font-mono text-[11px] font-bold leading-relaxed uppercase tracking-tight group-hover:text-primary transition-colors h-10">
 													{title}
 												</div>
 
-												<div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-muted-foreground border-t border-border pt-3">
-													<div>
-														<span className="block text-muted-foreground/50 uppercase">
-															Source
+												<div className="grid grid-cols-2 gap-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground border-t border-border pt-3">
+													<div className="space-y-1">
+														<span className="block opacity-50">
+															SRC_PROVIDER
 														</span>
-														<span className="uppercase text-foreground">
-															{item.source}
+														<span className="text-foreground font-bold">
+															{item.source || 'INTERNAL'}
 														</span>
 													</div>
-													<div className="text-right">
-														<span className="block text-muted-foreground/50 uppercase">
-															Date
+													<div className="text-right space-y-1">
+														<span className="block opacity-50">REG_DATE</span>
+														<span className="text-foreground">
+															{createdAt.split(',')[0]}
 														</span>
-														<span>{createdAt.split(',')[0]}</span>
 													</div>
 												</div>
 											</div>
@@ -237,8 +254,8 @@ function MediaIndexRoute() {
 										<Button
 											type="button"
 											variant="ghost"
-											size="icon-sm"
-											className="absolute right-2 top-2 z-10 h-8 w-8 rounded-none border border-border bg-background/90 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+											size="icon"
+											className="absolute right-2 top-2 z-10 h-7 w-7 rounded-none border border-border bg-background/90 text-muted-foreground hover:bg-destructive hover:text-white hover:border-destructive opacity-0 group-hover:opacity-100 transition-all"
 											aria-label={t('actions.delete')}
 											disabled={isDeleting}
 											onClick={(e) => {
@@ -247,9 +264,9 @@ function MediaIndexRoute() {
 												if (deleteMutation.isPending) return
 												void (async () => {
 													const ok = await confirmDialog({
-														title: t('actions.delete'),
+														title: 'SECURITY_WARNING: DESTRUCTIVE_ACTION',
 														description: t('confirmDelete', { title }),
-														confirmText: t('actions.delete'),
+														confirmText: 'PURGE_RECORD',
 														variant: 'destructive',
 													})
 													if (!ok) return
@@ -271,40 +288,45 @@ function MediaIndexRoute() {
 
 					{/* Pagination */}
 					{pageCount > 1 ? (
-						<div className="mt-12 flex items-center justify-center gap-2 border-t border-border pt-8">
-							<Button
-								variant="outline"
-								disabled={page <= 1}
-								asChild={page > 1}
-								className="rounded-none border-border h-9 uppercase text-xs w-24"
-							>
-								{page > 1 ? (
-									<Link to="/media" search={{ page: page - 1 }}>
-										Previous
-									</Link>
-								) : (
-									<span>Previous</span>
-								)}
-							</Button>
+						<div className="mt-12 border-t border-border pt-8">
+							<div className="flex items-center justify-center gap-3">
+								<Button
+									variant="outline"
+									disabled={page <= 1}
+									asChild={page > 1}
+									className="rounded-none border-border h-9 font-mono text-[10px] uppercase tracking-widest px-6"
+								>
+									{page > 1 ? (
+										<Link to="/media" search={{ page: page - 1 }}>
+											[ PREV_VOL ]
+										</Link>
+									) : (
+										<span>PREV_VOL</span>
+									)}
+								</Button>
 
-							<div className="px-4 font-mono text-xs text-muted-foreground border border-border h-9 flex items-center bg-secondary/5">
-								PAGE {page} / {pageCount}
+								<div className="px-6 font-mono text-[10px] text-muted-foreground border border-border h-9 flex items-center bg-muted/10 uppercase tracking-widest font-bold">
+									VOL_UNIT {page} / {pageCount}
+								</div>
+
+								<Button
+									variant="outline"
+									disabled={page >= pageCount}
+									asChild={page < pageCount}
+									className="rounded-none border-border h-9 font-mono text-[10px] uppercase tracking-widest px-6"
+								>
+									{page < pageCount ? (
+										<Link to="/media" search={{ page: page + 1 }}>
+											[ NEXT_VOL ]
+										</Link>
+									) : (
+										<span>NEXT_VOL</span>
+									)}
+								</Button>
 							</div>
-
-							<Button
-								variant="outline"
-								disabled={page >= pageCount}
-								asChild={page < pageCount}
-								className="rounded-none border-border h-9 uppercase text-xs w-24"
-							>
-								{page < pageCount ? (
-									<Link to="/media" search={{ page: page + 1 }}>
-										Next
-									</Link>
-								) : (
-									<span>Next</span>
-								)}
-							</Button>
+							<div className="mt-4 font-mono text-[8px] uppercase tracking-[0.4em] text-muted-foreground text-center opacity-50">
+								END_OF_STREAM_INDEX
+							</div>
 						</div>
 					) : null}
 				</div>

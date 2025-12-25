@@ -29,107 +29,195 @@ export function TasksPage({ recentLimit = 50 }: { recentLimit?: number }) {
 	const items = tasksQuery.data?.items ?? []
 
 	return (
-		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
-			<div className="px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-5xl">
-					<div className="mb-8 flex items-center justify-between gap-4">
-						<div>
-							<h1 className="text-3xl font-semibold tracking-tight">
+		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
+			{/* Header Section */}
+			<div className="border-b border-border bg-card">
+				<div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+								<span className="flex items-center gap-1">
+									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+									Kernel System
+								</span>
+								<span>/</span>
+								<span>Process Queue</span>
+							</div>
+							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{t('title')}
 							</h1>
-							<p className="mt-1 text-sm text-muted-foreground">
+							<div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground opacity-70">
 								{t('lists.recent')}
-							</p>
+							</div>
 						</div>
-						<Button variant="secondary" onClick={() => tasksQuery.refetch()}>
-							{t('refresh')}
+
+						<Button
+							variant="outline"
+							size="sm"
+							className="rounded-none font-mono text-xs uppercase tracking-wider"
+							onClick={() => tasksQuery.refetch()}
+							disabled={tasksQuery.isLoading}
+						>
+							<Loader2
+								className={`mr-2 h-3 w-3 ${tasksQuery.isLoading ? 'animate-spin' : 'hidden'}`}
+							/>
+							[ {t('refresh')} ]
 						</Button>
 					</div>
+				</div>
+			</div>
 
-					{tasksQuery.isLoading ? (
-						<div className="flex items-center gap-2 text-sm text-muted-foreground">
-							<Loader2 className="h-4 w-4 animate-spin" />
-							Loading…
+			<div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+				<div className="space-y-6">
+					{tasksQuery.isLoading && !items.length && (
+						<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+							<Loader2 className="h-3 w-3 animate-spin" />
+							Polling_Task_Queue...
 						</div>
-					) : null}
+					)}
 
 					{tasksQuery.isError ? (
-						<div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
-							Failed to load tasks.
+						<div className="border border-destructive/50 bg-destructive/5 p-4 font-mono text-xs uppercase tracking-wider text-destructive">
+							Error: Failed to interface with Task_Manager.
 						</div>
 					) : null}
 
-					{!tasksQuery.isLoading &&
-					!tasksQuery.isError &&
-					items.length === 0 ? (
-						<div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
-							{t('empty')}
+					{!tasksQuery.isLoading && items.length === 0 ? (
+						<div className="border border-dashed border-border p-12 text-center">
+							<div className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+								{t('empty')}
+							</div>
 						</div>
 					) : null}
 
-					{items.length > 0 ? (
-						<div className="space-y-3">
-							{items.map((task) => {
-								const createdAt = toDateLabel(task.createdAt)
-								const updatedAt = toDateLabel(task.updatedAt)
-								const finishedAt = toDateLabel(task.finishedAt)
-
-								const canOpenMedia =
-									task.targetType === 'media' &&
-									typeof task.targetId === 'string'
-
-								return (
-									<div key={task.id} className="glass rounded-2xl p-4">
-										<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-											<span className="rounded-md bg-secondary px-2 py-1 text-foreground/80">
-												{task.kind}
-											</span>
-											<span className="rounded-md bg-secondary px-2 py-1 text-foreground/80">
-												{task.status}
-											</span>
-											{typeof task.progress === 'number' ? (
-												<span className="rounded-md bg-secondary px-2 py-1 text-foreground/80">
-													{t('progress')}: {task.progress}%
-												</span>
-											) : null}
-											{updatedAt ? (
-												<span className="ml-auto">{updatedAt}</span>
-											) : null}
-										</div>
-
-										<div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-											<div className="text-sm">
-												<div className="font-medium text-foreground">
-													{t('targetLabel')}: {task.targetType}/{task.targetId}
-												</div>
-												<div className="mt-1 text-xs text-muted-foreground">
-													{createdAt
-														? `${t('timestamps.created')}: ${createdAt}`
-														: null}
-													{finishedAt
-														? ` · ${t('timestamps.finished')}: ${finishedAt}`
-														: null}
-												</div>
-												{task.error ? (
-													<div className="mt-2 text-xs text-destructive">
-														{task.error}
-													</div>
-												) : null}
-											</div>
-
-											{canOpenMedia ? (
-												<Button variant="secondary" asChild>
-													<Link to="/media/$id" params={{ id: task.targetId! }}>
-														Open media
-													</Link>
-												</Button>
-											) : null}
-										</div>
+					{items.length > 0 && (
+						<div className="space-y-4">
+							<div className="border border-border bg-card">
+								<div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center justify-between">
+									<div className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										Live_Task_Monitor
 									</div>
-								)
-							})}
+									<div className="font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground opacity-50">
+										Active_Nodes: {items.length}
+									</div>
+								</div>
+
+								<div className="divide-y divide-border">
+									{items.map((task) => {
+										const createdAt = toDateLabel(task.createdAt)
+										const updatedAt = toDateLabel(task.updatedAt)
+										const finishedAt = toDateLabel(task.finishedAt)
+
+										const canOpenMedia =
+											task.targetType === 'media' &&
+											typeof task.targetId === 'string'
+
+										const isError = task.status === 'failed'
+										const isSuccess = task.status === 'completed'
+
+										return (
+											<div
+												key={task.id}
+												className="group p-4 transition-colors hover:bg-muted/10"
+											>
+												<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+													<div className="min-w-0 flex-1 space-y-3">
+														<div className="flex flex-wrap items-center gap-3">
+															<div className="bg-primary/5 border border-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider">
+																{task.kind}
+															</div>
+															<div
+																className={`px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider border ${
+																	isError
+																		? 'bg-destructive/10 border-destructive/20 text-destructive'
+																		: isSuccess
+																			? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'
+																			: 'bg-primary/5 border-primary/10'
+																}`}
+															>
+																{task.status}
+															</div>
+															{typeof task.progress === 'number' && (
+																<div className="flex items-center gap-2">
+																	<div className="w-24 h-1.5 border border-border bg-muted/30 overflow-hidden">
+																		<div
+																			className="h-full bg-primary transition-all duration-500"
+																			style={{ width: `${task.progress}%` }}
+																		/>
+																	</div>
+																	<span className="font-mono text-[10px] font-bold">
+																		{task.progress}%
+																	</span>
+																</div>
+															)}
+															<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+																ID:{' '}
+																<span className="text-foreground">
+																	{task.id}
+																</span>
+															</div>
+														</div>
+
+														<div className="space-y-1">
+															<div className="font-mono text-xs font-bold uppercase tracking-wide">
+																<span className="text-muted-foreground">
+																	{t('targetLabel')}:
+																</span>{' '}
+																{task.targetType}/{task.targetId}
+															</div>
+															<div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/70">
+																{createdAt && (
+																	<span>[CREATED: {createdAt}]</span>
+																)}
+																{updatedAt && (
+																	<span>[LAST_POLL: {updatedAt}]</span>
+																)}
+																{finishedAt && (
+																	<span className="text-primary font-bold">
+																		[TERMINATED: {finishedAt}]
+																	</span>
+																)}
+															</div>
+														</div>
+
+														{task.error && (
+															<div className="border border-destructive/20 bg-destructive/5 p-2 font-mono text-[10px] uppercase text-destructive break-all">
+																» SYSTEM_FAULT: {task.error}
+															</div>
+														)}
+													</div>
+
+													<div className="flex flex-shrink-0 gap-2 self-start sm:self-center">
+														{canOpenMedia && (
+															<Button
+																variant="outline"
+																size="sm"
+																className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
+																asChild
+															>
+																<Link
+																	to="/media/$id"
+																	params={{ id: task.targetId! }}
+																>
+																	VIEW_TARGET_DATA
+																</Link>
+															</Button>
+														)}
+													</div>
+												</div>
+											</div>
+										)
+									})}
+								</div>
+
+								<div className="border-t border-border bg-muted/5 px-4 py-2">
+									<div className="font-mono text-[8px] uppercase tracking-[0.3em] text-muted-foreground text-right">
+										Queue_Terminal_Status: Ready_For_Operation
+									</div>
+								</div>
+							</div>
 						</div>
-					) : null}
+					)}
 				</div>
 			</div>
 		</div>

@@ -7,7 +7,6 @@ import { toast } from 'sonner'
 
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
-import { ProxyStatusPill } from '~/components/business/proxy/proxy-status-pill'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import {
@@ -259,15 +258,25 @@ export function ChannelsPage() {
 	)
 
 	return (
-		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
-			<div className="px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-6xl space-y-6">
+		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
+			{/* Header Section */}
+			<div className="border-b border-border bg-card">
+				<div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<h1 className="text-3xl font-semibold tracking-tight">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+								<span className="flex items-center gap-1">
+									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+									Source Manager
+								</span>
+								<span>/</span>
+								<span>Channel Subscriptions</span>
+							</div>
+							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{t('title')}
 							</h1>
 						</div>
+
 						<form
 							onSubmit={(e) => {
 								e.preventDefault()
@@ -275,38 +284,50 @@ export function ChannelsPage() {
 								if (!trimmed || createMutation.isPending) return
 								createMutation.mutate({ channelUrlOrId: trimmed })
 							}}
-							className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center"
+							className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center"
 						>
-							<Input
-								value={newInput}
-								onChange={(e) => setNewInput(e.target.value)}
-								placeholder={t('inputPlaceholder')}
-								className="h-10 w-full min-w-0 bg-background/50 backdrop-blur-sm border-border/50 focus:border-primary/50 transition-all sm:w-80"
-							/>
+							<div className="relative">
+								<Input
+									value={newInput}
+									onChange={(e) => setNewInput(e.target.value)}
+									placeholder={t('inputPlaceholder')}
+									className="h-9 w-full min-w-0 rounded-none border-border bg-background font-mono text-xs sm:w-80"
+								/>
+								<div className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[8px] uppercase text-muted-foreground opacity-50 pointer-events-none">
+									BUFFER_IN
+								</div>
+							</div>
 							<Button
 								type="submit"
 								disabled={!newInput.trim() || createMutation.isPending}
-								className="h-10 px-6 shadow-sm transition-all hover:shadow-md"
+								className="h-9 rounded-none font-mono text-xs uppercase tracking-widest px-6"
 							>
-								{createMutation.isPending ? t('adding') : t('add')}
+								{createMutation.isPending ? t('adding') : `[ ${t('add')} ]`}
 							</Button>
 						</form>
 					</div>
+				</div>
+			</div>
 
+			<div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+				<div className="space-y-6">
 					{channelsQuery.isLoading ? (
-						<div className="py-20 text-center text-muted-foreground animate-pulse">
-							{t('loading')}
+						<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground py-12">
+							<Loader2 className="h-3 w-3 animate-spin" />
+							Syncing_Subscribed_Nodes...
 						</div>
 					) : null}
 
 					{!channelsQuery.isLoading && channels.length === 0 ? (
-						<div className="rounded-2xl border border-dashed border-border/50 bg-background/30 py-20 text-center text-muted-foreground backdrop-blur-sm">
-							{t('empty')}
+						<div className="border border-dashed border-border p-12 text-center">
+							<div className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+								{t('empty')}
+							</div>
 						</div>
 					) : null}
 
 					{channels.length > 0 ? (
-						<div className="grid gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+						<div className="grid gap-6">
 							{channels.map((ch) => (
 								<ChannelCard
 									key={ch.id}
@@ -482,28 +503,51 @@ function ChannelCard({
 	)
 	const showTranslatedTitles = translationAvailable && translationVisible
 
+	const isError = effectiveStatus === 'failed'
+	const isSuccess = effectiveStatus === 'completed'
+
 	return (
-		<div className="glass rounded-2xl p-5">
-			<div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-				<div className="flex items-start gap-4">
-					<div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-secondary/60">
+		<div className="border border-border bg-card">
+			<div className="flex flex-col gap-6 p-5 lg:flex-row lg:items-start lg:justify-between">
+				<div className="flex items-start gap-5">
+					<div className="h-16 w-16 shrink-0 border border-border bg-muted p-0.5">
 						{ch.thumbnail ? (
 							<img
 								src={ch.thumbnail}
 								alt="thumb"
-								className="h-full w-full object-cover"
+								className="h-full w-full object-cover grayscale"
 							/>
-						) : null}
+						) : (
+							<div className="h-full w-full flex items-center justify-center font-mono text-xs font-bold text-muted-foreground">
+								NO_IMG
+							</div>
+						)}
 					</div>
-					<div className="min-w-0">
-						<div className="truncate text-lg font-semibold">
+					<div className="min-w-0 space-y-2">
+						<div className="truncate font-mono text-lg font-bold uppercase tracking-tight">
 							{channelLabel(ch)}
 						</div>
-						<div className="mt-1 break-all text-xs text-muted-foreground">
-							{ch.channelUrl}
+						<div className="flex flex-col gap-1">
+							<div className="break-all font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+								URI: <span className="text-foreground">{ch.channelUrl}</span>
+							</div>
+							<div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+								NODE_ID: <span className="text-foreground">{ch.id}</span>
+							</div>
 						</div>
-						<div className="mt-2 flex flex-wrap items-center gap-2">
-							{jobId ? (
+						<div className="flex flex-wrap items-center gap-3">
+							<div
+								className={`px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider border ${
+									isError
+										? 'bg-destructive/10 border-destructive/20 text-destructive'
+										: isSuccess
+											? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'
+											: 'bg-primary/5 border-primary/10 text-primary'
+								}`}
+							>
+								STATUS: {effectiveStatus}
+							</div>
+							{jobId && (
 								<CloudJobProgress
 									status={effectiveStatus}
 									phase={effectivePhase}
@@ -516,20 +560,20 @@ function ChannelCard({
 									mediaId={ch.id}
 									showIds={false}
 								/>
-							) : null}
-							{ch.lastSyncedAt ? (
-								<span className="text-xs text-muted-foreground">
-									{toDateLabel(ch.lastSyncedAt)}
+							)}
+							{ch.lastSyncedAt && (
+								<span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground border-l border-border pl-3">
+									LAST_SYNC: {toDateLabel(ch.lastSyncedAt)}
 								</span>
-							) : null}
+							)}
 						</div>
 					</div>
 				</div>
 
-				<div className="grid w-full gap-3 lg:w-[520px]">
-					<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						<div className="space-y-1">
-							<div className="text-xs font-medium text-muted-foreground">
+				<div className="grid w-full gap-4 lg:w-[560px]">
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+						<div className="space-y-2">
+							<div className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 								{t('actions.syncTitle')}
 							</div>
 							<Select
@@ -538,41 +582,38 @@ function ChannelCard({
 								onValueChange={onSelectProxy}
 								disabled={syncing}
 							>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder="Proxy" />
+								<SelectTrigger className="h-9 rounded-none border-border font-mono text-[10px] uppercase">
+									<SelectValue placeholder="GATEWAY_SELECT" />
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent className="rounded-none">
 									{proxies.map((p) => (
 										<SelectItem
 											key={p.id}
 											value={p.id}
 											disabled={p.id !== 'none' && !successProxyIds.has(p.id)}
+											className="font-mono text-[10px] uppercase"
 										>
-											<span className="flex w-full items-center justify-between gap-2">
+											<span className="flex w-full items-center justify-between gap-3">
 												<span className="truncate">{p.name || p.id}</span>
-												{p.id !== 'none' ? (
-													<ProxyStatusPill
-														status={p.testStatus}
-														responseTime={p.responseTime}
-													/>
-												) : null}
+												{p.id !== 'none' && (
+													<span className="text-[8px] opacity-50">
+														[{p.responseTime}ms]
+													</span>
+												)}
 											</span>
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
-							{!hasSuccessProxy ? (
-								<div className="text-[11px] text-destructive">
-									{tProxySelector('noneAvailable')}
+							{!hasSuccessProxy && (
+								<div className="font-mono text-[9px] uppercase text-destructive">
+									!! {tProxySelector('noneAvailable')}
 								</div>
-							) : null}
-							<div className="text-[11px] text-muted-foreground">
-								{t('actions.syncDesc')}
-							</div>
+							)}
 						</div>
 
-						<div className="space-y-1">
-							<div className="text-xs font-medium text-muted-foreground">
+						<div className="space-y-2">
+							<div className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 								{t('actions.translateTitle')}
 							</div>
 							<Select
@@ -581,146 +622,186 @@ function ChannelCard({
 								onValueChange={(v) => onSelectModel(v as ChatModelId)}
 								disabled={translating}
 							>
-								<SelectTrigger className="w-full">
+								<SelectTrigger className="h-9 rounded-none border-border font-mono text-[10px] uppercase">
 									<SelectValue placeholder={t('actions.model')} />
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent className="rounded-none">
 									{modelOptions.map((m) => (
-										<SelectItem key={m.id} value={m.id}>
-											{m.label}
+										<SelectItem
+											key={m.id}
+											value={m.id}
+											className="font-mono text-[10px] uppercase"
+										>
+											{m.label.replace(/\s+/g, '_')}
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
-							<div className="text-[11px] text-muted-foreground">
-								{t('actions.translateDesc')}
-							</div>
 						</div>
 					</div>
 
-					<div className="flex flex-wrap items-center gap-2">
-						<Button variant="secondary" onClick={onToggleExpanded}>
+					<div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/50">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={onToggleExpanded}
+							className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
+						>
 							{expanded ? (
 								<>
-									<ChevronUp className="mr-2 h-4 w-4" />
-									{t('actions.hide')}
+									<ChevronUp className="mr-2 h-3 w-3" />
+									CLOSE_LIST
 								</>
 							) : (
 								<>
-									<ChevronDown className="mr-2 h-4 w-4" />
-									{t('actions.view')}
+									<ChevronDown className="mr-2 h-3 w-3" />
+									FETCH_LIST
 								</>
 							)}
 						</Button>
 
 						<Button
-							variant="secondary"
+							variant="outline"
+							size="sm"
 							onClick={onSync}
 							disabled={syncing || !hasSuccessProxy}
+							className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
 						>
 							{syncing ? (
 								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									{t('actions.syncing')}
+									<Loader2 className="mr-2 h-3 w-3 animate-spin" />
+									SYNCING...
 								</>
 							) : (
-								t('actions.sync')
+								`[ ${t('actions.sync')} ]`
 							)}
 						</Button>
 
 						<Button
-							variant="secondary"
+							variant="outline"
+							size="sm"
 							onClick={onTranslate}
 							disabled={translating}
+							className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
 						>
 							{translating ? (
 								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									{t('actions.translating')}
+									<Loader2 className="mr-2 h-3 w-3 animate-spin" />
+									TRANSLATING...
 								</>
 							) : (
-								t('actions.translate')
+								`[ ${t('actions.translate')} ]`
 							)}
 						</Button>
 
-						{translationAvailable ? (
-							<Button variant="ghost" onClick={onToggleTranslation}>
-								{translationVisible
-									? t('actions.hideTranslation')
-									: t('actions.showTranslation')}
-							</Button>
-						) : null}
-
-						{canFinalize ? (
+						{translationAvailable && (
 							<Button
-								variant="secondary"
+								variant="ghost"
+								size="sm"
+								onClick={onToggleTranslation}
+								className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
+							>
+								{translationVisible ? 'HIDE_TRANSL' : 'SHOW_TRANSL'}
+							</Button>
+						)}
+
+						{canFinalize && (
+							<Button
+								variant="outline"
+								size="sm"
 								disabled={finalizing}
 								onClick={() => onFinalize(jobId!)}
+								className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8 border-emerald-500/50 text-emerald-600"
 							>
-								Finalize
+								COMMIT_SYNC
 							</Button>
-						) : null}
+						)}
 
 						<Button
-							variant="destructive"
+							variant="ghost"
+							size="sm"
 							onClick={onDelete}
 							disabled={deleting}
+							className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8 text-destructive ml-auto"
 						>
-							<Trash2 className="mr-2 h-4 w-4" />
-							Delete
+							<Trash2 className="mr-2 h-3 w-3" />
+							PURGE
 						</Button>
 					</div>
 				</div>
 			</div>
 
-			{expanded ? (
-				<div className="mt-4 rounded-xl border border-border/40 bg-background/40">
+			{expanded && (
+				<div className="border-t border-border bg-muted/5">
+					<div className="border-b border-border bg-muted/10 px-4 py-1.5 flex justify-between items-center">
+						<span className="font-mono text-[8px] uppercase tracking-[0.3em] text-muted-foreground">
+							Local_Video_Cache_Stream
+						</span>
+						<span className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground opacity-50">
+							SYNC_LIMIT: {SYNC_VIDEO_LIMIT}
+						</span>
+					</div>
+
 					{videosQuery.isLoading ? (
-						<div className="p-3 text-sm text-muted-foreground">
-							{tVideos('loading')}
+						<div className="p-6 font-mono text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-3">
+							<Loader2 className="h-3 w-3 animate-spin" />
+							Polling_Stream_Data...
 						</div>
 					) : null}
 
 					{!videosQuery.isLoading && videos.length === 0 ? (
-						<div className="p-3 text-sm text-muted-foreground">
+						<div className="p-8 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground opacity-50">
 							{tVideos('empty')}
 						</div>
 					) : null}
 
 					{videos.length > 0 ? (
-						<div className="divide-y">
+						<div className="divide-y divide-border">
 							{videos.map((v) => {
 								const translated = showTranslatedTitles
 									? translatedTitleMap?.[v.id]
 									: undefined
 								return (
-									<div key={v.id} className="flex items-center gap-3 p-3">
-										{v.thumbnail ? (
-											<img
-												src={v.thumbnail}
-												alt="thumb"
-												className="h-8 w-14 rounded object-cover"
-												loading="lazy"
-											/>
-										) : (
-											<div className="h-8 w-14 rounded bg-muted" />
-										)}
-										<div className="min-w-0 flex-1">
-											<div className="truncate text-sm font-medium">
+									<div
+										key={v.id}
+										className="group flex items-center gap-4 p-3 transition-colors hover:bg-muted/20"
+									>
+										<div className="h-10 w-16 shrink-0 border border-border overflow-hidden bg-muted">
+											{v.thumbnail ? (
+												<img
+													src={v.thumbnail}
+													alt="thumb"
+													className="h-full w-full object-cover grayscale opacity-80 group-hover:opacity-100 transition-opacity"
+													loading="lazy"
+												/>
+											) : null}
+										</div>
+										<div className="min-w-0 flex-1 space-y-0.5">
+											<div className="truncate font-mono text-xs font-bold uppercase tracking-tight">
 												{translated ?? v.title}
 											</div>
 											{translated ? (
-												<div className="truncate text-xs text-muted-foreground">
-													{tVideos('original', { title: v.title })}
+												<div className="truncate font-mono text-[9px] text-muted-foreground uppercase opacity-70">
+													ORIG: {v.title}
 												</div>
-											) : null}
-											<div className="truncate text-xs text-muted-foreground">
-												{v.url}
-											</div>
+											) : (
+												<div className="truncate font-mono text-[9px] text-muted-foreground uppercase opacity-70 tracking-tighter">
+													URI: {v.url}
+												</div>
+											)}
 										</div>
-										<a href={v.url} target="_blank" rel="noreferrer">
-											<Button size="sm" variant="ghost">
-												{tVideos('open')}
+										<a
+											href={v.url}
+											target="_blank"
+											rel="noreferrer"
+											className="flex-shrink-0"
+										>
+											<Button
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[9px] uppercase tracking-widest h-7"
+											>
+												OPEN_URI
 											</Button>
 										</a>
 									</div>
@@ -728,8 +809,12 @@ function ChannelCard({
 							})}
 						</div>
 					) : null}
+
+					<div className="border-t border-border bg-muted/5 px-4 py-1.5 font-mono text-[8px] uppercase tracking-widest text-muted-foreground text-right">
+						Cache_Terminal_Active
+					</div>
 				</div>
-			) : null}
+			)}
 		</div>
 	)
 }
