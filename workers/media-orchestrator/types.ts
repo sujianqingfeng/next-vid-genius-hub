@@ -34,14 +34,20 @@ export interface Env {
 	NO_CF_CONTAINERS?: string
 }
 
-export const TERMINAL_STATUSES: JobTerminalStatus[] = ['completed', 'failed', 'canceled']
+export const TERMINAL_STATUSES: JobTerminalStatus[] = [
+	'completed',
+	'failed',
+	'canceled',
+]
 
-	// Per-job manifest: immutable snapshot of what a single async job needs.
-	// This is written by the app at job-start time so that the Worker and
-	// containers never have to reach into the primary DB.
-	export interface JobManifest {
+// Per-job manifest: immutable snapshot of what a single async job needs.
+// This is written by the app at job-start time so that the Worker and
+// containers never have to reach into the primary DB.
+export interface JobManifest {
 	jobId: string
 	mediaId: string
+	// Business meaning of this job (preferred over inferring from engine/options).
+	purpose?: string
 	engine: EngineId | string
 	createdAt: number
 	inputs?: {
@@ -67,6 +73,8 @@ export interface StartBody {
 	jobId: string
 	mediaId: string
 	engine: EngineId
+	// Business meaning of this job (e.g. download/comments-download/channel-sync/asr/render-subtitles).
+	purpose?: string
 	title?: string | null
 	options?: Record<string, unknown>
 }
@@ -74,6 +82,7 @@ export interface StartBody {
 export interface StatusDoc {
 	jobId: string
 	status: JobStatus
+	purpose?: string
 	phase?: 'fetching_metadata' | 'preparing' | 'running' | 'uploading'
 	progress?: number
 	outputKey?: string

@@ -137,6 +137,7 @@ export async function handleProxyCheckRunOne(
 		jobId,
 		mediaId: 'system-proxy-check',
 		engine: 'media-downloader',
+		purpose: 'proxy-check',
 		title: 'proxy-check',
 		options: {
 			task: 'proxy-probe',

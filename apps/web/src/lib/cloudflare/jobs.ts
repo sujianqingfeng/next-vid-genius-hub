@@ -12,6 +12,11 @@ export interface StartJobInput extends Record<string, unknown> {
 	mediaId: string
 	engine: EngineId
 	/**
+	 * Business meaning of this job (e.g. download/comments-download/channel-sync/asr/render-subtitles).
+	 * Used to make callbacks event-driven without inferring from engine/options.
+	 */
+	purpose?: string
+	/**
 	 * Optional human-readable title for the media / resource.
 	 * Used only to build nicer R2 object keys (e.g. media/{id}-{slug}/...).
 	 */
@@ -26,6 +31,7 @@ export interface StartJobResponse {
 export interface JobStatusResponse {
 	jobId: string
 	status: JobStatus
+	purpose?: string
 	phase?: 'fetching_metadata' | 'preparing' | 'running' | 'uploading'
 	progress?: number
 	outputKey?: string

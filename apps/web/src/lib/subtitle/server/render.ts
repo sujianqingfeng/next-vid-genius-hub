@@ -70,6 +70,7 @@ export async function startCloudRender(input: {
 		const manifest: JobManifest = {
 			jobId,
 			mediaId: media.id,
+			purpose: TASK_KINDS.RENDER_SUBTITLES,
 			engine: 'burner-ffmpeg',
 			createdAt: Date.now(),
 			inputs: {
@@ -89,6 +90,7 @@ export async function startCloudRender(input: {
 			jobId,
 			mediaId: media.id,
 			engine: 'burner-ffmpeg',
+			purpose: TASK_KINDS.RENDER_SUBTITLES,
 			title: media.title || undefined,
 			options: { subtitleConfig: input.subtitleConfig },
 		})

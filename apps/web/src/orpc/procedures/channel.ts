@@ -159,6 +159,7 @@ export const startCloudSync = os
 			const manifest: JobManifest = {
 				jobId,
 				mediaId: channel.id,
+				purpose: TASK_KINDS.CHANNEL_SYNC,
 				engine: 'media-downloader',
 				createdAt: Date.now(),
 				inputs: {},
@@ -176,6 +177,7 @@ export const startCloudSync = os
 				jobId,
 				mediaId: channel.id,
 				engine: 'media-downloader',
+				purpose: TASK_KINDS.CHANNEL_SYNC,
 				title: channel.title || undefined,
 				options: {
 					task: 'channel-list',

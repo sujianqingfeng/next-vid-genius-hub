@@ -187,6 +187,7 @@ export const refreshMetadata = os
 			const manifest: JobManifest = {
 				jobId,
 				mediaId: record.id,
+				purpose: TASK_KINDS.METADATA_REFRESH,
 				engine: 'media-downloader',
 				createdAt: Date.now(),
 				inputs: {},
@@ -204,6 +205,7 @@ export const refreshMetadata = os
 				jobId,
 				mediaId: record.id,
 				engine: 'media-downloader',
+				purpose: TASK_KINDS.METADATA_REFRESH,
 				title: record.title || undefined,
 				options: {
 					task: 'metadata-only',

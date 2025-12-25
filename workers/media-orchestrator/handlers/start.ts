@@ -8,7 +8,10 @@ import { json } from '../utils/http'
 import { jobStub } from '../utils/job'
 import { hmacHex, requireJobCallbackSecret, verifyHmac } from '../utils/hmac'
 
-async function readJobManifest(env: Env, jobId: string): Promise<JobManifest | null> {
+async function readJobManifest(
+	env: Env,
+	jobId: string,
+): Promise<JobManifest | null> {
 	const key = bucketPaths.manifests.job(jobId)
 	const text = await readObjectTextWithFallback(env, key)
 	if (!text) return null
@@ -40,6 +43,10 @@ export async function handleStart(env: Env, req: Request) {
 		return json({ error: 'bad request' }, { status: 400 })
 	}
 	const jobId = body.jobId
+	const purpose =
+		typeof body.purpose === 'string' && body.purpose.trim()
+			? body.purpose.trim()
+			: undefined
 	const isDownloader = body.engine === 'media-downloader'
 	const isAsrPipeline = body.engine === 'asr-pipeline'
 	// Choose container base by engine
@@ -62,10 +69,13 @@ export async function handleStart(env: Env, req: Request) {
 		env.ORCHESTRATOR_BASE_URL_CONTAINER || new URL(req.url).origin
 	).replace(/\/$/, '')
 
-		// Prepare payload for container
-		// Ensure inputs exist in R2 (bucket-first; container不会访问业务应用)
+	// Prepare payload for container
+	// Ensure inputs exist in R2 (bucket-first; container不会访问业务应用)
 	const bucketName = env.S3_BUCKET_NAME || 'vidgen-render'
-	const jobS3Endpoint = containerS3Endpoint(env.S3_ENDPOINT, env.S3_INTERNAL_ENDPOINT)
+	const jobS3Endpoint = containerS3Endpoint(
+		env.S3_ENDPOINT,
+		env.S3_INTERNAL_ENDPOINT,
+	)
 	const pathOptions = { title: body.title ?? undefined }
 	const outputVideoKey = isDownloader
 		? bucketPaths.downloads.video(body.mediaId, jobId, pathOptions)
@@ -84,7 +94,10 @@ export async function handleStart(env: Env, req: Request) {
 
 	const opts = (body.options || {}) as any
 	if (isAsrPipeline) {
-		const sourceKey = typeof opts.sourceKey === 'string' ? opts.sourceKey : String(opts.sourceKey || '')
+		const sourceKey =
+			typeof opts.sourceKey === 'string'
+				? opts.sourceKey
+				: String(opts.sourceKey || '')
 		if (!sourceKey) {
 			return json({ error: 'asr-pipeline missing sourceKey' }, { status: 400 })
 		}
@@ -98,6 +111,7 @@ export async function handleStart(env: Env, req: Request) {
 				mediaId: body.mediaId,
 				title: body.title,
 				engine: body.engine,
+				purpose,
 				status: 'running',
 				outputKey: undefined,
 				outputAudioKey,
@@ -121,9 +135,10 @@ export async function handleStart(env: Env, req: Request) {
 	let inputVideoUrl: string | undefined
 	let inputVttUrl: string | undefined
 	let inputDataUrl: string | undefined
+	let manifestPurpose: string | undefined
 	if (!isDownloader && !isAsrPipeline) {
-			// Resolve inputs exclusively from per-job manifest written by the app. The
-			// Worker no longer consults the media-level manifest when starting jobs.
+		// Resolve inputs exclusively from per-job manifest written by the app. The
+		// Worker no longer consults the media-level manifest when starting jobs.
 		const jobManifest = await readJobManifest(env, jobId)
 		if (!jobManifest) {
 			return json(
@@ -132,6 +147,10 @@ export async function handleStart(env: Env, req: Request) {
 			)
 		}
 		const inputs = jobManifest.inputs || {}
+		manifestPurpose =
+			typeof jobManifest.purpose === 'string' && jobManifest.purpose.trim()
+				? jobManifest.purpose.trim()
+				: undefined
 
 		// 1) Video source
 		if (inputs.videoKey) {
@@ -203,28 +222,26 @@ export async function handleStart(env: Env, req: Request) {
 				{
 					error: 'missing_inputs',
 					details: {
-							missing,
-							// 标记已经使用 GET-range 探测，便于从应用日志中区分新旧 Worker 版本
-							hint:
-								'Materialize inputs in bucket/manifest (checked via GET-range)',
-						},
+						missing,
+						// 标记已经使用 GET-range 探测，便于从应用日志中区分新旧 Worker 版本
+						hint: 'Materialize inputs in bucket/manifest (checked via GET-range)',
 					},
+				},
 				{ status: 400 },
 			)
 		}
 	}
 
 	const putTtl = Number(env.PUT_EXPIRES || 600)
-	const outputVideoPutUrl =
-		await presignS3(
-					env,
-					'PUT',
-					bucketName,
-					outputVideoKey,
-					putTtl,
-					'video/mp4',
-					jobS3Endpoint,
-				)
+	const outputVideoPutUrl = await presignS3(
+		env,
+		'PUT',
+		bucketName,
+		outputVideoKey,
+		putTtl,
+		'video/mp4',
+		jobS3Endpoint,
+	)
 	const outputAudioPutUrl = outputAudioKey
 		? await presignS3(
 				env,
@@ -273,11 +290,14 @@ export async function handleStart(env: Env, req: Request) {
 	if (isDownloader) {
 		payload.outputVideoPutUrl = outputVideoPutUrl
 		if (outputAudioPutUrl) payload.outputAudioPutUrl = outputAudioPutUrl
-		if (outputAudioSourcePutUrl) payload.outputAudioSourcePutUrl = outputAudioSourcePutUrl
+		if (outputAudioSourcePutUrl)
+			payload.outputAudioSourcePutUrl = outputAudioSourcePutUrl
 		payload.outputVideoKey = outputVideoKey
 		if (outputAudioKey) payload.outputAudioKey = outputAudioKey
-		if (outputAudioSourceKey) payload.outputAudioSourceKey = outputAudioSourceKey
-		if (outputAudioProcessedKey) payload.outputAudioProcessedKey = outputAudioProcessedKey
+		if (outputAudioSourceKey)
+			payload.outputAudioSourceKey = outputAudioSourceKey
+		if (outputAudioProcessedKey)
+			payload.outputAudioProcessedKey = outputAudioProcessedKey
 		if (outputMetadataPutUrl)
 			payload.outputMetadataPutUrl = outputMetadataPutUrl
 		if (outputMetadataKey) payload.outputMetadataKey = outputMetadataKey
@@ -309,11 +329,8 @@ export async function handleStart(env: Env, req: Request) {
 
 	let res: Response | undefined
 	const preferExternal =
-		env.PREFER_EXTERNAL_CONTAINERS === 'true' ||
-		env.NO_CF_CONTAINERS === 'true'
-	const contBinding = preferExternal
-		? undefined
-		: bindingForEngine(body.engine)
+		env.PREFER_EXTERNAL_CONTAINERS === 'true' || env.NO_CF_CONTAINERS === 'true'
+	const contBinding = preferExternal ? undefined : bindingForEngine(body.engine)
 
 	// Sign the container request body so external engines can verify caller authenticity.
 	const payloadText = JSON.stringify(payload)
@@ -393,12 +410,15 @@ export async function handleStart(env: Env, req: Request) {
 			mediaId: body.mediaId,
 			title: body.title,
 			engine: body.engine,
+			purpose: purpose ?? manifestPurpose,
 			status: 'running',
 			outputKey: outputVideoKey,
 		}
 		if (outputAudioKey) initPayload.outputAudioKey = outputAudioKey
-		if (outputAudioSourceKey) initPayload['outputAudioSourceKey'] = outputAudioSourceKey
-		if (outputAudioProcessedKey) initPayload['outputAudioProcessedKey'] = outputAudioProcessedKey
+		if (outputAudioSourceKey)
+			initPayload['outputAudioSourceKey'] = outputAudioSourceKey
+		if (outputAudioProcessedKey)
+			initPayload['outputAudioProcessedKey'] = outputAudioProcessedKey
 		if (outputMetadataKey) initPayload.outputMetadataKey = outputMetadataKey
 		// Persist initial options for ASR pipeline (e.g., model/thresholds)
 		if (isAsrPipeline) {

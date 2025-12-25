@@ -377,6 +377,7 @@ export const startCloudRender = os
 			const manifest: JobManifest = {
 				jobId,
 				mediaId: media.id,
+				purpose: TASK_KINDS.RENDER_COMMENTS,
 				engine: 'renderer-remotion',
 				createdAt: Date.now(),
 				inputs: {
@@ -398,6 +399,7 @@ export const startCloudRender = os
 				jobId,
 				mediaId: media.id,
 				engine: 'renderer-remotion',
+				purpose: TASK_KINDS.RENDER_COMMENTS,
 				title: media.title || undefined,
 				options: {
 					proxy: proxyPayload,
@@ -512,6 +514,7 @@ export const startCloudCommentsDownload = os
 			const manifest: JobManifest = {
 				jobId,
 				mediaId,
+				purpose: TASK_KINDS.COMMENTS_DOWNLOAD,
 				engine: 'media-downloader',
 				createdAt: Date.now(),
 				inputs: {},
@@ -529,6 +532,7 @@ export const startCloudCommentsDownload = os
 				jobId,
 				mediaId,
 				engine: 'media-downloader',
+				purpose: TASK_KINDS.COMMENTS_DOWNLOAD,
 				title: media.title || undefined,
 				options: {
 					url: media.url,

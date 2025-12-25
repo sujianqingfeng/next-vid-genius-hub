@@ -24,6 +24,7 @@ type CallbackPayload = {
 		| 'renderer-remotion'
 		| 'media-downloader'
 		| 'asr-pipeline'
+	purpose?: string
 	outputUrl?: string
 	outputKey?: string
 	outputAudioKey?: string
@@ -746,7 +747,7 @@ export async function handleCfCallbackRequest(
 
 		logger.info(
 			'api',
-			`[cf-callback] received job=${payload.jobId} media=${payload.mediaId} engine=${payload.engine ?? 'unknown'} status=${payload.status} eventSeq=${eventSeq ?? 'n/a'}`,
+			`[cf-callback] received job=${payload.jobId} media=${payload.mediaId} engine=${payload.engine ?? 'unknown'} purpose=${payload.purpose ?? 'n/a'} status=${payload.status} eventSeq=${eventSeq ?? 'n/a'}`,
 		)
 
 		const db = await getDb()
@@ -838,12 +839,17 @@ export async function handleCfCallbackRequest(
 			)
 		}
 
+		const effectiveKind =
+			typeof payload.purpose === 'string' && payload.purpose.trim()
+				? payload.purpose.trim()
+				: task?.kind
+
 		// media-downloader is also used for non-download tasks (comments-only, metadata refresh, channel sync).
 		// Those jobs should not mutate the media's download fields.
-		if (payload.engine === 'media-downloader' && task?.kind) {
-			if (task.kind === TASK_KINDS.DOWNLOAD) {
+		if (payload.engine === 'media-downloader' && effectiveKind) {
+			if (effectiveKind === TASK_KINDS.DOWNLOAD) {
 				// handled below
-			} else if (task.kind === TASK_KINDS.COMMENTS_DOWNLOAD) {
+			} else if (effectiveKind === TASK_KINDS.COMMENTS_DOWNLOAD) {
 				if (payload.status === 'completed') {
 					const metadataUrl = await resolveMetadataUrlFromPayload(payload)
 					if (!metadataUrl) {
@@ -855,6 +861,7 @@ export async function handleCfCallbackRequest(
 					if (!r.ok) throw new Error(`Fetch comments failed: ${r.status}`)
 					const json = (await r.json()) as unknown
 					const comments = parseCommentsMetadata(json)
+					const targetMediaId = task?.targetId || payload.mediaId
 					await db
 						.update(schema.media)
 						.set({
@@ -862,7 +869,7 @@ export async function handleCfCallbackRequest(
 							commentCount: comments.length,
 							commentsDownloadedAt: new Date(),
 						})
-						.where(eq(schema.media.id, task.targetId))
+						.where(eq(schema.media.id, targetMediaId))
 				}
 
 				if (eventSeq != null) {
@@ -880,7 +887,14 @@ export async function handleCfCallbackRequest(
 				}
 
 				return Response.json({ ok: true })
-			} else if (task.kind === TASK_KINDS.CHANNEL_SYNC) {
+			} else if (effectiveKind === TASK_KINDS.CHANNEL_SYNC) {
+				if (!task?.targetId) {
+					logger.warn(
+						'api',
+						`[cf-callback] channel-sync callback missing task targetId job=${payload.jobId}`,
+					)
+					return Response.json({ ok: true, ignored: true })
+				}
 				const where = eq(schema.channels.id, task.targetId)
 
 				if (payload.status === 'completed') {
@@ -990,7 +1004,7 @@ export async function handleCfCallbackRequest(
 				}
 
 				return Response.json({ ok: true })
-			} else if (task.kind === TASK_KINDS.METADATA_REFRESH) {
+			} else if (effectiveKind === TASK_KINDS.METADATA_REFRESH) {
 				if (payload.status === 'completed') {
 					const meta = (payload.metadata ?? {}) as Record<string, unknown>
 					const updates: Record<string, unknown> = {}
@@ -1017,11 +1031,12 @@ export async function handleCfCallbackRequest(
 						updates.rawMetadataDownloadedAt = new Date()
 					}
 
+					const targetMediaId = task?.targetId || payload.mediaId
 					if (Object.keys(updates).length > 0) {
 						await db
 							.update(schema.media)
 							.set(updates)
-							.where(eq(schema.media.id, task.targetId))
+							.where(eq(schema.media.id, targetMediaId))
 					}
 				}
 
@@ -1056,7 +1071,7 @@ export async function handleCfCallbackRequest(
 				}
 				logger.info(
 					'api',
-					`[cf-callback] non-download media-downloader job ignored job=${payload.jobId} kind=${task.kind}`,
+					`[cf-callback] non-download media-downloader job ignored job=${payload.jobId} kind=${effectiveKind}`,
 				)
 				return Response.json({ ok: true, ignored: true })
 			}

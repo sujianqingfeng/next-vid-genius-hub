@@ -70,6 +70,7 @@ export class RenderJobDO {
 				mediaId: body.mediaId,
 				title: body.title,
 				engine: body.engine,
+				purpose: body.purpose,
 				status: body.status || 'queued',
 				outputKey: body.outputKey,
 				// Backward-compatible: outputAudioKey is treated as processed audio.
@@ -91,6 +92,7 @@ export class RenderJobDO {
 			const next = {
 				...doc,
 				jobId: body.jobId || doc.jobId,
+				purpose: body.purpose ?? doc.purpose,
 				status: body.status || doc.status,
 				phase: body.phase ?? doc.phase,
 				progress: body.progress ?? doc.progress,
@@ -643,6 +645,7 @@ export class RenderJobDO {
 			jobId: doc.jobId,
 			mediaId: doc.mediaId || 'unknown',
 			engine: doc.engine,
+			purpose: doc.purpose,
 			status: doc.status || 'completed',
 		}
 		if (event) {

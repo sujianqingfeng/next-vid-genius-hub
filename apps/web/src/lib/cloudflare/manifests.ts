@@ -6,6 +6,8 @@ import { presignPutAndGetByKey } from './storage'
 export interface JobManifest {
 	jobId: string
 	mediaId: string
+	// Business meaning of this job (preferred over inferring from engine/options).
+	purpose?: string
 	engine: string
 	createdAt: number
 	// Inputs resolved at job-start time. Engines must not look at DB; only at

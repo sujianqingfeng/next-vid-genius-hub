@@ -98,6 +98,7 @@ export async function runScheduledProxyChecks(opts?: {
 				jobId,
 				mediaId: 'system-proxy-check',
 				engine: 'media-downloader',
+				purpose: 'proxy-check',
 				title: 'proxy-check',
 				options: {
 					task: 'proxy-probe',
@@ -185,6 +186,7 @@ export async function runProxyChecksNow(opts?: {
 				jobId,
 				mediaId: 'system-proxy-check',
 				engine: 'media-downloader',
+				purpose: 'proxy-check',
 				title: 'proxy-check',
 				options: {
 					task: 'proxy-probe',

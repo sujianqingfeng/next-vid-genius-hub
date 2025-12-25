@@ -130,6 +130,7 @@ export async function transcribe(input: {
 		const manifest: JobManifest = {
 			jobId,
 			mediaId,
+			purpose: TASK_KINDS.ASR,
 			engine: 'asr-pipeline',
 			createdAt: Date.now(),
 			inputs: {
@@ -153,6 +154,7 @@ export async function transcribe(input: {
 			jobId,
 			mediaId,
 			engine: 'asr-pipeline',
+			purpose: TASK_KINDS.ASR,
 			title: mediaRecord.title || undefined,
 			options: {
 				sourceKey,

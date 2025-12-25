@@ -117,6 +117,7 @@ export const startCloudDownload = os
 			const manifest: JobManifest = {
 				jobId,
 				mediaId,
+				purpose: TASK_KINDS.DOWNLOAD,
 				engine: 'media-downloader',
 				createdAt: Date.now(),
 				inputs: {},
@@ -133,6 +134,7 @@ export const startCloudDownload = os
 				jobId,
 				mediaId,
 				engine: 'media-downloader',
+				purpose: TASK_KINDS.DOWNLOAD,
 				title: existing?.title || 'Pending download',
 				options: {
 					url,
