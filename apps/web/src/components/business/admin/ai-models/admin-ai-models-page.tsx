@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -26,6 +24,7 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
+import { cn } from '~/lib/utils'
 
 type ModelKind = 'llm' | 'asr'
 
@@ -125,139 +124,166 @@ export function AdminAiModelsPage() {
 	const isValid = isEditingModelValid(editing)
 
 	return (
-		<div className="space-y-6">
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
-					<CardTitle>{t('title')}</CardTitle>
-					<Button
-						onClick={() =>
-							setEditing({
-								id: '',
-								kind,
-								providerId: providerOptions[0]?.id ?? '',
-								remoteModelId: '',
-								label: '',
-								description: '',
-								enabled: true,
-								isDefault: false,
-							})
-						}
-					>
-						{t('actions.add')}
-					</Button>
-				</CardHeader>
-				<CardContent>
-					<Tabs value={kind} onValueChange={(v) => setKind(v as ModelKind)}>
-						<TabsList>
-							<TabsTrigger value="llm">{t('tabs.llm')}</TabsTrigger>
-							<TabsTrigger value="asr">{t('tabs.asr')}</TabsTrigger>
-						</TabsList>
-						<TabsContent value={kind}>
-							<div className="mt-4 space-y-3">
-								{models.length === 0 ? (
-									<div className="text-sm text-muted-foreground">
-										{t('empty')}
-									</div>
-								) : (
-									models.map((m) => {
-										const provider = providers.find(
-											(p) => p.id === m.providerId,
-										)
-										return (
-											<div
-												key={m.id}
-												className="flex items-center justify-between rounded-md border border-border/60 p-3"
-											>
-												<div className="space-y-1">
-													<div className="flex items-center gap-2">
-														<div className="font-medium">{m.label}</div>
-														{m.isDefault ? (
-															<Badge>{t('status.default')}</Badge>
-														) : null}
-														<Badge
-															variant={m.enabled ? 'default' : 'secondary'}
-														>
-															{m.enabled
-																? t('status.enabled')
-																: t('status.disabled')}
-														</Badge>
-													</div>
-													<div className="text-xs text-muted-foreground">
+		<div className="space-y-8 font-sans">
+			<div className="flex items-end justify-between border-b border-primary pb-4">
+				<div>
+					<div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+						System / Administration / AI_Models
+					</div>
+					<h1 className="text-3xl font-black uppercase tracking-tight">
+						{t('title')}
+					</h1>
+				</div>
+				<Button
+					variant="primary"
+					size="sm"
+					className="rounded-none uppercase text-[10px] font-bold tracking-widest px-6 h-9"
+					onClick={() =>
+						setEditing({
+							id: '',
+							kind,
+							providerId: providerOptions[0]?.id ?? '',
+							remoteModelId: '',
+							label: '',
+							description: '',
+							enabled: true,
+							isDefault: false,
+						})
+					}
+				>
+					+ ADD_MODEL
+				</Button>
+			</div>
+
+			<Tabs value={kind} onValueChange={(v) => setKind(v as ModelKind)} className="space-y-0">
+				<TabsList className="h-auto w-full justify-start rounded-none bg-transparent p-0 border-b border-border mb-8">
+					<TabsTrigger value="llm" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+						{t('tabs.llm')}
+					</TabsTrigger>
+					<TabsTrigger value="asr" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+						{t('tabs.asr')}
+					</TabsTrigger>
+				</TabsList>
+
+				<TabsContent value={kind} className="mt-0 outline-none">
+					<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+						{models.length === 0 ? (
+							<div className="lg:col-span-2 border border-dashed border-border p-12 text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
+								{t('empty')}
+							</div>
+						) : (
+							models.map((m) => {
+								const provider = providers.find(
+									(p) => p.id === m.providerId,
+								)
+								return (
+									<div key={m.id} className="border border-border bg-card p-6 flex flex-col justify-between group">
+										<div className="space-y-4">
+											<div className="flex items-start justify-between border-b border-border pb-3">
+												<div>
+													<div className="font-mono text-xs font-black uppercase tracking-wider">{m.label}</div>
+													<div className="font-mono text-[10px] text-muted-foreground mt-1 tracking-tighter lowercase">
 														{m.id}
 													</div>
-													<div className="text-xs text-muted-foreground">
-														{provider?.slug} · {m.remoteModelId}
+												</div>
+												<div className="flex gap-1">
+													{m.isDefault && (
+														<div className="bg-primary text-primary-foreground text-[8px] font-black px-1 uppercase tracking-tighter border border-primary">
+															DEFAULT
+														</div>
+													)}
+													<div className={cn(
+														"px-2 py-0.5 text-[9px] font-bold uppercase border",
+														m.enabled ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
+													)}>
+														{m.enabled ? t('status.enabled') : t('status.disabled')}
 													</div>
 												</div>
-												<div className="flex items-center gap-2">
-													<Button
-														variant="secondary"
-														size="sm"
-														onClick={() =>
-															setEditing({
-																id: m.id,
-																kind: m.kind,
-																providerId: m.providerId,
-																remoteModelId: m.remoteModelId,
-																label: m.label,
-																description: m.description ?? '',
-																enabled: Boolean(m.enabled),
-																isDefault: Boolean(m.isDefault),
-															})
-														}
-													>
-														{t('actions.edit')}
-													</Button>
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={() =>
-															toggleModel.mutate({
-																id: m.id,
-																enabled: !m.enabled,
-															})
-														}
-													>
-														{m.enabled
-															? t('actions.disable')
-															: t('actions.enable')}
-													</Button>
-													{!m.isDefault ? (
-														<Button
-															variant="outline"
-															size="sm"
-															onClick={() =>
-																setDefault.mutate({ kind, id: m.id })
-															}
-														>
-															{t('actions.setDefault')}
-														</Button>
-													) : null}
-												</div>
 											</div>
-										)
-									})
-								)}
-							</div>
-						</TabsContent>
-					</Tabs>
-				</CardContent>
-			</Card>
+
+											<div className="space-y-1">
+												<div className="font-mono text-[10px] text-muted-foreground uppercase tracking-tighter">
+													PROVIDER: <span className="text-foreground font-bold">{provider?.slug || '---'}</span>
+												</div>
+												<div className="font-mono text-[10px] text-muted-foreground uppercase tracking-tighter">
+													REMOTE_ID: <span className="text-foreground font-bold">{m.remoteModelId}</span>
+												</div>
+												{m.description && (
+													<div className="font-mono text-[10px] text-muted-foreground bg-muted/30 p-2 mt-2 leading-relaxed">
+														{m.description}
+													</div>
+												)}
+											</div>
+										</div>
+
+										<div className="flex flex-wrap gap-1 mt-6 opacity-40 group-hover:opacity-100 transition-opacity">
+											<Button
+												variant="outline"
+												size="xs"
+												className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-3 h-8"
+												onClick={() =>
+													setEditing({
+														id: m.id,
+														kind: m.kind,
+														providerId: m.providerId,
+														remoteModelId: m.remoteModelId,
+														label: m.label,
+														description: m.description ?? '',
+														enabled: Boolean(m.enabled),
+														isDefault: Boolean(m.isDefault),
+													})
+												}
+											>
+												EDIT
+											</Button>
+											<Button
+												variant="outline"
+												size="xs"
+												className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-3 h-8"
+												onClick={() =>
+													toggleModel.mutate({
+														id: m.id,
+														enabled: !m.enabled,
+													})
+												}
+											>
+												{m.enabled ? t('actions.disable') : t('actions.enable')}
+											</Button>
+											{!m.isDefault ? (
+												<Button
+													variant="outline"
+													size="xs"
+													className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-3 h-8"
+													onClick={() =>
+														setDefault.mutate({ kind, id: m.id })
+													}
+												>
+													SET_DEF
+												</Button>
+											) : null}
+										</div>
+									</div>
+								)
+							})
+						)}
+					</div>
+				</TabsContent>
+			</Tabs>
 
 			<Dialog
 				open={!!editing}
 				onOpenChange={(open) => !open && setEditing(null)}
 			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{editing?.id ? t('dialog.editTitle') : t('dialog.addTitle')}
+				<DialogContent className="rounded-none border-2 border-primary p-0 overflow-hidden max-w-lg">
+					<DialogHeader className="bg-primary p-4 text-primary-foreground">
+						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
+							{editing?.id ? 'EDIT_MODEL' : 'ADD_NEW_MODEL'} // {kind.toUpperCase()}
 						</DialogTitle>
 					</DialogHeader>
 					{editing ? (
-						<div className="space-y-4">
+						<div className="p-6 space-y-6">
 							<div className="space-y-2">
-								<Label>{t('fields.id')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.id')}</Label>
 								<Input
 									placeholder={
 										editing.kind === 'asr'
@@ -281,96 +307,106 @@ export function AdminAiModelsPage() {
 												: {}),
 										})
 									}
+									className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 								/>
 							</div>
-							<div className="space-y-2">
-								<Label>{t('fields.provider')}</Label>
-								<Select
-									value={editing.providerId}
-									onValueChange={(v) =>
-										setEditing({ ...editing, providerId: v })
-									}
-								>
-									<SelectTrigger>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										{providerOptions.map((p) => (
-											<SelectItem key={p.id} value={p.id}>
-												{p.slug}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-							{editing.kind === 'llm' || isWhisperApiAsr ? (
+							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<Label>{t('fields.remoteModelId')}</Label>
-									<Input
-										placeholder={
-											isWhisperApiAsr ? 'distil-large-v3' : 'gpt-4.1-mini'
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.provider')}</Label>
+									<Select
+										value={editing.providerId}
+										onValueChange={(v) =>
+											setEditing({ ...editing, providerId: v })
 										}
-										value={editing.remoteModelId}
-										onChange={(e) =>
-											setEditing((prev) => {
-												if (!prev) return prev
-												const remoteModelId = e.target.value
-												if (!isWhisperApiAsr) {
-													return { ...prev, remoteModelId }
-												}
-												const trimmed = remoteModelId.trim()
-												return {
-													...prev,
-													remoteModelId,
-													id: trimmed ? `whisper/${trimmed}` : prev.id,
-												}
-											})
-										}
-									/>
+									>
+										<SelectTrigger className="h-9 rounded-none border-border font-mono text-[10px] uppercase tracking-wider">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent className="rounded-none border-border">
+											{providerOptions.map((p) => (
+												<SelectItem key={p.id} value={p.id} className="rounded-none font-mono text-[10px] uppercase tracking-wider">
+													{p.slug}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
 								</div>
-							) : null}
+								{editing.kind === 'llm' || isWhisperApiAsr ? (
+									<div className="space-y-2">
+										<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.remoteModelId')}</Label>
+										<Input
+											placeholder={
+												isWhisperApiAsr ? 'distil-large-v3' : 'gpt-4.1-mini'
+											}
+											value={editing.remoteModelId}
+											onChange={(e) =>
+												setEditing((prev) => {
+													if (!prev) return prev
+													const remoteModelId = e.target.value
+													if (!isWhisperApiAsr) {
+														return { ...prev, remoteModelId }
+													}
+													const trimmed = remoteModelId.trim()
+													return {
+														...prev,
+														remoteModelId,
+														id: trimmed ? `whisper/${trimmed}` : prev.id,
+													}
+												})
+											}
+											className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
+										/>
+									</div>
+								) : null}
+							</div>
 							<div className="space-y-2">
-								<Label>{t('fields.label')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.label')}</Label>
 								<Input
 									value={editing.label}
 									onChange={(e) =>
 										setEditing({ ...editing, label: e.target.value })
 									}
+									className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label>{t('fields.description')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.description')}</Label>
 								<Input
 									value={editing.description}
 									onChange={(e) =>
 										setEditing({ ...editing, description: e.target.value })
 									}
+									className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 								/>
 							</div>
 
-							<div className="flex items-center gap-2">
-								<Switch
-									checked={editing.enabled}
-									onCheckedChange={(checked) =>
-										setEditing({ ...editing, enabled: checked })
-									}
-								/>
-								<span className="text-sm">{t('fields.enabled')}</span>
-							</div>
+							<div className="grid grid-cols-2 gap-4">
+								<div className="flex items-center gap-3 border border-border p-3 bg-muted/20">
+									<Switch
+										checked={editing.enabled}
+										onCheckedChange={(checked) =>
+											setEditing({ ...editing, enabled: checked })
+										}
+										className="scale-75 data-[state=checked]:bg-primary"
+									/>
+									<span className="text-[10px] font-bold uppercase tracking-widest">{t('fields.enabled')}</span>
+								</div>
 
-							<div className="flex items-center gap-2">
-								<Switch
-									checked={editing.isDefault}
-									onCheckedChange={(checked) =>
-										setEditing({ ...editing, isDefault: checked })
-									}
-								/>
-								<span className="text-sm">{t('fields.isDefault')}</span>
+								<div className="flex items-center gap-3 border border-border p-3 bg-muted/20">
+									<Switch
+										checked={editing.isDefault}
+										onCheckedChange={(checked) =>
+											setEditing({ ...editing, isDefault: checked })
+										}
+										className="scale-75 data-[state=checked]:bg-primary"
+									/>
+									<span className="text-[10px] font-bold uppercase tracking-widest">{t('fields.isDefault')}</span>
+								</div>
 							</div>
 						</div>
 					) : null}
-					<DialogFooter>
-						<Button variant="secondary" onClick={() => setEditing(null)}>
+					<div className="flex border-t border-border">
+						<Button variant="ghost" onClick={() => setEditing(null)} className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted">
 							{t('actions.cancel')}
 						</Button>
 						<Button
@@ -393,10 +429,11 @@ export function AdminAiModelsPage() {
 									isDefault: editing.isDefault,
 								})
 							}}
+							className="flex-1 rounded-none h-12 bg-primary text-primary-foreground uppercase text-xs font-bold tracking-widest hover:bg-primary/90"
 						>
 							{t('actions.save')}
 						</Button>
-					</DialogFooter>
+					</div>
 				</DialogContent>
 			</Dialog>
 		</div>

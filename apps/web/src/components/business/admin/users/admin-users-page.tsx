@@ -24,6 +24,7 @@ import { ADMIN_USERS_PAGE_SIZE } from '~/lib/pagination'
 
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
+import { cn } from '~/lib/utils'
 
 export function AdminUsersPage() {
 	const t = useTranslations('Admin.users')
@@ -156,75 +157,83 @@ export function AdminUsersPage() {
 	)
 
 	return (
-		<div className="space-y-6">
-			<div className="flex items-center justify-between gap-3">
+		<div className="space-y-8 font-sans">
+			<div className="flex items-end justify-between border-b border-primary pb-4">
 				<div>
-					<h1 className="text-2xl font-semibold tracking-tight">
+					<div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+						System / Administration / Users
+					</div>
+					<h1 className="text-3xl font-black uppercase tracking-tight">
 						{t('title')}
 					</h1>
-					<p className="text-sm text-muted-foreground">
-						{t('subtitle', { total: formattedStats.total })}
-					</p>
 				</div>
-				<Badge variant="secondary" className="gap-1">
-					<Shield className="h-3.5 w-3.5" /> {t('badge')}
-				</Badge>
+				<div className="text-right">
+					<div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+						Active Records
+					</div>
+					<div className="font-mono text-xl font-bold">
+						{formattedStats.total.toString().padStart(6, '0')}
+					</div>
+				</div>
 			</div>
 
-			<Card className="border-border/60 shadow-sm">
-				<CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<CardTitle className="text-lg">{t('table.actions')}</CardTitle>
-					<form onSubmit={handleSearch} className="flex w-full max-w-sm gap-2">
+			<div className="border border-border bg-card">
+				<div className="flex flex-col gap-4 p-4 border-b border-border sm:flex-row sm:items-center sm:justify-between bg-muted/30">
+					<div className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+						<Shield className="h-3 w-3" />
+						{t('table.actions')}
+					</div>
+					<form onSubmit={handleSearch} className="flex w-full max-w-sm gap-0">
 						<Input
 							placeholder={t('searchPlaceholder')}
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
+							className="rounded-none border-border font-mono text-xs focus-visible:ring-0 focus-visible:border-primary"
 						/>
-						<Button type="submit" variant="secondary">
+						<Button type="submit" variant="primary" className="rounded-none uppercase text-xs font-bold tracking-widest px-6">
 							{t('searchButton')}
 						</Button>
 					</form>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="overflow-x-auto rounded-lg border border-border/60">
-						<table className="min-w-full text-sm">
-							<thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-								<tr>
-									<th className="px-4 py-3 font-medium">{t('table.email')}</th>
-									<th className="px-4 py-3 font-medium">
+				</div>
+				<div className="p-0">
+					<div className="overflow-x-auto">
+						<table className="min-w-full border-collapse">
+							<thead>
+								<tr className="border-b border-border bg-muted/50">
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.email')}</th>
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
 										{t('table.nickname')}
 									</th>
-									<th className="px-4 py-3 font-medium">{t('table.role')}</th>
-									<th className="px-4 py-3 font-medium">{t('table.status')}</th>
-									<th className="px-4 py-3 font-medium">
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.role')}</th>
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.status')}</th>
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
 										{t('table.createdAt')}
 									</th>
-									<th className="px-4 py-3 font-medium">
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
 										{t('table.lastLogin')}
 									</th>
-									<th className="px-4 py-3 font-medium text-right">
+									<th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 										{t('table.actions')}
 									</th>
 								</tr>
 							</thead>
-							<tbody className="divide-y divide-border/60">
+							<tbody className="divide-y divide-border">
 								{users.map((user) => (
-									<tr key={user.id} className="hover:bg-muted/30">
-										<td className="px-4 py-3 font-medium">{user.email}</td>
-										<td className="px-4 py-3 text-muted-foreground">
-											{user.nickname || t('labels.none')}
+									<tr key={user.id} className="hover:bg-muted/30 transition-none">
+										<td className="px-4 py-3 font-mono text-xs border-r border-border">{user.email}</td>
+										<td className="px-4 py-3 font-mono text-xs text-muted-foreground border-r border-border">
+											{user.nickname || '---'}
 										</td>
-										<td className="px-4 py-3">
-											<Badge
-												variant={user.role === 'admin' ? 'default' : 'outline'}
-											>
-												{user.role === 'admin'
-													? t('roles.admin')
-													: t('roles.user')}
-											</Badge>
+										<td className="px-4 py-3 border-r border-border">
+											<div className={cn(
+												"inline-block px-2 py-0.5 text-[10px] font-bold uppercase border",
+												user.role === 'admin' ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
+											)}>
+												{user.role === 'admin' ? t('roles.admin') : t('roles.user')}
+											</div>
 										</td>
-										<td className="px-4 py-3">
-											<div className="flex items-center gap-2">
+										<td className="px-4 py-3 border-r border-border">
+											<div className="flex items-center gap-3">
 												<Switch
 													checked={user.status === 'active'}
 													onCheckedChange={(checked) =>
@@ -234,27 +243,27 @@ export function AdminUsersPage() {
 														})
 													}
 													disabled={isUpdating}
-													aria-label={`切换${user.email}状态`}
+													className="scale-75 data-[state=checked]:bg-primary"
 												/>
-												<span className="text-xs text-muted-foreground">
+												<span className="font-mono text-[10px] uppercase tracking-tighter">
 													{user.status === 'active'
 														? t('status.active')
 														: t('status.banned')}
 												</span>
 											</div>
 										</td>
-										<td className="px-4 py-3 text-muted-foreground">
+										<td className="px-4 py-3 font-mono text-[10px] text-muted-foreground border-r border-border">
 											{formatDate(user.createdAt)}
 										</td>
-										<td className="px-4 py-3 text-muted-foreground">
-											{user.lastLoginAt ? formatDate(user.lastLoginAt) : '—'}
+										<td className="px-4 py-3 font-mono text-[10px] text-muted-foreground border-r border-border">
+											{user.lastLoginAt ? formatDate(user.lastLoginAt) : '---'}
 										</td>
 										<td className="px-4 py-3 text-right">
-											<div className="flex justify-end gap-2">
+											<div className="flex justify-end gap-1">
 												<Button
-													size="sm"
-													variant="secondary"
-													className="gap-2"
+													size="xs"
+													variant="outline"
+													className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-2 h-7"
 													onClick={() =>
 														setSelectedUserForAdd({
 															id: user.id,
@@ -263,13 +272,12 @@ export function AdminUsersPage() {
 													}
 													disabled={isUpdating}
 												>
-													<Plus className="h-4 w-4" />
-													{t('actions.addPoints')}
+													+ PTS
 												</Button>
 												<Button
-													size="sm"
+													size="xs"
 													variant="outline"
-													className="gap-2"
+													className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-2 h-7"
 													onClick={() =>
 														setSelectedUserForLog({
 															id: user.id,
@@ -277,13 +285,12 @@ export function AdminUsersPage() {
 														})
 													}
 												>
-													<History className="h-4 w-4" />
-													{t('actions.transactions')}
+													LOGS
 												</Button>
 												<Button
-													size="sm"
+													size="xs"
 													variant="outline"
-													className="gap-2"
+													className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-2 h-7"
 													onClick={() =>
 														updateRole.mutate({
 															userId: user.id,
@@ -292,15 +299,12 @@ export function AdminUsersPage() {
 													}
 													disabled={isUpdating}
 												>
-													<UserCheck className="h-4 w-4" />
-													{user.role === 'admin'
-														? t('actions.toggleRoleToUser')
-														: t('actions.toggleRoleToAdmin')}
+													ROLE
 												</Button>
 												<Button
-													size="sm"
+													size="xs"
 													variant="destructive"
-													className="gap-2"
+													className="rounded-none uppercase text-[9px] font-bold px-2 h-7"
 													onClick={() =>
 														setSelectedUserForDelete({
 															id: user.id,
@@ -309,100 +313,86 @@ export function AdminUsersPage() {
 													}
 													disabled={isUpdating}
 												>
-													<Trash2 className="h-4 w-4" />
-													{t('actions.delete')}
+													DEL
 												</Button>
 											</div>
 										</td>
 									</tr>
 								))}
-								{!listQuery.isLoading && users.length === 0 ? (
-									<tr>
-										<td
-											colSpan={7}
-											className="px-4 py-6 text-center text-muted-foreground"
-										>
-											{t('empty')}
-										</td>
-									</tr>
-								) : null}
 							</tbody>
 						</table>
 					</div>
 
-					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-						<p className="text-xs text-muted-foreground">
-							{t('pagination', {
-								page,
-								pages: pageCount,
-								total: formattedStats.total,
-							})}
+					<div className="flex flex-col gap-0 border-t border-border sm:flex-row sm:items-center sm:justify-between bg-muted/30">
+						<p className="px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+							PAGE: {page.toString().padStart(3, '0')} / {pageCount.toString().padStart(3, '0')} | TOTAL: {formattedStats.total}
 						</p>
-						<div className="flex gap-2">
+						<div className="flex border-l border-border">
 							<Button
-								variant="outline"
-								size="sm"
+								variant="ghost"
 								disabled={page === 1 || listQuery.isFetching}
 								onClick={() => setPage((p) => Math.max(1, p - 1))}
+								className="rounded-none border-r border-border px-6 py-3 h-auto uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-primary hover:text-primary-foreground disabled:opacity-30"
 							>
-								{t('prev')}
+								PREV
 							</Button>
 							<Button
-								variant="outline"
-								size="sm"
+								variant="ghost"
 								disabled={page >= pageCount || listQuery.isFetching}
 								onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+								className="rounded-none px-6 py-3 h-auto uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-primary hover:text-primary-foreground disabled:opacity-30"
 							>
-								{t('next')}
+								NEXT
 							</Button>
 						</div>
 					</div>
-				</CardContent>
-			</Card>
+				</div>
+			</div>
 
 			<Dialog
 				open={Boolean(selectedUserForAdd)}
 				onOpenChange={(open) => !open && setSelectedUserForAdd(null)}
 			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{t('dialogs.addTitle', {
-								email: selectedUserForAdd?.email || '',
-							})}
+				<DialogContent className="rounded-none border-2 border-primary p-0 overflow-hidden max-w-md">
+					<DialogHeader className="bg-primary p-4 text-primary-foreground">
+						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
+							ADD_POINTS // {selectedUserForAdd?.email}
 						</DialogTitle>
 					</DialogHeader>
-					<div className="space-y-3 py-2">
+					<div className="p-6 space-y-6">
 						<div className="space-y-2">
-							<label className="text-sm font-medium text-foreground">
-								积分数量
+							<label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+								AMOUNT_INT
 							</label>
 							<Input
 								type="number"
 								min={1}
 								value={addAmount}
 								onChange={(e) => setAddAmount(Number(e.target.value))}
-								placeholder="例如 100"
+								className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
+								placeholder="000"
 							/>
 						</div>
 						<div className="space-y-2">
-							<label className="text-sm font-medium text-foreground">
-								备注（可选）
+							<label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+								REMARK_STR
 							</label>
 							<Textarea
 								value={addRemark}
 								onChange={(e) => setAddRemark(e.target.value)}
-								placeholder="比如：活动奖励、手动补偿"
+								className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary min-h-[100px]"
+								placeholder="..."
 							/>
 						</div>
 					</div>
-					<DialogFooter>
+					<div className="flex border-t border-border">
 						<Button
-							variant="outline"
+							variant="ghost"
 							onClick={() => setSelectedUserForAdd(null)}
 							disabled={addPointsMutation.isPending}
+							className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted"
 						>
-							取消
+							CANCEL
 						</Button>
 						<Button
 							onClick={() => {
@@ -417,10 +407,11 @@ export function AdminUsersPage() {
 							disabled={
 								!addAmount || addAmount <= 0 || addPointsMutation.isPending
 							}
+							className="flex-1 rounded-none h-12 bg-primary text-primary-foreground uppercase text-xs font-bold tracking-widest hover:bg-primary/90"
 						>
-							{addPointsMutation.isPending ? '处理中…' : '确认加分'}
+							{addPointsMutation.isPending ? 'PROCESSING...' : 'CONFIRM_COMMIT'}
 						</Button>
-					</DialogFooter>
+					</div>
 				</DialogContent>
 			</Dialog>
 
@@ -428,73 +419,58 @@ export function AdminUsersPage() {
 				open={Boolean(selectedUserForLog)}
 				onOpenChange={(open) => !open && setSelectedUserForLog(null)}
 			>
-				<DialogContent className="max-w-2xl">
-					<DialogHeader>
-						<DialogTitle>{selectedUserForLog?.email} 的积分流水</DialogTitle>
+				<DialogContent className="max-w-3xl rounded-none border-2 border-primary p-0 overflow-hidden">
+					<DialogHeader className="bg-primary p-4 text-primary-foreground">
+						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
+							TRANSACTION_LOG // {selectedUserForLog?.email}
+						</DialogTitle>
 					</DialogHeader>
 					<div className="max-h-[60vh] overflow-y-auto">
-						<table className="min-w-full text-sm">
-							<thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-								<tr>
-									<th className="px-3 py-2 font-medium">时间</th>
-									<th className="px-3 py-2 font-medium">变化</th>
-									<th className="px-3 py-2 font-medium">余额</th>
-									<th className="px-3 py-2 font-medium">类型</th>
-									<th className="px-3 py-2 font-medium">备注</th>
+						<table className="min-w-full border-collapse">
+							<thead>
+								<tr className="border-b border-border bg-muted/50 sticky top-0">
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">TIMESTAMP</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">DELTA</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">BALANCE</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">TYPE</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">REMARK</th>
 								</tr>
 							</thead>
-							<tbody className="divide-y divide-border/60">
+							<tbody className="divide-y divide-border">
 								{transactionsQuery.data?.items?.map((row) => (
-									<tr key={row.id} className="hover:bg-muted/20">
-										<td className="px-3 py-2 text-muted-foreground">
+									<tr key={row.id} className="hover:bg-muted/20 transition-none font-mono text-[10px]">
+										<td className="px-4 py-2 text-muted-foreground border-r border-border">
 											{formatDate(row.createdAt)}
 										</td>
-										<td className="px-3 py-2 font-medium">
+										<td className={cn(
+											"px-4 py-2 font-bold border-r border-border text-xs",
+											row.delta > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+										)}>
 											{row.delta > 0 ? `+${row.delta}` : row.delta}
 										</td>
-										<td className="px-3 py-2 text-muted-foreground">
+										<td className="px-4 py-2 text-muted-foreground border-r border-border">
 											{row.balanceAfter}
 										</td>
-										<td className="px-3 py-2 text-muted-foreground">
+										<td className="px-4 py-2 text-muted-foreground border-r border-border uppercase">
 											{row.type}
 										</td>
-										<td className="px-3 py-2 text-muted-foreground">
-											{row.remark || '—'}
+										<td className="px-4 py-2 text-muted-foreground">
+											{row.remark || '---'}
 										</td>
 									</tr>
 								))}
-								{transactionsQuery.isFetching ? (
-									<tr>
-										<td
-											colSpan={5}
-											className="px-3 py-4 text-center text-muted-foreground"
-										>
-											加载中…
-										</td>
-									</tr>
-								) : null}
-								{!transactionsQuery.isFetching &&
-								(transactionsQuery.data?.items?.length ?? 0) === 0 ? (
-									<tr>
-										<td
-											colSpan={5}
-											className="px-3 py-4 text-center text-muted-foreground"
-										>
-											暂无流水
-										</td>
-									</tr>
-								) : null}
 							</tbody>
 						</table>
 					</div>
-					<DialogFooter>
+					<div className="p-4 border-t border-border bg-muted/30">
 						<Button
 							variant="outline"
 							onClick={() => setSelectedUserForLog(null)}
+							className="w-full rounded-none border-border uppercase text-xs font-bold tracking-widest hover:bg-primary hover:text-primary-foreground"
 						>
-							关闭
+							CLOSE_VIEW
 						</Button>
-					</DialogFooter>
+					</div>
 				</DialogContent>
 			</Dialog>
 
@@ -502,24 +478,27 @@ export function AdminUsersPage() {
 				open={Boolean(selectedUserForDelete)}
 				onOpenChange={(open) => !open && setSelectedUserForDelete(null)}
 			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{t('dialogs.deleteTitle', {
-								email: selectedUserForDelete?.email || '',
-							})}
+				<DialogContent className="rounded-none border-2 border-destructive p-0 overflow-hidden max-w-md">
+					<DialogHeader className="bg-destructive p-4 text-destructive-foreground">
+						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
+							DANGER_ZONE // DELETE_USER
 						</DialogTitle>
 					</DialogHeader>
-					<p className="py-2 text-sm text-muted-foreground">
-						{t('dialogs.deleteDescription')}
-					</p>
-					<DialogFooter>
+					<div className="p-6 space-y-4">
+						<p className="text-xs font-mono leading-relaxed">
+							WARNING: YOU ARE ABOUT TO PERMANENTLY REMOVE THE FOLLOWING ACCOUNT FROM THE SYSTEM. THIS ACTION IS IRREVERSIBLE.
+							<br /><br />
+							IDENTIFIER: <span className="font-bold underline">{selectedUserForDelete?.email}</span>
+						</p>
+					</div>
+					<div className="flex border-t border-border">
 						<Button
-							variant="outline"
+							variant="ghost"
 							onClick={() => setSelectedUserForDelete(null)}
 							disabled={deleteUserMutation.isPending}
+							className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted"
 						>
-							{t('dialogs.deleteCancel')}
+							ABORT
 						</Button>
 						<Button
 							variant="destructive"
@@ -528,12 +507,13 @@ export function AdminUsersPage() {
 								deleteUserMutation.mutate({ userId: selectedUserForDelete.id })
 							}}
 							disabled={!selectedUserForDelete || deleteUserMutation.isPending}
+							className="flex-1 rounded-none h-12 uppercase text-xs font-bold tracking-widest"
 						>
 							{deleteUserMutation.isPending
-								? t('dialogs.deleting')
-								: t('dialogs.deleteConfirm')}
+								? 'DELETING...'
+								: 'CONFIRM_DELETE'}
 						</Button>
-					</DialogFooter>
+					</div>
 				</DialogContent>
 			</Dialog>
 		</div>
@@ -541,7 +521,8 @@ export function AdminUsersPage() {
 }
 
 function formatDate(value: string | number | Date | null | undefined) {
-	if (!value) return '—'
+	if (!value) return '---'
 	const date = value instanceof Date ? value : new Date(value)
-	return date.toLocaleString()
+	// Return ISO-like format for "Engineering" look
+	return date.toISOString().replace('T', ' ').split('.')[0]
 }

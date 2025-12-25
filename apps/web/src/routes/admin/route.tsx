@@ -6,27 +6,32 @@ import {
 	useNavigate,
 	useRouterState,
 } from '@tanstack/react-router'
-import { ArrowLeft, Shield } from 'lucide-react'
+import {
+	ArrowLeft,
+	Cpu,
+	Globe,
+	Layers,
+	LogOut,
+	Shield,
+	Users,
+} from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '~/components/ui/select'
 import { cn } from '~/lib/utils'
 
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
+import LanguageToggle from '~/components/business/layout/language-toggle'
+import ThemeToggle from '~/components/business/layout/theme-toggle'
+import { useAuthQuery, useLogoutMutation } from '~/lib/auth/hooks'
+
 const navItems = [
-	{ key: 'users', href: '/admin/users' },
-	{ key: 'proxy', href: '/admin/proxy' },
-	{ key: 'aiProviders', href: '/admin/ai-providers' },
-	{ key: 'aiModels', href: '/admin/ai-models' },
-	{ key: 'pricing', href: '/admin/points-pricing' },
+	{ key: 'users', href: '/admin/users', icon: Users },
+	{ key: 'proxy', href: '/admin/proxy', icon: Globe },
+	{ key: 'aiProviders', href: '/admin/ai-providers', icon: Layers },
+	{ key: 'aiModels', href: '/admin/ai-models', icon: Cpu },
+	{ key: 'pricing', href: '/admin/points-pricing', icon: Shield },
 ] as const
 
 function stripBasePath(pathname: string): string {
@@ -61,6 +66,10 @@ function AdminLayoutRoute() {
 	const t = useTranslations('Admin.layout')
 	const navigate = useNavigate()
 	const pathname = useRouterState({ select: (s) => s.location.pathname })
+	const { data: me } = useAuthQuery()
+	const logoutMutation = useLogoutMutation({
+		redirectTo: '/login',
+	})
 
 	const activeHref = (() => {
 		const normalizedPath = stripBasePath(pathname)
@@ -78,20 +87,20 @@ function AdminLayoutRoute() {
 	})()
 
 	return (
-		<div className="flex h-dvh bg-gradient-to-br from-background to-secondary/50 text-foreground">
-			<aside className="hidden w-64 flex-shrink-0 flex-col border-r border-border/50 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:flex">
-				<div className="flex h-16 items-center gap-3 px-5">
-					<div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
-						<Shield className="h-5 w-5 text-primary" strokeWidth={1.5} />
+		<div className="flex h-dvh bg-background text-foreground font-sans">
+			<aside className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-sidebar md:flex transition-all">
+				{/* Brand Header */}
+				<div className="h-14 flex items-center gap-2 px-4 border-b border-border bg-secondary/10">
+					<div className="h-6 w-6 border border-primary bg-primary text-primary-foreground flex items-center justify-center">
+						<Shield className="h-3 w-3" />
 					</div>
-					<div className="min-w-0">
-						<div className="truncate text-sm font-semibold tracking-tight">
-							{t('title')}
-						</div>
-					</div>
+					<span className="text-sm font-bold uppercase tracking-wider truncate">
+						{t('title')}
+					</span>
 				</div>
 
-				<nav className="space-y-1 px-3 py-3">
+				{/* Navigation */}
+				<nav className="flex-1 overflow-y-auto py-6 space-y-1">
 					{navItems.map((item) => {
 						const isActive = activeHref === item.href
 						return (
@@ -100,75 +109,87 @@ function AdminLayoutRoute() {
 								to={item.href}
 								aria-current={isActive ? 'page' : undefined}
 								className={cn(
-									'flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+									'group flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wide transition-colors duration-200 border-l-2',
 									isActive
-										? 'bg-primary/10 text-primary ring-1 ring-primary/20'
-										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+										? 'bg-secondary border-primary text-foreground'
+										: 'border-transparent text-muted-foreground hover:bg-secondary/50 hover:text-foreground hover:border-border',
 								)}
 							>
+								<item.icon
+									strokeWidth={1.5}
+									className={cn(
+										'h-4 w-4',
+										isActive
+											? 'text-foreground'
+											: 'text-muted-foreground group-hover:text-foreground',
+									)}
+								/>
 								<span>{t(`nav.${item.key}`)}</span>
 							</Link>
 						)
 					})}
 				</nav>
 
-				<div className="mt-auto p-4">
-					<Button
-						variant="outline"
-						size="sm"
-						asChild
-						className="w-full justify-start gap-2"
-					>
-						<Link to="/media">
-							<ArrowLeft className="h-4 w-4" />
-							{t('actions.backToWorkspace')}
-						</Link>
-					</Button>
+				{/* Footer */}
+				<div className="border-t border-border bg-secondary/5">
+					<div className="p-4 space-y-4">
+						<div className="flex justify-between items-center">
+							<ThemeToggle collapsed={false} />
+							<LanguageToggle collapsed={false} />
+						</div>
+
+						<div className="border border-border p-3 bg-background">
+							<div className="space-y-3">
+								<div className="flex items-center gap-3">
+									<div className="h-8 w-8 bg-secondary flex items-center justify-center border border-border">
+										<span className="text-xs font-bold font-mono">
+											{me?.user?.nickname?.[0]?.toUpperCase() || 'U'}
+										</span>
+									</div>
+									<div className="min-w-0 text-[10px]">
+										<p className="font-bold uppercase truncate">
+											{me?.user?.nickname || 'ADMIN'}
+										</p>
+										<p className="font-mono text-muted-foreground truncate">
+											{me?.user?.email}
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div className="space-y-2">
+							<Button
+								variant='outline'
+								size='sm'
+								asChild
+								className="w-full rounded-none border-border h-9 uppercase text-[10px] font-bold tracking-widest transition-colors hover:bg-muted"
+							>
+								<Link to='/media'>
+									<ArrowLeft className="h-3 w-3 mr-2" />
+									{t('actions.backToWorkspace')}
+								</Link>
+							</Button>
+
+							<Button
+								type='button'
+								variant='outline'
+								size='sm'
+								className="w-full rounded-none border-border h-9 uppercase text-[10px] font-bold tracking-widest hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
+								onClick={() => logoutMutation.mutate(undefined)}
+								disabled={logoutMutation.isPending}
+							>
+								<LogOut className="h-3 w-3 mr-2" strokeWidth={2} />
+								LOGOUT
+							</Button>
+						</div>
+					</div>
 				</div>
 			</aside>
 
 			<div className="flex min-w-0 flex-1 flex-col">
-				<header className="sticky top-0 z-20 border-b border-border/50 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-					<div className="flex h-14 items-center justify-between gap-3 px-4 md:px-6">
-						<div className="flex items-center gap-3">
-							<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20 md:hidden">
-								<Shield className="h-4 w-4 text-primary" strokeWidth={1.5} />
-							</div>
-							<div className="text-sm font-semibold tracking-tight md:hidden">
-								{t('title')}
-							</div>
-						</div>
-
-						<div className="flex items-center gap-2 md:hidden">
-							<Select
-								value={activeHref}
-								onValueChange={(v) => navigate({ to: v })}
-							>
-								<SelectTrigger className="h-9 w-[190px]">
-									<SelectValue placeholder={t('mobile.sectionPlaceholder')} />
-								</SelectTrigger>
-								<SelectContent>
-									{navItems.map((item) => (
-										<SelectItem key={item.href} value={item.href}>
-											{t(`nav.${item.key}`)}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							<Button variant="outline" size="sm" asChild className="gap-2">
-								<Link to="/media">
-									<ArrowLeft className="h-4 w-4" />
-									{t('actions.back')}
-								</Link>
-							</Button>
-						</div>
-
-						<div className="hidden md:block" />
-					</div>
-				</header>
-
-				<main className="flex-1 overflow-y-auto px-4 py-6 md:px-6">
-					<div className="mx-auto w-full max-w-6xl">
+				<main className="flex-1 overflow-y-auto">
+					<div className="mx-auto w-full max-w-7xl p-6 md:p-8">
 						<Outlet />
 					</div>
 				</main>

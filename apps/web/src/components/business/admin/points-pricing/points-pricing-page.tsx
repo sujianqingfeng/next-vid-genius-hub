@@ -7,7 +7,6 @@ import { useMemo, useState } from 'react'
 
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -35,6 +34,7 @@ import {
 
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
+import { cn } from '~/lib/utils'
 
 type Kind = 'llm' | 'asr' | 'download'
 
@@ -91,15 +91,13 @@ function ceilDivBigInt(numerator: bigint, denominator: bigint) {
 }
 
 function formatMaybeDate(value: unknown) {
-	if (!value) return '—'
+	if (!value) return '---'
 	try {
-		if (value instanceof Date) return value.toLocaleString()
-		if (typeof value === 'number' || typeof value === 'string') {
-			return new Date(value).toLocaleString()
-		}
-		return '—'
+		const d = value instanceof Date ? value : new Date(value as any)
+		if (Number.isNaN(d.getTime())) return '---'
+		return d.toISOString().replace('T', ' ').split('.')[0]
 	} catch {
-		return '—'
+		return '---'
 	}
 }
 
@@ -439,7 +437,7 @@ export function AdminPointsPricingPage() {
 
 		table.push({
 			key: 'default',
-			providerLabel: '—',
+			providerLabel: '---',
 			modelLabel: t('labels.defaultModel'),
 			provider: null,
 			modelId: null,
@@ -463,7 +461,7 @@ export function AdminPointsPricingPage() {
 				const effective = direct ?? globalDefaultRule
 				table.push({
 					key: `provider:${model.providerId}`,
-					providerLabel: provider ? `${provider.name} (${provider.slug})` : '—',
+					providerLabel: provider ? `${provider.name} (${provider.slug})` : '---',
 					modelLabel: t('labels.providerDefault'),
 					provider,
 					modelId: null,
@@ -481,7 +479,7 @@ export function AdminPointsPricingPage() {
 
 			table.push({
 				key: model.id,
-				providerLabel: provider ? `${provider.name} (${provider.slug})` : '—',
+				providerLabel: provider ? `${provider.name} (${provider.slug})` : '---',
 				modelLabel: model.label || model.id,
 				provider,
 				modelId: model.id,
@@ -577,190 +575,171 @@ export function AdminPointsPricingPage() {
 	])
 
 	const renderPricingTable = () => {
-		const isDownload = kind === 'download'
 		const showLlmColumns = kind === 'llm'
 
 		return (
-			<Card className="border-border/60 shadow-sm">
-				<CardHeader className="flex flex-row items-center justify-between gap-3">
-					<CardTitle className="text-lg">{t('table.title')}</CardTitle>
+			<div className="border border-border bg-card">
+				<div className="flex flex-row items-center justify-between gap-3 p-4 border-b border-border bg-muted/30">
+					<div className="text-xs font-bold uppercase tracking-widest">{t('table.title')}</div>
 					<Button
-						variant="secondary"
+						variant="outline"
+						size="sm"
+						className="rounded-none uppercase text-[10px] font-bold tracking-widest"
 						onClick={() => openEditDefault()}
 						disabled={isBusy}
 					>
 						{t('actions.editDefault')}
 					</Button>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="overflow-x-auto rounded-lg border border-border/60">
-						<table className="min-w-full text-sm">
-							<thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-								<tr>
-									<th className="px-4 py-3 font-medium">
-										{t('table.provider')}
-									</th>
-									<th className="px-4 py-3 font-medium">{t('table.model')}</th>
-									{showLlmColumns ? (
-										<>
-											<th className="px-4 py-3 font-medium">
-												{t('table.inputRmbPerMillion')}
-											</th>
-											<th className="px-4 py-3 font-medium">
-												{t('table.outputRmbPerMillion')}
-											</th>
-										</>
-									) : (
-										<th className="px-4 py-3 font-medium">
-											{t('table.pointsPerMinute')}
+				</div>
+				<div className="overflow-x-auto">
+					<table className="min-w-full border-collapse">
+						<thead>
+							<tr className="border-b border-border bg-muted/50">
+								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+									{t('table.provider')}
+								</th>
+								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.model')}</th>
+								{showLlmColumns ? (
+									<>
+										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+											{t('table.inputRmbPerMillion')}
 										</th>
-									)}
-									<th className="px-4 py-3 font-medium">
-										{t('table.minCharge')}
+										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+											{t('table.outputRmbPerMillion')}
+										</th>
+									</>
+								) : (
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+										{t('table.pointsPerMinute')}
 									</th>
-									<th className="px-4 py-3 font-medium">
-										{t('table.updatedAt')}
-									</th>
-									<th className="px-4 py-3 font-medium">{t('table.status')}</th>
-									<th className="px-4 py-3 font-medium text-right">
-										{t('table.actions')}
-									</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-border/60">
-								{rows.map((row, idx) => {
-									const isProviderRow =
-										row.modelId == null && row.provider != null
-									const direct = row.direct
-									const effective = row.effective
+								)}
+								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+									{t('table.minCharge')}
+								</th>
+								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+									{t('table.updatedAt')}
+								</th>
+								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.status')}</th>
+								<th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+									{t('table.actions')}
+								</th>
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-border">
+							{rows.map((row, idx) => {
+								const isProviderRow =
+									row.modelId == null && row.provider != null
+								const direct = row.direct
+								const effective = row.effective
 
-									const inputRmb =
-										kind === 'llm'
-											? rmbPerMillionTokensFromMicroPointsPerToken(
-													effective?.inputPricePerUnit ?? 0,
-												)
-											: null
-									const outputRmb =
-										kind === 'llm'
-											? rmbPerMillionTokensFromMicroPointsPerToken(
-													effective?.outputPricePerUnit ?? 0,
-												)
-											: null
+								const inputRmb =
+									kind === 'llm'
+										? rmbPerMillionTokensFromMicroPointsPerToken(
+												effective?.inputPricePerUnit ?? 0,
+											)
+										: null
+								const outputRmb =
+									kind === 'llm'
+										? rmbPerMillionTokensFromMicroPointsPerToken(
+												effective?.outputPricePerUnit ?? 0,
+											)
+										: null
 
-									const pointsPerMinute =
-										kind !== 'llm'
-											? effective?.unit === 'minute'
-												? effective.pricePerUnit
-												: effective
-													? effective.pricePerUnit * 60
-													: null
-											: null
+								const pointsPerMinute =
+									kind !== 'llm'
+										? effective?.unit === 'minute'
+											? effective.pricePerUnit
+											: effective
+												? effective.pricePerUnit * 60
+												: null
+										: null
 
-									return (
-										<tr key={row.key} className="hover:bg-muted/20">
-											<td className="px-4 py-3 text-muted-foreground">
-												{row.providerLabel}
-											</td>
-											<td className="px-4 py-3">
-												<div className="font-medium text-foreground">
-													{row.modelLabel}
+								return (
+									<tr key={row.key} className="hover:bg-muted/30 transition-none group">
+										<td className="px-4 py-3 border-r border-border font-mono text-[10px] text-muted-foreground">
+											{row.providerLabel}
+										</td>
+										<td className="px-4 py-3 border-r border-border font-mono text-xs font-bold uppercase">
+											{row.modelLabel}
+											{row.modelId && kind !== 'download' ? (
+												<div className="mt-0.5 text-[9px] font-normal lowercase opacity-60">
+													{row.modelId}
 												</div>
-												{row.modelId && !isDownload ? (
-													<div className="mt-0.5 text-xs text-muted-foreground">
-														{row.modelId}
-													</div>
-												) : null}
-											</td>
-											{showLlmColumns ? (
-												<>
-													<td className="px-4 py-3 tabular-nums">
-														{inputRmb?.toFixed(2)}
-													</td>
-													<td className="px-4 py-3 tabular-nums">
-														{outputRmb?.toFixed(2)}
-													</td>
-												</>
-											) : (
-												<td className="px-4 py-3 tabular-nums">
-													{pointsPerMinute ?? '—'}
+											) : null}
+										</td>
+										{showLlmColumns ? (
+											<>
+												<td className="px-4 py-3 border-r border-border font-mono text-xs text-right">
+													{inputRmb?.toFixed(2)}
 												</td>
-											)}
-											<td className="px-4 py-3 tabular-nums">
-												{effective?.minCharge ?? '—'}
+												<td className="px-4 py-3 border-r border-border font-mono text-xs text-right">
+													{outputRmb?.toFixed(2)}
+												</td>
+											</>
+										) : (
+											<td className="px-4 py-3 border-r border-border font-mono text-xs text-right">
+												{pointsPerMinute ?? '---'}
 											</td>
-											<td className="px-4 py-3 text-muted-foreground">
-												{formatMaybeDate(effective?.updatedAt)}
-											</td>
-											<td className="px-4 py-3">
+										)}
+										<td className="px-4 py-3 border-r border-border font-mono text-xs text-right">
+											{effective?.minCharge ?? '---'}
+										</td>
+										<td className="px-4 py-3 border-r border-border font-mono text-[10px] text-muted-foreground">
+											{formatMaybeDate(effective?.updatedAt)}
+										</td>
+										<td className="px-4 py-3 border-r border-border">
+											<div className={cn(
+												"inline-block px-2 py-0.5 text-[9px] font-bold uppercase border",
+												direct ? "bg-primary text-primary-foreground border-primary" : effective ? "border-border text-muted-foreground" : "border-destructive text-destructive"
+											)}>
+												{direct ? t('status.override') : effective ? t('status.inherited') : t('status.missing')}
+											</div>
+										</td>
+										<td className="px-4 py-3 text-right">
+											<div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+												<Button
+													size="xs"
+													variant="outline"
+													className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-2 h-7"
+													onClick={() => {
+														if (row.model) {
+															openEditModel(row.model)
+															return
+														}
+														if (idx === 0) {
+															openEditDefault()
+															return
+														}
+														if (isProviderRow && row.provider) {
+															openEditProviderDefault(row.provider)
+														}
+													}}
+													disabled={isBusy}
+												>
+													EDIT
+												</Button>
 												{direct ? (
-													<Badge variant="outline">
-														{t('status.override')}
-													</Badge>
-												) : effective ? (
-													<Badge variant="secondary">
-														{t('status.inherited')}
-													</Badge>
-												) : (
-													<Badge variant="destructive">
-														{t('status.missing')}
-													</Badge>
-												)}
-											</td>
-											<td className="px-4 py-3 text-right">
-												<div className="flex justify-end gap-2">
 													<Button
-														size="sm"
-														variant="secondary"
-														onClick={() => {
-															if (row.model) {
-																openEditModel(row.model)
-																return
-															}
-															if (idx === 0) {
-																openEditDefault()
-																return
-															}
-															if (isProviderRow && row.provider) {
-																openEditProviderDefault(row.provider)
-															}
-														}}
+														size="xs"
+														variant="outline"
+														className="rounded-none border-border hover:bg-destructive hover:text-destructive-foreground uppercase text-[9px] font-bold px-2 h-7"
+														onClick={() =>
+															deleteRule.mutate({ id: direct.id })
+														}
 														disabled={isBusy}
 													>
-														{t('actions.edit')}
+														RESET
 													</Button>
-													{direct ? (
-														<Button
-															size="sm"
-															variant="outline"
-															onClick={() =>
-																deleteRule.mutate({ id: direct.id })
-															}
-															disabled={isBusy}
-														>
-															{t('actions.reset')}
-														</Button>
-													) : null}
-												</div>
-											</td>
-										</tr>
-									)
-								})}
-
-								{!rulesQuery.isLoading && rows.length === 0 ? (
-									<tr>
-										<td
-											colSpan={showLlmColumns ? 8 : 7}
-											className="px-4 py-6 text-center text-muted-foreground"
-										>
-											{t('empty')}
+												) : null}
+											</div>
 										</td>
 									</tr>
-								) : null}
-							</tbody>
-						</table>
-					</div>
-				</CardContent>
-			</Card>
+								)
+							})}
+						</tbody>
+					</table>
+				</div>
+			</div>
 		)
 	}
 
@@ -769,26 +748,26 @@ export function AdminPointsPricingPage() {
 		const showLlmInputs = kind === 'llm'
 
 		return (
-			<Card className="border-border/60 shadow-sm">
-				<CardHeader>
-					<CardTitle className="text-lg">{t('preview.title')}</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4">
+			<div className="border border-border bg-card h-full">
+				<div className="p-4 border-b border-border bg-muted/30">
+					<div className="text-xs font-bold uppercase tracking-widest">{t('preview.title')}</div>
+				</div>
+				<div className="p-4 space-y-6">
 					{showModelPicker ? (
 						<div className="space-y-2">
-							<Label className="text-xs text-muted-foreground">
+							<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 								{t('preview.model')}
 							</Label>
 							<Select value={previewModelId} onValueChange={setPreviewModelId}>
-								<SelectTrigger className="h-9">
+								<SelectTrigger className="h-9 rounded-none border-border font-mono text-[10px] uppercase tracking-wider">
 									<SelectValue />
 								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="__default__">
+								<SelectContent className="rounded-none border-border">
+									<SelectItem value="__default__" className="rounded-none font-mono text-[10px] uppercase tracking-wider">
 										{t('labels.defaultModel')}
 									</SelectItem>
 									{modelsSorted.map((m) => (
-										<SelectItem key={m.id} value={m.id}>
+										<SelectItem key={m.id} value={m.id} className="rounded-none font-mono text-[10px] uppercase tracking-wider">
 											{m.label || m.id}
 										</SelectItem>
 									))}
@@ -800,7 +779,7 @@ export function AdminPointsPricingPage() {
 					{showLlmInputs ? (
 						<div className="grid gap-4 sm:grid-cols-2">
 							<div className="space-y-2">
-								<Label className="text-xs text-muted-foreground">
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 									{t('preview.inputTokens')}
 								</Label>
 								<Input
@@ -810,10 +789,11 @@ export function AdminPointsPricingPage() {
 									onChange={(e) =>
 										setPreviewInputTokens(Number(e.target.value || 0))
 									}
+									className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label className="text-xs text-muted-foreground">
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 									{t('preview.outputTokens')}
 								</Label>
 								<Input
@@ -823,12 +803,13 @@ export function AdminPointsPricingPage() {
 									onChange={(e) =>
 										setPreviewOutputTokens(Number(e.target.value || 0))
 									}
+									className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 								/>
 							</div>
 						</div>
 					) : (
 						<div className="space-y-2">
-							<Label className="text-xs text-muted-foreground">
+							<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 								{t('preview.minutes')}
 							</Label>
 							<Input
@@ -836,43 +817,49 @@ export function AdminPointsPricingPage() {
 								min={0}
 								value={previewMinutes}
 								onChange={(e) => setPreviewMinutes(Number(e.target.value || 0))}
+								className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 							/>
-							<p className="text-[10px] text-muted-foreground">
+							<p className="text-[9px] text-muted-foreground uppercase tracking-tighter">
 								{t('preview.roundingHint')}
 							</p>
 						</div>
 					)}
 
-					<div className="rounded-lg border border-border/60 bg-muted/20 p-3">
-						<div className="text-xs text-muted-foreground">
-							{t('preview.points')}
+					<div className="border border-primary bg-primary/5 p-4">
+						<div className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-2">
+							PREVIEW_CALCULATION
 						</div>
-						<div className="mt-1 text-2xl font-semibold tabular-nums">
-							{preview.ok ? preview.points : 0}
+						<div className="font-mono text-3xl font-black tabular-nums">
+							{preview.ok ? preview.points.toString().padStart(6, '0') : '000000'}
 						</div>
-						<div className="mt-1 text-[10px] text-muted-foreground break-words">
+						<div className="mt-2 text-[10px] font-mono text-muted-foreground leading-relaxed uppercase break-all border-t border-primary/20 pt-2">
 							{preview.detail}
 						</div>
 					</div>
-				</CardContent>
-			</Card>
+				</div>
+			</div>
 		)
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="flex items-center justify-between gap-3">
+		<div className="space-y-8 font-sans">
+			<div className="flex items-end justify-between border-b border-primary pb-4">
 				<div>
-					<h1 className="text-2xl font-semibold tracking-tight">
+					<div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+						System / Administration / Pricing
+					</div>
+					<h1 className="text-3xl font-black uppercase tracking-tight">
 						{t('title')}
 					</h1>
-					<p className="text-sm text-muted-foreground">
-						{t('subtitle', { total: Number(rulesQuery.data?.total ?? 0) })}
-					</p>
 				</div>
-				<Badge variant="secondary" className="gap-1">
-					{t('badge')}
-				</Badge>
+				<div className="text-right">
+					<div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+						Active Rules
+					</div>
+					<div className="font-mono text-xl font-bold">
+						{Number(rulesQuery.data?.total ?? 0).toString().padStart(4, '0')}
+					</div>
+				</div>
 			</div>
 
 			<Tabs
@@ -881,34 +868,39 @@ export function AdminPointsPricingPage() {
 					setKind(v as Kind)
 					setPreviewModelId('__default__')
 				}}
+				className="space-y-0"
 			>
-				<TabsList>
-					<TabsTrigger value="llm">{t('filters.resource.llm')}</TabsTrigger>
-					<TabsTrigger value="asr">{t('filters.resource.asr')}</TabsTrigger>
-					<TabsTrigger value="download">
+				<TabsList className="h-auto w-full justify-start rounded-none bg-transparent p-0 border-b border-border mb-8">
+					<TabsTrigger value="llm" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+						{t('filters.resource.llm')}
+					</TabsTrigger>
+					<TabsTrigger value="asr" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+						{t('filters.resource.asr')}
+					</TabsTrigger>
+					<TabsTrigger value="download" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
 						{t('filters.resource.download')}
 					</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="llm" className="mt-4">
+				<TabsContent value="llm" className="mt-0 outline-none">
 					{kind === 'llm' ? (
-						<div className="grid gap-4 lg:grid-cols-3">
+						<div className="grid gap-6 lg:grid-cols-3">
 							<div className="lg:col-span-2">{renderPricingTable()}</div>
 							<div>{renderPreview()}</div>
 						</div>
 					) : null}
 				</TabsContent>
-				<TabsContent value="asr" className="mt-4">
+				<TabsContent value="asr" className="mt-0 outline-none">
 					{kind === 'asr' ? (
-						<div className="grid gap-4 lg:grid-cols-3">
+						<div className="grid gap-6 lg:grid-cols-3">
 							<div className="lg:col-span-2">{renderPricingTable()}</div>
 							<div>{renderPreview()}</div>
 						</div>
 					) : null}
 				</TabsContent>
-				<TabsContent value="download" className="mt-4">
+				<TabsContent value="download" className="mt-0 outline-none">
 					{kind === 'download' ? (
-						<div className="grid gap-4 lg:grid-cols-3">
+						<div className="grid gap-6 lg:grid-cols-3">
 							<div className="lg:col-span-2">{renderPricingTable()}</div>
 							<div>{renderPreview()}</div>
 						</div>
@@ -920,24 +912,20 @@ export function AdminPointsPricingPage() {
 				open={Boolean(editing)}
 				onOpenChange={(open) => !open && setEditing(null)}
 			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{editing?.targetModelId
-								? t('dialogs.editTitleWithTarget', {
-										target: editing.targetLabel,
-									})
-								: t('dialogs.editDefaultTitle')}
+				<DialogContent className="rounded-none border-2 border-primary p-0 overflow-hidden max-w-md">
+					<DialogHeader className="bg-primary p-4 text-primary-foreground">
+						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
+							EDIT_PRICING // {editing?.targetLabel}
 						</DialogTitle>
 					</DialogHeader>
 
 					{editing ? (
-						<div className="space-y-4 pt-2">
+						<div className="p-6 space-y-6">
 							{editing.mode === 'llm' ? (
 								<>
 									<div className="grid gap-4 sm:grid-cols-2">
 										<div className="space-y-2">
-											<Label>{t('form.inputRmbPerMillion')}</Label>
+											<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('form.inputRmbPerMillion')}</Label>
 											<Input
 												type="number"
 												min={0}
@@ -955,8 +943,9 @@ export function AdminPointsPricingPage() {
 															: prev,
 													)
 												}
+												className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 											/>
-											<p className="text-[10px] text-muted-foreground">
+											<p className="text-[9px] font-mono text-muted-foreground">
 												{t('form.microHint', {
 													micro: microPointsPerTokenFromRmbPerMillionTokens(
 														editing.inputRmbPerMillion,
@@ -965,7 +954,7 @@ export function AdminPointsPricingPage() {
 											</p>
 										</div>
 										<div className="space-y-2">
-											<Label>{t('form.outputRmbPerMillion')}</Label>
+											<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('form.outputRmbPerMillion')}</Label>
 											<Input
 												type="number"
 												min={0}
@@ -983,8 +972,9 @@ export function AdminPointsPricingPage() {
 															: prev,
 													)
 												}
+												className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 											/>
-											<p className="text-[10px] text-muted-foreground">
+											<p className="text-[9px] font-mono text-muted-foreground">
 												{t('form.microHint', {
 													micro: microPointsPerTokenFromRmbPerMillionTokens(
 														editing.outputRmbPerMillion,
@@ -993,13 +983,13 @@ export function AdminPointsPricingPage() {
 											</p>
 										</div>
 									</div>
-									<p className="text-[10px] text-muted-foreground">
+									<p className="text-[9px] text-muted-foreground uppercase tracking-tighter">
 										{t('form.llmPricingHint')}
 									</p>
 								</>
 							) : (
 								<div className="space-y-2">
-									<Label>{t('form.pointsPerMinute')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('form.pointsPerMinute')}</Label>
 									<Input
 										type="number"
 										min={0}
@@ -1014,12 +1004,13 @@ export function AdminPointsPricingPage() {
 													: prev,
 											)
 										}
+										className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 									/>
 								</div>
 							)}
 
 							<div className="space-y-2">
-								<Label>{t('form.minCharge')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('form.minCharge')}</Label>
 								<Input
 									type="number"
 									min={0}
@@ -1037,30 +1028,32 @@ export function AdminPointsPricingPage() {
 												: prev,
 										)
 									}
+									className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 								/>
 							</div>
 
 							{editing.targetModelId &&
 							!ruleByModelId.get(editing.targetModelId) ? (
-								<p className="text-[10px] text-muted-foreground">
+								<p className="text-[9px] text-muted-foreground uppercase tracking-tighter border-t border-border pt-4">
 									{t('form.overrideHint')}
 								</p>
 							) : null}
 						</div>
 					) : null}
 
-					<DialogFooter className="mt-4">
+					<div className="flex border-t border-border">
 						<Button
-							variant="outline"
+							variant="ghost"
 							onClick={() => setEditing(null)}
 							disabled={isBusy}
+							className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted"
 						>
 							{t('form.cancel')}
 						</Button>
-						<Button onClick={handleSave} disabled={isBusy}>
+						<Button onClick={handleSave} disabled={isBusy} className="flex-1 rounded-none h-12 bg-primary text-primary-foreground uppercase text-xs font-bold tracking-widest hover:bg-primary/90">
 							{t('form.save')}
 						</Button>
-					</DialogFooter>
+					</div>
 				</DialogContent>
 			</Dialog>
 		</div>

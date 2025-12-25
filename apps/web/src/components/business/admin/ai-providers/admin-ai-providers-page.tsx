@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -26,6 +24,7 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
+import { cn } from '~/lib/utils'
 
 type ProviderKind = 'llm' | 'asr'
 type ProviderType =
@@ -128,181 +127,208 @@ export function AdminAiProvidersPage() {
 	const isValid = isEditingProviderValid(editing)
 
 	return (
-		<div className="space-y-6">
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between">
-					<CardTitle>{t('title')}</CardTitle>
-					<Button onClick={() => setEditing({ ...DEFAULT_PROVIDER, kind })}>
-						{t('actions.add')}
-					</Button>
-				</CardHeader>
-				<CardContent>
-					<Tabs value={kind} onValueChange={(v) => setKind(v as ProviderKind)}>
-						<TabsList>
-							<TabsTrigger value="llm">{t('tabs.llm')}</TabsTrigger>
-							<TabsTrigger value="asr">{t('tabs.asr')}</TabsTrigger>
-						</TabsList>
-						<TabsContent value={kind}>
-							<div className="mt-4 space-y-3">
-								{providers.length === 0 ? (
-									<div className="text-sm text-muted-foreground">
-										{t('empty')}
-									</div>
-								) : (
-									providers.map((p) => {
-										const meta = (p.metadata ?? {}) as any
-										return (
-											<div
-												key={p.id}
-												className="flex items-center justify-between rounded-md border border-border/60 p-3"
-											>
-												<div className="space-y-1">
-													<div className="flex items-center gap-2">
-														<div className="font-medium">{p.name}</div>
-														<Badge
-															variant={p.enabled ? 'default' : 'secondary'}
-														>
-															{p.enabled
-																? t('status.enabled')
-																: t('status.disabled')}
-														</Badge>
+		<div className="space-y-8 font-sans">
+			<div className="flex items-end justify-between border-b border-primary pb-4">
+				<div>
+					<div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+						System / Administration / AI_Providers
+					</div>
+					<h1 className="text-3xl font-black uppercase tracking-tight">
+						{t('title')}
+					</h1>
+				</div>
+				<Button
+					variant="primary"
+					size="sm"
+					className="rounded-none uppercase text-[10px] font-bold tracking-widest px-6 h-9"
+					onClick={() => setEditing({ ...DEFAULT_PROVIDER, kind })}
+				>
+					+ ADD_PROVIDER
+				</Button>
+			</div>
+
+			<Tabs value={kind} onValueChange={(v) => setKind(v as ProviderKind)} className="space-y-0">
+				<TabsList className="h-auto w-full justify-start rounded-none bg-transparent p-0 border-b border-border mb-8">
+					<TabsTrigger value="llm" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+						{t('tabs.llm')}
+					</TabsTrigger>
+					<TabsTrigger value="asr" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+						{t('tabs.asr')}
+					</TabsTrigger>
+				</TabsList>
+
+				<TabsContent value={kind} className="mt-0 outline-none">
+					<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+						{providers.length === 0 ? (
+							<div className="lg:col-span-2 border border-dashed border-border p-12 text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
+								{t('empty')}
+							</div>
+						) : (
+							providers.map((p) => {
+								const meta = (p.metadata ?? {}) as any
+								return (
+									<div key={p.id} className="border border-border bg-card p-6 flex flex-col justify-between group">
+										<div className="space-y-4">
+											<div className="flex items-start justify-between border-b border-border pb-3">
+												<div>
+													<div className="font-mono text-xs font-black uppercase tracking-wider">{p.name}</div>
+													<div className="font-mono text-[10px] text-muted-foreground mt-1 tracking-tighter lowercase">
+														{p.slug} // {p.type}
 													</div>
-													<div className="text-xs text-muted-foreground">
-														{p.slug} · {p.type}
-													</div>
-													{p.baseUrl ? (
-														<div className="text-xs text-muted-foreground">
-															{p.baseUrl}
-														</div>
-													) : null}
 												</div>
-												<div className="flex items-center gap-2">
-													<Button
-														variant="secondary"
-														size="sm"
-														onClick={() =>
-															setEditing({
-																id: p.id,
-																slug: p.slug,
-																name: p.name,
-																kind: p.kind,
-																type: p.type as ProviderType,
-																baseUrl: p.baseUrl ?? '',
-																apiKey: '',
-																accountId:
-																	typeof meta?.accountId === 'string'
-																		? String(meta.accountId)
-																		: '',
-																maxUploadBytes:
-																	typeof meta?.maxUploadBytes === 'number'
-																		? String(meta.maxUploadBytes)
-																		: '',
-																enabled: Boolean(p.enabled),
-															})
-														}
-													>
-														{t('actions.edit')}
-													</Button>
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={() =>
-															toggleProvider.mutate({
-																id: p.id,
-																enabled: !p.enabled,
-															})
-														}
-													>
-														{p.enabled
-															? t('actions.disable')
-															: t('actions.enable')}
-													</Button>
-													<Button
-														variant="destructive"
-														size="sm"
-														disabled={deleteProvider.isPending}
-														onClick={() =>
-															void (async () => {
-																const ok = await confirmDialog({
-																	description: t('confirm.delete', {
-																		name: p.name,
-																	}),
-																	variant: 'destructive',
-																})
-																if (!ok) return
-																deleteProvider.mutate({ id: p.id })
-															})()
-														}
-													>
-														{t('actions.delete')}
-													</Button>
-													{p.kind === 'llm' ? (
-														<Button
-															variant="outline"
-															size="sm"
-															disabled={testProvider.isPending}
-															onClick={() =>
-																testProvider.mutate({ providerId: p.id })
-															}
-														>
-															{t('actions.test')}
-														</Button>
-													) : null}
+												<div className={cn(
+													"px-2 py-0.5 text-[9px] font-bold uppercase border",
+													p.enabled ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
+												)}>
+													{p.enabled ? t('status.enabled') : t('status.disabled')}
 												</div>
 											</div>
-										)
-									})
-								)}
-							</div>
-						</TabsContent>
-					</Tabs>
-				</CardContent>
-			</Card>
+
+											<div className="space-y-2">
+												{p.baseUrl ? (
+													<div className="font-mono text-[10px] text-muted-foreground break-all bg-muted/30 p-2">
+														BASE_URL: {p.baseUrl}
+													</div>
+												) : null}
+												{meta.accountId ? (
+													<div className="font-mono text-[10px] text-muted-foreground break-all bg-muted/30 p-2">
+														ACCOUNT_ID: {meta.accountId}
+													</div>
+												) : null}
+											</div>
+										</div>
+
+										<div className="flex flex-wrap gap-1 mt-6 opacity-40 group-hover:opacity-100 transition-opacity">
+											<Button
+												variant="outline"
+												size="xs"
+												className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-3 h-8"
+												onClick={() =>
+													setEditing({
+														id: p.id,
+														slug: p.slug,
+														name: p.name,
+														kind: p.kind,
+														type: p.type as ProviderType,
+														baseUrl: p.baseUrl ?? '',
+														apiKey: '',
+														accountId:
+															typeof meta?.accountId === 'string'
+																? String(meta.accountId)
+																: '',
+														maxUploadBytes:
+															typeof meta?.maxUploadBytes === 'number'
+																? String(meta.maxUploadBytes)
+																: '',
+														enabled: Boolean(p.enabled),
+													})
+												}
+											>
+												EDIT
+											</Button>
+											<Button
+												variant="outline"
+												size="xs"
+												className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-3 h-8"
+												onClick={() =>
+													toggleProvider.mutate({
+														id: p.id,
+														enabled: !p.enabled,
+													})
+												}
+											>
+												{p.enabled ? t('actions.disable') : t('actions.enable')}
+											</Button>
+											{p.kind === 'llm' ? (
+												<Button
+													variant="outline"
+													size="xs"
+													className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-3 h-8"
+													disabled={testProvider.isPending}
+													onClick={() =>
+														testProvider.mutate({ providerId: p.id })
+													}
+												>
+													TEST_SIG
+												</Button>
+											) : null}
+											<Button
+												variant="destructive"
+												size="xs"
+												className="rounded-none uppercase text-[9px] font-bold px-3 h-8 ml-auto"
+												disabled={deleteProvider.isPending}
+												onClick={() =>
+													void (async () => {
+														const ok = await confirmDialog({
+															description: t('confirm.delete', {
+																name: p.name,
+															}),
+															variant: 'destructive',
+														})
+														if (!ok) return
+														deleteProvider.mutate({ id: p.id })
+													})()
+												}
+											>
+												DEL
+											</Button>
+										</div>
+									</div>
+								)
+							})
+						)}
+					</div>
+				</TabsContent>
+			</Tabs>
 
 			<Dialog
 				open={!!editing}
 				onOpenChange={(open) => !open && setEditing(null)}
 			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{editing?.id ? t('dialog.editTitle') : t('dialog.addTitle')}
+				<DialogContent className="rounded-none border-2 border-primary p-0 overflow-hidden max-w-lg">
+					<DialogHeader className="bg-primary p-4 text-primary-foreground">
+						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
+							{editing?.id ? 'EDIT_PROVIDER' : 'ADD_NEW_PROVIDER'} // {kind.toUpperCase()}
 						</DialogTitle>
 					</DialogHeader>
 					{editing ? (
-						<div className="space-y-4">
-							<div className="space-y-2">
-								<Label>{t('fields.slug')}</Label>
-								<Input
-									value={editing.slug}
-									onChange={(e) =>
-										setEditing({ ...editing, slug: e.target.value })
-									}
-								/>
+						<div className="p-6 space-y-6">
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.slug')}</Label>
+									<Input
+										value={editing.slug}
+										onChange={(e) =>
+											setEditing({ ...editing, slug: e.target.value })
+										}
+										className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.name')}</Label>
+									<Input
+										value={editing.name}
+										onChange={(e) =>
+											setEditing({ ...editing, name: e.target.value })
+										}
+										className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
+									/>
+								</div>
 							</div>
 							<div className="space-y-2">
-								<Label>{t('fields.name')}</Label>
-								<Input
-									value={editing.name}
-									onChange={(e) =>
-										setEditing({ ...editing, name: e.target.value })
-									}
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label>{t('fields.type')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.type')}</Label>
 								<Select
 									value={editing.type}
 									onValueChange={(v) =>
 										setEditing({ ...editing, type: v as ProviderType })
 									}
 								>
-									<SelectTrigger>
+									<SelectTrigger className="h-9 rounded-none border-border font-mono text-[10px] uppercase tracking-wider">
 										<SelectValue />
 									</SelectTrigger>
-									<SelectContent>
+									<SelectContent className="rounded-none border-border">
 										{typeOptions.map((tp) => (
-											<SelectItem key={tp} value={tp}>
+											<SelectItem key={tp} value={tp} className="rounded-none font-mono text-[10px] uppercase tracking-wider">
 												{tp}
 											</SelectItem>
 										))}
@@ -311,62 +337,60 @@ export function AdminAiProvidersPage() {
 							</div>
 							{editing.kind === 'llm' ? (
 								<div className="space-y-2">
-									<Label>{t('fields.baseUrl')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.baseUrl')}</Label>
 									<Input
 										placeholder="https://api.example.com/v1"
 										value={editing.baseUrl}
 										onChange={(e) =>
 											setEditing({ ...editing, baseUrl: e.target.value })
 										}
+										className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 									/>
 								</div>
 							) : null}
 							{editing.kind === 'asr' && editing.type === 'whisper_api' ? (
 								<div className="space-y-2">
-									<Label>{t('fields.baseUrl')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.baseUrl')}</Label>
 									<Input
 										placeholder="https://vid.temp-drop-files.store"
 										value={editing.baseUrl}
 										onChange={(e) =>
 											setEditing({ ...editing, baseUrl: e.target.value })
 										}
+										className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 									/>
 								</div>
 							) : null}
 							{editing.kind === 'asr' && editing.type === 'cloudflare_asr' ? (
 								<div className="space-y-2">
-									<Label>{t('fields.accountId')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.accountId')}</Label>
 									<Input
-										placeholder="Cloudflare account id"
+										placeholder="CLOUDFLARE_ID"
 										value={editing.accountId}
 										onChange={(e) =>
 											setEditing({ ...editing, accountId: e.target.value })
 										}
+										className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 									/>
 								</div>
 							) : null}
-							{editing.kind === 'asr' ? (
-								<div className="space-y-2">
-									<Label>{t('fields.maxUploadBytes')}</Label>
-									<Input
-										placeholder={
-											editing.type === 'whisper_api'
-												? String(500 * 1024 * 1024)
-												: String(4 * 1024 * 1024)
-										}
-										value={editing.maxUploadBytes}
-										onChange={(e) =>
-											setEditing({ ...editing, maxUploadBytes: e.target.value })
-										}
-									/>
-								</div>
-							) : null}
-							{editing.kind === 'llm' || editing.kind === 'asr' ? (
-								<div className="space-y-2">
-									<Label>
-										{editing.kind === 'asr'
-											? t('fields.apiToken')
-											: t('fields.apiKey')}
+							<div className="grid grid-cols-2 gap-4">
+								{editing.kind === 'asr' ? (
+									<div className="space-y-2">
+										<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.maxUploadBytes')}</Label>
+										<Input
+											placeholder="524288000"
+											value={editing.maxUploadBytes}
+											onChange={(e) =>
+												setEditing({ ...editing, maxUploadBytes: e.target.value })
+											}
+											className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
+										/>
+									</div>
+								) : null}
+								<div className="space-y-2 flex-1">
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										{editing.kind === 'asr' ? t('fields.apiToken') : t('fields.apiKey')}
 									</Label>
 									<Input
 										type="password"
@@ -374,22 +398,24 @@ export function AdminAiProvidersPage() {
 										onChange={(e) =>
 											setEditing({ ...editing, apiKey: e.target.value })
 										}
+										className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 									/>
 								</div>
-							) : null}
-							<div className="flex items-center gap-2">
+							</div>
+							<div className="flex items-center gap-3 border border-border p-3 bg-muted/20">
 								<Switch
 									checked={editing.enabled}
 									onCheckedChange={(checked) =>
 										setEditing({ ...editing, enabled: checked })
 									}
+									className="scale-75 data-[state=checked]:bg-primary"
 								/>
-								<span className="text-sm">{t('fields.enabled')}</span>
+								<span className="text-[10px] font-bold uppercase tracking-widest">{t('fields.enabled')}</span>
 							</div>
 						</div>
 					) : null}
-					<DialogFooter>
-						<Button variant="secondary" onClick={() => setEditing(null)}>
+					<div className="flex border-t border-border">
+						<Button variant="ghost" onClick={() => setEditing(null)} className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted">
 							{t('actions.cancel')}
 						</Button>
 						<Button
@@ -432,10 +458,11 @@ export function AdminAiProvidersPage() {
 									enabled: editing.enabled,
 								})
 							}}
+							className="flex-1 rounded-none h-12 bg-primary text-primary-foreground uppercase text-xs font-bold tracking-widest hover:bg-primary/90"
 						>
 							{t('actions.save')}
 						</Button>
-					</DialogFooter>
+					</div>
 				</DialogContent>
 			</Dialog>
 		</div>
