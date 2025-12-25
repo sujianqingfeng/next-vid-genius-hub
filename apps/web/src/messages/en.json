@@ -455,6 +455,7 @@
 			"open": "Open",
 			"sync": "Sync info",
 			"syncing": "Syncing…",
+			"syncQueued": "Metadata sync started.",
 			"syncSuccess": "Metadata synced from source.",
 			"syncError": "Failed to sync metadata: {message}"
 		},

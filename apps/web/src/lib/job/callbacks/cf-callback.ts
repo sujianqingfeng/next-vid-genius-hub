@@ -15,6 +15,9 @@ import { persistAsrResultFromBucket } from '~/lib/subtitle/server/asr-result'
 type CallbackPayload = {
 	jobId: string
 	mediaId: string
+	eventId?: string
+	eventSeq?: number
+	eventTs?: number
 	status: 'completed' | 'failed' | 'canceled'
 	engine?:
 		| 'burner-ffmpeg'
@@ -23,6 +26,10 @@ type CallbackPayload = {
 		| 'asr-pipeline'
 	outputUrl?: string
 	outputKey?: string
+	outputAudioKey?: string
+	outputAudioSourceKey?: string
+	outputAudioProcessedKey?: string
+	outputMetadataKey?: string
 	durationMs?: number
 	attempts?: number
 	error?: string
@@ -57,6 +64,70 @@ type CallbackPayload = {
 
 type MediaRecord = typeof schema.media.$inferSelect
 
+function normaliseEventSeq(value: unknown): number | null {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return Math.max(0, Math.trunc(value))
+	}
+	if (typeof value === 'string' && value.trim()) {
+		const parsed = Number.parseInt(value, 10)
+		if (Number.isFinite(parsed)) return Math.max(0, parsed)
+	}
+	return null
+}
+
+function parseJsonish(value: unknown): unknown {
+	if (!value) return null
+	if (typeof value === 'object') return value
+	if (typeof value === 'string') {
+		try {
+			return JSON.parse(value)
+		} catch {
+			return null
+		}
+	}
+	return null
+}
+
+function getLastCallbackEventSeq(task: {
+	jobStatusSnapshot?: unknown
+}): number | null {
+	const snapshot = parseJsonish(task.jobStatusSnapshot) as any
+	const seq =
+		typeof snapshot?.callback?.lastEventSeq === 'number'
+			? snapshot.callback.lastEventSeq
+			: typeof snapshot?.lastCallbackEventSeq === 'number'
+				? snapshot.lastCallbackEventSeq
+				: null
+	if (typeof seq === 'number' && Number.isFinite(seq))
+		return Math.max(0, Math.trunc(seq))
+	return null
+}
+
+function mergeCallbackSnapshot(
+	task: { jobStatusSnapshot?: unknown },
+	input: { eventSeq: number; eventId?: string; eventTs?: number },
+) {
+	const snapshot = parseJsonish(task.jobStatusSnapshot)
+	const base =
+		snapshot && typeof snapshot === 'object'
+			? (snapshot as Record<string, unknown>)
+			: {}
+	const existingCallback =
+		base.callback && typeof base.callback === 'object'
+			? (base.callback as Record<string, unknown>)
+			: {}
+
+	return {
+		...base,
+		callback: {
+			...existingCallback,
+			lastEventSeq: input.eventSeq,
+			lastEventId: input.eventId ?? existingCallback.lastEventId ?? null,
+			lastEventTs: input.eventTs ?? Date.now(),
+		},
+	}
+}
+
 type RemoteProbe =
 	| { state: 'exists'; sizeBytes?: number }
 	| { state: 'missing' }
@@ -69,6 +140,106 @@ type MetadataSummary = {
 	viewCount?: number
 	likeCount?: number
 	durationSeconds?: number
+}
+
+async function resolveMetadataUrlFromPayload(
+	payload: CallbackPayload,
+): Promise<string | null> {
+	const urlFromStatus = payload.outputs?.metadata?.url
+	if (urlFromStatus) return urlFromStatus
+
+	const keyFromStatus =
+		payload.outputs?.metadata?.key ?? payload.outputMetadataKey ?? null
+	if (!keyFromStatus) return null
+
+	try {
+		return await presignGetByKey(keyFromStatus)
+	} catch {
+		return null
+	}
+}
+
+function parseCommentsMetadata(raw: unknown): schema.Comment[] {
+	if (!raw || typeof raw !== 'object') return []
+	const obj = raw as Record<string, unknown>
+	const rawComments = Array.isArray(obj.comments) ? obj.comments : []
+
+	const toNumber = (value: unknown): number => {
+		if (typeof value === 'number' && Number.isFinite(value)) return value
+		if (typeof value === 'string' && value.trim()) {
+			const parsed = Number(value)
+			if (Number.isFinite(parsed)) return parsed
+		}
+		return 0
+	}
+
+	return rawComments
+		.map((c) =>
+			c && typeof c === 'object' ? (c as Record<string, unknown>) : {},
+		)
+		.map((c): schema.Comment => {
+			return {
+				id: String(c.id ?? ''),
+				author: String(c.author ?? ''),
+				authorThumbnail:
+					typeof c.authorThumbnail === 'string' ? c.authorThumbnail : undefined,
+				content: String(c.content ?? ''),
+				translatedContent:
+					typeof c.translatedContent === 'string' ? c.translatedContent : '',
+				likes: toNumber(c.likes),
+				replyCount: toNumber(c.replyCount),
+			}
+		})
+}
+
+type ChannelSyncMetadata = {
+	channel?: { title?: string; thumbnail?: string }
+	videos: Array<Record<string, unknown>>
+}
+
+function parseChannelSyncMetadata(raw: unknown): ChannelSyncMetadata {
+	if (!raw || typeof raw !== 'object') return { videos: [] }
+	const obj = raw as Record<string, unknown>
+
+	const channelRaw = obj.channel
+	const channel =
+		channelRaw && typeof channelRaw === 'object'
+			? {
+					title:
+						typeof (channelRaw as any).title === 'string'
+							? String((channelRaw as any).title)
+							: undefined,
+					thumbnail:
+						typeof (channelRaw as any).thumbnail === 'string'
+							? String((channelRaw as any).thumbnail)
+							: undefined,
+				}
+			: undefined
+
+	const videos = Array.isArray(obj.videos)
+		? (obj.videos as Array<unknown>)
+				.filter((v) => v && typeof v === 'object')
+				.map((v) => v as Record<string, unknown>)
+		: []
+
+	return { channel, videos }
+}
+
+function toDateOrUndefined(value: unknown): Date | undefined {
+	if (value == null) return undefined
+	if (value instanceof Date) {
+		return Number.isNaN(value.getTime()) ? undefined : value
+	}
+	if (typeof value === 'number') {
+		const ms = value < 1e12 ? value * 1000 : value
+		const d = new Date(ms)
+		return Number.isNaN(d.getTime()) ? undefined : d
+	}
+	if (typeof value === 'string' && value.trim()) {
+		const d = new Date(value)
+		return Number.isNaN(d.getTime()) ? undefined : d
+	}
+	return undefined
 }
 
 function summariseRawMetadata(raw: unknown): MetadataSummary {
@@ -257,18 +428,15 @@ async function handleCloudDownloadCallback(
 	}
 
 	const rawVideoKey = payload.outputs?.video?.key ?? null
-	const fallbackVideoKey =
-		(payload as Partial<CallbackPayload>)?.outputKey ?? null
+	const fallbackVideoKey = payload.outputKey ?? null
 	const resolvedVideoKey = rawVideoKey ?? fallbackVideoKey ?? null
 	const audioProcessedKey =
 		payload.outputs?.audioProcessed?.key ??
 		payload.outputs?.audio?.key ??
-		(payload as any)?.outputAudioKey ??
+		payload.outputAudioKey ??
 		null
 	const audioSourceKey =
-		payload.outputs?.audioSource?.key ??
-		(payload as any)?.outputAudioSourceKey ??
-		null
+		payload.outputs?.audioSource?.key ?? payload.outputAudioSourceKey ?? null
 	const metadataKey = payload.outputs?.metadata?.key ?? null
 	const videoUrl = payload.outputs?.video?.url ?? null
 	const audioProcessedUrl =
@@ -533,7 +701,7 @@ async function handleCloudDownloadCallback(
 				userId: media.userId,
 				durationSeconds,
 				refType: 'download',
-				refId: media.id,
+				refId: payload.jobId,
 				remark: `download dur=${durationSeconds.toFixed(1)}s`,
 			})
 		} catch (error) {
@@ -574,9 +742,11 @@ export async function handleCfCallbackRequest(
 
 		const payload = JSON.parse(bodyText) as CallbackPayload
 
+		const eventSeq = normaliseEventSeq(payload.eventSeq)
+
 		logger.info(
 			'api',
-			`[cf-callback] received job=${payload.jobId} media=${payload.mediaId} engine=${payload.engine ?? 'unknown'} status=${payload.status}`,
+			`[cf-callback] received job=${payload.jobId} media=${payload.mediaId} engine=${payload.engine ?? 'unknown'} status=${payload.status} eventSeq=${eventSeq ?? 'n/a'}`,
 		)
 
 		const db = await getDb()
@@ -640,6 +810,14 @@ export async function handleCfCallbackRequest(
 			where: eq(schema.tasks.jobId, payload.jobId),
 		})
 
+		// Callbacks are retried by the orchestrator when eventSeq is present; dedupe by eventSeq.
+		if (task && eventSeq != null) {
+			const lastSeq = getLastCallbackEventSeq(task)
+			if (typeof lastSeq === 'number' && lastSeq >= eventSeq) {
+				return Response.json({ ok: true, deduped: true })
+			}
+		}
+
 		try {
 			if (task) {
 				await db
@@ -662,16 +840,226 @@ export async function handleCfCallbackRequest(
 
 		// media-downloader is also used for non-download tasks (comments-only, metadata refresh, channel sync).
 		// Those jobs should not mutate the media's download fields.
-		if (
-			payload.engine === 'media-downloader' &&
-			task?.kind &&
-			task.kind !== TASK_KINDS.DOWNLOAD
-		) {
-			logger.info(
-				'api',
-				`[cf-callback] non-download media-downloader job ignored job=${payload.jobId} kind=${task.kind}`,
-			)
-			return Response.json({ ok: true, ignored: true })
+		if (payload.engine === 'media-downloader' && task?.kind) {
+			if (task.kind === TASK_KINDS.DOWNLOAD) {
+				// handled below
+			} else if (task.kind === TASK_KINDS.COMMENTS_DOWNLOAD) {
+				if (payload.status === 'completed') {
+					const metadataUrl = await resolveMetadataUrlFromPayload(payload)
+					if (!metadataUrl) {
+						throw new Error(
+							`comments-download missing metadata output job=${payload.jobId}`,
+						)
+					}
+					const r = await fetch(metadataUrl)
+					if (!r.ok) throw new Error(`Fetch comments failed: ${r.status}`)
+					const json = (await r.json()) as unknown
+					const comments = parseCommentsMetadata(json)
+					await db
+						.update(schema.media)
+						.set({
+							comments,
+							commentCount: comments.length,
+							commentsDownloadedAt: new Date(),
+						})
+						.where(eq(schema.media.id, task.targetId))
+				}
+
+				if (eventSeq != null) {
+					try {
+						const nextSnapshot = mergeCallbackSnapshot(task, {
+							eventSeq,
+							eventId: payload.eventId,
+							eventTs: payload.eventTs,
+						})
+						await db
+							.update(schema.tasks)
+							.set({ jobStatusSnapshot: nextSnapshot, updatedAt: new Date() })
+							.where(eq(schema.tasks.id, task.id))
+					} catch {}
+				}
+
+				return Response.json({ ok: true })
+			} else if (task.kind === TASK_KINDS.CHANNEL_SYNC) {
+				const where = eq(schema.channels.id, task.targetId)
+
+				if (payload.status === 'completed') {
+					const channel = await db.query.channels.findFirst({ where })
+
+					const metadataUrl = await resolveMetadataUrlFromPayload(payload)
+					if (!metadataUrl) {
+						throw new Error(
+							`channel-sync missing metadata output job=${payload.jobId}`,
+						)
+					}
+					const r = await fetch(metadataUrl)
+					if (!r.ok) throw new Error(`Fetch channel videos failed: ${r.status}`)
+					const json = (await r.json()) as unknown
+					const metadata = parseChannelSyncMetadata(json)
+					const videos = metadata.videos
+
+					for (const v of videos) {
+						const vid: string = String(v.id ?? '')
+						if (!vid) continue
+
+						const title: string = String(v.title ?? '')
+						const url: string =
+							typeof v.url === 'string' && v.url.trim()
+								? v.url
+								: `https://www.youtube.com/watch?v=${vid}`
+
+						const publishedRaw =
+							v.publishedAt ?? v.published ?? v.date ?? v.publishedTimeText
+						const publishedAt = toDateOrUndefined(publishedRaw)
+
+						const thumb: string | undefined =
+							typeof v.thumbnail === 'string'
+								? v.thumbnail
+								: Array.isArray(v.thumbnails) &&
+									  typeof v.thumbnails[0]?.url === 'string'
+									? String(v.thumbnails[0].url)
+									: undefined
+
+						const viewCount =
+							typeof v.viewCount === 'number' ? v.viewCount : undefined
+						const likeCount =
+							typeof v.likeCount === 'number' ? v.likeCount : undefined
+
+						await db
+							.insert(schema.channelVideos)
+							.values({
+								channelId: task.targetId,
+								videoId: vid,
+								title,
+								url,
+								thumbnail: thumb ?? null,
+								publishedAt: publishedAt ?? undefined,
+								viewCount: viewCount ?? undefined,
+								likeCount: likeCount ?? undefined,
+								raw: v ? JSON.stringify(v) : undefined,
+							})
+							.onConflictDoNothing()
+					}
+
+					const updates: Record<string, unknown> = {
+						lastSyncedAt: new Date(),
+						lastSyncStatus: 'completed',
+						updatedAt: new Date(),
+					}
+					const title =
+						typeof metadata.channel?.title === 'string'
+							? metadata.channel.title.trim()
+							: ''
+					if (title) updates.title = title
+					const thumbnail =
+						typeof metadata.channel?.thumbnail === 'string'
+							? metadata.channel.thumbnail.trim()
+							: ''
+					if (thumbnail) updates.thumbnail = thumbnail
+					// Preserve existing values when metadata is missing.
+					if (!title && channel?.title) updates.title = channel.title
+					if (!thumbnail && channel?.thumbnail)
+						updates.thumbnail = channel.thumbnail
+
+					await db.update(schema.channels).set(updates).where(where)
+				} else if (
+					payload.status === 'failed' ||
+					payload.status === 'canceled'
+				) {
+					await db
+						.update(schema.channels)
+						.set({
+							lastSyncStatus: 'failed',
+							updatedAt: new Date(),
+						})
+						.where(where)
+				}
+
+				if (eventSeq != null) {
+					try {
+						const nextSnapshot = mergeCallbackSnapshot(task, {
+							eventSeq,
+							eventId: payload.eventId,
+							eventTs: payload.eventTs,
+						})
+						await db
+							.update(schema.tasks)
+							.set({ jobStatusSnapshot: nextSnapshot, updatedAt: new Date() })
+							.where(eq(schema.tasks.id, task.id))
+					} catch {}
+				}
+
+				return Response.json({ ok: true })
+			} else if (task.kind === TASK_KINDS.METADATA_REFRESH) {
+				if (payload.status === 'completed') {
+					const meta = (payload.metadata ?? {}) as Record<string, unknown>
+					const updates: Record<string, unknown> = {}
+
+					const title = typeof meta.title === 'string' ? meta.title.trim() : ''
+					const author =
+						typeof meta.author === 'string' ? meta.author.trim() : ''
+					const thumbnail =
+						typeof meta.thumbnail === 'string' ? meta.thumbnail.trim() : ''
+					const viewCount =
+						typeof meta.viewCount === 'number' ? meta.viewCount : undefined
+					const likeCount =
+						typeof meta.likeCount === 'number' ? meta.likeCount : undefined
+
+					if (title) updates.title = title
+					if (author) updates.author = author
+					if (thumbnail) updates.thumbnail = thumbnail
+					if (typeof viewCount === 'number') updates.viewCount = viewCount
+					if (typeof likeCount === 'number') updates.likeCount = likeCount
+
+					const metadataKey = payload.outputs?.metadata?.key
+					if (typeof metadataKey === 'string' && metadataKey.trim()) {
+						updates.remoteMetadataKey = metadataKey.trim()
+						updates.rawMetadataDownloadedAt = new Date()
+					}
+
+					if (Object.keys(updates).length > 0) {
+						await db
+							.update(schema.media)
+							.set(updates)
+							.where(eq(schema.media.id, task.targetId))
+					}
+				}
+
+				if (eventSeq != null) {
+					try {
+						const nextSnapshot = mergeCallbackSnapshot(task, {
+							eventSeq,
+							eventId: payload.eventId,
+							eventTs: payload.eventTs,
+						})
+						await db
+							.update(schema.tasks)
+							.set({ jobStatusSnapshot: nextSnapshot, updatedAt: new Date() })
+							.where(eq(schema.tasks.id, task.id))
+					} catch {}
+				}
+
+				return Response.json({ ok: true })
+			} else {
+				if (eventSeq != null) {
+					try {
+						const nextSnapshot = mergeCallbackSnapshot(task, {
+							eventSeq,
+							eventId: payload.eventId,
+							eventTs: payload.eventTs,
+						})
+						await db
+							.update(schema.tasks)
+							.set({ jobStatusSnapshot: nextSnapshot, updatedAt: new Date() })
+							.where(eq(schema.tasks.id, task.id))
+					} catch {}
+				}
+				logger.info(
+					'api',
+					`[cf-callback] non-download media-downloader job ignored job=${payload.jobId} kind=${task.kind}`,
+				)
+				return Response.json({ ok: true, ignored: true })
+			}
 		}
 
 		const media = await db.query.media.findFirst({
@@ -697,6 +1085,24 @@ export async function handleCfCallbackRequest(
 				media,
 				payload as CallbackPayload & { engine: 'media-downloader' },
 			)
+			if (task && eventSeq != null) {
+				try {
+					const nextSnapshot = mergeCallbackSnapshot(task, {
+						eventSeq,
+						eventId: payload.eventId,
+						eventTs: payload.eventTs,
+					})
+					await db
+						.update(schema.tasks)
+						.set({
+							jobStatusSnapshot: nextSnapshot,
+							updatedAt: new Date(),
+						})
+						.where(eq(schema.tasks.id, task.id))
+				} catch {
+					// best-effort
+				}
+			}
 			logger.info(
 				'api',
 				`[cf-callback] handled downloader callback job=${payload.jobId} media=${payload.mediaId} status=${payload.status}`,
@@ -748,7 +1154,7 @@ export async function handleCfCallbackRequest(
 							modelId,
 							durationSeconds,
 							refType: 'asr',
-							refId: media.id,
+							refId: payload.jobId,
 							remark: `asr ${modelId} ${durationSeconds.toFixed(1)}s`,
 						})
 					}
@@ -781,6 +1187,25 @@ export async function handleCfCallbackRequest(
 					'api',
 					`[cf-callback] asr ${payload.status} job=${payload.jobId} media=${payload.mediaId} error=${payload.error ?? 'n/a'}`,
 				)
+			}
+
+			if (task && eventSeq != null) {
+				try {
+					const nextSnapshot = mergeCallbackSnapshot(task, {
+						eventSeq,
+						eventId: payload.eventId,
+						eventTs: payload.eventTs,
+					})
+					await db
+						.update(schema.tasks)
+						.set({
+							jobStatusSnapshot: nextSnapshot,
+							updatedAt: new Date(),
+						})
+						.where(eq(schema.tasks.id, task.id))
+				} catch {
+					// best-effort; ignore dedupe snapshot write failures
+				}
 			}
 
 			return Response.json({ ok: true })
@@ -827,6 +1252,23 @@ export async function handleCfCallbackRequest(
 				'api',
 				`[cf-callback] render ${payload.status} job=${payload.jobId} media=${payload.mediaId} engine=${payload.engine} error=${errorMessage}`,
 			)
+		}
+
+		if (task && eventSeq != null) {
+			try {
+				const nextSnapshot = mergeCallbackSnapshot(task, {
+					eventSeq,
+					eventId: payload.eventId,
+					eventTs: payload.eventTs,
+				})
+				await db
+					.update(schema.tasks)
+					.set({
+						jobStatusSnapshot: nextSnapshot,
+						updatedAt: new Date(),
+					})
+					.where(eq(schema.tasks.id, task.id))
+			} catch {}
 		}
 
 		return Response.json({ ok: true })

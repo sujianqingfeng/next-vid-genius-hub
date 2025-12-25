@@ -1,4 +1,4 @@
-import { bucketPaths, TERMINAL_JOB_STATUSES } from '@app/media-domain'
+import { bucketPaths } from '@app/media-domain'
 import { eq } from 'drizzle-orm'
 import type { JobStatusResponse } from '~/lib/cloudflare'
 import {
@@ -142,30 +142,5 @@ export async function getRenderStatus(input: {
 				: 'n/a'
 		}`,
 	)
-	try {
-		const db = await getDb()
-		const task = await db.query.tasks.findFirst({
-			where: eq(schema.tasks.jobId, input.jobId),
-		})
-		if (task) {
-			await db
-				.update(schema.tasks)
-				.set({
-					status: status.status,
-					progress:
-						typeof status.progress === 'number'
-							? Math.round(status.progress * 100)
-							: null,
-					jobStatusSnapshot: status,
-					updatedAt: new Date(),
-					finishedAt: TERMINAL_JOB_STATUSES.includes(status.status)
-						? new Date()
-						: task.finishedAt,
-				})
-				.where(eq(schema.tasks.id, task.id))
-		}
-	} catch {
-		// best-effort
-	}
 	return status
 }

@@ -145,6 +145,25 @@ export async function spendPoints(opts: {
 	return applyChange(client)
 }
 
+export async function hasTransactionForRef(opts: {
+	userId: string
+	type: PointTransactionType
+	refId: string
+	db?: DbClient
+}): Promise<boolean> {
+	const client = opts.db ?? (await getDb())
+	const refId = opts.refId.trim()
+	if (!refId) return false
+	const row = await client.query.pointTransactions.findFirst({
+		where: and(
+			eq(schema.pointTransactions.userId, opts.userId),
+			eq(schema.pointTransactions.type, opts.type),
+			eq(schema.pointTransactions.refId, refId),
+		),
+	})
+	return Boolean(row)
+}
+
 export async function listTransactions(opts: {
 	userId: string
 	limit?: number

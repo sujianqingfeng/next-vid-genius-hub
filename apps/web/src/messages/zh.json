@@ -455,6 +455,7 @@
 			"open": "打开",
 			"sync": "同步信息",
 			"syncing": "同步中…",
+			"syncQueued": "已开始同步元数据。",
 			"syncSuccess": "元数据已从源同步。",
 			"syncError": "同步元数据失败：{message}"
 		},

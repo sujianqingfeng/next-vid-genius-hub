@@ -5,7 +5,11 @@ import {
 	calculateDownloadCost,
 	calculateLlmCost,
 } from './pricing'
-import { InsufficientPointsError, spendPoints } from './service'
+import {
+	hasTransactionForRef,
+	InsufficientPointsError,
+	spendPoints,
+} from './service'
 
 interface BaseChargeInput {
 	userId: string
@@ -112,6 +116,22 @@ export async function chargeAsrUsage(
 	}
 
 	if (points <= 0) return { charged: 0 }
+
+	// Idempotency: if caller provides a stable refId (recommended: jobId),
+	// skip charging again when callbacks are retried.
+	if (opts.refId && opts.refId.trim()) {
+		try {
+			const already = await hasTransactionForRef({
+				userId: opts.userId,
+				type: POINT_TRANSACTION_TYPES.ASR_USAGE,
+				refId: opts.refId,
+			})
+			if (already) return { charged: 0 }
+		} catch {
+			// best-effort; if we can't check, fall back to charging
+		}
+	}
+
 	const remark = buildRemark(
 		`asr model=${opts.modelId ?? 'default'} dur=${durationSeconds.toFixed(1)}s`,
 		opts.remark,
@@ -166,6 +186,22 @@ export async function chargeDownloadUsage(
 	}
 
 	if (points <= 0) return { charged: 0 }
+
+	// Idempotency: if caller provides a stable refId (recommended: jobId),
+	// skip charging again when callbacks are retried.
+	if (opts.refId && opts.refId.trim()) {
+		try {
+			const already = await hasTransactionForRef({
+				userId: opts.userId,
+				type: POINT_TRANSACTION_TYPES.DOWNLOAD_USAGE,
+				refId: opts.refId,
+			})
+			if (already) return { charged: 0 }
+		} catch {
+			// best-effort
+		}
+	}
+
 	const remark = buildRemark(
 		`download dur=${durationSeconds.toFixed(1)}s`,
 		opts.remark,

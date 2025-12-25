@@ -1,4 +1,3 @@
-import { TERMINAL_JOB_STATUSES } from '@app/media-domain'
 import { os } from '@orpc/server'
 import { DEFAULT_TEMPLATE_ID } from '@app/remotion-project/templates'
 import { and, eq } from 'drizzle-orm'
@@ -452,31 +451,6 @@ export const getRenderStatus = os
 			'comments',
 			`[render.status] job=${input.jobId} status=${status.status} progress=${typeof status.progress === 'number' ? Math.round(status.progress * 100) : 'n/a'}`,
 		)
-		try {
-			const db = await getDb()
-			const task = await db.query.tasks.findFirst({
-				where: eq(schema.tasks.jobId, input.jobId),
-			})
-			if (task) {
-				await db
-					.update(schema.tasks)
-					.set({
-						status: status.status,
-						progress:
-							typeof status.progress === 'number'
-								? Math.round(status.progress * 100)
-								: null,
-						jobStatusSnapshot: status,
-						updatedAt: new Date(),
-						finishedAt: TERMINAL_JOB_STATUSES.includes(status.status)
-							? new Date()
-							: task.finishedAt,
-					})
-					.where(eq(schema.tasks.id, task.id))
-			}
-		} catch {
-			// best-effort
-		}
 		return status
 	})
 
@@ -610,31 +584,6 @@ export const getCloudCommentsStatus = os
 			'comments',
 			`[comments.download.status] job=${input.jobId} status=${status.status} progress=${typeof status.progress === 'number' ? Math.round(status.progress * 100) : 'n/a'}`,
 		)
-		try {
-			const db = await getDb()
-			const task = await db.query.tasks.findFirst({
-				where: eq(schema.tasks.jobId, input.jobId),
-			})
-			if (task) {
-				await db
-					.update(schema.tasks)
-					.set({
-						status: status.status,
-						progress:
-							typeof status.progress === 'number'
-								? Math.round(status.progress * 100)
-								: null,
-						jobStatusSnapshot: status,
-						updatedAt: new Date(),
-						finishedAt: TERMINAL_JOB_STATUSES.includes(status.status)
-							? new Date()
-							: task.finishedAt,
-					})
-					.where(eq(schema.tasks.id, task.id))
-			}
-		} catch {
-			// best-effort
-		}
 		return status
 	})
 

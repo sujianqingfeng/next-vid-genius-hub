@@ -3,7 +3,6 @@ import { os } from '@orpc/server'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
-import type { JobStatusResponse } from '~/lib/cloudflare'
 import {
 	deleteCloudArtifacts,
 	getJobStatus,
@@ -184,7 +183,6 @@ export const refreshMetadata = os
 			updatedAt: new Date(),
 		})
 
-		let lastStatus: JobStatusResponse | null = null
 		try {
 			const manifest: JobManifest = {
 				jobId,
@@ -225,68 +223,7 @@ export const refreshMetadata = os
 				})
 				.where(eq(schema.tasks.id, taskId))
 
-			const terminal: ReadonlySet<JobStatusResponse['status']> = new Set([
-				'completed',
-				'failed',
-				'canceled',
-			])
-			const startedAt = Date.now()
-			lastStatus = await getJobStatus(job.jobId)
-
-			while (!terminal.has(lastStatus.status)) {
-				try {
-					await db
-						.update(schema.tasks)
-						.set({
-							status: lastStatus.status,
-							progress:
-								typeof lastStatus.progress === 'number'
-									? Math.round(lastStatus.progress * 100)
-									: null,
-							jobStatusSnapshot: lastStatus,
-							updatedAt: new Date(),
-						})
-						.where(eq(schema.tasks.id, taskId))
-				} catch {
-					// best-effort
-				}
-				if (Date.now() - startedAt > 60_000) {
-					await db
-						.update(schema.tasks)
-						.set({
-							status: 'failed',
-							error: `timeout:${lastStatus.status}`,
-							finishedAt: new Date(),
-							updatedAt: new Date(),
-						})
-						.where(eq(schema.tasks.id, taskId))
-					throw new Error(`Metadata refresh timed out: ${lastStatus.status}`)
-				}
-				await new Promise((resolve) => setTimeout(resolve, 1500))
-				lastStatus = await getJobStatus(job.jobId)
-			}
-
-			try {
-				await db
-					.update(schema.tasks)
-					.set({
-						status: lastStatus.status,
-						progress:
-							typeof lastStatus.progress === 'number'
-								? Math.round(lastStatus.progress * 100)
-								: null,
-						jobStatusSnapshot: lastStatus,
-						finishedAt: new Date(),
-						updatedAt: new Date(),
-						error:
-							lastStatus.status === 'completed'
-								? null
-								: lastStatus.message || null,
-					})
-					.where(eq(schema.tasks.id, taskId))
-			} catch {
-				// best-effort
-			}
+			return { jobId: job.jobId, taskId }
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : 'Failed to refresh metadata'
@@ -305,60 +242,13 @@ export const refreshMetadata = os
 				.where(eq(schema.tasks.id, taskId))
 			throw err
 		}
+	})
 
-		if (!lastStatus) {
-			throw new Error('Metadata job did not start')
-		}
-
-		if (lastStatus.status !== 'completed') {
-			const msg =
-				lastStatus.message || `Metadata job not completed: ${lastStatus.status}`
-			throw new Error(msg)
-		}
-
-		const meta = (lastStatus.metadata ?? {}) as Record<string, unknown>
-		const updates: Record<string, unknown> = {}
-
-		const title = typeof meta.title === 'string' ? meta.title : undefined
-		const author = typeof meta.author === 'string' ? meta.author : undefined
-		const thumbnail =
-			typeof meta.thumbnail === 'string' ? meta.thumbnail : undefined
-		const viewCount =
-			typeof meta.viewCount === 'number' ? meta.viewCount : undefined
-		const likeCount =
-			typeof meta.likeCount === 'number' ? meta.likeCount : undefined
-
-		if (title) updates.title = title
-		if (author) updates.author = author
-		if (thumbnail) updates.thumbnail = thumbnail
-		if (typeof viewCount === 'number') updates.viewCount = viewCount
-		if (typeof likeCount === 'number') updates.likeCount = likeCount
-
-		if (Object.keys(updates).length === 0) {
-			logger.info(
-				'media',
-				`[metadata.refresh.done] media=${record.id} user=${userId} no-op (no fields changed)`,
-			)
-			return record
-		}
-
-		await db
-			.update(schema.media)
-			.set(updates)
-			.where(
-				and(eq(schema.media.id, input.id), eq(schema.media.userId, userId)),
-			)
-		const updated = await db.query.media.findFirst({
-			where: and(
-				eq(schema.media.id, input.id),
-				eq(schema.media.userId, userId),
-			),
-		})
-		logger.info(
-			'media',
-			`[metadata.refresh.done] media=${record.id} user=${userId} updatedFields=${Object.keys(updates).join(',')}`,
-		)
-		return updated
+export const getMetadataRefreshStatus = os
+	.input(z.object({ jobId: z.string().min(1) }))
+	.handler(async ({ input }) => {
+		// Read-only: callback is responsible for writing projections.
+		return getJobStatus(input.jobId)
 	})
 
 export const updateTitles = os

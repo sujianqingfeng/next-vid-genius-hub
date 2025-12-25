@@ -460,36 +460,23 @@ export function MediaCommentsPage({
 		},
 	)
 
-	const finalizeCloudCommentsMutation = useEnhancedMutation(
-		queryOrpc.comment.finalizeCloudCommentsDownload.mutationOptions({
-			onSuccess: async () => {
-				setCommentsCloudJobId(null)
-				await qc.invalidateQueries({
-					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-				})
-			},
-		}),
-		{
-			successToast: t('toasts.commentsDownloaded'),
-			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
-		},
-	)
-
-	const finalizeAttemptedJobIdsRef = React.useRef<Set<string>>(new Set())
 	React.useEffect(() => {
 		const jobId = commentsCloudJobId
 		const status = cloudCommentsStatusQuery.data?.status
 		if (!jobId) return
 		if (status !== 'completed') return
-		if (finalizeCloudCommentsMutation.isPending) return
-		if (finalizeAttemptedJobIdsRef.current.has(jobId)) return
-		finalizeAttemptedJobIdsRef.current.add(jobId)
-		finalizeCloudCommentsMutation.mutate({ mediaId: id, jobId })
+
+		// Comments are now persisted by the orchestrator callback; just refresh UI state and clear the stored job.
+		setCommentsCloudJobId(null)
+		qc.invalidateQueries({
+			queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+		})
 	}, [
 		cloudCommentsStatusQuery.data?.status,
 		commentsCloudJobId,
-		finalizeCloudCommentsMutation,
 		id,
+		qc,
+		setCommentsCloudJobId,
 	])
 
 	// ---------- Translation ----------
@@ -626,7 +613,6 @@ export function MediaCommentsPage({
 	const isBusy =
 		mediaQuery.isLoading ||
 		startCloudCommentsMutation.isPending ||
-		finalizeCloudCommentsMutation.isPending ||
 		translateCommentsMutation.isPending ||
 		deleteCommentsMutation.isPending ||
 		startCloudRenderMutation.isPending
@@ -1185,9 +1171,7 @@ export function MediaCommentsPage({
 																variant="outline"
 																className="rounded-none font-mono text-[10px] uppercase tracking-widest"
 																onClick={() => setCommentsCloudJobId(null)}
-																disabled={
-																	finalizeCloudCommentsMutation.isPending
-																}
+																disabled={isBusy}
 															>
 																[ TERMINATE_JOB ]
 															</Button>

@@ -12,16 +12,17 @@ import {
 	Terminal,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
 import {
 	Sheet,
 	SheetContent,
-	SheetHeader,
 	SheetTitle,
 	SheetTrigger,
 } from '~/components/ui/sheet'
 import { Skeleton } from '~/components/ui/skeleton'
 import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
+import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import type { MediaItem } from '~/lib/media/types'
 import { useTranslations } from '~/lib/i18n'
@@ -67,17 +68,60 @@ export function MediaDetailPage({ id }: { id: string }) {
 		enabled: mediaQuery.isSuccess && pointsOpen,
 	})
 
+	const terminalStatuses = useMemo(
+		() => new Set(['completed', 'failed', 'canceled']),
+		[],
+	)
+	const {
+		jobId: metadataJobId,
+		setJobId: setMetadataJobId,
+		statusQuery: metadataStatusQuery,
+	} = useCloudJob<any, Error>({
+		storageKey: `metadataRefreshJob:${id}`,
+		enabled: true,
+		completeStatuses: ['completed', 'failed', 'canceled'],
+		createQueryOptions: (jobId) => ({
+			...queryOrpc.media.getMetadataRefreshStatus.queryOptions({
+				input: { jobId },
+			}),
+			enabled: Boolean(jobId),
+			refetchInterval: (q) => {
+				const status = (q.state.data as any)?.status
+				if (!status) return 1500
+				return terminalStatuses.has(status) ? false : 1500
+			},
+		}),
+		onCompleted: async ({ data }) => {
+			const status = (data as any)?.status
+			if (status === 'completed') {
+				toast.success(t('actions.syncSuccess'))
+			} else {
+				const message =
+					(data as any)?.error ||
+					(data as any)?.message ||
+					`status=${String(status || 'unknown')}`
+				toast.error(t('actions.syncError', { message }))
+			}
+
+			await qc.invalidateQueries({
+				queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
+			})
+			await qc.invalidateQueries({ queryKey: queryOrpc.media.list.key() })
+		},
+		autoClearOnComplete: true,
+	})
+
 	const refreshMutation = useEnhancedMutation(
 		queryOrpc.media.refreshMetadata.mutationOptions({
-			onSuccess: async () => {
-				await qc.invalidateQueries({
-					queryKey: queryOrpc.media.byId.queryKey({ input: { id } }),
-				})
-				await qc.invalidateQueries({ queryKey: queryOrpc.media.list.key() })
+			onSuccess: async (data: any) => {
+				const jobId = data?.jobId
+				if (typeof jobId === 'string' && jobId.trim()) {
+					setMetadataJobId(jobId)
+				}
 			},
 		}),
 		{
-			successToast: t('actions.syncSuccess'),
+			successToast: t('actions.syncQueued'),
 			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
@@ -133,6 +177,11 @@ export function MediaDetailPage({ id }: { id: string }) {
 	const createdAt = toDateLabel(item.createdAt)
 	const previewUrl = mediaPreviewUrl(item, id)
 	const title = item.translatedTitle || item.title || id
+	const metadataStatus = (metadataStatusQuery.data as any)?.status as
+		| string
+		| undefined
+	const isMetadataSyncing =
+		Boolean(metadataJobId) && !terminalStatuses.has(metadataStatus || '')
 	const txItems = transactionsQuery.data?.items ?? []
 	const txTotal = transactionsQuery.data?.total ?? 0
 	const txNetDelta = transactionsQuery.data?.netDelta ?? 0
@@ -183,10 +232,12 @@ export function MediaDetailPage({ id }: { id: string }) {
 							variant="outline"
 							size="sm"
 							className="rounded-none border-border uppercase tracking-wide text-xs h-9"
-							disabled={refreshMutation.isPending || !item.url}
+							disabled={
+								refreshMutation.isPending || !item.url || isMetadataSyncing
+							}
 							onClick={() => refreshMutation.mutate({ id })}
 						>
-							{refreshMutation.isPending ? (
+							{refreshMutation.isPending || isMetadataSyncing ? (
 								<>
 									<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
 									{t('actions.syncing')}

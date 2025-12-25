@@ -27,6 +27,33 @@ export class RenderJobDO {
 		this.env = env
 	}
 
+	private async setAlarmEarlier(atMs: number) {
+		let existing: number | undefined
+		try {
+			existing = await this.state.storage.get<number>('alarmAt')
+		} catch {}
+		const now = Date.now()
+		if (typeof existing === 'number' && Number.isFinite(existing)) {
+			// If the stored alarm time is already in the past, treat it as cleared so we can schedule again.
+			if (existing <= now) existing = undefined
+		}
+		if (typeof existing === 'number' && Number.isFinite(existing)) {
+			if (existing <= atMs) return
+		}
+		try {
+			await this.state.storage.setAlarm(atMs)
+			await this.state.storage.put('alarmAt', atMs)
+		} catch {}
+	}
+
+	private getNotifyBackoffMs(attempt: number): number {
+		const idx = Math.max(0, Math.trunc(attempt))
+		const schedule = [
+			1000, 2000, 5000, 10_000, 20_000, 30_000, 60_000, 120_000, 300_000,
+		]
+		return schedule[Math.min(idx, schedule.length - 1)]!
+	}
+
 	async fetch(req: Request): Promise<Response> {
 		const url = new URL(req.url)
 		const path = url.pathname
@@ -80,25 +107,92 @@ export class RenderJobDO {
 				ts: Date.now(),
 			}
 			await this.state.storage.put('job', next)
+
+			const completionHasOutputs = () => {
+				if (next.engine === 'asr-pipeline')
+					return Boolean(next.outputs?.vtt?.key)
+				if (next.engine === 'media-downloader') {
+					return Boolean(
+						next.outputKey ||
+						next.outputMetadataKey ||
+						next.outputs?.metadata?.key,
+					)
+				}
+				return Boolean(next.outputKey)
+			}
+
 			const shouldNotify =
 				TERMINAL_STATUSES.includes(next.status) &&
 				!(next.appNotified || next.nextNotified) &&
-				(next.status !== 'completed' ||
-					(next.engine === 'asr-pipeline'
-						? Boolean(next.outputs?.vtt?.key)
-						: Boolean(next.outputKey)))
-				if (shouldNotify) {
-					const ok = await this.notifyApp(next)
+				(next.status !== 'completed' || completionHasOutputs())
+
+			if (shouldNotify && next.jobId) {
+				type PendingNotify = {
+					eventSeq: number
+					eventId: string
+					eventTs: number
+					payload: Record<string, unknown>
+					attempt: number
+					nextAt: number
+					lastError?: string
+				}
+
+				const now = Date.now()
+				let pending = next.pendingNotify as PendingNotify | undefined
+
+				if (!pending) {
+					const lastSeq =
+						typeof next.callbackEventSeq === 'number' &&
+						Number.isFinite(next.callbackEventSeq)
+							? Math.trunc(next.callbackEventSeq)
+							: 0
+					const eventSeq = lastSeq + 1
+					const eventId = `${next.jobId}:${eventSeq}`
+					const eventTs = now
+					next.callbackEventSeq = eventSeq
+
+					const payload = await this.buildAppCallbackPayload(next, {
+						eventSeq,
+						eventId,
+						eventTs,
+					})
+
+					pending = {
+						eventSeq,
+						eventId,
+						eventTs,
+						payload,
+						attempt: 0,
+						nextAt: now,
+					}
+					next.pendingNotify = pending
+					await this.state.storage.put('job', next)
+				}
+
+				if (typeof pending.nextAt === 'number' && pending.nextAt > now) {
+					await this.setAlarmEarlier(pending.nextAt)
+				} else {
+					const ok = await this.postAppCallback(pending.payload)
 					if (ok) {
 						next.appNotified = true
-						// Backward compatible for older deploys/rollbacks.
 						next.nextNotified = true
+						next.lastNotifiedEventSeq = pending.eventSeq
+						next.pendingNotify = undefined
 						await this.state.storage.put('job', next)
+					} else {
+						pending.attempt = Math.max(0, Math.trunc(pending.attempt || 0)) + 1
+						pending.lastError = 'notifyApp_failed'
+						pending.nextAt = now + this.getNotifyBackoffMs(pending.attempt)
+						next.pendingNotify = pending
+						await this.state.storage.put('job', next)
+						await this.setAlarmEarlier(pending.nextAt)
 					}
 				}
-				return new Response(JSON.stringify({ ok: true }), {
-					headers: { 'content-type': 'application/json' },
-				})
+			}
+
+			return new Response(JSON.stringify({ ok: true }), {
+				headers: { 'content-type': 'application/json' },
+			})
 		}
 		if (req.method === 'POST' && path.endsWith('/start-asr')) {
 			const doc = (await this.state.storage.get('job')) as any
@@ -247,15 +341,64 @@ export class RenderJobDO {
 		})
 	}
 
-		// Durable Object alarms: used for polling external async ASR providers.
+	// Durable Object alarms: used for polling external async ASR providers.
 	async alarm() {
 		const doc = (await this.state.storage.get('job')) as any
 		if (!doc || !doc.jobId) return
+
+		// 1) Retry pending callbacks to the app (alarm-driven).
+		type PendingNotify = {
+			eventSeq: number
+			eventId: string
+			eventTs: number
+			payload: Record<string, unknown>
+			attempt: number
+			nextAt: number
+			lastError?: string
+		}
+
+		const pending = doc.pendingNotify as PendingNotify | undefined
+		if (pending && typeof pending.nextAt === 'number') {
+			const now = Date.now()
+			if (pending.nextAt <= now) {
+				const ok = await this.postAppCallback(pending.payload)
+				if (ok) {
+					doc.appNotified = true
+					doc.nextNotified = true
+					doc.lastNotifiedEventSeq = pending.eventSeq
+					doc.pendingNotify = undefined
+					try {
+						await this.state.storage.put('job', doc)
+					} catch {}
+				} else {
+					pending.attempt = Math.max(0, Math.trunc(pending.attempt || 0)) + 1
+					pending.lastError = 'notifyApp_failed'
+					pending.nextAt = now + this.getNotifyBackoffMs(pending.attempt)
+					doc.pendingNotify = pending
+					try {
+						await this.state.storage.put('job', doc)
+					} catch {}
+					await this.setAlarmEarlier(pending.nextAt)
+				}
+			} else {
+				await this.setAlarmEarlier(pending.nextAt)
+			}
+		}
 
 		// Existing ASR polling logic (only).
 		if (doc.engine !== 'asr-pipeline') return
 		if (TERMINAL_STATUSES.includes(doc.status) || doc.outputs?.vtt?.key) return
 		if (doc?.metadata?.providerType !== 'whisper_api') return
+
+		const nextPollAt =
+			typeof doc.whisperPollAt === 'number' &&
+			Number.isFinite(doc.whisperPollAt)
+				? (doc.whisperPollAt as number)
+				: null
+		if (typeof nextPollAt === 'number' && nextPollAt > Date.now()) {
+			await this.setAlarmEarlier(nextPollAt)
+			return
+		}
 
 		const whisperJobId =
 			typeof doc?.metadata?.whisperJobId === 'string'
@@ -426,7 +569,9 @@ export class RenderJobDO {
 
 		// Not finished yet: schedule another poll.
 		try {
-			await this.state.storage.setAlarm(Date.now() + 3000)
+			doc.whisperPollAt = Date.now() + 3000
+			await this.state.storage.put('job', doc)
+			await this.setAlarmEarlier(doc.whisperPollAt)
 		} catch {}
 	}
 
@@ -483,21 +628,27 @@ export class RenderJobDO {
 		}
 
 		try {
-			await this.state.storage.setAlarm(Date.now() + 1000)
+			doc.whisperPollAt = Date.now() + 1000
+			await this.state.storage.put('job', doc)
+			await this.setAlarmEarlier(doc.whisperPollAt)
 		} catch {}
 	}
 
-	private async notifyApp(doc: any) {
-		const appBase = (
-			this.env.APP_BASE_URL || 'http://localhost:3000'
-		).replace(/\/$/, '')
-		const cbUrl = `${appBase}/api/render/cf-callback`
+	private async buildAppCallbackPayload(
+		doc: any,
+		event?: { eventSeq: number; eventId: string; eventTs: number },
+	) {
 		const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
 		const payload: Record<string, unknown> = {
 			jobId: doc.jobId,
 			mediaId: doc.mediaId || 'unknown',
 			engine: doc.engine,
 			status: doc.status || 'completed',
+		}
+		if (event) {
+			payload.eventSeq = event.eventSeq
+			payload.eventId = event.eventId
+			payload.eventTs = event.eventTs
 		}
 
 		if (doc.error) {
@@ -579,6 +730,15 @@ export class RenderJobDO {
 			)
 		}
 
+		return payload
+	}
+
+	private async postAppCallback(payload: Record<string, unknown>) {
+		const appBase = (this.env.APP_BASE_URL || 'http://localhost:3000').replace(
+			/\/$/,
+			'',
+		)
+		const cbUrl = `${appBase}/api/render/cf-callback`
 		const secret = requireJobCallbackSecret(this.env)
 		const signature = await hmacHex(secret, JSON.stringify(payload))
 		try {
@@ -591,8 +751,10 @@ export class RenderJobDO {
 				body: JSON.stringify(payload),
 			})
 			if (!res.ok) {
+				const jobId =
+					typeof payload.jobId === 'string' ? (payload.jobId as string) : 'n/a'
 				console.warn('[orchestrator] notifyApp non-2xx', {
-					jobId: doc.jobId,
+					jobId,
 					status: res.status,
 					cbUrl,
 				})
@@ -600,8 +762,10 @@ export class RenderJobDO {
 			}
 			return true
 		} catch (e) {
+			const jobId =
+				typeof payload.jobId === 'string' ? (payload.jobId as string) : 'n/a'
 			console.warn('[orchestrator] notifyApp error', {
-				jobId: doc.jobId,
+				jobId,
 				cbUrl,
 				msg: (e as Error)?.message || String(e),
 			})
