@@ -71,8 +71,10 @@ export async function getProxyCheckSettings(
 	return normalizeProxyCheckSettings({
 		testUrl: (row.proxyCheckTestUrl ?? '').trim(),
 		timeoutMs: row.proxyCheckTimeoutMs ?? DefaultProxyCheckSettings.timeoutMs,
-		probeBytes: row.proxyCheckProbeBytes ?? DefaultProxyCheckSettings.probeBytes,
-		concurrency: row.proxyCheckConcurrency ?? DefaultProxyCheckSettings.concurrency,
+		probeBytes:
+			row.proxyCheckProbeBytes ?? DefaultProxyCheckSettings.probeBytes,
+		concurrency:
+			row.proxyCheckConcurrency ?? DefaultProxyCheckSettings.concurrency,
 	})
 }
 
@@ -107,4 +109,3 @@ export async function setProxyCheckSettings(
 
 	return normalized
 }
-

@@ -142,9 +142,7 @@ export function ChannelsPage() {
 		return raw.map((p) => ({
 			id: p.id,
 			name:
-				p.id === 'none'
-					? tProxySelector('auto')
-					: (p.name ?? p.server ?? p.id),
+				p.id === 'none' ? tProxySelector('auto') : (p.name ?? p.server ?? p.id),
 			testStatus: p.testStatus,
 			responseTime: p.responseTime,
 		}))
@@ -543,7 +541,7 @@ function ChannelCard({
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder="Proxy" />
 								</SelectTrigger>
-							<SelectContent>
+								<SelectContent>
 									{proxies.map((p) => (
 										<SelectItem
 											key={p.id}

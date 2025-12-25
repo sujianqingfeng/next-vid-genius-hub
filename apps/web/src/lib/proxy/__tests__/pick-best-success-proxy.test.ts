@@ -34,4 +34,3 @@ describe('pickBestSuccessProxyId', () => {
 		expect(pickBestSuccessProxyId(input)).toBe('b')
 	})
 })
-

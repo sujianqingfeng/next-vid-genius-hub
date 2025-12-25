@@ -250,26 +250,26 @@
 				"subscriptions": "订阅",
 				"proxies": "代理"
 			},
-		"addSubscription": "新增订阅",
-		"runChecks": "手动检测",
-		"runChecksRunning": "检测中…",
-		"runChecksQueued": "已触发代理检测（批次：{runId}）",
-		"runChecksError": "触发代理检测失败：{message}",
-		"checkSettings": "检测配置",
-		"checkSettingsTitle": "代理检测配置",
-		"checkSettingsDesc": "配置代理可用性检测使用的测试 URL 与限制参数。",
-		"checkSettingsFields": {
-			"testUrl": "测试 URL",
-			"timeoutMs": "超时（毫秒）",
-			"probeBytes": "探测字节数",
-			"concurrency": "并发数"
+			"addSubscription": "新增订阅",
+			"runChecks": "手动检测",
+			"runChecksRunning": "检测中…",
+			"runChecksQueued": "已触发代理检测（批次：{runId}）",
+			"runChecksError": "触发代理检测失败：{message}",
+			"checkSettings": "检测配置",
+			"checkSettingsTitle": "代理检测配置",
+			"checkSettingsDesc": "配置代理可用性检测使用的测试 URL 与限制参数。",
+			"checkSettingsFields": {
+				"testUrl": "测试 URL",
+				"timeoutMs": "超时（毫秒）",
+				"probeBytes": "探测字节数",
+				"concurrency": "并发数"
+			},
+			"checkSettingsBadNumber": "请输入有效数字。",
+			"checkSettingsSave": "保存",
+			"checkSettingsSaving": "保存中…",
+			"checkSettingsSaved": "已保存代理检测配置",
+			"checkSettingsSaveError": "保存代理检测配置失败：{message}"
 		},
-		"checkSettingsBadNumber": "请输入有效数字。",
-		"checkSettingsSave": "保存",
-		"checkSettingsSaving": "保存中…",
-		"checkSettingsSaved": "已保存代理检测配置",
-		"checkSettingsSaveError": "保存代理检测配置失败：{message}"
-	},
 		"list": {
 			"search": "搜索代理...",
 			"empty": {

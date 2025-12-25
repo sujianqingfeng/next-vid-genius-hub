@@ -320,7 +320,7 @@ export const startCloudRender = os
 							}
 							return parsed.data
 						})()
-				: media.commentsTemplateConfig ?? null
+				: (media.commentsTemplateConfig ?? null)
 
 		logger.info(
 			'rendering',
@@ -343,10 +343,11 @@ export const startCloudRender = os
 			throw new Error('Failed to prepare comments metadata for cloud render')
 		}
 
-		const { proxyId: effectiveProxyId, proxyRecord } = await resolveSuccessProxy({
-			db,
-			requestedProxyId: proxyId,
-		})
+		const { proxyId: effectiveProxyId, proxyRecord } =
+			await resolveSuccessProxy({
+				db,
+				requestedProxyId: proxyId,
+			})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		const taskId = createId()
@@ -501,10 +502,11 @@ export const startCloudCommentsDownload = os
 		if (!media) throw new Error('Media not found')
 		if (!media.url) throw new Error('Media URL missing')
 
-		const { proxyId: effectiveProxyId, proxyRecord } = await resolveSuccessProxy({
-			db,
-			requestedProxyId: proxyId,
-		})
+		const { proxyId: effectiveProxyId, proxyRecord } =
+			await resolveSuccessProxy({
+				db,
+				requestedProxyId: proxyId,
+			})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		logger.info(

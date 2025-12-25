@@ -13,10 +13,8 @@ import {
 	Download,
 	Edit,
 	ExternalLink,
-	Info,
 	LanguagesIcon,
 	Loader2,
-	MessageCircle,
 	Play,
 	Square,
 	Trash2,
@@ -25,10 +23,7 @@ import * as React from 'react'
 import { toast } from 'sonner'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 import { RemotionPreviewCardStart } from '~/components/business/media/remotion-preview-card-start'
-import { ProxyStatusPill } from '~/components/business/proxy/proxy-status-pill'
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -55,7 +50,7 @@ import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { MEDIA_SOURCES } from '~/lib/media/source'
-import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
+import { formatHostPort } from '~/lib/proxy/host'
 import { useLocale, useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 import {
@@ -729,155 +724,195 @@ export function MediaCommentsPage({
 	}
 
 	return (
-		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
-			<div className="px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-6xl space-y-6">
-					<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>{t('editDialog.title')}</DialogTitle>
-								<DialogDescription>
-									{t('editDialog.description')}
-								</DialogDescription>
-							</DialogHeader>
-							<div className="space-y-4 py-2">
-								<div className="space-y-2">
-									<Label htmlFor="title">
-										{t('editDialog.fields.originalLabel')}
-									</Label>
-									<Input
-										id="title"
-										value={editTitle}
-										onChange={(e) => setEditTitle(e.target.value)}
-										placeholder={t('editDialog.fields.originalPlaceholder')}
-									/>
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="translatedTitle">
-										{t('editDialog.fields.translatedLabel')}
-									</Label>
-									<Input
-										id="translatedTitle"
-										value={editTranslatedTitle}
-										onChange={(e) => setEditTranslatedTitle(e.target.value)}
-										placeholder={t('editDialog.fields.translatedPlaceholder')}
-									/>
-								</div>
-							</div>
-							<DialogFooter>
-								<Button
-									variant="ghost"
-									onClick={() => setEditDialogOpen(false)}
-								>
-									{t('editDialog.actions.cancel')}
-								</Button>
-								<Button
-									onClick={handleSaveTitles}
-									disabled={updateTitlesMutation.isPending}
-								>
-									{updateTitlesMutation.isPending
-										? t('editDialog.actions.saving')
-										: t('editDialog.actions.save')}
-								</Button>
-							</DialogFooter>
-						</DialogContent>
-					</Dialog>
+		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
+			<Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+				<DialogContent className="rounded-none border-border font-mono">
+					<DialogHeader>
+						<DialogTitle className="text-sm uppercase tracking-widest">
+							{t('editDialog.title')}
+						</DialogTitle>
+						<DialogDescription className="text-[10px] uppercase tracking-wider">
+							{t('editDialog.description')}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4 py-4">
+						<div className="space-y-2">
+							<Label
+								htmlFor="title"
+								className="text-[10px] uppercase tracking-widest text-muted-foreground"
+							>
+								{t('editDialog.fields.originalLabel')}
+							</Label>
+							<Input
+								id="title"
+								value={editTitle}
+								onChange={(e) => setEditTitle(e.target.value)}
+								placeholder={t('editDialog.fields.originalPlaceholder')}
+								className="h-9 rounded-none font-sans text-sm"
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label
+								htmlFor="translatedTitle"
+								className="text-[10px] uppercase tracking-widest text-muted-foreground"
+							>
+								{t('editDialog.fields.translatedLabel')}
+							</Label>
+							<Input
+								id="translatedTitle"
+								value={editTranslatedTitle}
+								onChange={(e) => setEditTranslatedTitle(e.target.value)}
+								placeholder={t('editDialog.fields.translatedPlaceholder')}
+								className="h-9 rounded-none font-sans text-sm"
+							/>
+						</div>
+					</div>
+					<DialogFooter className="sm:justify-start">
+						<Button
+							variant="outline"
+							onClick={() => setEditDialogOpen(false)}
+							className="rounded-none uppercase tracking-widest"
+						>
+							[ CANCEL ]
+						</Button>
+						<Button
+							onClick={handleSaveTitles}
+							disabled={updateTitlesMutation.isPending}
+							className="rounded-none uppercase tracking-widest"
+						>
+							{updateTitlesMutation.isPending
+								? 'SAVING...'
+								: '[ COMMIT_CHANGES ]'}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-					<Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>{t('bulkDelete.confirm.title')}</DialogTitle>
-								<DialogDescription>
-									{t('bulkDelete.confirm.description', {
-										count: confirmDeleteIds.length,
-									})}
-								</DialogDescription>
-							</DialogHeader>
-							<DialogFooter>
-								<Button
-									variant="ghost"
-									onClick={() => setConfirmDeleteOpen(false)}
-									disabled={deleteCommentsMutation.isPending}
-								>
-									{t('editDialog.actions.cancel')}
-								</Button>
-								<Button
-									variant="destructive"
-									onClick={() => {
-										const ids = confirmDeleteIds
-										setConfirmDeleteOpen(false)
-										if (ids.length === 0) return
-										deleteCommentsMutation.mutate({
-											mediaId: id,
-											commentIds: ids,
-										})
-									}}
-									disabled={
-										deleteCommentsMutation.isPending ||
-										confirmDeleteIds.length === 0
-									}
-								>
-									{deleteCommentsMutation.isPending
-										? t('comments.deleting')
-										: t('comments.deleteSelected')}
-								</Button>
-							</DialogFooter>
-						</DialogContent>
-					</Dialog>
+			<Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+				<DialogContent className="rounded-none border-border font-mono">
+					<DialogHeader>
+						<DialogTitle className="text-sm uppercase tracking-widest text-destructive">
+							Security Warning: Destructive Action
+						</DialogTitle>
+						<DialogDescription className="text-[10px] uppercase tracking-wider">
+							{t('bulkDelete.confirm.description', {
+								count: confirmDeleteIds.length,
+							})}
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="sm:justify-start">
+						<Button
+							variant="outline"
+							onClick={() => setConfirmDeleteOpen(false)}
+							disabled={deleteCommentsMutation.isPending}
+							className="rounded-none uppercase tracking-widest"
+						>
+							[ ABORT ]
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={() => {
+								const ids = confirmDeleteIds
+								setConfirmDeleteOpen(false)
+								if (ids.length === 0) return
+								deleteCommentsMutation.mutate({
+									mediaId: id,
+									commentIds: ids,
+								})
+							}}
+							disabled={
+								deleteCommentsMutation.isPending ||
+								confirmDeleteIds.length === 0
+							}
+							className="rounded-none uppercase tracking-widest"
+						>
+							{deleteCommentsMutation.isPending
+								? 'EXECUTING...'
+								: '[ CONFIRM_PURGE ]'}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div className="border-b border-border bg-card">
+				<div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="space-y-1">
-							<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-								{commentsCloudJobId ? (
-									<CloudJobProgress
-										status={cloudCommentsStatusQuery.data?.status}
-										progress={cloudCommentsStatusQuery.data?.progress}
-										jobId={commentsCloudJobId}
-										mediaId={id}
-										showIds={false}
-									/>
-								) : null}
-								{renderJobId ? (
-									<CloudJobProgress
-										status={renderStatusQuery.data?.status}
-										progress={renderStatusQuery.data?.progress}
-										jobId={renderJobId}
-										mediaId={id}
-										showIds={false}
-									/>
+							<div className="flex flex-wrap items-center gap-3 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+								<span className="flex items-center gap-1">
+									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+									Media System
+								</span>
+								<span>/</span>
+								<span>Comments Manager</span>
+								{commentsCloudJobId || renderJobId ? (
+									<>
+										<span>/</span>
+										<div className="flex items-center gap-2">
+											{commentsCloudJobId && (
+												<CloudJobProgress
+													status={cloudCommentsStatusQuery.data?.status}
+													progress={cloudCommentsStatusQuery.data?.progress}
+													jobId={commentsCloudJobId}
+													mediaId={id}
+													showIds={false}
+												/>
+											)}
+											{renderJobId && (
+												<CloudJobProgress
+													status={renderStatusQuery.data?.status}
+													progress={renderStatusQuery.data?.progress}
+													jobId={renderJobId}
+													mediaId={id}
+													showIds={false}
+												/>
+											)}
+										</div>
+									</>
 								) : null}
 							</div>
-							<h1 className="text-3xl font-semibold tracking-tight">
+							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{t('header.title')}
 							</h1>
-							<div className="text-sm text-muted-foreground">
-								{mediaQuery.data?.translatedTitle || mediaQuery.data?.title
-									? `${mediaQuery.data?.translatedTitle || mediaQuery.data?.title}`
-									: null}
-							</div>
+							{mediaQuery.data?.translatedTitle || mediaQuery.data?.title ? (
+								<div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+									ID: <span className="text-foreground">{id}</span>
+									<span className="mx-2">|</span>
+									TITLE:{' '}
+									<span className="text-foreground">
+										{mediaQuery.data?.translatedTitle || mediaQuery.data?.title}
+									</span>
+								</div>
+							) : null}
 						</div>
 
 						<div className="flex flex-wrap gap-2">
 							{mediaQuery.data?.translatedTitle ? (
 								<Button
-									variant="secondary"
+									variant="outline"
+									size="sm"
+									className="rounded-[2px] font-mono text-xs uppercase tracking-wider"
 									onClick={handleEditClick}
 									disabled={mediaQuery.isLoading}
 								>
-									<Edit className="mr-2 h-4 w-4" />
+									<Edit className="mr-2 h-3 w-3" />
 									{t('header.editTitles')}
 								</Button>
 							) : null}
-							<Button variant="secondary" asChild>
+							<Button
+								variant="outline"
+								size="sm"
+								className="rounded-[2px] font-mono text-xs uppercase tracking-wider"
+								asChild
+							>
 								<Link to="/media/$id" params={{ id }}>
 									{t('header.back')}
 								</Link>
 							</Button>
-							<Button variant="secondary" asChild>
-								<Link to="/media">Media</Link>
-							</Button>
 							<Button
-								variant="secondary"
+								variant="outline"
+								size="sm"
+								className="rounded-[2px] font-mono text-xs uppercase tracking-wider"
 								disabled={mediaQuery.isLoading}
 								onClick={() => mediaQuery.refetch()}
 							>
@@ -885,33 +920,39 @@ export function MediaCommentsPage({
 							</Button>
 						</div>
 					</div>
+				</div>
+			</div>
 
+			<div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+				<div className="space-y-6">
 					{mediaQuery.isLoading ? (
-						<div className="flex items-center gap-2 text-sm text-muted-foreground">
-							<Loader2 className="h-4 w-4 animate-spin" />
-							Loading…
+						<div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+							<Loader2 className="h-3 w-3 animate-spin" />
+							System Loading...
 						</div>
 					) : null}
 
 					{mediaQuery.isError || !mediaQuery.data ? (
-						<div className="glass rounded-2xl p-6 text-sm text-muted-foreground">
-							Failed to load media.
+						<div className="border border-destructive/50 bg-destructive/5 p-4 font-mono text-xs uppercase tracking-wider text-destructive">
+							Error: Failed to synchronize media data.
 						</div>
 					) : (
-						<div className="grid gap-4 lg:grid-cols-3">
-							<div className="space-y-4 lg:col-span-2">
-								<div className="glass rounded-2xl p-6">
-									<RemotionPreviewCardStart
-										videoInfo={previewVideoInfo}
-										comments={comments as any}
-										isLoading={mediaQuery.isLoading}
-										templateId={templateId}
-										templateConfig={
-											templateConfig === null
-												? undefined
-												: effectiveTemplateConfig
-										}
-									/>
+						<div className="grid gap-8 lg:grid-cols-12">
+							<div className="space-y-6 lg:col-span-5">
+								<div className="border border-border bg-card p-1">
+									<div className="border border-border/50 p-4">
+										<RemotionPreviewCardStart
+											videoInfo={previewVideoInfo}
+											comments={comments as any}
+											isLoading={mediaQuery.isLoading}
+											templateId={templateId}
+											templateConfig={
+												templateConfig === null
+													? undefined
+													: effectiveTemplateConfig
+											}
+										/>
+									</div>
 								</div>
 
 								<Tabs
@@ -919,114 +960,116 @@ export function MediaCommentsPage({
 									onValueChange={(next) =>
 										onTabChange(next as MediaCommentsTab)
 									}
-									className="space-y-4"
+									className="w-full"
 								>
-									<TabsList>
-										<TabsTrigger value="basics">{t('tabs.basics')}</TabsTrigger>
-										<TabsTrigger value="download">
-											{t('tabs.download')}
-										</TabsTrigger>
-										<TabsTrigger value="translate">
-											{t('tabs.translate')}
-										</TabsTrigger>
-										<TabsTrigger value="render">{t('tabs.render')}</TabsTrigger>
+									<TabsList className="h-auto w-full justify-start rounded-none border-b border-border bg-transparent p-0">
+										{(
+											['basics', 'download', 'translate', 'render'] as const
+										).map((tValue) => (
+											<TabsTrigger
+												key={tValue}
+												value={tValue}
+												className="rounded-none border-b-2 border-transparent px-4 py-2 font-mono text-[10px] uppercase tracking-widest data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+											>
+												{t(`tabs.${tValue}`)}
+											</TabsTrigger>
+										))}
 									</TabsList>
 
-									<TabsContent value="basics" className="space-y-4">
-										<Card className="glass border-none shadow-sm">
-											<CardHeader className="border-b border-border/40 pb-4">
-												<CardTitle className="text-lg flex items-center gap-2">
-													<Info className="h-5 w-5 text-primary" />
-													{t('tabs.basics')}
-												</CardTitle>
-											</CardHeader>
-											<CardContent className="pt-6">
-												<div className="overflow-hidden rounded-xl border border-border/40 bg-muted/10 divide-y divide-border/40">
-													<div className="group px-5 py-4">
-														<div className="flex items-center justify-between gap-3">
-															<div className="text-xs font-medium text-muted-foreground">
-																{t('basics.translatedTitle.label')}
+									<div className="mt-4">
+										<TabsContent value="basics" className="m-0 space-y-4">
+											<div className="border border-border bg-card">
+												<div className="border-b border-border bg-muted/30 px-4 py-2">
+													<h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+														{t('tabs.basics')}
+													</h3>
+												</div>
+												<div className="divide-y divide-border border-t-0 font-mono">
+													{[
+														{
+															label: t('basics.translatedTitle.label'),
+															value:
+																mediaQuery.data?.translatedTitle ??
+																t('basics.translatedTitle.empty'),
+															copyValue: mediaQuery.data?.translatedTitle,
+															copyLabel: t('labels.englishTitle'),
+														},
+														{
+															label: t('basics.originalTitle.label'),
+															value:
+																mediaQuery.data?.title ??
+																t('basics.originalTitle.empty'),
+															copyValue: mediaQuery.data?.title,
+															copyLabel: t('labels.originalTitle'),
+														},
+													].map((item, idx) => (
+														<div
+															key={idx}
+															className="group flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+														>
+															<div className="space-y-1">
+																<div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+																	{item.label}
+																</div>
+																<div className="text-sm font-medium">
+																	{item.value}
+																</div>
 															</div>
 															<Button
 																variant="ghost"
-																size="icon-sm"
-																className="lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
-																disabled={!mediaQuery.data?.translatedTitle}
+																size="icon"
+																className="h-8 w-8 rounded-none border border-transparent opacity-0 group-hover:border-border group-hover:opacity-100"
+																disabled={!item.copyValue}
 																onClick={() =>
 																	void copyTitleValue(
-																		mediaQuery.data?.translatedTitle,
-																		t('labels.englishTitle'),
+																		item.copyValue,
+																		item.copyLabel,
 																	)
 																}
-																title={t('basics.translatedTitle.copy')}
-																aria-label={t('basics.translatedTitle.copy')}
 															>
-																<Copy className="h-4 w-4" />
+																<Copy className="h-3 w-3" />
 															</Button>
 														</div>
-														<div className="mt-2 text-sm font-medium break-words">
-															{mediaQuery.data?.translatedTitle ??
-																t('basics.translatedTitle.empty')}
-														</div>
-													</div>
+													))}
 
-													<div className="group px-5 py-4">
-														<div className="flex items-center justify-between gap-3">
-															<div className="text-xs font-medium text-muted-foreground">
-																{t('basics.originalTitle.label')}
+													<div className="group px-4 py-3">
+														<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+															<div className="space-y-2">
+																<div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+																	Source Diagnostics
+																</div>
+																<div className="space-y-1">
+																	<div className="text-sm font-medium">
+																		{getVideoSourceDisplay()}
+																	</div>
+																	{getVideoSourceUrl() && (
+																		<div className="truncate text-[10px] text-muted-foreground">
+																			{getVideoSourceUrl()}
+																		</div>
+																	)}
+																</div>
 															</div>
-															<Button
-																variant="ghost"
-																size="icon-sm"
-																className="lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
-																disabled={!mediaQuery.data?.title}
-																onClick={() =>
-																	void copyTitleValue(
-																		mediaQuery.data?.title,
-																		t('labels.originalTitle'),
-																	)
-																}
-																title={t('basics.originalTitle.copy')}
-																aria-label={t('basics.originalTitle.copy')}
-															>
-																<Copy className="h-4 w-4" />
-															</Button>
-														</div>
-														<div className="mt-2 text-sm text-muted-foreground break-words">
-															{mediaQuery.data?.title ??
-																t('basics.originalTitle.empty')}
-														</div>
-													</div>
-
-													<div className="group px-5 py-4">
-														<div className="flex items-center justify-between gap-3">
-															<div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-																<MessageCircle className="h-4 w-4 text-primary" />
-																{t('videoInfo.sourceId')}
-															</div>
-															<div className="flex items-center gap-1">
-																{getVideoSourceUrl() ? (
+															<div className="flex gap-2">
+																{getVideoSourceUrl() && (
 																	<Button
-																		variant="ghost"
-																		size="icon-sm"
-																		className="lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+																		variant="outline"
+																		size="icon"
+																		className="h-8 w-8 rounded-none"
 																		asChild
-																		title={t('videoInfo.openSource')}
-																		aria-label={t('videoInfo.openSource')}
 																	>
 																		<a
 																			href={getVideoSourceUrl()}
 																			target="_blank"
 																			rel="noreferrer"
 																		>
-																			<ExternalLink className="h-4 w-4" />
+																			<ExternalLink className="h-3 w-3" />
 																		</a>
 																	</Button>
-																) : null}
+																)}
 																<Button
-																	variant="ghost"
-																	size="icon-sm"
-																	className="lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+																	variant="outline"
+																	size="icon"
+																	className="h-8 w-8 rounded-none"
 																	onClick={() =>
 																		void copyTitleValue(
 																			getVideoSourceUrl(),
@@ -1034,707 +1077,794 @@ export function MediaCommentsPage({
 																		)
 																	}
 																	disabled={!getVideoSourceUrl()}
-																	title={t('videoInfo.copySourceLink')}
-																	aria-label={t('videoInfo.copySourceLink')}
 																>
-																	<Copy className="h-4 w-4" />
+																	<Copy className="h-3 w-3" />
+																</Button>
+															</div>
+														</div>
+														<Button
+															variant="link"
+															size="sm"
+															onClick={handleCopyDisclaimer}
+															className="mt-2 h-auto p-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+														>
+															[ COPY_DISCLAIMER ]
+														</Button>
+													</div>
+												</div>
+											</div>
+										</TabsContent>
+
+										<TabsContent value="download" className="m-0 space-y-4">
+											<div className="border border-border bg-card">
+												<div className="border-b border-border bg-muted/30 px-4 py-2">
+													<h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+														Extraction Parameters
+													</h3>
+												</div>
+												<div className="space-y-6 p-4">
+													<div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+														<div className="space-y-2">
+															<Label
+																htmlFor="pages"
+																className="font-mono text-[10px] uppercase tracking-widest"
+															>
+																{t('download.pagesLabel')}
+															</Label>
+															<Input
+																id="pages"
+																value={pages}
+																onChange={(e) => setPages(e.target.value)}
+																inputMode="numeric"
+																className="h-9 rounded-none font-mono"
+															/>
+														</div>
+														<div className="sm:col-span-2">
+															<ProxySelect
+																label={t('fields.proxy')}
+																proxies={proxiesQuery.data?.proxies ?? []}
+																defaultProxyId={
+																	proxiesQuery.data?.defaultProxyId ?? null
+																}
+																value={downloadProxyId}
+																onValueChange={setDownloadProxyId}
+																disabled={isBusy}
+																help={
+																	!hasSuccessProxies
+																		? t('errors.noProxiesAvailable')
+																		: undefined
+																}
+															/>
+														</div>
+													</div>
+
+													<div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+														<Button
+															className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+															onClick={() => {
+																const n = Math.max(
+																	1,
+																	Math.min(50, safeParseInt(pages, 3)),
+																)
+																setPages(String(n))
+																if (!canQueueCommentsDownload) {
+																	toast.error(t('errors.noProxiesAvailable'))
+																	return
+																}
+																startCloudCommentsMutation.mutate({
+																	mediaId: id,
+																	pages: n,
+																	proxyId:
+																		downloadProxyId &&
+																		downloadProxyId !== 'none'
+																			? downloadProxyId
+																			: undefined,
+																})
+															}}
+															disabled={
+																startCloudCommentsMutation.isPending ||
+																!canQueueCommentsDownload ||
+																isBusy
+															}
+														>
+															{startCloudCommentsMutation.isPending ? (
+																<>
+																	<Loader2 className="mr-2 h-3 w-3 animate-spin" />
+																	Queuing...
+																</>
+															) : (
+																<>
+																	<Download className="mr-2 h-3 w-3" />
+																	{t('download.start')}
+																</>
+															)}
+														</Button>
+
+														{commentsCloudJobId ? (
+															<Button
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+																onClick={() => setCommentsCloudJobId(null)}
+																disabled={
+																	finalizeCloudCommentsMutation.isPending
+																}
+															>
+																[ TERMINATE_JOB ]
+															</Button>
+														) : null}
+													</div>
+
+													{commentsCloudJobId ? (
+														<div className="border-t border-border pt-4 font-mono text-[10px] text-muted-foreground">
+															JOB_ID:{' '}
+															<span className="text-foreground">
+																{commentsCloudJobId}
+															</span>
+														</div>
+													) : null}
+												</div>
+											</div>
+										</TabsContent>
+
+										<TabsContent value="translate" className="m-0 space-y-4">
+											<div className="border border-border bg-card">
+												<div className="border-b border-border bg-muted/30 px-4 py-2">
+													<h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+														Translation Engine
+													</h3>
+												</div>
+												<div className="space-y-6 p-4">
+													<div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+														<ModelSelect
+															label={t('fields.aiModel')}
+															value={model}
+															onValueChange={(v) => setModel(v as ChatModelId)}
+															options={llmModelOptions}
+															disabled={isBusy}
+														/>
+														<div className="flex items-center justify-between border border-border p-3">
+															<Label className="font-mono text-[10px] uppercase tracking-widest">
+																{t('fields.overwriteExisting')}
+															</Label>
+															<Switch
+																checked={forceTranslate}
+																onCheckedChange={setForceTranslate}
+																disabled={isBusy}
+															/>
+														</div>
+													</div>
+													<div className="border-t border-border pt-4">
+														<Button
+															className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+															onClick={() => {
+																if (comments.length === 0) {
+																	toast.error(t('empty.description'))
+																	return
+																}
+																translateCommentsMutation.mutate({
+																	mediaId: id,
+																	model,
+																	force: forceTranslate,
+																})
+															}}
+															disabled={
+																translateCommentsMutation.isPending || isBusy
+															}
+														>
+															{translateCommentsMutation.isPending ? (
+																<>
+																	<Loader2 className="mr-2 h-3 w-3 animate-spin" />
+																	Processing...
+																</>
+															) : (
+																<>
+																	<LanguagesIcon className="mr-2 h-3 w-3" />
+																	{t('translate.translate')}
+																</>
+															)}
+														</Button>
+													</div>
+												</div>
+											</div>
+										</TabsContent>
+
+										<TabsContent value="render" className="m-0 space-y-4">
+											<div className="border border-border bg-card">
+												<div className="border-b border-border bg-muted/30 px-4 py-2">
+													<h3 className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+														Rendering Pipeline
+													</h3>
+												</div>
+												<div className="space-y-6 p-4">
+													<div className="space-y-2">
+														<Label className="font-mono text-[10px] uppercase tracking-widest">
+															{t('render.template')}
+														</Label>
+														<Select
+															value={templateId}
+															onValueChange={(v) => {
+																const tid = v as RemotionTemplateId
+																setTemplateId(tid)
+																updateRenderSettingsMutation.mutate({
+																	id,
+																	commentsTemplate: tid,
+																})
+															}}
+															disabled={isBusy}
+														>
+															<SelectTrigger className="h-9 rounded-none font-mono">
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent className="rounded-none">
+																{listTemplates().map((tpl) => (
+																	<SelectItem
+																		key={tpl.id}
+																		value={tpl.id}
+																		className="rounded-none font-mono"
+																	>
+																		{tpl.name}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+													</div>
+
+													<div className="border border-border bg-muted/5 p-4 space-y-6">
+														<div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+															<div className="font-mono text-[10px] font-bold uppercase tracking-widest">
+																Template Specifications
+															</div>
+															<div className="flex flex-wrap gap-2">
+																<Button
+																	variant="outline"
+																	size="sm"
+																	className="h-7 rounded-none font-mono text-[10px] uppercase tracking-widest"
+																	onClick={() => {
+																		setTemplateConfig(null)
+																		updateRenderSettingsMutation.mutate({
+																			id,
+																			commentsTemplateConfig: null,
+																		})
+																	}}
+																	disabled={
+																		isBusy ||
+																		updateRenderSettingsMutation.isPending
+																	}
+																>
+																	RESET
+																</Button>
+																<Button
+																	size="sm"
+																	className="h-7 rounded-none font-mono text-[10px] uppercase tracking-widest"
+																	onClick={() => {
+																		updateRenderSettingsMutation.mutate({
+																			id,
+																			commentsTemplateConfig:
+																				templateConfig === null
+																					? null
+																					: templateConfig,
+																		})
+																	}}
+																	disabled={
+																		isBusy ||
+																		updateRenderSettingsMutation.isPending
+																	}
+																>
+																	{updateRenderSettingsMutation.isPending
+																		? 'SAVING...'
+																		: 'APPLY_CONFIG'}
 																</Button>
 															</div>
 														</div>
 
-														<div className="mt-2 text-sm font-medium break-words">
-															{getVideoSourceDisplay()}
-														</div>
-														{getVideoSourceUrl() ? (
-															<div
-																className="mt-1 text-xs text-muted-foreground font-mono truncate"
-																title={getVideoSourceUrl()}
-															>
-																{getVideoSourceUrl()}
+														<div className="space-y-4">
+															<div className="space-y-2">
+																<Label className="font-mono text-[10px] uppercase tracking-widest">
+																	{t('render.config.theme')}
+																</Label>
+																<div className="border border-border p-3">
+																	<ColorPickerGrid
+																		fields={[
+																			{
+																				id: 'commentsThemeBackground',
+																				label: 'BG',
+																				value:
+																					effectiveTemplateConfig.theme
+																						?.background ?? '#000000',
+																				onChange: (e) =>
+																					setTemplateTheme({
+																						background: e.target.value,
+																					}),
+																			},
+																			{
+																				id: 'commentsThemeSurface',
+																				label: 'SURFACE',
+																				value:
+																					effectiveTemplateConfig.theme
+																						?.surface ?? '#ffffff',
+																				onChange: (e) =>
+																					setTemplateTheme({
+																						surface: e.target.value,
+																					}),
+																			},
+																			{
+																				id: 'commentsThemeText',
+																				label: 'TEXT_1',
+																				value:
+																					effectiveTemplateConfig.theme
+																						?.textPrimary ?? '#111111',
+																				onChange: (e) =>
+																					setTemplateTheme({
+																						textPrimary: e.target.value,
+																					}),
+																			},
+																			{
+																				id: 'commentsThemeText2',
+																				label: 'TEXT_2',
+																				value:
+																					effectiveTemplateConfig.theme
+																						?.textSecondary ?? '#333333',
+																				onChange: (e) =>
+																					setTemplateTheme({
+																						textSecondary: e.target.value,
+																					}),
+																			},
+																			{
+																				id: 'commentsThemeAccent',
+																				label: 'ACCENT',
+																				value:
+																					effectiveTemplateConfig.theme
+																						?.accent ?? '#ff0000',
+																				onChange: (e) =>
+																					setTemplateTheme({
+																						accent: e.target.value,
+																					}),
+																			},
+																		]}
+																	/>
+																</div>
 															</div>
-														) : null}
 
-														<Button
-															variant="ghost"
-															size="sm"
-															onClick={handleCopyDisclaimer}
-															className="mt-2 h-7 px-0 justify-start text-xs text-muted-foreground hover:text-foreground lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
-														>
-															<Copy className="h-3.5 w-3.5" />
-															{t('videoInfo.copyDisclaimer')}
-														</Button>
+															<div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+																<div className="space-y-3">
+																	<Label className="font-mono text-[10px] uppercase tracking-widest">
+																		{t('render.config.typography')}
+																	</Label>
+																	<div className="space-y-4 border border-border p-3">
+																		<div className="space-y-1.5">
+																			<Label className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground">
+																				Preset
+																			</Label>
+																			<Select
+																				value={
+																					effectiveTemplateConfig.typography
+																						?.fontPreset ?? 'noto'
+																				}
+																				onValueChange={(v) =>
+																					setTemplateTypography({
+																						fontPreset: v as any,
+																					})
+																				}
+																				disabled={isBusy}
+																			>
+																				<SelectTrigger className="h-8 rounded-none font-mono text-[10px]">
+																					<SelectValue />
+																				</SelectTrigger>
+																				<SelectContent className="rounded-none">
+																					<SelectItem
+																						value="noto"
+																						className="font-mono text-[10px]"
+																					>
+																						NOTO_CJK
+																					</SelectItem>
+																					<SelectItem
+																						value="inter"
+																						className="font-mono text-[10px]"
+																					>
+																						INTER
+																					</SelectItem>
+																					<SelectItem
+																						value="system"
+																						className="font-mono text-[10px]"
+																					>
+																						SYSTEM
+																					</SelectItem>
+																				</SelectContent>
+																			</Select>
+																		</div>
+																		<div className="space-y-1.5">
+																			<Label className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground">
+																				Scale
+																			</Label>
+																			<Input
+																				type="number"
+																				step="0.05"
+																				min="0.5"
+																				max="2"
+																				value={String(
+																					effectiveTemplateConfig.typography
+																						?.fontScale ?? 1,
+																				)}
+																				onChange={(e) => {
+																					const v = Number.parseFloat(
+																						e.target.value,
+																					)
+																					setTemplateTypography({
+																						fontScale: Number.isFinite(v)
+																							? v
+																							: 1,
+																					})
+																				}}
+																				disabled={isBusy}
+																				className="h-8 rounded-none font-mono text-[10px]"
+																			/>
+																		</div>
+																	</div>
+																</div>
+
+																<div className="space-y-3">
+																	<Label className="font-mono text-[10px] uppercase tracking-widest">
+																		{t('render.config.layout')}
+																	</Label>
+																	<div className="grid grid-cols-3 gap-2 border border-border p-3">
+																		{[
+																			{
+																				id: 'paddingX',
+																				label: 'PAD_X',
+																				val: 80,
+																			},
+																			{
+																				id: 'paddingY',
+																				label: 'PAD_Y',
+																				val: 60,
+																			},
+																			{
+																				id: 'infoPanelWidth',
+																				label: 'W_PANEL',
+																				val: 680,
+																			},
+																		].map((f) => (
+																			<div key={f.id} className="space-y-1.5">
+																				<Label className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground">
+																					{f.label}
+																				</Label>
+																				<Input
+																					type="number"
+																					value={String(
+																						(
+																							effectiveTemplateConfig.layout as any
+																						)?.[f.id] ?? f.val,
+																					)}
+																					onChange={(e) =>
+																						setTemplateLayout({
+																							[f.id]: safeParseInt(
+																								e.target.value,
+																								f.val,
+																							),
+																						})
+																					}
+																					disabled={isBusy}
+																					className="h-8 rounded-none px-2 font-mono text-[10px]"
+																				/>
+																			</div>
+																		))}
+																	</div>
+																</div>
+															</div>
+
+															<div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+																<div className="space-y-3">
+																	<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+																		Branding Control
+																	</Label>
+																	<div className="space-y-3 border border-border p-3">
+																		<div className="flex items-center justify-between">
+																			<div className="font-mono text-[10px] uppercase tracking-widest">
+																				Watermark
+																			</div>
+																			<Switch
+																				checked={Boolean(
+																					effectiveTemplateConfig.brand
+																						?.showWatermark,
+																				)}
+																				onCheckedChange={(checked) =>
+																					setTemplateBrand({
+																						showWatermark: checked,
+																					})
+																				}
+																				disabled={isBusy}
+																			/>
+																		</div>
+																		<Input
+																			placeholder="LABEL_TEXT"
+																			value={String(
+																				effectiveTemplateConfig.brand
+																					?.watermarkText ?? '',
+																			)}
+																			onChange={(e) =>
+																				setTemplateBrand({
+																					watermarkText: e.target.value,
+																				})
+																			}
+																			disabled={
+																				isBusy ||
+																				!effectiveTemplateConfig.brand
+																					?.showWatermark
+																			}
+																			className="h-8 rounded-none font-mono text-[10px]"
+																		/>
+																	</div>
+																</div>
+
+																<div className="space-y-3">
+																	<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+																		Motion Constants
+																	</Label>
+																	<div className="space-y-3 border border-border p-3">
+																		<div className="flex items-center justify-between">
+																			<div className="font-mono text-[10px] uppercase tracking-widest">
+																				Dynamics
+																			</div>
+																			<Switch
+																				checked={Boolean(
+																					effectiveTemplateConfig.motion
+																						?.enabled ?? true,
+																				)}
+																				onCheckedChange={(checked) =>
+																					setTemplateMotion({
+																						enabled: checked,
+																					})
+																				}
+																				disabled={isBusy}
+																			/>
+																		</div>
+																		<Select
+																			value={
+																				effectiveTemplateConfig.motion
+																					?.intensity ?? 'normal'
+																			}
+																			onValueChange={(v) =>
+																				setTemplateMotion({
+																					intensity: v as any,
+																				})
+																			}
+																			disabled={
+																				isBusy ||
+																				effectiveTemplateConfig.motion
+																					?.enabled === false
+																			}
+																		>
+																			<SelectTrigger className="h-8 rounded-none font-mono text-[10px]">
+																				<SelectValue />
+																			</SelectTrigger>
+																			<SelectContent className="rounded-none">
+																				<SelectItem
+																					value="subtle"
+																					className="font-mono text-[10px]"
+																				>
+																					SUBTLE
+																				</SelectItem>
+																				<SelectItem
+																					value="normal"
+																					className="font-mono text-[10px]"
+																				>
+																					NORMAL
+																				</SelectItem>
+																				<SelectItem
+																					value="strong"
+																					className="font-mono text-[10px]"
+																				>
+																					STRONG
+																				</SelectItem>
+																			</SelectContent>
+																		</Select>
+																	</div>
+																</div>
+															</div>
+														</div>
 													</div>
-												</div>
-											</CardContent>
-										</Card>
-									</TabsContent>
 
-									<TabsContent value="download" className="space-y-4">
-										<div className="glass rounded-2xl p-5 space-y-4">
-											<div className="text-sm font-semibold">
-												{t('tabs.download')}
-											</div>
-											<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-												<div className="space-y-2">
-													<Label htmlFor="pages">
-														{t('download.pagesLabel')}
-													</Label>
-													<Input
-														id="pages"
-														value={pages}
-														onChange={(e) => setPages(e.target.value)}
-														inputMode="numeric"
-													/>
-												</div>
-												<div className="sm:col-span-2">
-													<ProxySelect
-														label={t('fields.proxy')}
-														proxies={proxiesQuery.data?.proxies ?? []}
-														defaultProxyId={
-															proxiesQuery.data?.defaultProxyId ?? null
-														}
-														value={downloadProxyId}
-														onValueChange={setDownloadProxyId}
-														disabled={isBusy}
-														help={
-															!hasSuccessProxies
-																? t('errors.noProxiesAvailable')
-																: undefined
-														}
-													/>
-												</div>
-											</div>
+													<div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+														<div className="space-y-2">
+															<Label className="font-mono text-[10px] uppercase tracking-widest">
+																{t('render.sourcePolicy.label')}
+															</Label>
+															<Select
+																value={sourcePolicy}
+																onValueChange={(v) =>
+																	setSourcePolicy(v as SourcePolicy)
+																}
+																disabled={isBusy}
+															>
+																<SelectTrigger className="h-9 rounded-none font-mono">
+																	<SelectValue />
+																	<span className="sr-only">Toggle</span>
+																</SelectTrigger>
+																<SelectContent className="rounded-none">
+																	<SelectItem
+																		value="auto"
+																		className="font-mono text-sm"
+																	>
+																		AUTO_SELECT
+																	</SelectItem>
+																	<SelectItem
+																		value="original"
+																		className="font-mono text-sm"
+																	>
+																		ORIGINAL_SOURCE
+																	</SelectItem>
+																	<SelectItem
+																		value="subtitles"
+																		className="font-mono text-sm"
+																	>
+																		SUBTITLE_LAYER
+																	</SelectItem>
+																</SelectContent>
+															</Select>
+														</div>
 
-											<div className="flex flex-wrap items-center gap-2">
-												<Button
-													onClick={() => {
-														const n = Math.max(
-															1,
-															Math.min(50, safeParseInt(pages, 3)),
-														)
-														setPages(String(n))
-														if (!canQueueCommentsDownload) {
-															toast.error(t('errors.noProxiesAvailable'))
-															return
-														}
-														startCloudCommentsMutation.mutate({
-															mediaId: id,
-															pages: n,
-															proxyId:
-																downloadProxyId && downloadProxyId !== 'none'
-																	? downloadProxyId
-																	: undefined,
-														})
-													}}
-													disabled={
-														startCloudCommentsMutation.isPending ||
-														!canQueueCommentsDownload ||
-														isBusy
-													}
-												>
-													{startCloudCommentsMutation.isPending ? (
-														<>
-															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															{t('download.queuing')}
-														</>
-													) : (
-														<>
-															<Download className="mr-2 h-4 w-4" />
-															{t('download.start')}
-														</>
-													)}
-												</Button>
-
-												{commentsCloudJobId ? (
-													<Button
-														variant="secondary"
-														onClick={() => setCommentsCloudJobId(null)}
-														disabled={finalizeCloudCommentsMutation.isPending}
-													>
-														Clear job
-													</Button>
-												) : null}
-											</div>
-
-											{commentsCloudJobId ? (
-												<div className="text-xs text-muted-foreground">
-													Job:{' '}
-													<span className="font-mono">
-														{commentsCloudJobId}
-													</span>
-												</div>
-											) : null}
-										</div>
-									</TabsContent>
-
-									<TabsContent value="translate" className="space-y-4">
-										<div className="glass rounded-2xl p-5 space-y-4">
-											<div className="text-sm font-semibold">
-												{t('tabs.translate')}
-											</div>
-											<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-												<ModelSelect
-													label={t('fields.aiModel')}
-													value={model}
-													onValueChange={(v) => setModel(v as ChatModelId)}
-													options={llmModelOptions}
-													disabled={isBusy}
-												/>
-												<div className="space-y-2">
-													<div className="flex items-center justify-between gap-3">
-														<Label>{t('fields.overwriteExisting')}</Label>
-														<Switch
-															checked={forceTranslate}
-															onCheckedChange={setForceTranslate}
+														<ProxySelect
+															label={t('fields.proxy')}
+															proxies={proxiesQuery.data?.proxies ?? []}
+															defaultProxyId={
+																proxiesQuery.data?.defaultProxyId ?? null
+															}
+															value={renderProxyId}
+															onValueChange={setRenderProxyId}
 															disabled={isBusy}
+															help={
+																!hasSuccessProxies
+																	? t('errors.noProxiesAvailable')
+																	: undefined
+															}
 														/>
 													</div>
-												</div>
-											</div>
-											<Button
-												onClick={() => {
-													if (comments.length === 0) {
-														toast.error(t('empty.description'))
-														return
-													}
-													translateCommentsMutation.mutate({
-														mediaId: id,
-														model,
-														force: forceTranslate,
-													})
-												}}
-												disabled={translateCommentsMutation.isPending || isBusy}
-											>
-												{translateCommentsMutation.isPending ? (
-													<>
-														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-														{t('translate.translating')}
-													</>
-												) : (
-													<>
-														<LanguagesIcon className="mr-2 h-4 w-4" />
-														{t('translate.translate')}
-													</>
-												)}
-											</Button>
-										</div>
-									</TabsContent>
 
-									<TabsContent value="render" className="space-y-4">
-										<div className="glass rounded-2xl p-5 space-y-4">
-											<div className="text-sm font-semibold">
-												{t('tabs.render')}
-											</div>
-
-											<div className="space-y-2">
-												<Label>{t('render.template')}</Label>
-												<Select
-													value={templateId}
-													onValueChange={(v) => {
-														const tid = v as RemotionTemplateId
-														setTemplateId(tid)
-														updateRenderSettingsMutation.mutate({
-															id,
-															commentsTemplate: tid,
-														})
-													}}
-													disabled={isBusy}
-												>
-													<SelectTrigger>
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														{listTemplates().map((tpl) => (
-															<SelectItem key={tpl.id} value={tpl.id}>
-																{tpl.name}
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-											</div>
-
-											<div className="rounded-xl border border-border/50 bg-muted/10 p-4 space-y-4">
-												<div className="flex flex-wrap items-center justify-between gap-3">
-													<div className="text-sm font-semibold">
-														{t('render.config.title')}
-													</div>
-													<div className="flex flex-wrap gap-2">
+													<div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
 														<Button
-															variant="ghost"
-															size="sm"
+															className="rounded-none font-mono text-[10px] uppercase tracking-widest"
 															onClick={() => {
-																setTemplateConfig(null)
-																updateRenderSettingsMutation.mutate({
-																	id,
-																	commentsTemplateConfig: null,
-																})
-															}}
-															disabled={
-																isBusy || updateRenderSettingsMutation.isPending
-															}
-														>
-															{t('render.config.reset')}
-														</Button>
-														<Button
-															size="sm"
-															onClick={() => {
-																updateRenderSettingsMutation.mutate({
-																	id,
-																	commentsTemplateConfig:
+																if (!canQueueRender) {
+																	toast.error(t('errors.noProxiesAvailable'))
+																	return
+																}
+																startCloudRenderMutation.mutate({
+																	mediaId: id,
+																	proxyId:
+																		renderProxyId && renderProxyId !== 'none'
+																			? renderProxyId
+																			: undefined,
+																	sourcePolicy,
+																	templateId,
+																	templateConfig:
 																		templateConfig === null
 																			? null
 																			: templateConfig,
 																})
 															}}
 															disabled={
-																isBusy || updateRenderSettingsMutation.isPending
+																startCloudRenderMutation.isPending ||
+																!canQueueRender ||
+																isBusy
 															}
 														>
-															{updateRenderSettingsMutation.isPending
-																? t('render.config.saving')
-																: t('render.config.save')}
+															{startCloudRenderMutation.isPending ? (
+																<>
+																	<Loader2 className="mr-2 h-3 w-3 animate-spin" />
+																	Queuing...
+																</>
+															) : (
+																<>
+																	<Play className="mr-2 h-3 w-3" />
+																	{t('render.start')}
+																</>
+															)}
 														</Button>
-													</div>
-												</div>
 
-												<div className="space-y-2">
-													<Label>{t('render.config.theme')}</Label>
-													<ColorPickerGrid
-														fields={[
-															{
-																id: 'commentsThemeBackground',
-																label: t('render.config.fields.background'),
-																value:
-																	effectiveTemplateConfig.theme?.background ??
-																	'#000000',
-																onChange: (e) =>
-																	setTemplateTheme({
-																		background: e.target.value,
-																	}),
-															},
-															{
-																id: 'commentsThemeSurface',
-																label: t('render.config.fields.surface'),
-																value:
-																	effectiveTemplateConfig.theme?.surface ??
-																	'#ffffff',
-																onChange: (e) =>
-																	setTemplateTheme({ surface: e.target.value }),
-															},
-															{
-																id: 'commentsThemeText',
-																label: t('render.config.fields.textPrimary'),
-																value:
-																	effectiveTemplateConfig.theme?.textPrimary ??
-																	'#111111',
-																onChange: (e) =>
-																	setTemplateTheme({
-																		textPrimary: e.target.value,
-																	}),
-															},
-															{
-																id: 'commentsThemeText2',
-																label: t('render.config.fields.textSecondary'),
-																value:
-																	effectiveTemplateConfig.theme
-																		?.textSecondary ?? '#333333',
-																onChange: (e) =>
-																	setTemplateTheme({
-																		textSecondary: e.target.value,
-																	}),
-															},
-															{
-																id: 'commentsThemeAccent',
-																label: t('render.config.fields.accent'),
-																value:
-																	effectiveTemplateConfig.theme?.accent ??
-																	'#ff0000',
-																onChange: (e) =>
-																	setTemplateTheme({ accent: e.target.value }),
-															},
-														]}
-													/>
-												</div>
-
-												<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-													<div className="space-y-2">
-														<Label>{t('render.config.typography')}</Label>
-														<div className="space-y-2">
-															<div className="space-y-2">
-																<Label className="text-xs text-muted-foreground">
-																	{t('render.config.fields.fontPreset')}
-																</Label>
-																<Select
-																	value={
-																		effectiveTemplateConfig.typography
-																			?.fontPreset ?? 'noto'
-																	}
-																	onValueChange={(v) =>
-																		setTemplateTypography({
-																			fontPreset: v as any,
-																		})
-																	}
-																	disabled={isBusy}
-																>
-																	<SelectTrigger>
-																		<SelectValue />
-																	</SelectTrigger>
-																	<SelectContent>
-																		<SelectItem value="noto">
-																			Noto (CJK)
-																		</SelectItem>
-																		<SelectItem value="inter">Inter</SelectItem>
-																		<SelectItem value="system">
-																			System
-																		</SelectItem>
-																	</SelectContent>
-																</Select>
-															</div>
-															<div className="space-y-2">
-																<Label className="text-xs text-muted-foreground">
-																	{t('render.config.fields.fontScale')}
-																</Label>
-																<Input
-																	type="number"
-																	step="0.05"
-																	min="0.5"
-																	max="2"
-																	value={String(
-																		effectiveTemplateConfig.typography
-																			?.fontScale ?? 1,
-																	)}
-																	onChange={(e) => {
-																		const v = Number.parseFloat(e.target.value)
-																		setTemplateTypography({
-																			fontScale: Number.isFinite(v) ? v : 1,
-																		})
-																	}}
-																	disabled={isBusy}
-																/>
-															</div>
-														</div>
-													</div>
-
-													<div className="space-y-2">
-														<Label>{t('render.config.layout')}</Label>
-														<div className="grid grid-cols-3 gap-2">
-															<div className="space-y-1">
-																<Label className="text-xs text-muted-foreground">
-																	{t('render.config.fields.paddingX')}
-																</Label>
-																<Input
-																	type="number"
-																	value={String(
-																		effectiveTemplateConfig.layout?.paddingX ??
-																			80,
-																	)}
-																	onChange={(e) =>
-																		setTemplateLayout({
-																			paddingX: safeParseInt(
-																				e.target.value,
-																				80,
-																			),
-																		})
-																	}
-																	disabled={isBusy}
-																/>
-															</div>
-															<div className="space-y-1">
-																<Label className="text-xs text-muted-foreground">
-																	{t('render.config.fields.paddingY')}
-																</Label>
-																<Input
-																	type="number"
-																	value={String(
-																		effectiveTemplateConfig.layout?.paddingY ??
-																			60,
-																	)}
-																	onChange={(e) =>
-																		setTemplateLayout({
-																			paddingY: safeParseInt(
-																				e.target.value,
-																				60,
-																			),
-																		})
-																	}
-																	disabled={isBusy}
-																/>
-															</div>
-															<div className="space-y-1">
-																<Label className="text-xs text-muted-foreground">
-																	{t('render.config.fields.infoPanelWidth')}
-																</Label>
-																<Input
-																	type="number"
-																	value={String(
-																		effectiveTemplateConfig.layout
-																			?.infoPanelWidth ?? 680,
-																	)}
-																	onChange={(e) =>
-																		setTemplateLayout({
-																			infoPanelWidth: safeParseInt(
-																				e.target.value,
-																				680,
-																			),
-																		})
-																	}
-																	disabled={isBusy}
-																/>
-															</div>
-														</div>
-													</div>
-												</div>
-
-												<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-													<div className="space-y-2">
-														<Label>{t('render.config.brand')}</Label>
-														<div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
-															<div className="text-sm">
-																{t('render.config.fields.watermark')}
-															</div>
-															<Switch
-																checked={Boolean(
-																	effectiveTemplateConfig.brand?.showWatermark,
-																)}
-																onCheckedChange={(checked) =>
-																	setTemplateBrand({ showWatermark: checked })
-																}
-																disabled={isBusy}
-															/>
-														</div>
-														<Input
-															placeholder={t(
-																'render.config.fields.watermarkText',
-															)}
-															value={String(
-																effectiveTemplateConfig.brand?.watermarkText ??
-																	'',
-															)}
-															onChange={(e) =>
-																setTemplateBrand({
-																	watermarkText: e.target.value,
-																})
-															}
-															disabled={
-																isBusy ||
-																!effectiveTemplateConfig.brand?.showWatermark
-															}
-														/>
-													</div>
-
-													<div className="space-y-2">
-														<Label>{t('render.config.motion')}</Label>
-														<div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
-															<div className="text-sm">
-																{t('render.config.fields.motionEnabled')}
-															</div>
-															<Switch
-																checked={Boolean(
-																	effectiveTemplateConfig.motion?.enabled ??
-																	true,
-																)}
-																onCheckedChange={(checked) =>
-																	setTemplateMotion({ enabled: checked })
-																}
-																disabled={isBusy}
-															/>
-														</div>
-														<div className="space-y-2">
-															<Label className="text-xs text-muted-foreground">
-																{t('render.config.fields.motionIntensity')}
-															</Label>
-															<Select
-																value={
-																	effectiveTemplateConfig.motion?.intensity ??
-																	'normal'
-																}
-																onValueChange={(v) =>
-																	setTemplateMotion({
-																		intensity: v as any,
-																	})
-																}
-																disabled={
-																	isBusy ||
-																	effectiveTemplateConfig.motion?.enabled ===
-																		false
-																}
+														{hasRenderedCommentsVideo ? (
+															<Button
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+																asChild
 															>
-																<SelectTrigger>
-																	<SelectValue />
-																</SelectTrigger>
-																<SelectContent>
-																	<SelectItem value="subtle">Subtle</SelectItem>
-																	<SelectItem value="normal">Normal</SelectItem>
-																	<SelectItem value="strong">Strong</SelectItem>
-																</SelectContent>
-															</Select>
-														</div>
+																<a href={renderedDownloadUrl}>
+																	{t('render.output.download')}
+																</a>
+															</Button>
+														) : null}
+
+														{renderJobId ? (
+															<Button
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+																onClick={() => setRenderJobId(null)}
+																disabled={isBusy}
+															>
+																[ TERMINATE_RENDER ]
+															</Button>
+														) : null}
 													</div>
 												</div>
 											</div>
+										</TabsContent>
+									</div>
+								</Tabs>
+							</div>
 
-											<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-												<div className="space-y-2">
-													<Label>{t('render.sourcePolicy.label')}</Label>
-													<Select
-														value={sourcePolicy}
-														onValueChange={(v) =>
-															setSourcePolicy(v as SourcePolicy)
-														}
-														disabled={isBusy}
-													>
-														<SelectTrigger>
-															<SelectValue />
-														</SelectTrigger>
-														<SelectContent>
-															<SelectItem value="auto">
-																{t('render.sourcePolicy.auto')}
-															</SelectItem>
-															<SelectItem value="original">
-																{t('render.sourcePolicy.original')}
-															</SelectItem>
-															<SelectItem value="subtitles">
-																{t('render.sourcePolicy.subtitles')}
-															</SelectItem>
-														</SelectContent>
-													</Select>
+							<div className="space-y-6 lg:col-span-7 lg:sticky lg:top-6 lg:self-start">
+								<div className="border border-border bg-card">
+									<div className="border-b border-border bg-muted/30 px-4 py-3">
+										<div className="flex flex-wrap items-center justify-between gap-6">
+											<div className="space-y-1">
+												<div className="font-mono text-[10px] font-bold uppercase tracking-widest">
+													Data Stream Monitor
 												</div>
-
-												<ProxySelect
-													label={t('fields.proxy')}
-													proxies={proxiesQuery.data?.proxies ?? []}
-													defaultProxyId={
-														proxiesQuery.data?.defaultProxyId ?? null
-													}
-													value={renderProxyId}
-													onValueChange={setRenderProxyId}
-													disabled={isBusy}
-													help={
-														!hasSuccessProxies
-															? t('errors.noProxiesAvailable')
-															: undefined
-													}
-												/>
+												<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+													Status:{' '}
+													<span className="text-foreground">
+														{t('comments.title', { count: comments.length })}
+													</span>
+													{hasSelection && (
+														<>
+															<span className="mx-2">|</span>
+															Selected:{' '}
+															<span className="text-primary font-bold">
+																{selectedCount}
+															</span>
+														</>
+													)}
+												</div>
 											</div>
 
 											<div className="flex flex-wrap items-center gap-2">
 												<Button
-													onClick={() => {
-														if (!canQueueRender) {
-															toast.error(t('errors.noProxiesAvailable'))
-															return
-														}
-														startCloudRenderMutation.mutate({
-															mediaId: id,
-															proxyId:
-																renderProxyId && renderProxyId !== 'none'
-																	? renderProxyId
-																	: undefined,
-															sourcePolicy,
-															templateId,
-															templateConfig:
-																templateConfig === null ? null : templateConfig,
-														})
-													}}
+													variant="outline"
+													size="sm"
+													className="h-8 rounded-none font-mono text-[10px] uppercase tracking-widest"
+													onClick={toggleSelectAll}
+													disabled={comments.length === 0}
+												>
+													{allVisibleSelected ? (
+														<CheckSquare className="mr-2 h-3 w-3" />
+													) : (
+														<Square className="mr-2 h-3 w-3" />
+													)}
+													{allVisibleSelected ? 'DESELECT' : 'SELECT_ALL'}
+												</Button>
+												<Button
+													variant="destructive"
+													size="sm"
+													className="h-8 rounded-none font-mono text-[10px] uppercase tracking-widest"
+													onClick={handleBulkDelete}
 													disabled={
-														startCloudRenderMutation.isPending ||
-														!canQueueRender ||
-														isBusy
+														!hasSelection || deleteCommentsMutation.isPending
 													}
 												>
-													{startCloudRenderMutation.isPending ? (
-														<>
-															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															{t('render.queuing')}
-														</>
-													) : (
-														<>
-															<Play className="mr-2 h-4 w-4" />
-															{t('render.start')}
-														</>
-													)}
+													<Trash2 className="mr-2 h-3 w-3" />
+													PURGE_SELECTED
 												</Button>
-
-												{hasRenderedCommentsVideo ? (
-													<Button variant="secondary" asChild>
-														<a href={renderedDownloadUrl}>
-															{t('render.output.download')}
-														</a>
-													</Button>
-												) : null}
-
-												{renderJobId ? (
-													<Button
-														variant="secondary"
-														onClick={() => setRenderJobId(null)}
-														disabled={isBusy}
-													>
-														Clear job
-													</Button>
-												) : null}
 											</div>
 										</div>
-									</TabsContent>
-								</Tabs>
-							</div>
-
-							<div className="space-y-4 lg:col-span-1 lg:sticky lg:top-6 lg:self-start">
-								<div className="glass rounded-2xl p-5">
-									<div className="flex flex-wrap items-center justify-between gap-3">
-										<div className="text-sm font-semibold">
-											{t('workflow.title')}
-										</div>
-										<div className="flex flex-wrap gap-2">
-											<Button
-												variant="secondary"
-												size="sm"
-												onClick={toggleSelectAll}
-												disabled={comments.length === 0}
-											>
-												{allVisibleSelected ? (
-													<CheckSquare className="mr-2 h-4 w-4" />
-												) : (
-													<Square className="mr-2 h-4 w-4" />
-												)}
-												{allVisibleSelected
-													? t('comments.clearSelection')
-													: t('comments.selectAll')}
-											</Button>
-											<Button
-												variant="destructive"
-												size="sm"
-												onClick={handleBulkDelete}
-												disabled={
-													!hasSelection || deleteCommentsMutation.isPending
-												}
-											>
-												<Trash2 className="mr-2 h-4 w-4" />
-												{deleteCommentsMutation.isPending
-													? t('comments.deleting')
-													: t('comments.deleteSelected')}
-											</Button>
-										</div>
 									</div>
-									<div className="mt-2 text-xs text-muted-foreground">
-										{t('comments.title', { count: comments.length })}
-										{hasSelection
-											? ` · ${t('comments.selected', { count: selectedCount })}`
-											: null}
-									</div>
-								</div>
 
-								<div className="glass rounded-2xl p-4 lg:max-h-[72vh] lg:overflow-y-auto">
-									<CommentsList
-										comments={comments}
-										selectedIds={selectedCommentIds}
-										onSelectChange={handleSelectComment}
-										onDelete={(commentId) =>
-											deleteOneMutation.mutate({ mediaId: id, commentId })
-										}
-										deleting={deleteOneMutation.isPending || isBusy}
-										emptyTitle={t('empty.title')}
-										emptyDescription={t('empty.description')}
-									/>
+									<div className="lg:max-h-[75vh] lg:overflow-y-auto">
+										<div className="border-b border-border bg-muted/10 px-4 py-1.5">
+											<span className="font-mono text-[8px] uppercase tracking-[0.3em] text-muted-foreground">
+												Live_Comment_Buffer_Input
+											</span>
+										</div>
+										<CommentsList
+											comments={comments}
+											selectedIds={selectedCommentIds}
+											onSelectChange={handleSelectComment}
+											onDelete={(commentId) =>
+												deleteOneMutation.mutate({ mediaId: id, commentId })
+											}
+											deleting={deleteOneMutation.isPending || isBusy}
+											emptyTitle={t('empty.title')}
+											emptyDescription={t('empty.description')}
+										/>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -1760,15 +1890,17 @@ function ModelSelect({
 }) {
 	return (
 		<div className="space-y-2">
-			<Label>{label}</Label>
+			<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+				{label}
+			</Label>
 			<Select value={value} onValueChange={onValueChange} disabled={disabled}>
-				<SelectTrigger>
-					<SelectValue placeholder="Select a model" />
+				<SelectTrigger className="h-9 rounded-none font-mono text-sm">
+					<SelectValue placeholder="SELECT_ENGINE" />
 				</SelectTrigger>
-				<SelectContent>
+				<SelectContent className="rounded-none">
 					{options.map((m) => (
-						<SelectItem key={m.id} value={m.id}>
-							{m.label}
+						<SelectItem key={m.id} value={m.id} className="font-mono text-sm">
+							{m.label.toUpperCase().replace(/\s+/g, '_')}
 						</SelectItem>
 					))}
 				</SelectContent>
@@ -1802,7 +1934,6 @@ function ProxySelect({
 	disabled?: boolean
 	help?: string
 }) {
-	const tProxySelector = useTranslations('Proxy.selector')
 	const successProxyIds = new Set(
 		proxies
 			.filter((p) => p.id !== 'none' && p.testStatus === 'success')
@@ -1810,51 +1941,56 @@ function ProxySelect({
 	)
 	const options = proxies
 	return (
-		<div className="space-y-2">
-			<Label>{label}</Label>
+		<div className="space-y-2 font-mono">
+			<Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+				{label}
+			</Label>
 			<Select value={value} onValueChange={onValueChange} disabled={disabled}>
-				<SelectTrigger>
-					<SelectValue placeholder={tProxySelector('selectPlaceholder')} />
+				<SelectTrigger className="h-9 rounded-none text-sm">
+					<SelectValue placeholder="SELECT_GATEWAY" />
 				</SelectTrigger>
-				<SelectContent>
+				<SelectContent className="rounded-none">
 					{options.map((proxy) => {
 						const isDefault = Boolean(
 							defaultProxyId && proxy.id === defaultProxyId,
 						)
-						const hostLabel = hostKindLabel(classifyHost(proxy.server))
 						const display =
 							proxy.name ||
 							(proxy.id === 'none'
-								? tProxySelector('auto')
-								: `${proxy.protocol ?? 'http'}://${formatHostPort(proxy.server, proxy.port)}${hostLabel ? ` (${hostLabel})` : ''}`)
+								? 'AUTO_DISCOVERY'
+								: `${proxy.protocol ?? 'http'}://${formatHostPort(proxy.server, proxy.port)}`)
 						return (
 							<SelectItem
 								key={proxy.id}
 								value={proxy.id}
 								disabled={proxy.id !== 'none' && !successProxyIds.has(proxy.id)}
+								className="font-mono text-xs"
 							>
-								<span className="inline-flex items-center gap-2">
-									<span className="truncate">{display}</span>
-									{proxy.id !== 'none' ? (
-										<ProxyStatusPill
-											status={proxy.testStatus}
-											responseTime={proxy.responseTime}
-										/>
-									) : null}
-									{isDefault ? (
-										<span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
-											{tProxySelector('defaultBadge')}
+								<span className="flex items-center gap-3">
+									<span className="truncate tracking-tighter">
+										{display.toUpperCase()}
+									</span>
+									{proxy.id !== 'none' && (
+										<span className="text-[10px] opacity-70">
+											[{proxy.responseTime}ms]
 										</span>
-									) : null}
+									)}
+									{isDefault && (
+										<span className="bg-primary px-1 text-[8px] font-bold text-primary-foreground">
+											DEFAULT
+										</span>
+									)}
 								</span>
 							</SelectItem>
 						)
 					})}
 				</SelectContent>
 			</Select>
-			{help ? (
-				<div className="text-xs text-muted-foreground">{help}</div>
-			) : null}
+			{help && (
+				<div className="text-[10px] uppercase tracking-wider text-destructive">
+					!! {help}
+				</div>
+			)}
 		</div>
 	)
 }
@@ -1878,9 +2014,11 @@ function CommentsList({
 }) {
 	if (comments.length === 0) {
 		return (
-			<div className="glass rounded-2xl p-8 text-center">
-				<div className="text-sm font-medium text-foreground">{emptyTitle}</div>
-				<div className="mt-1 text-sm text-muted-foreground">
+			<div className="border-t border-border p-8 text-center font-mono">
+				<div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+					{emptyTitle}
+				</div>
+				<div className="mt-2 text-[10px] uppercase tracking-tighter opacity-50">
 					{emptyDescription}
 				</div>
 			</div>
@@ -1888,7 +2026,7 @@ function CommentsList({
 	}
 
 	return (
-		<div className="space-y-3">
+		<div className="divide-y divide-border">
 			{comments.map((comment) => (
 				<CommentRow
 					key={comment.id}
@@ -1920,89 +2058,87 @@ function CommentRow({
 	const showFallback = avatarError || !comment.authorThumbnail
 	const initials = resolveAvatarFallback(comment.author)
 
-	const selectionClass = selected ? 'bg-primary/5 ring-1 ring-primary/20' : ''
+	const selectionClass = selected ? 'bg-primary/5' : ''
 
 	return (
 		<div
-			className={`group glass flex items-start gap-3 rounded-2xl px-4 py-3 transition-all duration-200 hover:bg-muted/40 ${selectionClass}`}
+			className={`group flex items-start gap-4 p-4 transition-colors hover:bg-muted/30 ${selectionClass}`}
 		>
-			<Button
-				variant="ghost"
-				size="sm"
-				aria-label={selected ? 'Deselect comment' : 'Select comment'}
-				aria-pressed={selected}
-				onClick={() => onSelectChange(!selected)}
-				className="mt-1 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-			>
-				{selected ? (
-					<CheckSquare className="h-4 w-4" />
-				) : (
-					<Square className="h-4 w-4" />
-				)}
-			</Button>
-
-			<div className="flex-shrink-0">
-				{showFallback ? (
-					<div className="h-8 w-8 rounded-full border border-background bg-muted text-xs font-semibold uppercase text-muted-foreground shadow-sm flex items-center justify-center">
-						{initials}
-					</div>
-				) : (
-					<img
-						src={comment.authorThumbnail}
-						alt={comment.author}
-						width={32}
-						height={32}
-						className="h-8 w-8 rounded-full border border-background shadow-sm object-cover"
-						loading="lazy"
-						onError={() => setAvatarError(true)}
-					/>
-				)}
+			<div className="mt-0.5">
+				<button
+					type="button"
+					onClick={() => onSelectChange(!selected)}
+					className={`h-4 w-4 border transition-colors ${
+						selected
+							? 'border-primary bg-primary text-primary-foreground'
+							: 'border-border bg-background'
+					}`}
+				>
+					{selected && <CheckSquare className="h-3 w-3" />}
+				</button>
 			</div>
 
-			<div className="min-w-0 flex-1 space-y-2">
-				<div className="flex items-start justify-between gap-3">
-					<div className="min-w-0 flex-1 space-y-1">
-						<div className="flex items-center gap-2">
-							<p className="truncate text-xs font-semibold">{comment.author}</p>
-							<div className="flex flex-shrink-0 items-center gap-2 text-xs text-muted-foreground">
-								<span>Likes: {comment.likes ?? 0}</span>
-								{(comment.replyCount ?? 0) > 0 ? (
-									<span>Replies: {comment.replyCount ?? 0}</span>
-								) : null}
+			<div className="flex-shrink-0">
+				<div className="h-8 w-8 overflow-hidden rounded-none border border-border bg-muted">
+					{showFallback ? (
+						<div className="flex h-full w-full items-center justify-center font-mono text-[10px] font-bold text-muted-foreground">
+							{initials}
+						</div>
+					) : (
+						<img
+							src={comment.authorThumbnail}
+							alt={comment.author}
+							className="h-full w-full object-cover grayscale"
+							loading="lazy"
+							onError={() => setAvatarError(true)}
+						/>
+					)}
+				</div>
+			</div>
+
+			<div className="min-w-0 flex-1 space-y-3">
+				<div className="flex items-start justify-between gap-4">
+					<div className="min-w-0 flex-1">
+						<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+							<span className="truncate font-mono text-[10px] font-bold uppercase tracking-wider">
+								{comment.author}
+							</span>
+							<div className="flex items-center gap-3 font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
+								<span>LIKES:{comment.likes ?? 0}</span>
+								{(comment.replyCount ?? 0) > 0 && (
+									<span>REPLIES:{comment.replyCount ?? 0}</span>
+								)}
 							</div>
 						</div>
 					</div>
 
 					<Button
 						variant="ghost"
-						size="sm"
+						size="icon"
 						onClick={onDelete}
 						disabled={deleting}
-						aria-label="Delete comment"
-						title="Delete comment"
-						className="h-6 w-6 p-0 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+						className="h-6 w-6 rounded-none text-destructive opacity-0 group-hover:opacity-100"
 					>
-						<Trash2 className="h-3.5 w-3.5" />
+						<Trash2 className="h-3 w-3" />
 					</Button>
 				</div>
 
-				<div className="space-y-2">
-					<p className="text-xs leading-snug text-foreground break-words whitespace-pre-wrap">
+				<div className="space-y-3">
+					<p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground/90">
 						{comment.content}
 					</p>
-					{comment.translatedContent ? (
-						<div className="rounded-r border-l-2 border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 pl-2.5 py-2">
-							<div className="mb-1 flex items-center gap-1.5">
-								<LanguagesIcon className="h-3 w-3 text-primary" />
-								<Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-									Translated
-								</Badge>
+					{comment.translatedContent && (
+						<div className="border-l border-primary/30 bg-primary/5 px-3 py-2">
+							<div className="mb-2 flex items-center gap-2">
+								<div className="bg-primary px-1 font-mono text-[8px] font-bold text-primary-foreground">
+									TRANSLATED
+								</div>
 							</div>
-							<p className="text-xs leading-snug text-muted-foreground break-words whitespace-pre-wrap">
+							<p className="whitespace-pre-wrap break-words text-xs leading-relaxed">
 								{comment.translatedContent}
 							</p>
 						</div>
-					) : null}
+					)}
 				</div>
 			</div>
 		</div>

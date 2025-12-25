@@ -7,7 +7,10 @@ interface LanguageToggleProps {
 	className?: string
 }
 
-export default function LanguageToggle({ collapsed, className }: LanguageToggleProps) {
+export default function LanguageToggle({
+	collapsed,
+	className,
+}: LanguageToggleProps) {
 	const locale = useLocale()
 
 	const setLocale = useCallback((next: Locale) => {
@@ -25,8 +28,8 @@ export default function LanguageToggle({ collapsed, className }: LanguageToggleP
 				type="button"
 				onClick={toggle}
 				className={cn(
-					"flex h-8 w-8 items-center justify-center border border-border bg-background text-xs font-bold font-mono hover:bg-secondary transition-colors",
-					className
+					'flex h-8 w-8 items-center justify-center border border-border bg-background text-xs font-bold font-mono hover:bg-secondary transition-colors',
+					className,
 				)}
 				title={locale === 'en' ? 'Switch to Chinese' : 'Switch to English'}
 			>
@@ -36,7 +39,12 @@ export default function LanguageToggle({ collapsed, className }: LanguageToggleP
 	}
 
 	return (
-		<div className={cn("inline-flex border border-border bg-background p-0.5", className)}>
+		<div
+			className={cn(
+				'inline-flex border border-border bg-background p-0.5',
+				className,
+			)}
+		>
 			<button
 				type="button"
 				onClick={() => setLocale('zh')}

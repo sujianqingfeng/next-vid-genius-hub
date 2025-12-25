@@ -44,15 +44,15 @@ function Home() {
 								{t('badge')}
 							</span>
 						</div>
-						
+
 						<h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 uppercase">
 							{t('title')}
 						</h1>
-						
+
 						<p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-mono mb-12">
 							{t('hero')}
 						</p>
-						
+
 						<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
 							<Button
 								size="lg"
@@ -64,14 +64,18 @@ function Home() {
 									<ArrowRight className="ml-2 h-4 w-4" />
 								</Link>
 							</Button>
-							
+
 							<Button
 								variant="outline"
 								size="lg"
 								className="h-12 px-8 rounded-none border-border hover:bg-secondary hover:text-secondary-foreground text-sm uppercase tracking-wide"
 								asChild
 							>
-								<a href="https://github.com/your-repo" target="_blank" rel="noopener noreferrer">
+								<a
+									href="https://github.com/your-repo"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
 									Documentation
 								</a>
 							</Button>

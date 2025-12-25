@@ -4,7 +4,13 @@ import {
 	useQueryClient,
 } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw, Terminal } from 'lucide-react'
+import {
+	ArrowLeft,
+	ExternalLink,
+	Loader2,
+	RefreshCw,
+	Terminal,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Button } from '~/components/ui/button'
 import {
@@ -100,12 +106,23 @@ export function MediaDetailPage({ id }: { id: string }) {
 					<div className="flex justify-center mb-4">
 						<Terminal className="h-8 w-8 text-destructive" />
 					</div>
-					<div className="text-lg font-bold uppercase tracking-wide text-destructive mb-2">{t('error')}</div>
+					<div className="text-lg font-bold uppercase tracking-wide text-destructive mb-2">
+						{t('error')}
+					</div>
 					<div className="flex justify-center gap-4 mt-8">
-						<Button variant="outline" className="rounded-none border-destructive/50 text-destructive hover:bg-destructive/10 uppercase" asChild>
+						<Button
+							variant="outline"
+							className="rounded-none border-destructive/50 text-destructive hover:bg-destructive/10 uppercase"
+							asChild
+						>
 							<Link to="/media">{t('back')}</Link>
 						</Button>
-						<Button className="rounded-none uppercase" onClick={() => mediaQuery.refetch()}>Retry</Button>
+						<Button
+							className="rounded-none uppercase"
+							onClick={() => mediaQuery.refetch()}
+						>
+							Retry
+						</Button>
 					</div>
 				</div>
 			</div>
@@ -136,9 +153,9 @@ export function MediaDetailPage({ id }: { id: string }) {
 			<div className="mx-auto max-w-7xl border border-border bg-card">
 				{/* Header */}
 				<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-6 bg-secondary/5">
-					<Button 
-						variant="outline" 
-						size="sm" 
+					<Button
+						variant="outline"
+						size="sm"
 						className="rounded-none border-border uppercase tracking-wide text-xs h-9 px-4"
 						asChild
 					>
@@ -147,10 +164,15 @@ export function MediaDetailPage({ id }: { id: string }) {
 							{t('back')}
 						</Link>
 					</Button>
-					
+
 					<div className="flex items-center gap-2">
 						{item.url ? (
-							<Button variant="outline" size="sm" className="rounded-none border-border uppercase tracking-wide text-xs h-9" asChild>
+							<Button
+								variant="outline"
+								size="sm"
+								className="rounded-none border-border uppercase tracking-wide text-xs h-9"
+								asChild
+							>
 								<a href={item.url} target="_blank" rel="noreferrer">
 									<ExternalLink className="mr-2 h-3.5 w-3.5" />
 									{t('actions.open')}
@@ -224,20 +246,36 @@ export function MediaDetailPage({ id }: { id: string }) {
 
 							<div className="grid grid-cols-2 gap-px bg-border border border-border">
 								<div className="bg-background p-2">
-									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Source</span>
-									<span className="text-xs font-bold uppercase">{item.source || '-'}</span>
+									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">
+										Source
+									</span>
+									<span className="text-xs font-bold uppercase">
+										{item.source || '-'}
+									</span>
 								</div>
 								<div className="bg-background p-2">
-									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Quality</span>
-									<span className="text-xs font-bold uppercase">{item.quality || '-'}</span>
+									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">
+										Quality
+									</span>
+									<span className="text-xs font-bold uppercase">
+										{item.quality || '-'}
+									</span>
 								</div>
 								<div className="bg-background p-2">
-									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Status</span>
-									<span className="text-xs font-bold uppercase">{item.downloadStatus || '-'}</span>
+									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">
+										Status
+									</span>
+									<span className="text-xs font-bold uppercase">
+										{item.downloadStatus || '-'}
+									</span>
 								</div>
 								<div className="bg-background p-2">
-									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">Date</span>
-									<span className="text-xs font-mono">{createdAt ? createdAt.split(',')[0] : '-'}</span>
+									<span className="block text-[10px] uppercase text-muted-foreground mb-0.5">
+										Date
+									</span>
+									<span className="text-xs font-mono">
+										{createdAt ? createdAt.split(',')[0] : '-'}
+									</span>
 								</div>
 							</div>
 						</div>
@@ -248,7 +286,7 @@ export function MediaDetailPage({ id }: { id: string }) {
 								{t('actions.title')}
 							</h2>
 							<div className="space-y-3">
-								<Button 
+								<Button
 									className="w-full justify-start rounded-none h-12 uppercase tracking-wide font-bold border border-border bg-background text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
 									variant="ghost"
 									asChild
@@ -268,7 +306,7 @@ export function MediaDetailPage({ id }: { id: string }) {
 										<ArrowLeft className="h-4 w-4 rotate-180" />
 									</Link>
 								</Button>
-								
+
 								<Sheet open={pointsOpen} onOpenChange={setPointsOpen}>
 									<SheetTrigger asChild>
 										<Button
@@ -281,7 +319,9 @@ export function MediaDetailPage({ id }: { id: string }) {
 									</SheetTrigger>
 									<SheetContent className="flex flex-col p-0 border-l border-border bg-background sm:max-w-xl">
 										<div className="h-14 flex items-center justify-between px-6 border-b border-border bg-secondary/5">
-											<SheetTitle className="text-sm font-bold uppercase tracking-wider">{t('points.title')}</SheetTitle>
+											<SheetTitle className="text-sm font-bold uppercase tracking-wider">
+												{t('points.title')}
+											</SheetTitle>
 											<div className="flex items-center gap-2 text-xs font-mono">
 												<span className="text-muted-foreground uppercase">
 													{t('points.net')}:
@@ -307,11 +347,18 @@ export function MediaDetailPage({ id }: { id: string }) {
 											<div className="space-y-6">
 												<div className="border border-border">
 													<div className="grid grid-cols-[auto_1fr_auto] gap-px bg-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-														<div className="bg-secondary/10 p-2">{t('points.table.headers.time')}</div>
-														<div className="bg-secondary/10 p-2">{t('points.table.headers.type')} / {t('points.table.headers.remark')}</div>
-														<div className="bg-secondary/10 p-2 text-right">{t('points.table.headers.delta')}</div>
+														<div className="bg-secondary/10 p-2">
+															{t('points.table.headers.time')}
+														</div>
+														<div className="bg-secondary/10 p-2">
+															{t('points.table.headers.type')} /{' '}
+															{t('points.table.headers.remark')}
+														</div>
+														<div className="bg-secondary/10 p-2 text-right">
+															{t('points.table.headers.delta')}
+														</div>
 													</div>
-													
+
 													<div className="divide-y divide-border bg-background">
 														{formattedTransactions.length === 0 ? (
 															<div className="py-8 text-center text-xs font-mono text-muted-foreground uppercase">
@@ -329,8 +376,16 @@ export function MediaDetailPage({ id }: { id: string }) {
 																className="grid grid-cols-[auto_1fr_auto] items-center text-xs hover:bg-secondary/5 transition-colors"
 															>
 																<div className="p-3 font-mono text-muted-foreground border-r border-border/50">
-																	<div className="whitespace-nowrap">{new Date(tx.createdAt).toLocaleDateString()}</div>
-																	<div className="whitespace-nowrap text-[10px] opacity-70">{new Date(tx.createdAt).toLocaleTimeString()}</div>
+																	<div className="whitespace-nowrap">
+																		{new Date(
+																			tx.createdAt,
+																		).toLocaleDateString()}
+																	</div>
+																	<div className="whitespace-nowrap text-[10px] opacity-70">
+																		{new Date(
+																			tx.createdAt,
+																		).toLocaleTimeString()}
+																	</div>
 																</div>
 																<div className="p-3 border-r border-border/50 min-w-0">
 																	<div className="flex items-center gap-2 mb-1">
@@ -350,7 +405,8 @@ export function MediaDetailPage({ id }: { id: string }) {
 																				: 'text-red-500 font-bold'
 																		}
 																	>
-																		{tx.sign}{tx.abs}
+																		{tx.sign}
+																		{tx.abs}
 																	</div>
 																	<div className="text-[10px] text-muted-foreground">
 																		Bal: {tx.balanceAfter}
@@ -392,9 +448,7 @@ export function MediaDetailPage({ id }: { id: string }) {
 																transactionsQuery.isFetching
 															}
 															onClick={() =>
-																setTxPage((p) =>
-																	Math.min(txPageCount, p + 1),
-																)
+																setTxPage((p) => Math.min(txPageCount, p + 1))
 															}
 														>
 															{t('points.next')}

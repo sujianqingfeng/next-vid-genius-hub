@@ -7,7 +7,10 @@ interface ThemeToggleProps {
 	className?: string
 }
 
-export default function ThemeToggle({ collapsed, className }: ThemeToggleProps) {
+export default function ThemeToggle({
+	collapsed,
+	className,
+}: ThemeToggleProps) {
 	const { theme, setTheme } = useTheme()
 
 	if (collapsed) {
@@ -16,7 +19,7 @@ export default function ThemeToggle({ collapsed, className }: ThemeToggleProps) 
 			dark: 'system',
 			system: 'light',
 		}
-		
+
 		const Icon = {
 			light: Sun,
 			dark: Moon,
@@ -28,8 +31,8 @@ export default function ThemeToggle({ collapsed, className }: ThemeToggleProps) 
 				type="button"
 				onClick={() => setTheme(nextTheme[theme])}
 				className={cn(
-					"flex h-8 w-8 items-center justify-center border border-border bg-background text-foreground hover:bg-secondary transition-colors",
-					className
+					'flex h-8 w-8 items-center justify-center border border-border bg-background text-foreground hover:bg-secondary transition-colors',
+					className,
 				)}
 				title={`Current theme: ${theme}. Click to switch.`}
 			>
@@ -39,7 +42,12 @@ export default function ThemeToggle({ collapsed, className }: ThemeToggleProps) 
 	}
 
 	return (
-		<div className={cn("inline-flex border border-border bg-background p-0.5", className)}>
+		<div
+			className={cn(
+				'inline-flex border border-border bg-background p-0.5',
+				className,
+			)}
+		>
 			<button
 				type="button"
 				onClick={() => setTheme('light')}

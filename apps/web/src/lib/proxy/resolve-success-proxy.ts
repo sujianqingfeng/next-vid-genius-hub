@@ -17,7 +17,10 @@ export async function resolveSuccessProxy({
 	requestedProxyId?: string | null
 	preferredProxyId?: string | null
 	db?: DbClient
-}): Promise<{ proxyId: string; proxyRecord: typeof schema.proxies.$inferSelect }> {
+}): Promise<{
+	proxyId: string
+	proxyRecord: typeof schema.proxies.$inferSelect
+}> {
 	const database = db ?? (await getDb())
 
 	if (requestedProxyId) {
@@ -28,7 +31,9 @@ export async function resolveSuccessProxy({
 			throwProxyNotSuccessError('Proxy not found')
 		}
 		if (proxyRecord.testStatus !== 'success') {
-			throwProxyNotSuccessError('Proxy is not available (status is not success)')
+			throwProxyNotSuccessError(
+				'Proxy is not available (status is not success)',
+			)
 		}
 		return { proxyId: proxyRecord.id, proxyRecord }
 	}

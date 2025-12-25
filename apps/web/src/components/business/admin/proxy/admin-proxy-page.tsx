@@ -771,9 +771,7 @@ export function AdminProxyPage({
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>{t('page.checkSettingsTitle')}</DialogTitle>
-						<DialogDescription>
-							{t('page.checkSettingsDesc')}
-						</DialogDescription>
+						<DialogDescription>{t('page.checkSettingsDesc')}</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-4">

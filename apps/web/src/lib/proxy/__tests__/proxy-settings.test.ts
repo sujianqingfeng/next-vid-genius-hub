@@ -24,4 +24,3 @@ describe('proxy check settings', () => {
 		expect(normalized.concurrency).toBe(20)
 	})
 })
-

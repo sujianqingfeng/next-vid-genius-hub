@@ -3,48 +3,47 @@ import type { CommentsTemplateConfig } from '@app/remotion-project/types'
 
 const ColorString = z.string().min(1)
 
-export const CommentsTemplateConfigSchema: z.ZodType<CommentsTemplateConfig> =
-	z
-		.object({
-			theme: z
-				.object({
-					background: ColorString.optional(),
-					surface: ColorString.optional(),
-					border: ColorString.optional(),
-					textPrimary: ColorString.optional(),
-					textSecondary: ColorString.optional(),
-					textMuted: ColorString.optional(),
-					accent: ColorString.optional(),
-					accentGlow: ColorString.optional(),
-				})
-				.optional(),
-			typography: z
-				.object({
-					fontPreset: z.enum(['noto', 'inter', 'system']).optional(),
-					fontScale: z.number().min(0.5).max(2).optional(),
-				})
-				.optional(),
-			layout: z
-				.object({
-					paddingX: z.number().int().min(0).max(240).optional(),
-					paddingY: z.number().int().min(0).max(240).optional(),
-					infoPanelWidth: z.number().int().min(320).max(1200).optional(),
-				})
-				.optional(),
-			brand: z
-				.object({
-					showWatermark: z.boolean().optional(),
-					watermarkText: z.string().max(80).optional(),
-				})
-				.optional(),
-			motion: z
-				.object({
-					enabled: z.boolean().optional(),
-					intensity: z.enum(['subtle', 'normal', 'strong']).optional(),
-				})
-				.optional(),
-		})
-		.strict()
+export const CommentsTemplateConfigSchema: z.ZodType<CommentsTemplateConfig> = z
+	.object({
+		theme: z
+			.object({
+				background: ColorString.optional(),
+				surface: ColorString.optional(),
+				border: ColorString.optional(),
+				textPrimary: ColorString.optional(),
+				textSecondary: ColorString.optional(),
+				textMuted: ColorString.optional(),
+				accent: ColorString.optional(),
+				accentGlow: ColorString.optional(),
+			})
+			.optional(),
+		typography: z
+			.object({
+				fontPreset: z.enum(['noto', 'inter', 'system']).optional(),
+				fontScale: z.number().min(0.5).max(2).optional(),
+			})
+			.optional(),
+		layout: z
+			.object({
+				paddingX: z.number().int().min(0).max(240).optional(),
+				paddingY: z.number().int().min(0).max(240).optional(),
+				infoPanelWidth: z.number().int().min(320).max(1200).optional(),
+			})
+			.optional(),
+		brand: z
+			.object({
+				showWatermark: z.boolean().optional(),
+				watermarkText: z.string().max(80).optional(),
+			})
+			.optional(),
+		motion: z
+			.object({
+				enabled: z.boolean().optional(),
+				intensity: z.enum(['subtle', 'normal', 'strong']).optional(),
+			})
+			.optional(),
+	})
+	.strict()
 
 export const DEFAULT_COMMENTS_TEMPLATE_CONFIG: CommentsTemplateConfig = {
 	theme: {
@@ -81,7 +80,9 @@ export function mergeCommentsTemplateConfig(
 	override: CommentsTemplateConfig,
 ): CommentsTemplateConfig {
 	const out: CommentsTemplateConfig = { ...base }
-	for (const key of Object.keys(override) as Array<keyof CommentsTemplateConfig>) {
+	for (const key of Object.keys(override) as Array<
+		keyof CommentsTemplateConfig
+	>) {
 		const value = override[key]
 		if (value == null) continue
 		const existing = out[key]
@@ -93,4 +94,3 @@ export function mergeCommentsTemplateConfig(
 	}
 	return out
 }
-

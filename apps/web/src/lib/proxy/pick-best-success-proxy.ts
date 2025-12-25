@@ -18,4 +18,3 @@ export function pickBestSuccessProxyId(
 
 	return sorted[0]?.id ?? null
 }
-

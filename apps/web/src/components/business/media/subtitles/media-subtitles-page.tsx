@@ -334,9 +334,15 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 					<div className="flex justify-center mb-4">
 						<Terminal className="h-8 w-8 text-destructive" />
 					</div>
-					<div className="text-lg font-bold uppercase tracking-wide text-destructive mb-2">Error Loading Media</div>
+					<div className="text-lg font-bold uppercase tracking-wide text-destructive mb-2">
+						Error Loading Media
+					</div>
 					<div className="flex justify-center gap-4 mt-8">
-						<Button variant="outline" className="rounded-none border-destructive/50 text-destructive hover:bg-destructive/10 uppercase" asChild>
+						<Button
+							variant="outline"
+							className="rounded-none border-destructive/50 text-destructive hover:bg-destructive/10 uppercase"
+							asChild
+						>
 							<Link to="/media/$id" params={{ id }}>
 								{t('back')}
 							</Link>
@@ -394,11 +400,13 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 						<h1 className="text-xl font-bold uppercase tracking-wide">
 							{t('title')}
 						</h1>
-						<div className="text-xs font-mono text-muted-foreground uppercase">{media.title}</div>
+						<div className="text-xs font-mono text-muted-foreground uppercase">
+							{media.title}
+						</div>
 					</div>
-					<Button 
-						variant="outline" 
-						size="sm" 
+					<Button
+						variant="outline"
+						size="sm"
 						className="rounded-none border-border uppercase tracking-wide text-xs h-9 px-4"
 						asChild
 					>
@@ -437,25 +445,40 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 						onValueChange={(v) => setActiveStep(v as StepId)}
 					>
 						<TabsList className="w-full flex bg-secondary/10 border border-border p-0 h-auto rounded-none">
-							<TabsTrigger value="step1" className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide">
+							<TabsTrigger
+								value="step1"
+								className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide"
+							>
 								<FileText className="h-3.5 w-3.5 mr-2" />
 								Transcribe
 							</TabsTrigger>
-							<TabsTrigger value="step2" className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide">
+							<TabsTrigger
+								value="step2"
+								className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide"
+							>
 								<Languages className="h-3.5 w-3.5 mr-2" />
 								Translate
 							</TabsTrigger>
-							<TabsTrigger value="step3" className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide">
+							<TabsTrigger
+								value="step3"
+								className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide"
+							>
 								<Video className="h-3.5 w-3.5 mr-2" />
 								Render
 							</TabsTrigger>
-							<TabsTrigger value="step4" className="flex-1 rounded-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide">
+							<TabsTrigger
+								value="step4"
+								className="flex-1 rounded-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide"
+							>
 								<Download className="h-3.5 w-3.5 mr-2" />
 								Export
 							</TabsTrigger>
 						</TabsList>
 
-						<TabsContent value="step1" className="mt-8 space-y-8 animate-in fade-in duration-300">
+						<TabsContent
+							value="step1"
+							className="mt-8 space-y-8 animate-in fade-in duration-300"
+						>
 							<div className="border border-border bg-background p-6">
 								<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8 border-b border-border pb-6">
 									<div className="space-y-1">
@@ -471,9 +494,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 										<CloudJobProgress
 											status={(asrStatusQuery.data as any)?.status}
 											phase={(asrStatusQuery.data as any)?.phase}
-											progress={
-												(asrStatusQuery.data as any)?.progress ?? null
-											}
+											progress={(asrStatusQuery.data as any)?.progress ?? null}
 											jobId={asrJobId}
 											showIds={false}
 										/>
@@ -680,7 +701,10 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 												setOptParams({ ...optParams, lightCleanup: checked })
 											}
 										/>
-										<Label htmlFor="optLightCleanup" className="text-xs font-bold uppercase tracking-wide">
+										<Label
+											htmlFor="optLightCleanup"
+											className="text-xs font-bold uppercase tracking-wide"
+										>
 											Light cleanup
 										</Label>
 									</div>
@@ -692,7 +716,10 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 												setOptParams({ ...optParams, textCorrect: checked })
 											}
 										/>
-										<Label htmlFor="optTextCorrect" className="text-xs font-bold uppercase tracking-wide">
+										<Label
+											htmlFor="optTextCorrect"
+											className="text-xs font-bold uppercase tracking-wide"
+										>
 											Text correct
 										</Label>
 									</div>
@@ -752,7 +779,10 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 							</div>
 						</TabsContent>
 
-						<TabsContent value="step2" className="mt-8 space-y-6 animate-in fade-in duration-300">
+						<TabsContent
+							value="step2"
+							className="mt-8 space-y-6 animate-in fade-in duration-300"
+						>
 							<div className="border border-border bg-background p-6">
 								<div className="flex items-start justify-between gap-4 mb-8 border-b border-border pb-6">
 									<div className="space-y-1">
@@ -826,7 +856,9 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 								{translationText ? (
 									<div className="border border-border bg-background">
 										<div className="flex items-center justify-between border-b border-border bg-secondary/5 px-4 py-3">
-											<div className="text-xs font-bold uppercase tracking-wide">Cues</div>
+											<div className="text-xs font-bold uppercase tracking-wide">
+												Cues
+											</div>
 											<div className="flex items-center gap-2">
 												<Button
 													variant="ghost"
@@ -925,7 +957,10 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 							</div>
 						</TabsContent>
 
-						<TabsContent value="step3" className="mt-8 space-y-6 animate-in fade-in duration-300">
+						<TabsContent
+							value="step3"
+							className="mt-8 space-y-6 animate-in fade-in duration-300"
+						>
 							<div className="border border-border bg-background p-6">
 								<Step3Render
 									isRendering={isRenderBusy}
@@ -967,7 +1002,10 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 							</div>
 						</TabsContent>
 
-						<TabsContent value="step4" className="mt-8 space-y-6 animate-in fade-in duration-300">
+						<TabsContent
+							value="step4"
+							className="mt-8 space-y-6 animate-in fade-in duration-300"
+						>
 							<div className="border border-border bg-background p-6">
 								<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 border-b border-border pb-6">
 									<div className="space-y-1">
@@ -992,7 +1030,11 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 
 								<div className="mt-6 grid grid-cols-1 gap-3">
 									{hasRenderedVideo ? (
-										<Button asChild size="lg" className="rounded-none h-12 uppercase tracking-wide font-bold">
+										<Button
+											asChild
+											size="lg"
+											className="rounded-none h-12 uppercase tracking-wide font-bold"
+										>
 											<a
 												href={`/api/media/${id}/rendered?download=1${previewVersion ? `&v=${previewVersion}` : ''}`}
 											>
@@ -1001,7 +1043,11 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 											</a>
 										</Button>
 									) : (
-										<Button size="lg" className="rounded-none h-12 uppercase tracking-wide font-bold" disabled>
+										<Button
+											size="lg"
+											className="rounded-none h-12 uppercase tracking-wide font-bold"
+											disabled
+										>
 											<Video className="mr-2 h-4 w-4" />
 											Download Video
 										</Button>

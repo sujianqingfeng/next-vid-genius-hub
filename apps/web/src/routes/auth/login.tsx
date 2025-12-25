@@ -59,7 +59,7 @@ function LoginPage() {
 							VidGenius Hub
 						</span>
 					</div>
-					
+
 					<div className="space-y-4">
 						<h1 className="text-4xl font-bold uppercase tracking-tight">
 							{t('brand.title')}
@@ -76,19 +76,25 @@ function LoginPage() {
 							<span className="flex h-6 w-6 items-center justify-center border border-border bg-background text-xs">
 								01
 							</span>
-							<span className="uppercase tracking-wide">{t('brand.bullets.processing')}</span>
+							<span className="uppercase tracking-wide">
+								{t('brand.bullets.processing')}
+							</span>
 						</li>
 						<li className="flex items-center gap-4">
 							<span className="flex h-6 w-6 items-center justify-center border border-border bg-background text-xs">
 								02
 							</span>
-							<span className="uppercase tracking-wide">{t('brand.bullets.downloads')}</span>
+							<span className="uppercase tracking-wide">
+								{t('brand.bullets.downloads')}
+							</span>
 						</li>
 						<li className="flex items-center gap-4">
 							<span className="flex h-6 w-6 items-center justify-center border border-border bg-background text-xs">
 								03
 							</span>
-							<span className="uppercase tracking-wide">{t('brand.bullets.subtitles')}</span>
+							<span className="uppercase tracking-wide">
+								{t('brand.bullets.subtitles')}
+							</span>
 						</li>
 					</ul>
 					<footer className="text-xs text-muted-foreground uppercase tracking-wider border-t border-border pt-8">
@@ -106,9 +112,7 @@ function LoginPage() {
 						className="h-8 rounded-none border-border text-xs uppercase tracking-wide"
 						asChild
 					>
-						<Link to="/">
-							{t('backHome')}
-						</Link>
+						<Link to="/">{t('backHome')}</Link>
 					</Button>
 				</div>
 
@@ -135,7 +139,10 @@ function LoginPage() {
 								className="space-y-6"
 							>
 								<div className="space-y-2">
-									<Label htmlFor="login-email" className="uppercase text-xs tracking-wider text-muted-foreground">
+									<Label
+										htmlFor="login-email"
+										className="uppercase text-xs tracking-wider text-muted-foreground"
+									>
 										{t('login.email')}
 									</Label>
 									<Input
@@ -150,7 +157,10 @@ function LoginPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="login-password" className="uppercase text-xs tracking-wider text-muted-foreground">
+									<Label
+										htmlFor="login-password"
+										className="uppercase text-xs tracking-wider text-muted-foreground"
+									>
 										{t('login.password')}
 									</Label>
 									<Input
@@ -192,7 +202,10 @@ function LoginPage() {
 								className="space-y-6"
 							>
 								<div className="space-y-2">
-									<Label htmlFor="signup-email" className="uppercase text-xs tracking-wider text-muted-foreground">
+									<Label
+										htmlFor="signup-email"
+										className="uppercase text-xs tracking-wider text-muted-foreground"
+									>
 										{t('signup.email')}
 									</Label>
 									<Input
@@ -207,7 +220,10 @@ function LoginPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="signup-nickname" className="uppercase text-xs tracking-wider text-muted-foreground">
+									<Label
+										htmlFor="signup-nickname"
+										className="uppercase text-xs tracking-wider text-muted-foreground"
+									>
 										{t('signup.nickname')}
 									</Label>
 									<Input
@@ -220,7 +236,10 @@ function LoginPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="signup-password" className="uppercase text-xs tracking-wider text-muted-foreground">
+									<Label
+										htmlFor="signup-password"
+										className="uppercase text-xs tracking-wider text-muted-foreground"
+									>
 										{t('signup.password')}
 									</Label>
 									<Input
@@ -236,7 +255,10 @@ function LoginPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="signup-confirm-password" className="uppercase text-xs tracking-wider text-muted-foreground">
+									<Label
+										htmlFor="signup-confirm-password"
+										className="uppercase text-xs tracking-wider text-muted-foreground"
+									>
 										{t('signup.confirmPassword')}
 									</Label>
 									<Input
@@ -252,7 +274,9 @@ function LoginPage() {
 									/>
 								</div>
 								<div className="p-4 border border-border bg-secondary/10">
-									<p className="text-xs text-muted-foreground font-mono">{t('signup.hint')}</p>
+									<p className="text-xs text-muted-foreground font-mono">
+										{t('signup.hint')}
+									</p>
 								</div>
 								<Button
 									type="submit"

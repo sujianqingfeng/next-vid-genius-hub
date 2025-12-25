@@ -128,7 +128,9 @@ export function PreviewPane(props: PreviewPaneProps) {
 					<div className="flex items-center justify-center h-6 w-6 border border-foreground bg-foreground text-background">
 						<Video className="h-3 w-3" />
 					</div>
-					<h3 className="text-base font-bold uppercase tracking-wide">Preview</h3>
+					<h3 className="text-base font-bold uppercase tracking-wide">
+						Preview
+					</h3>
 					{hasRenderedVideo && (
 						<span className="ml-2 border border-border bg-secondary/20 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-foreground">
 							Rendered
@@ -140,7 +142,9 @@ export function PreviewPane(props: PreviewPaneProps) {
 						<Film className="h-3 w-3" />
 						<span>{statusLabel ?? 'Rendering…'}</span>
 						{typeof progressPct === 'number' && (
-							<span className="tabular-nums border-l border-border pl-2 ml-1">{progressPct}%</span>
+							<span className="tabular-nums border-l border-border pl-2 ml-1">
+								{progressPct}%
+							</span>
 						)}
 					</div>
 				)}
@@ -190,7 +194,9 @@ export function PreviewPane(props: PreviewPaneProps) {
 				{/* Right: Subtitle List */}
 				<div className="flex flex-col border border-border bg-background max-h-[600px]">
 					<div className="flex-shrink-0 px-4 py-3 border-b border-border bg-secondary/5 flex justify-between items-center">
-						<h3 className="text-xs font-bold uppercase tracking-wide">Subtitles</h3>
+						<h3 className="text-xs font-bold uppercase tracking-wide">
+							Subtitles
+						</h3>
 						<span className="border border-border px-1.5 py-0.5 text-[10px] font-mono uppercase bg-background">
 							{cues.length} CUES
 						</span>

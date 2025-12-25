@@ -126,11 +126,12 @@ export const startCloudSync = os
 		if (!channel) throw new Error('Channel not found')
 		const channelUrlOrId = channel.channelUrl || channel.channelId || input.id
 
-		const { proxyId: effectiveProxyId, proxyRecord } = await resolveSuccessProxy({
-			db,
-			requestedProxyId: input.proxyId,
-			preferredProxyId: channel.defaultProxyId ?? null,
-		})
+		const { proxyId: effectiveProxyId, proxyRecord } =
+			await resolveSuccessProxy({
+				db,
+				requestedProxyId: input.proxyId,
+				preferredProxyId: channel.defaultProxyId ?? null,
+			})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		const taskId = createId()

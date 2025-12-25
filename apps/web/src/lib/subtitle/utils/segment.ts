@@ -19,13 +19,13 @@ export interface Segment {
 function isPunctuation(token: string): boolean {
 	// Treat as punctuation only if the whole token is punctuation marks
 	// Avoid gluing tokens like "software." to the previous word
-	return /^[\.,!?;:，。！？、…]+$/.test(token)
+	return /^[.,!?;:，。！？、…]+$/.test(token)
 }
 
 function endsWithPunctuation(token: string): boolean {
 	// Consider tokens that end with punctuation (e.g., "software.") as punctuation boundaries
 	// to improve break candidate quality and reduce reliance on guards later.
-	return /[\.,!?;:，。！？、…]+$/.test(token)
+	return /[.,!?;:，。！？、…]+$/.test(token)
 }
 
 export function wordsSliceToText(
@@ -41,7 +41,7 @@ export function wordsSliceToText(
 		// Normalize common hyphenation artifact: preceding space before hyphenated continuation
 		// Example: ["pre", "-made"] => "pre-made"
 		const prev = parts[parts.length - 1] || ''
-		const isHyphenContinuation = /^-[A-Za-z]+[\.,!?;:，。！？、…]*$/.test(w)
+		const isHyphenContinuation = /^-[A-Za-z]+[.,!?;:，。！？、…]*$/.test(w)
 
 		if (parts.length === 0) {
 			parts.push(w)
@@ -289,13 +289,13 @@ export function applyPhraseGuard(
 			out.push({ ...seg })
 			continue
 		}
-		const startsWithPunct = (w: string) => /^[\.,!?;:，。！？、…]+$/.test(w)
+		const startsWithPunct = (w: string) => /^[.,!?;:，。！？、…]+$/.test(w)
 		let moved = 0
 		let newStart = seg.startIndex
 		while (moved < maxLeadingWords && newStart <= seg.endIndex) {
 			const w = (words[newStart]?.word || '').trim()
 			if (!w || startsWithPunct(w)) break
-			const base = w.replace(/[\.,!?;:，。！？、…]+$/, '').toLowerCase()
+			const base = w.replace(/[.,!?;:，。！？、…]+$/, '').toLowerCase()
 			// Do not move common pronouns/conjunctions or stop-words
 			if (denyMove.has(base)) break
 			// Only allow a restricted noun-like allowlist to move

@@ -102,8 +102,8 @@ function MediaIndexRoute() {
 							Total Items: {total}
 						</p>
 					</div>
-					<Button 
-						asChild 
+					<Button
+						asChild
 						className="rounded-none h-10 px-6 uppercase tracking-wide text-xs font-bold"
 					>
 						<Link to="/media/download">
@@ -123,12 +123,14 @@ function MediaIndexRoute() {
 
 					{listQuery.isError ? (
 						<div className="border border-destructive/50 bg-destructive/5 p-8 text-center">
-							<div className="text-lg font-bold uppercase tracking-wide text-destructive">{t('error.title')}</div>
+							<div className="text-lg font-bold uppercase tracking-wide text-destructive">
+								{t('error.title')}
+							</div>
 							<div className="mt-2 text-sm font-mono text-destructive/80">
 								{t('error.body')}
 							</div>
 							<div className="mt-6">
-								<Button 
+								<Button
 									onClick={() => listQuery.refetch()}
 									variant="outline"
 									className="rounded-none border-destructive/50 text-destructive hover:bg-destructive/10 uppercase text-xs"
@@ -142,14 +144,19 @@ function MediaIndexRoute() {
 					{!listQuery.isLoading && !listQuery.isError && items.length === 0 ? (
 						<div className="border border-dashed border-border p-12 text-center bg-secondary/5">
 							<div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center border border-border bg-background">
-								<FolderOpen className="h-8 w-8 text-muted-foreground" strokeWidth={1} />
+								<FolderOpen
+									className="h-8 w-8 text-muted-foreground"
+									strokeWidth={1}
+								/>
 							</div>
-							<div className="text-lg font-bold uppercase tracking-wide">{t('empty.title')}</div>
+							<div className="text-lg font-bold uppercase tracking-wide">
+								{t('empty.title')}
+							</div>
 							<div className="mt-2 text-sm font-mono text-muted-foreground">
 								{t('empty.body')}
 							</div>
 							<div className="mt-8">
-								<Button 
+								<Button
 									asChild
 									className="rounded-none uppercase tracking-wide text-xs"
 								>
@@ -167,7 +174,10 @@ function MediaIndexRoute() {
 									item.translatedTitle || item.title || item.id || 'Untitled'
 								const isDeleting = deletingId === item.id
 								return (
-									<div key={item.id} className="group relative border border-border bg-background transition-colors hover:border-primary/50">
+									<div
+										key={item.id}
+										className="group relative border border-border bg-background transition-colors hover:border-primary/50"
+									>
 										<Link
 											to="/media/$id"
 											params={{ id: item.id }}
@@ -187,7 +197,7 @@ function MediaIndexRoute() {
 														<FolderOpen className="h-12 w-12" strokeWidth={1} />
 													</div>
 												)}
-												
+
 												{/* Overlay Status Badges */}
 												<div className="absolute bottom-2 left-2 flex gap-1">
 													{item.quality && (
@@ -203,14 +213,20 @@ function MediaIndexRoute() {
 												<div className="line-clamp-2 text-sm font-medium leading-relaxed uppercase tracking-wide group-hover:text-primary transition-colors h-10">
 													{title}
 												</div>
-												
+
 												<div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-muted-foreground border-t border-border pt-3">
 													<div>
-														<span className="block text-muted-foreground/50 uppercase">Source</span>
-														<span className="uppercase text-foreground">{item.source}</span>
+														<span className="block text-muted-foreground/50 uppercase">
+															Source
+														</span>
+														<span className="uppercase text-foreground">
+															{item.source}
+														</span>
 													</div>
 													<div className="text-right">
-														<span className="block text-muted-foreground/50 uppercase">Date</span>
+														<span className="block text-muted-foreground/50 uppercase">
+															Date
+														</span>
 														<span>{createdAt.split(',')[0]}</span>
 													</div>
 												</div>
@@ -256,8 +272,8 @@ function MediaIndexRoute() {
 					{/* Pagination */}
 					{pageCount > 1 ? (
 						<div className="mt-12 flex items-center justify-center gap-2 border-t border-border pt-8">
-							<Button 
-								variant="outline" 
+							<Button
+								variant="outline"
 								disabled={page <= 1}
 								asChild={page > 1}
 								className="rounded-none border-border h-9 uppercase text-xs w-24"
@@ -270,13 +286,13 @@ function MediaIndexRoute() {
 									<span>Previous</span>
 								)}
 							</Button>
-							
+
 							<div className="px-4 font-mono text-xs text-muted-foreground border border-border h-9 flex items-center bg-secondary/5">
 								PAGE {page} / {pageCount}
 							</div>
-							
-							<Button 
-								variant="outline" 
+
+							<Button
+								variant="outline"
 								disabled={page >= pageCount}
 								asChild={page < pageCount}
 								className="rounded-none border-border h-9 uppercase text-xs w-24"

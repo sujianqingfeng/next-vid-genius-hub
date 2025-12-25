@@ -148,7 +148,9 @@ export default function WorkspaceSidebar({
 				strokeWidth={1.5}
 				className={cn(
 					'h-4 w-4 flex-shrink-0',
-					isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
+					isActive
+						? 'text-foreground'
+						: 'text-muted-foreground group-hover:text-foreground',
 				)}
 			/>
 			{!collapsed ? <span className="block truncate">{item.title}</span> : null}
@@ -202,7 +204,7 @@ export default function WorkspaceSidebar({
 				{menuItems.map((item) =>
 					renderMenuItem(item, normalizePathname(item.to) === activeHref),
 				)}
-				
+
 				{bottomMenuItems.length > 0 && (
 					<>
 						<div className="my-4 border-t border-border mx-4" />
@@ -216,18 +218,24 @@ export default function WorkspaceSidebar({
 			{/* Footer / User Profile */}
 			<div className="border-t border-border bg-secondary/5">
 				<div className="p-4 space-y-4">
-					<div className={cn(
-						"flex",
-						collapsed ? "flex-col gap-2 items-center" : "justify-between items-center"
-					)}>
+					<div
+						className={cn(
+							'flex',
+							collapsed
+								? 'flex-col gap-2 items-center'
+								: 'justify-between items-center',
+						)}
+					>
 						<ThemeToggle collapsed={collapsed} />
 						<LanguageToggle collapsed={collapsed} />
 					</div>
 
-					<div className={cn(
-						"border border-border p-3 bg-background",
-						collapsed && "p-2 flex justify-center border-none bg-transparent"
-					)}>
+					<div
+						className={cn(
+							'border border-border p-3 bg-background',
+							collapsed && 'p-2 flex justify-center border-none bg-transparent',
+						)}
+					>
 						{!collapsed ? (
 							<div className="space-y-3">
 								<div className="flex items-center gap-3">
@@ -245,16 +253,23 @@ export default function WorkspaceSidebar({
 										</p>
 									</div>
 								</div>
-								
+
 								{typeof me?.balance === 'number' && (
 									<div className="flex items-center justify-between border-t border-border pt-2">
-										<span className="text-[10px] uppercase text-muted-foreground">Credits</span>
-										<span className="text-xs font-mono font-bold">{me.balance}</span>
+										<span className="text-[10px] uppercase text-muted-foreground">
+											Credits
+										</span>
+										<span className="text-xs font-mono font-bold">
+											{me.balance}
+										</span>
 									</div>
 								)}
 							</div>
 						) : (
-							<div className="h-8 w-8 bg-secondary flex items-center justify-center border border-border" title={me?.user?.email}>
+							<div
+								className="h-8 w-8 bg-secondary flex items-center justify-center border border-border"
+								title={me?.user?.email}
+							>
 								<span className="text-xs font-bold font-mono">
 									{me?.user?.nickname?.[0]?.toUpperCase() || 'U'}
 								</span>
@@ -268,7 +283,8 @@ export default function WorkspaceSidebar({
 						size="sm"
 						className={cn(
 							'w-full rounded-none border-border h-9 uppercase text-xs hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors',
-							collapsed && 'px-0 border-transparent hover:border-transparent bg-transparent'
+							collapsed &&
+								'px-0 border-transparent hover:border-transparent bg-transparent',
 						)}
 						onClick={() => logoutMutation.mutate(undefined)}
 						disabled={logoutMutation.isPending}

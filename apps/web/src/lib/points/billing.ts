@@ -71,7 +71,7 @@ export async function chargeLlmUsage(
 			tokens: totalTokens,
 			inputTokens: opts.inputTokens ?? 0,
 			outputTokens: opts.outputTokens ?? 0,
-			...(opts.metadata ?? {}),
+			...opts.metadata,
 		},
 	})
 	logger.info(
@@ -127,7 +127,7 @@ export async function chargeAsrUsage(
 			resourceType: POINT_RESOURCE_TYPES.ASR,
 			modelId: opts.modelId ?? null,
 			durationSeconds,
-			...(opts.metadata ?? {}),
+			...opts.metadata,
 		},
 	})
 	logger.info(
@@ -180,7 +180,7 @@ export async function chargeDownloadUsage(
 		metadata: {
 			resourceType: POINT_RESOURCE_TYPES.DOWNLOAD,
 			durationSeconds,
-			...(opts.metadata ?? {}),
+			...opts.metadata,
 		},
 	})
 	logger.info(

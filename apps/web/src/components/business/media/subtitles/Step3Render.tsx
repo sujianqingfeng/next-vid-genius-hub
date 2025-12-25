@@ -202,7 +202,9 @@ export function Step3Render(props: Step3RenderProps) {
 						size="lg"
 						className="min-w-[160px] h-11 rounded-none uppercase text-xs font-bold tracking-wide"
 					>
-						{isRendering && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+						{isRendering && (
+							<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+						)}
 						{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
 					</Button>
 				</div>
@@ -213,7 +215,9 @@ export function Step3Render(props: Step3RenderProps) {
 				{/* Left Column: Basic Config */}
 				<div className="space-y-6">
 					<div className="border border-border bg-background p-4">
-						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">Quick Presets</h3>
+						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">
+							Quick Presets
+						</h3>
 						<SubtitleConfigControls
 							presets={SUBTITLE_RENDER_PRESETS}
 							selectedPresetId={selectedPresetId}
@@ -234,7 +238,9 @@ export function Step3Render(props: Step3RenderProps) {
 					</div>
 
 					<div className="border border-border bg-background p-4">
-						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">Hint Text</h3>
+						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">
+							Hint Text
+						</h3>
 						<HintTextConfigControls
 							config={config.hintTextConfig}
 							onChange={handleHintTextChange}
@@ -245,7 +251,9 @@ export function Step3Render(props: Step3RenderProps) {
 				{/* Right Column: Advanced Config */}
 				<div className="space-y-6">
 					<div className="border border-border bg-background p-4">
-						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">Time Effects</h3>
+						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">
+							Time Effects
+						</h3>
 						<TimeSegmentEffectsManager
 							effects={config.timeSegmentEffects}
 							onChange={handleTimeSegmentEffectsChange}
@@ -262,8 +270,12 @@ export function Step3Render(props: Step3RenderProps) {
 				<div className="flex items-start gap-3 border border-destructive/50 bg-destructive/5 p-4">
 					<AlertCircle className="h-5 w-5 flex-shrink-0 text-destructive" />
 					<div>
-						<h3 className="text-sm font-bold uppercase tracking-wide text-destructive">Rendering Error</h3>
-						<p className="text-xs font-mono text-destructive/80 mt-1">{errorMessage}</p>
+						<h3 className="text-sm font-bold uppercase tracking-wide text-destructive">
+							Rendering Error
+						</h3>
+						<p className="text-xs font-mono text-destructive/80 mt-1">
+							{errorMessage}
+						</p>
 					</div>
 				</div>
 			)}

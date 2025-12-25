@@ -204,9 +204,7 @@ function MediaDownloadRoute() {
 											<SelectItem
 												key={p.id}
 												value={p.id}
-												disabled={
-													p.id !== 'none' && !successProxyIds.has(p.id)
-												}
+												disabled={p.id !== 'none' && !successProxyIds.has(p.id)}
 											>
 												<span className="flex w-full items-center justify-between gap-2">
 													<span className="truncate">
