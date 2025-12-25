@@ -49,58 +49,79 @@ function LoginPage() {
 	}, [loadingMe, me?.user, navigate, next])
 
 	return (
-		<div className="relative min-h-screen flex bg-gradient-to-br from-sky-50 via-white to-indigo-50">
-			<div className="pointer-events-none absolute right-6 top-6 sm:right-10 sm:top-8 z-10 text-xs sm:text-sm text-slate-500">
-				<Link
-					to="/"
-					className="pointer-events-auto underline underline-offset-4 hover:text-slate-900"
-				>
-					{t('backHome')}
-				</Link>
-			</div>
-			<section className="hidden lg:flex w-1/2 flex-col justify-between border-r border-slate-200/80 bg-white/70 backdrop-blur px-12 py-10 text-slate-900">
-				<header className="space-y-3">
-					<div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
-						<span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-						<span>Video Genius Hub</span>
+		<div className="min-h-screen flex flex-col md:flex-row bg-background text-foreground font-sans">
+			{/* Left Panel - Branding/Info */}
+			<section className="hidden md:flex w-1/2 flex-col justify-between border-r border-border p-12 bg-secondary/5">
+				<div className="space-y-8">
+					<div className="inline-flex items-center gap-2 border border-border bg-background px-3 py-1">
+						<span className="h-2 w-2 bg-foreground" />
+						<span className="text-xs font-mono uppercase tracking-wider">
+							VidGenius Hub
+						</span>
 					</div>
-					<h1 className="text-3xl font-semibold tracking-tight">
-						{t('brand.title')}
-					</h1>
-					<p className="text-sm text-slate-600">{t('brand.subtitle')}</p>
-				</header>
-				<ul className="space-y-3 text-sm text-slate-700">
-					<li className="flex items-center gap-2">
-						<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs">
-							1
-						</span>
-						<span>{t('brand.bullets.processing')}</span>
-					</li>
-					<li className="flex items-center gap-2">
-						<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-sky-700 text-xs">
-							2
-						</span>
-						<span>{t('brand.bullets.downloads')}</span>
-					</li>
-					<li className="flex items-center gap-2">
-						<span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-violet-700 text-xs">
-							3
-						</span>
-						<span>{t('brand.bullets.subtitles')}</span>
-					</li>
-				</ul>
-				<footer className="text-xs text-slate-500">{t('brand.footer')}</footer>
+					
+					<div className="space-y-4">
+						<h1 className="text-4xl font-bold uppercase tracking-tight">
+							{t('brand.title')}
+						</h1>
+						<p className="text-lg text-muted-foreground font-mono">
+							{t('brand.subtitle')}
+						</p>
+					</div>
+				</div>
+
+				<div className="space-y-8">
+					<ul className="space-y-4 font-mono text-sm">
+						<li className="flex items-center gap-4">
+							<span className="flex h-6 w-6 items-center justify-center border border-border bg-background text-xs">
+								01
+							</span>
+							<span className="uppercase tracking-wide">{t('brand.bullets.processing')}</span>
+						</li>
+						<li className="flex items-center gap-4">
+							<span className="flex h-6 w-6 items-center justify-center border border-border bg-background text-xs">
+								02
+							</span>
+							<span className="uppercase tracking-wide">{t('brand.bullets.downloads')}</span>
+						</li>
+						<li className="flex items-center gap-4">
+							<span className="flex h-6 w-6 items-center justify-center border border-border bg-background text-xs">
+								03
+							</span>
+							<span className="uppercase tracking-wide">{t('brand.bullets.subtitles')}</span>
+						</li>
+					</ul>
+					<footer className="text-xs text-muted-foreground uppercase tracking-wider border-t border-border pt-8">
+						{t('brand.footer')}
+					</footer>
+				</div>
 			</section>
 
-			<section className="flex-1 flex items-center justify-center px-4 py-10">
-				<div className="w-full max-w-md">
-					<div className="mt-6 space-y-6">
-						<header className="space-y-2">
-							<h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+			{/* Right Panel - Form */}
+			<section className="flex-1 flex flex-col">
+				<div className="flex justify-end p-6 md:p-8">
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-8 rounded-none border-border text-xs uppercase tracking-wide"
+						asChild
+					>
+						<Link to="/">
+							{t('backHome')}
+						</Link>
+					</Button>
+				</div>
+
+				<div className="flex-1 flex items-center justify-center px-4 sm:px-12 lg:px-24">
+					<div className="w-full max-w-sm">
+						<div className="mb-12 space-y-2">
+							<h2 className="text-2xl font-bold uppercase tracking-wide">
 								{t('title')}
-							</h1>
-							<p className="text-sm text-slate-600">{t('subtitle')}</p>
-						</header>
+							</h2>
+							<p className="text-sm font-mono text-muted-foreground">
+								{t('subtitle')}
+							</p>
+						</div>
 
 						{mode === 'login' ? (
 							<form
@@ -111,10 +132,12 @@ function LoginPage() {
 										password: loginPassword,
 									})
 								}}
-								className="space-y-4 min-h-[320px]"
+								className="space-y-6"
 							>
 								<div className="space-y-2">
-									<Label htmlFor="login-email">{t('login.email')}</Label>
+									<Label htmlFor="login-email" className="uppercase text-xs tracking-wider text-muted-foreground">
+										{t('login.email')}
+									</Label>
 									<Input
 										id="login-email"
 										type="email"
@@ -123,10 +146,13 @@ function LoginPage() {
 										value={loginEmail}
 										onChange={(e) => setLoginEmail(e.target.value)}
 										placeholder="you@example.com"
+										className="rounded-none border-border h-10 font-mono text-sm bg-background focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label htmlFor="login-password">{t('login.password')}</Label>
+									<Label htmlFor="login-password" className="uppercase text-xs tracking-wider text-muted-foreground">
+										{t('login.password')}
+									</Label>
 									<Input
 										id="login-password"
 										type="password"
@@ -136,11 +162,12 @@ function LoginPage() {
 										value={loginPassword}
 										onChange={(e) => setLoginPassword(e.target.value)}
 										placeholder={t('login.passwordPlaceholder')}
+										className="rounded-none border-border h-10 font-mono text-sm bg-background focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
 									/>
 								</div>
 								<Button
 									type="submit"
-									className="w-full"
+									className="w-full rounded-none h-10 uppercase tracking-wide text-xs font-bold"
 									disabled={loginMutation.isPending}
 								>
 									{loginMutation.isPending
@@ -162,70 +189,74 @@ function LoginPage() {
 										nickname: signupNickname,
 									})
 								}}
-								className="space-y-4 min-h-[320px]"
+								className="space-y-6"
 							>
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-									<div className="space-y-2">
-										<Label htmlFor="signup-email">{t('signup.email')}</Label>
-										<Input
-											id="signup-email"
-											type="email"
-											autoComplete="email"
-											required
-											value={signupEmail}
-											onChange={(e) => setSignupEmail(e.target.value)}
-											placeholder="you@example.com"
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label htmlFor="signup-nickname">
-											{t('signup.nickname')}
-										</Label>
-										<Input
-											id="signup-nickname"
-											type="text"
-											value={signupNickname}
-											onChange={(e) => setSignupNickname(e.target.value)}
-											placeholder={t('signup.nicknamePlaceholder')}
-										/>
-									</div>
+								<div className="space-y-2">
+									<Label htmlFor="signup-email" className="uppercase text-xs tracking-wider text-muted-foreground">
+										{t('signup.email')}
+									</Label>
+									<Input
+										id="signup-email"
+										type="email"
+										autoComplete="email"
+										required
+										value={signupEmail}
+										onChange={(e) => setSignupEmail(e.target.value)}
+										placeholder="you@example.com"
+										className="rounded-none border-border h-10 font-mono text-sm bg-background focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+									/>
 								</div>
-								<div className="space-y-4">
-									<div className="space-y-2">
-										<Label htmlFor="signup-password">
-											{t('signup.password')}
-										</Label>
-										<Input
-											id="signup-password"
-											type="password"
-											autoComplete="new-password"
-											minLength={8}
-											required
-											value={signupPassword}
-											onChange={(e) => setSignupPassword(e.target.value)}
-											placeholder={t('signup.passwordPlaceholder')}
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label htmlFor="signup-confirm-password">
-											{t('signup.confirmPassword')}
-										</Label>
-										<Input
-											id="signup-confirm-password"
-											type="password"
-											autoComplete="new-password"
-											minLength={8}
-											required
-											value={signupConfirmPassword}
-											onChange={(e) => setSignupConfirmPassword(e.target.value)}
-											placeholder={t('signup.confirmPasswordPlaceholder')}
-										/>
-									</div>
-									<p className="text-xs text-slate-500">{t('signup.hint')}</p>
+								<div className="space-y-2">
+									<Label htmlFor="signup-nickname" className="uppercase text-xs tracking-wider text-muted-foreground">
+										{t('signup.nickname')}
+									</Label>
+									<Input
+										id="signup-nickname"
+										type="text"
+										value={signupNickname}
+										onChange={(e) => setSignupNickname(e.target.value)}
+										placeholder={t('signup.nicknamePlaceholder')}
+										className="rounded-none border-border h-10 font-mono text-sm bg-background focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="signup-password" className="uppercase text-xs tracking-wider text-muted-foreground">
+										{t('signup.password')}
+									</Label>
+									<Input
+										id="signup-password"
+										type="password"
+										autoComplete="new-password"
+										minLength={8}
+										required
+										value={signupPassword}
+										onChange={(e) => setSignupPassword(e.target.value)}
+										placeholder={t('signup.passwordPlaceholder')}
+										className="rounded-none border-border h-10 font-mono text-sm bg-background focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="signup-confirm-password" className="uppercase text-xs tracking-wider text-muted-foreground">
+										{t('signup.confirmPassword')}
+									</Label>
+									<Input
+										id="signup-confirm-password"
+										type="password"
+										autoComplete="new-password"
+										minLength={8}
+										required
+										value={signupConfirmPassword}
+										onChange={(e) => setSignupConfirmPassword(e.target.value)}
+										placeholder={t('signup.confirmPasswordPlaceholder')}
+										className="rounded-none border-border h-10 font-mono text-sm bg-background focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+									/>
+								</div>
+								<div className="p-4 border border-border bg-secondary/10">
+									<p className="text-xs text-muted-foreground font-mono">{t('signup.hint')}</p>
 								</div>
 								<Button
 									type="submit"
-									className="w-full"
+									className="w-full rounded-none h-10 uppercase tracking-wide text-xs font-bold"
 									disabled={signupMutation.isPending}
 								>
 									{signupMutation.isPending
@@ -234,26 +265,26 @@ function LoginPage() {
 								</Button>
 							</form>
 						)}
-					</div>
 
-					<div className="mt-6 text-center text-xs text-slate-500">
-						{mode === 'login' ? (
-							<button
-								type="button"
-								onClick={() => setMode('signup')}
-								className="hover:text-slate-900 underline-offset-4 hover:underline"
-							>
-								{t('switchToSignup')}
-							</button>
-						) : (
-							<button
-								type="button"
-								onClick={() => setMode('login')}
-								className="hover:text-slate-900 underline-offset-4 hover:underline"
-							>
-								{t('switchToLogin')}
-							</button>
-						)}
+						<div className="mt-8 pt-6 border-t border-border flex justify-center">
+							{mode === 'login' ? (
+								<button
+									type="button"
+									onClick={() => setMode('signup')}
+									className="text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+								>
+									{t('switchToSignup')}
+								</button>
+							) : (
+								<button
+									type="button"
+									onClick={() => setMode('login')}
+									className="text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+								>
+									{t('switchToLogin')}
+								</button>
+							)}
+						</div>
 					</div>
 				</div>
 			</section>
