@@ -216,7 +216,7 @@ export default function WorkspaceSidebar({
 			<div className="border-t border-border bg-secondary/5">
 				<div className="p-4 space-y-4">
 					<div className={cn("flex", collapsed ? "justify-center" : "justify-end")}>
-						<LanguageToggle />
+						<LanguageToggle collapsed={collapsed} />
 					</div>
 
 					<div className={cn(
