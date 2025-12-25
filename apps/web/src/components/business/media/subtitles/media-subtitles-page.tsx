@@ -1,11 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
+	ArrowLeft,
 	Download,
 	FileText,
 	Languages,
 	Loader2,
 	Sparkles,
+	Terminal,
 	Trash2,
 	Video,
 } from 'lucide-react'
@@ -312,10 +314,14 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 
 	if (mediaQuery.isLoading) {
 		return (
-			<div className="min-h-screen bg-background px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-5xl text-sm text-muted-foreground">
-					<Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-					Loading…
+			<div className="min-h-screen bg-background p-6 lg:p-12">
+				<div className="mx-auto max-w-7xl border border-border bg-card p-12 text-center">
+					<div className="flex justify-center mb-4">
+						<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+					</div>
+					<div className="text-sm font-mono uppercase tracking-wide text-muted-foreground">
+						Loading Media Data...
+					</div>
 				</div>
 			</div>
 		)
@@ -323,16 +329,19 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 
 	if (mediaQuery.isError) {
 		return (
-			<div className="min-h-screen bg-background px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-5xl space-y-4">
-					<div className="text-sm text-muted-foreground">
-						Failed to load media.
+			<div className="min-h-screen bg-background p-6 lg:p-12">
+				<div className="mx-auto max-w-7xl border border-destructive/50 bg-destructive/5 p-12 text-center">
+					<div className="flex justify-center mb-4">
+						<Terminal className="h-8 w-8 text-destructive" />
 					</div>
-					<Button variant="secondary" asChild>
-						<Link to="/media/$id" params={{ id }}>
-							{t('back')}
-						</Link>
-					</Button>
+					<div className="text-lg font-bold uppercase tracking-wide text-destructive mb-2">Error Loading Media</div>
+					<div className="flex justify-center gap-4 mt-8">
+						<Button variant="outline" className="rounded-none border-destructive/50 text-destructive hover:bg-destructive/10 uppercase" asChild>
+							<Link to="/media/$id" params={{ id }}>
+								{t('back')}
+							</Link>
+						</Button>
+					</div>
 				</div>
 			</div>
 		)
@@ -341,9 +350,11 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 	const media = mediaQuery.data
 	if (!media) {
 		return (
-			<div className="min-h-screen bg-background px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-5xl text-sm text-muted-foreground">
-					Not found.
+			<div className="min-h-screen bg-background p-6 lg:p-12">
+				<div className="mx-auto max-w-7xl border border-border bg-card p-12 text-center">
+					<div className="text-sm font-mono uppercase tracking-wide text-muted-foreground">
+						Media Not Found
+					</div>
 				</div>
 			</div>
 		)
@@ -375,615 +386,636 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 	}, [asrModel, asrModelsQuery.data?.items])
 
 	return (
-		<div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
-			<div className="px-4 py-10 sm:px-6 lg:px-8">
-				<div className="mx-auto max-w-5xl space-y-8">
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div className="space-y-1">
-							<h1 className="text-3xl font-semibold tracking-tight">
-								{t('title')}
-							</h1>
-							<div className="text-sm text-muted-foreground">{media.title}</div>
-						</div>
-						<Button variant="secondary" asChild>
-							<Link to="/media/$id" params={{ id }}>
-								{t('back')}
-							</Link>
-						</Button>
+		<div className="min-h-screen bg-background text-foreground font-sans p-6 md:p-12">
+			<div className="mx-auto max-w-7xl border border-border bg-card">
+				{/* Header */}
+				<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border p-6 bg-secondary/5">
+					<div className="space-y-1">
+						<h1 className="text-xl font-bold uppercase tracking-wide">
+							{t('title')}
+						</h1>
+						<div className="text-xs font-mono text-muted-foreground uppercase">{media.title}</div>
 					</div>
+					<Button 
+						variant="outline" 
+						size="sm" 
+						className="rounded-none border-border uppercase tracking-wide text-xs h-9 px-4"
+						asChild
+					>
+						<Link to="/media/$id" params={{ id }}>
+							<ArrowLeft className="mr-2 h-3.5 w-3.5" />
+							{t('back')}
+						</Link>
+					</Button>
+				</div>
 
-					<div className="glass rounded-2xl p-6">
-						<PreviewPane
-							mediaId={id}
-							translation={translationText || null}
-							config={subtitleConfig}
-							hasRenderedVideo={hasRenderedVideo}
-							thumbnail={(media as any)?.thumbnail ?? undefined}
-							cacheBuster={previewVersion}
-							isRendering={isRenderBusy}
-							cloudStatus={previewCloudStatus}
-							onDurationChange={(d) => {
-								if (Number.isFinite(d) && d > 0) setPreviewDuration(d)
-							}}
-							onCurrentTimeChange={(time) => {
-								if (Number.isFinite(time)) setPreviewCurrentTime(time)
-							}}
-							onVideoRefChange={(ref) => {
-								previewVideoRef.current = ref
-							}}
-						/>
-					</div>
+				<div className="p-6 border-b border-border bg-background">
+					<PreviewPane
+						mediaId={id}
+						translation={translationText || null}
+						config={subtitleConfig}
+						hasRenderedVideo={hasRenderedVideo}
+						thumbnail={(media as any)?.thumbnail ?? undefined}
+						cacheBuster={previewVersion}
+						isRendering={isRenderBusy}
+						cloudStatus={previewCloudStatus}
+						onDurationChange={(d) => {
+							if (Number.isFinite(d) && d > 0) setPreviewDuration(d)
+						}}
+						onCurrentTimeChange={(time) => {
+							if (Number.isFinite(time)) setPreviewCurrentTime(time)
+						}}
+						onVideoRefChange={(ref) => {
+							previewVideoRef.current = ref
+						}}
+					/>
+				</div>
 
-					<div className="glass rounded-2xl p-6">
-						<Tabs
-							value={activeStep}
-							onValueChange={(v) => setActiveStep(v as StepId)}
-						>
-							<TabsList className="w-full">
-								<TabsTrigger value="step1" className="gap-2">
-									<FileText className="h-4 w-4" />
-									Transcribe
-								</TabsTrigger>
-								<TabsTrigger value="step2" className="gap-2">
-									<Languages className="h-4 w-4" />
-									Translate
-								</TabsTrigger>
-								<TabsTrigger value="step3" className="gap-2">
-									<Video className="h-4 w-4" />
-									Render
-								</TabsTrigger>
-								<TabsTrigger value="step4" className="gap-2">
-									<Download className="h-4 w-4" />
-									Export
-								</TabsTrigger>
-							</TabsList>
+				<div className="p-6">
+					<Tabs
+						value={activeStep}
+						onValueChange={(v) => setActiveStep(v as StepId)}
+					>
+						<TabsList className="w-full flex bg-secondary/10 border border-border p-0 h-auto rounded-none">
+							<TabsTrigger value="step1" className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide">
+								<FileText className="h-3.5 w-3.5 mr-2" />
+								Transcribe
+							</TabsTrigger>
+							<TabsTrigger value="step2" className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide">
+								<Languages className="h-3.5 w-3.5 mr-2" />
+								Translate
+							</TabsTrigger>
+							<TabsTrigger value="step3" className="flex-1 rounded-none border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide">
+								<Video className="h-3.5 w-3.5 mr-2" />
+								Render
+							</TabsTrigger>
+							<TabsTrigger value="step4" className="flex-1 rounded-none data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-bold py-3 uppercase text-xs tracking-wide">
+								<Download className="h-3.5 w-3.5 mr-2" />
+								Export
+							</TabsTrigger>
+						</TabsList>
 
-							<TabsContent value="step1" className="mt-6 space-y-6">
-								<div className="rounded-xl border bg-card p-5">
-									<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-										<div className="space-y-1">
-											<div className="flex items-center gap-2 text-lg font-semibold">
-												<FileText className="h-5 w-5" />
-												{t('transcribe.title')}
-											</div>
-											<div className="text-sm text-muted-foreground">
-												{t('transcribe.desc')}
-											</div>
+						<TabsContent value="step1" className="mt-8 space-y-8 animate-in fade-in duration-300">
+							<div className="border border-border bg-background p-6">
+								<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8 border-b border-border pb-6">
+									<div className="space-y-1">
+										<div className="flex items-center gap-2 text-base font-bold uppercase tracking-wide">
+											<FileText className="h-4 w-4" />
+											{t('transcribe.title')}
 										</div>
-										{asrJobId ? (
-											<CloudJobProgress
-												status={(asrStatusQuery.data as any)?.status}
-												phase={(asrStatusQuery.data as any)?.phase}
-												progress={
-													(asrStatusQuery.data as any)?.progress ?? null
-												}
-												jobId={asrJobId}
-												showIds={false}
-											/>
-										) : null}
-									</div>
-
-									<div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-										<div className="space-y-2">
-											<div className="text-xs font-medium text-muted-foreground">
-												{t('transcribe.model')}
-											</div>
-											<Select
-												value={asrModel}
-												onValueChange={(v) => setAsrModel(v)}
-												disabled={transcribeMutation.isPending}
-											>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder={t('transcribe.model')} />
-												</SelectTrigger>
-												<SelectContent>
-													{(asrModelsQuery.data?.items ?? []).map((m) => (
-														<SelectItem key={m.id} value={String(m.id)}>
-															{m.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										</div>
-
-										<div className="space-y-2">
-											<div className="flex items-center justify-between gap-2">
-												<div className="text-xs font-medium text-muted-foreground">
-													{t('transcribe.language')}
-												</div>
-												{!supportsLanguageHint ? (
-													<Badge variant="secondary" className="text-[10px]">
-														No hint
-													</Badge>
-												) : null}
-											</div>
-											<Select
-												value={language}
-												onValueChange={(v) => setLanguage(v as any)}
-												disabled={transcribeMutation.isPending}
-											>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder={t('transcribe.language')} />
-												</SelectTrigger>
-												<SelectContent>
-													{TRANSCRIPTION_LANGUAGE_OPTIONS.map((opt) => (
-														<SelectItem key={opt.value} value={opt.value}>
-															{opt.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
+										<div className="text-xs font-mono text-muted-foreground">
+											{t('transcribe.desc')}
 										</div>
 									</div>
+									{asrJobId ? (
+										<CloudJobProgress
+											status={(asrStatusQuery.data as any)?.status}
+											phase={(asrStatusQuery.data as any)?.phase}
+											progress={
+												(asrStatusQuery.data as any)?.progress ?? null
+											}
+											jobId={asrJobId}
+											showIds={false}
+										/>
+									) : null}
+								</div>
 
-									<div className="mt-4 flex flex-wrap gap-2">
-										<Button
-											onClick={() => {
-												if (!asrModel) return
-												transcribeMutation.mutate({
-													mediaId: id,
-													model: asrModel,
-													language:
-														supportsLanguageHint && language !== 'auto'
-															? language
-															: undefined,
-												})
-											}}
-											disabled={transcribeMutation.isPending || !asrModel}
+								<div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+									<div className="space-y-2">
+										<div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+											{t('transcribe.model')}
+										</div>
+										<Select
+											value={asrModel}
+											onValueChange={(v) => setAsrModel(v)}
+											disabled={transcribeMutation.isPending}
 										>
-											{transcribeMutation.isPending ? (
-												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													{t('transcribe.starting')}
-												</>
-											) : (
-												t('transcribe.start')
-											)}
-										</Button>
+											<SelectTrigger className="w-full rounded-none border-border h-10 font-mono text-xs">
+												<SelectValue placeholder={t('transcribe.model')} />
+											</SelectTrigger>
+											<SelectContent>
+												{(asrModelsQuery.data?.items ?? []).map((m) => (
+													<SelectItem key={m.id} value={String(m.id)}>
+														{m.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 									</div>
 
-									{transcriptionText ? (
-										<div className="mt-6 space-y-2">
-											<div className="text-xs font-medium text-muted-foreground">
-												{t('transcribe.output')}
+									<div className="space-y-2">
+										<div className="flex items-center justify-between gap-2">
+											<div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+												{t('transcribe.language')}
 											</div>
-											<pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-secondary/30 p-4 text-sm">
+											{!supportsLanguageHint ? (
+												<span className="border border-border px-1.5 py-0.5 text-[10px] font-mono uppercase text-muted-foreground">
+													No hint
+												</span>
+											) : null}
+										</div>
+										<Select
+											value={language}
+											onValueChange={(v) => setLanguage(v as any)}
+											disabled={transcribeMutation.isPending}
+										>
+											<SelectTrigger className="w-full rounded-none border-border h-10 font-mono text-xs">
+												<SelectValue placeholder={t('transcribe.language')} />
+											</SelectTrigger>
+											<SelectContent>
+												{TRANSCRIPTION_LANGUAGE_OPTIONS.map((opt) => (
+													<SelectItem key={opt.value} value={opt.value}>
+														{opt.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								</div>
+
+								<div className="mt-6 flex flex-wrap gap-2">
+									<Button
+										onClick={() => {
+											if (!asrModel) return
+											transcribeMutation.mutate({
+												mediaId: id,
+												model: asrModel,
+												language:
+													supportsLanguageHint && language !== 'auto'
+														? language
+														: undefined,
+											})
+										}}
+										disabled={transcribeMutation.isPending || !asrModel}
+										className="rounded-none h-10 uppercase tracking-wide text-xs font-bold px-6"
+									>
+										{transcribeMutation.isPending ? (
+											<>
+												<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+												{t('transcribe.starting')}
+											</>
+										) : (
+											t('transcribe.start')
+										)}
+									</Button>
+								</div>
+
+								{transcriptionText ? (
+									<div className="mt-8 space-y-2">
+										<div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+											{t('transcribe.output')}
+										</div>
+										<div className="max-h-64 overflow-auto rounded-none border border-border bg-secondary/5 p-4">
+											<pre className="whitespace-pre-wrap font-mono text-xs text-muted-foreground">
 												{transcriptionText}
 											</pre>
 										</div>
-									) : null}
+									</div>
+								) : null}
+							</div>
+
+							<div className="border border-border bg-background p-6">
+								<div className="flex items-start justify-between gap-4 mb-8 border-b border-border pb-6">
+									<div className="space-y-1">
+										<div className="flex items-center gap-2 text-base font-bold uppercase tracking-wide">
+											<Sparkles className="h-4 w-4" />
+											{t('optimize.title')}
+										</div>
+										<div className="text-xs font-mono text-muted-foreground">
+											{t('optimize.desc')}
+										</div>
+									</div>
 								</div>
 
-								<div className="rounded-xl border bg-card p-5">
-									<div className="flex items-start justify-between gap-4">
-										<div className="space-y-1">
-											<div className="flex items-center gap-2 text-lg font-semibold">
-												<Sparkles className="h-5 w-5" />
-												{t('optimize.title')}
-											</div>
-											<div className="text-sm text-muted-foreground">
-												{t('optimize.desc')}
-											</div>
+								<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+									<div className="space-y-2">
+										<div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+											{t('optimize.model')}
 										</div>
+										<Select
+											value={llmModel}
+											onValueChange={(v) => setLlmModel(v)}
+											disabled={
+												optimizeMutation.isPending ||
+												clearOptimizedMutation.isPending
+											}
+										>
+											<SelectTrigger className="w-full rounded-none border-border h-10 font-mono text-xs">
+												<SelectValue placeholder={t('optimize.model')} />
+											</SelectTrigger>
+											<SelectContent>
+												{(llmModelsQuery.data?.items ?? []).map((m) => (
+													<SelectItem key={m.id} value={String(m.id)}>
+														{m.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 									</div>
 
-									<div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+									<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 										<div className="space-y-2">
-											<div className="text-xs font-medium text-muted-foreground">
-												{t('optimize.model')}
-											</div>
-											<Select
-												value={llmModel}
-												onValueChange={(v) => setLlmModel(v)}
-												disabled={
-													optimizeMutation.isPending ||
-													clearOptimizedMutation.isPending
+											<Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+												Pause ms
+											</Label>
+											<Input
+												type="number"
+												value={optParams.pauseThresholdMs}
+												onChange={(e) =>
+													setOptParams({
+														...optParams,
+														pauseThresholdMs: Number(e.target.value),
+													})
 												}
-											>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder={t('optimize.model')} />
-												</SelectTrigger>
-												<SelectContent>
-													{(llmModelsQuery.data?.items ?? []).map((m) => (
-														<SelectItem key={m.id} value={String(m.id)}>
-															{m.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
+												min={0}
+												max={5000}
+												className="rounded-none border-border h-10 font-mono text-xs"
+											/>
 										</div>
-
-										<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-											<div className="space-y-1.5">
-												<Label className="text-xs text-muted-foreground">
-													Pause ms
-												</Label>
-												<Input
-													type="number"
-													value={optParams.pauseThresholdMs}
-													onChange={(e) =>
-														setOptParams({
-															...optParams,
-															pauseThresholdMs: Number(e.target.value),
-														})
-													}
-													min={0}
-													max={5000}
-												/>
-											</div>
-											<div className="space-y-1.5">
-												<Label className="text-xs text-muted-foreground">
-													Max sentence ms
-												</Label>
-												<Input
-													type="number"
-													value={optParams.maxSentenceMs}
-													onChange={(e) =>
-														setOptParams({
-															...optParams,
-															maxSentenceMs: Number(e.target.value),
-														})
-													}
-													min={1000}
-													max={30000}
-												/>
-											</div>
-											<div className="space-y-1.5">
-												<Label className="text-xs text-muted-foreground">
-													Max chars
-												</Label>
-												<Input
-													type="number"
-													value={optParams.maxChars}
-													onChange={(e) =>
-														setOptParams({
-															...optParams,
-															maxChars: Number(e.target.value),
-														})
-													}
-													min={10}
-													max={160}
-												/>
-											</div>
+										<div className="space-y-2">
+											<Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+												Max sentence ms
+											</Label>
+											<Input
+												type="number"
+												value={optParams.maxSentenceMs}
+												onChange={(e) =>
+													setOptParams({
+														...optParams,
+														maxSentenceMs: Number(e.target.value),
+													})
+												}
+												min={1000}
+												max={30000}
+												className="rounded-none border-border h-10 font-mono text-xs"
+											/>
+										</div>
+										<div className="space-y-2">
+											<Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+												Max chars
+											</Label>
+											<Input
+												type="number"
+												value={optParams.maxChars}
+												onChange={(e) =>
+													setOptParams({
+														...optParams,
+														maxChars: Number(e.target.value),
+													})
+												}
+												min={10}
+												max={160}
+												className="rounded-none border-border h-10 font-mono text-xs"
+											/>
 										</div>
 									</div>
+								</div>
 
-									<div className="mt-4 flex flex-wrap items-center gap-6">
-										<div className="flex items-center gap-2">
-											<Switch
-												id="optLightCleanup"
-												checked={optParams.lightCleanup}
-												onCheckedChange={(checked) =>
-													setOptParams({ ...optParams, lightCleanup: checked })
-												}
-											/>
-											<Label htmlFor="optLightCleanup" className="text-sm">
-												Light cleanup
-											</Label>
-										</div>
-										<div className="flex items-center gap-2">
-											<Switch
-												id="optTextCorrect"
-												checked={optParams.textCorrect}
-												onCheckedChange={(checked) =>
-													setOptParams({ ...optParams, textCorrect: checked })
-												}
-											/>
-											<Label htmlFor="optTextCorrect" className="text-sm">
-												Text correct
-											</Label>
-										</div>
+								<div className="mt-6 flex flex-wrap items-center gap-6">
+									<div className="flex items-center gap-2">
+										<Switch
+											id="optLightCleanup"
+											checked={optParams.lightCleanup}
+											onCheckedChange={(checked) =>
+												setOptParams({ ...optParams, lightCleanup: checked })
+											}
+										/>
+										<Label htmlFor="optLightCleanup" className="text-xs font-bold uppercase tracking-wide">
+											Light cleanup
+										</Label>
 									</div>
+									<div className="flex items-center gap-2">
+										<Switch
+											id="optTextCorrect"
+											checked={optParams.textCorrect}
+											onCheckedChange={(checked) =>
+												setOptParams({ ...optParams, textCorrect: checked })
+											}
+										/>
+										<Label htmlFor="optTextCorrect" className="text-xs font-bold uppercase tracking-wide">
+											Text correct
+										</Label>
+									</div>
+								</div>
 
-									{!canOptimize ? (
-										<div className="mt-3 text-sm text-muted-foreground">
-											{t('optimize.requiresWords')}
-										</div>
-									) : null}
+								{!canOptimize ? (
+									<div className="mt-4 text-xs font-mono text-muted-foreground border border-dashed border-border p-3">
+										{t('optimize.requiresWords')}
+									</div>
+								) : null}
 
-									<div className="mt-4 flex flex-wrap gap-2">
+								<div className="mt-6 flex flex-wrap gap-2">
+									<Button
+										variant="secondary"
+										onClick={() =>
+											optimizeMutation.mutate({
+												mediaId: id,
+												model: llmModel || undefined,
+												...optParams,
+											})
+										}
+										disabled={
+											optimizeMutation.isPending ||
+											clearOptimizedMutation.isPending ||
+											!canOptimize
+										}
+										className="rounded-none h-10 uppercase tracking-wide text-xs font-bold px-6"
+									>
+										{optimizeMutation.isPending ? (
+											<>
+												<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+												{t('optimize.starting')}
+											</>
+										) : (
+											t('optimize.start')
+										)}
+									</Button>
+
+									{hasOptimized ? (
 										<Button
-											variant="secondary"
+											variant="outline"
 											onClick={() =>
-												optimizeMutation.mutate({
-													mediaId: id,
-													model: llmModel || undefined,
-													...optParams,
-												})
+												clearOptimizedMutation.mutate({ mediaId: id })
 											}
 											disabled={
 												optimizeMutation.isPending ||
-												clearOptimizedMutation.isPending ||
-												!canOptimize
+												clearOptimizedMutation.isPending
 											}
+											className="rounded-none border-border h-10 uppercase tracking-wide text-xs font-bold px-6"
 										>
-											{optimizeMutation.isPending ? (
+											{clearOptimizedMutation.isPending
+												? t('optimize.restoring')
+												: t('optimize.restore')}
+										</Button>
+									) : null}
+								</div>
+							</div>
+						</TabsContent>
+
+						<TabsContent value="step2" className="mt-8 space-y-6 animate-in fade-in duration-300">
+							<div className="border border-border bg-background p-6">
+								<div className="flex items-start justify-between gap-4 mb-8 border-b border-border pb-6">
+									<div className="space-y-1">
+										<div className="flex items-center gap-2 text-base font-bold uppercase tracking-wide">
+											<Languages className="h-4 w-4" />
+											{t('translate.title')}
+										</div>
+										<div className="text-xs font-mono text-muted-foreground">
+											{t('translate.desc')}
+										</div>
+									</div>
+									<div className="flex items-center gap-3">
+										<span className="border border-border px-2 py-1 text-[10px] font-mono uppercase bg-secondary/10">
+											{cues.length} CUES
+										</span>
+										<Button
+											variant="secondary"
+											onClick={() =>
+												translateMutation.mutate({
+													mediaId: id,
+													model: llmModel || undefined,
+													promptId: 'bilingual-zh',
+												})
+											}
+											disabled={
+												translateMutation.isPending || !transcriptionText
+											}
+											className="rounded-none h-9 uppercase tracking-wide text-xs font-bold"
+										>
+											{translateMutation.isPending ? (
 												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													{t('optimize.starting')}
+													<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+													{t('translate.starting')}
 												</>
 											) : (
-												t('optimize.start')
+												t('translate.start')
 											)}
 										</Button>
+									</div>
+								</div>
 
-										{hasOptimized ? (
-											<Button
-												variant="outline"
-												onClick={() =>
-													clearOptimizedMutation.mutate({ mediaId: id })
-												}
-												disabled={
-													optimizeMutation.isPending ||
-													clearOptimizedMutation.isPending
-												}
-											>
-												{clearOptimizedMutation.isPending
-													? t('optimize.restoring')
-													: t('optimize.restore')}
-											</Button>
+								<div className="grid grid-cols-1 gap-4 mb-6">
+									<div className="space-y-2">
+										<div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+											{t('translate.model')}
+										</div>
+										<Select
+											value={llmModel}
+											onValueChange={(v) => setLlmModel(v)}
+											disabled={translateMutation.isPending}
+										>
+											<SelectTrigger className="w-full rounded-none border-border h-10 font-mono text-xs">
+												<SelectValue placeholder={t('translate.model')} />
+											</SelectTrigger>
+											<SelectContent>
+												{(llmModelsQuery.data?.items ?? []).map((m) => (
+													<SelectItem key={m.id} value={String(m.id)}>
+														{m.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										{!llmModel && llmDefaultId ? (
+											<div className="text-[10px] font-mono text-muted-foreground">
+												{t('translate.defaultModel', { model: llmDefaultId })}
+											</div>
 										) : null}
 									</div>
 								</div>
-							</TabsContent>
 
-							<TabsContent value="step2" className="mt-6 space-y-6">
-								<div className="rounded-xl border bg-card p-5">
-									<div className="flex items-start justify-between gap-4">
-										<div className="space-y-1">
-											<div className="flex items-center gap-2 text-lg font-semibold">
-												<Languages className="h-5 w-5" />
-												{t('translate.title')}
-											</div>
-											<div className="text-sm text-muted-foreground">
-												{t('translate.desc')}
+								{translationText ? (
+									<div className="border border-border bg-background">
+										<div className="flex items-center justify-between border-b border-border bg-secondary/5 px-4 py-3">
+											<div className="text-xs font-bold uppercase tracking-wide">Cues</div>
+											<div className="flex items-center gap-2">
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => {
+														setTranslationEditorOpen((v) => !v)
+														setTranslationEditorValue(translationText)
+													}}
+													className="rounded-none h-8 text-[10px] uppercase font-bold border border-transparent hover:border-border"
+												>
+													{translationEditorOpen ? 'Hide Editor' : 'Edit VTT'}
+												</Button>
 											</div>
 										</div>
-										<div className="flex items-center gap-2">
-											<Badge variant="secondary" className="text-xs">
-												{cues.length} cues
-											</Badge>
-											<Button
-												variant="secondary"
-												onClick={() =>
-													translateMutation.mutate({
-														mediaId: id,
-														model: llmModel || undefined,
-														promptId: 'bilingual-zh',
-													})
-												}
-												disabled={
-													translateMutation.isPending || !transcriptionText
-												}
-											>
-												{translateMutation.isPending ? (
-													<>
-														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-														{t('translate.starting')}
-													</>
-												) : (
-													t('translate.start')
-												)}
-											</Button>
-										</div>
-									</div>
-
-									<div className="mt-6 grid grid-cols-1 gap-4">
-										<div className="space-y-2">
-											<div className="text-xs font-medium text-muted-foreground">
-												{t('translate.model')}
-											</div>
-											<Select
-												value={llmModel}
-												onValueChange={(v) => setLlmModel(v)}
-												disabled={translateMutation.isPending}
-											>
-												<SelectTrigger className="w-full">
-													<SelectValue placeholder={t('translate.model')} />
-												</SelectTrigger>
-												<SelectContent>
-													{(llmModelsQuery.data?.items ?? []).map((m) => (
-														<SelectItem key={m.id} value={String(m.id)}>
-															{m.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-											{!llmModel && llmDefaultId ? (
-												<div className="text-xs text-muted-foreground">
-													{t('translate.defaultModel', { model: llmDefaultId })}
-												</div>
-											) : null}
-										</div>
-									</div>
-
-									{translationText ? (
-										<div className="mt-6 overflow-hidden rounded-xl border bg-background">
-											<div className="flex items-center justify-between border-b bg-muted/30 px-4 py-3">
-												<div className="text-sm font-semibold">Cues</div>
-												<div className="flex items-center gap-2">
+										<div className="max-h-[520px] overflow-auto divide-y divide-border">
+											{cues.map((cue, idx) => (
+												<div
+													key={`${cue.start}-${cue.end}-${idx}`}
+													className="flex items-start justify-between gap-3 px-4 py-3 hover:bg-secondary/5 transition-colors group"
+												>
+													<div className="min-w-0 flex-1">
+														<div className="text-[10px] font-mono text-muted-foreground mb-1 border-l-2 border-primary/20 pl-2">{`${cue.start} --> ${cue.end}`}</div>
+														<div className="pl-2 space-y-1">
+															{cue.lines.map((line, i) => (
+																<div
+																	key={i}
+																	className="text-xs font-mono break-words"
+																>
+																	{line}
+																</div>
+															))}
+														</div>
+													</div>
 													<Button
+														type="button"
 														variant="ghost"
 														size="sm"
+														onClick={() =>
+															deleteCueMutation.mutate({
+																mediaId: id,
+																index: idx,
+															})
+														}
+														disabled={deleteCueMutation.isPending}
+														aria-label="Delete cue"
+														title="Delete this subtitle cue"
+														className="text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-none h-8 w-8 p-0"
+													>
+														<Trash2 className="h-4 w-4" />
+													</Button>
+												</div>
+											))}
+										</div>
+
+										{translationEditorOpen ? (
+											<div className="border-t border-border bg-secondary/5 p-4 space-y-3">
+												<Textarea
+													value={translationEditorValue}
+													onChange={(e) =>
+														setTranslationEditorValue(e.target.value)
+													}
+													className="min-h-[180px] font-mono text-xs rounded-none border-border bg-background"
+												/>
+												<div className="flex gap-2">
+													<Button
 														onClick={() => {
-															setTranslationEditorOpen((v) => !v)
+															updateTranslationMutation.mutate({
+																mediaId: id,
+																translation: translationEditorValue,
+															})
+															setTranslationDraft(translationEditorValue)
+														}}
+														disabled={updateTranslationMutation.isPending}
+														className="rounded-none h-8 uppercase text-xs font-bold"
+													>
+														Save
+													</Button>
+													<Button
+														variant="outline"
+														onClick={() => {
 															setTranslationEditorValue(translationText)
 														}}
+														className="rounded-none h-8 uppercase text-xs font-bold border-border"
 													>
-														{translationEditorOpen ? 'Hide editor' : 'Edit VTT'}
+														Reset
 													</Button>
 												</div>
 											</div>
-											<div className="max-h-[520px] overflow-auto divide-y">
-												{cues.map((cue, idx) => (
-													<div
-														key={`${cue.start}-${cue.end}-${idx}`}
-														className="flex items-start justify-between gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
-													>
-														<div className="min-w-0 flex-1">
-															<div className="text-xs font-mono text-muted-foreground">{`${cue.start} --> ${cue.end}`}</div>
-															<div className="mt-2 space-y-1">
-																{cue.lines.map((line, i) => (
-																	<div
-																		key={i}
-																		className="text-sm font-mono break-words"
-																	>
-																		{line}
-																	</div>
-																))}
-															</div>
-														</div>
-														<Button
-															type="button"
-															variant="ghost"
-															size="sm"
-															onClick={() =>
-																deleteCueMutation.mutate({
-																	mediaId: id,
-																	index: idx,
-																})
-															}
-															disabled={deleteCueMutation.isPending}
-															aria-label="Delete cue"
-															title="Delete this subtitle cue"
-															className="text-destructive hover:text-destructive flex-shrink-0"
-														>
-															<Trash2 className="h-4 w-4" />
-														</Button>
-													</div>
-												))}
-											</div>
+										) : null}
+									</div>
+								) : (
+									<div className="mt-6 text-sm font-mono text-muted-foreground border border-dashed border-border p-8 text-center uppercase">
+										No translation yet. Start translation to generate cues.
+									</div>
+								)}
+							</div>
+						</TabsContent>
 
-											{translationEditorOpen ? (
-												<div className="border-t bg-muted/20 p-4 space-y-3">
-													<Textarea
-														value={translationEditorValue}
-														onChange={(e) =>
-															setTranslationEditorValue(e.target.value)
-														}
-														className="min-h-[180px] font-mono text-xs"
-													/>
-													<div className="flex gap-2">
-														<Button
-															onClick={() => {
-																updateTranslationMutation.mutate({
-																	mediaId: id,
-																	translation: translationEditorValue,
-																})
-																setTranslationDraft(translationEditorValue)
-															}}
-															disabled={updateTranslationMutation.isPending}
-														>
-															Save
-														</Button>
-														<Button
-															variant="outline"
-															onClick={() => {
-																setTranslationEditorValue(translationText)
-															}}
-														>
-															Reset
-														</Button>
-													</div>
-												</div>
-											) : null}
+						<TabsContent value="step3" className="mt-8 space-y-6 animate-in fade-in duration-300">
+							<div className="border border-border bg-background p-6">
+								<Step3Render
+									isRendering={isRenderBusy}
+									onStart={(cfg) => {
+										setSubtitleConfig(cfg)
+										renderMutation.mutate({
+											mediaId: id,
+											subtitleConfig: cfg,
+										})
+									}}
+									errorMessage={
+										renderMutation.isError
+											? (renderMutation.error as any)?.message
+											: undefined
+									}
+									translationAvailable={Boolean(translationText)}
+									config={subtitleConfig}
+									onConfigChange={setSubtitleConfig}
+									mediaDuration={previewDuration}
+									currentPreviewTime={previewCurrentTime}
+									onPreviewSeek={(time) => {
+										const el = previewVideoRef.current
+										if (!el) return
+										el.currentTime = Math.max(0, time)
+										el.play?.()
+									}}
+									cloudStatus={
+										renderStatusQuery.data
+											? {
+													status: (renderStatusQuery.data as any)?.status,
+													phase: (renderStatusQuery.data as any)?.phase,
+													progress:
+														(renderStatusQuery.data as any)?.progress ?? null,
+													jobId: renderJobId ?? null,
+												}
+											: null
+									}
+								/>
+							</div>
+						</TabsContent>
+
+						<TabsContent value="step4" className="mt-8 space-y-6 animate-in fade-in duration-300">
+							<div className="border border-border bg-background p-6">
+								<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 border-b border-border pb-6">
+									<div className="space-y-1">
+										<div className="flex items-center gap-2 text-base font-bold uppercase tracking-wide">
+											<Download className="h-4 w-4" />
+											Export
 										</div>
+										<div className="text-xs font-mono text-muted-foreground">
+											Download the rendered MP4.
+										</div>
+									</div>
+									{hasRenderedVideo ? (
+										<span className="border border-emerald-500/50 text-emerald-600 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider">
+											Ready
+										</span>
 									) : (
-										<div className="mt-6 text-sm text-muted-foreground">
-											No translation yet. Start translation to generate cues.
-										</div>
+										<span className="border border-border text-muted-foreground px-2 py-1 text-[10px] font-bold uppercase tracking-wider">
+											Not Rendered
+										</span>
 									)}
 								</div>
-							</TabsContent>
 
-							<TabsContent value="step3" className="mt-6 space-y-6">
-								<div className="rounded-xl border bg-card p-5">
-									<Step3Render
-										isRendering={isRenderBusy}
-										onStart={(cfg) => {
-											setSubtitleConfig(cfg)
-											renderMutation.mutate({
-												mediaId: id,
-												subtitleConfig: cfg,
-											})
-										}}
-										errorMessage={
-											renderMutation.isError
-												? (renderMutation.error as any)?.message
-												: undefined
-										}
-										translationAvailable={Boolean(translationText)}
-										config={subtitleConfig}
-										onConfigChange={setSubtitleConfig}
-										mediaDuration={previewDuration}
-										currentPreviewTime={previewCurrentTime}
-										onPreviewSeek={(time) => {
-											const el = previewVideoRef.current
-											if (!el) return
-											el.currentTime = Math.max(0, time)
-											el.play?.()
-										}}
-										cloudStatus={
-											renderStatusQuery.data
-												? {
-														status: (renderStatusQuery.data as any)?.status,
-														phase: (renderStatusQuery.data as any)?.phase,
-														progress:
-															(renderStatusQuery.data as any)?.progress ?? null,
-														jobId: renderJobId ?? null,
-													}
-												: null
-										}
-									/>
-								</div>
-							</TabsContent>
-
-							<TabsContent value="step4" className="mt-6 space-y-6">
-								<div className="rounded-xl border bg-card p-5">
-									<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-										<div className="space-y-1">
-											<div className="flex items-center gap-2 text-lg font-semibold">
-												<Download className="h-5 w-5" />
-												Export
-											</div>
-											<div className="text-sm text-muted-foreground">
-												Download the rendered MP4.
-											</div>
-										</div>
-										{hasRenderedVideo ? (
-											<Badge variant="secondary">Ready</Badge>
-										) : (
-											<Badge variant="secondary">Not rendered</Badge>
-										)}
-									</div>
-
-									<div className="mt-6 grid grid-cols-1 gap-3">
-										{hasRenderedVideo ? (
-											<Button asChild size="lg" className="h-11">
-												<a
-													href={`/api/media/${id}/rendered?download=1${previewVersion ? `&v=${previewVersion}` : ''}`}
-												>
-													<Video className="mr-2 h-4 w-4" />
-													Download Video
-												</a>
-											</Button>
-										) : (
-											<Button size="lg" className="h-11" disabled>
+								<div className="mt-6 grid grid-cols-1 gap-3">
+									{hasRenderedVideo ? (
+										<Button asChild size="lg" className="rounded-none h-12 uppercase tracking-wide font-bold">
+											<a
+												href={`/api/media/${id}/rendered?download=1${previewVersion ? `&v=${previewVersion}` : ''}`}
+											>
 												<Video className="mr-2 h-4 w-4" />
 												Download Video
-											</Button>
-										)}
-									</div>
-
-									{!hasRenderedVideo ? (
-										<div className="mt-4 text-sm text-muted-foreground">
-											Render the video first in the Render step.
-										</div>
-									) : null}
+											</a>
+										</Button>
+									) : (
+										<Button size="lg" className="rounded-none h-12 uppercase tracking-wide font-bold" disabled>
+											<Video className="mr-2 h-4 w-4" />
+											Download Video
+										</Button>
+									)}
 								</div>
-							</TabsContent>
-						</Tabs>
-					</div>
+
+								{!hasRenderedVideo ? (
+									<div className="mt-4 text-xs font-mono text-muted-foreground border-l-2 border-primary/50 pl-3">
+										Render the video first in the Render step.
+									</div>
+								) : null}
+							</div>
+						</TabsContent>
+					</Tabs>
 				</div>
 			</div>
 		</div>

@@ -2,7 +2,6 @@
 
 import { Film, Video } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Badge } from '~/components/ui/badge'
 import { STATUS_LABELS } from '~/lib/config/media-status'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
@@ -123,28 +122,34 @@ export function PreviewPane(props: PreviewPaneProps) {
 	}, [effectiveMode, renderedVideoEl, onCurrentTimeChange, onDurationChange])
 
 	return (
-		<div className="space-y-3">
-			<div className="flex items-center justify-between">
+		<div className="space-y-4">
+			<div className="flex items-center justify-between border-b border-border pb-4">
 				<div className="flex items-center gap-2">
-					<Video className="h-5 w-5" />
-					<h3 className="text-lg font-semibold">Preview</h3>
-					{hasRenderedVideo && <Badge variant="secondary">Rendered</Badge>}
+					<div className="flex items-center justify-center h-6 w-6 border border-foreground bg-foreground text-background">
+						<Video className="h-3 w-3" />
+					</div>
+					<h3 className="text-base font-bold uppercase tracking-wide">Preview</h3>
+					{hasRenderedVideo && (
+						<span className="ml-2 border border-border bg-secondary/20 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-foreground">
+							Rendered
+						</span>
+					)}
 				</div>
 				{(isRendering || cloudStatus?.status) && (
-					<div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-						<Film className="h-4 w-4" />
+					<div className="hidden sm:flex items-center gap-2 text-xs font-mono text-muted-foreground uppercase">
+						<Film className="h-3 w-3" />
 						<span>{statusLabel ?? 'Rendering…'}</span>
 						{typeof progressPct === 'number' && (
-							<span className="tabular-nums">• {progressPct}%</span>
+							<span className="tabular-nums border-l border-border pl-2 ml-1">{progressPct}%</span>
 						)}
 					</div>
 				)}
 			</div>
 
-			<div className="grid gap-4 lg:grid-cols-3">
-				{/* 左侧：视频 */}
+			<div className="grid gap-6 lg:grid-cols-3">
+				{/* Left: Video */}
 				<div
-					className="lg:col-span-2 w-full rounded-lg border bg-black overflow-hidden"
+					className="lg:col-span-2 w-full border border-border bg-black overflow-hidden"
 					style={{ minHeight: '300px', maxHeight: '80vh' }}
 				>
 					{effectiveMode === 'rendered' ? (
@@ -182,30 +187,30 @@ export function PreviewPane(props: PreviewPaneProps) {
 					)}
 				</div>
 
-				{/* 右侧：字幕列表 */}
-				<div className="flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden max-h-[600px]">
-					<div className="flex-shrink-0 px-4 py-3 border-b bg-muted/30">
-						<h3 className="text-sm font-semibold mb-2">Subtitles</h3>
-						<Badge variant="secondary" className="text-xs">
-							{cues.length} cues
-						</Badge>
+				{/* Right: Subtitle List */}
+				<div className="flex flex-col border border-border bg-background max-h-[600px]">
+					<div className="flex-shrink-0 px-4 py-3 border-b border-border bg-secondary/5 flex justify-between items-center">
+						<h3 className="text-xs font-bold uppercase tracking-wide">Subtitles</h3>
+						<span className="border border-border px-1.5 py-0.5 text-[10px] font-mono uppercase bg-background">
+							{cues.length} CUES
+						</span>
 					</div>
 					<div className="flex-1 min-h-0 overflow-y-auto">
 						{cues.length === 0 ? (
-							<div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+							<div className="flex items-center justify-center h-32 text-muted-foreground text-xs font-mono uppercase">
 								{translation
 									? 'No subtitles available'
 									: 'Translation required'}
 							</div>
 						) : (
-							<div className="divide-y">
+							<div className="divide-y divide-border">
 								{cues.map((cue, idx) => (
 									<div
 										key={`${cue.start}-${cue.end}-${idx}`}
-										className="px-3 py-2 text-xs hover:bg-muted/50 transition-colors cursor-pointer"
+										className="px-4 py-3 text-xs hover:bg-secondary/5 transition-colors cursor-pointer group"
 										onClick={() => handleJump(cue.start)}
 									>
-										<div className="text-muted-foreground font-mono text-[10px] mb-1">
+										<div className="text-muted-foreground font-mono text-[10px] mb-1 opacity-70 group-hover:opacity-100 group-hover:text-primary transition-all">
 											{cue.start} → {cue.end}
 										</div>
 										<div className="space-y-0.5">
@@ -225,8 +230,6 @@ export function PreviewPane(props: PreviewPaneProps) {
 					</div>
 				</div>
 			</div>
-
-			{/* 进度条和详细状态由上层的 CloudJobProgress 统一展示，这里只保留紧凑文案 */}
 		</div>
 	)
 }

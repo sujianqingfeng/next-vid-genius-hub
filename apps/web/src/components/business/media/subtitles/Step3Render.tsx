@@ -41,8 +41,7 @@ interface Step3RenderProps {
 }
 
 /**
- * 重构后的Step3渲染组件
- * 使用子组件和自定义Hook来降低复杂度
+ * Redesigned Step3Render component
  */
 export function Step3Render(props: Step3RenderProps) {
 	const {
@@ -58,7 +57,7 @@ export function Step3Render(props: Step3RenderProps) {
 		cloudStatus,
 	} = props
 
-	// 预设状态管理
+	// Preset state management
 	const [selectedPresetId, setSelectedPresetId] = useState<PresetId>(() => {
 		const matching = SUBTITLE_RENDER_PRESETS.find((preset) =>
 			areConfigsEqual(preset.config, config),
@@ -66,7 +65,7 @@ export function Step3Render(props: Step3RenderProps) {
 		return matching?.id ?? 'custom'
 	})
 
-	// 更新预设选择
+	// Update preset selection when config changes
 	useEffect(() => {
 		const matching = SUBTITLE_RENDER_PRESETS.find((preset) =>
 			areConfigsEqual(preset.config, config),
@@ -79,13 +78,13 @@ export function Step3Render(props: Step3RenderProps) {
 		(preset) => preset.id === selectedPresetId,
 	)
 
-	// 预设点击处理
+	// Handle preset click
 	const handlePresetClick = (preset: SubtitleRenderPreset) => {
 		setSelectedPresetId(preset.id)
 		onConfigChange({ ...preset.config })
 	}
 
-	// 字体大小变化处理
+	// Handle numeric changes (font size)
 	const handleNumericChange =
 		(field: keyof SubtitleRenderConfig) =>
 		(event: ChangeEvent<HTMLInputElement>) => {
@@ -98,7 +97,7 @@ export function Step3Render(props: Step3RenderProps) {
 			onConfigChange({ ...config, [field]: clamped })
 		}
 
-	// 透明度变化处理
+	// Handle opacity changes
 	const handleOpacityChange = (event: ChangeEvent<HTMLInputElement>) => {
 		const value = Number(event.target.value) / 100
 		if (Number.isNaN(value)) return
@@ -111,14 +110,14 @@ export function Step3Render(props: Step3RenderProps) {
 		})
 	}
 
-	// 颜色变化处理
+	// Handle color changes
 	const handleColorChange =
 		(field: keyof SubtitleRenderConfig) =>
 		(event: ChangeEvent<HTMLInputElement>) => {
 			onConfigChange({ ...config, [field]: event.target.value })
 		}
 
-	// 提示文本配置变化处理
+	// Handle hint text config changes
 	const handleHintTextChange = (
 		field: keyof HintTextConfig,
 		value: string | number | boolean,
@@ -148,34 +147,34 @@ export function Step3Render(props: Step3RenderProps) {
 		onConfigChange({ ...config, hintTextConfig })
 	}
 
-	// 时间段效果变化处理
+	// Handle time segment effects changes
 	const handleTimeSegmentEffectsChange = (effects: TimeSegmentEffect[]) => {
 		onConfigChange({ ...config, timeSegmentEffects: effects })
 	}
 
-	// 预览时间点播放
+	// Play preview at time
 	const handlePlayPreview = (time: number) => {
 		onPreviewSeek?.(time)
 	}
 
 	return (
-		<div className="space-y-6">
-			{/* 顶部操作栏，按钮位置与其他步骤对齐 */}
-			<div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+		<div className="space-y-8">
+			{/* Header / Actions */}
+			<div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between border-b border-border pb-6">
 				<div className="space-y-1">
-					<h3 className="text-base font-semibold text-foreground">
+					<h3 className="text-base font-bold uppercase tracking-wide text-foreground">
 						Render Video
 					</h3>
-					<p className="text-sm text-muted-foreground">
-						调整字幕样式、时间效果，然后启动渲染。
+					<p className="text-xs font-mono text-muted-foreground">
+						Adjust subtitle styles, time effects, and start rendering.
 					</p>
 				</div>
 				<div className="flex items-center gap-3">
 					<span
-						className={`text-xs px-2 py-1 rounded-full ${
+						className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 border ${
 							translationAvailable
-								? 'text-green-700 bg-green-50'
-								: 'text-orange-700 bg-orange-50'
+								? 'border-emerald-500/50 text-emerald-600 bg-emerald-500/10'
+								: 'border-amber-500/50 text-amber-600 bg-amber-500/10'
 						}`}
 					>
 						{translationAvailable ? 'Ready' : 'Need Translation'}
@@ -201,20 +200,20 @@ export function Step3Render(props: Step3RenderProps) {
 						onClick={() => onStart({ ...config })}
 						disabled={isRendering || !translationAvailable}
 						size="lg"
-						className="min-w-[160px] h-11"
+						className="min-w-[160px] h-11 rounded-none uppercase text-xs font-bold tracking-wide"
 					>
-						{isRendering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+						{isRendering && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
 						{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
 					</Button>
 				</div>
 			</div>
 
-			{/* 配置控制区域 - 下方紧凑布局 */}
+			{/* Configuration Area */}
 			<div className="grid gap-6 md:grid-cols-2">
-				{/* 左列：基础配置 */}
-				<div className="space-y-4">
-					<div className="rounded-lg border bg-card p-4">
-						<h3 className="text-sm font-medium mb-3">Quick Presets</h3>
+				{/* Left Column: Basic Config */}
+				<div className="space-y-6">
+					<div className="border border-border bg-background p-4">
+						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">Quick Presets</h3>
 						<SubtitleConfigControls
 							presets={SUBTITLE_RENDER_PRESETS}
 							selectedPresetId={selectedPresetId}
@@ -234,8 +233,8 @@ export function Step3Render(props: Step3RenderProps) {
 						/>
 					</div>
 
-					<div className="rounded-lg border bg-card p-4">
-						<h3 className="text-sm font-medium mb-3">Hint Text</h3>
+					<div className="border border-border bg-background p-4">
+						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">Hint Text</h3>
 						<HintTextConfigControls
 							config={config.hintTextConfig}
 							onChange={handleHintTextChange}
@@ -243,10 +242,10 @@ export function Step3Render(props: Step3RenderProps) {
 					</div>
 				</div>
 
-				{/* 右列：高级配置 */}
-				<div className="space-y-4">
-					<div className="rounded-lg border bg-card p-4">
-						<h3 className="text-sm font-medium mb-3">Time Effects</h3>
+				{/* Right Column: Advanced Config */}
+				<div className="space-y-6">
+					<div className="border border-border bg-background p-4">
+						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">Time Effects</h3>
 						<TimeSegmentEffectsManager
 							effects={config.timeSegmentEffects}
 							onChange={handleTimeSegmentEffectsChange}
@@ -258,18 +257,16 @@ export function Step3Render(props: Step3RenderProps) {
 				</div>
 			</div>
 
-			{/* 错误信息 */}
+			{/* Error Message */}
 			{errorMessage && (
-				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
-					<AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
+				<div className="flex items-start gap-3 border border-destructive/50 bg-destructive/5 p-4">
+					<AlertCircle className="h-5 w-5 flex-shrink-0 text-destructive" />
 					<div>
-						<h3 className="font-semibold text-red-800">Rendering Error</h3>
-						<p className="text-sm text-red-700">{errorMessage}</p>
+						<h3 className="text-sm font-bold uppercase tracking-wide text-destructive">Rendering Error</h3>
+						<p className="text-xs font-mono text-destructive/80 mt-1">{errorMessage}</p>
 					</div>
 				</div>
 			)}
 		</div>
 	)
 }
-
-// areConfigsEqual moved to shared util in ~/lib/subtitle/utils/config
