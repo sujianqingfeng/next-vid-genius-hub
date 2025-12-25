@@ -393,7 +393,11 @@ async function handleRender(req, res) {
       console.error("[remotion] upload error body:", msg);
       throw new Error(`upload failed: ${up.status}`);
     }
+    try {
+      await progress("uploading", 1);
+    } catch {}
     console.log(`[remotion] completed job=${jobId}`);
+    await postUpdate("completed", { phase: "completed", progress: 1 });
   } catch (e) {
     console.error(`[remotion] job ${jobId} failed:`, e);
     try {
