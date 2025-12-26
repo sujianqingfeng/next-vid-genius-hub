@@ -27,6 +27,7 @@ import { Route as ApiOpenapiRouteImport } from './routes/api/openapi'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminProxyRouteImport } from './routes/admin/proxy'
 import { Route as AdminPointsPricingRouteImport } from './routes/admin/points-pricing'
+import { Route as AdminJobEventsRouteImport } from './routes/admin/job-events'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin/ai-providers'
 import { Route as AdminAiModelsRouteImport } from './routes/admin/ai-models'
 import { Route as MediaIdRouteRouteImport } from './routes/media/$id/route'
@@ -134,6 +135,11 @@ const AdminPointsPricingRoute = AdminPointsPricingRouteImport.update({
   path: '/points-pricing',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminJobEventsRoute = AdminJobEventsRouteImport.update({
+  id: '/job-events',
+  path: '/job-events',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminAiProvidersRoute = AdminAiProvidersRouteImport.update({
   id: '/ai-providers',
   path: '/ai-providers',
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/media/$id': typeof MediaIdRouteRouteWithChildren
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/job-events': typeof AdminJobEventsRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/job-events': typeof AdminJobEventsRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/media/$id': typeof MediaIdRouteRouteWithChildren
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/job-events': typeof AdminJobEventsRoute
   '/admin/points-pricing': typeof AdminPointsPricingRoute
   '/admin/proxy': typeof AdminProxyRoute
   '/admin/users': typeof AdminUsersRoute
@@ -336,6 +345,7 @@ export interface FileRouteTypes {
     | '/media/$id'
     | '/admin/ai-models'
     | '/admin/ai-providers'
+    | '/admin/job-events'
     | '/admin/points-pricing'
     | '/admin/proxy'
     | '/admin/users'
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin/ai-models'
     | '/admin/ai-providers'
+    | '/admin/job-events'
     | '/admin/points-pricing'
     | '/admin/proxy'
     | '/admin/users'
@@ -405,6 +416,7 @@ export interface FileRouteTypes {
     | '/media/$id'
     | '/admin/ai-models'
     | '/admin/ai-providers'
+    | '/admin/job-events'
     | '/admin/points-pricing'
     | '/admin/proxy'
     | '/admin/users'
@@ -583,6 +595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPointsPricingRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/job-events': {
+      id: '/admin/job-events'
+      path: '/job-events'
+      fullPath: '/admin/job-events'
+      preLoaderRoute: typeof AdminJobEventsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/ai-providers': {
       id: '/admin/ai-providers'
       path: '/ai-providers'
@@ -701,6 +720,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteRouteChildren {
   AdminAiModelsRoute: typeof AdminAiModelsRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
+  AdminJobEventsRoute: typeof AdminJobEventsRoute
   AdminPointsPricingRoute: typeof AdminPointsPricingRoute
   AdminProxyRoute: typeof AdminProxyRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -710,6 +730,7 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAiModelsRoute: AdminAiModelsRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
+  AdminJobEventsRoute: AdminJobEventsRoute,
   AdminPointsPricingRoute: AdminPointsPricingRoute,
   AdminProxyRoute: AdminProxyRoute,
   AdminUsersRoute: AdminUsersRoute,

@@ -53,6 +53,8 @@ export type TaskEngine =
 	| 'burner-ffmpeg'
 	| 'asr-pipeline'
 
+export type JobEventSource = 'callback' | 'reconciler'
+
 export const users = sqliteTable('users', {
 	id: text('id')
 		.unique()
@@ -215,6 +217,35 @@ export const tasks = sqliteTable('tasks', {
 	finishedAt: integer('finished_at', { mode: 'timestamp' }),
 	updatedAt: integer('updated_at', { mode: 'timestamp' }),
 })
+
+export const jobEvents = sqliteTable(
+	'job_events',
+	{
+		id: text('id')
+			.unique()
+			.notNull()
+			.$defaultFn(() => createId()),
+		// Stable unique key for dedupe (e.g. callback:jobId:eventSeq).
+		eventKey: text('event_key').notNull(),
+		kind: text('kind').notNull(),
+		jobId: text('job_id').notNull(),
+		taskId: text('task_id'),
+		purpose: text('purpose'),
+		status: text('status'),
+		source: text('source', { enum: ['callback', 'reconciler'] }).notNull(),
+		eventSeq: integer('event_seq'),
+		eventId: text('event_id'),
+		eventTs: integer('event_ts', { mode: 'timestamp' }),
+		message: text('message'),
+		payload: text('payload'),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		eventKeyIdx: uniqueIndex('job_events_event_key_idx').on(table.eventKey),
+	}),
+)
 
 export const media = sqliteTable(
 	'media',

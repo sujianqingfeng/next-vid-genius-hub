@@ -782,8 +782,33 @@
 				"proxy": "Proxy",
 				"aiProviders": "AI providers",
 				"aiModels": "AI models",
-				"pricing": "Points pricing"
+				"pricing": "Points pricing",
+				"jobEvents": "Job events"
 			}
+		},
+		"jobEvents": {
+			"title": "Job Events",
+			"subtitle": "Latest events across the system",
+			"loading": "Loading…",
+			"empty": "No events",
+			"fields": { "jobId": "Job ID", "taskId": "Task ID", "limit": "Limit" },
+			"placeholders": { "jobId": "job_…", "taskId": "task id" },
+			"actions": {
+				"refresh": "Refresh",
+				"refreshing": "Refreshing…",
+				"apply": "Apply",
+				"clear": "Clear"
+			},
+			"cols": {
+				"time": "Time",
+				"source": "Src",
+				"kind": "Kind",
+				"jobId": "Job",
+				"taskId": "Task",
+				"status": "Status",
+				"seq": "Seq"
+			},
+			"stats": "{count} shown (limit {limit})"
 		},
 		"aiProviders": {
 			"title": "AI Providers",

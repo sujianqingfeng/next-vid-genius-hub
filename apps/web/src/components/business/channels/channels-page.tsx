@@ -207,29 +207,6 @@ export function ChannelsPage() {
 		},
 	)
 
-	const finalizeMutation = useEnhancedMutation(
-		queryOrpc.channel.finalizeCloudSync.mutationOptions({
-			onSuccess: async (_res, variables) => {
-				await Promise.all([
-					qc.invalidateQueries({
-						queryKey: queryOrpc.channel.listChannels.queryKey({}),
-					}),
-					qc.invalidateQueries({
-						queryKey: queryOrpc.channel.listChannelVideos.queryKey({
-							input: { id: variables.id, limit: SYNC_VIDEO_LIMIT },
-						}),
-					}),
-				])
-				setExpanded((m) => ({ ...m, [variables.id]: true }))
-			},
-		}),
-		{
-			successToast: 'Finalized',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
-		},
-	)
-
 	const translateMutation = useEnhancedMutation(
 		queryOrpc.channel.translateVideoTitles.mutationOptions({
 			onSuccess: (res, variables) => {
@@ -390,16 +367,12 @@ export function ChannelsPage() {
 											limit: SYNC_VIDEO_LIMIT,
 											proxyId: sel && sel !== 'none' ? sel : undefined,
 										})
-									}}
-									syncing={startSyncMutation.isPending}
-									onFinalize={(jobId) =>
-										finalizeMutation.mutate({ id: ch.id, jobId })
-									}
-									finalizing={finalizeMutation.isPending}
-									onTranslate={() =>
-										translateMutation.mutate({
-											channelId: ch.id,
-											limit: SYNC_VIDEO_LIMIT,
+										}}
+										syncing={startSyncMutation.isPending}
+										onTranslate={() =>
+											translateMutation.mutate({
+												channelId: ch.id,
+												limit: SYNC_VIDEO_LIMIT,
 											model: (selectedModelByChannel[ch.id] ??
 												llmDefaultId) as string,
 										})
@@ -434,14 +407,12 @@ function ChannelCard({
 	onToggleTranslation,
 	onDelete,
 	deleting,
-	onSync,
-	syncing,
-	onFinalize,
-	finalizing,
-	onTranslate,
-	translating,
-	t,
-	tVideos,
+		onSync,
+		syncing,
+		onTranslate,
+		translating,
+		t,
+		tVideos,
 }: {
 	ch: ChannelRow
 	proxies: ProxyOption[]
@@ -461,14 +432,13 @@ function ChannelCard({
 	deleting: boolean
 	onSync: () => void
 	syncing: boolean
-	onFinalize: (jobId: string) => void
-	finalizing: boolean
 	onTranslate: () => void
 	translating: boolean
 	t: ReturnType<typeof useTranslations>
 	tVideos: ReturnType<typeof useTranslations>
 }) {
 	const jobId = ch.lastJobId || null
+	const qc = useQueryClient()
 	const tProxySelector = useTranslations('Proxy.selector')
 
 	const polledStatusQuery = useQuery({
@@ -487,7 +457,7 @@ function ChannelCard({
 		(polledStatusQuery.data as any)?.status ?? ch.lastSyncStatus ?? 'idle'
 	const effectivePhase = (polledStatusQuery.data as any)?.phase
 	const effectiveProgress = (polledStatusQuery.data as any)?.progress
-	const canFinalize = Boolean(jobId) && effectiveStatus === 'completed'
+	const lastRefreshedJobIdRef = React.useRef<string | null>(null)
 
 	const videosQuery = useQuery({
 		...queryOrpc.channel.listChannelVideos.queryOptions({
@@ -495,6 +465,26 @@ function ChannelCard({
 		}),
 		enabled: expanded,
 	})
+
+	React.useEffect(() => {
+		if (!jobId) return
+		if (effectiveStatus !== 'completed') return
+		if (lastRefreshedJobIdRef.current === jobId) return
+		lastRefreshedJobIdRef.current = jobId
+
+		void (async () => {
+			await qc.invalidateQueries({
+				queryKey: queryOrpc.channel.listChannels.queryKey({}),
+			})
+			if (expanded) {
+				await qc.invalidateQueries({
+					queryKey: queryOrpc.channel.listChannelVideos.queryKey({
+						input: { id: ch.id, limit: SYNC_VIDEO_LIMIT },
+					}),
+				})
+			}
+		})()
+	}, [ch.id, effectiveStatus, expanded, jobId, qc])
 
 	const videos = videosQuery.data?.videos ?? []
 
@@ -694,32 +684,20 @@ function ChannelCard({
 							)}
 						</Button>
 
-						{translationAvailable && (
+							{translationAvailable && (
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={onToggleTranslation}
+									className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
+								>
+									{translationVisible ? 'HIDE_TRANSL' : 'SHOW_TRANSL'}
+								</Button>
+							)}
+
 							<Button
 								variant="ghost"
 								size="sm"
-								onClick={onToggleTranslation}
-								className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
-							>
-								{translationVisible ? 'HIDE_TRANSL' : 'SHOW_TRANSL'}
-							</Button>
-						)}
-
-						{canFinalize && (
-							<Button
-								variant="outline"
-								size="sm"
-								disabled={finalizing}
-								onClick={() => onFinalize(jobId!)}
-								className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8 border-emerald-500/50 text-emerald-600"
-							>
-								COMMIT_SYNC
-							</Button>
-						)}
-
-						<Button
-							variant="ghost"
-							size="sm"
 							onClick={onDelete}
 							disabled={deleting}
 							className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8 text-destructive ml-auto"

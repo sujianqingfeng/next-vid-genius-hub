@@ -167,6 +167,51 @@ export const listUserTransactions = os
 		return { items }
 	})
 
+const ListJobEventsSchema = z.object({
+	jobId: z.string().trim().min(1).optional(),
+	taskId: z.string().trim().min(1).optional(),
+	limit: z.number().int().min(1).max(200).default(100),
+})
+
+export const listJobEvents = os
+	.input(ListJobEventsSchema)
+	.handler(async ({ input }) => {
+		const db = await getDb()
+		const filters = []
+		if (input.jobId) filters.push(eq(schema.jobEvents.jobId, input.jobId))
+		if (input.taskId) filters.push(eq(schema.jobEvents.taskId, input.taskId))
+
+		const whereClause =
+			filters.length === 1
+				? filters[0]
+				: filters.length > 1
+					? and(...filters)
+					: undefined
+
+		const items = await db
+			.select({
+				id: schema.jobEvents.id,
+				createdAt: schema.jobEvents.createdAt,
+				source: schema.jobEvents.source,
+				kind: schema.jobEvents.kind,
+				jobId: schema.jobEvents.jobId,
+				taskId: schema.jobEvents.taskId,
+				purpose: schema.jobEvents.purpose,
+				status: schema.jobEvents.status,
+				eventSeq: schema.jobEvents.eventSeq,
+				eventId: schema.jobEvents.eventId,
+				eventTs: schema.jobEvents.eventTs,
+				message: schema.jobEvents.message,
+				payload: schema.jobEvents.payload,
+			})
+			.from(schema.jobEvents)
+			.where(whereClause)
+			.orderBy(desc(schema.jobEvents.createdAt))
+			.limit(input.limit)
+
+		return { items }
+	})
+
 const DeleteUserSchema = z.object({
 	userId: z.string().min(1),
 })

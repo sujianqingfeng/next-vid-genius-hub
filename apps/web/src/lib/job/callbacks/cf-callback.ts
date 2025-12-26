@@ -4,6 +4,7 @@ import { presignGetByKey } from '~/lib/cloudflare'
 import { JOB_CALLBACK_HMAC_SECRET } from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
 import { TASK_KINDS } from '~/lib/job/task'
+import { recordJobEvent } from '~/lib/job/events'
 import { logger } from '~/lib/logger'
 import {
 	chargeAsrUsage,
@@ -754,6 +755,21 @@ export async function handleCfCallbackRequest(
 
 		// System-level proxy checks: update proxy status without touching media/tasks.
 		if (payload.metadata?.kind === 'proxy-check') {
+			await recordJobEvent({
+				db,
+				source: 'callback',
+				kind: 'proxy-check',
+				jobId: payload.jobId,
+				taskId: null,
+				purpose: payload.purpose ?? null,
+				status: payload.status,
+				eventSeq: payload.eventSeq,
+				eventId: payload.eventId ?? null,
+				eventTs: payload.eventTs ?? null,
+				message: payload.error ?? null,
+				payload,
+			})
+
 			const proxyId =
 				typeof (payload.metadata as any)?.proxyId === 'string'
 					? ((payload.metadata as any).proxyId as string)
@@ -809,6 +825,21 @@ export async function handleCfCallbackRequest(
 
 		const task = await db.query.tasks.findFirst({
 			where: eq(schema.tasks.jobId, payload.jobId),
+		})
+
+		await recordJobEvent({
+			db,
+			source: 'callback',
+			kind: 'received',
+			jobId: payload.jobId,
+			taskId: task?.id ?? null,
+			purpose: payload.purpose ?? task?.kind ?? null,
+			status: payload.status,
+			eventSeq: payload.eventSeq,
+			eventId: payload.eventId ?? null,
+			eventTs: payload.eventTs ?? null,
+			message: payload.error ?? null,
+			payload,
 		})
 
 		// Callbacks are retried by the orchestrator when eventSeq is present; dedupe by eventSeq.

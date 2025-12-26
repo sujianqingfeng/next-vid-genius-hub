@@ -67,10 +67,13 @@ export async function startCloudJob(
 	return (await res.json()) as StartJobResponse
 }
 
-export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
+export async function getJobStatus(
+	jobId: string,
+	opts?: { signal?: AbortSignal },
+): Promise<JobStatusResponse> {
 	const base = requireOrchestratorUrl()
 	const url = `${base.replace(/\/$/, '')}/jobs/${encodeURIComponent(jobId)}`
-	const res = await fetch(url)
+	const res = await fetch(url, { signal: opts?.signal })
 	if (!res.ok)
 		throw new Error(`getJobStatus failed: ${res.status} ${await res.text()}`)
 	return (await res.json()) as JobStatusResponse

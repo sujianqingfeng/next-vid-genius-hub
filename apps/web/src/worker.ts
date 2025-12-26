@@ -5,6 +5,7 @@ import {
 import type { D1Database } from '~/lib/db'
 import { setInjectedD1Database } from '~/lib/db'
 import { runScheduledProxyChecks } from '~/lib/proxy/check'
+import { runScheduledTaskReconciler } from '~/lib/job/reconciler'
 
 type WorkerEnv = {
 	DB?: D1Database
@@ -105,6 +106,8 @@ export default {
 		if (env?.DB) {
 			setInjectedD1Database(env.DB)
 		}
-		ctx.waitUntil(runScheduledProxyChecks())
+		ctx.waitUntil(
+			Promise.all([runScheduledProxyChecks(), runScheduledTaskReconciler()]),
+		)
 	},
 }

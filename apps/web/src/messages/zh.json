@@ -782,8 +782,33 @@
 				"proxy": "代理管理",
 				"aiProviders": "AI 提供商",
 				"aiModels": "AI 模型",
-				"pricing": "计价规则"
+				"pricing": "计价规则",
+				"jobEvents": "任务事件"
 			}
+		},
+		"jobEvents": {
+			"title": "任务事件",
+			"subtitle": "系统内最新事件流",
+			"loading": "加载中…",
+			"empty": "暂无事件",
+			"fields": { "jobId": "Job ID", "taskId": "Task ID", "limit": "条数" },
+			"placeholders": { "jobId": "job_…", "taskId": "任务 id" },
+			"actions": {
+				"refresh": "刷新",
+				"refreshing": "刷新中…",
+				"apply": "应用",
+				"clear": "清空"
+			},
+			"cols": {
+				"time": "时间",
+				"source": "来源",
+				"kind": "类型",
+				"jobId": "Job",
+				"taskId": "Task",
+				"status": "状态",
+				"seq": "序号"
+			},
+			"stats": "显示 {count} 条（上限 {limit}）"
 		},
 		"aiProviders": {
 			"title": "AI 提供商",

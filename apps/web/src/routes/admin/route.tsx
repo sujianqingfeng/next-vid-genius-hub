@@ -11,6 +11,7 @@ import {
 	Cpu,
 	Globe,
 	Layers,
+	ListOrdered,
 	LogOut,
 	Shield,
 	Users,
@@ -32,6 +33,7 @@ const navItems = [
 	{ key: 'aiProviders', href: '/admin/ai-providers', icon: Layers },
 	{ key: 'aiModels', href: '/admin/ai-models', icon: Cpu },
 	{ key: 'pricing', href: '/admin/points-pricing', icon: Shield },
+	{ key: 'jobEvents', href: '/admin/job-events', icon: ListOrdered },
 ] as const
 
 function stripBasePath(pathname: string): string {
