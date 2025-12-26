@@ -1,0 +1,501 @@
+'use client'
+
+import type { CSSProperties } from 'react'
+import * as React from 'react'
+import { ThumbsUp } from 'lucide-react'
+import { AbsoluteFill, Sequence, useCurrentFrame, interpolate } from 'remotion'
+import type { ThreadVideoInputProps } from './types'
+import { formatCount } from './utils/format'
+
+function resolveAvatarFallback(name?: string | null) {
+	const value = (name ?? '').trim()
+	if (!value) return '?'
+	const parts = value.split(/\s+/).filter(Boolean)
+	if (parts.length === 0) return '?'
+	if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+	return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase()
+}
+
+function buildCssVars(
+	cfg: ThreadVideoInputProps['templateConfig'],
+): CSSProperties {
+	const theme = cfg?.theme ?? {}
+	const typo = cfg?.typography ?? {}
+
+	const fontScale = typeof typo.fontScale === 'number' ? typo.fontScale : 1
+	const fontFamily =
+		typo.fontPreset === 'inter'
+			? ['"Inter"', 'system-ui', '-apple-system', '"Segoe UI Emoji"', 'sans-serif'].join(
+					', ',
+				)
+			: typo.fontPreset === 'system'
+				? ['system-ui', '-apple-system', '"Segoe UI"', '"Segoe UI Emoji"', 'sans-serif'].join(
+						', ',
+					)
+				: [
+						'"Noto Sans CJK SC"',
+						'"Noto Sans SC"',
+						'"Source Han Sans SC"',
+						'"Inter"',
+						'system-ui',
+						'-apple-system',
+						'"Segoe UI Emoji"',
+						'sans-serif',
+					].join(', ')
+
+	return {
+		'--tf-bg': theme.background ?? '#0b1020',
+		'--tf-surface': theme.surface ?? 'rgba(255,255,255,0.06)',
+		'--tf-border': theme.border ?? 'rgba(255,255,255,0.10)',
+		'--tf-text': theme.textPrimary ?? '#e5e7eb',
+		'--tf-muted': theme.textMuted ?? 'rgba(229,231,235,0.65)',
+		'--tf-accent': theme.accent ?? '#22c55e',
+		'--tf-font-family': fontFamily,
+		'--tf-font-scale': String(fontScale),
+	} as unknown as CSSProperties
+}
+
+function buildSequences(replyDurationsInFrames: number[]) {
+	let cursor = 0
+	return replyDurationsInFrames.map((durationInFrames, idx) => {
+		const startFrame = cursor
+		cursor += durationInFrames
+		return { idx, startFrame, durationInFrames }
+	})
+}
+
+function renderBlocks(blocks: ThreadVideoInputProps['root']['contentBlocks']) {
+	return blocks.map((b) => {
+		if (b.type === 'text') {
+			return (
+				<p
+					key={b.id}
+					style={{
+						margin: 0,
+						fontSize: 'calc(28px * var(--tf-font-scale))',
+						lineHeight: 1.55,
+						whiteSpace: 'pre-wrap',
+					}}
+				>
+					{b.data.text}
+				</p>
+			)
+		}
+		if (b.type === 'quote') {
+			return (
+				<div
+					key={b.id}
+					style={{
+						borderLeft: '3px solid var(--tf-accent)',
+						paddingLeft: 18,
+						color: 'var(--tf-muted)',
+						fontSize: 'calc(24px * var(--tf-font-scale))',
+						lineHeight: 1.55,
+						whiteSpace: 'pre-wrap',
+					}}
+				>
+					{b.data.text}
+				</div>
+			)
+		}
+		if (b.type === 'divider') {
+			return (
+				<div
+					key={b.id}
+					style={{
+						height: 1,
+						backgroundColor: 'var(--tf-border)',
+						margin: '18px 0',
+					}}
+				/>
+			)
+		}
+		if (b.type === 'image') {
+			return (
+				<div
+					key={b.id}
+					style={{
+						border: '1px dashed var(--tf-border)',
+						background: 'rgba(255,255,255,0.03)',
+						padding: 18,
+						fontSize: 'calc(16px * var(--tf-font-scale))',
+						color: 'var(--tf-muted)',
+					}}
+				>
+					[image: {b.data.caption ?? b.data.assetId}]
+				</div>
+			)
+		}
+		if (b.type === 'video') {
+			return (
+				<div
+					key={b.id}
+					style={{
+						border: '1px dashed var(--tf-border)',
+						background: 'rgba(255,255,255,0.03)',
+						padding: 18,
+						fontSize: 'calc(16px * var(--tf-font-scale))',
+						color: 'var(--tf-muted)',
+					}}
+				>
+					[video cover card: {b.data.title ?? b.data.assetId}]
+				</div>
+			)
+		}
+		if (b.type === 'link') {
+			return (
+				<div
+					key={b.id}
+					style={{
+						border: '1px solid var(--tf-border)',
+						background: 'rgba(255,255,255,0.02)',
+						padding: 18,
+					}}
+				>
+					<div
+						style={{
+							fontSize: 'calc(18px * var(--tf-font-scale))',
+							fontWeight: 700,
+						}}
+					>
+						{b.data.title ?? b.data.url}
+					</div>
+					{b.data.description ? (
+						<div
+							style={{
+								marginTop: 8,
+								fontSize: 'calc(16px * var(--tf-font-scale))',
+								color: 'var(--tf-muted)',
+								lineHeight: 1.5,
+							}}
+						>
+							{b.data.description}
+						</div>
+					) : null}
+					<div
+						style={{
+							marginTop: 10,
+							fontSize: 'calc(14px * var(--tf-font-scale))',
+							color: 'var(--tf-muted)',
+							opacity: 0.8,
+						}}
+					>
+						{b.data.url}
+					</div>
+				</div>
+			)
+		}
+		return null
+	})
+}
+
+function CoverSlide({
+	thread,
+	root,
+	fps,
+}: {
+	thread: ThreadVideoInputProps['thread']
+	root: ThreadVideoInputProps['root']
+	fps: number
+}) {
+	const frame = useCurrentFrame()
+	const opacity = interpolate(frame, [0, fps * 0.5], [0, 1], {
+		extrapolateLeft: 'clamp',
+		extrapolateRight: 'clamp',
+	})
+
+	return (
+		<AbsoluteFill
+			style={{
+				background: 'var(--tf-bg)',
+				color: 'var(--tf-text)',
+				fontFamily: 'var(--tf-font-family)',
+				padding: '80px',
+				boxSizing: 'border-box',
+				opacity,
+			}}
+		>
+			<div
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					gap: 26,
+					maxWidth: 1500,
+				}}
+			>
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						gap: 12,
+						color: 'var(--tf-muted)',
+						fontSize: 'calc(14px * var(--tf-font-scale))',
+						letterSpacing: '0.22em',
+						textTransform: 'uppercase',
+					}}
+				>
+					<span
+						style={{
+							width: 10,
+							height: 10,
+							background: 'var(--tf-accent)',
+						}}
+					/>
+					<span>{thread.source ?? 'thread'}</span>
+					{thread.sourceUrl ? (
+						<span style={{ opacity: 0.75 }}>{thread.sourceUrl}</span>
+					) : null}
+				</div>
+
+				<h1
+					style={{
+						margin: 0,
+						fontSize: 'calc(64px * var(--tf-font-scale))',
+						lineHeight: 1.05,
+						fontWeight: 900,
+						letterSpacing: '-0.03em',
+					}}
+				>
+					{thread.title}
+				</h1>
+
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						gap: 14,
+						color: 'var(--tf-muted)',
+						fontSize: 'calc(16px * var(--tf-font-scale))',
+					}}
+				>
+					<div
+						style={{
+							width: 44,
+							height: 44,
+							borderRadius: 999,
+							border: '1px solid var(--tf-border)',
+							background: 'rgba(255,255,255,0.04)',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							color: 'var(--tf-text)',
+							fontWeight: 800,
+						}}
+					>
+						{resolveAvatarFallback(root.author.name)}
+					</div>
+					<div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+						<div style={{ color: 'var(--tf-text)', fontWeight: 800 }}>
+							{root.author.name}
+							{root.author.handle ? (
+								<span style={{ marginLeft: 10, color: 'var(--tf-muted)' }}>
+									{root.author.handle}
+								</span>
+							) : null}
+						</div>
+						<div style={{ fontSize: 'calc(12px * var(--tf-font-scale))' }}>
+							ROOT POST
+						</div>
+					</div>
+				</div>
+
+				<div
+					style={{
+						marginTop: 6,
+						border: '1px solid var(--tf-border)',
+						background: 'var(--tf-surface)',
+						padding: 28,
+					}}
+				>
+					{renderBlocks(root.contentBlocks)}
+				</div>
+			</div>
+		</AbsoluteFill>
+	)
+}
+
+function ReplySlide({
+	reply,
+	index,
+	total,
+	durationInFrames,
+	fps,
+}: {
+	reply: ThreadVideoInputProps['replies'][number]
+	index: number
+	total: number
+	durationInFrames: number
+	fps: number
+}) {
+	const frame = useCurrentFrame()
+	const enter = interpolate(frame, [0, Math.min(fps * 0.3, 18)], [0, 1], {
+		extrapolateLeft: 'clamp',
+		extrapolateRight: 'clamp',
+	})
+	const exit = interpolate(
+		frame,
+		[Math.max(0, durationInFrames - Math.min(fps * 0.3, 18)), durationInFrames],
+		[1, 0],
+		{
+			extrapolateLeft: 'clamp',
+			extrapolateRight: 'clamp',
+		},
+	)
+	const opacity = enter * exit
+
+	return (
+		<AbsoluteFill
+			style={{
+				background: 'var(--tf-bg)',
+				color: 'var(--tf-text)',
+				fontFamily: 'var(--tf-font-family)',
+				padding: '80px',
+				boxSizing: 'border-box',
+				opacity,
+			}}
+		>
+			<div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						gap: 12,
+						color: 'var(--tf-muted)',
+						fontSize: 'calc(12px * var(--tf-font-scale))',
+						letterSpacing: '0.22em',
+						textTransform: 'uppercase',
+					}}
+				>
+					<span
+						style={{
+							width: 10,
+							height: 10,
+							background: 'var(--tf-accent)',
+						}}
+					/>
+					<span>
+						REPLY {index + 1}/{total}
+					</span>
+				</div>
+
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						gap: 10,
+						color: 'var(--tf-muted)',
+						fontSize: 'calc(14px * var(--tf-font-scale))',
+					}}
+				>
+					<ThumbsUp size={18} color="var(--tf-muted)" />
+					<span>{formatCount(Number(reply.metrics?.likes ?? 0) || 0)}</span>
+				</div>
+			</div>
+
+			<div
+				style={{
+					marginTop: 18,
+					border: '1px solid var(--tf-border)',
+					background: 'var(--tf-surface)',
+					padding: 28,
+				}}
+			>
+				<div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+					<div
+						style={{
+							width: 44,
+							height: 44,
+							borderRadius: 999,
+							border: '1px solid var(--tf-border)',
+							background: 'rgba(255,255,255,0.04)',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							color: 'var(--tf-text)',
+							fontWeight: 800,
+						}}
+					>
+						{resolveAvatarFallback(reply.author.name)}
+					</div>
+					<div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+						<div style={{ fontWeight: 800 }}>
+							{reply.author.name}
+							{reply.author.handle ? (
+								<span style={{ marginLeft: 10, color: 'var(--tf-muted)' }}>
+									{String(reply.author.handle)}
+								</span>
+							) : null}
+						</div>
+						<div
+							style={{
+								fontSize: 'calc(12px * var(--tf-font-scale))',
+								color: 'var(--tf-muted)',
+							}}
+						>
+							{reply.createdAt ? String(reply.createdAt).slice(0, 10) : '—'}
+						</div>
+					</div>
+				</div>
+
+				<div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+					{renderBlocks(reply.contentBlocks)}
+				</div>
+			</div>
+		</AbsoluteFill>
+	)
+}
+
+export function ThreadForumVideo({
+	thread,
+	root,
+	replies,
+	coverDurationInFrames,
+	replyDurationsInFrames,
+	fps,
+	templateConfig,
+}: ThreadVideoInputProps) {
+	const sequences = React.useMemo(
+		() => buildSequences(replyDurationsInFrames),
+		[replyDurationsInFrames],
+	)
+	const repliesTotalDuration = replyDurationsInFrames.reduce((sum, f) => sum + f, 0)
+	const mainDuration = Math.max(repliesTotalDuration, fps)
+
+	return (
+		<AbsoluteFill
+			style={{
+				...(buildCssVars(templateConfig) as any),
+				background: 'var(--tf-bg)',
+			}}
+		>
+			<Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
+				<CoverSlide thread={thread} root={root} fps={fps} />
+			</Sequence>
+			<Sequence layout="none" from={coverDurationInFrames} durationInFrames={mainDuration}>
+				<AbsoluteFill style={{ background: 'var(--tf-bg)' }}>
+					{sequences.map(({ startFrame, durationInFrames, idx }) => {
+						const reply = replies[idx]
+						if (!reply) return null
+						return (
+							<Sequence
+								key={reply.id}
+								layout="none"
+								from={startFrame}
+								durationInFrames={durationInFrames}
+							>
+								<ReplySlide
+									reply={reply}
+									index={idx}
+									total={replies.length}
+									durationInFrames={durationInFrames}
+									fps={fps}
+								/>
+							</Sequence>
+						)
+					})}
+				</AbsoluteFill>
+			</Sequence>
+		</AbsoluteFill>
+	)
+}
+

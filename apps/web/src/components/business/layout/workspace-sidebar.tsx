@@ -7,6 +7,7 @@ import {
 	ListChecks,
 	ListVideo,
 	LogOut,
+	MessageSquareText,
 	Shield,
 } from 'lucide-react'
 import * as React from 'react'
@@ -33,6 +34,11 @@ const baseMenuItems = [
 		key: 'media',
 		to: '/media',
 		icon: FileVideo,
+	},
+	{
+		key: 'threads',
+		to: '/threads',
+		icon: MessageSquareText,
 	},
 	{
 		key: 'channels',

@@ -875,6 +875,33 @@ export async function handleCfCallbackRequest(
 				? payload.purpose.trim()
 				: task?.kind
 
+		// Thread rendering (media-independent). We reuse the orchestrator's `mediaId`
+		// field to carry the threadId, and dispatch by purpose.
+		if (effectiveKind === 'render-thread') {
+			const outputVideoKey =
+				payload.outputs?.video?.key ?? payload.outputKey ?? null
+			try {
+				await db
+					.update(schema.threadRenders)
+					.set({
+						status: payload.status,
+						outputVideoKey,
+						error: payload.error ?? null,
+						updatedAt: new Date(),
+					})
+					.where(eq(schema.threadRenders.jobId, payload.jobId))
+			} catch (e) {
+				logger.warn(
+					'api',
+					`[cf-callback.thread] update failed job=${payload.jobId} err=${
+						e instanceof Error ? e.message : String(e)
+					}`,
+				)
+			}
+
+			return Response.json({ ok: true })
+		}
+
 		// media-downloader is also used for non-download tasks (comments-only, metadata refresh, channel sync).
 		// Those jobs should not mutate the media's download fields.
 		if (payload.engine === 'media-downloader' && effectiveKind) {

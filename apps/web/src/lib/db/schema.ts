@@ -5,6 +5,7 @@ import {
 	uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 import type { CommentsTemplateConfig } from '@app/remotion-project/types'
+import type { ThreadContentBlock, ThreadPostMetrics, ThreadSource } from '~/lib/thread/types'
 import { createId } from '~/lib/utils/id'
 
 export interface Comment {
@@ -328,6 +329,126 @@ export const media = sqliteTable(
 		userUrlIdx: uniqueIndex('media_user_url_idx').on(table.userId, table.url),
 	}),
 )
+
+export const threads = sqliteTable(
+	'threads',
+	{
+		id: text('id')
+			.unique()
+			.notNull()
+			.$defaultFn(() => createId()),
+		userId: text('user_id').notNull(),
+		source: text('source', { enum: ['x', 'custom'] })
+			.$type<ThreadSource>()
+			.notNull(),
+		sourceUrl: text('source_url'),
+		sourceId: text('source_id'),
+		title: text('title').notNull(),
+		lang: text('lang'),
+		templateId: text('template_id'),
+		templateConfig: text('template_config', { mode: 'json' }),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+		updatedAt: integer('updated_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		userSourceIdIdx: uniqueIndex('threads_user_source_id_idx').on(
+			table.userId,
+			table.source,
+			table.sourceId,
+		),
+	}),
+)
+
+export const threadPosts = sqliteTable(
+	'thread_posts',
+	{
+		id: text('id')
+			.unique()
+			.notNull()
+			.$defaultFn(() => createId()),
+		threadId: text('thread_id').notNull(),
+		sourcePostId: text('source_post_id'),
+		role: text('role', { enum: ['root', 'reply'] }).notNull(),
+		authorName: text('author_name').notNull(),
+		authorHandle: text('author_handle'),
+		authorProfileUrl: text('author_profile_url'),
+		authorAvatarAssetId: text('author_avatar_asset_id'),
+		contentBlocks: text('content_blocks', { mode: 'json' })
+			.$type<ThreadContentBlock[]>()
+			.notNull(),
+		plainText: text('plain_text').notNull(),
+		metrics: text('metrics', { mode: 'json' }).$type<ThreadPostMetrics>(),
+		depth: integer('depth').notNull().default(0),
+		parentSourcePostId: text('parent_source_post_id'),
+		raw: text('raw', { mode: 'json' }),
+		createdAt: integer('created_at', { mode: 'timestamp' }),
+		editedAt: integer('edited_at', { mode: 'timestamp' }),
+		updatedAt: integer('updated_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		threadSourcePostIdIdx: uniqueIndex('thread_posts_thread_source_post_id_idx').on(
+			table.threadId,
+			table.sourcePostId,
+		),
+	}),
+)
+
+export const threadAssets = sqliteTable('thread_assets', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	userId: text('user_id').notNull(),
+	kind: text('kind', { enum: ['image', 'video', 'avatar', 'linkPreview'] })
+		.notNull(),
+	sourceUrl: text('source_url'),
+	storageKey: text('storage_key'),
+	contentType: text('content_type'),
+	bytes: integer('bytes'),
+	width: integer('width'),
+	height: integer('height'),
+	durationMs: integer('duration_ms'),
+	thumbnailAssetId: text('thumbnail_asset_id'),
+	status: text('status', { enum: ['pending', 'ready', 'failed'] })
+		.notNull()
+		.default('pending'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
+
+export const threadRenders = sqliteTable('thread_renders', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	threadId: text('thread_id').notNull(),
+	userId: text('user_id').notNull(),
+	status: text('status', {
+		enum: ['queued', 'running', 'completed', 'failed', 'canceled'],
+	}).notNull(),
+	jobId: text('job_id'),
+	templateId: text('template_id'),
+	templateConfig: text('template_config', { mode: 'json' }),
+	inputSnapshotKey: text('input_snapshot_key'),
+	outputVideoKey: text('output_video_key'),
+	error: text('error'),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
 
 export const ssrSubscriptions = sqliteTable('ssr_subscriptions', {
 	id: text('id')

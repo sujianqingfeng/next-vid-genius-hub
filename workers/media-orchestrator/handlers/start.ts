@@ -93,6 +93,13 @@ export async function handleStart(env: Env, req: Request) {
 		: undefined
 
 	const opts = (body.options || {}) as any
+	const isOverlayOnlyRender =
+		body.engine === 'renderer-remotion' &&
+		(opts?.composeMode === 'overlay-only' ||
+			opts?.resourceType === 'thread' ||
+			purpose === 'render-thread' ||
+			(typeof opts?.templateId === 'string' &&
+				opts.templateId.trim().startsWith('thread')))
 	if (isAsrPipeline) {
 		const sourceKey =
 			typeof opts.sourceKey === 'string'
@@ -189,7 +196,7 @@ export async function handleStart(env: Env, req: Request) {
 		}
 
 		// 3) Strict mode: if any input missing, fail fast with actionable error
-		const needVideo = !inputVideoUrl
+		const needVideo = !inputVideoUrl && !isOverlayOnlyRender
 		const needVtt = body.engine === 'burner-ffmpeg' && !inputVttUrl
 		const needData = body.engine === 'renderer-remotion' && !inputDataUrl
 		if (needVideo || needVtt || needData) {

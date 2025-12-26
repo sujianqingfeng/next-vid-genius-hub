@@ -132,9 +132,17 @@ async function handleRender(req, res) {
     const inputVideoUrl = payload?.inputVideoUrl;
     const inputDataUrl = payload?.inputDataUrl;
     const outputPutUrl = payload?.outputPutUrl;
-    if (!inputVideoUrl || !inputDataUrl || !outputPutUrl) {
+    const templateId = (engineOptions && engineOptions.templateId) || 'comments-default';
+    const composeMode =
+      (engineOptions && engineOptions.composeMode) ||
+      (typeof templateId === 'string' && templateId.startsWith('thread') ? 'overlay-only' : 'compose-on-video');
+    const requiresVideo = composeMode !== 'overlay-only';
+
+    if (!inputDataUrl || !outputPutUrl || (requiresVideo && !inputVideoUrl)) {
       throw new Error(
-        "missing required URLs (inputVideoUrl/inputDataUrl/outputPutUrl)",
+        requiresVideo
+          ? "missing required URLs (inputVideoUrl/inputDataUrl/outputPutUrl)"
+          : "missing required URLs (inputDataUrl/outputPutUrl)",
       );
     }
 
@@ -159,23 +167,27 @@ async function handleRender(req, res) {
     });
 
     await progress("preparing", 0.05);
-    const inFile = join(tmpdir(), `${jobId}_source.mp4`);
+    const inFile = requiresVideo ? join(tmpdir(), `${jobId}_source.mp4`) : null;
     const dataJson = join(tmpdir(), `${jobId}_data.json`);
     const overlayOut = join(tmpdir(), `${jobId}_overlay.mp4`);
     const outFile = join(tmpdir(), `${jobId}_out.mp4`);
 
-    console.log(
-      "[remotion] downloading source video from:",
-      inputVideoUrl.split("?")[0],
-    );
-    {
-      const r = await undiciFetch(inputVideoUrl);
-      if (!r.ok) throw new Error(`download source failed: ${r.status}`);
-      const buf = Buffer.from(await r.arrayBuffer());
+    if (requiresVideo) {
       console.log(
-        `[remotion] source video downloaded: ${(buf.length / 1024 / 1024).toFixed(2)} MB`,
+        "[remotion] downloading source video from:",
+        inputVideoUrl.split("?")[0],
       );
-      writeFileSync(inFile, buf);
+      {
+        const r = await undiciFetch(inputVideoUrl);
+        if (!r.ok) throw new Error(`download source failed: ${r.status}`);
+        const buf = Buffer.from(await r.arrayBuffer());
+        console.log(
+          `[remotion] source video downloaded: ${(buf.length / 1024 / 1024).toFixed(2)} MB`,
+        );
+        writeFileSync(inFile, buf);
+      }
+    } else {
+      console.log("[remotion] overlay-only mode: skipping source video download");
     }
     console.log(
       "[remotion] downloading comments data from:",
@@ -192,56 +204,120 @@ async function handleRender(req, res) {
     }
 
     // Parse input data
-    console.log("[remotion] parsing comments data");
-    const { videoInfo, comments } = JSON.parse(readFileSync(dataJson, "utf8"));
-    console.log(`[remotion] parsed ${comments?.length || 0} comments`);
+    const rawData = JSON.parse(readFileSync(dataJson, "utf8"));
+    const isThreadTemplate = templateId === 'thread-forum';
+    const kind = rawData?.kind;
 
-    // Inline remote images to avoid <Img> network stalls inside headless browser
-    console.log(
-      `[remotion] inlining remote images (1 video + ${comments?.length || 0} comment thumbnails)`,
-    );
-    const inlineRemoteImage = (url) =>
-      inlineRemoteImageFromPkg(url, {
-        proxyUrl: effectiveProxy || undefined,
-        timeoutMs: 5000,
-      });
-    let inlineOk = 0,
-      inlineFail = 0;
+    let inputProps = null;
+    let compositionId = 'CommentsVideo';
+    let coverDurationInFrames = 0;
+    let totalDurationInFrames = 0;
+    let totalDurationSeconds = 0;
+    let coverDurationSeconds = 0;
 
-    // Download video thumbnail
-    const preparedVideoInfo = {
-      ...videoInfo,
-      thumbnail: await inlineRemoteImage(videoInfo?.thumbnail).then((v) => {
-        if (v) inlineOk++;
-        else inlineFail++;
-        return v;
-      }),
-    };
+    if (isThreadTemplate || kind === 'thread-render-snapshot') {
+      console.log("[remotion] parsing thread snapshot data");
+      const p = rawData?.inputProps || rawData;
+      const replies = Array.isArray(p?.replies) ? p.replies : [];
+      // Use comment-timeline helper for timing (map replies -> minimal Comment)
+      const timingComments = replies.map((r) => ({
+        id: r?.id || '',
+        author: r?.author?.name || 'unknown',
+        content: r?.plainText || '',
+        likes: Number(r?.metrics?.likes || 0) || 0,
+        replyCount: 0,
+      }));
+      const timeline = buildCommentTimeline(timingComments, REMOTION_FPS);
+      coverDurationInFrames = Number(p?.coverDurationInFrames) || timeline.coverDurationInFrames;
+      const replyDurationsInFrames =
+        Array.isArray(p?.replyDurationsInFrames) && p.replyDurationsInFrames.length === replies.length
+          ? p.replyDurationsInFrames
+          : timeline.commentDurationsInFrames;
 
-    // Download comment thumbnails in batches of 10 concurrent requests
-    const preparedComments = [];
-    const batchSize = 10;
-    for (let i = 0; i < (comments || []).length; i += batchSize) {
-      const batch = comments.slice(i, i + batchSize);
+      inputProps = {
+        ...p,
+        coverDurationInFrames,
+        replyDurationsInFrames,
+        fps: REMOTION_FPS,
+        templateConfig: engineOptions && engineOptions.templateConfig != null ? engineOptions.templateConfig : p?.templateConfig,
+      };
+
+      totalDurationInFrames =
+        coverDurationInFrames +
+        replyDurationsInFrames.reduce((sum, f) => sum + (Number(f) || 0), 0);
+      totalDurationSeconds = totalDurationInFrames / REMOTION_FPS;
+      coverDurationSeconds = coverDurationInFrames / REMOTION_FPS;
+      compositionId = 'ThreadForumVideo';
+      console.log(`[remotion] parsed thread replies=${replies.length}`);
+    } else {
+      console.log("[remotion] parsing comments data");
+      const { videoInfo, comments } = rawData;
+      console.log(`[remotion] parsed ${comments?.length || 0} comments`);
+
+      // Inline remote images to avoid <Img> network stalls inside headless browser
       console.log(
-        `[remotion] inlining batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(comments.length / batchSize)} (${i + 1}-${Math.min(i + batchSize, comments.length)}/${comments.length})`,
+        `[remotion] inlining remote images (1 video + ${comments?.length || 0} comment thumbnails)`,
       );
-      const inlinedBatch = await Promise.all(
-        batch.map(async (c) => {
-          const inlined = await inlineRemoteImage(c?.authorThumbnail);
-          if (inlined) inlineOk++;
+      const inlineRemoteImage = (url) =>
+        inlineRemoteImageFromPkg(url, {
+          proxyUrl: effectiveProxy || undefined,
+          timeoutMs: 5000,
+        });
+      let inlineOk = 0,
+        inlineFail = 0;
+
+      // Download video thumbnail
+      const preparedVideoInfo = {
+        ...videoInfo,
+        thumbnail: await inlineRemoteImage(videoInfo?.thumbnail).then((v) => {
+          if (v) inlineOk++;
           else inlineFail++;
-          return { ...c, authorThumbnail: inlined || undefined };
+          return v;
         }),
+      };
+
+      // Download comment thumbnails in batches of 10 concurrent requests
+      const preparedComments = [];
+      const batchSize = 10;
+      for (let i = 0; i < (comments || []).length; i += batchSize) {
+        const batch = comments.slice(i, i + batchSize);
+        console.log(
+          `[remotion] inlining batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(comments.length / batchSize)} (${i + 1}-${Math.min(i + batchSize, comments.length)}/${comments.length})`,
+        );
+        const inlinedBatch = await Promise.all(
+          batch.map(async (c) => {
+            const inlined = await inlineRemoteImage(c?.authorThumbnail);
+            if (inlined) inlineOk++;
+            else inlineFail++;
+            return { ...c, authorThumbnail: inlined || undefined };
+          }),
+        );
+        preparedComments.push(...inlinedBatch);
+      }
+      const total = inlineOk + inlineFail;
+      const successRate =
+        total > 0 ? ((inlineOk / total) * 100).toFixed(1) : "0.0";
+      console.log(
+        `[remotion] images inlined: ok=${inlineOk} fail=${inlineFail} (${successRate}% success)`,
       );
-      preparedComments.push(...inlinedBatch);
+
+      const timeline = buildCommentTimeline(preparedComments, REMOTION_FPS);
+      coverDurationInFrames = timeline.coverDurationInFrames;
+      totalDurationInFrames = timeline.totalDurationInFrames;
+      totalDurationSeconds = timeline.totalDurationSeconds;
+      coverDurationSeconds = timeline.coverDurationSeconds;
+
+      inputProps = {
+        videoInfo: preparedVideoInfo,
+        comments: preparedComments,
+        coverDurationInFrames,
+        commentDurationsInFrames: timeline.commentDurationsInFrames,
+        fps: REMOTION_FPS,
+        templateConfig: engineOptions && engineOptions.templateConfig != null ? engineOptions.templateConfig : undefined,
+      };
+
+      compositionId = templateId === 'comments-vertical' ? 'CommentsVideoVertical' : 'CommentsVideo';
     }
-    const total = inlineOk + inlineFail;
-    const successRate =
-      total > 0 ? ((inlineOk / total) * 100).toFixed(1) : "0.0";
-    console.log(
-      `[remotion] images inlined: ok=${inlineOk} fail=${inlineFail} (${successRate}% success)`,
-    );
 
     // Build overlay via Remotion
     await progress("running", 0.15);
@@ -273,30 +349,8 @@ async function handleRender(req, res) {
         },
       }),
     });
-    console.log("[remotion] bundle complete, building timeline");
-    const {
-      coverDurationInFrames,
-      commentDurationsInFrames,
-      totalDurationInFrames,
-      totalDurationSeconds,
-      coverDurationSeconds,
-    } = buildCommentTimeline(preparedComments, REMOTION_FPS);
-    console.log(
-      `[remotion] timeline: cover=${coverDurationSeconds}s total=${totalDurationSeconds}s`,
-    );
-    const inputProps = {
-      videoInfo: preparedVideoInfo,
-      comments: preparedComments,
-      coverDurationInFrames,
-      commentDurationsInFrames,
-      fps: REMOTION_FPS,
-      templateConfig: engineOptions && engineOptions.templateConfig != null ? engineOptions.templateConfig : undefined,
-    };
     console.log("[remotion] getting compositions...");
     const compositions = await getCompositions(serveUrl, { inputProps });
-    // Pick composition by templateId when provided
-    const templateId = (engineOptions && engineOptions.templateId) || 'comments-default';
-    const compositionId = templateId === 'comments-vertical' ? 'CommentsVideoVertical' : 'CommentsVideo';
     const composition = compositions.find((c) => c.id === compositionId);
     if (!composition)
       throw new Error(`Remotion composition "${compositionId}" not found`);
@@ -343,34 +397,41 @@ async function handleRender(req, res) {
       },
     });
 
-    // Compose overlay with source video via FFmpeg
-    await progress("running", 0.8);
-    console.log("[remotion] starting FFmpeg composition...");
-    // Optionally override source video slot for specific templates (e.g., vertical source on left)
-    let overrideLayout = undefined;
-    if (templateId === 'comments-vertical') {
-      // Match left video box in CommentsVideoVertical overlay: paddingX=48, column width=560, inner box=540x960 centered -> x = 48 + 10
-      overrideLayout = { x: 58, y: 36, width: 540, height: 960 };
-    }
+    let finalOut = outFile;
+    if (requiresVideo) {
+      // Compose overlay with source video via FFmpeg
+      await progress("running", 0.8);
+      console.log("[remotion] starting FFmpeg composition...");
+      // Optionally override source video slot for specific templates (e.g., vertical source on left)
+      let overrideLayout = undefined;
+      if (templateId === 'comments-vertical') {
+        // Match left video box in CommentsVideoVertical overlay: paddingX=48, column width=560, inner box=540x960 centered -> x = 48 + 10
+        overrideLayout = { x: 58, y: 36, width: 540, height: 960 };
+      }
 
-    const ffArgs = buildComposeArgs({
-      overlayPath: overlayOut,
-      sourceVideoPath: inFile,
-      outputPath: outFile,
-      fps: REMOTION_FPS,
-      coverDurationSeconds,
-      totalDurationSeconds,
-      layout: overrideLayout,
-      preset: "veryfast",
-    });
-    await execFFmpegWithProgress(ffArgs, totalDurationSeconds);
-    console.log("[remotion] FFmpeg composition complete");
+      const ffArgs = buildComposeArgs({
+        overlayPath: overlayOut,
+        sourceVideoPath: inFile,
+        outputPath: outFile,
+        fps: REMOTION_FPS,
+        coverDurationSeconds,
+        totalDurationSeconds,
+        layout: overrideLayout,
+        preset: "veryfast",
+      });
+      await execFFmpegWithProgress(ffArgs, totalDurationSeconds);
+      console.log("[remotion] FFmpeg composition complete");
+      finalOut = outFile;
+    } else {
+      console.log("[remotion] overlay-only: skipping FFmpeg composition");
+      finalOut = overlayOut;
+    }
     try {
       rmSync(tmpOut, { recursive: true, force: true });
     } catch {}
 
     await progress("uploading", 0.95);
-    const buf = readFileSync(outFile);
+    const buf = readFileSync(finalOut);
     console.log(
       `[remotion] uploading artifact size=${buf.length} bytes ->`,
       outputPutUrl.split("?")[0],

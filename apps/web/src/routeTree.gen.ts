@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ThreadsRouteRouteImport } from './routes/threads/route'
 import { Route as TasksRouteRouteImport } from './routes/tasks/route'
 import { Route as ProxyRouteRouteImport } from './routes/proxy/route'
 import { Route as PointsRouteRouteImport } from './routes/points/route'
@@ -17,9 +18,11 @@ import { Route as MediaRouteRouteImport } from './routes/media/route'
 import { Route as ChannelsRouteRouteImport } from './routes/channels/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ThreadsIndexRouteImport } from './routes/threads/index'
 import { Route as MediaIndexRouteImport } from './routes/media/index'
 import { Route as MarketingIndexRouteImport } from './routes/marketing/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as ThreadsNewRouteImport } from './routes/threads/new'
 import { Route as MediaDownloadRouteImport } from './routes/media/download'
 import { Route as LegalPrivacyRouteImport } from './routes/legal/privacy'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -30,10 +33,13 @@ import { Route as AdminPointsPricingRouteImport } from './routes/admin/points-pr
 import { Route as AdminJobEventsRouteImport } from './routes/admin/job-events'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin/ai-providers'
 import { Route as AdminAiModelsRouteImport } from './routes/admin/ai-models'
+import { Route as ThreadsIdRouteRouteImport } from './routes/threads/$id/route'
 import { Route as MediaIdRouteRouteImport } from './routes/media/$id/route'
+import { Route as ThreadsIdIndexRouteImport } from './routes/threads/$id/index'
 import { Route as MediaIdIndexRouteImport } from './routes/media/$id/index'
 import { Route as MediaIdSubtitlesRouteImport } from './routes/media/$id/subtitles'
 import { Route as MediaIdCommentsRouteImport } from './routes/media/$id/comments'
+import { Route as ApiThreadsRenderedRouteImport } from './routes/api/threads/rendered'
 import { Route as ApiRenderCfCallbackRouteImport } from './routes/api/render/cf-callback'
 import { Route as ApiProxyCheckRunOneRouteImport } from './routes/api/proxy-check/run-one'
 import { Route as ApiProxyCheckRunRouteImport } from './routes/api/proxy-check/run'
@@ -48,6 +54,11 @@ import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api/inter
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThreadsRouteRoute = ThreadsRouteRouteImport.update({
+  id: '/threads',
+  path: '/threads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TasksRouteRoute = TasksRouteRouteImport.update({
@@ -85,6 +96,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ThreadsIndexRoute = ThreadsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ThreadsRouteRoute,
+} as any)
 const MediaIndexRoute = MediaIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -99,6 +115,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const ThreadsNewRoute = ThreadsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ThreadsRouteRoute,
 } as any)
 const MediaDownloadRoute = MediaDownloadRouteImport.update({
   id: '/download',
@@ -150,10 +171,20 @@ const AdminAiModelsRoute = AdminAiModelsRouteImport.update({
   path: '/ai-models',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const ThreadsIdRouteRoute = ThreadsIdRouteRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ThreadsRouteRoute,
+} as any)
 const MediaIdRouteRoute = MediaIdRouteRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => MediaRouteRoute,
+} as any)
+const ThreadsIdIndexRoute = ThreadsIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ThreadsIdRouteRoute,
 } as any)
 const MediaIdIndexRoute = MediaIdIndexRouteImport.update({
   id: '/',
@@ -169,6 +200,11 @@ const MediaIdCommentsRoute = MediaIdCommentsRouteImport.update({
   id: '/comments',
   path: '/comments',
   getParentRoute: () => MediaIdRouteRoute,
+} as any)
+const ApiThreadsRenderedRoute = ApiThreadsRenderedRouteImport.update({
+  id: '/api/threads/rendered',
+  path: '/api/threads/rendered',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRenderCfCallbackRoute = ApiRenderCfCallbackRouteImport.update({
   id: '/api/render/cf-callback',
@@ -230,8 +266,10 @@ export interface FileRoutesByFullPath {
   '/points': typeof PointsRouteRoute
   '/proxy': typeof ProxyRouteRoute
   '/tasks': typeof TasksRouteRoute
+  '/threads': typeof ThreadsRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/media/$id': typeof MediaIdRouteRouteWithChildren
+  '/threads/$id': typeof ThreadsIdRouteRouteWithChildren
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/job-events': typeof AdminJobEventsRoute
@@ -242,16 +280,20 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/media/download': typeof MediaDownloadRoute
+  '/threads/new': typeof ThreadsNewRoute
   '/admin/': typeof AdminIndexRoute
   '/marketing': typeof MarketingIndexRoute
   '/media/': typeof MediaIndexRoute
+  '/threads/': typeof ThreadsIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
   '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
+  '/api/threads/rendered': typeof ApiThreadsRenderedRoute
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id/': typeof MediaIdIndexRoute
+  '/threads/$id/': typeof ThreadsIdIndexRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
@@ -276,16 +318,20 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/media/download': typeof MediaDownloadRoute
+  '/threads/new': typeof ThreadsNewRoute
   '/admin': typeof AdminIndexRoute
   '/marketing': typeof MarketingIndexRoute
   '/media': typeof MediaIndexRoute
+  '/threads': typeof ThreadsIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
   '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
+  '/api/threads/rendered': typeof ApiThreadsRenderedRoute
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id': typeof MediaIdIndexRoute
+  '/threads/$id': typeof ThreadsIdIndexRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
@@ -302,8 +348,10 @@ export interface FileRoutesById {
   '/points': typeof PointsRouteRoute
   '/proxy': typeof ProxyRouteRoute
   '/tasks': typeof TasksRouteRoute
+  '/threads': typeof ThreadsRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/media/$id': typeof MediaIdRouteRouteWithChildren
+  '/threads/$id': typeof ThreadsIdRouteRouteWithChildren
   '/admin/ai-models': typeof AdminAiModelsRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/job-events': typeof AdminJobEventsRoute
@@ -314,16 +362,20 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/media/download': typeof MediaDownloadRoute
+  '/threads/new': typeof ThreadsNewRoute
   '/admin/': typeof AdminIndexRoute
   '/marketing/': typeof MarketingIndexRoute
   '/media/': typeof MediaIndexRoute
+  '/threads/': typeof ThreadsIndexRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
   '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
+  '/api/threads/rendered': typeof ApiThreadsRenderedRoute
   '/media/$id/comments': typeof MediaIdCommentsRoute
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id/': typeof MediaIdIndexRoute
+  '/threads/$id/': typeof ThreadsIdIndexRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
@@ -341,8 +393,10 @@ export interface FileRouteTypes {
     | '/points'
     | '/proxy'
     | '/tasks'
+    | '/threads'
     | '/login'
     | '/media/$id'
+    | '/threads/$id'
     | '/admin/ai-models'
     | '/admin/ai-providers'
     | '/admin/job-events'
@@ -353,16 +407,20 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/legal/privacy'
     | '/media/download'
+    | '/threads/new'
     | '/admin/'
     | '/marketing'
     | '/media/'
+    | '/threads/'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
     | '/api/render/cf-callback'
+    | '/api/threads/rendered'
     | '/media/$id/comments'
     | '/media/$id/subtitles'
     | '/media/$id/'
+    | '/threads/$id/'
     | '/api/internal/ai/asr-provider'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
@@ -387,16 +445,20 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/legal/privacy'
     | '/media/download'
+    | '/threads/new'
     | '/admin'
     | '/marketing'
     | '/media'
+    | '/threads'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
     | '/api/render/cf-callback'
+    | '/api/threads/rendered'
     | '/media/$id/comments'
     | '/media/$id/subtitles'
     | '/media/$id'
+    | '/threads/$id'
     | '/api/internal/ai/asr-provider'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
@@ -412,8 +474,10 @@ export interface FileRouteTypes {
     | '/points'
     | '/proxy'
     | '/tasks'
+    | '/threads'
     | '/login'
     | '/media/$id'
+    | '/threads/$id'
     | '/admin/ai-models'
     | '/admin/ai-providers'
     | '/admin/job-events'
@@ -424,16 +488,20 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/legal/privacy'
     | '/media/download'
+    | '/threads/new'
     | '/admin/'
     | '/marketing/'
     | '/media/'
+    | '/threads/'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
     | '/api/render/cf-callback'
+    | '/api/threads/rendered'
     | '/media/$id/comments'
     | '/media/$id/subtitles'
     | '/media/$id/'
+    | '/threads/$id/'
     | '/api/internal/ai/asr-provider'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
@@ -450,6 +518,7 @@ export interface RootRouteChildren {
   PointsRouteRoute: typeof PointsRouteRoute
   ProxyRouteRoute: typeof ProxyRouteRoute
   TasksRouteRoute: typeof TasksRouteRoute
+  ThreadsRouteRoute: typeof ThreadsRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiOpenapiRoute: typeof ApiOpenapiRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -459,6 +528,7 @@ export interface RootRouteChildren {
   ApiProxyCheckRunRoute: typeof ApiProxyCheckRunRoute
   ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
   ApiRenderCfCallbackRoute: typeof ApiRenderCfCallbackRoute
+  ApiThreadsRenderedRoute: typeof ApiThreadsRenderedRoute
   ApiInternalAiAsrProviderRoute: typeof ApiInternalAiAsrProviderRoute
   ApiMediaIdCommentsDataRoute: typeof ApiMediaIdCommentsDataRoute
   ApiMediaIdDownloadedRoute: typeof ApiMediaIdDownloadedRoute
@@ -474,6 +544,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/threads': {
+      id: '/threads'
+      path: '/threads'
+      fullPath: '/threads'
+      preLoaderRoute: typeof ThreadsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tasks': {
@@ -525,6 +602,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/threads/': {
+      id: '/threads/'
+      path: '/'
+      fullPath: '/threads/'
+      preLoaderRoute: typeof ThreadsIndexRouteImport
+      parentRoute: typeof ThreadsRouteRoute
+    }
     '/media/': {
       id: '/media/'
       path: '/'
@@ -545,6 +629,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/threads/new': {
+      id: '/threads/new'
+      path: '/new'
+      fullPath: '/threads/new'
+      preLoaderRoute: typeof ThreadsNewRouteImport
+      parentRoute: typeof ThreadsRouteRoute
     }
     '/media/download': {
       id: '/media/download'
@@ -616,12 +707,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAiModelsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/threads/$id': {
+      id: '/threads/$id'
+      path: '/$id'
+      fullPath: '/threads/$id'
+      preLoaderRoute: typeof ThreadsIdRouteRouteImport
+      parentRoute: typeof ThreadsRouteRoute
+    }
     '/media/$id': {
       id: '/media/$id'
       path: '/$id'
       fullPath: '/media/$id'
       preLoaderRoute: typeof MediaIdRouteRouteImport
       parentRoute: typeof MediaRouteRoute
+    }
+    '/threads/$id/': {
+      id: '/threads/$id/'
+      path: '/'
+      fullPath: '/threads/$id/'
+      preLoaderRoute: typeof ThreadsIdIndexRouteImport
+      parentRoute: typeof ThreadsIdRouteRoute
     }
     '/media/$id/': {
       id: '/media/$id/'
@@ -643,6 +748,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/media/$id/comments'
       preLoaderRoute: typeof MediaIdCommentsRouteImport
       parentRoute: typeof MediaIdRouteRoute
+    }
+    '/api/threads/rendered': {
+      id: '/api/threads/rendered'
+      path: '/api/threads/rendered'
+      fullPath: '/api/threads/rendered'
+      preLoaderRoute: typeof ApiThreadsRenderedRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/render/cf-callback': {
       id: '/api/render/cf-callback'
@@ -773,6 +885,34 @@ const MediaRouteRouteWithChildren = MediaRouteRoute._addFileChildren(
   MediaRouteRouteChildren,
 )
 
+interface ThreadsIdRouteRouteChildren {
+  ThreadsIdIndexRoute: typeof ThreadsIdIndexRoute
+}
+
+const ThreadsIdRouteRouteChildren: ThreadsIdRouteRouteChildren = {
+  ThreadsIdIndexRoute: ThreadsIdIndexRoute,
+}
+
+const ThreadsIdRouteRouteWithChildren = ThreadsIdRouteRoute._addFileChildren(
+  ThreadsIdRouteRouteChildren,
+)
+
+interface ThreadsRouteRouteChildren {
+  ThreadsIdRouteRoute: typeof ThreadsIdRouteRouteWithChildren
+  ThreadsNewRoute: typeof ThreadsNewRoute
+  ThreadsIndexRoute: typeof ThreadsIndexRoute
+}
+
+const ThreadsRouteRouteChildren: ThreadsRouteRouteChildren = {
+  ThreadsIdRouteRoute: ThreadsIdRouteRouteWithChildren,
+  ThreadsNewRoute: ThreadsNewRoute,
+  ThreadsIndexRoute: ThreadsIndexRoute,
+}
+
+const ThreadsRouteRouteWithChildren = ThreadsRouteRoute._addFileChildren(
+  ThreadsRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
@@ -781,6 +921,7 @@ const rootRouteChildren: RootRouteChildren = {
   PointsRouteRoute: PointsRouteRoute,
   ProxyRouteRoute: ProxyRouteRoute,
   TasksRouteRoute: TasksRouteRoute,
+  ThreadsRouteRoute: ThreadsRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiOpenapiRoute: ApiOpenapiRoute,
   AuthLoginRoute: AuthLoginRoute,
@@ -790,6 +931,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProxyCheckRunRoute: ApiProxyCheckRunRoute,
   ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,
   ApiRenderCfCallbackRoute: ApiRenderCfCallbackRoute,
+  ApiThreadsRenderedRoute: ApiThreadsRenderedRoute,
   ApiInternalAiAsrProviderRoute: ApiInternalAiAsrProviderRoute,
   ApiMediaIdCommentsDataRoute: ApiMediaIdCommentsDataRoute,
   ApiMediaIdDownloadedRoute: ApiMediaIdDownloadedRoute,

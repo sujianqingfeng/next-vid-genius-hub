@@ -37,6 +37,10 @@
 				"title": "Media Library",
 				"desc": "Manage your videos"
 			},
+			"threads": {
+				"title": "Threads",
+				"desc": "Forum-style comment renders"
+			},
 			"channels": {
 				"title": "Channels",
 				"desc": "Track your subscriptions"
