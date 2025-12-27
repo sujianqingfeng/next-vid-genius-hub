@@ -3,6 +3,7 @@ import { json } from './utils/http'
 import { handleStart } from './handlers/start'
 import { handleContainerCallback } from './handlers/callback'
 import { handleArtifactDelete, handleArtifactGet } from './handlers/artifacts'
+import { handleCancel } from './handlers/cancel'
 import { handleDebugDelete, handleDebugDeletePrefixes, handleDebugPresign, handleDebugReplayAppCallback } from './handlers/debug'
 import { handleGetStatus } from './handlers/status'
 
@@ -28,6 +29,10 @@ export default {
     }
     // Inputs proxy fallback removed: containers always receive S3 presigned URLs now
     if (req.method === 'POST' && pathname === '/jobs') return handleStart(env, req)
+    if (req.method === 'POST' && pathname.startsWith('/jobs/') && pathname.endsWith('/cancel')) {
+      const jobId = pathname.split('/')[2]
+      return handleCancel(env, req, jobId)
+    }
     if (req.method === 'GET' && pathname.startsWith('/jobs/')) {
       const parts = pathname.split('/')
       const jobId = parts[parts.length - 1]

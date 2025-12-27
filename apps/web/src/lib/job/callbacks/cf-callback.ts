@@ -157,6 +157,10 @@ export async function handleCfCallbackRequest(request: Request): Promise<Respons
 			payload,
 		})
 
+		if (task && task.status === 'canceled') {
+			return Response.json({ ok: true, ignored: true, reason: 'task_canceled' })
+		}
+
 		// Callbacks are retried by the orchestrator when eventSeq is present; dedupe by eventSeq.
 		if (task && eventSeq != null) {
 			const lastSeq = getLastCallbackEventSeq(task)
@@ -166,7 +170,7 @@ export async function handleCfCallbackRequest(request: Request): Promise<Respons
 		}
 
 		try {
-			if (task) {
+			if (task && task.status !== 'canceled') {
 				await db
 					.update(schema.tasks)
 					.set({

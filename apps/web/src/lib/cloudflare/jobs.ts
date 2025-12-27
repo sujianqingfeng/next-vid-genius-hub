@@ -37,6 +37,27 @@ export async function getJobStatus(
 	return (await res.json()) as JobStatusResponse
 }
 
+export async function cancelCloudJob(input: {
+	jobId: string
+	reason?: string | null
+}): Promise<{ ok: boolean; status?: string; jobId?: string }> {
+	const base = requireOrchestratorUrl()
+	const url = `${base.replace(/\/$/, '')}/jobs/${encodeURIComponent(input.jobId)}/cancel`
+	const secret = requireJobCallbackSecret()
+	const res = await postSignedJson(url, secret, {
+		jobId: input.jobId,
+		reason: input.reason ?? null,
+	})
+	if (!res.ok) {
+		let msg = ''
+		try {
+			msg = await res.clone().text()
+		} catch {}
+		throw new Error(`cancelCloudJob failed: ${res.status} ${msg}`)
+	}
+	return (await res.json()) as { ok: boolean; status?: string; jobId?: string }
+}
+
 export async function replayAppCallback(input: {
 	jobId: string
 	reason?: string | null

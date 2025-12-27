@@ -27,6 +27,94 @@ export class RenderJobDO {
 		this.env = env
 	}
 
+	private async maybeNotifyTerminal(doc: any): Promise<void> {
+		const completionHasOutputs = () => {
+			if (doc.engine === 'asr-pipeline') return Boolean(doc.outputs?.vtt?.key)
+			if (doc.engine === 'media-downloader') {
+				return Boolean(
+					doc.outputs?.video?.key ||
+						doc.outputs?.metadata?.key,
+				)
+			}
+			return Boolean(doc.outputs?.video?.key)
+		}
+
+		const shouldNotify =
+			TERMINAL_STATUSES.includes(doc.status) &&
+			!(doc.appNotified || doc.nextNotified) &&
+			(doc.status !== 'completed' || completionHasOutputs())
+
+		if (!shouldNotify || !doc.jobId) return
+
+		type PendingNotify = {
+			eventSeq: number
+			eventId: string
+			eventTs: number
+			payload: OrchestratorCallbackPayloadV2
+			attempt: number
+			nextAt: number
+			lastError?: string
+		}
+
+		const now = Date.now()
+		let pending = doc.pendingNotify as PendingNotify | undefined
+
+		if (!pending) {
+			const lastSeq =
+				typeof doc.callbackEventSeq === 'number' &&
+				Number.isFinite(doc.callbackEventSeq)
+					? Math.trunc(doc.callbackEventSeq)
+					: 0
+			const eventSeq = lastSeq + 1
+			const eventId = `${doc.jobId}:${eventSeq}`
+			const eventTs = now
+			doc.callbackEventSeq = eventSeq
+
+			const payload = await this.buildAppCallbackPayload(doc, {
+				eventSeq,
+				eventId,
+				eventTs,
+			})
+
+			pending = {
+				eventSeq,
+				eventId,
+				eventTs,
+				payload,
+				attempt: 0,
+				nextAt: now,
+			}
+			doc.pendingNotify = pending
+			await this.state.storage.put('job', doc)
+		}
+
+		const pendingNotify = pending
+		if (
+			typeof pendingNotify.nextAt === 'number' &&
+			pendingNotify.nextAt > now
+		) {
+			await this.setAlarmEarlier(pendingNotify.nextAt)
+			return
+		}
+
+		const ok = await this.postAppCallback(pendingNotify.payload)
+		if (ok) {
+			doc.appNotified = true
+			doc.nextNotified = true
+			doc.lastNotifiedEventSeq = pendingNotify.eventSeq
+			doc.pendingNotify = undefined
+			await this.state.storage.put('job', doc)
+			return
+		}
+
+		pendingNotify.attempt = Math.max(0, Math.trunc(pendingNotify.attempt || 0)) + 1
+		pendingNotify.lastError = 'notifyApp_failed'
+		pendingNotify.nextAt = now + this.getNotifyBackoffMs(pendingNotify.attempt)
+		doc.pendingNotify = pendingNotify
+		await this.state.storage.put('job', doc)
+		await this.setAlarmEarlier(pendingNotify.nextAt)
+	}
+
 	private async setAlarmEarlier(atMs: number) {
 		let existing: number | undefined
 		try {
@@ -84,6 +172,11 @@ export class RenderJobDO {
 		if (req.method === 'POST' && path.endsWith('/progress')) {
 			const body = (await req.json()) as any
 			const doc = ((await this.state.storage.get('job')) as any) || {}
+			if (doc?.status === 'canceled' && body?.status !== 'canceled') {
+				return new Response(JSON.stringify({ ok: true, ignored: true }), {
+					headers: { 'content-type': 'application/json' },
+				})
+			}
 			const incomingOutputs =
 				body.outputs && typeof body.outputs === 'object' ? body.outputs : undefined
 			const mergedOutputs = (() => {
@@ -117,91 +210,45 @@ export class RenderJobDO {
 				ts: Date.now(),
 			}
 			await this.state.storage.put('job', next)
-
-			const completionHasOutputs = () => {
-				if (next.engine === 'asr-pipeline') return Boolean(next.outputs?.vtt?.key)
-				if (next.engine === 'media-downloader') {
-					return Boolean(
-						next.outputs?.video?.key ||
-						next.outputs?.metadata?.key,
-					)
-				}
-				return Boolean(next.outputs?.video?.key)
-			}
-
-			const shouldNotify =
-				TERMINAL_STATUSES.includes(next.status) &&
-				!(next.appNotified || next.nextNotified) &&
-				(next.status !== 'completed' || completionHasOutputs())
-
-			if (shouldNotify && next.jobId) {
-					type PendingNotify = {
-						eventSeq: number
-						eventId: string
-						eventTs: number
-						payload: OrchestratorCallbackPayloadV2
-						attempt: number
-						nextAt: number
-						lastError?: string
-					}
-
-				const now = Date.now()
-				let pending = next.pendingNotify as PendingNotify | undefined
-
-					if (!pending) {
-					const lastSeq =
-						typeof next.callbackEventSeq === 'number' &&
-						Number.isFinite(next.callbackEventSeq)
-							? Math.trunc(next.callbackEventSeq)
-							: 0
-					const eventSeq = lastSeq + 1
-					const eventId = `${next.jobId}:${eventSeq}`
-					const eventTs = now
-					next.callbackEventSeq = eventSeq
-
-					const payload = await this.buildAppCallbackPayload(next, {
-						eventSeq,
-						eventId,
-						eventTs,
-					})
-
-						pending = {
-							eventSeq,
-							eventId,
-							eventTs,
-							payload,
-							attempt: 0,
-							nextAt: now,
-						}
-						next.pendingNotify = pending
-						await this.state.storage.put('job', next)
-					}
-
-					const pendingNotify = pending
-					if (typeof pendingNotify.nextAt === 'number' && pendingNotify.nextAt > now) {
-						await this.setAlarmEarlier(pendingNotify.nextAt)
-					} else {
-						const ok = await this.postAppCallback(pendingNotify.payload)
-						if (ok) {
-							next.appNotified = true
-							next.nextNotified = true
-							next.lastNotifiedEventSeq = pendingNotify.eventSeq
-							next.pendingNotify = undefined
-							await this.state.storage.put('job', next)
-						} else {
-							pendingNotify.attempt =
-								Math.max(0, Math.trunc(pendingNotify.attempt || 0)) + 1
-							pendingNotify.lastError = 'notifyApp_failed'
-							pendingNotify.nextAt =
-								now + this.getNotifyBackoffMs(pendingNotify.attempt)
-							next.pendingNotify = pendingNotify
-							await this.state.storage.put('job', next)
-							await this.setAlarmEarlier(pendingNotify.nextAt)
-						}
-					}
-				}
+			await this.maybeNotifyTerminal(next)
 
 			return new Response(JSON.stringify({ ok: true }), {
+				headers: { 'content-type': 'application/json' },
+			})
+		}
+		if (req.method === 'POST' && path.endsWith('/cancel')) {
+			let body: any = null
+			try {
+				body = await req.json()
+			} catch {}
+
+			const doc = ((await this.state.storage.get('job')) as any) || null
+			if (!doc || !doc.jobId) {
+				return new Response(JSON.stringify({ error: 'job_not_found' }), {
+					status: 404,
+					headers: { 'content-type': 'application/json' },
+				})
+			}
+
+			if (TERMINAL_STATUSES.includes(doc.status)) {
+				return new Response(JSON.stringify({ ok: true, status: doc.status }), {
+					headers: { 'content-type': 'application/json' },
+				})
+			}
+
+			const reason =
+				typeof body?.reason === 'string' && body.reason.trim()
+					? body.reason.trim()
+					: null
+
+			doc.status = 'canceled'
+			doc.error = reason || doc.error || 'canceled'
+			doc.canceledAt = Date.now()
+			doc.ts = Date.now()
+			await this.state.storage.put('job', doc)
+			await this.maybeNotifyTerminal(doc)
+
+			return new Response(JSON.stringify({ ok: true, status: doc.status }), {
 				headers: { 'content-type': 'application/json' },
 			})
 		}

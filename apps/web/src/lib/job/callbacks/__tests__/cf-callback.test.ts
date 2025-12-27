@@ -1,5 +1,5 @@
 import { signHmacSHA256 } from '@app/job-callbacks'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockDb = {
 	query: {
@@ -34,6 +34,10 @@ vi.mock('../router', () => ({
 }))
 
 describe('handleCfCallbackRequest', () => {
+	beforeEach(() => {
+		mockDb.query.tasks.findFirst = vi.fn(async () => null)
+	})
+
 	it('returns 200 for a valid signed callback', async () => {
 		process.env.JOB_CALLBACK_HMAC_SECRET = 'test_secret'
 
@@ -66,6 +70,51 @@ describe('handleCfCallbackRequest', () => {
 		await expect(res.json()).resolves.toEqual({ ok: true })
 	})
 
+	it('ignores callbacks for canceled tasks to avoid stale overwrites', async () => {
+		process.env.JOB_CALLBACK_HMAC_SECRET = 'test_secret'
+
+		mockDb.query.tasks.findFirst = vi.fn(async () => ({
+			id: 'task_123',
+			status: 'canceled',
+		}))
+
+		const payload = {
+			schemaVersion: 2,
+			jobId: 'job_123',
+			mediaId: 'media_123',
+			status: 'completed',
+			engine: 'media-downloader',
+			purpose: 'download',
+			eventSeq: 1,
+			eventId: 'job_123:1',
+			eventTs: Date.now(),
+			outputs: { video: { key: 'k' } },
+		}
+
+		const bodyText = JSON.stringify(payload)
+		const signature = signHmacSHA256(process.env.JOB_CALLBACK_HMAC_SECRET, bodyText)
+
+		const { handleCfCallbackRequest } = await import('../cf-callback')
+		const { dispatchCfCallback } = await import('../router')
+		;(dispatchCfCallback as any).mockClear?.()
+
+		const res = await handleCfCallbackRequest(
+			new Request('http://localhost/api/render/cf-callback', {
+				method: 'POST',
+				headers: { 'x-signature': signature },
+				body: bodyText,
+			}),
+		)
+
+		expect(res.status).toBe(200)
+		await expect(res.json()).resolves.toMatchObject({
+			ok: true,
+			ignored: true,
+			reason: 'task_canceled',
+		})
+		expect(dispatchCfCallback).not.toHaveBeenCalled()
+	})
+
 	it('returns 200 (ignored) for invalid json to avoid retry storms', async () => {
 		process.env.JOB_CALLBACK_HMAC_SECRET = 'test_secret'
 
@@ -85,4 +134,3 @@ describe('handleCfCallbackRequest', () => {
 		await expect(res.json()).resolves.toMatchObject({ ok: false, ignored: true })
 	})
 })
-

@@ -1,10 +1,15 @@
 import type { EngineId } from '@app/media-domain'
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import type { TaskKindId } from '~/lib/job/task'
 import { createId } from '~/lib/utils/id'
-import { putJobManifest, startCloudJob, type JobManifest } from '~/lib/cloudflare'
+import {
+	cancelCloudJob,
+	putJobManifest,
+	startCloudJob,
+	type JobManifest,
+} from '~/lib/cloudflare'
 
 type Db = Awaited<ReturnType<typeof getDb>>
 type TaskTargetType = 'media' | 'channel' | 'thread' | 'system'
@@ -42,6 +47,66 @@ export async function enqueueCloudTask(input: {
 	const now = input.now ?? new Date()
 	const taskId = input.taskId ?? createId()
 	const jobId = input.jobId ?? `job_${createId()}`
+
+	const activeStatuses = [
+		'queued',
+		'fetching_metadata',
+		'preparing',
+		'running',
+		'uploading',
+	] as const
+
+	try {
+		const existing = await db.query.tasks.findMany({
+			where: and(
+				input.userId === null
+					? isNull(schema.tasks.userId)
+					: eq(schema.tasks.userId, input.userId),
+				eq(schema.tasks.kind, input.kind),
+				eq(schema.tasks.targetType, input.targetType),
+				eq(schema.tasks.targetId, input.targetId),
+				isNull(schema.tasks.finishedAt),
+				inArray(schema.tasks.status, activeStatuses as any),
+			),
+			limit: 10,
+			orderBy: (t, { desc }) => [desc(t.createdAt)],
+		})
+
+		for (const prev of existing) {
+			await db
+				.update(schema.tasks)
+				.set({
+					status: 'canceled',
+					error: 'superseded by a newer task',
+					finishedAt: now,
+					updatedAt: now,
+				})
+				.where(eq(schema.tasks.id, prev.id))
+
+			if (prev.jobId) {
+				try {
+					await cancelCloudJob({
+						jobId: prev.jobId,
+						reason: 'superseded by a newer task',
+					})
+				} catch (err) {
+					logger.warn(
+						'api',
+						`[enqueueCloudTask] cancelCloudJob failed job=${prev.jobId} err=${
+							err instanceof Error ? err.message : String(err)
+						}`,
+					)
+				}
+			}
+		}
+	} catch (err) {
+		logger.warn(
+			'api',
+			`[enqueueCloudTask] cancel previous tasks skipped: ${
+				err instanceof Error ? err.message : String(err)
+			}`,
+		)
+	}
 
 	await db.insert(schema.tasks).values({
 		id: taskId,

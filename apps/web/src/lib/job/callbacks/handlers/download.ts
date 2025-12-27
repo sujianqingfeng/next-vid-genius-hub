@@ -95,6 +95,17 @@ export async function handleDownloadCallback(input: {
 		`[cf-callback.download] start job=${payload.jobId} media=${payload.mediaId} status=${payload.status}`,
 	)
 
+	if (
+		media.downloadJobId &&
+		media.downloadJobId !== payload.jobId
+	) {
+		logger.warn(
+			'api',
+			`[cf-callback.download] ignored stale callback job=${payload.jobId} (current=${media.downloadJobId}) media=${payload.mediaId} status=${payload.status}`,
+		)
+		return
+	}
+
 	async function remoteObjectExists({
 		key,
 		directUrl,
