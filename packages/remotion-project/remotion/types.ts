@@ -72,6 +72,12 @@ export type ThreadPostRender = {
 	metrics?: { likes?: number | null } | null
 }
 
+export type ThreadAssetRef = {
+	id: string
+	kind: 'image' | 'video' | 'avatar' | 'linkPreview'
+	url: string
+}
+
 export interface ThreadVideoInputProps extends Record<string, unknown> {
 	thread: {
 		title: string
@@ -80,6 +86,7 @@ export interface ThreadVideoInputProps extends Record<string, unknown> {
 	}
 	root: ThreadPostRender
 	replies: ThreadPostRender[]
+	assets?: Record<string, ThreadAssetRef>
 	coverDurationInFrames: number
 	replyDurationsInFrames: number[]
 	fps: number

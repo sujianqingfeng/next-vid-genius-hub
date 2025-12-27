@@ -170,6 +170,7 @@ function ThreadDetailRoute() {
 					thread={thread as any}
 					root={root as any}
 					replies={replies as any}
+					assets={assets as any}
 					isLoading={dataQuery.isLoading}
 				/>
 			</div>

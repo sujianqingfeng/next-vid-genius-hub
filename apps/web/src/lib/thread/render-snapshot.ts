@@ -1,8 +1,9 @@
 import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
 import type { ThreadVideoInputProps } from '@app/remotion-project/types'
 import { bucketPaths } from '@app/media-domain'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { putObjectByKey } from '~/lib/cloudflare'
+import { presignGetByKey } from '~/lib/cloudflare/storage'
 import { getDb, schema } from '~/lib/db'
 import { blocksToPlainText } from '~/lib/thread/utils/plain-text'
 
@@ -60,6 +61,58 @@ export async function buildThreadRenderSnapshot(input: {
 	]) as any
 	const rootPlain = root.plainText || blocksToPlainText(rootBlocks)
 
+	const referencedAssetIds = new Set<string>()
+	for (const p of posts) {
+		if (p.authorAvatarAssetId) referencedAssetIds.add(p.authorAvatarAssetId)
+		for (const b of (p.contentBlocks ?? []) as any[]) {
+			if (!b || typeof b !== 'object') continue
+			if (b.type === 'image' || b.type === 'video') {
+				const id = (b as any).data?.assetId
+				if (typeof id === 'string' && id) referencedAssetIds.add(id)
+			}
+			if (b.type === 'link') {
+				const id = (b as any).data?.previewAssetId
+				if (typeof id === 'string' && id) referencedAssetIds.add(id)
+			}
+		}
+	}
+
+	const assetsMap: NonNullable<ThreadVideoInputProps['assets']> = {}
+	if (referencedAssetIds.size > 0) {
+		const ids = [...referencedAssetIds]
+		const assetRows = await db
+			.select()
+			.from(schema.threadAssets)
+			.where(
+				and(
+					eq(schema.threadAssets.userId, input.userId),
+					inArray(schema.threadAssets.id, ids),
+				),
+			)
+
+		const byId = new Map<string, any>()
+		for (const a of assetRows) byId.set(String(a.id), a)
+
+		for (const id of referencedAssetIds) {
+			const a = byId.get(id)
+			if (!a) continue
+			let url: string | null = a.sourceUrl ?? null
+			if (a.storageKey) {
+				try {
+					url = await presignGetByKey(String(a.storageKey))
+				} catch {
+					url = a.sourceUrl ?? null
+				}
+			}
+			if (!url) continue
+			assetsMap[String(a.id)] = {
+				id: String(a.id),
+				kind: a.kind,
+				url,
+			}
+		}
+	}
+
 	const inputProps: ThreadVideoInputProps = {
 		thread: {
 			title: thread.title,
@@ -82,6 +135,7 @@ export async function buildThreadRenderSnapshot(input: {
 			createdAt: toIso(r.createdAt),
 			metrics: { likes: Number((r.metrics as any)?.likes ?? 0) || 0 },
 		})),
+		assets: Object.keys(assetsMap).length > 0 ? assetsMap : undefined,
 		coverDurationInFrames: timeline.coverDurationInFrames,
 		replyDurationsInFrames: timeline.commentDurationsInFrames,
 		fps: REMOTION_FPS,

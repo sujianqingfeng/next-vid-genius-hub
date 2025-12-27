@@ -49,12 +49,18 @@ export function ThreadRemotionPreviewCard({
 	root,
 	replies,
 	isLoading,
+	assets = [],
 	templateId = DEFAULT_THREAD_TEMPLATE_ID,
 }: {
 	thread: DbThread | null
 	root: DbThreadPost | null
 	replies: DbThreadPost[]
 	isLoading: boolean
+	assets?: Array<{
+		id: string
+		kind: string
+		sourceUrl?: string | null
+	}>
 	templateId?: ThreadTemplateId
 }) {
 	const isClient = typeof window !== 'undefined'
@@ -72,6 +78,17 @@ export function ThreadRemotionPreviewCard({
 
 	const inputProps: ThreadVideoInputProps | undefined = React.useMemo(() => {
 		if (!thread || !root) return undefined
+
+		const assetsMap: ThreadVideoInputProps['assets'] = {}
+		for (const a of assets) {
+			if (!a?.id || !a?.sourceUrl) continue
+			assetsMap[String(a.id)] = {
+				id: String(a.id),
+				kind: (a.kind as any) ?? 'image',
+				url: String(a.sourceUrl),
+			}
+		}
+
 		return {
 			thread: {
 				title: thread.title,
@@ -94,11 +111,19 @@ export function ThreadRemotionPreviewCard({
 				createdAt: toIso(r.createdAt),
 				metrics: { likes: Number(r.metrics?.likes ?? 0) || 0 },
 			})),
+			assets: Object.keys(assetsMap).length > 0 ? assetsMap : undefined,
 			coverDurationInFrames: timeline.coverDurationInFrames,
 			replyDurationsInFrames: timeline.commentDurationsInFrames,
 			fps: REMOTION_FPS,
 		}
-	}, [replies, root, thread, timeline.commentDurationsInFrames, timeline.coverDurationInFrames])
+	}, [
+		assets,
+		replies,
+		root,
+		thread,
+		timeline.commentDurationsInFrames,
+		timeline.coverDurationInFrames,
+	])
 
 	const template = getThreadTemplate(templateId)
 	const TemplateComponent = template.component

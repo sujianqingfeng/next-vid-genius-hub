@@ -3,7 +3,14 @@
 import type { CSSProperties } from 'react'
 import * as React from 'react'
 import { ThumbsUp } from 'lucide-react'
-import { AbsoluteFill, Sequence, useCurrentFrame, interpolate } from 'remotion'
+import {
+	AbsoluteFill,
+	Img,
+	Sequence,
+	Video,
+	interpolate,
+	useCurrentFrame,
+} from 'remotion'
 import type { ThreadVideoInputProps } from './types'
 import { formatCount } from './utils/format'
 
@@ -64,7 +71,21 @@ function buildSequences(replyDurationsInFrames: number[]) {
 	})
 }
 
-function renderBlocks(blocks: ThreadVideoInputProps['root']['contentBlocks']) {
+function resolveAssetUrl(
+	assetId: string,
+	assets: ThreadVideoInputProps['assets'] | undefined,
+): string | null {
+	const fromMap = assets?.[assetId]?.url
+	if (typeof fromMap === 'string' && fromMap) return fromMap
+	if (assetId.startsWith('ext:')) return assetId.slice('ext:'.length)
+	if (assetId.startsWith('http://') || assetId.startsWith('https://')) return assetId
+	return null
+}
+
+function renderBlocks(
+	blocks: ThreadVideoInputProps['root']['contentBlocks'],
+	assets: ThreadVideoInputProps['assets'] | undefined,
+) {
 	return blocks.map((b) => {
 		if (b.type === 'text') {
 			return (
@@ -111,22 +132,59 @@ function renderBlocks(blocks: ThreadVideoInputProps['root']['contentBlocks']) {
 			)
 		}
 		if (b.type === 'image') {
+			const url = resolveAssetUrl(b.data.assetId, assets)
 			return (
 				<div
 					key={b.id}
 					style={{
-						border: '1px dashed var(--tf-border)',
-						background: 'rgba(255,255,255,0.03)',
-						padding: 18,
-						fontSize: 'calc(16px * var(--tf-font-scale))',
-						color: 'var(--tf-muted)',
+						border: '1px solid var(--tf-border)',
+						background: 'rgba(255,255,255,0.02)',
+						padding: 14,
 					}}
 				>
-					[image: {b.data.caption ?? b.data.assetId}]
+					{url ? (
+						<Img
+							src={url}
+							style={{
+								display: 'block',
+								width: '100%',
+								height: 'auto',
+								maxHeight: 520,
+								objectFit: 'contain',
+								borderRadius: 0,
+							}}
+						/>
+					) : (
+						<div
+							style={{
+								border: '1px dashed var(--tf-border)',
+								background: 'rgba(255,255,255,0.03)',
+								padding: 18,
+								fontSize: 'calc(16px * var(--tf-font-scale))',
+								color: 'var(--tf-muted)',
+							}}
+						>
+							[image: {b.data.caption ?? b.data.assetId}]
+						</div>
+					)}
+					{b.data.caption ? (
+						<div
+							style={{
+								marginTop: 10,
+								fontSize: 'calc(16px * var(--tf-font-scale))',
+								color: 'var(--tf-muted)',
+								lineHeight: 1.4,
+								whiteSpace: 'pre-wrap',
+							}}
+						>
+							{b.data.caption}
+						</div>
+					) : null}
 				</div>
 			)
 		}
 		if (b.type === 'video') {
+			const url = resolveAssetUrl(b.data.assetId, assets)
 			return (
 				<div
 					key={b.id}
@@ -138,7 +196,22 @@ function renderBlocks(blocks: ThreadVideoInputProps['root']['contentBlocks']) {
 						color: 'var(--tf-muted)',
 					}}
 				>
-					[video cover card: {b.data.title ?? b.data.assetId}]
+					{url ? (
+						<Video
+							src={url}
+							muted
+							style={{
+								display: 'block',
+								width: '100%',
+								maxHeight: 520,
+								borderRadius: 0,
+								border: '1px solid var(--tf-border)',
+								backgroundColor: 'rgba(0,0,0,0.25)',
+							}}
+						/>
+					) : (
+						<span>[video cover card: {b.data.title ?? b.data.assetId}]</span>
+					)}
 				</div>
 			)
 		}
@@ -192,10 +265,12 @@ function renderBlocks(blocks: ThreadVideoInputProps['root']['contentBlocks']) {
 function CoverSlide({
 	thread,
 	root,
+	assets,
 	fps,
 }: {
 	thread: ThreadVideoInputProps['thread']
 	root: ThreadVideoInputProps['root']
+	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
 }) {
 	const frame = useCurrentFrame()
@@ -307,7 +382,7 @@ function CoverSlide({
 						padding: 28,
 					}}
 				>
-					{renderBlocks(root.contentBlocks)}
+					{renderBlocks(root.contentBlocks, assets)}
 				</div>
 			</div>
 		</AbsoluteFill>
@@ -319,12 +394,14 @@ function ReplySlide({
 	index,
 	total,
 	durationInFrames,
+	assets,
 	fps,
 }: {
 	reply: ThreadVideoInputProps['replies'][number]
 	index: number
 	total: number
 	durationInFrames: number
+	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
 }) {
 	const frame = useCurrentFrame()
@@ -438,7 +515,7 @@ function ReplySlide({
 				</div>
 
 				<div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-					{renderBlocks(reply.contentBlocks)}
+					{renderBlocks(reply.contentBlocks, assets)}
 				</div>
 			</div>
 		</AbsoluteFill>
@@ -449,6 +526,7 @@ export function ThreadForumVideo({
 	thread,
 	root,
 	replies,
+	assets,
 	coverDurationInFrames,
 	replyDurationsInFrames,
 	fps,
@@ -469,7 +547,7 @@ export function ThreadForumVideo({
 			}}
 		>
 			<Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
-				<CoverSlide thread={thread} root={root} fps={fps} />
+				<CoverSlide thread={thread} root={root} assets={assets} fps={fps} />
 			</Sequence>
 			<Sequence layout="none" from={coverDurationInFrames} durationInFrames={mainDuration}>
 				<AbsoluteFill style={{ background: 'var(--tf-bg)' }}>
@@ -488,6 +566,7 @@ export function ThreadForumVideo({
 									index={idx}
 									total={replies.length}
 									durationInFrames={durationInFrames}
+									assets={assets}
 									fps={fps}
 								/>
 							</Sequence>
@@ -498,4 +577,3 @@ export function ThreadForumVideo({
 		</AbsoluteFill>
 	)
 }
-
