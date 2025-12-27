@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
 import { Textarea } from '~/components/ui/textarea'
+import { useTranslations } from '~/lib/i18n'
 import type { TimeSegmentEffect } from '~/lib/subtitle/types'
 import {
 	formatTimeForDisplay,
@@ -46,6 +47,7 @@ export function TimeSegmentEffectsManager({
 	currentTime = 0,
 	onPlayPreview,
 }: TimeSegmentEffectsManagerProps) {
+	const t = useTranslations('Subtitles.ui.effects')
 	const [isAddMode, setIsAddMode] = useState(false)
 	const [editingEffect, setEditingEffect] = useState<TimeSegmentEffect | null>(
 		null,
@@ -55,7 +57,7 @@ export function TimeSegmentEffectsManager({
 	// 添加或更新效果
 	const handleSaveEffect = (effect: TimeSegmentEffect) => {
 		if (!isValidTimeRange(effect.startTime, effect.endTime)) {
-			toast.error('无效的时间范围：开始时间必须小于结束时间')
+			toast.error(t('toasts.invalidTimeRange'))
 			return
 		}
 
@@ -123,11 +125,11 @@ export function TimeSegmentEffectsManager({
 						<ChevronDown className="h-4 w-4" />
 					)}
 					<Scissors className="h-4 w-4" />
-					<h3 className="text-sm font-medium">Time Segment Effects</h3>
+					<h3 className="text-sm font-medium">{t('header.title')}</h3>
 				</div>
 				<div className="flex items-center gap-2">
 					<Badge variant="outline" className="text-xs">
-						{effects.length} effects
+						{t('header.effectsCount', { count: effects.length })}
 					</Badge>
 				</div>
 			</div>
@@ -139,15 +141,14 @@ export function TimeSegmentEffectsManager({
 						<div className="text-center py-6 border-2 border-dashed border-muted rounded-lg">
 							<Scissors className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
 							<p className="text-sm text-muted-foreground mb-2">
-								No time segment effects configured
+								{t('empty.title')}
 							</p>
 							<p className="text-xs text-muted-foreground mb-3">
-								Add effects to create black screens or mute audio during
-								specific time ranges
+								{t('empty.body')}
 							</p>
 							<Button variant="outline" size="sm" onClick={handleAddNewEffect}>
 								<Plus className="h-4 w-4 mr-1" />
-								Add Your First Effect
+								{t('actions.addFirst')}
 							</Button>
 						</div>
 					) : (
@@ -169,13 +170,13 @@ export function TimeSegmentEffectsManager({
 													{effect.muteAudio && (
 														<Badge variant="secondary" className="text-xs">
 															<VolumeX className="h-2 w-2 mr-1" />
-															Muted
+															{t('badges.muted')}
 														</Badge>
 													)}
 													{effect.blackScreen && (
 														<Badge variant="secondary" className="text-xs">
 															<Video className="h-2 w-2 mr-1" />
-															Black Screen
+															{t('badges.blackScreen')}
 														</Badge>
 													)}
 												</div>
@@ -195,6 +196,7 @@ export function TimeSegmentEffectsManager({
 													}}
 													className="h-6 w-6"
 													disabled={isAddMode}
+													aria-label={t('actions.editAria')}
 												>
 													<Edit className="h-3 w-3" />
 												</Button>
@@ -207,6 +209,7 @@ export function TimeSegmentEffectsManager({
 													}}
 													className="h-6 w-6 text-destructive hover:text-destructive"
 													disabled={isAddMode}
+													aria-label={t('actions.deleteAria')}
 												>
 													<Trash2 className="h-3 w-3" />
 												</Button>
@@ -225,7 +228,7 @@ export function TimeSegmentEffectsManager({
 									className="w-full"
 								>
 									<Plus className="h-4 w-4 mr-1" />
-									Add Effect
+									{t('actions.addEffect')}
 								</Button>
 							)}
 
@@ -238,12 +241,12 @@ export function TimeSegmentEffectsManager({
 											effects.some((e) => e.id === editingEffect.id) ? (
 												<>
 													<Edit className="h-4 w-4" />
-													Edit Time Segment Effect
+													{t('form.editTitle')}
 												</>
 											) : (
 												<>
 													<Plus className="h-4 w-4" />
-													Add Time Segment Effect
+													{t('form.addTitle')}
 												</>
 											)}
 										</CardTitle>
@@ -288,6 +291,7 @@ function EffectEditForm({
 	onCancel,
 	onPlayPreview,
 }: EffectEditFormProps) {
+	const t = useTranslations('Subtitles.ui.effects')
 	const [formData, setFormData] = useState<TimeSegmentEffect>(effect)
 
 	// 同步外部传入的 effect 变化
@@ -331,7 +335,7 @@ function EffectEditForm({
 			{/* 效果选项 */}
 			<div className="space-y-3">
 				<div className="flex items-center justify-between">
-					<Label htmlFor="black-screen">Black Screen</Label>
+					<Label htmlFor="black-screen">{t('form.blackScreen')}</Label>
 					<Switch
 						id="black-screen"
 						checked={formData.blackScreen}
@@ -339,7 +343,7 @@ function EffectEditForm({
 					/>
 				</div>
 				<div className="flex items-center justify-between">
-					<Label htmlFor="mute-audio">Mute Audio</Label>
+					<Label htmlFor="mute-audio">{t('form.muteAudio')}</Label>
 					<Switch
 						id="mute-audio"
 						checked={formData.muteAudio}
@@ -350,10 +354,10 @@ function EffectEditForm({
 
 			{/* 描述 */}
 			<div className="space-y-2">
-				<Label htmlFor="description">Description (optional)</Label>
+				<Label htmlFor="description">{t('form.descriptionLabel')}</Label>
 				<Textarea
 					id="description"
-					placeholder="Describe this effect..."
+					placeholder={t('form.descriptionPlaceholder')}
 					value={formData.description || ''}
 					onChange={(e) => handleChange('description', e.target.value)}
 					className="min-h-[60px]"
@@ -365,13 +369,13 @@ function EffectEditForm({
 			<div className="flex justify-end gap-2 pt-4">
 				<Button variant="outline" onClick={onCancel}>
 					<X className="h-4 w-4 mr-1" />
-					Cancel
+					{t('actions.cancel')}
 				</Button>
 				<Button onClick={handleSubmit}>
 					<Check className="h-4 w-4 mr-1" />
 					{effect.id && existingEffects.some((e) => e.id === effect.id)
-						? 'Update'
-						: 'Add'}
+						? t('actions.update')
+						: t('actions.add')}
 				</Button>
 			</div>
 		</div>

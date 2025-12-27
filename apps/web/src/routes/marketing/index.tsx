@@ -15,7 +15,7 @@ function Home() {
 			<header className="h-14 border-b border-border flex items-center justify-between px-6 bg-background">
 				<div className="flex items-center gap-4">
 					<span className="text-sm font-bold uppercase tracking-wider">
-						VidGenius Hub
+						{t('topBar.brand')}
 					</span>
 					<span className="font-mono text-xs text-muted-foreground border border-border px-1.5 py-0.5">
 						v1.0.0
@@ -29,7 +29,7 @@ function Home() {
 						className="h-8 rounded-none border-border text-xs uppercase tracking-wide hover:bg-secondary hover:text-secondary-foreground"
 						asChild
 					>
-						<Link to="/auth/login">Login</Link>
+						<Link to="/auth/login">{t('topBar.login')}</Link>
 					</Button>
 				</div>
 			</header>
@@ -76,7 +76,7 @@ function Home() {
 									target="_blank"
 									rel="noopener noreferrer"
 								>
-									Documentation
+									{t('topBar.documentation')}
 								</a>
 							</Button>
 						</div>

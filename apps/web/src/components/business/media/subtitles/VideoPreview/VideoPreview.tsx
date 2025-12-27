@@ -2,6 +2,7 @@
 
 import { Video, VideoOff } from 'lucide-react'
 import { type ReactNode, useEffect } from 'react'
+import { useTranslations } from '~/lib/i18n'
 import { useVideoPreview } from '~/lib/subtitle/hooks/useVideoPreview'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
@@ -48,6 +49,7 @@ export function VideoPreview({
 	onDurationChange,
 	onVideoRef,
 }: VideoPreviewProps) {
+	const t = useTranslations('Subtitles.ui.videoPreview')
 	const cues = translation ? parseVttCues(translation) : []
 
 	const {
@@ -108,7 +110,7 @@ export function VideoPreview({
 		<div className="space-y-4">
 			<h3 className="text-lg font-semibold flex items-center gap-2">
 				<Video className="h-5 w-5" />
-				Video Preview
+				{t('title')}
 			</h3>
 
 			<div
@@ -129,24 +131,24 @@ export function VideoPreview({
 					crossOrigin="anonymous"
 				>
 					<source src={`/api/media/${mediaId}/source`} type="video/mp4" />
-					Your browser does not support the video tag.
+					{t('videoUnsupported')}
 				</video>
 
 				{/* 预览状态消息 */}
 				{isRendering ? (
 					<PreviewMessage>
 						<VideoOff className="h-8 w-8" />
-						<span>Preview disabled during rendering</span>
+						<span>{t('messages.previewDisabledDuringRendering')}</span>
 					</PreviewMessage>
 				) : !translation ? (
 					<PreviewMessage>
 						<VideoOff className="h-8 w-8" />
-						<span>Translation required for preview</span>
+						<span>{t('messages.translationRequiredForPreview')}</span>
 					</PreviewMessage>
 				) : cues.length === 0 ? (
 					<PreviewMessage>
 						<VideoOff className="h-8 w-8" />
-						<span>No subtitles found</span>
+						<span>{t('messages.noSubtitlesFound')}</span>
 					</PreviewMessage>
 				) : null}
 

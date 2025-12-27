@@ -94,10 +94,10 @@ function MediaIndexRoute() {
 							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
 								<span className="flex items-center gap-1">
 									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-									Library System
+									{t('ui.breadcrumb.system')}
 								</span>
 								<span>/</span>
-								<span>Media Inventory</span>
+								<span>{t('ui.breadcrumb.section')}</span>
 							</div>
 							<div className="flex items-center gap-3">
 								<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
@@ -108,7 +108,8 @@ function MediaIndexRoute() {
 								</span>
 							</div>
 							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground opacity-70">
-								Total_Records: <span className="text-foreground">{total}</span>
+								{t('ui.labels.totalRecords')}{' '}
+								<span className="text-foreground">{total}</span>
 							</div>
 						</div>
 
@@ -131,14 +132,14 @@ function MediaIndexRoute() {
 					{listQuery.isLoading ? (
 						<div className="flex h-64 items-center justify-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
 							<Loader2 className="h-4 w-4 animate-spin" />
-							Polling_Storage_System...
+							{t('ui.loading')}
 						</div>
 					) : null}
 
 					{listQuery.isError ? (
 						<div className="border border-destructive/50 bg-destructive/5 p-8 text-center border-dashed">
 							<div className="font-mono text-sm font-bold uppercase tracking-widest text-destructive mb-2">
-								System_Fault: Interface_Failure
+								{t('ui.errorTitle')}
 							</div>
 							<div className="font-mono text-[10px] uppercase text-destructive/80 mb-6">
 								{t('error.body')}
@@ -148,7 +149,7 @@ function MediaIndexRoute() {
 								variant="outline"
 								className="rounded-none border-destructive text-destructive hover:bg-destructive/10 font-mono text-[10px] uppercase tracking-widest"
 							>
-								[ RETRY_HANDSHAKE ]
+								{t('ui.retry')}
 							</Button>
 						</div>
 					) : null}
@@ -172,7 +173,7 @@ function MediaIndexRoute() {
 								variant="outline"
 								className="rounded-none font-mono text-[10px] uppercase tracking-widest"
 							>
-								<Link to="/media/download">[ INITIATE_INGESTION ]</Link>
+								<Link to="/media/download">{t('ui.emptyCta')}</Link>
 							</Button>
 						</div>
 					) : null}
@@ -234,14 +235,16 @@ function MediaIndexRoute() {
 												<div className="grid grid-cols-2 gap-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground border-t border-border pt-3">
 													<div className="space-y-1">
 														<span className="block opacity-50">
-															SRC_PROVIDER
+															{t('ui.labels.srcProvider')}
 														</span>
 														<span className="text-foreground font-bold">
-															{item.source || 'INTERNAL'}
+															{item.source || t('ui.labels.internal')}
 														</span>
 													</div>
 													<div className="text-right space-y-1">
-														<span className="block opacity-50">REG_DATE</span>
+														<span className="block opacity-50">
+															{t('ui.labels.regDate')}
+														</span>
 														<span className="text-foreground">
 															{createdAt.split(',')[0]}
 														</span>
@@ -264,9 +267,9 @@ function MediaIndexRoute() {
 												if (deleteMutation.isPending) return
 												void (async () => {
 													const ok = await confirmDialog({
-														title: 'SECURITY_WARNING: DESTRUCTIVE_ACTION',
+														title: t('ui.confirmDelete.title'),
 														description: t('confirmDelete', { title }),
-														confirmText: 'PURGE_RECORD',
+														confirmText: t('ui.confirmDelete.confirmText'),
 														variant: 'destructive',
 													})
 													if (!ok) return
@@ -298,15 +301,15 @@ function MediaIndexRoute() {
 								>
 									{page > 1 ? (
 										<Link to="/media" search={{ page: page - 1 }}>
-											[ PREV_VOL ]
+											{t('ui.pagination.prev')}
 										</Link>
 									) : (
-										<span>PREV_VOL</span>
+										<span>{t('ui.pagination.prevDisabled')}</span>
 									)}
 								</Button>
 
 								<div className="px-6 font-mono text-[10px] text-muted-foreground border border-border h-9 flex items-center bg-muted/10 uppercase tracking-widest font-bold">
-									VOL_UNIT {page} / {pageCount}
+									{t('ui.pagination.volumeUnit', { page, pageCount })}
 								</div>
 
 								<Button
@@ -317,15 +320,15 @@ function MediaIndexRoute() {
 								>
 									{page < pageCount ? (
 										<Link to="/media" search={{ page: page + 1 }}>
-											[ NEXT_VOL ]
+											{t('ui.pagination.next')}
 										</Link>
 									) : (
-										<span>NEXT_VOL</span>
+										<span>{t('ui.pagination.nextDisabled')}</span>
 									)}
 								</Button>
 							</div>
 							<div className="mt-4 font-mono text-[8px] uppercase tracking-[0.4em] text-muted-foreground text-center opacity-50">
-								END_OF_STREAM_INDEX
+								{t('ui.pagination.endOfStream')}
 							</div>
 						</div>
 					) : null}

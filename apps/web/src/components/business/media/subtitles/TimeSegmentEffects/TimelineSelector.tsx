@@ -6,6 +6,7 @@ import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { useTranslations } from '~/lib/i18n'
 import { formatTimeForDisplay } from '~/lib/subtitle/utils/time'
 
 interface TimelineSelectorProps {
@@ -29,6 +30,7 @@ export function TimelineSelector({
 	onChange,
 	onPlayPreview,
 }: TimelineSelectorProps) {
+	const t = useTranslations('Subtitles.ui.timeline')
 	const [isDragging, setIsDragging] = useState<
 		'start' | 'end' | 'segment' | null
 	>(null)
@@ -182,8 +184,7 @@ export function TimelineSelector({
 	const renderPreciseInput = (kind: 'start' | 'end') => {
 		const inputId = `${kind}-time-precise`
 		const value = kind === 'start' ? startTime : endTime
-		const label =
-			kind === 'start' ? 'Start Time (seconds)' : 'End Time (seconds)'
+		const label = kind === 'start' ? t('inputs.startTime') : t('inputs.endTime')
 		return (
 			<div className="space-y-2" key={kind}>
 				<Label htmlFor={inputId}>{label}</Label>
@@ -206,7 +207,7 @@ export function TimelineSelector({
 							className="whitespace-nowrap"
 						>
 							<Clock className="h-3 w-3 mr-1" />
-							Preview
+							{t('actions.preview')}
 						</Button>
 					)}
 				</div>
@@ -222,17 +223,17 @@ export function TimelineSelector({
 			{/* 时间轴 */}
 			<div className="space-y-2">
 				<div className="flex items-center justify-between">
-					<Label className="text-sm font-medium">Timeline Selection</Label>
+					<Label className="text-sm font-medium">{t('title')}</Label>
 					<div className="flex items-center gap-2">
 						{duration <= 0 && (
 							<Badge variant="outline" className="text-xs">
-								Loading video duration...
+								{t('badges.loadingDuration')}
 							</Badge>
 						)}
 						{conflicts.length > 0 && (
 							<Badge variant="destructive" className="text-xs">
 								<AlertTriangle className="h-3 w-3 mr-1" />
-								{conflicts.length} Conflict{conflicts.length > 1 ? 's' : ''}
+								{t('badges.conflicts', { count: conflicts.length })}
 							</Badge>
 						)}
 					</div>
@@ -317,14 +318,13 @@ export function TimelineSelector({
 
 			{/* 时间段信息 */}
 			<div className="text-sm text-gray-600 dark:text-gray-400">
-				Duration:{' '}
+				{t('durationLabel')}{' '}
 				<span className="font-medium">
 					{formatTimeForDisplay(endTime - startTime)}
 				</span>
 				{conflicts.length > 0 && (
 					<div className="text-red-600 dark:text-red-400 mt-1">
-						⚠️ Conflicts with existing segments. Adjust the time range to avoid
-						conflicts.
+						⚠️ {t('conflictsHint')}
 					</div>
 				)}
 			</div>

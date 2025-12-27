@@ -7,6 +7,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Textarea } from '~/components/ui/textarea'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 import { parseXThreadImportDraft } from '~/lib/thread/adapters/x'
 
@@ -16,6 +17,7 @@ export const Route = createFileRoute('/threads/new')({
 
 function ThreadsNewRoute() {
 	const navigate = useNavigate()
+	const t = useTranslations('Threads.new')
 	const [jsonText, setJsonText] = React.useState('')
 	const [fileName, setFileName] = React.useState<string | null>(null)
 	const [preview, setPreview] = React.useState<{
@@ -45,9 +47,9 @@ function ThreadsNewRoute() {
 				toast.success(
 					data.existed
 						? data.repaired
-							? 'Thread existed; repaired missing posts'
-							: 'Thread already exists'
-						: 'Thread created',
+							? t('toasts.existedRepaired')
+							: t('toasts.alreadyExists')
+						: t('toasts.created'),
 				)
 				navigate({ to: '/threads/$id', params: { id: data.id }, replace: true })
 			},
@@ -64,13 +66,13 @@ function ThreadsNewRoute() {
 				<Card className="rounded-none">
 					<CardHeader>
 						<CardTitle className="font-mono text-sm uppercase tracking-widest">
-							Import X Thread JSON
+							{t('title')}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div className="space-y-2">
 							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Upload JSON File
+								{t('inputs.uploadLabel')}
 							</Label>
 							<Input
 								type="file"
@@ -84,42 +86,50 @@ function ThreadsNewRoute() {
 										const text = await file.text()
 										setJsonText(text)
 										setFileName(file.name)
-										toast.success(`Loaded ${file.name}`)
+										toast.success(t('toasts.fileLoaded', { fileName: file.name }))
 									} catch (error) {
 										toast.error(
-											error instanceof Error ? error.message : 'Failed to read file',
+											error instanceof Error
+												? error.message
+												: t('toasts.readFileFailed'),
 										)
 									}
 								}}
 							/>
 							{fileName ? (
 								<div className="font-mono text-[10px] text-muted-foreground">
-									file: {fileName}
+									{t('inputs.fileName', { fileName })}
 								</div>
 							) : null}
 						</div>
 
 						<div className="space-y-2">
 							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Paste JSON
+								{t('inputs.pasteLabel')}
 							</Label>
 							<Textarea
 								value={jsonText}
 								onChange={(e) => setJsonText(e.target.value)}
-								placeholder="Paste x-thread-*.json contents here…"
+								placeholder={t('inputs.pastePlaceholder')}
 								className="rounded-none font-mono text-xs h-[320px] min-h-[320px] max-h-[320px] resize-none"
 							/>
 						</div>
 
 						{preview ? (
 							<div className="border border-border bg-muted/20 p-4 font-mono text-xs space-y-1">
-								<div>title: {preview.title}</div>
-								<div>replies: {preview.replies}</div>
-								<div>sourceUrl: {preview.sourceUrl ?? '-'}</div>
+								<div>
+									{t('preview.title')}: {preview.title}
+								</div>
+								<div>
+									{t('preview.replies')}: {preview.replies}
+								</div>
+								<div>
+									{t('preview.sourceUrl')}: {preview.sourceUrl ?? '-'}
+								</div>
 							</div>
 						) : (
 							<div className="text-xs text-muted-foreground font-mono">
-								Preview will appear when JSON is valid.
+								{t('preview.hint')}
 							</div>
 						)}
 
@@ -129,13 +139,13 @@ function ThreadsNewRoute() {
 								disabled={createMutation.isPending}
 								onClick={() => {
 									if (!jsonText.trim()) {
-										toast.error('JSON is empty')
+										toast.error(t('toasts.jsonEmpty'))
 										return
 									}
 									createMutation.mutate({ jsonText })
 								}}
 							>
-								Create
+								{t('actions.create')}
 							</Button>
 						</div>
 					</CardContent>

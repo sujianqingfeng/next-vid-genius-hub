@@ -9,6 +9,7 @@ import { Textarea } from '~/components/ui/textarea'
 import { ThreadRemotionPreviewCard } from '~/components/business/threads/thread-remotion-preview-card'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
 export const Route = createFileRoute('/threads/$id/')({
@@ -36,6 +37,7 @@ function firstTextBlockText(blocks: any[] | null | undefined): string {
 function ThreadDetailRoute() {
 	const { id } = Route.useParams()
 	const qc = useQueryClient()
+	const t = useTranslations('Threads.detail')
 
 	const dataQuery = useQuery(queryOrpc.thread.byId.queryOptions({ input: { id } }))
 	const thread = dataQuery.data?.thread ?? null
@@ -78,7 +80,7 @@ function ThreadDetailRoute() {
 			},
 		}),
 		{
-			successToast: 'Saved',
+			successToast: t('toasts.saved'),
 			errorToast: ({ error }) =>
 				error instanceof Error ? error.message : String(error),
 		},
@@ -94,7 +96,11 @@ function ThreadDetailRoute() {
 		}),
 		{
 			successToast: ({ data }) =>
-				`Media ingest: processed=${data.processed} ok=${data.succeeded} failed=${data.failed}`,
+				t('toasts.mediaIngest', {
+					processed: data.processed,
+					ok: data.succeeded,
+					failed: data.failed,
+				}),
 			errorToast: ({ error }) =>
 				error instanceof Error ? error.message : String(error),
 		},
@@ -127,7 +133,7 @@ function ThreadDetailRoute() {
 			onSuccess: (data) => setRenderJobId(data.jobId),
 		}),
 		{
-			successToast: 'Render queued',
+			successToast: t('toasts.renderQueued'),
 			errorToast: ({ error }) =>
 				error instanceof Error ? error.message : String(error),
 		},
@@ -144,7 +150,7 @@ function ThreadDetailRoute() {
 					<div className="flex items-center justify-between gap-4">
 						<div className="space-y-1">
 							<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-								Thread
+								{t('header.breadcrumb')}
 							</div>
 							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{thread?.title ?? '…'}
@@ -156,7 +162,7 @@ function ThreadDetailRoute() {
 							className="rounded-none font-mono text-xs uppercase tracking-wider"
 							asChild
 						>
-							<Link to="/threads">Back</Link>
+							<Link to="/threads">{t('actions.back')}</Link>
 						</Button>
 					</div>
 				</div>
@@ -164,7 +170,7 @@ function ThreadDetailRoute() {
 
 			<div className="mx-auto max-w-6xl px-4 pt-8 pb-6 sm:px-6 lg:px-8">
 				<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-					Preview
+					{t('sections.preview')}
 				</div>
 				<ThreadRemotionPreviewCard
 					thread={thread as any}
@@ -179,7 +185,7 @@ function ThreadDetailRoute() {
 				<Card className="rounded-none">
 					<CardHeader>
 						<CardTitle className="font-mono text-sm uppercase tracking-widest">
-							Posts
+							{t('sections.posts')}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-2">
@@ -194,14 +200,14 @@ function ThreadDetailRoute() {
 								}`}
 							>
 								<div className="uppercase tracking-widest text-[10px] text-muted-foreground">
-									ROOT
+									{t('labels.root')}
 								</div>
 								<div className="truncate">{root.authorName}</div>
 							</button>
 						) : null}
 
 						<div className="pt-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-							REPLIES ({replies.length})
+							{t('labels.replies', { count: replies.length })}
 						</div>
 						<div className="space-y-2">
 							{replies.map((p) => (
@@ -217,7 +223,7 @@ function ThreadDetailRoute() {
 								>
 									<div className="truncate">{p.authorName}</div>
 									<div className="truncate text-[10px] text-muted-foreground">
-										{p.plainText || '(empty)'}
+										{p.plainText || t('labels.emptyText')}
 									</div>
 								</button>
 							))}
@@ -228,20 +234,14 @@ function ThreadDetailRoute() {
 				<Card className="rounded-none">
 					<CardHeader>
 						<CardTitle className="font-mono text-sm uppercase tracking-widest">
-							Editor
+							{t('sections.editor')}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
-						<div className="space-y-1 font-mono text-xs text-muted-foreground">
-							<div>postId: {selectedPost?.id ?? '-'}</div>
-							<div>author: {selectedPost?.authorName ?? '-'}</div>
-							<div>role: {selectedPost?.role ?? '-'}</div>
-						</div>
-
 						<div className="space-y-2">
 							<div className="flex items-center justify-between gap-3">
 								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Media
+									{t('sections.media')}
 								</div>
 								{assets.some(
 									(a: any) => a?.status === 'pending' || (a?.status === 'ready' && !a?.storageKey),
@@ -254,7 +254,9 @@ function ThreadDetailRoute() {
 										disabled={ingestAssetsMutation.isPending}
 										onClick={() => ingestAssetsMutation.mutate({ threadId: id })}
 									>
-										{ingestAssetsMutation.isPending ? 'Downloading…' : 'Download'}
+										{ingestAssetsMutation.isPending
+											? t('actions.downloading')
+											: t('actions.download')}
 									</Button>
 								) : null}
 							</div>
@@ -276,7 +278,7 @@ function ThreadDetailRoute() {
 										</div>
 									) : (
 										<div className="text-muted-foreground">
-											asset row not found in `thread_assets`
+											{t('media.assetRowMissing')}
 										</div>
 									)}
 								</div>
@@ -285,7 +287,7 @@ function ThreadDetailRoute() {
 							{(selectedPost?.contentBlocks ?? []).filter((b: any) => b?.type !== 'text')
 								.length === 0 ? (
 								<div className="font-mono text-xs text-muted-foreground">
-									No image/video/link blocks on this post.
+									{t('media.noBlocks')}
 								</div>
 							) : (
 								<div className="space-y-2">
@@ -326,7 +328,7 @@ function ThreadDetailRoute() {
 															</div>
 														) : (
 															<div className="text-muted-foreground">
-																asset row not found in `thread_assets`
+																{t('media.assetRowMissing')}
 															</div>
 														)}
 														{asset?.sourceUrl ? (
@@ -336,7 +338,7 @@ function ThreadDetailRoute() {
 																target="_blank"
 																rel="noreferrer"
 															>
-																Open sourceUrl
+																{t('media.openSourceUrl')}
 															</a>
 														) : null}
 														{b.type === 'image' && url ? (
@@ -370,25 +372,28 @@ function ThreadDetailRoute() {
 														key={String(b.id)}
 														className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs space-y-1"
 													>
-														<div>link: {String(b.data?.url ?? '')}</div>
+														<div>
+															{t('media.labels.link')}: {String(b.data?.url ?? '')}
+														</div>
 														{b.data?.title ? (
 															<div className="text-muted-foreground">
-																title: {String(b.data.title)}
+																{t('media.labels.title')}: {String(b.data.title)}
 															</div>
 														) : null}
 														{b.data?.description ? (
 															<div className="text-muted-foreground">
-																desc: {String(b.data.description)}
+																{t('media.labels.description')}:{' '}
+																{String(b.data.description)}
 															</div>
 														) : null}
 														{previewAssetId ? (
 															<div className="text-muted-foreground">
-																previewAssetId: {previewAssetId}{' '}
+																{t('media.labels.previewAssetId')}: {previewAssetId}{' '}
 																{previewAsset?.sourceUrl ? `url=${previewAsset.sourceUrl}` : null}
 															</div>
 														) : (
 															<div className="text-muted-foreground">
-																previewAssetId: -
+																{t('media.labels.previewAssetId')}: -
 															</div>
 														)}
 													</div>
@@ -400,7 +405,7 @@ function ThreadDetailRoute() {
 													key={String(b.id)}
 													className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs"
 												>
-													unknown block type: {String(b.type)}
+													{t('media.unknownBlockType', { type: String(b.type) })}
 												</div>
 											)
 										})}
@@ -410,7 +415,7 @@ function ThreadDetailRoute() {
 
 						<div className="space-y-2">
 							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Text (MVP: single text block)
+								{t('editor.textLabel')}
 							</Label>
 							<Textarea
 								value={draftText}
@@ -436,7 +441,7 @@ function ThreadDetailRoute() {
 									})
 								}}
 							>
-								Save
+								{t('actions.save')}
 							</Button>
 							<Button
 								type="button"
@@ -444,32 +449,32 @@ function ThreadDetailRoute() {
 								className="rounded-none font-mono text-xs uppercase"
 								onClick={() => {
 									setDraftText(firstTextBlockText(selectedPost?.contentBlocks) || '')
-									toast.message('Reset')
+									toast.message(t('toasts.reset'))
 								}}
 							>
-								Reset
+								{t('actions.reset')}
 							</Button>
 						</div>
 
 						<details className="border border-border rounded-none">
 							<summary className="cursor-pointer select-none px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Stored (DB) / Raw
+								{t('sections.debug')}
 							</summary>
 							<div className="px-3 pb-3 space-y-3">
 								<div className="space-y-2">
 									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Selected post row
+										{t('debug.selectedPostRow')}
 									</div>
 									<pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted/30 p-3 font-mono text-xs">
-										{selectedPostJson || '(none)'}
+										{selectedPostJson || t('debug.none')}
 									</pre>
 								</div>
 								<div className="space-y-2">
 									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Thread row
+										{t('debug.threadRow')}
 									</div>
 									<pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted/30 p-3 font-mono text-xs">
-										{threadJson || '(none)'}
+										{threadJson || t('debug.none')}
 									</pre>
 								</div>
 							</div>
@@ -480,7 +485,7 @@ function ThreadDetailRoute() {
 
 			<div className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8 space-y-3">
 				<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-					Render (Cloud)
+					{t('sections.render')}
 				</div>
 				<Card className="rounded-none">
 					<CardContent className="py-5 space-y-3">
@@ -492,27 +497,33 @@ function ThreadDetailRoute() {
 									startRenderMutation.mutate({ threadId: id })
 								}}
 							>
-								Start Render
+								{t('actions.startRender')}
 							</Button>
 							{renderJobId ? (
 								<div className="font-mono text-xs text-muted-foreground">
-									jobId: {renderJobId}
+									{t('render.jobId', { jobId: renderJobId })}
 								</div>
 							) : null}
 						</div>
 
 						{renderJobId ? (
 							<div className="font-mono text-xs text-muted-foreground space-y-1">
-								<div>status: {renderStatusQuery.data?.status ?? '...'}</div>
+								<div>
+									{t('render.status', {
+										status: renderStatusQuery.data?.status ?? '...',
+									})}
+								</div>
 								{typeof renderStatusQuery.data?.progress === 'number' ? (
 									<div>
-										progress: {Math.round(renderStatusQuery.data.progress * 100)}%
+										{t('render.progress', {
+											progress: Math.round(renderStatusQuery.data.progress * 100),
+										})}
 									</div>
 								) : null}
 								{renderStatusQuery.data?.status === 'completed' &&
 								renderedDownloadUrl ? (
 									<a className="underline" href={renderedDownloadUrl}>
-										Download mp4
+										{t('render.downloadMp4')}
 									</a>
 								) : null}
 							</div>

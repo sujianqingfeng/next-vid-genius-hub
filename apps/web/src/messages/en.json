@@ -18,6 +18,27 @@
 			"title": "Confirm action",
 			"cancel": "Cancel",
 			"confirm": "Confirm"
+		},
+		"pagination": {
+			"label": "Pagination",
+			"previous": "Previous",
+			"next": "Next",
+			"goToPrevious": "Go to previous page",
+			"goToNext": "Go to next page",
+			"more": "More pages"
+		},
+		"theme": {
+			"names": {
+				"light": "Light",
+				"system": "System",
+				"dark": "Dark"
+			},
+			"toggleTitle": "Current theme: {theme}. Click to switch.",
+			"titles": {
+				"light": "Light Theme",
+				"system": "System Theme",
+				"dark": "Dark Theme"
+			}
 		}
 	},
 	"NotFound": {
@@ -73,6 +94,111 @@
 			"pointsSuffix": "pts"
 		}
 	},
+	"Threads": {
+		"list": {
+			"header": {
+				"systemLabel": "Thread Rendering System",
+				"title": "Threads"
+			},
+			"actions": {
+				"new": "New",
+				"deleteAria": "Delete thread"
+			},
+			"confirmDelete": {
+				"title": "Delete thread?",
+				"description": "Delete thread “{title}”?",
+				"confirmText": "Delete"
+			},
+			"toasts": {
+				"deleted": "Deleted"
+			},
+			"empty": "No threads yet. Create one from an X thread JSON."
+		},
+		"new": {
+			"title": "Import X Thread JSON",
+			"inputs": {
+				"uploadLabel": "Upload JSON file",
+				"fileName": "file: {fileName}",
+				"pasteLabel": "Paste JSON",
+				"pastePlaceholder": "Paste x-thread-*.json contents here…"
+			},
+			"preview": {
+				"title": "title",
+				"replies": "replies",
+				"sourceUrl": "sourceUrl",
+				"hint": "Preview will appear when JSON is valid."
+			},
+			"actions": {
+				"create": "Create"
+			},
+			"toasts": {
+				"existedRepaired": "Thread existed; repaired missing posts",
+				"alreadyExists": "Thread already exists",
+				"created": "Thread created",
+				"fileLoaded": "Loaded {fileName}",
+				"readFileFailed": "Failed to read file",
+				"jsonEmpty": "JSON is empty"
+			}
+		},
+		"detail": {
+			"header": {
+				"breadcrumb": "Thread"
+			},
+			"sections": {
+				"preview": "Preview",
+				"posts": "Posts",
+				"editor": "Editor",
+				"media": "Media",
+				"debug": "Stored (DB) / Raw",
+				"render": "Render (Cloud)"
+			},
+			"labels": {
+				"root": "ROOT",
+				"replies": "REPLIES ({count})",
+				"emptyText": "(empty)"
+			},
+			"actions": {
+				"back": "Back",
+				"downloading": "Downloading…",
+				"download": "Download",
+				"save": "Save",
+				"reset": "Reset",
+				"startRender": "Start Render"
+			},
+			"toasts": {
+				"saved": "Saved",
+				"reset": "Reset",
+				"mediaIngest": "Media ingest: processed={processed} ok={ok} failed={failed}",
+				"renderQueued": "Render queued"
+			},
+			"media": {
+				"assetRowMissing": "asset row not found in `thread_assets`",
+				"noBlocks": "No image/video/link blocks on this post.",
+				"openSourceUrl": "Open sourceUrl",
+				"unknownBlockType": "unknown block type: {type}",
+				"labels": {
+					"link": "link",
+					"title": "title",
+					"description": "desc",
+					"previewAssetId": "previewAssetId"
+				}
+			},
+			"editor": {
+				"textLabel": "Text (MVP: single text block)"
+			},
+			"debug": {
+				"selectedPostRow": "Selected post row",
+				"threadRow": "Thread row",
+				"none": "(none)"
+			},
+			"render": {
+				"jobId": "jobId: {jobId}",
+				"status": "status: {status}",
+				"progress": "progress: {progress}%",
+				"downloadMp4": "Download mp4"
+			}
+		}
+	},
 	"Media": {
 		"title": "Media Library",
 		"downloadCta": "Download Media",
@@ -92,10 +218,43 @@
 		"empty": {
 			"title": "No media files yet",
 			"body": "Get started by downloading your first video to begin building your media library."
+		},
+		"ui": {
+			"breadcrumb": {
+				"system": "Library System",
+				"section": "Media Inventory"
+			},
+			"labels": {
+				"totalRecords": "Total_Records:",
+				"srcProvider": "SRC_PROVIDER",
+				"regDate": "REG_DATE",
+				"internal": "INTERNAL"
+			},
+			"loading": "Polling_Storage_System...",
+			"errorTitle": "System_Fault: Interface_Failure",
+			"retry": "[ RETRY_HANDSHAKE ]",
+			"emptyCta": "[ INITIATE_INGESTION ]",
+			"pagination": {
+				"prev": "[ PREV_VOL ]",
+				"prevDisabled": "PREV_VOL",
+				"next": "[ NEXT_VOL ]",
+				"nextDisabled": "NEXT_VOL",
+				"volumeUnit": "VOL_UNIT {page} / {pageCount}",
+				"endOfStream": "END_OF_STREAM_INDEX"
+			},
+			"confirmDelete": {
+				"title": "SECURITY_WARNING: DESTRUCTIVE_ACTION",
+				"confirmText": "PURGE_RECORD"
+			}
 		}
 	},
 	"Home": {
 		"badge": "Next Gen Video Platform",
+		"topBar": {
+			"brand": "VidGenius Hub",
+			"login": "Login",
+			"documentation": "Documentation"
+		},
 		"title": "Video Genius Hub",
 		"hero": "Your intelligent platform for video processing, transcription, and analysis.",
 		"cta": "Get Started",
@@ -386,6 +545,14 @@
 	"Download": {
 		"page": {
 			"title": "Cloud Video Download",
+			"ui": {
+				"breadcrumb": {
+					"system": "Ingestion System",
+					"section": "Resource Acquisition"
+				},
+				"taskConfigTitle": "Task_Configuration_Interface",
+				"statusAwaiting": "Status: Awaiting_Input"
+			},
 			"form": {
 				"title": "New Job",
 				"desc": "Paste a link, select quality; proxy is optional (auto-selects an available proxy).",
@@ -393,6 +560,7 @@
 				"urlPlaceholder": "https://example.com/video",
 				"proxyLabel": "Proxy",
 				"proxyAuto": "Auto select (Recommended)",
+				"noProxy": "No Proxy",
 				"quality": "Quality",
 				"quality1080": "1080p",
 				"quality720": "720p",
@@ -561,6 +729,139 @@
 			"start": "Start render",
 			"starting": "Rendering…",
 			"started": "Render started"
+		},
+		"ui": {
+			"actions": {
+				"save": "Save",
+				"reset": "Reset"
+			},
+			"cues": {
+				"title": "Cues",
+				"deleteAria": "Delete cue",
+				"deleteTitle": "Delete this subtitle cue"
+			},
+			"translationEditor": {
+				"hideEditor": "Hide Editor",
+				"editVtt": "Edit VTT",
+				"noTranslationYet": "No translation yet. Start translation to generate cues."
+			},
+			"step4Preview": {
+				"renderingTitle": "Rendering in Progress",
+				"renderingBody": "Please wait while we process your video with subtitles...",
+				"previewTitle": "Preview Video",
+				"downloadTitle": "Download Files",
+				"downloadVideo": "Download Video",
+				"videoUnsupported": "Your browser does not support the video tag."
+			},
+			"videoPreview": {
+				"title": "Video Preview",
+				"videoUnsupported": "Your browser does not support the video tag.",
+				"messages": {
+					"previewDisabledDuringRendering": "Preview disabled during rendering",
+					"translationRequiredForPreview": "Translation required for preview",
+					"noSubtitlesFound": "No subtitles found"
+				}
+			},
+			"configControls": {
+				"title": "Subtitle Settings",
+				"badge": {
+					"custom": "Custom",
+					"preset": "Preset"
+				},
+				"tabs": {
+					"presets": "Presets",
+					"manual": "Manual"
+				},
+				"fields": {
+					"fontSize": "Font Size",
+					"opacity": "Opacity",
+					"background": "Background",
+					"colors": "Colors"
+				},
+				"colors": {
+					"text": "Text",
+					"background": "BG",
+					"outline": "Outline"
+				},
+				"actions": {
+					"resetToDefault": "Reset to Default"
+				}
+			},
+			"hintTextConfig": {
+				"title": "Black Screen Hint Text",
+				"enabledLabel": "Enable hint text",
+				"contentLabel": "Hint Text Content",
+				"contentPlaceholder": "Enter hint text to display during black screen...",
+				"fontSize": "Font Size",
+				"position": {
+					"label": "Position",
+					"center": "Center",
+					"top": "Top",
+					"bottom": "Bottom"
+				},
+				"animation": {
+					"label": "Animation",
+					"none": "None",
+					"fadeIn": "Fade In",
+					"slideUp": "Slide Up"
+				},
+				"backgroundOpacity": "Background Opacity",
+				"colors": {
+					"text": "Text",
+					"background": "BG",
+					"outline": "Outline"
+				}
+			},
+			"timeline": {
+				"title": "Timeline Selection",
+				"badges": {
+					"loadingDuration": "Loading video duration...",
+					"conflicts": "{count, plural, one {# Conflict} other {# Conflicts}}"
+				},
+				"inputs": {
+					"startTime": "Start Time (seconds)",
+					"endTime": "End Time (seconds)"
+				},
+				"actions": {
+					"preview": "Preview"
+				},
+				"durationLabel": "Duration:",
+				"conflictsHint": "Conflicts with existing segments. Adjust the time range to avoid conflicts."
+			},
+			"effects": {
+				"header": {
+					"title": "Time Segment Effects",
+					"effectsCount": "{count, plural, one {# effect} other {# effects}}"
+				},
+				"empty": {
+					"title": "No time segment effects configured",
+					"body": "Add effects to create black screens or mute audio during specific time ranges"
+				},
+				"badges": {
+					"muted": "Muted",
+					"blackScreen": "Black Screen"
+				},
+				"form": {
+					"editTitle": "Edit Time Segment Effect",
+					"addTitle": "Add Time Segment Effect",
+					"blackScreen": "Black Screen",
+					"muteAudio": "Mute Audio",
+					"descriptionLabel": "Description (optional)",
+					"descriptionPlaceholder": "Describe this effect..."
+				},
+				"actions": {
+					"addFirst": "Add Your First Effect",
+					"addEffect": "Add Effect",
+					"editAria": "Edit effect",
+					"deleteAria": "Delete effect",
+					"cancel": "Cancel",
+					"update": "Update",
+					"add": "Add"
+				},
+				"toasts": {
+					"invalidTimeRange": "Invalid time range: start time must be less than end time"
+				}
+			}
 		}
 	},
 	"MediaComments": {

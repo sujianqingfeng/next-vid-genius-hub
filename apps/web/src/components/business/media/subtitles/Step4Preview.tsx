@@ -2,6 +2,7 @@
 
 import { Download, Play, Video } from 'lucide-react'
 import { Button } from '~/components/ui/button'
+import { useTranslations } from '~/lib/i18n'
 
 interface Step4PreviewProps {
 	mediaId: string
@@ -12,6 +13,7 @@ interface Step4PreviewProps {
 }
 
 export function Step4Preview(props: Step4PreviewProps) {
+	const t = useTranslations('Subtitles.ui.step4Preview')
 	const {
 		mediaId,
 		hasRenderedVideo,
@@ -32,9 +34,9 @@ export function Step4Preview(props: Step4PreviewProps) {
 		return (
 			<div className="flex flex-col items-center justify-center min-h-[320px] rounded-lg border bg-muted/20 p-8 text-center">
 				<Video className="h-16 w-16 mb-4 text-muted-foreground" />
-				<h3 className="text-xl font-semibold mb-2">Rendering in Progress</h3>
+				<h3 className="text-xl font-semibold mb-2">{t('renderingTitle')}</h3>
 				<p className="text-muted-foreground mb-6 max-w-md">
-					Please wait while we process your video with subtitles...
+					{t('renderingBody')}
 				</p>
 				<div className="h-8 w-8 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
 			</div>
@@ -52,7 +54,7 @@ export function Step4Preview(props: Step4PreviewProps) {
 					<div className="space-y-3">
 						<h3 className="text-lg font-semibold flex items-center gap-2">
 							<Play className="h-5 w-5" />
-							Preview Video
+							{t('previewTitle')}
 						</h3>
 						<div
 							className="w-full bg-black rounded-lg overflow-hidden"
@@ -66,7 +68,7 @@ export function Step4Preview(props: Step4PreviewProps) {
 								crossOrigin="anonymous"
 							>
 								<source src={videoSrc} type="video/mp4" />
-								Your browser does not support the video tag.
+								{t('videoUnsupported')}
 							</video>
 						</div>
 					</div>
@@ -77,14 +79,14 @@ export function Step4Preview(props: Step4PreviewProps) {
 				<div className="space-y-4">
 					<h3 className="text-lg font-semibold flex items-center gap-2">
 						<Download className="h-5 w-5" />
-						Download Files
+						{t('downloadTitle')}
 					</h3>
 
 					<div className="space-y-3">
 						<Button asChild className="w-full h-11" size="lg">
 							<a href={downloadVideoUrl}>
 								<Video className="h-4 w-4 mr-2" />
-								Download Video
+								{t('downloadVideo')}
 							</a>
 						</Button>
 

@@ -62,7 +62,12 @@ function MediaDownloadRoute() {
 		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
 	const proxies = (proxiesQuery.data?.proxies ?? [
-		{ id: 'none', name: 'No Proxy', testStatus: null, responseTime: null },
+		{
+			id: 'none',
+			name: t('page.form.noProxy'),
+			testStatus: null,
+			responseTime: null,
+		},
 	]) as ProxyRow[]
 	const defaultProxyId = proxiesQuery.data?.defaultProxyId ?? 'none'
 	const defaultProxy =
@@ -104,10 +109,10 @@ function MediaDownloadRoute() {
 							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
 								<span className="flex items-center gap-1">
 									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-									Ingestion System
+									{t('page.ui.breadcrumb.system')}
 								</span>
 								<span>/</span>
-								<span>Resource Acquisition</span>
+								<span>{t('page.ui.breadcrumb.section')}</span>
 							</div>
 							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{t('page.title')}
@@ -130,10 +135,10 @@ function MediaDownloadRoute() {
 				<div className="border border-border bg-card">
 					<div className="border-b border-border bg-muted/30 px-6 py-3 flex items-center justify-between">
 						<div className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-							Task_Configuration_Interface
+							{t('page.ui.taskConfigTitle')}
 						</div>
 						<div className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground opacity-50">
-							Status: Awaiting_Input
+							{t('page.ui.statusAwaiting')}
 						</div>
 					</div>
 

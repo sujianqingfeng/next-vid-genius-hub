@@ -18,6 +18,27 @@
 			"title": "确认操作",
 			"cancel": "取消",
 			"confirm": "确定"
+		},
+		"pagination": {
+			"label": "分页",
+			"previous": "上一页",
+			"next": "下一页",
+			"goToPrevious": "转到上一页",
+			"goToNext": "转到下一页",
+			"more": "更多页"
+		},
+		"theme": {
+			"names": {
+				"light": "浅色",
+				"system": "跟随系统",
+				"dark": "深色"
+			},
+			"toggleTitle": "当前主题：{theme}。点击切换。",
+			"titles": {
+				"light": "浅色主题",
+				"system": "系统主题",
+				"dark": "深色主题"
+			}
 		}
 	},
 	"NotFound": {
@@ -73,6 +94,111 @@
 			"pointsSuffix": "分"
 		}
 	},
+	"Threads": {
+		"list": {
+			"header": {
+				"systemLabel": "帖子渲染系统",
+				"title": "帖子渲染"
+			},
+			"actions": {
+				"new": "新建",
+				"deleteAria": "删除帖子"
+			},
+			"confirmDelete": {
+				"title": "删除帖子？",
+				"description": "删除帖子“{title}”？",
+				"confirmText": "删除"
+			},
+			"toasts": {
+				"deleted": "已删除"
+			},
+			"empty": "还没有帖子。可以从 X thread JSON 导入创建。"
+		},
+		"new": {
+			"title": "导入 X Thread JSON",
+			"inputs": {
+				"uploadLabel": "上传 JSON 文件",
+				"fileName": "文件：{fileName}",
+				"pasteLabel": "粘贴 JSON",
+				"pastePlaceholder": "在此粘贴 x-thread-*.json 的内容…"
+			},
+			"preview": {
+				"title": "标题",
+				"replies": "回复数",
+				"sourceUrl": "来源链接",
+				"hint": "JSON 合法后会显示预览。"
+			},
+			"actions": {
+				"create": "创建"
+			},
+			"toasts": {
+				"existedRepaired": "帖子已存在；已修复缺失的帖子内容",
+				"alreadyExists": "帖子已存在",
+				"created": "帖子已创建",
+				"fileLoaded": "已加载 {fileName}",
+				"readFileFailed": "读取文件失败",
+				"jsonEmpty": "JSON 为空"
+			}
+		},
+		"detail": {
+			"header": {
+				"breadcrumb": "帖子"
+			},
+			"sections": {
+				"preview": "预览",
+				"posts": "帖子",
+				"editor": "编辑器",
+				"media": "媒体",
+				"debug": "存储（DB）/ 原始数据",
+				"render": "渲染（云端）"
+			},
+			"labels": {
+				"root": "根帖",
+				"replies": "回复（{count}）",
+				"emptyText": "（空）"
+			},
+			"actions": {
+				"back": "返回",
+				"downloading": "下载中…",
+				"download": "下载",
+				"save": "保存",
+				"reset": "重置",
+				"startRender": "开始渲染"
+			},
+			"toasts": {
+				"saved": "已保存",
+				"reset": "已重置",
+				"mediaIngest": "媒体下载：处理={processed} 成功={ok} 失败={failed}",
+				"renderQueued": "已加入渲染队列"
+			},
+			"media": {
+				"assetRowMissing": "未在 `thread_assets` 中找到对应资源行",
+				"noBlocks": "此帖子没有图片/视频/链接块。",
+				"openSourceUrl": "打开 sourceUrl",
+				"unknownBlockType": "未知块类型：{type}",
+				"labels": {
+					"link": "链接",
+					"title": "标题",
+					"description": "描述",
+					"previewAssetId": "预览资源ID"
+				}
+			},
+			"editor": {
+				"textLabel": "文本（MVP：单个文本块）"
+			},
+			"debug": {
+				"selectedPostRow": "选中帖子行",
+				"threadRow": "帖子行",
+				"none": "（无）"
+			},
+			"render": {
+				"jobId": "jobId：{jobId}",
+				"status": "状态：{status}",
+				"progress": "进度：{progress}%",
+				"downloadMp4": "下载 mp4"
+			}
+		}
+	},
 	"Media": {
 		"title": "媒体库",
 		"downloadCta": "下载媒体",
@@ -92,10 +218,43 @@
 		"empty": {
 			"title": "还没有媒体文件",
 			"body": "从下载你的第一个视频开始，构建媒体库。"
+		},
+		"ui": {
+			"breadcrumb": {
+				"system": "媒体库系统",
+				"section": "媒体清单"
+			},
+			"labels": {
+				"totalRecords": "总记录数：",
+				"srcProvider": "来源",
+				"regDate": "登记日期",
+				"internal": "内部"
+			},
+			"loading": "轮询存储系统中…",
+			"errorTitle": "系统故障：接口异常",
+			"retry": "【重试握手】",
+			"emptyCta": "【开始导入】",
+			"pagination": {
+				"prev": "【上一卷】",
+				"prevDisabled": "上一卷",
+				"next": "【下一卷】",
+				"nextDisabled": "下一卷",
+				"volumeUnit": "卷 {page} / {pageCount}",
+				"endOfStream": "索引末尾"
+			},
+			"confirmDelete": {
+				"title": "安全警告：危险操作",
+				"confirmText": "清除记录"
+			}
 		}
 	},
 	"Home": {
 		"badge": "下一代视频平台",
+		"topBar": {
+			"brand": "VidGenius Hub",
+			"login": "登录",
+			"documentation": "文档"
+		},
 		"title": "Video Genius Hub",
 		"hero": "你的视频处理、转写与分析的智能平台。",
 		"cta": "开始使用",
@@ -386,6 +545,14 @@
 	"Download": {
 		"page": {
 			"title": "云端视频下载",
+			"ui": {
+				"breadcrumb": {
+					"system": "导入系统",
+					"section": "资源获取"
+				},
+				"taskConfigTitle": "任务配置界面",
+				"statusAwaiting": "状态：等待输入"
+			},
 			"form": {
 				"title": "新建任务",
 				"desc": "粘贴链接、选择清晰度；代理可选，不选则自动选择可用代理。",
@@ -393,6 +560,7 @@
 				"urlPlaceholder": "https://example.com/video",
 				"proxyLabel": "代理",
 				"proxyAuto": "自动选择（推荐）",
+				"noProxy": "不使用代理",
 				"quality": "清晰度",
 				"quality1080": "1080p",
 				"quality720": "720p",
@@ -561,6 +729,139 @@
 			"start": "开始渲染",
 			"starting": "渲染中…",
 			"started": "已开始渲染"
+		},
+		"ui": {
+			"actions": {
+				"save": "保存",
+				"reset": "重置"
+			},
+			"cues": {
+				"title": "字幕条目",
+				"deleteAria": "删除字幕条目",
+				"deleteTitle": "删除该字幕条目"
+			},
+			"translationEditor": {
+				"hideEditor": "隐藏编辑器",
+				"editVtt": "编辑 VTT",
+				"noTranslationYet": "暂无译文。先执行翻译以生成字幕条目。"
+			},
+			"step4Preview": {
+				"renderingTitle": "渲染进行中",
+				"renderingBody": "正在处理并渲染带字幕的视频，请稍候…",
+				"previewTitle": "预览视频",
+				"downloadTitle": "下载文件",
+				"downloadVideo": "下载视频",
+				"videoUnsupported": "你的浏览器不支持 video 标签。"
+			},
+			"videoPreview": {
+				"title": "视频预览",
+				"videoUnsupported": "你的浏览器不支持 video 标签。",
+				"messages": {
+					"previewDisabledDuringRendering": "渲染期间禁用预览",
+					"translationRequiredForPreview": "预览需要译文",
+					"noSubtitlesFound": "未找到字幕"
+				}
+			},
+			"configControls": {
+				"title": "字幕设置",
+				"badge": {
+					"custom": "自定义",
+					"preset": "预设"
+				},
+				"tabs": {
+					"presets": "预设",
+					"manual": "手动"
+				},
+				"fields": {
+					"fontSize": "字体大小",
+					"opacity": "透明度",
+					"background": "背景",
+					"colors": "颜色"
+				},
+				"colors": {
+					"text": "文字",
+					"background": "背景",
+					"outline": "描边"
+				},
+				"actions": {
+					"resetToDefault": "重置为默认值"
+				}
+			},
+			"hintTextConfig": {
+				"title": "黑屏提示文本",
+				"enabledLabel": "启用提示文本",
+				"contentLabel": "提示文本内容",
+				"contentPlaceholder": "输入黑屏时显示的提示文本…",
+				"fontSize": "字体大小",
+				"position": {
+					"label": "位置",
+					"center": "居中",
+					"top": "顶部",
+					"bottom": "底部"
+				},
+				"animation": {
+					"label": "动画",
+					"none": "无",
+					"fadeIn": "淡入",
+					"slideUp": "上滑"
+				},
+				"backgroundOpacity": "背景透明度",
+				"colors": {
+					"text": "文字",
+					"background": "背景",
+					"outline": "描边"
+				}
+			},
+			"timeline": {
+				"title": "时间轴选择",
+				"badges": {
+					"loadingDuration": "加载视频时长…",
+					"conflicts": "{count} 个冲突"
+				},
+				"inputs": {
+					"startTime": "开始时间（秒）",
+					"endTime": "结束时间（秒）"
+				},
+				"actions": {
+					"preview": "预览"
+				},
+				"durationLabel": "时长：",
+				"conflictsHint": "与现有片段冲突，请调整时间范围以避免冲突。"
+			},
+			"effects": {
+				"header": {
+					"title": "时间段效果",
+					"effectsCount": "{count} 个效果"
+				},
+				"empty": {
+					"title": "未配置时间段效果",
+					"body": "添加效果以在特定时间范围内黑屏或静音"
+				},
+				"badges": {
+					"muted": "静音",
+					"blackScreen": "黑屏"
+				},
+				"form": {
+					"editTitle": "编辑时间段效果",
+					"addTitle": "添加时间段效果",
+					"blackScreen": "黑屏",
+					"muteAudio": "静音",
+					"descriptionLabel": "描述（可选）",
+					"descriptionPlaceholder": "描述该效果…"
+				},
+				"actions": {
+					"addFirst": "添加第一个效果",
+					"addEffect": "添加效果",
+					"editAria": "编辑效果",
+					"deleteAria": "删除效果",
+					"cancel": "取消",
+					"update": "更新",
+					"add": "添加"
+				},
+				"toasts": {
+					"invalidTimeRange": "无效的时间范围：开始时间必须小于结束时间"
+				}
+			}
 		}
 	},
 	"MediaComments": {

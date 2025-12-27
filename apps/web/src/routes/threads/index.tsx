@@ -5,6 +5,7 @@ import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-pr
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
 export const Route = createFileRoute('/threads/')({
@@ -14,6 +15,7 @@ export const Route = createFileRoute('/threads/')({
 function ThreadsIndexRoute() {
 	const qc = useQueryClient()
 	const confirmDialog = useConfirmDialog()
+	const t = useTranslations('Threads.list')
 
 	const threadsQuery = useQuery(queryOrpc.thread.list.queryOptions())
 	const items = threadsQuery.data?.items ?? []
@@ -25,7 +27,7 @@ function ThreadsIndexRoute() {
 			},
 		}),
 		{
-			successToast: 'Deleted',
+			successToast: t('toasts.deleted'),
 			errorToast: ({ error }) =>
 				error instanceof Error ? error.message : String(error),
 		},
@@ -40,16 +42,16 @@ function ThreadsIndexRoute() {
 					<div className="flex items-center justify-between gap-4">
 						<div>
 							<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-								Thread_Rendering_System
+								{t('header.systemLabel')}
 							</div>
 							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
-								Threads
+								{t('header.title')}
 							</h1>
 						</div>
 						<Button asChild className="rounded-none font-mono text-xs uppercase">
 							<Link to="/threads/new">
 								<Plus className="h-4 w-4" />
-								New
+								{t('actions.new')}
 							</Link>
 						</Button>
 					</div>
@@ -72,7 +74,7 @@ function ThreadsIndexRoute() {
 										variant="ghost"
 										size="icon"
 										className="h-7 w-7 rounded-none border border-border bg-background/90 text-muted-foreground hover:bg-destructive hover:text-white hover:border-destructive opacity-0 group-hover:opacity-100 transition-all"
-										aria-label="Delete thread"
+										aria-label={t('actions.deleteAria')}
 										disabled={deleteMutation.isPending}
 										onClick={(e) => {
 											e.preventDefault()
@@ -80,9 +82,11 @@ function ThreadsIndexRoute() {
 											if (deleteMutation.isPending) return
 											void (async () => {
 												const ok = await confirmDialog({
-													title: 'SECURITY_WARNING: DESTRUCTIVE_ACTION',
-													description: `Delete thread “${t.title}”?`,
-													confirmText: 'DELETE',
+													title: t('confirmDelete.title'),
+													description: t('confirmDelete.description', {
+														title: t.title,
+													}),
+													confirmText: t('confirmDelete.confirmText'),
 													variant: 'destructive',
 												})
 												if (!ok) return
@@ -110,7 +114,7 @@ function ThreadsIndexRoute() {
 					{items.length === 0 ? (
 						<Card className="rounded-none border-dashed">
 							<CardContent className="py-10 text-center text-sm text-muted-foreground">
-								No threads yet. Create one from an X thread JSON.
+								{t('empty')}
 							</CardContent>
 						</Card>
 					) : null}

@@ -1,4 +1,5 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
+import { useTranslations } from '~/lib/i18n'
 import { useTheme, type Theme } from '~/lib/theme'
 import { cn } from '~/lib/utils'
 
@@ -12,6 +13,7 @@ export default function ThemeToggle({
 	className,
 }: ThemeToggleProps) {
 	const { theme, setTheme } = useTheme()
+	const t = useTranslations('Common.theme')
 
 	if (collapsed) {
 		const nextTheme: Record<Theme, Theme> = {
@@ -26,6 +28,8 @@ export default function ThemeToggle({
 			system: Monitor,
 		}[theme]
 
+		const themeName = t(`names.${theme}`)
+
 		return (
 			<button
 				type="button"
@@ -34,7 +38,7 @@ export default function ThemeToggle({
 					'flex h-8 w-8 items-center justify-center border border-border bg-background text-foreground hover:bg-secondary transition-colors',
 					className,
 				)}
-				title={`Current theme: ${theme}. Click to switch.`}
+				title={t('toggleTitle', { theme: themeName })}
 			>
 				<Icon className="h-4 w-4" />
 			</button>
@@ -53,7 +57,7 @@ export default function ThemeToggle({
 				onClick={() => setTheme('light')}
 				data-active={theme === 'light'}
 				className="px-2 py-1 text-xs transition-colors hover:bg-secondary/50 data-[active=true]:bg-secondary data-[active=true]:text-foreground text-muted-foreground"
-				title="Light Theme"
+				title={t('titles.light')}
 			>
 				<Sun className="h-3.5 w-3.5" />
 			</button>
@@ -63,7 +67,7 @@ export default function ThemeToggle({
 				onClick={() => setTheme('system')}
 				data-active={theme === 'system'}
 				className="px-2 py-1 text-xs transition-colors hover:bg-secondary/50 data-[active=true]:bg-secondary data-[active=true]:text-foreground text-muted-foreground"
-				title="System Theme"
+				title={t('titles.system')}
 			>
 				<Monitor className="h-3.5 w-3.5" />
 			</button>
@@ -73,7 +77,7 @@ export default function ThemeToggle({
 				onClick={() => setTheme('dark')}
 				data-active={theme === 'dark'}
 				className="px-2 py-1 text-xs transition-colors hover:bg-secondary/50 data-[active=true]:bg-secondary data-[active=true]:text-foreground text-muted-foreground"
-				title="Dark Theme"
+				title={t('titles.dark')}
 			>
 				<Moon className="h-3.5 w-3.5" />
 			</button>

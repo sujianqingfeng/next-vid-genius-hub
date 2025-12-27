@@ -857,7 +857,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 									<div className="border border-border bg-background">
 										<div className="flex items-center justify-between border-b border-border bg-secondary/5 px-4 py-3">
 											<div className="text-xs font-bold uppercase tracking-wide">
-												Cues
+												{t('ui.cues.title')}
 											</div>
 											<div className="flex items-center gap-2">
 												<Button
@@ -869,7 +869,9 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 													}}
 													className="rounded-none h-8 text-[10px] uppercase font-bold border border-transparent hover:border-border"
 												>
-													{translationEditorOpen ? 'Hide Editor' : 'Edit VTT'}
+													{translationEditorOpen
+														? t('ui.translationEditor.hideEditor')
+														: t('ui.translationEditor.editVtt')}
 												</Button>
 											</div>
 										</div>
@@ -903,8 +905,8 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 															})
 														}
 														disabled={deleteCueMutation.isPending}
-														aria-label="Delete cue"
-														title="Delete this subtitle cue"
+														aria-label={t('ui.cues.deleteAria')}
+														title={t('ui.cues.deleteTitle')}
 														className="text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-none h-8 w-8 p-0"
 													>
 														<Trash2 className="h-4 w-4" />
@@ -934,7 +936,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 														disabled={updateTranslationMutation.isPending}
 														className="rounded-none h-8 uppercase text-xs font-bold"
 													>
-														Save
+														{t('ui.actions.save')}
 													</Button>
 													<Button
 														variant="outline"
@@ -943,7 +945,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 														}}
 														className="rounded-none h-8 uppercase text-xs font-bold border-border"
 													>
-														Reset
+														{t('ui.actions.reset')}
 													</Button>
 												</div>
 											</div>
@@ -951,7 +953,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 									</div>
 								) : (
 									<div className="mt-6 text-sm font-mono text-muted-foreground border border-dashed border-border p-8 text-center uppercase">
-										No translation yet. Start translation to generate cues.
+										{t('ui.translationEditor.noTranslationYet')}
 									</div>
 								)}
 							</div>

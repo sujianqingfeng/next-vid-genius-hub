@@ -13,6 +13,7 @@ import {
 } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
 import { Textarea } from '~/components/ui/textarea'
+import { useTranslations } from '~/lib/i18n'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
 import { DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
 import type { HintTextConfig } from '~/lib/subtitle/types'
@@ -32,6 +33,7 @@ export function HintTextConfigControls({
 	config,
 	onChange,
 }: HintTextConfigControlsProps) {
+	const t = useTranslations('Subtitles.ui.hintTextConfig')
 	const hintConfig = config || DEFAULT_SUBTITLE_RENDER_CONFIG.hintTextConfig!
 
 	return (
@@ -39,7 +41,7 @@ export function HintTextConfigControls({
 			<div className="flex items-center justify-between">
 				<h3 className="text-lg font-semibold flex items-center gap-2">
 					<Video className="h-5 w-5" />
-					Black Screen Hint Text
+					{t('title')}
 				</h3>
 				<div className="flex items-center space-x-2">
 					<Switch
@@ -48,7 +50,7 @@ export function HintTextConfigControls({
 						onCheckedChange={(checked) => onChange('enabled', checked === true)}
 					/>
 					<Label htmlFor="hint-text-enabled" className="text-sm">
-						Enable hint text
+						{t('enabledLabel')}
 					</Label>
 				</div>
 			</div>
@@ -58,11 +60,11 @@ export function HintTextConfigControls({
 					{/* 文本内容 */}
 					<div className="space-y-2">
 						<Label htmlFor="hint-text-content" className="text-sm font-medium">
-							Hint Text Content
+							{t('contentLabel')}
 						</Label>
 						<Textarea
 							id="hint-text-content"
-							placeholder="Enter hint text to display during black screen..."
+							placeholder={t('contentPlaceholder')}
 							value={hintConfig.text}
 							onChange={(e) => onChange('text', e.target.value)}
 							className="min-h-[60px] text-sm"
@@ -75,7 +77,7 @@ export function HintTextConfigControls({
 						{/* 字体大小 */}
 						<div className="space-y-2">
 							<Label htmlFor="hint-font-size" className="text-sm font-medium">
-								Font Size
+								{t('fontSize')}
 							</Label>
 							<Input
 								type="number"
@@ -99,7 +101,7 @@ export function HintTextConfigControls({
 
 						{/* 位置 */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Position</Label>
+							<Label className="text-sm font-medium">{t('position.label')}</Label>
 							<Select
 								value={hintConfig.position}
 								onValueChange={(value: 'center' | 'top' | 'bottom') =>
@@ -110,16 +112,18 @@ export function HintTextConfigControls({
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="center">Center</SelectItem>
-									<SelectItem value="top">Top</SelectItem>
-									<SelectItem value="bottom">Bottom</SelectItem>
+									<SelectItem value="center">{t('position.center')}</SelectItem>
+									<SelectItem value="top">{t('position.top')}</SelectItem>
+									<SelectItem value="bottom">{t('position.bottom')}</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
 
 						{/* 动画 */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">Animation</Label>
+							<Label className="text-sm font-medium">
+								{t('animation.label')}
+							</Label>
 							<Select
 								value={hintConfig.animation || 'none'}
 								onValueChange={(value: 'fade-in' | 'slide-up' | 'none') =>
@@ -130,9 +134,9 @@ export function HintTextConfigControls({
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="none">None</SelectItem>
-									<SelectItem value="fade-in">Fade In</SelectItem>
-									<SelectItem value="slide-up">Slide Up</SelectItem>
+									<SelectItem value="none">{t('animation.none')}</SelectItem>
+									<SelectItem value="fade-in">{t('animation.fadeIn')}</SelectItem>
+									<SelectItem value="slide-up">{t('animation.slideUp')}</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -144,7 +148,7 @@ export function HintTextConfigControls({
 									htmlFor="hint-background-opacity"
 									className="text-sm font-medium"
 								>
-									Background Opacity
+									{t('backgroundOpacity')}
 								</Label>
 								<span className="text-xs text-muted-foreground">
 									{Math.round(hintConfig.backgroundOpacity * 100)}%
@@ -180,19 +184,19 @@ export function HintTextConfigControls({
 						fields={[
 							{
 								id: 'hint-text-color',
-								label: 'Text',
+								label: t('colors.text'),
 								value: hintConfig.textColor,
 								onChange: (e) => onChange('textColor', e.target.value),
 							},
 							{
 								id: 'hint-background-color',
-								label: 'BG',
+								label: t('colors.background'),
 								value: hintConfig.backgroundColor,
 								onChange: (e) => onChange('backgroundColor', e.target.value),
 							},
 							{
 								id: 'hint-outline-color',
-								label: 'Outline',
+								label: t('colors.outline'),
 								value: hintConfig.outlineColor,
 								onChange: (e) => onChange('outlineColor', e.target.value),
 							},

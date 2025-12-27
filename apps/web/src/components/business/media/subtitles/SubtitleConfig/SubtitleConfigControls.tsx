@@ -9,6 +9,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
+import { useTranslations } from '~/lib/i18n'
 import type {
 	SubtitleRenderConfig,
 	SubtitleRenderPreset,
@@ -44,13 +45,14 @@ export function SubtitleConfigControls({
 	onColorChange,
 	onSetOpacity,
 }: SubtitleConfigControlsProps) {
+	const t = useTranslations('Subtitles.ui.configControls')
 	const bgEnabled = (config.backgroundOpacity ?? 0) > 0
 	return (
 		<div className="space-y-3">
 			<div className="flex items-center justify-between">
-				<h3 className="text-sm font-medium">Subtitle Settings</h3>
+				<h3 className="text-sm font-medium">{t('title')}</h3>
 				<Badge variant="outline" className="text-xs">
-					{selectedPresetId === 'custom' ? 'Custom' : 'Preset'}
+					{selectedPresetId === 'custom' ? t('badge.custom') : t('badge.preset')}
 				</Badge>
 			</div>
 
@@ -58,11 +60,11 @@ export function SubtitleConfigControls({
 				<TabsList className="grid w-full grid-cols-2">
 					<TabsTrigger value="presets" className="text-xs">
 						<Palette className="h-3 w-3 mr-1" />
-						Presets
+						{t('tabs.presets')}
 					</TabsTrigger>
 					<TabsTrigger value="manual" className="text-xs">
 						<SlidersHorizontal className="h-3 w-3 mr-1" />
-						Manual
+						{t('tabs.manual')}
 					</TabsTrigger>
 				</TabsList>
 
@@ -94,7 +96,7 @@ export function SubtitleConfigControls({
 						<div className="grid grid-cols-2 gap-3">
 							<div className="space-y-1.5">
 								<Label htmlFor="subtitle-font-size" className="text-xs">
-									Font Size
+									{t('fields.fontSize')}
 								</Label>
 								<Input
 									type="number"
@@ -113,7 +115,7 @@ export function SubtitleConfigControls({
 										htmlFor="subtitle-background-opacity"
 										className="text-xs"
 									>
-										Opacity
+										{t('fields.opacity')}
 									</Label>
 									<span className="text-xs text-muted-foreground">
 										{Math.round(config.backgroundOpacity * 100)}%
@@ -135,7 +137,7 @@ export function SubtitleConfigControls({
 						{/* 背景开关 */}
 						<div className="flex items-center justify-between">
 							<Label htmlFor="subtitle-bg-enabled" className="text-xs">
-								Background
+								{t('fields.background')}
 							</Label>
 							<Switch
 								id="subtitle-bg-enabled"
@@ -156,24 +158,24 @@ export function SubtitleConfigControls({
 
 						{/* 颜色控制 */}
 						<div className="space-y-2">
-							<Label className="text-xs font-medium">Colors</Label>
+							<Label className="text-xs font-medium">{t('fields.colors')}</Label>
 							<ColorPickerGrid
 								fields={[
 									{
 										id: 'subtitle-text-color',
-										label: 'Text',
+										label: t('colors.text'),
 										value: config.textColor,
 										onChange: onColorChange('textColor'),
 									},
 									{
 										id: 'subtitle-background-color',
-										label: 'BG',
+										label: t('colors.background'),
 										value: config.backgroundColor,
 										onChange: onColorChange('backgroundColor'),
 									},
 									{
 										id: 'subtitle-outline-color',
-										label: 'Outline',
+										label: t('colors.outline'),
 										value: config.outlineColor,
 										onChange: onColorChange('outlineColor'),
 									},
@@ -189,7 +191,7 @@ export function SubtitleConfigControls({
 							onClick={() => onPresetClick(presets[0])}
 							className="w-full text-xs"
 						>
-							Reset to Default
+							{t('actions.resetToDefault')}
 						</Button>
 					</div>
 				</TabsContent>
