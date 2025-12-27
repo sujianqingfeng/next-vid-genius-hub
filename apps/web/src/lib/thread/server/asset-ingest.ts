@@ -62,6 +62,7 @@ async function readBodyWithLimit(
 export async function ingestThreadAssets(opts?: {
 	userId?: string
 	assetIds?: string[]
+	includeFailed?: boolean
 	maxAssetsPerRun?: number
 	fetchTimeoutMs?: number
 	maxBytes?: number
@@ -76,10 +77,13 @@ export async function ingestThreadAssets(opts?: {
 
 	const db = await getDb()
 
+	const shouldIncludeFailed = Boolean(opts?.includeFailed || opts?.assetIds?.length)
+
 	const conditions = [
 		or(
 			eq(schema.threadAssets.status, 'pending'),
 			eq(schema.threadAssets.status, 'ready'),
+			shouldIncludeFailed ? eq(schema.threadAssets.status, 'failed') : null,
 		),
 		isNull(schema.threadAssets.storageKey),
 		isNotNull(schema.threadAssets.sourceUrl),
@@ -144,9 +148,16 @@ export async function ingestThreadAssets(opts?: {
 			failed += 1
 			const msg = e instanceof Error ? e.message : String(e)
 			logger.warn('api', `[thread-assets] ingest failed asset=${asset.id} ${msg}`)
+			const isConfigError =
+				msg.includes('CF_ORCHESTRATOR_URL is not configured') ||
+				msg.includes('JOB_CALLBACK_HMAC_SECRET is not configured')
+
 			await db
 				.update(schema.threadAssets)
-				.set({ status: 'failed', updatedAt: new Date() })
+				.set({
+					status: isConfigError ? 'pending' : 'failed',
+					updatedAt: new Date(),
+				})
 				.where(eq(schema.threadAssets.id, asset.id))
 		}
 	}
