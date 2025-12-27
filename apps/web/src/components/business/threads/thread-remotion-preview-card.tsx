@@ -33,6 +33,7 @@ type DbThreadPost = {
 	authorHandle?: string | null
 	contentBlocks: any[]
 	plainText: string
+	translations?: ThreadVideoInputProps['root']['translations'] | null
 	createdAt?: Date | null
 	metrics?: { likes?: number | null } | null
 }
@@ -100,6 +101,7 @@ export function ThreadRemotionPreviewCard({
 				author: { name: root.authorName, handle: root.authorHandle ?? null },
 				contentBlocks: (root.contentBlocks ?? []) as any,
 				plainText: root.plainText,
+				translations: root.translations ?? null,
 				createdAt: toIso(root.createdAt),
 				metrics: { likes: Number(root.metrics?.likes ?? 0) || 0 },
 			},
@@ -108,6 +110,7 @@ export function ThreadRemotionPreviewCard({
 				author: { name: r.authorName, handle: r.authorHandle ?? null },
 				contentBlocks: (r.contentBlocks ?? []) as any,
 				plainText: r.plainText,
+				translations: r.translations ?? null,
 				createdAt: toIso(r.createdAt),
 				metrics: { likes: Number(r.metrics?.likes ?? 0) || 0 },
 			})),
