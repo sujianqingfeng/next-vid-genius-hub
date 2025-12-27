@@ -74,8 +74,8 @@
 ### A) 回调与轮询“双写”造成认知负担
 
 - 回调（`/api/render/cf-callback`）会更新 `tasks`/`media`，并做计费、ASR 入库等副作用。
-- 多个 `get*Status`（轮询）接口也会在拉到 status 后 **best-effort 更新 `tasks`**，并且有时还会“补偿修复” `media` 字段。
-- 结果：业务状态到底以谁为准、何时落库、谁触发副作用，会变得不清晰；代码中不可避免出现对账/兜底/重试逻辑。
+- 轮询（`get*Status`）与定时 reconciler 不承载业务投影写入；轮询只用于展示，reconciler 只对齐 `tasks` 状态/快照。
+- 结果：业务投影的写入源收敛为 callback，减少“谁写了 DB”的竞态与理解成本。
 
 ### B) 单个 engine 承载多种“业务语义”，回调侧只能分流/忽略
 
@@ -126,15 +126,16 @@
 
 - 回调丢失
 - 远端对象短时间不可读（已存在的 best-effort reconciliation 说明确实会发生）
-- 旧版本回滚/兼容字段差异
+- （本地-only）不考虑旧版本回滚/兼容字段差异
 
 ## 后续 TODO（可按任务类型逐条收敛）
 
 ### 已落地（最小改动：只理顺/不引入新转码）
 
-- 回调写库作为 SSOT：多个 `get*Status` 改为只读（不再 best-effort 更新 `tasks/media`）。
+- 回调写库作为 SSOT：多个 `get*Status` 只读；reconciler 只对齐 `tasks` 状态/快照。
 - Orchestrator 回调投递可靠化：DO 生成 `eventSeq/eventId/eventTs`，并用 alarm 重试 `/api/render/cf-callback`（需要幂等）。
 - App 回调幂等/去重：按 `eventSeq` 写入 `tasks.jobStatusSnapshot.callback.lastEventSeq`，重复事件直接 ACK。
+- 运维补救：App 管理员可触发 Orchestrator 重放回调（重新投递 `/api/render/cf-callback`），用于回调丢失/被忽略时的手动修复。
 - comments/channel/metadata-refresh：把“completed 后还要 finalize”的落库闭环放进回调侧（UI 不再触发 finalize）。
 - 计费幂等：points 计费以 `refId=jobId` 去重，避免回调重试导致重复扣费。
 
@@ -143,5 +144,5 @@
 - [x] 选定 SSOT：回调写库为主，轮询只读/展示
 - [x] 统一 job payload：增加 `purpose` 并贯穿 manifest → orchestrator → DO → app callback（减少 callback 侧查 DB 分流）
 - [x] comments/channel：把 `finalize*` 收敛到事件侧闭环（避免 UI 再触发）
-- [ ] 轮询降级为“对账/补偿”：保留必要的 reconciliation（回调丢失、对象短暂不可读、兼容旧 deploy）
-- [ ] 为关键链路加“事件日志/审计”（最少包含 jobId、purpose、status、ts、source），便于排查回调/轮询竞态
+- [x] 轮询降级为“对账/补偿”：保留必要的 reconciliation（回调丢失、对象短暂不可读；本地-only 不做旧 deploy 兼容）
+- [x] 关键链路事件日志/审计：`job_events` 记录 jobId/purpose/status/ts/source（并在 Admin 页面可观察）

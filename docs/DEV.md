@@ -251,7 +251,7 @@ pnpm dev:web:vite
 - 业务应用：
   - 转写完成后写入：`media/{mediaId}-{slug}/inputs/subtitles/subtitles.vtt`；
   - 评论下载/翻译后写入：`media/{mediaId}-{slug}/inputs/comments/latest.json`；
-  - 云下载回调时更新 DB 中的 `remoteVideoKey` / `remoteAudioKey` / `remoteMetadataKey`；
+  - 云下载回调时更新 DB 中的 `remoteVideoKey` / `remoteAudioProcessedKey` / `remoteAudioSourceKey` / `remoteMetadataKey`；
   - 启动任意云任务前，根据 DB + 固定路径 + 业务逻辑，构造该 job 的 `JobManifest` 并写入 `manifests/jobs/<jobId>.json`。
 - Worker：
   - 启动任务时只读取对应的 `JobManifest`，使用 `inputs.*Key` 通过 S3 HEAD + 预签 GET 检查/生成容器输入；

@@ -16,7 +16,6 @@
 - Worker（`workers/media-orchestrator`，桶优先）：
   - `POST /jobs`：创建作业 → 从 per-job manifest 解析输入 key → 检查 R2 是否存在 → 生成 R2 预签名 URL → 触发容器 `/render`；
   - `GET /jobs/:id`：供前端轮询；若 R2 产物就绪则回调业务应用落库；
-  - `POST /upload/:id`（可选兜底）：容器可直接 POST 成品；Worker 写入 R2；
   - `GET /artifacts/:id`：从 R2 读取产物（播放/下载代理），支持 Range。
 - R2（按媒体聚合 + 含标题 slug）典型结构：
   - `manifests/jobs/{jobId}.json`          — per-job manifest（唯一权威源）；
@@ -111,7 +110,7 @@ Worker 内部会根据 `PREFER_EXTERNAL_CONTAINERS` / `NO_CF_CONTAINERS` 判断�
 - 业务应用：
   - 转写完成 → 写入 `media/{mediaId}-{slug}/inputs/subtitles/subtitles.vtt`；
   - 评论下载/翻译完成 → 写入 `media/{mediaId}-{slug}/inputs/comments/latest.json`；
-  - 云下载回调 → 更新 DB 中的 `remoteVideoKey` / `remoteAudioKey` / `remoteMetadataKey`；
+  - 云下载回调 → 更新 DB 中的 `remoteVideoKey` / `remoteAudioProcessedKey` / `remoteAudioSourceKey` / `remoteMetadataKey`；
   - 启动任务前，根据 DB + 固定路径 + 业务规则生成 `JobManifest` 并写入 `manifests/jobs/<jobId>.json`。
 - Worker：
   - 启动任务时只读取该 job 的 manifest，检查 `inputs.*Key` 所指对象是否存在（R2 HEAD + 预签 GET）；
@@ -274,7 +273,7 @@ wrangler secret put WORKSPACE_AUTH_PASSWORD --config apps/web/wrangler.root.json
   - Worker 对 `/jobs` 做速率限制与并发阈值；
   - 容器内部也应限制同时运行的作业数，避免资源耗尽。
 - 访问控制：
-  - `/callbacks/container` 与 `/upload/:jobId` 最好只在内网或 Zero Trust 后面开放；
+  - `/callbacks/container` 最好只在内网或 Zero Trust 后面开放；
   - 生产推荐只走 R2 直连，减少业务应用/容器对外暴露面。
 
 ## 观测与告警

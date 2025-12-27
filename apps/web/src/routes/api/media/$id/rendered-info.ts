@@ -5,7 +5,7 @@ import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import {
 	buildDownloadFilename,
-	extractOrchestratorUrlFromPath,
+	makeOrchestratorArtifactUrl,
 	proxyRemoteWithRange,
 } from '~/lib/media/stream'
 
@@ -24,7 +24,8 @@ export const Route = createFileRoute('/api/media/$id/rendered-info')({
 						return Response.json({ error: 'Media not found' }, { status: 404 })
 					}
 
-					if (!media.videoWithInfoPath) {
+					const renderJobId = media.renderCommentsJobId
+					if (!renderJobId) {
 						return Response.json(
 							{ error: 'Rendered info video not found' },
 							{ status: 404 },
@@ -37,30 +38,21 @@ export const Route = createFileRoute('/api/media/$id/rendered-info')({
 						? buildDownloadFilename(media.title, 'video-info', 'mp4')
 						: null
 
-					if (media.videoWithInfoPath.startsWith('remote:orchestrator:')) {
-						const remoteUrl = extractOrchestratorUrlFromPath(
-							media.videoWithInfoPath,
+					const remoteUrl = makeOrchestratorArtifactUrl(renderJobId)
+					if (!remoteUrl) {
+						return Response.json(
+							{ error: 'Orchestrator URL not configured' },
+							{ status: 500 },
 						)
-						if (!remoteUrl) {
-							return Response.json(
-								{ error: 'Orchestrator URL not configured' },
-								{ status: 500 },
-							)
-						}
-						logger.info(
-							'api',
-							`[rendered-info] via orchestrator media=${mediaId} download=${download ? '1' : '0'}`,
-						)
-						return proxyRemoteWithRange(remoteUrl, request, {
-							defaultCacheSeconds: 60,
-							forceDownloadName: downloadName,
-						})
 					}
-
-					return Response.json(
-						{ error: 'Rendered info video not available via orchestrator' },
-						{ status: 404 },
+					logger.info(
+						'api',
+						`[rendered-info] via orchestrator media=${mediaId} download=${download ? '1' : '0'}`,
 					)
+					return proxyRemoteWithRange(remoteUrl, request, {
+						defaultCacheSeconds: 60,
+						forceDownloadName: downloadName,
+					})
 				} catch (error) {
 					logger.error(
 						'api',

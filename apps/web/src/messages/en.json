@@ -797,6 +797,25 @@
 			"empty": "No events",
 			"fields": { "jobId": "Job ID", "taskId": "Task ID", "limit": "Limit" },
 			"placeholders": { "jobId": "job_…", "taskId": "task id" },
+			"replay": {
+				"title": "Replay callback",
+				"subtitle": "Ask the orchestrator to re-send /api/render/cf-callback for a jobId (admin only).",
+				"fields": { "jobId": "Job ID", "reason": "Reason", "force": "Force" },
+				"placeholders": { "reason": "optional (audit only)" },
+				"actions": { "replay": "Replay", "replaying": "Replaying…" },
+				"stats": {
+					"title": "Signals",
+					"ignoredInvalid": "App ignored-invalid",
+					"orchestratorStatus": "Orchestrator status",
+					"appNotified": "App notified",
+					"notifyAttempts": "Notify attempts"
+				},
+				"toast": {
+					"ok": "Replay requested",
+					"okWithSeq": "Replay requested (eventSeq {seq})",
+					"fail": "Replay failed"
+				}
+			},
 			"actions": {
 				"refresh": "Refresh",
 				"refreshing": "Refreshing…",

@@ -86,9 +86,7 @@ export async function handleStart(env: Env, req: Request) {
 	const outputAudioProcessedKey = isDownloader
 		? bucketPaths.downloads.audioProcessed(body.mediaId, jobId, pathOptions)
 		: undefined
-	// Backward-compatible: treat outputAudioKey as the processed audio key.
-	let outputAudioKey = isDownloader ? outputAudioProcessedKey : undefined
-	const outputMetadataKey = isDownloader
+	const metadataKey = isDownloader
 		? bucketPaths.downloads.metadata(body.mediaId, jobId, pathOptions)
 		: undefined
 
@@ -108,9 +106,6 @@ export async function handleStart(env: Env, req: Request) {
 		if (!sourceKey) {
 			return json({ error: 'asr-pipeline missing sourceKey' }, { status: 400 })
 		}
-		// For direct ASR, treat the original audio key as the "outputAudioKey" for observability.
-		outputAudioKey = sourceKey
-
 		const stub = jobStub(env, jobId)
 		if (stub) {
 			const initPayload: Record<string, unknown> = {
@@ -120,8 +115,7 @@ export async function handleStart(env: Env, req: Request) {
 				engine: body.engine,
 				purpose,
 				status: 'running',
-				outputKey: undefined,
-				outputAudioKey,
+				outputs: {},
 				metadata: { ...(body.options || {}) },
 			}
 			await stub.fetch('https://do/init', {
@@ -249,16 +243,16 @@ export async function handleStart(env: Env, req: Request) {
 		'video/mp4',
 		jobS3Endpoint,
 	)
-	const outputAudioPutUrl = outputAudioKey
-		? await presignS3(
-				env,
-				'PUT',
-				bucketName,
-				outputAudioKey,
-				putTtl,
-				// Processed audio from media-downloader is WAV (PCM S16LE, 16kHz mono).
-				'audio/wav',
-				jobS3Endpoint,
+		const outputAudioPutUrl = outputAudioProcessedKey
+			? await presignS3(
+					env,
+					'PUT',
+					bucketName,
+					outputAudioProcessedKey,
+					putTtl,
+					// Processed audio from media-downloader is WAV (PCM S16LE, 16kHz mono).
+					'audio/wav',
+					jobS3Endpoint,
 			)
 		: undefined
 	const outputAudioSourcePutUrl = outputAudioSourceKey
@@ -273,12 +267,12 @@ export async function handleStart(env: Env, req: Request) {
 				jobS3Endpoint,
 			)
 		: undefined
-	const outputMetadataPutUrl = outputMetadataKey
+	const outputMetadataPutUrl = metadataKey
 		? await presignS3(
 				env,
 				'PUT',
 				bucketName,
-				outputMetadataKey,
+				metadataKey,
 				putTtl,
 				'application/json',
 				jobS3Endpoint,
@@ -299,15 +293,8 @@ export async function handleStart(env: Env, req: Request) {
 		if (outputAudioPutUrl) payload.outputAudioPutUrl = outputAudioPutUrl
 		if (outputAudioSourcePutUrl)
 			payload.outputAudioSourcePutUrl = outputAudioSourcePutUrl
-		payload.outputVideoKey = outputVideoKey
-		if (outputAudioKey) payload.outputAudioKey = outputAudioKey
-		if (outputAudioSourceKey)
-			payload.outputAudioSourceKey = outputAudioSourceKey
-		if (outputAudioProcessedKey)
-			payload.outputAudioProcessedKey = outputAudioProcessedKey
 		if (outputMetadataPutUrl)
 			payload.outputMetadataPutUrl = outputMetadataPutUrl
-		if (outputMetadataKey) payload.outputMetadataKey = outputMetadataKey
 	} else {
 		payload.inputVideoUrl = inputVideoUrl
 		if (body.engine === 'burner-ffmpeg') {
@@ -419,14 +406,22 @@ export async function handleStart(env: Env, req: Request) {
 			engine: body.engine,
 			purpose: purpose ?? manifestPurpose,
 			status: 'running',
-			outputKey: outputVideoKey,
+			outputs:
+				(purpose ?? manifestPurpose) === 'download'
+					? {
+							video: { key: outputVideoKey },
+							...(outputAudioSourceKey
+								? { audioSource: { key: outputAudioSourceKey } }
+								: {}),
+							...(outputAudioProcessedKey
+								? { audioProcessed: { key: outputAudioProcessedKey } }
+								: {}),
+							...(metadataKey ? { metadata: { key: metadataKey } } : {}),
+						}
+					: {
+							...(metadataKey ? { metadata: { key: metadataKey } } : {}),
+						},
 		}
-		if (outputAudioKey) initPayload.outputAudioKey = outputAudioKey
-		if (outputAudioSourceKey)
-			initPayload['outputAudioSourceKey'] = outputAudioSourceKey
-		if (outputAudioProcessedKey)
-			initPayload['outputAudioProcessedKey'] = outputAudioProcessedKey
-		if (outputMetadataKey) initPayload.outputMetadataKey = outputMetadataKey
 		// Persist initial options for ASR pipeline (e.g., model/thresholds)
 		if (isAsrPipeline) {
 			initPayload['metadata'] = { ...(body.options || {}) }

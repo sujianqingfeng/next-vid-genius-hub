@@ -176,6 +176,20 @@
       "when": 1766735269279,
       "tag": "0024_fat_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1766761790964,
+      "tag": "0025_nifty_thaddeus_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1766764563193,
+      "tag": "0026_wet_champions",
+      "breakpoints": true
     }
   ]
 }

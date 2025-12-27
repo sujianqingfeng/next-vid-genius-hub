@@ -5,7 +5,7 @@ import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import {
 	buildDownloadFilename,
-	extractOrchestratorUrlFromPath,
+	makeOrchestratorArtifactUrl,
 	proxyRemoteWithRange,
 } from '~/lib/media/stream'
 
@@ -30,16 +30,15 @@ export const Route = createFileRoute('/api/media/$id/rendered')({
 						? buildDownloadFilename(media.title, 'video', 'mp4')
 						: null
 
-					if (!media.videoWithSubtitlesPath) {
+					const renderJobId = media.renderSubtitlesJobId
+					if (!renderJobId) {
 						return Response.json(
 							{ error: 'Rendered video not found' },
 							{ status: 404 },
 						)
 					}
 
-					const remoteUrl = extractOrchestratorUrlFromPath(
-						media.videoWithSubtitlesPath,
-					)
+					const remoteUrl = makeOrchestratorArtifactUrl(renderJobId)
 					if (!remoteUrl) {
 						return Response.json(
 							{ error: 'Orchestrator URL not configured' },

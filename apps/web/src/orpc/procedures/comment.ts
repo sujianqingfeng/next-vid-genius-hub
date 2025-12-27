@@ -8,15 +8,10 @@ import {
 	translateTextWithUsage,
 } from '~/lib/ai/translate'
 import type { RequestContext } from '~/lib/auth/types'
-import {
-	getJobStatus,
-	type JobManifest,
-	presignGetByKey,
-	putJobManifest,
-	startCloudJob,
-} from '~/lib/cloudflare'
+import { getJobStatus, type JobManifest } from '~/lib/cloudflare'
 import { TRANSLATE_CONCURRENCY } from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
+import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
 import { buildCommentsSnapshot } from '~/lib/media/comments-snapshot'
@@ -27,7 +22,6 @@ import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
 import { CommentsTemplateConfigSchema } from '~/lib/remotion/comments-template-config'
 import { mapWithConcurrency } from '~/lib/utils/concurrency'
-import { createId } from '~/lib/utils/id'
 
 export const translateComments = os
 	.input(
@@ -279,7 +273,7 @@ export const startCloudRender = os
 		// 需要存在一个可用的源：本地文件、已完成的云下载（downloadStatus=completed）、已存在的远端 key，或已有渲染成品。
 		const hasAnySource = Boolean(
 			media.filePath ||
-			media.videoWithSubtitlesPath ||
+			media.renderSubtitlesJobId ||
 			media.remoteVideoKey ||
 			(media.downloadJobId && media.downloadStatus === 'completed'),
 		)
@@ -296,8 +290,7 @@ export const startCloudRender = os
 			sourcePolicy: input.sourcePolicy,
 			remoteVideoKey: media.remoteVideoKey ?? null,
 			downloadJobId: media.downloadJobId ?? null,
-			filePath: media.filePath ?? null,
-			videoWithSubtitlesPath: media.videoWithSubtitlesPath ?? null,
+			renderSubtitlesJobId: media.renderSubtitlesJobId ?? null,
 		})
 		if (!resolvedVideoKey) {
 			throw new Error(
@@ -349,97 +342,68 @@ export const startCloudRender = os
 			})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
-		const taskId = createId()
-		const jobId = `job_${createId()}`
-		await db.insert(schema.tasks).values({
-			id: taskId,
-			userId,
-			kind: TASK_KINDS.RENDER_COMMENTS,
-			engine: 'renderer-remotion',
-			targetType: 'media',
-			targetId: media.id,
-			status: 'queued',
-			progress: 0,
-			payload: {
-				templateId:
-					input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
-				templateConfig: resolvedTemplateConfig,
-				sourcePolicy: input.sourcePolicy || 'auto',
-				proxyId: effectiveProxyId ?? null,
-			},
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		})
-
 		try {
+			const templateId =
+				input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID
+
 			// Per-job manifest for comments render. We use the canonical remote
 			// video as source and the freshly materialized comments snapshot.
-			const manifest: JobManifest = {
-				jobId,
-				mediaId: media.id,
-				purpose: TASK_KINDS.RENDER_COMMENTS,
+			const { taskId, jobId } = await enqueueCloudTask({
+				db,
+				userId,
+				kind: TASK_KINDS.RENDER_COMMENTS,
 				engine: 'renderer-remotion',
-				createdAt: Date.now(),
-				inputs: {
-					videoKey: resolvedVideoKey,
-					commentsKey: snapshotKey ?? null,
-					sourcePolicy: (input.sourcePolicy || 'auto') as any,
-				},
-				optionsSnapshot: {
-					proxyId: effectiveProxyId ?? null,
-					sourcePolicy: input.sourcePolicy || 'auto',
-					templateId:
-						input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
-					templateConfig: resolvedTemplateConfig,
-				},
-			}
-			await putJobManifest(jobId, manifest)
-
-			const job = await startCloudJob({
-				jobId,
+				targetType: 'media',
+				targetId: media.id,
 				mediaId: media.id,
-				engine: 'renderer-remotion',
 				purpose: TASK_KINDS.RENDER_COMMENTS,
 				title: media.title || undefined,
+				payload: {
+					templateId,
+					templateConfig: resolvedTemplateConfig,
+					sourcePolicy: input.sourcePolicy || 'auto',
+					proxyId: effectiveProxyId ?? null,
+				},
 				options: {
 					proxy: proxyPayload,
 					sourcePolicy: input.sourcePolicy || 'auto',
-					templateId:
-						input.templateId || media.commentsTemplate || DEFAULT_TEMPLATE_ID,
+					templateId,
 					templateConfig: resolvedTemplateConfig,
+				},
+				buildManifest: ({ jobId }): JobManifest => {
+					return {
+						jobId,
+						mediaId: media.id,
+						purpose: TASK_KINDS.RENDER_COMMENTS,
+						engine: 'renderer-remotion',
+						createdAt: Date.now(),
+						inputs: {
+							videoKey: resolvedVideoKey,
+							commentsKey: snapshotKey ?? null,
+							sourcePolicy: (input.sourcePolicy || 'auto') as any,
+						},
+						optionsSnapshot: {
+							proxyId: effectiveProxyId ?? null,
+							sourcePolicy: input.sourcePolicy || 'auto',
+							templateId,
+							templateConfig: resolvedTemplateConfig,
+						},
+					}
 				},
 			})
 
 			logger.info(
 				'rendering',
-				`[render.job] queued media=${media.id} user=${userId} task=${taskId} job=${job.jobId} proxyId=${effectiveProxyId ?? 'none'}`,
+				`[render.job] queued media=${media.id} user=${userId} task=${taskId} job=${jobId} proxyId=${effectiveProxyId ?? 'none'}`,
 			)
-
-			await db
-				.update(schema.tasks)
-				.set({
-					jobId: job.jobId,
-					startedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
-			return { jobId: job.jobId, taskId }
+			return { jobId, taskId }
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to start render task'
 			logger.error(
 				'rendering',
-				`[render.error] media=${mediaId} user=${userId} task=${taskId} error=${message}`,
+				`[render.error] media=${mediaId} user=${userId} error=${message}`,
 			)
-			await db
-				.update(schema.tasks)
-				.set({
-					status: 'failed',
-					error: message,
-					finishedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
 			throw error
 		}
 	})
@@ -490,50 +454,22 @@ export const startCloudCommentsDownload = os
 			`[comments.download.start] media=${mediaId} user=${userId} pages=${pages} source=${media.source} proxyId=${proxyId ?? 'auto'}`,
 		)
 
-		const taskId = createId()
-		const jobId = `job_${createId()}`
-		await db.insert(schema.tasks).values({
-			id: taskId,
-			userId,
-			kind: TASK_KINDS.COMMENTS_DOWNLOAD,
-			engine: 'media-downloader',
-			targetType: 'media',
-			targetId: mediaId,
-			status: 'queued',
-			progress: 0,
-			payload: {
-				pages,
-				proxyId: effectiveProxyId ?? null,
-				source: media.source,
-			},
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		})
-
 		try {
-			const manifest: JobManifest = {
-				jobId,
-				mediaId,
-				purpose: TASK_KINDS.COMMENTS_DOWNLOAD,
+			const { taskId, jobId } = await enqueueCloudTask({
+				db,
+				userId,
+				kind: TASK_KINDS.COMMENTS_DOWNLOAD,
 				engine: 'media-downloader',
-				createdAt: Date.now(),
-				inputs: {},
-				optionsSnapshot: {
-					url: media.url,
-					source: media.source,
-					task: 'comments',
-					commentsPages: pages,
-					proxyId: effectiveProxyId ?? null,
-				},
-			}
-			await putJobManifest(jobId, manifest)
-
-			const job = await startCloudJob({
-				jobId,
+				targetType: 'media',
+				targetId: mediaId,
 				mediaId,
-				engine: 'media-downloader',
 				purpose: TASK_KINDS.COMMENTS_DOWNLOAD,
 				title: media.title || undefined,
+				payload: {
+					pages,
+					proxyId: effectiveProxyId ?? null,
+					source: media.source,
+				},
 				options: {
 					url: media.url,
 					source: media.source,
@@ -541,23 +477,30 @@ export const startCloudCommentsDownload = os
 					commentsPages: pages,
 					proxy: proxyPayload,
 				},
+				buildManifest: ({ jobId }): JobManifest => {
+					return {
+						jobId,
+						mediaId,
+						purpose: TASK_KINDS.COMMENTS_DOWNLOAD,
+						engine: 'media-downloader',
+						createdAt: Date.now(),
+						inputs: {},
+						optionsSnapshot: {
+							url: media.url,
+							source: media.source,
+							task: 'comments',
+							commentsPages: pages,
+							proxyId: effectiveProxyId ?? null,
+						},
+					}
+				},
 			})
 
 			logger.info(
 				'comments',
-				`[comments.download.job] queued media=${mediaId} user=${userId} task=${taskId} job=${job.jobId} pages=${pages} proxyId=${effectiveProxyId ?? 'none'}`,
+				`[comments.download.job] queued media=${mediaId} user=${userId} task=${taskId} job=${jobId} pages=${pages} proxyId=${effectiveProxyId ?? 'none'}`,
 			)
-
-			await db
-				.update(schema.tasks)
-				.set({
-					jobId: job.jobId,
-					startedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
-
-			return { jobId: job.jobId, taskId }
+			return { jobId, taskId }
 		} catch (error) {
 			const message =
 				error instanceof Error
@@ -565,17 +508,8 @@ export const startCloudCommentsDownload = os
 					: 'Failed to start comments download'
 			logger.error(
 				'comments',
-				`[comments.download.error] media=${mediaId} user=${userId} task=${taskId} pages=${pages} error=${message}`,
+				`[comments.download.error] media=${mediaId} user=${userId} pages=${pages} error=${message}`,
 			)
-			await db
-				.update(schema.tasks)
-				.set({
-					status: 'failed',
-					error: message,
-					finishedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
 			throw error
 		}
 	})
@@ -589,87 +523,4 @@ export const getCloudCommentsStatus = os
 			`[comments.download.status] job=${input.jobId} status=${status.status} progress=${typeof status.progress === 'number' ? Math.round(status.progress * 100) : 'n/a'}`,
 		)
 		return status
-	})
-
-const commentsMetadataSchema = z.object({
-	comments: z
-		.array(
-			z
-				.object({
-					id: z.union([z.string(), z.number()]).optional(),
-					author: z.string().optional(),
-					authorThumbnail: z.string().optional(),
-					content: z.string().optional(),
-					translatedContent: z.string().optional(),
-					likes: z.union([z.number(), z.string()]).optional(),
-					replyCount: z.union([z.number(), z.string()]).optional(),
-				})
-				.passthrough(),
-		)
-		.default([]),
-})
-
-export const finalizeCloudCommentsDownload = os
-	.input(z.object({ mediaId: z.string(), jobId: z.string().min(1) }))
-	.handler(async ({ input, context }) => {
-		const { mediaId, jobId } = input
-		const ctx = context as RequestContext
-		const userId = ctx.auth.user!.id
-		const db = await getDb()
-		const status = await getJobStatus(jobId)
-
-		if (status.status !== 'completed') {
-			throw new Error(`Job not completed: ${status.status}`)
-		}
-
-		// Prefer presigned URL from status; otherwise fall back to metadata key and presign via orchestrator
-		const urlFromStatus = status.outputs?.metadata?.url
-		const keyFromStatus =
-			status.outputs?.metadata?.key ?? status.outputMetadataKey
-
-		let metadataUrl = urlFromStatus
-		if (!metadataUrl && keyFromStatus) {
-			try {
-				metadataUrl = await presignGetByKey(keyFromStatus)
-			} catch (e) {
-				logger.warn(
-					'api',
-					`Failed to presign metadata URL via orchestrator: ${
-						e instanceof Error ? e.message : String(e)
-					}`,
-				)
-			}
-		}
-
-		if (!metadataUrl) {
-			throw new Error('No comments metadata location (url or key) from job')
-		}
-
-		const r = await fetch(metadataUrl)
-		if (!r.ok) throw new Error(`Fetch comments failed: ${r.status}`)
-
-		const { comments: rawComments } = commentsMetadataSchema.parse(
-			await r.json(),
-		)
-
-		const comments: schema.Comment[] = rawComments.map((c) => ({
-			id: String(c.id ?? ''),
-			author: String(c.author ?? ''),
-			authorThumbnail: c.authorThumbnail || undefined,
-			content: String(c.content ?? ''),
-			translatedContent:
-				typeof c.translatedContent === 'string' ? c.translatedContent : '',
-			likes: Number(c.likes ?? 0) || 0,
-			replyCount: Number(c.replyCount ?? 0) || 0,
-		}))
-
-		await db
-			.update(schema.media)
-			.set({
-				comments,
-				commentCount: comments.length,
-				commentsDownloadedAt: new Date(),
-			})
-			.where(and(eq(schema.media.id, mediaId), eq(schema.media.userId, userId)))
-		return { success: true, count: comments.length }
 	})

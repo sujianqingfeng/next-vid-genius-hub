@@ -1,4 +1,4 @@
-import { bucketPaths } from '@app/media-domain'
+import { bucketPaths, type OrchestratorCallbackPayloadV2 } from '@app/media-domain'
 import { runAsrForPipeline } from '../asr/pipeline'
 import {
 	fetchWhisperApiConfigFromApp,
@@ -72,12 +72,7 @@ export class RenderJobDO {
 				engine: body.engine,
 				purpose: body.purpose,
 				status: body.status || 'queued',
-				outputKey: body.outputKey,
-				// Backward-compatible: outputAudioKey is treated as processed audio.
-				outputAudioKey: body.outputAudioKey,
-				outputAudioSourceKey: body.outputAudioSourceKey,
-				outputAudioProcessedKey: body.outputAudioProcessedKey,
-				outputMetadataKey: body.outputMetadataKey,
+				outputs: body.outputs,
 				metadata: body.metadata,
 				ts: Date.now(),
 			}
@@ -89,6 +84,26 @@ export class RenderJobDO {
 		if (req.method === 'POST' && path.endsWith('/progress')) {
 			const body = (await req.json()) as any
 			const doc = ((await this.state.storage.get('job')) as any) || {}
+			const incomingOutputs =
+				body.outputs && typeof body.outputs === 'object' ? body.outputs : undefined
+			const mergedOutputs = (() => {
+				if (!incomingOutputs) return doc.outputs
+				const base =
+					doc.outputs && typeof doc.outputs === 'object' ? doc.outputs : {}
+				const next: Record<string, unknown> = { ...base }
+				for (const [slot, value] of Object.entries(incomingOutputs)) {
+					if (value && typeof value === 'object') {
+						const prev = next[slot]
+						next[slot] = {
+							...(prev && typeof prev === 'object' ? (prev as any) : {}),
+							...(value as any),
+						}
+					} else {
+						next[slot] = value
+					}
+				}
+				return next
+			})()
 			const next = {
 				...doc,
 				jobId: body.jobId || doc.jobId,
@@ -97,30 +112,21 @@ export class RenderJobDO {
 				phase: body.phase ?? doc.phase,
 				progress: body.progress ?? doc.progress,
 				error: body.error ?? doc.error,
-				outputKey: body.outputKey ?? doc.outputKey,
-				outputAudioKey: body.outputAudioKey ?? doc.outputAudioKey,
-				outputAudioSourceKey:
-					body.outputAudioSourceKey ?? doc.outputAudioSourceKey,
-				outputAudioProcessedKey:
-					body.outputAudioProcessedKey ?? doc.outputAudioProcessedKey,
-				outputMetadataKey: body.outputMetadataKey ?? doc.outputMetadataKey,
-				outputs: body.outputs ?? doc.outputs,
+				outputs: mergedOutputs,
 				metadata: body.metadata ?? doc.metadata,
 				ts: Date.now(),
 			}
 			await this.state.storage.put('job', next)
 
 			const completionHasOutputs = () => {
-				if (next.engine === 'asr-pipeline')
-					return Boolean(next.outputs?.vtt?.key)
+				if (next.engine === 'asr-pipeline') return Boolean(next.outputs?.vtt?.key)
 				if (next.engine === 'media-downloader') {
 					return Boolean(
-						next.outputKey ||
-						next.outputMetadataKey ||
+						next.outputs?.video?.key ||
 						next.outputs?.metadata?.key,
 					)
 				}
-				return Boolean(next.outputKey)
+				return Boolean(next.outputs?.video?.key)
 			}
 
 			const shouldNotify =
@@ -129,20 +135,20 @@ export class RenderJobDO {
 				(next.status !== 'completed' || completionHasOutputs())
 
 			if (shouldNotify && next.jobId) {
-				type PendingNotify = {
-					eventSeq: number
-					eventId: string
-					eventTs: number
-					payload: Record<string, unknown>
-					attempt: number
-					nextAt: number
-					lastError?: string
-				}
+					type PendingNotify = {
+						eventSeq: number
+						eventId: string
+						eventTs: number
+						payload: OrchestratorCallbackPayloadV2
+						attempt: number
+						nextAt: number
+						lastError?: string
+					}
 
 				const now = Date.now()
 				let pending = next.pendingNotify as PendingNotify | undefined
 
-				if (!pending) {
+					if (!pending) {
 					const lastSeq =
 						typeof next.callbackEventSeq === 'number' &&
 						Number.isFinite(next.callbackEventSeq)
@@ -159,42 +165,145 @@ export class RenderJobDO {
 						eventTs,
 					})
 
-					pending = {
-						eventSeq,
-						eventId,
-						eventTs,
-						payload,
-						attempt: 0,
-						nextAt: now,
-					}
-					next.pendingNotify = pending
-					await this.state.storage.put('job', next)
-				}
-
-				if (typeof pending.nextAt === 'number' && pending.nextAt > now) {
-					await this.setAlarmEarlier(pending.nextAt)
-				} else {
-					const ok = await this.postAppCallback(pending.payload)
-					if (ok) {
-						next.appNotified = true
-						next.nextNotified = true
-						next.lastNotifiedEventSeq = pending.eventSeq
-						next.pendingNotify = undefined
-						await this.state.storage.put('job', next)
-					} else {
-						pending.attempt = Math.max(0, Math.trunc(pending.attempt || 0)) + 1
-						pending.lastError = 'notifyApp_failed'
-						pending.nextAt = now + this.getNotifyBackoffMs(pending.attempt)
+						pending = {
+							eventSeq,
+							eventId,
+							eventTs,
+							payload,
+							attempt: 0,
+							nextAt: now,
+						}
 						next.pendingNotify = pending
 						await this.state.storage.put('job', next)
-						await this.setAlarmEarlier(pending.nextAt)
+					}
+
+					const pendingNotify = pending
+					if (typeof pendingNotify.nextAt === 'number' && pendingNotify.nextAt > now) {
+						await this.setAlarmEarlier(pendingNotify.nextAt)
+					} else {
+						const ok = await this.postAppCallback(pendingNotify.payload)
+						if (ok) {
+							next.appNotified = true
+							next.nextNotified = true
+							next.lastNotifiedEventSeq = pendingNotify.eventSeq
+							next.pendingNotify = undefined
+							await this.state.storage.put('job', next)
+						} else {
+							pendingNotify.attempt =
+								Math.max(0, Math.trunc(pendingNotify.attempt || 0)) + 1
+							pendingNotify.lastError = 'notifyApp_failed'
+							pendingNotify.nextAt =
+								now + this.getNotifyBackoffMs(pendingNotify.attempt)
+							next.pendingNotify = pendingNotify
+							await this.state.storage.put('job', next)
+							await this.setAlarmEarlier(pendingNotify.nextAt)
+						}
 					}
 				}
-			}
 
 			return new Response(JSON.stringify({ ok: true }), {
 				headers: { 'content-type': 'application/json' },
 			})
+		}
+		if (req.method === 'POST' && path.endsWith('/replay-app-callback')) {
+			let body: any = null
+			try {
+				body = await req.json()
+			} catch {}
+
+			const doc = ((await this.state.storage.get('job')) as any) || null
+			if (!doc || !doc.jobId) {
+				return new Response(JSON.stringify({ error: 'job_not_found' }), {
+					status: 404,
+					headers: { 'content-type': 'application/json' },
+				})
+			}
+
+			const force = Boolean(body?.force)
+			if (!force && !TERMINAL_STATUSES.includes(doc.status)) {
+				return new Response(
+					JSON.stringify({ error: 'not_terminal', status: doc.status || null }),
+					{
+						status: 400,
+						headers: { 'content-type': 'application/json' },
+					},
+				)
+			}
+
+				type PendingNotify = {
+					eventSeq: number
+					eventId: string
+					eventTs: number
+					payload: OrchestratorCallbackPayloadV2
+					attempt: number
+					nextAt: number
+					lastError?: string
+				}
+
+			const now = Date.now()
+			const lastSeq =
+				typeof doc.callbackEventSeq === 'number' && Number.isFinite(doc.callbackEventSeq)
+					? Math.trunc(doc.callbackEventSeq)
+					: 0
+			const eventSeq = lastSeq + 1
+			const eventId = `${doc.jobId}:${eventSeq}`
+			const eventTs = now
+			doc.callbackEventSeq = eventSeq
+
+				const payload = await this.buildAppCallbackPayload(doc, {
+					eventSeq,
+					eventId,
+					eventTs,
+				})
+			;(payload as any).replay = {
+				by: 'debug',
+				requestedAt: typeof body?.requestedAt === 'number' ? body.requestedAt : now,
+				reason:
+					typeof body?.reason === 'string' && body.reason.trim()
+						? body.reason.trim()
+						: null,
+			}
+
+				const pending: PendingNotify = {
+					eventSeq,
+					eventId,
+					eventTs,
+					payload,
+					attempt: 0,
+					nextAt: now,
+				}
+			doc.pendingNotify = pending
+			// Allow replay even if the job was previously notified.
+			doc.appNotified = false
+			doc.nextNotified = false
+			await this.state.storage.put('job', doc)
+
+				const ok = await this.postAppCallback(payload)
+				if (ok) {
+				doc.appNotified = true
+				doc.nextNotified = true
+				doc.lastNotifiedEventSeq = eventSeq
+				doc.pendingNotify = undefined
+				await this.state.storage.put('job', doc)
+			} else {
+				pending.attempt = 1
+				pending.lastError = 'notifyApp_failed'
+				pending.nextAt = now + this.getNotifyBackoffMs(pending.attempt)
+				doc.pendingNotify = pending
+				await this.state.storage.put('job', doc)
+				await this.setAlarmEarlier(pending.nextAt)
+			}
+
+			return new Response(
+				JSON.stringify({
+					ok,
+					jobId: doc.jobId,
+					eventSeq,
+					eventId,
+					eventTs,
+				}),
+				{ headers: { 'content-type': 'application/json' } },
+			)
 		}
 		if (req.method === 'POST' && path.endsWith('/start-asr')) {
 			const doc = (await this.state.storage.get('job')) as any
@@ -276,10 +385,10 @@ export class RenderJobDO {
 				headers: { 'content-type': 'application/json' },
 			})
 		}
-		if (req.method === 'GET') {
-			let doc = (await this.state.storage.get('job')) as any
-			if (!doc) {
-				return new Response(JSON.stringify({ error: 'not found' }), {
+			if (req.method === 'GET') {
+				let doc = (await this.state.storage.get('job')) as any
+				if (!doc) {
+					return new Response(JSON.stringify({ error: 'not found' }), {
 					status: 404,
 					headers: { 'content-type': 'application/json' },
 				})
@@ -290,12 +399,12 @@ export class RenderJobDO {
 				if (doc.phase) delete doc.phase
 				if (doc.progress !== 1) doc.progress = 1
 			}
-			// Enrich outputs with presigned URLs for asr-pipeline artifacts
-			try {
-				const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
-				if (doc.engine === 'asr-pipeline') {
-					if (doc.outputs?.vtt?.key) {
-						doc.outputs.vtt.url = await presignS3(
+					// Enrich outputs with presigned URLs for asr-pipeline artifacts
+					try {
+						const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
+						if (doc.engine === 'asr-pipeline') {
+						if (doc.outputs?.vtt?.key) {
+							doc.outputs.vtt.url = await presignS3(
 							this.env,
 							'GET',
 							bucket,
@@ -303,33 +412,19 @@ export class RenderJobDO {
 							600,
 						)
 					}
-					if (doc.outputs?.words?.key) {
-						doc.outputs.words.url = await presignS3(
-							this.env,
-							'GET',
-							bucket,
-							doc.outputs.words.key,
-							600,
-						)
-					}
-					if (!doc.outputs?.audio && doc.outputAudioKey) {
-						// Provide audio presigned URL for debugging if needed
-						doc.outputs = doc.outputs || {}
-						doc.outputs.audio = {
-							key: doc.outputAudioKey,
-							url: await presignS3(
+						if (doc.outputs?.words?.key) {
+							doc.outputs.words.url = await presignS3(
 								this.env,
 								'GET',
 								bucket,
-								doc.outputAudioKey,
+								doc.outputs.words.key,
 								600,
-							),
+							)
 						}
-					}
-					// If the container stage has completed but ASR hasn't produced VTT yet,
-					// present a non-terminal status to clients to avoid premature completion.
-					if (doc.status === 'completed' && !doc.outputs?.vtt?.key) {
-						doc.status = 'running'
+						// If the container stage has completed but ASR hasn't produced VTT yet,
+						// present a non-terminal status to clients to avoid premature completion.
+						if (doc.status === 'completed' && !doc.outputs?.vtt?.key) {
+							doc.status = 'running'
 					}
 				}
 			} catch {}
@@ -344,48 +439,50 @@ export class RenderJobDO {
 	}
 
 	// Durable Object alarms: used for polling external async ASR providers.
-	async alarm() {
-		const doc = (await this.state.storage.get('job')) as any
-		if (!doc || !doc.jobId) return
+		async alarm() {
+			const doc = (await this.state.storage.get('job')) as any
+			if (!doc || !doc.jobId) return
 
 		// 1) Retry pending callbacks to the app (alarm-driven).
-		type PendingNotify = {
-			eventSeq: number
-			eventId: string
-			eventTs: number
-			payload: Record<string, unknown>
-			attempt: number
-			nextAt: number
-			lastError?: string
-		}
-
-		const pending = doc.pendingNotify as PendingNotify | undefined
-		if (pending && typeof pending.nextAt === 'number') {
-			const now = Date.now()
-			if (pending.nextAt <= now) {
-				const ok = await this.postAppCallback(pending.payload)
-				if (ok) {
-					doc.appNotified = true
-					doc.nextNotified = true
-					doc.lastNotifiedEventSeq = pending.eventSeq
-					doc.pendingNotify = undefined
-					try {
-						await this.state.storage.put('job', doc)
-					} catch {}
-				} else {
-					pending.attempt = Math.max(0, Math.trunc(pending.attempt || 0)) + 1
-					pending.lastError = 'notifyApp_failed'
-					pending.nextAt = now + this.getNotifyBackoffMs(pending.attempt)
-					doc.pendingNotify = pending
-					try {
-						await this.state.storage.put('job', doc)
-					} catch {}
-					await this.setAlarmEarlier(pending.nextAt)
-				}
-			} else {
-				await this.setAlarmEarlier(pending.nextAt)
+			type PendingNotify = {
+				eventSeq: number
+				eventId: string
+				eventTs: number
+				payload: OrchestratorCallbackPayloadV2
+				attempt: number
+				nextAt: number
+				lastError?: string
 			}
-		}
+
+			const pendingNotify = doc.pendingNotify as PendingNotify | undefined
+			if (pendingNotify && typeof pendingNotify.nextAt === 'number') {
+				const now = Date.now()
+				if (pendingNotify.nextAt <= now) {
+					const ok = await this.postAppCallback(pendingNotify.payload)
+					if (ok) {
+						doc.appNotified = true
+						doc.nextNotified = true
+						doc.lastNotifiedEventSeq = pendingNotify.eventSeq
+						doc.pendingNotify = undefined
+						try {
+							await this.state.storage.put('job', doc)
+						} catch {}
+					} else {
+						pendingNotify.attempt =
+							Math.max(0, Math.trunc(pendingNotify.attempt || 0)) + 1
+						pendingNotify.lastError = 'notifyApp_failed'
+						pendingNotify.nextAt =
+							now + this.getNotifyBackoffMs(pendingNotify.attempt)
+						doc.pendingNotify = pendingNotify
+						try {
+							await this.state.storage.put('job', doc)
+						} catch {}
+						await this.setAlarmEarlier(pendingNotify.nextAt)
+					}
+				} else {
+					await this.setAlarmEarlier(pendingNotify.nextAt)
+				}
+			}
 
 		// Existing ASR polling logic (only).
 		if (doc.engine !== 'asr-pipeline') return
@@ -577,17 +674,21 @@ export class RenderJobDO {
 		} catch {}
 	}
 
-	private async startWhisperAsr(doc: any) {
+		private async startWhisperAsr(doc: any) {
 		const providerId = String(doc?.metadata?.providerId || '').trim()
 		const modelId = String(doc?.metadata?.model || '').trim()
 		if (!providerId || !modelId) {
 			throw new Error('whisper_api missing providerId/model')
 		}
 
-		const audioKey: string | undefined =
-			doc.outputAudioKey || doc.outputs?.audio?.key
-		if (!audioKey)
-			throw new Error('asr-pipeline.whisper_api: missing outputAudioKey')
+			const audioKey: string | undefined =
+				typeof doc?.metadata?.sourceKey === 'string'
+					? doc.metadata.sourceKey
+					: doc.outputs?.audioProcessed?.key || doc.outputs?.audio?.key
+			if (!audioKey)
+				throw new Error(
+					'asr-pipeline.whisper_api: missing metadata.sourceKey for input audio',
+				)
 
 		const cfg = await fetchWhisperApiConfigFromApp(this.env, {
 			providerId,
@@ -636,73 +737,69 @@ export class RenderJobDO {
 		} catch {}
 	}
 
-	private async buildAppCallbackPayload(
+		private async buildAppCallbackPayload(
 		doc: any,
-		event?: { eventSeq: number; eventId: string; eventTs: number },
-	) {
+		event: { eventSeq: number; eventId: string; eventTs: number },
+	): Promise<OrchestratorCallbackPayloadV2> {
 		const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
-		const payload: Record<string, unknown> = {
+		const payload: OrchestratorCallbackPayloadV2 = {
+			schemaVersion: 2,
 			jobId: doc.jobId,
 			mediaId: doc.mediaId || 'unknown',
 			engine: doc.engine,
-			purpose: doc.purpose,
+			purpose: doc.purpose || doc.engine || 'unknown',
 			status: doc.status || 'completed',
-		}
-		if (event) {
-			payload.eventSeq = event.eventSeq
-			payload.eventId = event.eventId
-			payload.eventTs = event.eventTs
+			eventSeq: event.eventSeq,
+			eventId: event.eventId,
+			eventTs: event.eventTs,
 		}
 
 		if (doc.error) {
 			payload.error = doc.error
 		}
 
-		if (doc.engine === 'media-downloader') {
-			const outputs: Record<string, unknown> = {}
-			// Be robust: if a final outputKey exists, always include video output,
-			// even if the container did not explicitly populate outputs.video during progress updates.
-			if (doc.outputKey) {
-				outputs.video = {
-					key: doc.outputKey,
-					url: await presignS3(this.env, 'GET', bucket, doc.outputKey, 600),
-				}
-			}
-			const audioProcessedKey =
-				doc.outputAudioProcessedKey ||
-				doc.outputAudioKey ||
-				doc.outputs?.audioProcessed?.key ||
-				doc.outputs?.audio?.key
-			const audioSourceKey =
-				doc.outputAudioSourceKey || doc.outputs?.audioSource?.key
+			if (doc.engine === 'media-downloader') {
+				const outputs: Record<string, unknown> = {}
+				const videoKey: string | undefined = doc.outputs?.video?.key
+				const audioProcessedKey: string | undefined =
+					doc.outputs?.audioProcessed?.key || doc.outputs?.audio?.key
+				const audioSourceKey: string | undefined = doc.outputs?.audioSource?.key
+				const metadataKey: string | undefined = doc.outputs?.metadata?.key
 
-			// Backward-compatible field: "audio" points at processed audio.
-			if (audioProcessedKey) {
-				outputs.audio = {
-					key: audioProcessedKey,
-					url: await presignS3(this.env, 'GET', bucket, audioProcessedKey, 600),
+				if (videoKey) {
+					outputs.video = {
+						key: videoKey,
+						url: await presignS3(this.env, 'GET', bucket, videoKey, 600),
+					}
 				}
-				outputs.audioProcessed = {
-					key: audioProcessedKey,
-					url: await presignS3(this.env, 'GET', bucket, audioProcessedKey, 600),
+				if (audioProcessedKey) {
+					// Keep "audio" as an alias for processed audio (for consumers that haven't migrated).
+					outputs.audio = {
+						key: audioProcessedKey,
+						url: await presignS3(this.env, 'GET', bucket, audioProcessedKey, 600),
+					}
+					outputs.audioProcessed = {
+						key: audioProcessedKey,
+						url: await presignS3(this.env, 'GET', bucket, audioProcessedKey, 600),
+					}
 				}
-			}
-			if (audioSourceKey) {
-				outputs.audioSource = {
-					key: audioSourceKey,
-					url: await presignS3(this.env, 'GET', bucket, audioSourceKey, 600),
+				if (audioSourceKey) {
+					outputs.audioSource = {
+						key: audioSourceKey,
+						url: await presignS3(this.env, 'GET', bucket, audioSourceKey, 600),
+					}
 				}
-			}
-			const metadataKey = doc.outputMetadataKey || doc.outputs?.metadata?.key
-			if (metadataKey) {
-				outputs.metadata = {
-					key: metadataKey,
-					url: await presignS3(this.env, 'GET', bucket, metadataKey, 600),
+				if (metadataKey) {
+					outputs.metadata = {
+						key: metadataKey,
+						url: await presignS3(this.env, 'GET', bucket, metadataKey, 600),
+					}
 				}
-			}
-			payload.outputs = outputs
-			if (doc.metadata) payload.metadata = doc.metadata
-		} else if (doc.engine === 'asr-pipeline') {
+				if (Object.keys(outputs).length > 0) {
+					payload.outputs = outputs
+				}
+				if (doc.metadata) payload.metadata = doc.metadata
+			} else if (doc.engine === 'asr-pipeline') {
 			const outputs: Record<string, unknown> = {}
 			const vttKey: string | undefined = doc.outputs?.vtt?.key
 			const wordsKey: string | undefined = doc.outputs?.words?.key
@@ -722,21 +819,22 @@ export class RenderJobDO {
 				payload.outputs = outputs
 			}
 			if (doc.metadata) payload.metadata = doc.metadata
-		} else if (doc.outputKey) {
-			payload.outputKey = doc.outputKey
-			payload.outputUrl = await presignS3(
-				this.env,
-				'GET',
-				bucket,
-				doc.outputKey,
-				600,
-			)
-		}
+			} else {
+				const videoKey: string | undefined = doc.outputs?.video?.key
+				if (videoKey) {
+					payload.outputs = {
+						video: {
+							key: videoKey,
+							url: await presignS3(this.env, 'GET', bucket, videoKey, 600),
+						},
+					}
+				}
+			}
 
 		return payload
 	}
 
-	private async postAppCallback(payload: Record<string, unknown>) {
+	private async postAppCallback(payload: OrchestratorCallbackPayloadV2) {
 		const appBase = (this.env.APP_BASE_URL || 'http://localhost:3000').replace(
 			/\/$/,
 			'',

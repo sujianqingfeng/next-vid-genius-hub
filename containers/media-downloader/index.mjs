@@ -278,11 +278,6 @@ async function handleRender(req, res) {
     outputAudioPutUrl,
     outputAudioSourcePutUrl,
     outputMetadataPutUrl,
-    outputVideoKey,
-    outputAudioKey,
-    outputAudioSourceKey,
-    outputAudioProcessedKey,
-    outputMetadataKey,
     callbackUrl,
   } = payload;
 
@@ -294,11 +289,6 @@ async function handleRender(req, res) {
   const maskUrl = (u) => (u ? String(u).split("?")[0] : null);
   console.log("[media-downloader] outputs summary", {
     jobId,
-    outputVideoKey,
-    outputAudioKey,
-    outputAudioSourceKey,
-    outputAudioProcessedKey,
-    outputMetadataKey,
     hasVideoPutUrl: Boolean(outputVideoPutUrl),
     hasAudioPutUrl: Boolean(outputAudioPutUrl),
     hasAudioSourcePutUrl: Boolean(outputAudioSourcePutUrl),
@@ -431,9 +421,6 @@ async function handleRender(req, res) {
       await postUpdate("completed", {
         phase: "completed",
         progress: 1,
-        outputKey: outputMetadataKey || outputVideoKey,
-        outputs: outputMetadataKey ? { metadata: { key: outputMetadataKey } } : undefined,
-        outputMetadataKey,
         metadata: result,
       });
       console.log("[media-downloader] proxy-probe completed", {
@@ -465,9 +452,6 @@ async function handleRender(req, res) {
       } catch {}
       await postUpdate("failed", {
         error: msg,
-        outputKey: outputMetadataKey || outputVideoKey,
-        outputs: outputMetadataKey ? { metadata: { key: outputMetadataKey } } : undefined,
-        outputMetadataKey,
         metadata: result,
       });
       console.warn("[media-downloader] proxy-probe failed", {
@@ -520,13 +504,9 @@ async function handleRender(req, res) {
       dlog("final results count=", videos.length, "firstIds=", videos.slice(0, 3).map((x) => x.id));
       const buf = Buffer.from(JSON.stringify(payload, null, 2), "utf8");
       await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
-      const outputs = {};
-      if (outputMetadataKey) outputs.metadata = { key: outputMetadataKey };
       await postUpdate("completed", {
         phase: "completed",
         progress: 1,
-        outputs,
-        outputMetadataKey,
         metadata: { source: "youtube", channelId, count: videos.length },
       });
       console.log("[media-downloader] job completed", jobId, "channel-list=", videos.length);
@@ -592,13 +572,9 @@ async function handleRender(req, res) {
         },
       );
 
-      const outputs = {};
-      if (outputMetadataKey) outputs.metadata = { key: outputMetadataKey };
       await postUpdate("completed", {
         phase: "completed",
         progress: 1,
-        outputMetadataKey,
-        outputs,
         metadata: {
           source: src,
           commentCount: resPipeline?.count || 0,
@@ -627,14 +603,9 @@ async function handleRender(req, res) {
         await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
       }
 
-      const outputs = {};
-      if (outputMetadataKey) outputs.metadata = { key: outputMetadataKey };
-
       await postUpdate("completed", {
         phase: "completed",
         progress: 1,
-        outputMetadataKey,
-        outputs,
         metadata: {
           ...finalMetadata,
           source: engineOptions.source || "youtube",
@@ -679,7 +650,6 @@ async function handleRender(req, res) {
                 jobId,
                 path,
                 bytes: stat.size,
-                outputVideoKey,
                 videoPutUrl: maskUrl(outputVideoPutUrl),
               });
               try {
@@ -693,12 +663,10 @@ async function handleRender(req, res) {
                 console.log("[media-downloader] upload video success", {
                   jobId,
                   bytes: stat.size,
-                  outputVideoKey,
                 });
               } catch (err) {
                 console.error("[media-downloader] upload video failed", {
                   jobId,
-                  outputVideoKey,
                   error: err?.message || String(err),
                 });
                 throw err;
@@ -707,13 +675,12 @@ async function handleRender(req, res) {
             uploadAudio: async (path) => {
               if (!outputAudioPutUrl) return;
               const stat = await fsPromises.stat(path);
-              console.log("[media-downloader] upload audio start", {
-                jobId,
-                path,
-                bytes: stat.size,
-                outputAudioKey,
-                audioPutUrl: maskUrl(outputAudioPutUrl),
-              });
+            console.log("[media-downloader] upload audio start", {
+              jobId,
+              path,
+              bytes: stat.size,
+              audioPutUrl: maskUrl(outputAudioPutUrl),
+            });
               try {
                 await uploadArtifact(
                   outputAudioPutUrl,
@@ -725,12 +692,10 @@ async function handleRender(req, res) {
                 console.log("[media-downloader] upload audio success", {
                   jobId,
                   bytes: stat.size,
-                  outputAudioKey,
                 });
               } catch (err) {
                 console.error("[media-downloader] upload audio failed", {
                   jobId,
-                  outputAudioKey,
                   error: err?.message || String(err),
                 });
                 throw err;
@@ -754,7 +719,6 @@ async function handleRender(req, res) {
           jobId,
           path: audioSourcePath,
           bytes: stat.size,
-          outputAudioSourceKey,
           audioSourcePutUrl: maskUrl(outputAudioSourcePutUrl),
         });
         await uploadArtifact(
@@ -767,7 +731,6 @@ async function handleRender(req, res) {
         console.log("[media-downloader] upload audio source success", {
           jobId,
           bytes: stat.size,
-          outputAudioSourceKey,
         });
       }
 
@@ -808,25 +771,9 @@ async function handleRender(req, res) {
           };
         } catch {}
       }
-      const outputs = {
-        video: { key: outputVideoKey },
-      };
-      if (outputAudioKey) {
-        outputs.audio = { key: outputAudioKey };
-        outputs.audioProcessed = { key: outputAudioKey };
-      }
-      if (outputAudioSourceKey) outputs.audioSource = { key: outputAudioSourceKey };
-      if (outputMetadataKey && pipelineRes?.rawMetadata != null)
-        outputs.metadata = { key: outputMetadataKey };
       await postUpdate("completed", {
         phase: "completed",
         progress: 1,
-        outputKey: outputVideoKey,
-        outputAudioKey,
-        outputAudioSourceKey,
-        outputAudioProcessedKey: outputAudioProcessedKey || outputAudioKey,
-        outputMetadataKey,
-        outputs,
         metadata: callbackMetadata,
       });
     }

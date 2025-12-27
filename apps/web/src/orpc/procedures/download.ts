@@ -2,13 +2,9 @@ import { os } from '@orpc/server'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
-import {
-	getJobStatus,
-	type JobManifest,
-	putJobManifest,
-	startCloudJob,
-} from '~/lib/cloudflare'
+import { getJobStatus, type JobManifest } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
+import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
 import { MEDIA_SOURCES } from '~/lib/media/source'
@@ -77,7 +73,7 @@ export const startCloudDownload = os
 					downloadError: null,
 					downloadQueuedAt: now,
 					downloadCompletedAt: null,
-					// 保留 remoteVideoKey/remoteAudioKey/remoteMetadataKey，不要在重试时清空
+					// 保留 remoteVideoKey/remoteAudioProcessedKey/remoteAudioSourceKey/remoteMetadataKey，不要在重试时清空
 					// 新任务成功回调后会用最新 Key 覆盖
 					downloadJobId: null,
 					filePath: existing.filePath,
@@ -88,87 +84,63 @@ export const startCloudDownload = os
 				.where(eq(schema.media.id, existing.id))
 		}
 
-		const taskId = createId()
-		// Generate a stable jobId so we can create a per-job manifest before
-		// calling the orchestrator.
-		const jobId = `job_${createId()}`
-
 		try {
 			const { proxyId: effectiveProxyId, proxyRecord } =
 				await resolveSuccessProxy({ db, requestedProxyId: proxyId })
 			const proxyPayload = toProxyJobPayload(proxyRecord)
 
-			await db.insert(schema.tasks).values({
-				id: taskId,
+			const { taskId, jobId } = await enqueueCloudTask({
+				db,
 				userId,
 				kind: TASK_KINDS.DOWNLOAD,
 				engine: 'media-downloader',
 				targetType: 'media',
 				targetId: mediaId,
-				status: 'queued',
-				progress: 0,
-				payload: { url, quality, source, proxyId: effectiveProxyId ?? null },
-				createdAt: now,
-				updatedAt: now,
-			})
-
-			// Minimal per-job manifest for downloader. Inputs live in engineOptions
-			// (url/quality/source); containers/orchestrator don't need DB access.
-			const manifest: JobManifest = {
-				jobId,
 				mediaId,
-				purpose: TASK_KINDS.DOWNLOAD,
-				engine: 'media-downloader',
-				createdAt: Date.now(),
-				inputs: {},
-				optionsSnapshot: {
-					url,
-					quality,
-					source,
-					proxyId: effectiveProxyId ?? null,
-				},
-			}
-			await putJobManifest(jobId, manifest)
-
-			const job = await startCloudJob({
-				jobId,
-				mediaId,
-				engine: 'media-downloader',
 				purpose: TASK_KINDS.DOWNLOAD,
 				title: existing?.title || 'Pending download',
+				payload: { url, quality, source, proxyId: effectiveProxyId ?? null },
 				options: {
 					url,
 					quality,
 					source,
 					proxy: proxyPayload,
 				},
+				buildManifest: ({ jobId }): JobManifest => {
+					// Minimal per-job manifest for downloader. Inputs live in engineOptions
+					// (url/quality/source); containers/orchestrator don't need DB access.
+					return {
+						jobId,
+						mediaId,
+						purpose: TASK_KINDS.DOWNLOAD,
+						engine: 'media-downloader',
+						createdAt: Date.now(),
+						inputs: {},
+						optionsSnapshot: {
+							url,
+							quality,
+							source,
+							proxyId: effectiveProxyId ?? null,
+						},
+					}
+				},
 			})
 
 			logger.info(
 				'media',
-				`[download.job] queued media=${mediaId} job=${job.jobId} user=${userId} source=${source} quality=${quality} requestedProxyId=${proxyId ?? 'none'} proxyId=${effectiveProxyId ?? 'none'}`,
+				`[download.job] queued media=${mediaId} job=${jobId} user=${userId} source=${source} quality=${quality} requestedProxyId=${proxyId ?? 'none'} proxyId=${effectiveProxyId ?? 'none'}`,
 			)
 
 			await db
 				.update(schema.media)
 				.set({
-					downloadJobId: job.jobId,
+					downloadJobId: jobId,
 				})
 				.where(eq(schema.media.id, mediaId))
 
-			await db
-				.update(schema.tasks)
-				.set({
-					jobId: job.jobId,
-					status: 'queued',
-					startedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
-
 			return {
 				mediaId,
-				jobId: job.jobId,
+				jobId,
 				taskId,
 			}
 		} catch (error) {
@@ -187,15 +159,6 @@ export const startCloudDownload = os
 					downloadError: message,
 				})
 				.where(eq(schema.media.id, mediaId))
-			await db
-				.update(schema.tasks)
-				.set({
-					status: 'failed',
-					error: message,
-					finishedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
 			throw error
 		}
 	})

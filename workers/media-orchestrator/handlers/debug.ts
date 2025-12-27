@@ -2,6 +2,7 @@ import type { Env } from '../types'
 import { presignS3 } from '../storage/presign'
 import { deleteObjectFromStorage, listKeysByPrefix } from '../storage/fallback'
 import { json } from '../utils/http'
+import { jobStub } from '../utils/job'
 import { requireJobCallbackSecret, verifyHmac } from '../utils/hmac'
 
 export async function handleDebugPresign(env: Env, req: Request): Promise<Response> {
@@ -113,4 +114,53 @@ export async function handleDebugDeletePrefixes(env: Env, req: Request) {
 		{ ok: !hasErrors, deleted, errors },
 		{ status: hasErrors ? 500 : 200 },
 	)
+}
+
+export async function handleDebugReplayAppCallback(env: Env, req: Request) {
+	const raw = await req.text()
+	const sig = req.headers.get('x-signature') || ''
+	const secret = requireJobCallbackSecret(env)
+	if (!(await verifyHmac(secret, raw, sig))) {
+		return json({ error: 'unauthorized' }, { status: 401 })
+	}
+
+	let body: any
+	try {
+		body = JSON.parse(raw)
+	} catch {
+		return json({ error: 'invalid_json' }, { status: 400 })
+	}
+
+	const jobId =
+		typeof body?.jobId === 'string' && body.jobId.trim().length > 0
+			? (body.jobId.trim() as string)
+			: null
+	if (!jobId) return json({ error: 'missing_job_id' }, { status: 400 })
+
+	const stub = jobStub(env, jobId)
+	if (!stub) return json({ error: 'job_do_not_configured' }, { status: 500 })
+
+	const doResp = await stub.fetch('https://do/replay-app-callback', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({
+			jobId,
+			reason:
+				typeof body?.reason === 'string' && body.reason.trim()
+					? body.reason.trim()
+					: null,
+			force: Boolean(body?.force),
+			requestedAt: Date.now(),
+		}),
+	})
+
+	const text = await doResp.text()
+	let payload: unknown = null
+	try {
+		payload = JSON.parse(text)
+	} catch {
+		payload = { raw: text }
+	}
+
+	return json(payload, { status: doResp.status })
 }

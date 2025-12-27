@@ -2,8 +2,10 @@ import { os } from '@orpc/server'
 import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
-import { getJobStatus, putJobManifest, startCloudJob } from '~/lib/cloudflare'
+import { getJobStatus } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
+import { enqueueCloudTask } from '~/lib/job/enqueue'
+import { TASK_KINDS } from '~/lib/job/task'
 import { createId } from '~/lib/utils/id'
 import {
 	buildThreadPostsInsertFromDraft,
@@ -227,26 +229,6 @@ export const startCloudRender = os
 			templateConfig: input.templateConfig ?? thread.templateConfig ?? null,
 		})
 
-		// Per-job manifest (re-use commentsKey to pass the snapshot key).
-		await putJobManifest(jobId, {
-			jobId,
-			mediaId: thread.id,
-			purpose: 'render-thread',
-			engine: 'renderer-remotion',
-			createdAt: Date.now(),
-			inputs: {
-				videoKey: null,
-				commentsKey: snapshot.key,
-			},
-			outputs: { videoKey: null },
-			optionsSnapshot: {
-				resourceType: 'thread',
-				threadId: thread.id,
-				templateId: input.templateId,
-				composeMode: 'overlay-only',
-			},
-		})
-
 		await db.insert(schema.threadRenders).values({
 			id: renderId,
 			threadId: thread.id,
@@ -262,22 +244,60 @@ export const startCloudRender = os
 			updatedAt: new Date(),
 		})
 
-		// Kick off orchestrator job (renderer-remotion).
-		await startCloudJob({
-			jobId,
-			mediaId: thread.id,
-			engine: 'renderer-remotion',
-			purpose: 'render-thread',
-			title: thread.title,
-			options: {
-				resourceType: 'thread',
-				templateId: input.templateId,
-				templateConfig: input.templateConfig ?? thread.templateConfig ?? undefined,
-				composeMode: 'overlay-only',
-			},
-		})
-
-		return { renderId, jobId }
+		try {
+			const { taskId } = await enqueueCloudTask({
+				db,
+				userId,
+				kind: TASK_KINDS.RENDER_THREAD,
+				engine: 'renderer-remotion',
+				targetType: 'thread',
+				targetId: thread.id,
+				mediaId: thread.id,
+				purpose: TASK_KINDS.RENDER_THREAD,
+				title: thread.title,
+				jobId,
+				payload: {
+					threadId: thread.id,
+					templateId: input.templateId,
+					templateConfig: input.templateConfig ?? thread.templateConfig ?? null,
+					composeMode: 'overlay-only',
+				},
+				options: {
+					resourceType: 'thread',
+					templateId: input.templateId,
+					templateConfig: input.templateConfig ?? thread.templateConfig ?? undefined,
+					composeMode: 'overlay-only',
+				},
+				buildManifest: ({ jobId }) => {
+					return {
+						jobId,
+						mediaId: thread.id,
+						purpose: TASK_KINDS.RENDER_THREAD,
+						engine: 'renderer-remotion',
+						createdAt: Date.now(),
+						inputs: {
+							videoKey: null,
+							commentsKey: snapshot.key,
+						},
+						outputs: { videoKey: null },
+						optionsSnapshot: {
+							resourceType: 'thread',
+							threadId: thread.id,
+							templateId: input.templateId,
+							composeMode: 'overlay-only',
+						},
+					}
+				},
+			})
+			return { renderId, jobId, taskId }
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e)
+			await db
+				.update(schema.threadRenders)
+				.set({ status: 'failed', error: msg, updatedAt: new Date() })
+				.where(eq(schema.threadRenders.id, renderId))
+			throw e
+		}
 	})
 
 export const getRenderStatus = os

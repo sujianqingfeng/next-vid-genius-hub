@@ -107,7 +107,10 @@ export default {
 			setInjectedD1Database(env.DB)
 		}
 		ctx.waitUntil(
-			Promise.all([runScheduledProxyChecks(), runScheduledTaskReconciler()]),
+			Promise.all([
+				runScheduledProxyChecks(),
+				runScheduledTaskReconciler(),
+			]),
 		)
 	},
 }

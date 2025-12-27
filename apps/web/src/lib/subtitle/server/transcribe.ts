@@ -1,15 +1,11 @@
 import { deriveCloudflareAsrCapabilities } from '@app/media-domain'
 import { eq } from 'drizzle-orm'
 import { getAiModelConfig } from '~/lib/ai/config/service'
-import {
-	type JobManifest,
-	putJobManifest,
-	startCloudJob,
-} from '~/lib/cloudflare'
+import type { JobManifest } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
+import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
-import { createId } from '~/lib/utils/id'
 
 export async function transcribe(input: {
 	mediaId: string
@@ -58,11 +54,9 @@ export async function transcribe(input: {
 	}
 
 	// Prefer processed audio for ASR (more stable for single-language + consistent sample rate),
-	// fall back to legacy remoteAudioKey, then raw source audio when available.
+	// fall back to raw source audio when available.
 	const sourceKey =
-		mediaRecord.remoteAudioProcessedKey ||
-		mediaRecord.remoteAudioKey ||
-		mediaRecord.remoteAudioSourceKey
+		mediaRecord.remoteAudioProcessedKey || mediaRecord.remoteAudioSourceKey
 	if (!sourceKey) {
 		logger.error(
 			'transcription',
@@ -96,47 +90,19 @@ export async function transcribe(input: {
 	const modelId = modelCfg.id
 	const remoteModelId = modelCfg.remoteModelId
 
-	const taskId = createId()
-	const now = new Date()
-	await db.insert(schema.tasks).values({
-		id: taskId,
-		userId: mediaRecord.userId ?? null,
-		kind: TASK_KINDS.ASR,
-		engine: 'asr-pipeline',
-		targetType: 'media',
-		targetId: mediaId,
-		status: 'queued',
-		progress: 0,
-		payload: {
-			sourceKey,
-			maxBytes: targetBytes,
-			targetBitrates,
-			sampleRate,
-			model: modelId,
-			remoteModelId,
-			providerType: provider.type,
-			providerId: provider.id,
-			...(languageForProvider ? { language: languageForProvider } : {}),
-		},
-		createdAt: now,
-		updatedAt: now,
-	})
-
 	let jobId: string | null = null
 	try {
-		// Generate jobId so we can snapshot inputs into a per-job manifest.
-		jobId = `job_${createId()}`
-
-		const manifest: JobManifest = {
-			jobId,
+		const { jobId: startedJobId } = await enqueueCloudTask({
+			db,
+			userId: mediaRecord.userId ?? null,
+			kind: TASK_KINDS.ASR,
+			engine: 'asr-pipeline',
+			targetType: 'media',
+			targetId: mediaId,
 			mediaId,
 			purpose: TASK_KINDS.ASR,
-			engine: 'asr-pipeline',
-			createdAt: Date.now(),
-			inputs: {
-				asrSourceKey: sourceKey,
-			},
-			optionsSnapshot: {
+			title: mediaRecord.title || undefined,
+			payload: {
 				sourceKey,
 				maxBytes: targetBytes,
 				targetBitrates,
@@ -145,17 +111,8 @@ export async function transcribe(input: {
 				remoteModelId,
 				providerType: provider.type,
 				providerId: provider.id,
-				language: languageForProvider ?? null,
+				...(languageForProvider ? { language: languageForProvider } : {}),
 			},
-		}
-		await putJobManifest(jobId, manifest)
-
-		const job = await startCloudJob({
-			jobId,
-			mediaId,
-			engine: 'asr-pipeline',
-			purpose: TASK_KINDS.ASR,
-			title: mediaRecord.title || undefined,
 			options: {
 				sourceKey,
 				maxBytes: targetBytes,
@@ -167,28 +124,35 @@ export async function transcribe(input: {
 				providerId: provider.id,
 				...(languageForProvider ? { language: languageForProvider } : {}),
 			},
+			buildManifest: ({ jobId }): JobManifest => {
+				return {
+					jobId,
+					mediaId,
+					purpose: TASK_KINDS.ASR,
+					engine: 'asr-pipeline',
+					createdAt: Date.now(),
+					inputs: {
+						asrSourceKey: sourceKey,
+					},
+					optionsSnapshot: {
+						sourceKey,
+						maxBytes: targetBytes,
+						targetBitrates,
+						sampleRate,
+						model: modelId,
+						remoteModelId,
+						providerType: provider.type,
+						providerId: provider.id,
+						language: languageForProvider ?? null,
+					},
+				}
+			},
 		})
-		jobId = job.jobId
-		await db
-			.update(schema.tasks)
-			.set({
-				jobId: job.jobId,
-				startedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.tasks.id, taskId))
+		jobId = startedJobId
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Failed to start ASR pipeline'
-		await db
-			.update(schema.tasks)
-			.set({
-				status: 'failed',
-				error: message,
-				finishedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.tasks.id, taskId))
+		logger.warn('transcription', `[asr.start] failed media=${mediaId} ${message}`)
 		throw error
 	}
 

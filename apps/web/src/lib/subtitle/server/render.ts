@@ -1,18 +1,13 @@
 import { bucketPaths } from '@app/media-domain'
 import { eq } from 'drizzle-orm'
 import type { JobStatusResponse } from '~/lib/cloudflare'
-import {
-	getJobStatus,
-	type JobManifest,
-	putJobManifest,
-	startCloudJob,
-} from '~/lib/cloudflare'
+import { getJobStatus, type JobManifest } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
+import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
 import { resolveCloudVideoKey } from '~/lib/media/resolve-cloud-video-key'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
-import { createId } from '~/lib/utils/id'
 
 export async function startCloudRender(input: {
 	mediaId: string
@@ -29,104 +24,68 @@ export async function startCloudRender(input: {
 		`[subtitles.render.start] media=${media.id} user=${media.userId ?? 'null'}`,
 	)
 
-	const taskId = createId()
-	const now = new Date()
-	await db.insert(schema.tasks).values({
-		id: taskId,
-		userId: media.userId ?? null,
-		kind: TASK_KINDS.RENDER_SUBTITLES,
-		engine: 'burner-ffmpeg',
-		targetType: 'media',
-		targetId: media.id,
-		status: 'queued',
-		progress: 0,
-		payload: {
-			subtitleConfig: input.subtitleConfig ?? null,
-		},
-		createdAt: now,
-		updatedAt: now,
-	})
-
 	try {
-		// Generate job id up-front so we can materialize a per-job manifest that
-		// describes the exact inputs this render should use.
-		const jobId = `job_${createId()}`
-
-		const resolvedVideoKey = await resolveCloudVideoKey({
-			sourcePolicy: 'original',
-			remoteVideoKey: media.remoteVideoKey ?? null,
-			downloadJobId: media.downloadJobId ?? null,
-			filePath: media.filePath ?? null,
-		})
-		if (!resolvedVideoKey) {
-			throw new Error(
-				'Source video not found in cloud storage. Re-run cloud download for this media and retry.',
-			)
-		}
-
-		const vttKey = bucketPaths.inputs.subtitles(media.id, {
-			title: media.title ?? undefined,
-		})
-		const manifest: JobManifest = {
-			jobId,
-			mediaId: media.id,
-			purpose: TASK_KINDS.RENDER_SUBTITLES,
+		const { taskId, jobId } = await enqueueCloudTask({
+			db,
+			userId: media.userId ?? null,
+			kind: TASK_KINDS.RENDER_SUBTITLES,
 			engine: 'burner-ffmpeg',
-			createdAt: Date.now(),
-			inputs: {
-				// For subtitles burn-in we always use the canonical remote video as source.
-				videoKey: resolvedVideoKey,
-				vttKey,
-				sourcePolicy: 'original',
-			},
-			optionsSnapshot: {
-				subtitleConfig: input.subtitleConfig ?? null,
-			},
-		}
-
-		await putJobManifest(jobId, manifest)
-
-		const job = await startCloudJob({
-			jobId,
+			targetType: 'media',
+			targetId: media.id,
 			mediaId: media.id,
-			engine: 'burner-ffmpeg',
 			purpose: TASK_KINDS.RENDER_SUBTITLES,
 			title: media.title || undefined,
+			payload: { subtitleConfig: input.subtitleConfig ?? null },
 			options: { subtitleConfig: input.subtitleConfig },
-		})
+			buildManifest: async ({ jobId }): Promise<JobManifest> => {
+				const resolvedVideoKey = await resolveCloudVideoKey({
+					sourcePolicy: 'original',
+					remoteVideoKey: media.remoteVideoKey ?? null,
+					downloadJobId: media.downloadJobId ?? null,
+				})
+				if (!resolvedVideoKey) {
+					throw new Error(
+						'Source video not found in cloud storage. Re-run cloud download for this media and retry.',
+					)
+				}
 
-		await db
-			.update(schema.tasks)
-			.set({
-				jobId: job.jobId,
-				startedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.tasks.id, taskId))
+				const vttKey = bucketPaths.inputs.subtitles(media.id, {
+					title: media.title ?? undefined,
+				})
+
+				return {
+					jobId,
+					mediaId: media.id,
+					purpose: TASK_KINDS.RENDER_SUBTITLES,
+					engine: 'burner-ffmpeg',
+					createdAt: Date.now(),
+					inputs: {
+						// For subtitles burn-in we always use the canonical remote video as source.
+						videoKey: resolvedVideoKey,
+						vttKey,
+						sourcePolicy: 'original',
+					},
+					optionsSnapshot: {
+						subtitleConfig: input.subtitleConfig ?? null,
+					},
+				}
+			},
+		})
 
 		logger.info(
 			'rendering',
-			`[subtitles.render.job] queued media=${media.id} user=${media.userId ?? 'null'} task=${taskId} job=${job.jobId}`,
+			`[subtitles.render.job] queued media=${media.id} user=${media.userId ?? 'null'} task=${taskId} job=${jobId}`,
 		)
 
-		return { jobId: job.jobId, taskId }
+		return { jobId, taskId }
 	} catch (error) {
 		const message =
 			error instanceof Error
 				? error.message
 				: 'Failed to start subtitles render'
-		await db
-			.update(schema.tasks)
-			.set({
-				status: 'failed',
-				error: message,
-				finishedAt: new Date(),
-				updatedAt: new Date(),
-			})
-			.where(eq(schema.tasks.id, taskId))
 		logger.error(
 			'rendering',
-			`[subtitles.render.error] media=${media.id} user=${media.userId ?? 'null'} task=${taskId} error=${message}`,
+			`[subtitles.render.error] media=${media.id} user=${media.userId ?? 'null'} error=${message}`,
 		)
 		throw error
 	}

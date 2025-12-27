@@ -6,29 +6,19 @@ export interface ResolveCloudVideoKeyInput {
 	sourcePolicy: CloudVideoSourcePolicy
 	remoteVideoKey: string | null
 	downloadJobId: string | null
-	filePath?: string | null
-	videoWithSubtitlesPath?: string | null
-}
-
-function extractOrchestratorJobId(
-	path: string | null | undefined,
-): string | null {
-	if (!path) return null
-	if (!path.startsWith('remote:orchestrator:')) return null
-	return path.split(':').pop() || null
+	renderSubtitlesJobId?: string | null
 }
 
 async function getVideoKeyFromJob(jobId: string): Promise<string | null> {
 	const status = await getJobStatus(jobId)
-	return status.outputs?.video?.key ?? status.outputKey ?? null
+	return status.outputs?.video?.key ?? null
 }
 
 export async function resolveCloudVideoKey(
 	input: ResolveCloudVideoKeyInput,
 ): Promise<string | null> {
-	const subtitlesJobId = extractOrchestratorJobId(input.videoWithSubtitlesPath)
-	const originalJobId =
-		extractOrchestratorJobId(input.filePath) || input.downloadJobId
+	const subtitlesJobId = input.renderSubtitlesJobId ?? null
+	const originalJobId = input.downloadJobId
 
 	const candidates: Array<() => Promise<string | null>> = []
 

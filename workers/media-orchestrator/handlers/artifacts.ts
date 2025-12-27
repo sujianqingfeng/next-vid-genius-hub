@@ -1,6 +1,6 @@
 import { bucketPaths } from '@app/media-domain'
 import type { Env } from '../types'
-import { deleteObjectFromStorage, putObjectStreamToStorage, streamObjectFromS3 } from '../storage/fallback'
+import { deleteObjectFromStorage, streamObjectFromS3 } from '../storage/fallback'
 import { json } from '../utils/http'
 import { jobStub } from '../utils/job'
 
@@ -23,9 +23,6 @@ function collectKeysFromDoc(doc: any, jobId: string): string[] {
 	}
 
 	if (doc) {
-		push(doc.outputKey)
-		push(doc.outputAudioKey)
-		push(doc.outputMetadataKey)
 		if (doc.outputs && typeof doc.outputs === 'object') {
 			for (const value of Object.values(doc.outputs)) {
 				if (value && typeof value === 'object' && 'key' in value) {
@@ -42,18 +39,16 @@ function collectKeysFromDoc(doc: any, jobId: string): string[] {
 		}
 		const mediaId = typeof doc.mediaId === 'string' ? doc.mediaId : undefined
 		const pathOptions = { title: doc?.title as string | undefined }
-		if (mediaId) {
-			push(bucketPaths.outputs.video(mediaId, jobId, pathOptions))
-			push(bucketPaths.downloads.video(mediaId, jobId, pathOptions))
-			push(bucketPaths.downloads.audioSource(mediaId, jobId, pathOptions))
-			push(bucketPaths.downloads.audioProcessed(mediaId, jobId, pathOptions))
-			// Backward-compatible alias (processed audio)
-			push(bucketPaths.downloads.audio(mediaId, jobId, pathOptions))
-			push(bucketPaths.downloads.metadata(mediaId, jobId, pathOptions))
-			push(bucketPaths.asr.results.transcript(mediaId, jobId, pathOptions))
-			push(bucketPaths.asr.results.words(mediaId, jobId, pathOptions))
+			if (mediaId) {
+				push(bucketPaths.outputs.video(mediaId, jobId, pathOptions))
+				push(bucketPaths.downloads.video(mediaId, jobId, pathOptions))
+				push(bucketPaths.downloads.audioSource(mediaId, jobId, pathOptions))
+				push(bucketPaths.downloads.audioProcessed(mediaId, jobId, pathOptions))
+				push(bucketPaths.downloads.metadata(mediaId, jobId, pathOptions))
+				push(bucketPaths.asr.results.transcript(mediaId, jobId, pathOptions))
+				push(bucketPaths.asr.results.words(mediaId, jobId, pathOptions))
+			}
 		}
-	}
 
 	// Fallback canonical location
 	push(bucketPaths.outputs.fallbackVideo(jobId))
@@ -91,29 +86,8 @@ export async function handleArtifactDelete(env: Env, jobId: string) {
 	return json({ ok: !hasErrors, deleted, keys, errors }, { status: hasErrors ? 500 : 200 })
 }
 
-export async function handleUpload(env: Env, req: Request, jobId: string) {
-	// 依据 DO 中的 outputKey 决定最终存储路径（包含 mediaId）
-	let outputKey = bucketPaths.outputs.fallbackVideo(jobId)
-	try {
-		const stub = jobStub(env, jobId)
-		if (stub) {
-			const r = await stub.fetch('https://do/')
-			if (r.ok) {
-				const doc = (await r.json()) as any
-				if (doc?.outputKey) outputKey = doc.outputKey
-			}
-		}
-	} catch {}
-
-	// Persist artifact into bucket（优先使用 S3，便于本地 Worker 直接写入远端 R2）
-	const body = req.body as ReadableStream | null
-	if (!body) return json({ error: 'missing request body' }, { status: 400 })
-	await putObjectStreamToStorage(env, outputKey, 'video/mp4', body)
-	return json({ ok: true, outputKey, outputUrl: `/artifacts/${jobId}` })
-}
-
 export async function handleArtifactGet(env: Env, req: Request, jobId: string) {
-	// 优先从 DO 获取 outputKey（包含 mediaId 的归属路径）
+	// 优先从 DO 获取 outputs.video.key（包含 mediaId 的归属路径）
 	let key = bucketPaths.outputs.fallbackVideo(jobId)
 	try {
 		const stub = jobStub(env, jobId)
@@ -121,7 +95,7 @@ export async function handleArtifactGet(env: Env, req: Request, jobId: string) {
 			const r = await stub.fetch('https://do/')
 			if (r.ok) {
 				const doc = (await r.json()) as any
-				if (doc?.outputKey) key = doc.outputKey
+				if (doc?.outputs?.video?.key) key = doc.outputs.video.key
 			}
 		}
 	} catch {}

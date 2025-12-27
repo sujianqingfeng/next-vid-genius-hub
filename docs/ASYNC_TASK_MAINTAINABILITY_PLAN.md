@@ -2,7 +2,7 @@
 
 目标：把“任务定义/启动/回调落库/补偿对账”的职责边界拆清，降低新增任务与改契约的维护成本。
 
-说明：如果允许调整数据接口/数据结构（你已确认“只要清晰即可”），本计划会优先选择**用更清晰的结构换掉隐式约定**（例如 `remote:orchestrator:<jobId>` 这种字符串协议、`videoWithInfoPath` 这种语义不明字段），并提供渐进迁移与兼容窗口。
+说明：如果允许调整数据接口/数据结构（你已确认“只要清晰即可”），本计划会优先选择**用更清晰的结构换掉隐式约定**（例如把“字符串协议字段”改为显式 `jobId` 字段），并尽量减少隐式约定与双写双读分支。
 
 关联现状梳理：见 `docs/ASYNC_TASK_DATAFLOW.md`。
 
@@ -27,14 +27,38 @@
 
 ---
 
+## 0.1 计划状态（截至 2025-12-27）
+
+前提（你已确认）：
+- 仅本地运行/验证；不需要兼容旧部署。
+- 允许调整数据接口/数据结构：只要更清晰即可。
+
+已完成：
+- [x] Phase A：拆分 `cf-callback`（入口验签/解析/去重/路由；业务副作用分散到 handlers）
+- [x] Phase B：落地 `enqueueCloudTask` 启动模板（多个任务发起点已迁移）
+- [x] Phase C：App/Orchestrator 共享契约（`@app/media-domain`）
+- [x] Phase D：回调 payload v2-only + strict 校验（outputs-only）+ Admin 重放回调入口
+- [x] Phase D（收口）：轮询只读；reconciler 收口为 tasks-only（不再写 media/channels/threadRenders 作为补偿）
+- [x] Phase E：新增 `media.renderSubtitlesJobId` / `media.renderCommentsJobId` 并切到只写只读新字段
+- [x] Phase E：thread render 纳入 `tasks`（`tasks.targetType=thread` + `TASK_KINDS.RENDER_THREAD`）
+- [x] 发布动作（local）：已应用 DB migrations（`0025` + `0026`）到 D1 local
+
+不做 / N/A（基于“本地-only、无需兼容旧部署”）：
+- [ ] 发布动作（remote D1 migrations）：N/A
+- [ ] v1/v2 并行兼容窗口、回填、双写双读：N/A
+
+仍待确认/可选（不影响当前本地链路正确性）：
+- [x] 清理遗留入口：删除 `finalizeCloudCommentsDownload`（comments 落库闭环已完全在 callback）
+- [ ] 监控/告警阈值：`ignored-invalid-v2`、notify attempts（本地可先不做，线上才有意义）
+
 ## 1. 现状痛点（聚焦可维护性）
 
 - `apps/web/src/lib/job/callbacks/cf-callback.ts` 是“上帝文件”：同时承担鉴权/去重/分发/落库/计费/远端探测/拉元数据/线程渲染等。
 - 任务启动模板在多个位置重复：`download.ts`、`comment.ts`、`subtitle/server/*`、`thread.ts` 各有一套相似但不完全一致的流程。
 - JobManifest/Status/Callback payload 的契约在 App/Orchestrator 各自定义一份，后续改字段容易漏。
-- `purpose` 语义目前既有 `TASK_KINDS.*` 又有 `'render-thread'` 这种散落字符串，长期会变成隐式约定。
-- `tasks.targetType` 目前不含 `thread`，导致 thread render 不能进入统一 tasks 模型，只能在 callback 里 special-case。
-- `media.videoWithInfoPath` 实际承载“评论渲染输出”的 job 引用，命名与语义偏离，阅读成本高。
+- `purpose`/kind 的语义如果不收口到统一常量/注册表，长期会变成隐式约定（已开始用 `TASK_KINDS.*` 收敛，仍需继续消除散落字符串）。
+- `tasks.targetType` 需要覆盖 thread/system 等非 media 目标（已加入 `thread`，后续仍需明确 system 类任务的模型归属）。
+- 历史上曾用“语义不明字段 + 字符串协议”承载渲染产物引用，阅读成本高（已改为显式 `render*JobId`）。
 
 ---
 
@@ -108,34 +132,34 @@ ORPC 侧改成：
 #### 3.4.1 用显式字段替代字符串协议
 
 现状：
-- `media.videoWithSubtitlesPath` / `media.videoWithInfoPath` 会写入 `remote:orchestrator:<jobId>`，属于隐式字符串协议。
+- 曾经用“字符串协议字段”承载 orchestrator artifact 引用，属于隐式约定（已废弃）。
 
-建议：
-- 新增并迁移到显式字段：
+落地状态（已完成）：
+- 已新增并统一使用显式字段：
   - `media.renderSubtitlesJobId`（替代 `videoWithSubtitlesPath`）
-  - `media.renderCommentsJobId`（替代 `videoWithInfoPath`；也更贴近 renderer-remotion 的业务语义）
-- `stream.ts` 兼容读取：
-  - 优先读新字段 jobId → 用 orchestrator `/artifacts/:jobId` 生成 URL
-  - fallback 读旧字段 `remote:orchestrator:*`（兼容窗口内保留）
+  - `media.renderCommentsJobId`（替代 `videoWithInfoPath`；更贴近 renderer-remotion 的业务语义）
+- callback 只写新字段；查询只读新字段（不再保留旧字段兼容分支）
 
 #### 3.4.2 统一“所有 orchestrator job 都对应一条 tasks”
 
 现状：
 - thread render 走 `threadRenders`，但不进 `tasks`，导致 callback/router 必须特殊处理 `purpose === 'render-thread'`。
 
-建议：
-- 扩展 `tasks.targetType` enum：加入 `thread`
-- thread render 发起时同时写入 `tasks`（kind=render-thread 或者并入统一 purpose 常量），让 callback 路由与任务观测全部走统一模型。
+落地状态（已完成）：
+- 已扩展 `tasks.targetType`：加入 `thread`
+- thread render 发起时已同时写入 `tasks`（kind/purpose=`render-thread`），callback 路由与任务观测走统一模型
 
 #### 3.4.3 callback payload 结构清晰化（可同时改 orchestrator + app）
 
 建议将 Orchestrator → App 的 payload 明确成单一结构（可带版本号）：
 - `purpose` 必填（不再 fallback 到 DB 查 task.kind 推断）
-- 所有产物只出现在 `outputs`（移除/弃用顶层 `outputKey/outputUrl/...` 这类历史字段）
+- 所有产物只出现在 `outputs`（移除/弃用顶层 `outputKey/outputUrl` 等历史字段，统一为 `outputs.*.{key,url}`）
 - `progress` 统一为 `0..1`（或者明确命名为 `progressFraction`），避免 percent/fraction 混用
 
-兼容策略：
-- App callback 在一段窗口内同时支持旧字段与新字段（读新优先、旧兜底），待线上稳定后删除旧字段分支。
+落地状态（已完成）：
+- payload v2-only：`purpose` 必填（不再 fallback 到 DB 查 task.kind 推断）
+- 所有产物只出现在 `outputs`（outputs-only）
+- App callback 入口做 strict 校验：失败写入 `job_events(kind='ignored-invalid-v2')`，并把对应 task 标记为 failed（同时返回 200 ignored，避免 orchestrator 重试风暴）
 
 ---
 
@@ -194,7 +218,7 @@ ORPC 侧改成：
   - manifest.inputs：`commentsKey`（thread snapshot JSON；复用 commentsKey 但语义是 thread snapshot）
   - engineOptions：`{ resourceType:'thread', templateId, templateConfig, composeMode:'overlay-only' }`
   - callback.outputs：`video`
-  - projection：更新 `threadRenders.outputVideoKey/status`，并（建议）写入 `tasks.*`（需扩展 `tasks.targetType=thread`）
+  - projection：更新 `threadRenders.outputVideoKey/status`，并写入 `tasks.*`
 
 ---
 
@@ -203,7 +227,7 @@ ORPC 侧改成：
 ### Phase A：只拆文件、不动逻辑（最优先）
 
 1) 在 `callbacks/handlers/*` 中“原样搬迁”逻辑：不改分支、不改字段、不改错误文案。
-2) `router` 按 `payload.purpose || task.kind` 做路由（保持现有兼容策略）。
+2) `router` 按 `payload.purpose` 做路由（v2-only；purpose 必填）。
 3) 保留现有去重（eventSeq snapshot）与 `recordJobEvent`。
 
 产出：
@@ -216,14 +240,12 @@ ORPC 侧改成：
    - `apps/web/src/lib/job/callbacks/handlers/*.ts`
 2) 将 `cf-callback.ts` 里的“大分支”按 purpose 拆到 handlers（保持分支结构与错误文案不变）。
 3) `cf-callback.ts` 收敛为：
-   - HMAC 验签、解析 payload（保留旧字段兼容）
+   - HMAC 验签、解析 payload（v2-only）
    - `recordJobEvent(...)`
    - eventSeq 去重写 snapshot
    - 调用 `routeByPurpose(...)` 并返回结果
 4) Router 策略明确化：
-   - 首选 `payload.purpose`
-   - fallback `task.kind`
-   - 未知 purpose：只记录事件，返回 `{ ok: true, ignored: true }`（避免 orchestrator 重试把系统打挂）
+   - `payload.purpose` 缺失/未知：记录 `job_events` 并返回 `{ ok: true, ignored: true }`（并将 task 标记 failed，避免“静默成功”）
 
 #### A.2 验收用例（手工/冒烟）
 
@@ -262,7 +284,7 @@ ORPC 侧改成：
 
 1) 在 `packages/media-domain` 扩展/新增：
    - `JobManifest`（与 `workers/media-orchestrator/types.ts` 对齐）
-   - `OrchestratorCallbackPayload`（与 App `cf-callback` 对齐）
+   - `OrchestratorCallbackPayloadV2`（与 App `cf-callback` 对齐）
 2) App/Orchestrator 两端都改为 import 共享 types。
 3) 可选：加 zod 校验（至少在边界处：App callback、Orchestrator /jobs 请求）。
 
@@ -275,44 +297,42 @@ ORPC 侧改成：
    - `packages/media-domain/src/orchestrator-contracts.ts`
      - `JobManifest`
      - `OrchestratorStartJobInput`
-     - `OrchestratorCallbackPayloadV1`（可版本化，包含 `schemaVersion`）
+     - `OrchestratorCallbackPayloadV2`（v2-only）
 2) Orchestrator 侧替换：
    - `workers/media-orchestrator/types.ts`：保留 Env/Bindings 类型；JobManifest/StartBody/StatusDoc 改为 import 共享 type
 3) App 侧替换：
    - `apps/web/src/lib/cloudflare/manifests.ts`
    - `apps/web/src/lib/cloudflare/jobs.ts`
    - `apps/web/src/lib/job/callbacks/*`
-4) 运行期校验（推荐两段式）：
-   - 第一版 warn-only：校验失败只写日志 + `job_events`，不阻断
-   - 第二版 strict：校验失败返回 400（/jobs）或 200 ignored（/cf-callback）并携带 reason
+4) 运行期校验：
+   - App callback：strict（校验失败返回 200 ignored + 记录 `job_events` + 标记 task failed）
+   - Orchestrator `/jobs`：可按需要补充 strict 校验（本地-only 可先不做）
 
 ### Phase D：清理“对账/补偿”边界（可维护性增强）
 
-目标不是删 reconciler，而是让它只做“对账/补偿”，不再承载业务落库主逻辑：
-- 明确：callback 是主投影写库；reconciler 只更新 tasks 快照/状态，必要时触发极少数补偿动作（如现有 comments/channel）。
+目标：让 reconciler 收口为 tasks-only，不再承担任何业务投影写库：
+- 明确：callback 是唯一业务投影写库入口；reconciler 只更新 `tasks` 快照/状态（用于展示与对账），不写 `media/channels/threadRenders`。
 
 #### D.1 具体步骤
 
-1) 列清 reconciler “允许副作用白名单”：
-   - 仅允许补偿 channel-sync/comments-download 这类“拉 metadata → 落库”闭环
-2) 尽量把闭环放到 callback handlers：
-   - 让 completed callback 直接完成业务投影更新，reconciler 只兜底“回调丢失/短暂不可读”
+1) 把闭环放到 callback handlers：
+   - 让 completed callback 直接完成业务投影更新（comments/channel/metadata-refresh 等也在事件侧闭环）
+2) reconciler 只兜底“回调丢失/短暂不可读”：
+   - 仅更新 `tasks`，不做业务补偿写入
 3) 统一快照结构：
    - `jobStatusSnapshot.callback.*`（eventSeq 去重）
    - `jobStatusSnapshot.reconciler.*`（最后一次轮询）
 
-### Phase E（可选）：数据结构清晰化迁移（允许改结构时的“终局”）
+### Phase E：数据结构清晰化（选择直接切换，不做回填/兼容）
 
-适用前提：可以接受 DB migration + 一段兼容窗口。
-
-1) DB：新增显式字段（jobId/ref）并逐步替代隐式字符串协议字段。
-2) 回调：payload 升级为版本化结构（`schemaVersion`），并收敛 outputs/phase/progress。
-3) 统一 tasks：让 thread render 进入 tasks（targetType=thread）。
-4) 清理旧字段：当线上读写都切到新字段后，删除旧字段与兼容分支（最后一步做）。
+1) DB：以显式字段表达渲染产物引用（`render*JobId`），不再使用“字符串协议字段”。
+2) 回调：只写新字段；不再双写旧字段。
+3) 查询：只读新字段；不再 fallback 旧字段。
+4) 统一 tasks：thread render 进入 tasks（targetType=thread）。
 
 #### E.1 DB 变更清单（建议最小集）
 
-> D1/SQLite 下“删除列/重命名列”成本高且风险大，建议策略是：新增新列 + 双写双读 + 过一段时间再决定是否删除旧列。
+> 备注：D1/SQLite 下“删除列/重命名列”成本高且风险大；本仓库当前选择“新增新列并直接切换只写只读”，不保留旧字段兼容分支。
 
 1) `media` 新增字段（示例命名）：
    - `render_comments_job_id`（nullable）
@@ -321,31 +341,10 @@ ORPC 侧改成：
    - `target_type` 加入 `thread`
    - `kind` 加入 `render-thread`（或统一为新的 purpose enum；二选一）
 
-#### E.2 回填与兼容窗口（推荐 3 步走）
-
-1) 回填（一次性脚本/迁移）
-   - 从旧字段解析 jobId：
-     - `video_with_subtitles_path` 形如 `remote:orchestrator:<jobId>` → 写入 `render_subtitles_job_id`
-     - `video_with_info_path` 形如 `remote:orchestrator:<jobId>` → 写入 `render_comments_job_id`
-2) 双写（上线后）
-   - callback handler 写新字段的同时继续写旧字段（保持旧接口仍能工作）
-3) 双读（上线后）
-   - 播放/下载优先使用新字段生成 orchestrator artifact URL；为空再 fallback 旧字段
-
-#### E.3 接口变更建议（让前端更容易理解）
+#### E.2 接口变更建议（让前端更容易理解）
 
 1) Media 详情/ORPC 返回新增：
    - `renderCommentsJobId`、`renderSubtitlesJobId`
-2) 旧字段（`videoWithInfoPath/videoWithSubtitlesPath`）标记 deprecated：
-   - UI 不再直接使用
-   - 兼容窗口结束后再删除
-
-#### E.4 切换点（何时可以删旧分支）
-
-- 观察一个版本周期（例如 1~2 周）：
-  - 新字段写入覆盖率 >= 95%（新任务）
-  - 旧字段 fallback 命中率趋近 0
-- 再做最终清理 PR：删除旧字段/旧分支（最后一步做，不与功能改动混在一起）
 
 ---
 
@@ -362,7 +361,7 @@ ORPC 侧改成：
 ## 6. 验收清单（每个 Phase 都要过）
 
 - 回调：eventSeq 去重仍然生效（重复回调不会二次扣费/二次写入）。
-- 产物：`remote:orchestrator:<jobId>` 解析与播放/下载不受影响。
+- 产物：渲染视频通过 `render*JobId` 走 orchestrator `/artifacts/:jobId` 可播放/下载。
 - 任务：tasks 状态流转、progress、jobStatusSnapshot 字段不变或向后兼容。
 - 错误：失败场景下的 `downloadError`/task.error 仍可读、可排查。
 
@@ -371,7 +370,7 @@ ORPC 侧改成：
 ## 7. 发布与回滚（只针对可维护性重构）
 
 - Phase A/B：纯重构/内部抽象，不改外部 API，回滚=回退 commit。
-- Phase C：共享 types 若引入运行期校验（zod），需先以“warn-only”模式上线一版（只记录不阻断），再切为严格校验。
+- Phase C：本地-only 场景已直接采用 callback strict；若未来需要线上灰度，可再引入“warn-only → strict”的切换开关。
 
 ---
 
@@ -383,6 +382,8 @@ ORPC 侧改成：
 2) PR-2：Phase B（引入 enqueueCloudTask + 迁移 render-thread/render-subtitles）
 3) PR-3：Phase B（迁移 render-comments/asr）
 4) PR-4：Phase B（迁移 download；最后做）
-5) PR-5：Phase C（共享 types + warn-only schema 校验）
-6) PR-6：Phase E（DB 新字段 + 回填 + 双写双读；如果决定做）
+5) PR-5：Phase C（共享 types + callback strict 校验）
+6) PR-6：Phase E（DB 新字段 + 只写只读；如果决定做）
 7) PR-7：清理旧字段/旧分支（最后做）
+
+> 备注：当前已走 v2-only 且不兼容旧部署，上述 PR 拆分仅作为历史建议参考。

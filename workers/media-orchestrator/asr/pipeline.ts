@@ -6,8 +6,11 @@ import { jobStub } from '../utils/job'
 export async function runAsrForPipeline(env: Env, doc: any) {
 	const jobId = doc.jobId
 	const audioKey: string | undefined =
-		doc.outputAudioKey || doc.outputs?.audio?.key
-	if (!audioKey) throw new Error('asr-pipeline: missing outputAudioKey')
+		typeof doc?.metadata?.sourceKey === 'string'
+			? doc.metadata.sourceKey
+			: doc.outputs?.audioProcessed?.key || doc.outputs?.audio?.key
+	if (!audioKey)
+		throw new Error('asr-pipeline: missing metadata.sourceKey for input audio')
 
 	// Decide model
 	const model: string =

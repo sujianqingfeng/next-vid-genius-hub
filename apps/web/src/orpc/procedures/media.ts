@@ -7,10 +7,9 @@ import {
 	deleteCloudArtifacts,
 	getJobStatus,
 	type JobManifest,
-	putJobManifest,
-	startCloudJob,
 } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
+import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
 import { logger } from '~/lib/logger'
 import { MEDIA_SOURCES } from '~/lib/media/source'
@@ -21,7 +20,6 @@ import {
 import { ProviderFactory } from '~/lib/providers/provider-factory'
 import { resolveSuccessProxy } from '~/lib/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/proxy/utils'
-import { createId } from '~/lib/utils/id'
 import { CommentsTemplateConfigSchema } from '~/lib/remotion/comments-template-config'
 
 export const list = os
@@ -162,51 +160,23 @@ export const refreshMetadata = os
 			})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
-		const taskId = createId()
-		const jobId = `job_${createId()}`
-		await db.insert(schema.tasks).values({
-			id: taskId,
-			userId,
-			kind: TASK_KINDS.METADATA_REFRESH,
-			engine: 'media-downloader',
-			targetType: 'media',
-			targetId: record.id,
-			status: 'queued',
-			progress: 0,
-			payload: {
-				url: record.url,
-				quality: record.quality || '1080p',
-				source,
-				proxyId: effectiveProxyId ?? null,
-			},
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		})
-
 		try {
-			const manifest: JobManifest = {
-				jobId,
+			const { taskId, jobId } = await enqueueCloudTask({
+				db,
+				userId,
+				kind: TASK_KINDS.METADATA_REFRESH,
+				engine: 'media-downloader',
+				targetType: 'media',
+				targetId: record.id,
 				mediaId: record.id,
 				purpose: TASK_KINDS.METADATA_REFRESH,
-				engine: 'media-downloader',
-				createdAt: Date.now(),
-				inputs: {},
-				optionsSnapshot: {
-					task: 'metadata-only',
+				title: record.title || undefined,
+				payload: {
 					url: record.url,
 					quality: record.quality || '1080p',
 					source,
 					proxyId: effectiveProxyId ?? null,
 				},
-			}
-			await putJobManifest(jobId, manifest)
-
-			const job = await startCloudJob({
-				jobId,
-				mediaId: record.id,
-				engine: 'media-downloader',
-				purpose: TASK_KINDS.METADATA_REFRESH,
-				title: record.title || undefined,
 				options: {
 					task: 'metadata-only',
 					url: record.url,
@@ -214,18 +184,26 @@ export const refreshMetadata = os
 					source,
 					proxy: proxyPayload,
 				},
+				buildManifest: ({ jobId }): JobManifest => {
+					return {
+						jobId,
+						mediaId: record.id,
+						purpose: TASK_KINDS.METADATA_REFRESH,
+						engine: 'media-downloader',
+						createdAt: Date.now(),
+						inputs: {},
+						optionsSnapshot: {
+							task: 'metadata-only',
+							url: record.url,
+							quality: record.quality || '1080p',
+							source,
+							proxyId: effectiveProxyId ?? null,
+						},
+					}
+				},
 			})
 
-			await db
-				.update(schema.tasks)
-				.set({
-					jobId: job.jobId,
-					startedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
-
-			return { jobId: job.jobId, taskId }
+			return { jobId, taskId }
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : 'Failed to refresh metadata'
@@ -233,15 +211,6 @@ export const refreshMetadata = os
 				'media',
 				`[metadata.refresh.error] media=${record.id} user=${userId} error=${message}`,
 			)
-			await db
-				.update(schema.tasks)
-				.set({
-					status: 'failed',
-					error: message,
-					finishedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
 			throw err
 		}
 	})
@@ -340,7 +309,6 @@ export const deleteById = os
 				const keys: string[] = []
 				// Directly referenced remote objects from the record
 				if (record.remoteVideoKey) keys.push(record.remoteVideoKey)
-				if (record.remoteAudioKey) keys.push(record.remoteAudioKey)
 				if (record.remoteAudioSourceKey) keys.push(record.remoteAudioSourceKey)
 				if (record.remoteAudioProcessedKey)
 					keys.push(record.remoteAudioProcessedKey)
@@ -354,17 +322,10 @@ export const deleteById = os
 				)
 
 				const artifactJobIds: string[] = []
-				// videoWithSubtitlesPath or videoWithInfoPath might store remote orchestrator artifact refs: "remote:orchestrator:<jobId>"
-				for (const p of [
-					record.videoWithSubtitlesPath,
-					record.videoWithInfoPath,
-					record.filePath,
-				]) {
-					if (typeof p === 'string' && p.startsWith('remote:orchestrator:')) {
-						const jobId = p.split(':').pop()
-						if (jobId) artifactJobIds.push(jobId)
-					}
-				}
+				if (record.renderSubtitlesJobId)
+					artifactJobIds.push(record.renderSubtitlesJobId)
+				if (record.renderCommentsJobId)
+					artifactJobIds.push(record.renderCommentsJobId)
 				// Also include the cloud download job id (if any)
 				if (record.downloadJobId) artifactJobIds.push(record.downloadJobId)
 

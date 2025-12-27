@@ -1,54 +1,12 @@
 import { postSignedJson } from '@app/job-callbacks'
-import type { EngineId, JobStatus } from '@app/media-domain'
+import type {
+	OrchestratorJobStatusResponse as JobStatusResponse,
+	OrchestratorStartJobInput as StartJobInput,
+	OrchestratorStartJobResponse as StartJobResponse,
+} from '@app/media-domain'
 import { requireJobCallbackSecret, requireOrchestratorUrl } from './utils'
 
-export interface StartJobInput extends Record<string, unknown> {
-	/**
-	 * Globally unique job id for this async task. The caller (app) is now
-	 * responsible for generating this id so it can be used consistently across
-	 * DB records, manifests and orchestrator/containers.
-	 */
-	jobId: string
-	mediaId: string
-	engine: EngineId
-	/**
-	 * Business meaning of this job (e.g. download/comments-download/channel-sync/asr/render-subtitles).
-	 * Used to make callbacks event-driven without inferring from engine/options.
-	 */
-	purpose?: string
-	/**
-	 * Optional human-readable title for the media / resource.
-	 * Used only to build nicer R2 object keys (e.g. media/{id}-{slug}/...).
-	 */
-	title?: string | null
-	options?: Record<string, unknown>
-}
-
-export interface StartJobResponse {
-	jobId: string
-}
-
-export interface JobStatusResponse {
-	jobId: string
-	status: JobStatus
-	purpose?: string
-	phase?: 'fetching_metadata' | 'preparing' | 'running' | 'uploading'
-	progress?: number
-	outputKey?: string
-	outputAudioKey?: string
-	outputMetadataKey?: string
-	message?: string
-	outputs?: {
-		video?: { key?: string; url?: string }
-		audio?: { key?: string; url?: string }
-		audioSource?: { key?: string; url?: string }
-		audioProcessed?: { key?: string; url?: string }
-		metadata?: { key?: string; url?: string }
-		vtt?: { key?: string; url?: string }
-		words?: { key?: string; url?: string }
-	}
-	metadata?: Record<string, unknown>
-}
+export type { JobStatusResponse, StartJobInput, StartJobResponse }
 
 export async function startCloudJob(
 	input: StartJobInput,
@@ -77,4 +35,32 @@ export async function getJobStatus(
 	if (!res.ok)
 		throw new Error(`getJobStatus failed: ${res.status} ${await res.text()}`)
 	return (await res.json()) as JobStatusResponse
+}
+
+export async function replayAppCallback(input: {
+	jobId: string
+	reason?: string | null
+	force?: boolean
+}): Promise<{ ok: boolean; jobId: string; eventSeq?: number; eventId?: string }> {
+	const base = requireOrchestratorUrl()
+	const url = `${base.replace(/\/$/, '')}/debug/replay-app-callback`
+	const secret = requireJobCallbackSecret()
+	const res = await postSignedJson(url, secret, {
+		jobId: input.jobId,
+		reason: input.reason ?? null,
+		force: Boolean(input.force),
+	})
+	if (!res.ok) {
+		let msg = ''
+		try {
+			msg = await res.clone().text()
+		} catch {}
+		throw new Error(`replayAppCallback failed: ${res.status} ${msg}`)
+	}
+	return (await res.json()) as {
+		ok: boolean
+		jobId: string
+		eventSeq?: number
+		eventId?: string
+	}
 }

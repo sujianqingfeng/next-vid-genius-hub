@@ -1,43 +1,7 @@
-import { bucketPaths } from '@app/media-domain'
+import { bucketPaths, type JobManifest } from '@app/media-domain'
 import { presignPutAndGetByKey } from './storage'
 
-// Per-job manifest: immutable snapshot of everything a single async job needs
-// so that Workers/containers never have to reach into the primary DB.
-export interface JobManifest {
-	jobId: string
-	mediaId: string
-	// Business meaning of this job (preferred over inferring from engine/options).
-	purpose?: string
-	engine: string
-	createdAt: number
-	// Inputs resolved at job-start time. Engines must not look at DB; only at
-	// these resolved keys/options.
-	inputs: {
-		// Generic video/audio keys (e.g. downloads/.../video.mp4)
-		videoKey?: string | null
-		audioKey?: string | null
-		// Optional pre-materialized variants
-		subtitlesInputKey?: string | null
-		vttKey?: string | null
-		commentsKey?: string | null
-		// ASR / audio pipelines
-		asrSourceKey?: string | null
-		// Optional policy hints (e.g. which variant to prefer)
-		sourcePolicy?: 'auto' | 'original' | 'subtitles' | null
-	}
-	// Optional outputs contract for observability/debugging. Containers still
-	// receive presigned PUT URLs from the orchestrator; this just records the
-	// canonical keys we expect to be written.
-	outputs?: {
-		videoKey?: string | null
-		audioKey?: string | null
-		metadataKey?: string | null
-		vttKey?: string | null
-		wordsKey?: string | null
-	}
-	// Best-effort snapshot of engine options for debugging.
-	optionsSnapshot?: Record<string, unknown>
-}
+export type { JobManifest } from '@app/media-domain'
 
 export async function putJobManifest(
 	jobId: string,

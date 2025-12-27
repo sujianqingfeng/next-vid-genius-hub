@@ -7,7 +7,7 @@ import { getDb, schema } from '~/lib/db'
 export const listByTarget = os
 	.input(
 		z.object({
-			targetType: z.enum(['media', 'channel', 'system']),
+			targetType: z.enum(['media', 'channel', 'thread', 'system']),
 			targetId: z.string().min(1),
 			limit: z.number().min(1).max(100).default(50),
 			offset: z.number().min(0).default(0),

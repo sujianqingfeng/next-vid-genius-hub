@@ -4,14 +4,10 @@ import { z } from 'zod'
 import { getDefaultAiModel, isEnabledModel } from '~/lib/ai/config/service'
 import { translateTextWithUsage } from '~/lib/ai/translate'
 import type { RequestContext } from '~/lib/auth/types'
-import {
-	getJobStatus,
-	type JobManifest,
-	putJobManifest,
-	startCloudJob,
-} from '~/lib/cloudflare'
+import { getJobStatus, type JobManifest } from '~/lib/cloudflare'
 import { TRANSLATE_CONCURRENCY } from '~/lib/config/env'
 import { getDb, schema } from '~/lib/db'
+import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
 import { MEDIA_SOURCES } from '~/lib/media/source'
 import { throwInsufficientPointsError } from '~/lib/orpc/errors'
@@ -131,51 +127,21 @@ export const startCloudSync = os
 			})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
-		const taskId = createId()
-		const jobId = `job_${createId()}`
-
-		await db.insert(schema.tasks).values({
-			id: taskId,
-			userId,
-			kind: TASK_KINDS.CHANNEL_SYNC,
-			engine: 'media-downloader',
-			targetType: 'channel',
-			targetId: channel.id,
-			status: 'queued',
-			progress: 0,
-			payload: {
-				limit: input.limit,
-				proxyId: effectiveProxyId ?? null,
-				channelUrlOrId,
-			},
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		})
-
-		try {
-			const manifest: JobManifest = {
-				jobId,
-				mediaId: channel.id,
-				purpose: TASK_KINDS.CHANNEL_SYNC,
+		const { taskId, jobId } = await enqueueCloudTask({
+				db,
+				userId,
+				kind: TASK_KINDS.CHANNEL_SYNC,
 				engine: 'media-downloader',
-				createdAt: Date.now(),
-				inputs: {},
-				optionsSnapshot: {
-					task: 'channel-list',
-					source: MEDIA_SOURCES.YOUTUBE,
-					channelUrlOrId,
-					limit: input.limit,
-					proxyId: effectiveProxyId ?? null,
-				},
-			}
-			await putJobManifest(jobId, manifest)
-
-			const job = await startCloudJob({
-				jobId,
+				targetType: 'channel',
+				targetId: channel.id,
 				mediaId: channel.id,
-				engine: 'media-downloader',
 				purpose: TASK_KINDS.CHANNEL_SYNC,
 				title: channel.title || undefined,
+				payload: {
+					limit: input.limit,
+					proxyId: effectiveProxyId ?? null,
+					channelUrlOrId,
+				},
 				options: {
 					task: 'channel-list',
 					source: MEDIA_SOURCES.YOUTUBE,
@@ -183,41 +149,35 @@ export const startCloudSync = os
 					limit: input.limit,
 					proxy: proxyPayload,
 				},
+				buildManifest: ({ jobId }): JobManifest => {
+					return {
+						jobId,
+						mediaId: channel.id,
+						purpose: TASK_KINDS.CHANNEL_SYNC,
+						engine: 'media-downloader',
+						createdAt: Date.now(),
+						inputs: {},
+						optionsSnapshot: {
+							task: 'channel-list',
+							source: MEDIA_SOURCES.YOUTUBE,
+							channelUrlOrId,
+							limit: input.limit,
+							proxyId: effectiveProxyId ?? null,
+						},
+					}
+				},
+		})
+
+		await db
+			.update(schema.channels)
+			.set({
+				lastJobId: jobId,
+				lastSyncStatus: 'queued',
+				updatedAt: new Date(),
 			})
+			.where(eq(schema.channels.id, channel.id))
 
-			await db
-				.update(schema.channels)
-				.set({
-					lastJobId: job.jobId,
-					lastSyncStatus: 'queued',
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.channels.id, channel.id))
-
-			await db
-				.update(schema.tasks)
-				.set({
-					jobId: job.jobId,
-					startedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
-
-			return { jobId: job.jobId, taskId }
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Failed to start channel sync'
-			await db
-				.update(schema.tasks)
-				.set({
-					status: 'failed',
-					error: message,
-					finishedAt: new Date(),
-					updatedAt: new Date(),
-				})
-				.where(eq(schema.tasks.id, taskId))
-			throw error
-		}
+		return { jobId, taskId }
 	})
 
 export const getCloudSyncStatus = os

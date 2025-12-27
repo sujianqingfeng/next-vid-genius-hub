@@ -212,6 +212,40 @@ export const listJobEvents = os
 		return { items }
 	})
 
+const ReplayAppCallbackSchema = z.object({
+	jobId: z.string().trim().min(1),
+	reason: z.string().trim().max(500).optional(),
+	force: z.boolean().optional(),
+})
+
+export const replayAppCallback = os
+	.input(ReplayAppCallbackSchema)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const actor = ctx.auth.user!
+
+		const { replayAppCallback } = await import('~/lib/cloudflare/jobs')
+
+		const result = await replayAppCallback({
+			jobId: input.jobId,
+			reason: input.reason ?? `admin:${actor.id}`,
+			force: Boolean(input.force),
+		})
+
+		return result
+	})
+
+const GetOrchestratorJobSchema = z.object({
+	jobId: z.string().trim().min(1),
+})
+
+export const getOrchestratorJob = os
+	.input(GetOrchestratorJobSchema)
+	.handler(async ({ input }) => {
+		const { getJobStatus } = await import('~/lib/cloudflare/jobs')
+		return await getJobStatus(input.jobId)
+	})
+
 const DeleteUserSchema = z.object({
 	userId: z.string().min(1),
 })

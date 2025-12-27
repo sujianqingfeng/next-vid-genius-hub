@@ -594,7 +594,7 @@ export function MediaCommentsPage({
 		},
 	)
 
-	const hasRenderedCommentsVideo = Boolean(mediaQuery.data?.videoWithInfoPath)
+	const hasRenderedCommentsVideo = Boolean(mediaQuery.data?.renderCommentsJobId)
 	const renderedDownloadUrl = `/api/media/${encodeURIComponent(id)}/rendered-info?download=1`
 
 	const previewVideoInfo = mediaQuery.data

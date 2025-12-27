@@ -38,9 +38,9 @@ function toDateLabel(input: unknown): string {
 }
 
 function mediaPreviewUrl(media: MediaItem, id: string): string | null {
-	if (media.videoWithInfoPath)
+	if (media.renderCommentsJobId)
 		return `/api/media/${encodeURIComponent(id)}/rendered-info`
-	if (media.videoWithSubtitlesPath)
+	if (media.renderSubtitlesJobId)
 		return `/api/media/${encodeURIComponent(id)}/rendered`
 	if (media.filePath || media.remoteVideoKey || media.downloadJobId) {
 		return `/api/media/${encodeURIComponent(id)}/downloaded`

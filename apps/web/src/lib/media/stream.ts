@@ -127,14 +127,6 @@ export async function resolveRemoteVideoUrl(
 ): Promise<string | null> {
 	const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
 	if (!media) return null
-	if (media.filePath && media.filePath.startsWith('remote:orchestrator:')) {
-		const jobId = media.filePath.split(':').pop()!
-		logger.debug(
-			'media',
-			`[stream.resolve] via filePath orchestrator job=${jobId}`,
-		)
-		return `${base}/artifacts/${encodeURIComponent(jobId)}`
-	}
 	if (media.downloadJobId) {
 		logger.debug(
 			'media',
@@ -164,13 +156,4 @@ export function makeOrchestratorArtifactUrl(jobId: string): string | null {
 	const base = (CF_ORCHESTRATOR_URL || '').replace(/\/$/, '')
 	if (!base) return null
 	return `${base}/artifacts/${encodeURIComponent(jobId)}`
-}
-
-export function extractOrchestratorUrlFromPath(
-	path: string | null | undefined,
-): string | null {
-	if (!path || !path.startsWith('remote:orchestrator:')) return null
-	const jobId = path.split(':').pop()
-	if (!jobId) return null
-	return makeOrchestratorArtifactUrl(jobId)
 }

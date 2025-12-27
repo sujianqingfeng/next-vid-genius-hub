@@ -23,8 +23,7 @@ describe('resolveCloudVideoKey', () => {
 			sourcePolicy: 'original',
 			remoteVideoKey: 'k-remote',
 			downloadJobId: null,
-			filePath: null,
-			videoWithSubtitlesPath: null,
+			renderSubtitlesJobId: null,
 		})
 		expect(key).toBe('k-remote')
 		expect(mocks.getJobStatusMock).not.toHaveBeenCalled()
@@ -35,13 +34,14 @@ describe('resolveCloudVideoKey', () => {
 		mocks.remoteKeyExistsMock
 			.mockResolvedValueOnce(false)
 			.mockResolvedValueOnce(true)
-		mocks.getJobStatusMock.mockResolvedValueOnce({ outputKey: 'k-from-job' })
+		mocks.getJobStatusMock.mockResolvedValueOnce({
+			outputs: { video: { key: 'k-from-job' } },
+		})
 		const key = await resolveCloudVideoKey({
 			sourcePolicy: 'original',
 			remoteVideoKey: 'k-missing',
 			downloadJobId: 'job_download',
-			filePath: null,
-			videoWithSubtitlesPath: null,
+			renderSubtitlesJobId: null,
 		})
 		expect(key).toBe('k-from-job')
 		expect(mocks.getJobStatusMock).toHaveBeenCalledWith('job_download')
@@ -57,15 +57,16 @@ describe('resolveCloudVideoKey', () => {
 			sourcePolicy: 'subtitles',
 			remoteVideoKey: 'k-remote',
 			downloadJobId: 'job_download',
-			filePath: null,
-			videoWithSubtitlesPath: 'remote:orchestrator:job_subtitles',
+			renderSubtitlesJobId: 'job_subtitles',
 		})
 		expect(key).toBe('k-sub')
 		expect(mocks.getJobStatusMock).toHaveBeenCalledWith('job_subtitles')
 	})
 
 	it('auto policy falls back to original when subtitles key is missing', async () => {
-		mocks.getJobStatusMock.mockResolvedValueOnce({ outputKey: 'k-sub' })
+		mocks.getJobStatusMock.mockResolvedValueOnce({
+			outputs: { video: { key: 'k-sub' } },
+		})
 		mocks.remoteKeyExistsMock
 			.mockResolvedValueOnce(false) // subtitles key
 			.mockResolvedValueOnce(true) // original remote key
@@ -73,8 +74,7 @@ describe('resolveCloudVideoKey', () => {
 			sourcePolicy: 'auto',
 			remoteVideoKey: 'k-remote',
 			downloadJobId: null,
-			filePath: null,
-			videoWithSubtitlesPath: 'remote:orchestrator:job_subtitles',
+			renderSubtitlesJobId: 'job_subtitles',
 		})
 		expect(key).toBe('k-remote')
 		expect(mocks.remoteKeyExistsMock).toHaveBeenCalledTimes(2)
@@ -85,8 +85,7 @@ describe('resolveCloudVideoKey', () => {
 			sourcePolicy: 'auto',
 			remoteVideoKey: null,
 			downloadJobId: null,
-			filePath: null,
-			videoWithSubtitlesPath: null,
+			renderSubtitlesJobId: null,
 		})
 		expect(key).toBeNull()
 		expect(mocks.getJobStatusMock).not.toHaveBeenCalled()

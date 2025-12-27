@@ -35,8 +35,8 @@ export interface MediaItem {
 		end: number
 	}> | null
 	translation?: string | null
-	videoWithSubtitlesPath?: string | null
-	videoWithInfoPath?: string | null
+	renderSubtitlesJobId?: string | null
+	renderCommentsJobId?: string | null
 	comments?: Comment[] | null
 	commentsDownloadedAt?: Date | null
 	downloadBackend?: 'local' | 'cloud'
@@ -54,7 +54,6 @@ export interface MediaItem {
 		| null
 	downloadError?: string | null
 	remoteVideoKey?: string | null
-	remoteAudioKey?: string | null
 	remoteAudioSourceKey?: string | null
 	remoteAudioProcessedKey?: string | null
 	remoteMetadataKey?: string | null

@@ -370,7 +370,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 	const canOptimize =
 		Array.isArray(transcriptionWords) && transcriptionWords.length > 0
 	const hasOptimized = Boolean((media as any)?.optimizedTranscription)
-	const hasRenderedVideo = Boolean((media as any)?.videoWithSubtitlesPath)
+	const hasRenderedVideo = Boolean((media as any)?.renderSubtitlesJobId)
 
 	const translationText =
 		translationDraft ?? String((media as any)?.translation ?? '')

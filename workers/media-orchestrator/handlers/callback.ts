@@ -8,7 +8,7 @@ import { requireJobCallbackSecret, verifyHmac } from '../utils/hmac'
 
 async function materializeSubtitlesInput(env: Env, doc: any) {
 	const mediaId: string | undefined = doc?.mediaId
-	const sourceKey: string | undefined = doc?.outputKey
+	const sourceKey: string | undefined = doc?.outputs?.video?.key
 	if (!mediaId || !sourceKey) return
 	const pathOptions = { title: doc?.title as string | undefined }
 	const targetKey = bucketPaths.inputs.subtitledVideo(mediaId, pathOptions)
@@ -29,10 +29,6 @@ export async function handleContainerCallback(env: Env, req: Request) {
 		mediaId?: string
 		nonce?: string
 		ts?: number
-		outputs?: {
-			video?: { key?: string }
-			audio?: { key?: string }
-		}
 	}
 	// Basic replay guard on nonce
 	if (body.nonce) {
@@ -122,4 +118,3 @@ export async function handleContainerCallback(env: Env, req: Request) {
 	}
 	return json({ ok: true })
 }
-

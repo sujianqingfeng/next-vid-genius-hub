@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import {
-	extractOrchestratorUrlFromPath,
 	makeOrchestratorArtifactUrl,
 	resolveRemoteVideoUrl,
 	tryProxyRemoteWithRange,
@@ -81,31 +80,26 @@ export async function handleMediaSourceRequest(
 		}
 
 		if (variant === 'subtitles') {
-			const renderedPath = media.videoWithSubtitlesPath
-			if (!renderedPath) {
+			const renderJobId = media.renderSubtitlesJobId
+			if (!renderJobId) {
 				return Response.json(
 					{ error: 'Subtitled source not available' },
 					{ status: 404 },
 				)
 			}
-			if (renderedPath.startsWith('remote:orchestrator:')) {
-				const remoteUrl = extractOrchestratorUrlFromPath(renderedPath)
-				if (!remoteUrl) {
-					return Response.json(
-						{ error: 'Orchestrator URL not configured' },
-						{ status: 500 },
-					)
-				}
-				const proxied = await tryProxyRemoteWithRange(remoteUrl, request, {
-					defaultCacheSeconds: 60,
-				})
-				if (proxied) {
-					logger.info(
-						'api',
-						`[source] subtitles via orchestrator media=${mediaId}`,
-					)
-					return proxied
-				}
+			const remoteUrl = makeOrchestratorArtifactUrl(renderJobId)
+			if (!remoteUrl) {
+				return Response.json(
+					{ error: 'Orchestrator URL not configured' },
+					{ status: 500 },
+				)
+			}
+			const proxied = await tryProxyRemoteWithRange(remoteUrl, request, {
+				defaultCacheSeconds: 60,
+			})
+			if (proxied) {
+				logger.info('api', `[source] subtitles via orchestrator media=${mediaId}`)
+				return proxied
 			}
 
 			return Response.json(
@@ -116,9 +110,9 @@ export async function handleMediaSourceRequest(
 
 		// variant=auto: prefer subtitles (if available), otherwise fall back to original source.
 		if (variant === 'auto') {
-			const renderedPath = media.videoWithSubtitlesPath
-			if (renderedPath && renderedPath.startsWith('remote:orchestrator:')) {
-				const remoteUrl = extractOrchestratorUrlFromPath(renderedPath)
+			const renderJobId = media.renderSubtitlesJobId
+			if (renderJobId) {
+				const remoteUrl = makeOrchestratorArtifactUrl(renderJobId)
 				if (remoteUrl) {
 					const proxied = await tryProxyRemoteWithRange(remoteUrl, request, {
 						defaultCacheSeconds: 60,
@@ -127,14 +121,14 @@ export async function handleMediaSourceRequest(
 					if (proxied) {
 						logger.info(
 							'api',
-							`[source] auto via subtitles orchestrator media=${mediaId}`,
+							`[source] auto via subtitles orchestrator job=${renderJobId} media=${mediaId}`,
 						)
 						return proxied
 					}
 				} else {
 					logger.warn(
 						'api',
-						`[source] auto: subtitles path set but orchestrator URL not configured media=${mediaId}`,
+						`[source] auto: subtitles job set but orchestrator URL not configured media=${mediaId}`,
 					)
 				}
 			}

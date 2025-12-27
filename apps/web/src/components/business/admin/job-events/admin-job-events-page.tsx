@@ -4,6 +4,9 @@ import * as React from 'react'
 
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
+import { Switch } from '~/components/ui/switch'
+import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
@@ -28,6 +31,8 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 	const [jobIdInput, setJobIdInput] = React.useState(jobId ?? '')
 	const [taskIdInput, setTaskIdInput] = React.useState(taskId ?? '')
 	const [limitInput, setLimitInput] = React.useState(String(limit))
+	const [replayReason, setReplayReason] = React.useState('')
+	const [replayForce, setReplayForce] = React.useState(false)
 
 	React.useEffect(() => setJobIdInput(jobId ?? ''), [jobId])
 	React.useEffect(() => setTaskIdInput(taskId ?? ''), [taskId])
@@ -47,6 +52,42 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 	)
 	const items = eventsQuery.data?.items ?? []
 
+	const jobIdTrimmed = jobIdInput.trim()
+
+	const orchestratorQuery = useQuery({
+		...queryOrpc.admin.getOrchestratorJob.queryOptions({
+			input: { jobId: jobIdTrimmed },
+		}),
+		enabled: Boolean(jobIdTrimmed),
+	})
+
+	const ignoredInvalidCount = React.useMemo(() => {
+		return items.filter((e) =>
+			String(e.kind || '').startsWith('ignored-invalid'),
+		).length
+	}, [items])
+
+	const replayMutation = useEnhancedMutation(
+		queryOrpc.admin.replayAppCallback.mutationOptions({
+			onSuccess: () => {
+				const nextJobId = jobIdTrimmed || undefined
+				setSearch({ jobId: nextJobId, taskId: undefined, limit })
+				eventsQuery.refetch()
+				orchestratorQuery.refetch()
+			},
+		}),
+		{
+			successToast: ({ data }) => {
+				const seq =
+					typeof (data as any)?.eventSeq === 'number'
+						? String((data as any).eventSeq)
+						: ''
+				return seq ? t('replay.toast.okWithSeq', { seq }) : t('replay.toast.ok')
+			},
+			errorToast: ({ error }) => (error as Error)?.message || t('replay.toast.fail'),
+		},
+	)
+
 	const onApply = () => {
 		const nextJobId = jobIdInput.trim() || undefined
 		const nextTaskId = taskIdInput.trim() || undefined
@@ -61,7 +102,19 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 		setJobIdInput('')
 		setTaskIdInput('')
 		setLimitInput('100')
+		setReplayReason('')
+		setReplayForce(false)
 		setSearch({ jobId: undefined, taskId: undefined, limit: 100 })
+	}
+
+	const onReplay = () => {
+		const targetJobId = jobIdTrimmed
+		if (!targetJobId) return
+		replayMutation.mutate({
+			jobId: targetJobId,
+			reason: replayReason.trim() || undefined,
+			force: replayForce || undefined,
+		})
 	}
 
 	return (
@@ -153,6 +206,99 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 				</div>
 			</div>
 
+			<div className="border border-border bg-card p-4 space-y-4">
+				<div className="space-y-1">
+					<div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">
+						{t('replay.title')}
+					</div>
+					<div className="text-xs text-muted-foreground font-mono">
+						{t('replay.subtitle')}
+					</div>
+				</div>
+
+				<div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+					<div className="space-y-1 md:col-span-2">
+						<div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">
+							{t('replay.fields.jobId')}
+						</div>
+						<Input
+							value={jobIdInput}
+							onChange={(e) => setJobIdInput(e.target.value)}
+							placeholder={t('placeholders.jobId')}
+							className="rounded-none font-mono text-xs"
+						/>
+					</div>
+
+					<div className="space-y-1 md:col-span-2">
+						<div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground font-mono">
+							{t('replay.fields.reason')}
+						</div>
+						<Input
+							value={replayReason}
+							onChange={(e) => setReplayReason(e.target.value)}
+							placeholder={t('replay.placeholders.reason')}
+							className="rounded-none font-mono text-xs"
+						/>
+					</div>
+
+					<div className="flex items-center gap-3 md:col-span-2">
+						<Switch
+							checked={replayForce}
+							onCheckedChange={setReplayForce}
+						/>
+						<Label className="font-mono text-xs">
+							{t('replay.fields.force')}
+						</Label>
+					</div>
+
+					<div className="flex items-end justify-end md:col-span-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={onReplay}
+							disabled={!jobIdTrimmed || replayMutation.isPending}
+							className="rounded-none font-mono text-[10px] uppercase tracking-widest h-9"
+						>
+							{replayMutation.isPending
+								? t('replay.actions.replaying')
+								: t('replay.actions.replay')}
+						</Button>
+					</div>
+				</div>
+
+				{jobIdTrimmed ? (
+					<div className="border-t border-border pt-4 space-y-2">
+						<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+							{t('replay.stats.title')}
+						</div>
+						<div className="grid grid-cols-1 gap-2 md:grid-cols-4 text-xs font-mono">
+							<div className="text-muted-foreground">
+								{t('replay.stats.ignoredInvalid')}:{' '}
+								<span className="text-foreground">{ignoredInvalidCount}</span>
+							</div>
+							<div className="text-muted-foreground">
+								{t('replay.stats.orchestratorStatus')}:{' '}
+								<span className="text-foreground">
+									{String((orchestratorQuery.data as any)?.status ?? '')}
+								</span>
+							</div>
+							<div className="text-muted-foreground">
+								{t('replay.stats.appNotified')}:{' '}
+								<span className="text-foreground">
+									{String(Boolean((orchestratorQuery.data as any)?.appNotified))}
+								</span>
+							</div>
+							<div className="text-muted-foreground">
+								{t('replay.stats.notifyAttempts')}:{' '}
+								<span className="text-foreground">
+									{String((orchestratorQuery.data as any)?.pendingNotify?.attempt ?? 0)}
+								</span>
+							</div>
+						</div>
+					</div>
+				) : null}
+			</div>
+
 			<div className="border border-border bg-card">
 				<div className="grid grid-cols-12 gap-3 border-b border-border bg-muted/20 px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground">
 					<div className="col-span-2">{t('cols.time')}</div>
@@ -237,4 +383,3 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 		</div>
 	)
 }
-

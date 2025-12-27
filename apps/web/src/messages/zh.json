@@ -797,6 +797,25 @@
 			"empty": "暂无事件",
 			"fields": { "jobId": "Job ID", "taskId": "Task ID", "limit": "条数" },
 			"placeholders": { "jobId": "job_…", "taskId": "任务 id" },
+			"replay": {
+				"title": "重放回调",
+				"subtitle": "让 Orchestrator 重新投递一次 /api/render/cf-callback（仅管理员）。",
+				"fields": { "jobId": "Job ID", "reason": "原因", "force": "强制" },
+				"placeholders": { "reason": "可选（仅用于审计）" },
+				"actions": { "replay": "重放", "replaying": "重放中…" },
+				"stats": {
+					"title": "信号",
+					"ignoredInvalid": "App ignored-invalid",
+					"orchestratorStatus": "Orchestrator 状态",
+					"appNotified": "已通知 App",
+					"notifyAttempts": "通知尝试次数"
+				},
+				"toast": {
+					"ok": "已触发重放",
+					"okWithSeq": "已触发重放（eventSeq {seq}）",
+					"fail": "重放失败"
+				}
+			},
 			"actions": {
 				"refresh": "刷新",
 				"refreshing": "刷新中…",

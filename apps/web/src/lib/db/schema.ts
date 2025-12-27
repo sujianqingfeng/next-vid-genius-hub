@@ -178,6 +178,7 @@ export const tasks = sqliteTable('tasks', {
 			'comments-download',
 			'render-comments',
 			'render-subtitles',
+			'render-thread',
 			'channel-sync',
 			'asr',
 		],
@@ -191,7 +192,7 @@ export const tasks = sqliteTable('tasks', {
 		],
 	}).notNull(),
 	targetType: text('target_type', {
-		enum: ['media', 'channel', 'system'],
+		enum: ['media', 'channel', 'thread', 'system'],
 	}).notNull(),
 	targetId: text('target_id').notNull(),
 	jobId: text('job_id'),
@@ -280,8 +281,9 @@ export const media = sqliteTable(
 			TranscriptionWord[]
 		>(),
 		translation: text('translation'),
-		videoWithSubtitlesPath: text('video_with_subtitles_path'),
-		videoWithInfoPath: text('video_with_info_path'),
+		// Explicit job references for cloud renders.
+		renderSubtitlesJobId: text('render_subtitles_job_id'),
+		renderCommentsJobId: text('render_comments_job_id'),
 		// 渲染配置：评论视频 Remotion 模板
 		commentsTemplate: text('comments_template'),
 		// 渲染配置：评论模板参数（配色/字体/布局等）

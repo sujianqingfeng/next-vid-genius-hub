@@ -6,6 +6,7 @@ export const TASK_KINDS = {
 	COMMENTS_DOWNLOAD: 'comments-download',
 	RENDER_COMMENTS: 'render-comments',
 	RENDER_SUBTITLES: 'render-subtitles',
+	RENDER_THREAD: 'render-thread',
 	CHANNEL_SYNC: 'channel-sync',
 	ASR: 'asr',
 } as const
