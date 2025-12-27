@@ -74,7 +74,7 @@ function mapYoutubeComment(item: any): BasicComment {
   }
 }
 
-export async function downloadYoutubeComments({ url, pages = 3, proxy }: CommentsDownloadParams): Promise<BasicComment[]> {
+export async function downloadYoutubeComments({ url, pages = 3, proxy, onProgress }: CommentsDownloadParams): Promise<BasicComment[]> {
   const youtube = await getYouTubeClient(proxy)
   const videoId = extractVideoId(url)
   if (!videoId) return []
@@ -82,6 +82,7 @@ export async function downloadYoutubeComments({ url, pages = 3, proxy }: Comment
   const initial = commentsRoot?.contents || []
   if (!initial.length) return []
   let comments = initial.map(mapYoutubeComment)
+  try { onProgress?.({ page: 1, pages, count: comments.length }) } catch {}
   let current = commentsRoot
   let page = 1
   while (current.has_continuation && page < pages) {
@@ -91,6 +92,7 @@ export async function downloadYoutubeComments({ url, pages = 3, proxy }: Comment
     comments = comments.concat(list.map(mapYoutubeComment))
     current = next
     page++
+    try { onProgress?.({ page, pages, count: comments.length }) } catch {}
   }
   return comments
 }
@@ -161,7 +163,7 @@ async function fetchTikwmComments(awemeId: string, url: string, cursor: number, 
   }
 }
 
-export async function downloadTikTokCommentsByUrl({ url, pages = 3, proxy }: CommentsDownloadParams): Promise<BasicComment[]> {
+export async function downloadTikTokCommentsByUrl({ url, pages = 3, proxy, onProgress }: CommentsDownloadParams): Promise<BasicComment[]> {
   let awemeId = extractAwemeIdFromUrl(url)
   if (!awemeId) {
     awemeId = await resolveAwemeIdViaTikwm(url, proxy)
@@ -192,6 +194,7 @@ export async function downloadTikTokCommentsByUrl({ url, pages = 3, proxy }: Com
       const replyCount = Number.parseInt(String((c as any)?.reply_comment_total ?? (c as any)?.reply_count ?? 0), 10) || 0
       results.push({ id, author, authorThumbnail: avatarThumb, content, likes, replyCount, translatedContent: '' })
     }
+    try { onProgress?.({ page: i + 1, pages, count: results.length }) } catch {}
     const hasMore = Boolean((data as any)?.data?.has_more)
     const nextCursor = Number.parseInt(String((data as any)?.data?.cursor ?? 0), 10) || 0
     if (hasMore) cursor = nextCursor
@@ -217,10 +220,12 @@ export async function listChannelVideos(params: {
   limit?: number
   proxyUrl?: string
   logger?: { log?: (...args: any[]) => void; warn?: (...args: any[]) => void }
+  onProgress?: (info: { stage: 'resolve' | 'uploads' | 'fallback' | 'done'; count: number; limit: number }) => void
 }): Promise<ChannelListResult> {
-  const { channelUrlOrId, proxyUrl, logger } = params
+  const { channelUrlOrId, proxyUrl, logger, onProgress } = params
   const limit = params.limit && params.limit > 0 ? params.limit : 20
   const youtube = await getYouTubeClient(proxyUrl)
+  try { onProgress?.({ stage: 'resolve', count: 0, limit }) } catch {}
 
   let resolvedChannelId = extractChannelIdFromInput(channelUrlOrId)
   if (!resolvedChannelId) {
@@ -243,6 +248,7 @@ export async function listChannelVideos(params: {
       const uploadsId = `UU${resolvedChannelId.slice(2)}`
       const playlist = await youtube.getPlaylist(uploadsId)
       if (playlist && typeof (playlist as any).getVideos === 'function') {
+        try { onProgress?.({ stage: 'uploads', count: results.length, limit }) } catch {}
         const page = await (playlist as any).getVideos()
         const items = (page?.videos || page?.items || page?.contents || []).slice(0, limit)
         for (const it of items) {
@@ -253,6 +259,7 @@ export async function listChannelVideos(params: {
           const thumb = v?.thumbnail?.thumbnails?.[0]?.url || v?.thumbnails?.[0]?.url
           const published = v?.published || v?.publishedTimeText || v?.date
           results.push({ id, title, url: `https://www.youtube.com/watch?v=${id}`, thumbnail: thumb, publishedAt: published })
+          try { onProgress?.({ stage: 'uploads', count: results.length, limit }) } catch {}
           if (results.length >= limit) break
         }
       }
@@ -264,6 +271,7 @@ export async function listChannelVideos(params: {
   // fallback channel.getVideos
   if (results.length < limit) {
     try {
+      try { onProgress?.({ stage: 'fallback', count: results.length, limit }) } catch {}
       const ch = await youtube.getChannel(resolvedChannelId || channelUrlOrId)
       if (ch && typeof (ch as any).getVideos === 'function') {
         const page = await (ch as any).getVideos()
@@ -276,6 +284,7 @@ export async function listChannelVideos(params: {
           const thumb = v?.thumbnails?.[0]?.url || v?.thumbnail?.thumbnails?.[0]?.url
           const published = v?.published || v?.publishedTimeText || v?.date
           results.push({ id, title, url: `https://www.youtube.com/watch?v=${id}`, thumbnail: thumb, publishedAt: published })
+          try { onProgress?.({ stage: 'fallback', count: results.length, limit }) } catch {}
           if (results.length >= limit) break
         }
       }
@@ -284,6 +293,7 @@ export async function listChannelVideos(params: {
     }
   }
 
+  try { onProgress?.({ stage: 'done', count: results.length, limit }) } catch {}
   return { channelId: resolvedChannelId, videos: results }
 }
 

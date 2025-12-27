@@ -393,12 +393,6 @@ export class RenderJobDO {
 					headers: { 'content-type': 'application/json' },
 				})
 			}
-			// If job is already completed but retained a stale phase/progress from earlier stages,
-			// normalize the response so clients display a final 100% without an active phase.
-			if (doc.status === 'completed') {
-				if (doc.phase) delete doc.phase
-				if (doc.progress !== 1) doc.progress = 1
-			}
 					// Enrich outputs with presigned URLs for asr-pipeline artifacts
 					try {
 						const bucket = this.env.S3_BUCKET_NAME || 'vidgen-render'
@@ -425,9 +419,27 @@ export class RenderJobDO {
 						// present a non-terminal status to clients to avoid premature completion.
 						if (doc.status === 'completed' && !doc.outputs?.vtt?.key) {
 							doc.status = 'running'
+							// Avoid the confusing "100% but still running" state while ASR is in-flight.
+							const p =
+								typeof doc.progress === 'number' && Number.isFinite(doc.progress)
+									? (doc.progress as number)
+									: null
+							if (p == null || p >= 1) doc.progress = 0.95
+						}
 					}
+				} catch {}
+
+			// If job is already completed but retained a stale phase/progress from earlier stages,
+			// normalize the response so clients display a final 100% without an active phase.
+			// For asr-pipeline, only normalize when the final VTT output exists.
+			if (doc.status === 'completed') {
+				const canFinalize =
+					doc.engine !== 'asr-pipeline' || Boolean(doc.outputs?.vtt?.key)
+				if (canFinalize) {
+					if (doc.phase) delete doc.phase
+					if (doc.progress !== 1) doc.progress = 1
 				}
-			} catch {}
+			}
 			return new Response(JSON.stringify(doc), {
 				headers: { 'content-type': 'application/json' },
 			})

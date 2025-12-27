@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createReadStream, readFileSync, unlinkSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
+import { Readable } from "node:stream";
 import { setTimeout as delay } from "node:timers/promises";
 import { sendJson, sanitizeEngineOptions, createStatusHelpers, uploadArtifact, ensureDirExists, startJsonServer } from "./shared.mjs";
 import { verifyHmacSHA256 } from "@app/job-callbacks";
@@ -405,6 +406,9 @@ async function handleRender(req, res) {
           ? await runYtDlpGetUrl(url, { proxy, timeoutMs: remainingForMetadata })
           : "";
       const metaMs = Date.now() - metaStart;
+      try {
+        await progress("fetching_metadata", 0.3);
+      } catch {}
 
       if (!directUrl) {
         throw new Error("no direct download url in metadata");
@@ -440,6 +444,9 @@ async function handleRender(req, res) {
       try {
         await reader.cancel();
       } catch {}
+      try {
+        await progress("running", 0.7);
+      } catch {}
 
       const responseTimeMs = Date.now() - start;
       const result = {
@@ -457,7 +464,15 @@ async function handleRender(req, res) {
       };
 
       const buf = Buffer.from(JSON.stringify(result, null, 2), "utf8");
-      await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
+      await initUploadMeter(buf.length);
+      await uploadArtifact(
+        outputMetadataPutUrl,
+        () => Readable.from(buf),
+        "application/json",
+        { "content-length": String(buf.length) },
+        { onProgress: makeUploadProgress(buf.length) },
+      );
+      markUploadDone(buf.length);
       await postUpdate("completed", {
         phase: "completed",
         progress: 1,
@@ -489,7 +504,15 @@ async function handleRender(req, res) {
       };
       try {
         const buf = Buffer.from(JSON.stringify(result, null, 2), "utf8");
-        await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
+        await initUploadMeter(buf.length);
+        await uploadArtifact(
+          outputMetadataPutUrl,
+          () => Readable.from(buf),
+          "application/json",
+          { "content-length": String(buf.length) },
+          { onProgress: makeUploadProgress(buf.length) },
+        );
+        markUploadDone(buf.length);
       } catch {}
       await postUpdate("failed", {
         error: msg,
@@ -518,6 +541,39 @@ async function handleRender(req, res) {
   let uploadedAudioSourceBytes = null;
 
   // progress helper imported from shared (created above)
+  const clamp01 = (n) => Math.max(0, Math.min(1, Number(n) || 0));
+  const uploadMeter = {
+    active: false,
+    totalBytes: 0,
+    doneBytes: 0,
+    base: 0.9,
+    span: 0.08,
+  };
+  const initUploadMeter = async (totalBytes) => {
+    if (uploadMeter.active) return;
+    uploadMeter.active = true;
+    uploadMeter.totalBytes = Math.max(1, Math.floor(totalBytes || 0) || 1);
+    uploadMeter.doneBytes = 0;
+    try {
+      await progress("uploading", uploadMeter.base);
+    } catch {}
+  };
+  const makeUploadProgress = (currentTotalBytes) => {
+    const curTotal = Math.max(1, Math.floor(currentTotalBytes || 0) || 1);
+    return ({ sentBytes }) => {
+      const sent = Math.max(0, Math.min(curTotal, Math.floor(sentBytes || 0)));
+      const frac = (uploadMeter.doneBytes + sent) / uploadMeter.totalBytes;
+      const overall =
+        uploadMeter.base + Math.max(0, Math.min(1, frac)) * uploadMeter.span;
+      try {
+        void progress("uploading", clamp01(overall));
+      } catch {}
+    };
+  };
+  const markUploadDone = (bytes) => {
+    uploadMeter.doneBytes += Math.max(0, Math.floor(bytes || 0));
+    uploadMeter.doneBytes = Math.min(uploadMeter.doneBytes, uploadMeter.totalBytes);
+  };
 
   try {
     await progress("preparing", 0.05);
@@ -534,17 +590,56 @@ async function handleRender(req, res) {
       const channelUrlOrId = String(engineOptions?.channelUrlOrId || engineOptions?.url || "").trim();
       if (!channelUrlOrId) throw new Error("channelUrlOrId is required for channel-list task");
 
+      try {
+        await progress("fetching_metadata", 0.2);
+      } catch {}
+      try {
+        await progress("running", 0.4);
+      } catch {}
+
+      const onProgress = ({ stage, count, limit: totalLimit }) => {
+        const denom = Math.max(1, Number(totalLimit) || 1);
+        const frac = Math.max(0, Math.min(1, (Number(count) || 0) / denom));
+        // Keep channel-list under upload window; map stages into coarse sub-ranges.
+        const base =
+          stage === "resolve"
+            ? 0.25
+            : stage === "uploads"
+              ? 0.3
+              : stage === "fallback"
+                ? 0.65
+                : 0.8;
+        const span =
+          stage === "resolve" ? 0.05 : stage === "uploads" ? 0.35 : stage === "fallback" ? 0.15 : 0.05;
+        const overall = base + span * frac;
+        try {
+          void progress("running", Math.min(uploadMeter.base - 0.02, overall));
+        } catch {}
+      };
+
       const { channelId, videos } = await providerListChannelVideos({
         channelUrlOrId,
         limit,
         proxyUrl: proxy,
         logger: { warn: (...args) => console.warn(...args), log: (...args) => dlog(...args) },
+        onProgress,
       });
+      try {
+        await progress("running", 0.7);
+      } catch {}
 
       const payload = { channel: { input: channelUrlOrId, id: channelId }, count: videos.length, videos };
       dlog("final results count=", videos.length, "firstIds=", videos.slice(0, 3).map((x) => x.id));
       const buf = Buffer.from(JSON.stringify(payload, null, 2), "utf8");
-      await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
+      await initUploadMeter(buf.length);
+      await uploadArtifact(
+        outputMetadataPutUrl,
+        () => Readable.from(buf),
+        "application/json",
+        { "content-length": String(buf.length) },
+        { onProgress: makeUploadProgress(buf.length) },
+      );
+      markUploadDone(buf.length);
       await postUpdate("completed", {
         phase: "completed",
         progress: 1,
@@ -574,17 +669,28 @@ async function handleRender(req, res) {
         pages,
         proxy: proxyUrl,
       }) => {
+        const onProgress = ({ page, pages: totalPages }) => {
+          const denom = Math.max(1, Number(totalPages) || 1);
+          const frac = Math.max(0, Math.min(1, (Number(page) || 0) / denom));
+          // Comments fetch is the long-running part; keep it under uploadMeter.base.
+          const overall = 0.15 + 0.55 * frac;
+          try {
+            void progress("running", Math.min(uploadMeter.base - 0.02, overall));
+          } catch {}
+        };
         if (String(source).toLowerCase() === "tiktok") {
           return providerDownloadTikTokComments({
             url: commentUrl,
             pages,
             proxy: proxyUrl,
+            onProgress,
           });
         }
         return providerDownloadYoutubeComments({
           url: commentUrl,
           pages,
           proxy: proxyUrl,
+          onProgress,
         });
       };
       const resPipeline = await runCommentsPipeline(
@@ -603,14 +709,32 @@ async function handleRender(req, res) {
                 JSON.stringify({ comments }, null, 2),
                 "utf8",
               );
-              await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
+              await initUploadMeter(buf.length);
+              await uploadArtifact(
+                outputMetadataPutUrl,
+                () => Readable.from(buf),
+                "application/json",
+                { "content-length": String(buf.length) },
+                { onProgress: makeUploadProgress(buf.length) },
+              );
+              markUploadDone(buf.length);
             },
           },
         },
         (e) => {
-          const stage = e.stage === "completed" ? "running" : e.stage;
-          const p = Math.max(0, Math.min(1, e.progress ?? 0));
-          progress(stage, p);
+          const stage = e.stage;
+          const p = clamp01(e.progress);
+          if (stage === "completed") return;
+          // Avoid regressions and leave finalization to the explicit terminal callback.
+          if (stage === "uploading") {
+            try {
+              void progress("uploading", Math.min(0.89, p));
+            } catch {}
+            return;
+          }
+          try {
+            void progress(stage === "fetching_metadata" ? "fetching_metadata" : stage === "preparing" ? "preparing" : "running", Math.min(0.89, p));
+          } catch {}
         },
       );
 
@@ -631,6 +755,9 @@ async function handleRender(req, res) {
       );
     } else if (isMetadataOnly) {
       const { fetchVideoMetadata } = await import("@app/media-node");
+      try {
+        await progress("fetching_metadata", 0.25);
+      } catch {}
       console.log("[media-downloader] metadata-only: fetching", {
         jobId,
         viaMihomo: Boolean(clashController),
@@ -640,10 +767,21 @@ async function handleRender(req, res) {
       const finalMetadata = summariseMetadata(
         rawMetadata && typeof rawMetadata === "object" ? rawMetadata : null,
       );
+      try {
+        await progress("running", 0.75);
+      } catch {}
 
       if (outputMetadataPutUrl && rawMetadata) {
         const buf = Buffer.from(JSON.stringify(rawMetadata, null, 2), "utf8");
-        await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
+        await initUploadMeter(buf.length);
+        await uploadArtifact(
+          outputMetadataPutUrl,
+          () => Readable.from(buf),
+          "application/json",
+          { "content-length": String(buf.length) },
+          { onProgress: makeUploadProgress(buf.length) },
+        );
+        markUploadDone(buf.length);
       }
 
       await postUpdate("completed", {
@@ -658,6 +796,33 @@ async function handleRender(req, res) {
       console.log("[media-downloader] job completed", jobId, "metadata-only");
     } else {
       const { runDownloadPipeline } = await import("@app/media-core");
+      let uploadPhaseSeen = false;
+      let plannedUploadTotalBytes = null;
+
+      const ensurePlannedUploadBytes = async (metadataBytes) => {
+        if (plannedUploadTotalBytes != null) return plannedUploadTotalBytes;
+        let total = 0;
+        if (Number.isFinite(metadataBytes) && metadataBytes > 0) total += Math.floor(metadataBytes);
+        try {
+          const v = await fsPromises.stat(videoPath);
+          total += v.size || 0;
+        } catch {}
+        if (outputAudioPutUrl) {
+          try {
+            const a = await fsPromises.stat(audioProcessedPath);
+            total += a.size || 0;
+          } catch {}
+        }
+        if (outputAudioSourcePutUrl) {
+          try {
+            const s = await fsPromises.stat(audioSourcePath);
+            total += s.size || 0;
+          } catch {}
+        }
+        plannedUploadTotalBytes = Math.max(1, total);
+        return plannedUploadTotalBytes;
+      };
+
       const pipelineRes = await runDownloadPipeline(
         { url, quality },
         {
@@ -670,6 +835,15 @@ async function handleRender(req, res) {
             coreDownloadVideo(u, q, out, {
               proxy,
               captureJson: Boolean(outputMetadataPutUrl),
+              onProgress: (e) => {
+                const pct = typeof e.percent === "number" ? e.percent : null;
+                if (pct == null || !Number.isFinite(pct)) return;
+                // Map yt-dlp progress into overall "downloading" window.
+                const overall = 0.15 + 0.45 * Math.max(0, Math.min(1, pct));
+                try {
+                  void progress("running", Math.min(uploadMeter.base - 0.02, overall));
+                } catch {}
+              },
             }),
           audioExtractor: outputAudioPutUrl
             ? async (v, out) => {
@@ -686,7 +860,16 @@ async function handleRender(req, res) {
             uploadMetadata: async (data) => {
               if (!outputMetadataPutUrl) return;
               const buf = Buffer.from(JSON.stringify(data, null, 2), "utf8");
-              await uploadArtifact(outputMetadataPutUrl, buf, "application/json");
+              const totalBytes = await ensurePlannedUploadBytes(buf.length);
+              await initUploadMeter(totalBytes);
+              await uploadArtifact(
+                outputMetadataPutUrl,
+                () => Readable.from(buf),
+                "application/json",
+                { "content-length": String(buf.length) },
+                { onProgress: makeUploadProgress(buf.length) },
+              );
+              markUploadDone(buf.length);
             },
             uploadVideo: async (path) => {
               const stat = await fsPromises.stat(path);
@@ -697,13 +880,17 @@ async function handleRender(req, res) {
                 videoPutUrl: maskUrl(outputVideoPutUrl),
               });
               try {
+                const totalBytes = await ensurePlannedUploadBytes(0);
+                await initUploadMeter(totalBytes);
                 await uploadArtifact(
                   outputVideoPutUrl,
                   () => createReadStream(path),
                   "video/mp4",
                   { "content-length": String(stat.size) },
+                  { onProgress: makeUploadProgress(stat.size) },
                 );
                 uploadedVideoBytes = stat.size;
+                markUploadDone(stat.size);
                 console.log("[media-downloader] upload video success", {
                   jobId,
                   bytes: stat.size,
@@ -726,13 +913,17 @@ async function handleRender(req, res) {
               audioPutUrl: maskUrl(outputAudioPutUrl),
             });
               try {
+                const totalBytes = await ensurePlannedUploadBytes(0);
+                await initUploadMeter(totalBytes);
                 await uploadArtifact(
                   outputAudioPutUrl,
                   () => createReadStream(path),
                   "audio/wav",
                   { "content-length": String(stat.size) },
+                  { onProgress: makeUploadProgress(stat.size) },
                 );
                 uploadedAudioProcessedBytes = stat.size;
+                markUploadDone(stat.size);
                 console.log("[media-downloader] upload audio success", {
                   jobId,
                   bytes: stat.size,
@@ -748,9 +939,22 @@ async function handleRender(req, res) {
           },
         },
         (e) => {
-          const stage = e.stage === "completed" ? "running" : e.stage;
-          const p = Math.max(0, Math.min(1, e.progress ?? 0));
-          progress(stage, p);
+          const stage = e.stage;
+          const p = clamp01(e.progress);
+          if (stage === "completed") return;
+          if (stage === "uploading") {
+            if (!uploadPhaseSeen) {
+              uploadPhaseSeen = true;
+              try {
+                void progress("uploading", Math.min(0.89, p));
+              } catch {}
+            }
+            return;
+          }
+          // Keep pipeline progress below uploadMeter.base to avoid "100% but still uploading".
+          try {
+            void progress(stage === "fetching_metadata" ? "fetching_metadata" : stage === "preparing" ? "preparing" : "running", Math.min(uploadMeter.base - 0.01, p));
+          } catch {}
         },
       );
 
@@ -765,13 +969,17 @@ async function handleRender(req, res) {
           bytes: stat.size,
           audioSourcePutUrl: maskUrl(outputAudioSourcePutUrl),
         });
+        const totalBytes = await ensurePlannedUploadBytes(0);
+        await initUploadMeter(totalBytes);
         await uploadArtifact(
           outputAudioSourcePutUrl,
           () => createReadStream(audioSourcePath),
           "audio/x-matroska",
           { "content-length": String(stat.size) },
+          { onProgress: makeUploadProgress(stat.size) },
         );
         uploadedAudioSourceBytes = stat.size;
+        markUploadDone(stat.size);
         console.log("[media-downloader] upload audio source success", {
           jobId,
           bytes: stat.size,

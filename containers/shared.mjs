@@ -1,5 +1,6 @@
 import http from 'node:http'
 import { promises as fs } from 'node:fs'
+import { Transform } from 'node:stream'
 import { makeStatusCallback } from '@app/job-callbacks'
 
 export function sendJson(res, code, data) {
@@ -64,6 +65,8 @@ export function createStatusHelpers({ callbackUrl, secret, jobId, fetchImpl } = 
   const enqueue = createSerialQueue()
   const terminalStatuses = new Set(['completed', 'failed', 'canceled'])
   let terminal = false
+  let lastProgress = -1
+  let lastPhase = null
 
   const postUpdate = async (status, extra = {}) => {
     if (!callbackUrl) return
@@ -74,10 +77,25 @@ export function createStatusHelpers({ callbackUrl, secret, jobId, fetchImpl } = 
       if (terminalStatuses.has(status)) terminal = true
     })
   }
+
+  const statusFromPhase = (phase) => {
+    // Only use recognized job statuses; otherwise fall back to generic 'running'.
+    if (phase === 'fetching_metadata') return 'fetching_metadata'
+    if (phase === 'preparing') return 'preparing'
+    if (phase === 'uploading') return 'uploading'
+    return 'running'
+  }
+
   async function progress(phase, pct) {
     if (!callbackUrl) return
-    const status = phase === 'uploading' ? 'uploading' : 'running'
-    await postUpdate(status, { phase, progress: pct })
+    const p = Math.max(0, Math.min(1, Number(pct) || 0))
+    // Keep progress monotonic across phase transitions; avoid regressions like 100% -> 95%.
+    if (p < lastProgress) return
+    if (p === lastProgress && phase === lastPhase) return
+    lastProgress = p
+    lastPhase = phase
+    const status = statusFromPhase(phase)
+    await postUpdate(status, { phase, progress: p })
   }
   return { postUpdate, progress }
 }
@@ -129,10 +147,67 @@ export async function uploadArtifact(
     Number.isFinite(options?.baseDelayMs) && options.baseDelayMs > 0
       ? Math.floor(options.baseDelayMs)
       : 1000
+  const onProgress = typeof options?.onProgress === 'function' ? options.onProgress : null
+  const progressIntervalMs =
+    Number.isFinite(options?.progressIntervalMs) && options.progressIntervalMs > 0
+      ? Math.floor(options.progressIntervalMs)
+      : 250
+
+  const parseContentLength = (h) => {
+    if (!h) return null
+    const v = h['content-length'] ?? h['Content-Length'] ?? h['CONTENT-LENGTH']
+    const n = Number(v)
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
+  const totalBytesFromBody = (body) => {
+    if (!body) return null
+    if (typeof body === 'string') return Buffer.byteLength(body)
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(body)) return body.length
+    if (body instanceof ArrayBuffer) return body.byteLength
+    if (body instanceof Uint8Array) return body.byteLength
+    return null
+  }
+  const isNodeStreamLike = (body) => body && typeof body.pipe === 'function'
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const body = typeof bodyOrFactory === 'function' ? bodyOrFactory() : bodyOrFactory
     try {
+      const totalBytes =
+        parseContentLength(headers) ??
+        totalBytesFromBody(body) ??
+        (Number.isFinite(options?.totalBytes) && options.totalBytes > 0
+          ? Math.floor(options.totalBytes)
+          : null)
+
+      let wrappedBody = body
+      if (onProgress && totalBytes != null) {
+        if (isNodeStreamLike(body)) {
+          let sentBytes = 0
+          let lastEmitAt = 0
+          const counter = new Transform({
+            transform(chunk, _enc, cb) {
+              try {
+                sentBytes += chunk?.length || 0
+                const now = Date.now()
+                if (sentBytes >= totalBytes || now - lastEmitAt >= progressIntervalMs) {
+                  lastEmitAt = now
+                  try {
+                    onProgress({ sentBytes, totalBytes })
+                  } catch {}
+                }
+              } catch {}
+              cb(null, chunk)
+            },
+          })
+          wrappedBody = body.pipe(counter)
+        } else {
+          // Best-effort for non-stream bodies.
+          try {
+            onProgress({ sentBytes: 0, totalBytes })
+          } catch {}
+        }
+      }
+
       const init = {
         method: 'PUT',
         headers: {
@@ -140,12 +215,19 @@ export async function uploadArtifact(
           'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
           ...headers,
         },
-        body,
+        body: wrappedBody,
       }
-      if (shouldSetDuplexHalf(body)) init.duplex = 'half'
+      if (shouldSetDuplexHalf(wrappedBody)) init.duplex = 'half'
 
       const res = await fetch(url, init)
-      if (res.ok) return
+      if (res.ok) {
+        if (onProgress && totalBytes != null && !isNodeStreamLike(body)) {
+          try {
+            onProgress({ sentBytes: totalBytes, totalBytes })
+          } catch {}
+        }
+        return
+      }
 
       let msg = ''
       try {

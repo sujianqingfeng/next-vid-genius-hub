@@ -21,7 +21,7 @@ import {
 
 const PORT = process.env.PORT || 8190;
 
-async function execFFmpegWithProgress(args, totalDurationSeconds) {
+async function execFFmpegWithProgress(args, totalDurationSeconds, onProgress) {
   return new Promise((resolve, reject) => {
     const p = spawn("ffmpeg", args);
     const totalUs = Math.max(
@@ -62,6 +62,9 @@ async function execFFmpegWithProgress(args, totalDurationSeconds) {
         if (pct !== lastPct) {
           lastPct = pct;
           lastTick = Date.now();
+          try {
+            if (typeof onProgress === "function") onProgress(ratio);
+          } catch {}
           console.log(`[ffmpeg] compose progress=${pct}%`); // coarse-grained compose progress
         }
       }
@@ -85,7 +88,7 @@ async function execFFmpegWithProgress(args, totalDurationSeconds) {
           `[remotion] ffmpeg exited code=${code} signal=${signal || "null"}`,
         );
       }
-    });
+  });
     p.on("close", (code) => {
       clearInterval(timer);
       if (code === 0) return resolve(0);
@@ -139,6 +142,28 @@ async function handleRender(req, res) {
       (typeof templateId === 'string' && templateId.startsWith('thread') ? 'overlay-only' : 'compose-on-video');
     const requiresVideo = composeMode !== 'overlay-only';
 
+    const clamp01 = (n) => Math.max(0, Math.min(1, n));
+    let lastOverall = -1;
+    let lastOverallSentAt = 0;
+    const reportOverall = (phase, overall) => {
+      const next = clamp01(overall);
+      const now = Date.now();
+      if (next < lastOverall) return;
+      const delta = next - lastOverall;
+      if (lastOverall >= 0) {
+        if (delta <= 0) {
+          if (now - lastOverallSentAt < 5000) return;
+        } else if (delta < 0.003) {
+          if (now - lastOverallSentAt < 1500) return;
+        }
+      }
+      lastOverall = next;
+      lastOverallSentAt = now;
+      try {
+        void progress(phase, next);
+      } catch {}
+    };
+
     if (!inputDataUrl || !outputPutUrl || !outputVideoKey || (requiresVideo && !inputVideoUrl)) {
       throw new Error(
         requiresVideo
@@ -167,7 +192,7 @@ async function handleRender(req, res) {
       proxy: effectiveProxy,
     });
 
-    await progress("preparing", 0.05);
+    reportOverall("preparing", 0.05);
     const inFile = requiresVideo ? join(tmpdir(), `${jobId}_source.mp4`) : null;
     const dataJson = join(tmpdir(), `${jobId}_data.json`);
     const overlayOut = join(tmpdir(), `${jobId}_overlay.mp4`);
@@ -203,6 +228,8 @@ async function handleRender(req, res) {
       );
       writeFileSync(dataJson, txt);
     }
+
+    reportOverall("preparing", 0.12);
 
     // Parse input data
     const rawData = JSON.parse(readFileSync(dataJson, "utf8"));
@@ -321,7 +348,7 @@ async function handleRender(req, res) {
     }
 
     // Build overlay via Remotion
-    await progress("running", 0.15);
+    reportOverall("preparing", 0.18);
     const tmpOut = join(tmpdir(), `${jobId}_bundle`);
     console.log("[remotion] bundling Remotion project...");
     const serveUrl = await bundle({
@@ -361,7 +388,10 @@ async function handleRender(req, res) {
       "fps=",
       REMOTION_FPS,
     );
+    reportOverall("preparing", 0.2);
     let lastRenderProgress = -1;
+    const renderRangeStart = 0.2;
+    const renderRangeEnd = requiresVideo ? 0.75 : 0.9;
     await renderMedia({
       composition: {
         ...composition,
@@ -384,6 +414,11 @@ async function handleRender(req, res) {
       timeoutInMilliseconds: 120000,
       onProgress: ({ progress, renderedFrames, encodedFrames }) => {
         if (typeof progress === "number") {
+          const p = clamp01(progress);
+          const overall =
+            renderRangeStart + (renderRangeEnd - renderRangeStart) * p;
+          reportOverall("running", overall);
+
           const currentProgress = Math.round(progress * 100);
           if (
             currentProgress !== lastRenderProgress &&
@@ -401,7 +436,7 @@ async function handleRender(req, res) {
     let finalOut = outFile;
     if (requiresVideo) {
       // Compose overlay with source video via FFmpeg
-      await progress("running", 0.8);
+      reportOverall("running", 0.75);
       console.log("[remotion] starting FFmpeg composition...");
       // Optionally override source video slot for specific templates (e.g., vertical source on left)
       let overrideLayout = undefined;
@@ -420,7 +455,11 @@ async function handleRender(req, res) {
         layout: overrideLayout,
         preset: "veryfast",
       });
-      await execFFmpegWithProgress(ffArgs, totalDurationSeconds);
+      await execFFmpegWithProgress(ffArgs, totalDurationSeconds, (ratio) => {
+        const p = clamp01(ratio);
+        const overall = 0.75 + (0.9 - 0.75) * p;
+        reportOverall("running", overall);
+      });
       console.log("[remotion] FFmpeg composition complete");
       finalOut = outFile;
     } else {
@@ -431,7 +470,7 @@ async function handleRender(req, res) {
       rmSync(tmpOut, { recursive: true, force: true });
     } catch {}
 
-    await progress("uploading", 0.95);
+    reportOverall("uploading", 0.95);
     const buf = readFileSync(finalOut);
     console.log(
       `[remotion] uploading artifact size=${buf.length} bytes ->`,
@@ -456,7 +495,7 @@ async function handleRender(req, res) {
       throw new Error(`upload failed: ${up.status}`);
     }
     try {
-      await progress("uploading", 1);
+      reportOverall("uploading", 1);
     } catch {}
     console.log(`[remotion] completed job=${jobId}`);
     await postUpdate("completed", {

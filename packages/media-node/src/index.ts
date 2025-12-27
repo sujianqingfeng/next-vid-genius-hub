@@ -3,16 +3,26 @@ import { promises as fs } from 'node:fs'
 
 type RunResult = { stdout: string; stderr: string }
 
-function run(command: string, args: string[], opts: SpawnOptions = {}): Promise<RunResult> {
+function run(
+  command: string,
+  args: string[],
+  opts: SpawnOptions & {
+    onStdoutChunk?: (chunk: Buffer) => void
+    onStderrChunk?: (chunk: Buffer) => void
+  } = {},
+): Promise<RunResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], ...opts })
+    const { onStdoutChunk, onStderrChunk, ...spawnOpts } = opts as any
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], ...spawnOpts })
     let stdout = ''
     let stderr = ''
     child.stdout?.on('data', (d: Buffer) => {
       stdout += d.toString()
+      try { onStdoutChunk?.(d) } catch {}
     })
     child.stderr?.on('data', (d: Buffer) => {
       stderr += d.toString()
+      try { onStderrChunk?.(d) } catch {}
     })
     child.on('error', (err) => reject(err))
     child.on('close', (code) => {
@@ -33,18 +43,95 @@ async function hasBinary(cmd: string): Promise<boolean> {
   }
 }
 
+type YtDlpProgressEvent = {
+  percent?: number
+  downloadedBytes?: number
+  totalBytes?: number
+  speedBytesPerSecond?: number
+  etaSeconds?: number
+  rawLine?: string
+}
+
+function parseBytesWithUnit(input: string): number | undefined {
+  const m = String(input || '').trim().match(/^([0-9.]+)\s*([a-zA-Z]+)$/)
+  if (!m) return undefined
+  const value = Number(m[1])
+  const unit = String(m[2]).trim()
+  if (!Number.isFinite(value)) return undefined
+
+  const binary = unit.includes('i')
+  const u = unit.replace(/i/g, '').toUpperCase()
+  const base = binary ? 1024 : 1000
+  const pow =
+    u === 'B'
+      ? 0
+      : u === 'KB'
+        ? 1
+        : u === 'MB'
+          ? 2
+          : u === 'GB'
+            ? 3
+            : u === 'TB'
+              ? 4
+              : u === 'PB'
+                ? 5
+                : null
+  if (pow == null) return undefined
+  return Math.round(value * base ** pow)
+}
+
+function parseHhMmSs(input: string): number | undefined {
+  const parts = String(input || '').trim().split(':').map((p) => Number(p))
+  if (parts.some((n) => !Number.isFinite(n))) return undefined
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  }
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1]
+  }
+  return undefined
+}
+
+function parseYtDlpProgressLine(line: string): YtDlpProgressEvent | null {
+  const s = String(line || '').trim()
+  if (!s.startsWith('[download]')) return null
+  if (!s.includes('%')) return null
+
+  // Typical:
+  // [download]  12.3% of ~10.00MiB at  1.20MiB/s ETA 00:08
+  // [download] 100% of 10.00MiB in 00:08
+  const m =
+    s.match(
+      /^\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+~?([0-9.]+)\s*([KMGTP]?i?B)(?:\s+at\s+([0-9.]+)\s*([KMGTP]?i?B)\/s\s+ETA\s+([0-9:]+))?/i,
+    ) || null
+  if (!m) return { rawLine: s }
+
+  const pct = Number(m[1])
+  const total = parseBytesWithUnit(`${m[2]}${m[3]}`)
+  const speed = m[4] && m[5] ? parseBytesWithUnit(`${m[4]}${m[5]}`) : undefined
+  const eta = m[6] ? parseHhMmSs(m[6]) : undefined
+
+  return {
+    percent: Number.isFinite(pct) ? Math.max(0, Math.min(1, pct / 100)) : undefined,
+    totalBytes: total,
+    speedBytesPerSecond: speed,
+    etaSeconds: eta,
+    rawLine: s,
+  }
+}
+
 export async function downloadVideo(
   url: string,
   quality: '720p' | '1080p',
   outputPath: string,
-  options: { proxy?: string; captureJson?: boolean } = {},
+  options: { proxy?: string; captureJson?: boolean; onProgress?: (e: YtDlpProgressEvent) => void } = {},
 ): Promise<{ rawMetadata: unknown | undefined }> {
   const format =
     quality === '720p'
       ? 'bestvideo[height<=720]+bestaudio/best'
       : 'bestvideo[height<=1080]+bestaudio/best'
 
-  const args = [url, '-f', format, '--merge-output-format', 'mp4', '-o', outputPath]
+  const args = [url, '-f', format, '--merge-output-format', 'mp4', '-o', outputPath, '--newline']
   if (options.proxy) {
     args.push('--proxy', options.proxy)
   }
@@ -55,7 +142,27 @@ export async function downloadVideo(
   if (!(await hasBinary('yt-dlp'))) {
     throw new Error('yt-dlp binary not found on PATH')
   }
-  const { stdout } = await run('yt-dlp', argsWithJson)
+
+  let stderrBuf = ''
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null
+  const { stdout } = await run('yt-dlp', argsWithJson, {
+    onStderrChunk: (chunk) => {
+      if (!onProgress) return
+      stderrBuf += chunk.toString()
+      let idx: number
+      while ((idx = stderrBuf.indexOf('\n')) !== -1) {
+        const line = stderrBuf.slice(0, idx).trim()
+        stderrBuf = stderrBuf.slice(idx + 1)
+        if (!line) continue
+        const parsed = parseYtDlpProgressLine(line)
+        if (parsed) {
+          try {
+            onProgress(parsed)
+          } catch {}
+        }
+      }
+    },
+  })
   if (!capture) return { rawMetadata: undefined }
   const lines = String(stdout || '')
     .split('\n')
@@ -74,7 +181,7 @@ export async function fetchVideoMetadata(
   url: string,
   options: { proxy?: string } = {},
 ): Promise<unknown | undefined> {
-  const args = [url, '--skip-download', '--print-json', '--no-playlist']
+  const args = [url, '--skip-download', '--print-json', '--no-playlist', '--newline']
   if (options.proxy) {
     args.push('--proxy', options.proxy)
   }

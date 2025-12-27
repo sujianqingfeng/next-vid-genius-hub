@@ -5,6 +5,18 @@ import { jobStub } from '../utils/job'
 
 export async function runAsrForPipeline(env: Env, doc: any) {
 	const jobId = doc.jobId
+	const stub = jobStub(env, jobId)
+	const postProgress = async (patch: Record<string, unknown>) => {
+		if (!stub) return
+		try {
+			await stub.fetch('https://do/progress', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ jobId, ...patch, ts: Date.now() }),
+			})
+		} catch {}
+	}
+
 	const audioKey: string | undefined =
 		typeof doc?.metadata?.sourceKey === 'string'
 			? doc.metadata.sourceKey
@@ -34,6 +46,16 @@ export async function runAsrForPipeline(env: Env, doc: any) {
 	const caps = deriveCloudflareAsrCapabilities(model)
 	const languageForCloud = caps.supportsLanguageHint ? normalizedLanguage : undefined
 	const runUrl = `https://api.cloudflare.com/client/v4/accounts/${aiAccountId}/ai/run/${model}`
+
+	// Workers AI ASR is a single long-running HTTP call; we can't stream progress,
+	// but we can at least avoid the misleading "100% while still running" state.
+	await postProgress({
+		status: 'running',
+		phase: 'asr_running',
+		progress: 0.6,
+		error: undefined,
+		metadata: { ...(doc.metadata || {}), model, providerType: 'workers_ai' },
+	})
 
 	const arrayBufferToBase64 = (buf: ArrayBuffer): string => {
 		const bytes = new Uint8Array(buf)
@@ -79,6 +101,8 @@ export async function runAsrForPipeline(env: Env, doc: any) {
 		throw new Error(`Workers AI ASR failed: ${r.status} ${t}`)
 	}
 	const result = (await r.json()) as any
+
+	await postProgress({ status: 'running', phase: 'asr_writing_outputs', progress: 0.9 })
 
 	const extractWords = (payload: any) => {
 		if (payload?.words && Array.isArray(payload.words) && payload.words.length > 0) {
@@ -139,7 +163,6 @@ export async function runAsrForPipeline(env: Env, doc: any) {
 	}
 
 	// Update DO state with outputs
-	const stub = jobStub(env, jobId)
 	if (stub) {
 		const outputs: any = {}
 		if (vttKey) outputs.vtt = { key: vttKey }
@@ -147,6 +170,7 @@ export async function runAsrForPipeline(env: Env, doc: any) {
 		const p = {
 			jobId,
 			status: vttKey ? 'completed' : 'failed',
+			...(vttKey ? { progress: 1 } : {}),
 			outputs,
 			ts: Date.now(),
 		}

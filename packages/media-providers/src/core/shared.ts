@@ -12,6 +12,7 @@ export interface CommentsDownloadParams {
   url: string
   pages?: number
   proxy?: string
+  onProgress?: (info: { page: number; pages: number; count: number }) => void
 }
 
 export function extractVideoId(url: string): string | null {
@@ -29,4 +30,3 @@ export function extractVideoId(url: string): string | null {
     return null
   }
 }
-

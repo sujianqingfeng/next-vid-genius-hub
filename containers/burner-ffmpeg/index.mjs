@@ -41,7 +41,7 @@ async function handleRender(req, res) {
 
   try {
     console.log(`[render] ${jobId} preparing: downloading inputs`)
-    await progress('preparing', 0)
+    await progress('preparing', 0.05)
 
     const inFile = join(tmpdir(), `${jobId}_source.mp4`)
     const subVtt = join(tmpdir(), `${jobId}.vtt`)
@@ -64,15 +64,16 @@ async function handleRender(req, res) {
     }
 
     console.log(`[render] ${jobId} inputs ready, start ffmpeg`)
-    await progress('running', 0)
-    let currentPct = 0
+    await progress('running', 0.05)
+    let currentRenderPct = 0
+    let currentOverallPct = 5
     let lastLogPct = 0
     let lastBeat = Date.now()
     const heartbeatMs = Number(process.env.RENDER_HEARTBEAT_MS || 30000)
     const hb = heartbeatMs > 0 ? setInterval(() => {
       const now = Date.now()
       if (now - lastBeat >= heartbeatMs - 50) {
-        console.log(`[render] ${jobId} running… ${Math.max(0, Math.min(100, Math.round(currentPct)))}%`)
+        console.log(`[render] ${jobId} running… ${Math.max(0, Math.min(100, Math.round(currentRenderPct)))}%`)
         lastBeat = now
       }
     }, heartbeatMs) : null
@@ -84,14 +85,21 @@ async function handleRender(req, res) {
         engineOptions.subtitleConfig || {},
         {
           onProgress: async (p) => {
-            const pct = Math.max(0, Math.min(100, Math.round(p * 100)))
-            if (pct <= currentPct) return
-            currentPct = pct
+            const renderPct = Math.max(0, Math.min(100, Math.round(p * 100)))
+            if (renderPct <= currentRenderPct) return
+            currentRenderPct = renderPct
             lastBeat = Date.now()
-            // Emit callback updates (fine-grained) but keep logs at 10% steps
-            try { await progress('running', currentPct / 100) } catch {}
-            if (currentPct - lastLogPct >= 10 || currentPct === 100) {
-              lastLogPct = currentPct
+            // Map render progress to overall progress budget (keep some headroom for upload)
+            const overall = 0.05 + 0.85 * (renderPct / 100)
+            const overallPct = Math.max(0, Math.min(100, Math.round(overall * 100)))
+            if (overallPct > currentOverallPct) {
+              currentOverallPct = overallPct
+              try { await progress('running', currentOverallPct / 100) } catch {}
+            }
+
+            // Keep logs at 10% render steps
+            if (currentRenderPct - lastLogPct >= 10 || currentRenderPct === 100) {
+              lastLogPct = currentRenderPct
               console.log(`[render] ${jobId} ${lastLogPct}%`)
             }
           },
@@ -100,12 +108,15 @@ async function handleRender(req, res) {
     } finally {
       if (hb) clearInterval(hb)
     }
-    if (currentPct < 100) {
-      currentPct = 100
-      try { await progress('running', 1) } catch {}
+    if (currentOverallPct < 90) {
+      currentOverallPct = 90
+      try { await progress('running', 0.9) } catch {}
     }
 
     console.log(`[render] ${jobId} ffmpeg done, uploading artifact`)
+
+    // Uploading (reserve final 10% for this stage)
+    try { await progress('uploading', 0.95) } catch {}
 
     // Upload artifact
     const buf = readFileSync(outFile)
