@@ -1,8 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Plus } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/client'
 
 export const Route = createFileRoute('/threads/')({
@@ -10,8 +12,26 @@ export const Route = createFileRoute('/threads/')({
 })
 
 function ThreadsIndexRoute() {
+	const qc = useQueryClient()
+	const confirmDialog = useConfirmDialog()
+
 	const threadsQuery = useQuery(queryOrpc.thread.list.queryOptions())
 	const items = threadsQuery.data?.items ?? []
+
+	const deleteMutation = useEnhancedMutation(
+		queryOrpc.thread.deleteById.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({ queryKey: queryOrpc.thread.list.key() })
+			},
+		}),
+		{
+			successToast: 'Deleted',
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : String(error),
+		},
+	)
+
+	const deletingId = deleteMutation.isPending ? deleteMutation.variables?.id : null
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
@@ -39,13 +59,44 @@ function ThreadsIndexRoute() {
 			<div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
 				<div className="grid grid-cols-1 gap-4">
 					{items.map((t) => (
-						<Card key={t.id} className="rounded-none">
+						<Card key={t.id} className="rounded-none group">
 							<CardHeader>
-								<CardTitle className="font-mono text-sm uppercase tracking-widest">
-									<Link to="/threads/$id" params={{ id: t.id }}>
-										{t.title}
-									</Link>
-								</CardTitle>
+								<div className="flex items-start justify-between gap-3">
+									<CardTitle className="font-mono text-sm uppercase tracking-widest">
+										<Link to="/threads/$id" params={{ id: t.id }}>
+											{t.title}
+										</Link>
+									</CardTitle>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										className="h-7 w-7 rounded-none border border-border bg-background/90 text-muted-foreground hover:bg-destructive hover:text-white hover:border-destructive opacity-0 group-hover:opacity-100 transition-all"
+										aria-label="Delete thread"
+										disabled={deleteMutation.isPending}
+										onClick={(e) => {
+											e.preventDefault()
+											e.stopPropagation()
+											if (deleteMutation.isPending) return
+											void (async () => {
+												const ok = await confirmDialog({
+													title: 'SECURITY_WARNING: DESTRUCTIVE_ACTION',
+													description: `Delete thread “${t.title}”?`,
+													confirmText: 'DELETE',
+													variant: 'destructive',
+												})
+												if (!ok) return
+												deleteMutation.mutate({ id: t.id })
+											})()
+										}}
+									>
+										{deletingId === t.id ? (
+											<Loader2 className="h-3 w-3 animate-spin" />
+										) : (
+											<Trash2 className="h-3 w-3" />
+										)}
+									</Button>
+								</div>
 							</CardHeader>
 							<CardContent className="text-xs text-muted-foreground font-mono">
 								<div className="flex flex-wrap gap-3">
@@ -68,4 +119,3 @@ function ThreadsIndexRoute() {
 		</div>
 	)
 }
-
