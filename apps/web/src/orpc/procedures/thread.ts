@@ -19,6 +19,7 @@ import {
 	DEFAULT_THREAD_TEMPLATE_ID,
 	type ThreadTemplateId,
 } from '@app/remotion-project/thread-templates'
+import { ingestThreadAssets } from '~/lib/thread/server/asset-ingest'
 
 export const list = os.handler(async ({ context }) => {
 	const ctx = context as RequestContext
@@ -218,7 +219,7 @@ export const createFromXJson = os
 					height: null,
 					durationMs: null,
 					thumbnailAssetId: null,
-					status: 'ready' as const,
+					status: 'pending' as const,
 					createdAt: now,
 					updatedAt: now,
 				}))
@@ -435,6 +436,57 @@ export const updatePostText = os
 			.where(eq(schema.threadPosts.id, post.id))
 
 		return { ok: true }
+	})
+
+export const ingestAssets = os
+	.input(
+		z.object({
+			threadId: z.string().min(1),
+			maxAssetsPerRun: z.number().int().min(1).max(25).optional().default(5),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+
+		const thread = await db.query.threads.findFirst({
+			where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+			columns: { id: true },
+		})
+		if (!thread) throw new Error('Thread not found')
+
+		const posts = await db
+			.select({
+				authorAvatarAssetId: schema.threadPosts.authorAvatarAssetId,
+				contentBlocks: schema.threadPosts.contentBlocks,
+			})
+			.from(schema.threadPosts)
+			.where(eq(schema.threadPosts.threadId, thread.id))
+
+		const assetIds = new Set<string>()
+		for (const p of posts) {
+			if (p.authorAvatarAssetId) assetIds.add(p.authorAvatarAssetId)
+			for (const b of p.contentBlocks ?? []) {
+				if (!b || typeof b !== 'object') continue
+				if (b.type === 'image' || b.type === 'video') {
+					const id = (b as any).data?.assetId
+					if (typeof id === 'string' && id) assetIds.add(id)
+				}
+				if (b.type === 'link') {
+					const id = (b as any).data?.previewAssetId
+					if (typeof id === 'string' && id) assetIds.add(id)
+				}
+			}
+		}
+
+		const res = await ingestThreadAssets({
+			userId,
+			assetIds: [...assetIds],
+			maxAssetsPerRun: input.maxAssetsPerRun,
+		})
+
+		return res
 	})
 
 export const startCloudRender = os

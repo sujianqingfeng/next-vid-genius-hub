@@ -84,6 +84,22 @@ function ThreadDetailRoute() {
 		},
 	)
 
+	const ingestAssetsMutation = useEnhancedMutation(
+		queryOrpc.thread.ingestAssets.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({
+					queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: ({ data }) =>
+				`Media ingest: processed=${data.processed} ok=${data.succeeded} failed=${data.failed}`,
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : String(error),
+		},
+	)
+
 	// ---------- Cloud render ----------
 	const {
 		jobId: renderJobId,
@@ -222,8 +238,24 @@ function ThreadDetailRoute() {
 						</div>
 
 						<div className="space-y-2">
-							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Media
+							<div className="flex items-center justify-between gap-3">
+								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									Media
+								</div>
+								{assets.some(
+									(a: any) => a?.status === 'pending' || (a?.status === 'ready' && !a?.storageKey),
+								) ? (
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+										disabled={ingestAssetsMutation.isPending}
+										onClick={() => ingestAssetsMutation.mutate({ threadId: id })}
+									>
+										{ingestAssetsMutation.isPending ? 'Downloading…' : 'Download'}
+									</Button>
+								) : null}
 							</div>
 
 							{selectedPost?.authorAvatarAssetId ? (
@@ -231,12 +263,15 @@ function ThreadDetailRoute() {
 									<div>avatarAssetId: {selectedPost.authorAvatarAssetId}</div>
 									{assetsById.get(selectedPost.authorAvatarAssetId) ? (
 										<div className="text-muted-foreground">
-											asset: {assetsById.get(selectedPost.authorAvatarAssetId).kind}{' '}
+										asset: {assetsById.get(selectedPost.authorAvatarAssetId).kind}{' '}
 											{assetsById.get(selectedPost.authorAvatarAssetId).sourceUrl
 												? `url=${assetsById.get(selectedPost.authorAvatarAssetId).sourceUrl}`
 												: assetsById.get(selectedPost.authorAvatarAssetId).storageKey
 													? `storageKey=${assetsById.get(selectedPost.authorAvatarAssetId).storageKey}`
 													: '(no url)'}
+											{assetsById.get(selectedPost.authorAvatarAssetId).status
+												? ` status=${assetsById.get(selectedPost.authorAvatarAssetId).status}`
+												: null}
 										</div>
 									) : (
 										<div className="text-muted-foreground">
@@ -259,10 +294,7 @@ function ThreadDetailRoute() {
 											if (b.type === 'image' || b.type === 'video') {
 												const assetId = String(b.data?.assetId ?? '')
 												const asset = assetId ? assetsById.get(assetId) : null
-												const url =
-													asset?.sourceUrl ||
-													(asset?.storageKey ? null : null) ||
-													null
+												const url = asset?.sourceUrl || null
 
 												return (
 													<div
@@ -288,7 +320,8 @@ function ThreadDetailRoute() {
 																{asset.width && asset.height
 																	? `dim=${asset.width}x${asset.height}`
 																	: null}{' '}
-																status={asset.status}
+																status={asset.status}{' '}
+																{asset.storageKey ? `storageKey=${asset.storageKey}` : null}
 															</div>
 														) : (
 															<div className="text-muted-foreground">
