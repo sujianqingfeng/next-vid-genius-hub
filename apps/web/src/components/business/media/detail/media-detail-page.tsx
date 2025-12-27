@@ -352,7 +352,11 @@ export function MediaDetailPage({ id }: { id: string }) {
 									variant="ghost"
 									asChild
 								>
-									<Link to="/media/$id/comments" params={{ id }}>
+									<Link
+										to="/media/$id/comments"
+										params={{ id }}
+										search={{ tab: 'basics' }}
+									>
 										<span className="mr-auto">{t('tabs.commentsAction')}</span>
 										<ArrowLeft className="h-4 w-4 rotate-180" />
 									</Link>

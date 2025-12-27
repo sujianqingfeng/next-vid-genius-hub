@@ -1,5 +1,5 @@
 import { os } from '@orpc/server'
-import { and, asc, desc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
 import { getJobStatus } from '~/lib/cloudflare'
@@ -78,11 +78,15 @@ export const createFromXJson = os
 
 		const db = await getDb()
 
+		const sourceIdClause = draft.sourceId
+			? eq(schema.threads.sourceId, draft.sourceId)
+			: isNull(schema.threads.sourceId)
+
 		const existing = await db.query.threads.findFirst({
 			where: and(
 				eq(schema.threads.userId, userId),
 				eq(schema.threads.source, 'x'),
-				eq(schema.threads.sourceId, draft.sourceId),
+				sourceIdClause,
 			),
 		})
 

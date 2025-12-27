@@ -96,7 +96,7 @@ export default {
 			setInjectedD1Database(env.DB)
 		}
 
-		return getStartHandler()(request, { context: { env, ctx } })
+		return getStartHandler()(request)
 	},
 	async scheduled(
 		_event: unknown,

@@ -91,10 +91,13 @@ export function parseXThreadImportDraft(input: unknown): XThreadImportDraft {
 
 	const rootBlocks = [makeTextBlock(String(root.text || ''))]
 
+	const parsedReplies = parsed.replies ?? []
+	const parsedAll = parsed.all ?? []
+
 	const replies =
-		parsed.replies.length > 0
-			? parsed.replies
-			: parsed.all.filter((p) => p.statusId !== root.statusId && !p.isRoot)
+		parsedReplies.length > 0
+			? parsedReplies
+			: parsedAll.filter((p) => p.statusId !== root.statusId && !p.isRoot)
 
 	return {
 		source: 'x',
@@ -207,4 +210,3 @@ export function buildThreadPostsInsertFromDraft(input: {
 
 	return [root, ...replies]
 }
-

@@ -30,7 +30,7 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-	loader: async () => getInitialI18n(),
+	loader: async (_ctx) => getInitialI18n(),
 	head: () => ({
 		meta: [
 			{

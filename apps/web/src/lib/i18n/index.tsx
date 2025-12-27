@@ -10,7 +10,7 @@ import {
 import enMessages from '~/messages/en.json'
 import zhMessages from '~/messages/zh.json'
 
-export type Messages = Record<string, unknown>
+export type Messages = Record<string, Record<string, {}>>
 
 export { DEFAULT_LOCALE }
 export type { Locale } from './config'

@@ -20,7 +20,9 @@ import type { Comment, VideoInfo } from '~/lib/media/types'
 const LazyPlayer = React.lazy(async () => {
 	const mod = await import('@remotion/player')
 	return { default: mod.Player }
-})
+}) as unknown as React.LazyExoticComponent<
+	React.ComponentType<PlayerPropsWithoutZod<CommentVideoInputProps>>
+>
 
 interface RemotionPreviewCardStartProps {
 	videoInfo?: (Partial<VideoInfo> & { translatedTitle?: string | null }) | null
@@ -126,7 +128,7 @@ export function RemotionPreviewCardStart({
 												</div>
 											}
 										>
-											<LazyPlayer<PlayerPropsWithoutZod<CommentVideoInputProps>>
+											<LazyPlayer
 												component={TemplateComponent}
 												inputProps={inputProps}
 												durationInFrames={timeline.totalDurationInFrames}

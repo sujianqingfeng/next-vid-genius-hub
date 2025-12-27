@@ -39,7 +39,7 @@ function defaultNonce(): string {
 }
 
 type FetchImpl = (
-	input: RequestInfo | URL,
+	input: string | URL | Request,
 	init?: RequestInit,
 ) => Promise<Response>
 
@@ -102,7 +102,7 @@ export function makeStatusCallback({
 		if (!f) return
 
 		let attempt = 0
-		 
+
 		while (true) {
 			attempt += 1
 			try {

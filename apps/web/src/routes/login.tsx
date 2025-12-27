@@ -7,8 +7,15 @@ const SearchSchema = z.object({
 
 export const Route = createFileRoute('/login')({
 	validateSearch: SearchSchema,
-	loader: ({ search }) => {
-		throw redirect({ to: '/auth/login', search })
+	loader: ({ location }) => {
+		const url = new URL(location.href, 'http://local')
+		const parsed = SearchSchema.safeParse({
+			next: url.searchParams.get('next') ?? undefined,
+		})
+		throw redirect({
+			to: '/auth/login',
+			search: parsed.success ? parsed.data : {},
+		})
 	},
 	component: () => null,
 })

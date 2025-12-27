@@ -105,7 +105,14 @@ async function translateBatchStructured(args: {
 
 		const out = Array.isArray(res.object?.cues) ? res.object.cues : []
 		if (!out.length) throw new Error('Empty cues from structured translation')
-		return { cues: out, usage: res.usage }
+		const usage = res.usage
+			? {
+					inputTokens: res.usage.inputTokens ?? 0,
+					outputTokens: res.usage.outputTokens ?? 0,
+					totalTokens: res.usage.totalTokens ?? 0,
+				}
+			: undefined
+		return { cues: out, usage }
 	} catch (e) {
 		// If the provider returned JSON (but AI SDK failed to parse), attempt manual recovery.
 		const assistantText = extractAssistantTextFromError(e)

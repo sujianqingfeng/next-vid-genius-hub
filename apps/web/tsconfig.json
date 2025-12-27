@@ -6,6 +6,7 @@
 		"incremental": true,
 		"baseUrl": ".",
 		"paths": {
+			"@app/media-domain": ["../../packages/media-domain/src/index.ts"],
 			"~/*": ["./src/*"]
 		}
 	},

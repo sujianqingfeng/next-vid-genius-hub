@@ -16,7 +16,9 @@ import { Skeleton } from '~/components/ui/skeleton'
 const LazyPlayer = React.lazy(async () => {
 	const mod = await import('@remotion/player')
 	return { default: mod.Player }
-})
+}) as unknown as React.LazyExoticComponent<
+	React.ComponentType<PlayerPropsWithoutZod<ThreadVideoInputProps>>
+>
 
 type DbThread = {
 	id: string
@@ -146,7 +148,7 @@ export function ThreadRemotionPreviewCard({
 												</div>
 											}
 										>
-											<LazyPlayer<PlayerPropsWithoutZod<ThreadVideoInputProps>>
+											<LazyPlayer
 												component={TemplateComponent}
 												inputProps={inputProps}
 												durationInFrames={timeline.totalDurationInFrames}
@@ -172,4 +174,3 @@ export function ThreadRemotionPreviewCard({
 		</Card>
 	)
 }
-

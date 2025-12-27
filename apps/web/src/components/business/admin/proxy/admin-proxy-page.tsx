@@ -323,7 +323,7 @@ export function AdminProxyPage({
 						size="sm"
 						className="rounded-none border-border uppercase text-[10px] font-bold tracking-widest px-4 h-9"
 						disabled={runChecksMutation.isPending}
-						onClick={() => runChecksMutation.mutate()}
+						onClick={() => runChecksMutation.mutate(undefined)}
 					>
 						{runChecksMutation.isPending ? 'CHECKING...' : 'RUN_FULL_CHECKS'}
 					</Button>
