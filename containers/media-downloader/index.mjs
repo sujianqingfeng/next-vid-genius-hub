@@ -274,6 +274,10 @@ async function handleRender(req, res) {
     jobId = `job_${Math.random().toString(36).slice(2, 10)}`,
     mediaId,
     engineOptions = {},
+    outputVideoKey,
+    outputAudioProcessedKey,
+    outputAudioSourceKey,
+    outputMetadataKey,
     outputVideoPutUrl,
     outputAudioPutUrl,
     outputAudioSourcePutUrl,
@@ -303,6 +307,25 @@ async function handleRender(req, res) {
 
   const { postUpdate, progress } = createStatusHelpers({ callbackUrl, secret: CALLBACK_SECRET, jobId });
 
+  const callbackOutputs = () => {
+    const outputs = {};
+    if (outputVideoPutUrl && outputVideoKey) {
+      outputs.video = { key: outputVideoKey };
+    }
+    if (outputAudioPutUrl && outputAudioProcessedKey) {
+      // Keep "audio" as an alias for processed audio.
+      outputs.audio = { key: outputAudioProcessedKey };
+      outputs.audioProcessed = { key: outputAudioProcessedKey };
+    }
+    if (outputAudioSourcePutUrl && outputAudioSourceKey) {
+      outputs.audioSource = { key: outputAudioSourceKey };
+    }
+    if (outputMetadataPutUrl && outputMetadataKey) {
+      outputs.metadata = { key: outputMetadataKey };
+    }
+    return Object.keys(outputs).length > 0 ? outputs : undefined;
+  };
+
   const url = engineOptions.url;
   const quality = engineOptions.quality || "1080p";
   const task = (engineOptions.task || "").toString().toLowerCase();
@@ -321,9 +344,26 @@ async function handleRender(req, res) {
     await postUpdate("failed", { error: "missing outputVideoPutUrl" });
     return;
   }
+  if (!isChannelList && !isCommentsOnly && !isMetadataOnly && !isProxyProbe && !outputVideoKey) {
+    await postUpdate("failed", { error: "missing outputVideoKey" });
+    return;
+  }
   if ((isCommentsOnly || isChannelList || isMetadataOnly || isProxyProbe) && !outputMetadataPutUrl) {
     const taskLabel = isChannelList ? "channel-list" : isCommentsOnly ? "comments" : isMetadataOnly ? "metadata-only" : "proxy-probe";
     await postUpdate("failed", { error: `missing outputMetadataPutUrl for ${taskLabel}` });
+    return;
+  }
+  if ((isCommentsOnly || isChannelList || isMetadataOnly || isProxyProbe) && !outputMetadataKey) {
+    const taskLabel = isChannelList ? "channel-list" : isCommentsOnly ? "comments" : isMetadataOnly ? "metadata-only" : "proxy-probe";
+    await postUpdate("failed", { error: `missing outputMetadataKey for ${taskLabel}` });
+    return;
+  }
+  if (outputAudioPutUrl && !outputAudioProcessedKey) {
+    await postUpdate("failed", { error: "missing outputAudioProcessedKey" });
+    return;
+  }
+  if (outputAudioSourcePutUrl && !outputAudioSourceKey) {
+    await postUpdate("failed", { error: "missing outputAudioSourceKey" });
     return;
   }
 
@@ -422,6 +462,7 @@ async function handleRender(req, res) {
         phase: "completed",
         progress: 1,
         metadata: result,
+        outputs: callbackOutputs(),
       });
       console.log("[media-downloader] proxy-probe completed", {
         jobId,
@@ -508,6 +549,7 @@ async function handleRender(req, res) {
         phase: "completed",
         progress: 1,
         metadata: { source: "youtube", channelId, count: videos.length },
+        outputs: callbackOutputs(),
       });
       console.log("[media-downloader] job completed", jobId, "channel-list=", videos.length);
       return;
@@ -579,6 +621,7 @@ async function handleRender(req, res) {
           source: src,
           commentCount: resPipeline?.count || 0,
         },
+        outputs: callbackOutputs(),
       });
       console.log(
         "[media-downloader] job completed",
@@ -610,6 +653,7 @@ async function handleRender(req, res) {
           ...finalMetadata,
           source: engineOptions.source || "youtube",
         },
+        outputs: callbackOutputs(),
       });
       console.log("[media-downloader] job completed", jobId, "metadata-only");
     } else {
@@ -775,6 +819,7 @@ async function handleRender(req, res) {
         phase: "completed",
         progress: 1,
         metadata: callbackMetadata,
+        outputs: callbackOutputs(),
       });
     }
   } catch (error) {

@@ -132,17 +132,18 @@ async function handleRender(req, res) {
     const inputVideoUrl = payload?.inputVideoUrl;
     const inputDataUrl = payload?.inputDataUrl;
     const outputPutUrl = payload?.outputPutUrl;
+    const outputVideoKey = payload?.outputVideoKey;
     const templateId = (engineOptions && engineOptions.templateId) || 'comments-default';
     const composeMode =
       (engineOptions && engineOptions.composeMode) ||
       (typeof templateId === 'string' && templateId.startsWith('thread') ? 'overlay-only' : 'compose-on-video');
     const requiresVideo = composeMode !== 'overlay-only';
 
-    if (!inputDataUrl || !outputPutUrl || (requiresVideo && !inputVideoUrl)) {
+    if (!inputDataUrl || !outputPutUrl || !outputVideoKey || (requiresVideo && !inputVideoUrl)) {
       throw new Error(
         requiresVideo
-          ? "missing required URLs (inputVideoUrl/inputDataUrl/outputPutUrl)"
-          : "missing required URLs (inputDataUrl/outputPutUrl)",
+          ? "missing required fields (inputVideoUrl/inputDataUrl/outputPutUrl/outputVideoKey)"
+          : "missing required fields (inputDataUrl/outputPutUrl/outputVideoKey)",
       );
     }
 
@@ -458,7 +459,11 @@ async function handleRender(req, res) {
       await progress("uploading", 1);
     } catch {}
     console.log(`[remotion] completed job=${jobId}`);
-    await postUpdate("completed", { phase: "completed", progress: 1 });
+    await postUpdate("completed", {
+      phase: "completed",
+      progress: 1,
+      outputs: { video: { key: outputVideoKey } },
+    });
   } catch (e) {
     console.error(`[remotion] job ${jobId} failed:`, e);
     try {

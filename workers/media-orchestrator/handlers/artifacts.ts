@@ -87,18 +87,21 @@ export async function handleArtifactDelete(env: Env, jobId: string) {
 }
 
 export async function handleArtifactGet(env: Env, req: Request, jobId: string) {
-	// 优先从 DO 获取 outputs.video.key（包含 mediaId 的归属路径）
-	let key = bucketPaths.outputs.fallbackVideo(jobId)
+	// Read artifact location from DO state; do not derive keys.
+	let key: string | null = null
 	try {
 		const stub = jobStub(env, jobId)
 		if (stub) {
 			const r = await stub.fetch('https://do/')
 			if (r.ok) {
 				const doc = (await r.json()) as any
-				if (doc?.outputs?.video?.key) key = doc.outputs.video.key
+				if (typeof doc?.outputs?.video?.key === 'string' && doc.outputs.video.key) {
+					key = doc.outputs.video.key
+				}
 			}
 		}
 	} catch {}
+	if (!key) return json({ error: 'artifact_not_ready' }, { status: 404 })
 	const range = req.headers.get('range')
 
 	// R2 绑定直读（生产常见路径）；若不可用或对象不存在则回退到 S3 直连

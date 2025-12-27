@@ -289,6 +289,10 @@ export async function handleStart(env: Env, req: Request) {
 	}
 
 	if (isDownloader) {
+		payload.outputVideoKey = outputVideoKey
+		if (outputAudioProcessedKey) payload.outputAudioProcessedKey = outputAudioProcessedKey
+		if (outputAudioSourceKey) payload.outputAudioSourceKey = outputAudioSourceKey
+		if (metadataKey) payload.outputMetadataKey = metadataKey
 		payload.outputVideoPutUrl = outputVideoPutUrl
 		if (outputAudioPutUrl) payload.outputAudioPutUrl = outputAudioPutUrl
 		if (outputAudioSourcePutUrl)
@@ -296,6 +300,7 @@ export async function handleStart(env: Env, req: Request) {
 		if (outputMetadataPutUrl)
 			payload.outputMetadataPutUrl = outputMetadataPutUrl
 	} else {
+		payload.outputVideoKey = outputVideoKey
 		payload.inputVideoUrl = inputVideoUrl
 		if (body.engine === 'burner-ffmpeg') {
 			payload.inputVttUrl = inputVttUrl
@@ -406,21 +411,8 @@ export async function handleStart(env: Env, req: Request) {
 			engine: body.engine,
 			purpose: purpose ?? manifestPurpose,
 			status: 'running',
-			outputs:
-				(purpose ?? manifestPurpose) === 'download'
-					? {
-							video: { key: outputVideoKey },
-							...(outputAudioSourceKey
-								? { audioSource: { key: outputAudioSourceKey } }
-								: {}),
-							...(outputAudioProcessedKey
-								? { audioProcessed: { key: outputAudioProcessedKey } }
-								: {}),
-							...(metadataKey ? { metadata: { key: metadataKey } } : {}),
-						}
-					: {
-							...(metadataKey ? { metadata: { key: metadataKey } } : {}),
-						},
+			// Outputs are only recorded when the container reports them back via /callbacks/container.
+			outputs: {},
 		}
 		// Persist initial options for ASR pipeline (e.g., model/thresholds)
 		if (isAsrPipeline) {

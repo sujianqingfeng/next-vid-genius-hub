@@ -1,4 +1,5 @@
 import type { EngineId } from '@app/media-domain'
+import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
 import type { TaskKindId } from '~/lib/job/task'
@@ -76,7 +77,7 @@ export async function enqueueCloudTask(input: {
 				startedAt: new Date(),
 				updatedAt: new Date(),
 			})
-			.where((t, { eq }) => eq(t.id, taskId))
+			.where(eq(schema.tasks.id, taskId))
 
 		return { taskId, jobId: job.jobId }
 	} catch (error) {
@@ -91,7 +92,7 @@ export async function enqueueCloudTask(input: {
 				finishedAt: new Date(),
 				updatedAt: new Date(),
 			})
-			.where((t, { eq }) => eq(t.id, taskId))
+			.where(eq(schema.tasks.id, taskId))
 		throw error
 	}
 }

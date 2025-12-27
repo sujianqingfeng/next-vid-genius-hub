@@ -28,12 +28,12 @@ async function handleRender(req, res) {
   console.log(`[render] job=${jobId} engineOptions=${JSON.stringify(payload.engineOptions || {})}`)
   sendJson(res, 202, { jobId })
 
-  const { inputVideoUrl, inputVttUrl, outputPutUrl, engineOptions = {}, callbackUrl } = payload
+  const { inputVideoUrl, inputVttUrl, outputPutUrl, outputVideoKey, engineOptions = {}, callbackUrl } = payload
   const { postUpdate, progress } = createStatusHelpers({ callbackUrl, secret, jobId })
 
-  if (!inputVideoUrl || !inputVttUrl || !outputPutUrl) {
+  if (!inputVideoUrl || !inputVttUrl || !outputPutUrl || !outputVideoKey) {
     console.error('[render] missing required URLs in payload')
-    await postUpdate('failed', { error: 'missing required URLs (inputVideoUrl/inputVttUrl/outputPutUrl)' })
+    await postUpdate('failed', { error: 'missing required fields (inputVideoUrl/inputVttUrl/outputPutUrl/outputVideoKey)' })
     return
   }
 
@@ -117,7 +117,7 @@ async function handleRender(req, res) {
     }
     try { await progress('uploading', 1) } catch {}
     console.log(`[render] ${jobId} completed`)
-    await postUpdate('completed', { phase: 'completed', progress: 1 })
+    await postUpdate('completed', { phase: 'completed', progress: 1, outputs: { video: { key: outputVideoKey } } })
   } catch (e) {
     console.error(`[render] ${jobId} failed:`, e)
     await postUpdate('failed', { error: e?.message || 'unknown error' })

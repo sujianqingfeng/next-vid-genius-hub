@@ -38,7 +38,12 @@ export const startCloudDownload = os
 			where: and(eq(schema.media.url, url), eq(schema.media.userId, userId)),
 		})
 
-		const mediaId = existing?.id ?? createId()
+		let mediaId = existing?.id
+		let insertedCandidateId: string | null = null
+		if (!mediaId) {
+			insertedCandidateId = createId()
+			mediaId = insertedCandidateId
+		}
 
 		logger.info(
 			'media',
@@ -49,7 +54,7 @@ export const startCloudDownload = os
 			await db
 				.insert(schema.media)
 				.values({
-					id: mediaId,
+					id: mediaId!,
 					userId,
 					url,
 					source: source as 'youtube' | 'tiktok',
@@ -63,6 +68,40 @@ export const startCloudDownload = os
 					remoteMetadataKey: null,
 				})
 				.onConflictDoNothing()
+
+			const ensured = await db.query.media.findFirst({
+				where: and(eq(schema.media.url, url), eq(schema.media.userId, userId)),
+			})
+			if (!ensured) {
+				throw new Error('Failed to create media record for download')
+			}
+			mediaId = ensured.id
+
+			// If another request inserted the row first (unique by userId+url), ensure we
+			// operate on the persisted id and apply the "retry" semantics.
+			if (insertedCandidateId && ensured.id !== insertedCandidateId) {
+				logger.warn(
+					'media',
+					`[download.start] media insert raced; using existing mediaId=${ensured.id} instead of candidate=${insertedCandidateId}`,
+				)
+
+				await db
+					.update(schema.media)
+					.set({
+						downloadBackend: 'cloud',
+						downloadStatus: 'queued',
+						downloadError: null,
+						downloadQueuedAt: now,
+						downloadCompletedAt: null,
+						// Keep any existing remote keys so the media stays streamable during retry.
+						downloadJobId: null,
+						filePath: ensured.filePath,
+						audioFilePath: ensured.audioFilePath,
+						rawMetadataPath: ensured.rawMetadataPath,
+						rawMetadataDownloadedAt: ensured.rawMetadataDownloadedAt,
+					})
+					.where(eq(schema.media.id, ensured.id))
+			}
 		} else {
 			// 保留现有远端 Key，确保在新任务排队/执行期间仍可通过 /api/media/:id/source 提供可播放源
 			await db
@@ -136,10 +175,10 @@ export const startCloudDownload = os
 				.set({
 					downloadJobId: jobId,
 				})
-				.where(eq(schema.media.id, mediaId))
+				.where(eq(schema.media.id, mediaId!))
 
 			return {
-				mediaId,
+				mediaId: mediaId!,
 				jobId,
 				taskId,
 			}
@@ -158,7 +197,7 @@ export const startCloudDownload = os
 					downloadStatus: 'failed',
 					downloadError: message,
 				})
-				.where(eq(schema.media.id, mediaId))
+				.where(eq(schema.media.id, mediaId!))
 			throw error
 		}
 	})

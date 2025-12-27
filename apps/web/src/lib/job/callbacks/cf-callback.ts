@@ -15,7 +15,6 @@ import {
 import type { CallbackPayload } from './types'
 import {
 	isProxyCheckPayload,
-	OrchestratorCallbackSchema,
 	OrchestratorCallbackV2Schema,
 	ProxyCheckCallbackSchema,
 } from './validate'
@@ -50,11 +49,11 @@ export async function handleCfCallbackRequest(request: Request): Promise<Respons
 		const db = await getDb()
 
 		const raw = payload as unknown
-		const schema = isProxyCheckPayload(raw)
+		const payloadSchema = isProxyCheckPayload(raw)
 			? ProxyCheckCallbackSchema
 			: OrchestratorCallbackV2Schema
 
-		const parsed = schema.safeParse(raw)
+		const parsed = payloadSchema.safeParse(raw)
 		if (!parsed.success) {
 			const maybeJobId =
 				typeof (raw as any)?.jobId === 'string' ? String((raw as any).jobId) : ''
