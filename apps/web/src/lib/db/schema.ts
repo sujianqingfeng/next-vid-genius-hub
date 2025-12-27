@@ -387,6 +387,7 @@ export const threadPosts = sqliteTable(
 		depth: integer('depth').notNull().default(0),
 		parentSourcePostId: text('parent_source_post_id'),
 		raw: text('raw', { mode: 'json' }),
+		translations: text('translations', { mode: 'json' }),
 		createdAt: integer('created_at', { mode: 'timestamp' }),
 		editedAt: integer('edited_at', { mode: 'timestamp' }),
 		updatedAt: integer('updated_at', { mode: 'timestamp' })

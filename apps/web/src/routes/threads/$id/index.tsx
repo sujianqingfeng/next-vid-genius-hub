@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Label } from '~/components/ui/label'
@@ -106,6 +107,47 @@ function ThreadDetailRoute() {
 		},
 	)
 
+	const translateMutation = useEnhancedMutation(
+		queryOrpc.thread.translatePost.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({
+					queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: t('toasts.translated'),
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : String(error),
+		},
+	)
+
+	const translateAllMutation = useEnhancedMutation(
+		queryOrpc.thread.translateAllPosts.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({
+					queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: ({ data }) =>
+				t('toasts.translatedAll', {
+					processed: data.processed,
+					translated: data.translated,
+					skipped: data.skipped,
+					failed: data.failed,
+				}),
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : String(error),
+		},
+	)
+
+	const selectedZhTranslation = React.useMemo(() => {
+		const text = (selectedPost as any)?.translations?.['zh-CN']?.plainText
+		return typeof text === 'string' ? text : ''
+	}, [selectedPost])
+
 	// ---------- Cloud render ----------
 	const {
 		jobId: renderJobId,
@@ -156,14 +198,35 @@ function ThreadDetailRoute() {
 								{thread?.title ?? '…'}
 							</h1>
 						</div>
-						<Button
-							variant="outline"
-							size="sm"
-							className="rounded-none font-mono text-xs uppercase tracking-wider"
-							asChild
-						>
-							<Link to="/threads">{t('actions.back')}</Link>
-						</Button>
+						<div className="flex items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="rounded-none font-mono text-xs uppercase tracking-wider"
+								disabled={translateAllMutation.isPending || !thread?.id}
+								onClick={() => {
+									if (!thread?.id) return
+									translateAllMutation.mutate({
+										threadId: thread.id,
+										targetLocale: 'zh-CN',
+										maxPosts: 30,
+									})
+								}}
+							>
+								{translateAllMutation.isPending
+									? t('actions.translatingAll')
+									: t('actions.translateAllToZh')}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								className="rounded-none font-mono text-xs uppercase tracking-wider"
+								asChild
+							>
+								<Link to="/threads">{t('actions.back')}</Link>
+							</Button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -409,6 +472,67 @@ function ThreadDetailRoute() {
 												</div>
 											)
 										})}
+								</div>
+							)}
+						</div>
+
+						<div className="space-y-2">
+							<div className="flex items-center justify-between gap-3">
+								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{t('sections.translation')}
+								</div>
+								<div className="flex items-center gap-2">
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+										disabled={translateMutation.isPending || !thread?.id || !selectedPost?.id}
+										onClick={() => {
+											if (!thread?.id || !selectedPost?.id) return
+											translateMutation.mutate({
+												threadId: thread.id,
+												postId: selectedPost.id,
+												targetLocale: 'zh-CN',
+											})
+										}}
+									>
+										{translateMutation.isPending ? (
+											<>
+												<Loader2 className="h-3 w-3 animate-spin" />
+												{t('actions.translating')}
+											</>
+										) : (
+											t('actions.translateToZh')
+										)}
+									</Button>
+
+									{selectedZhTranslation ? (
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+											onClick={() => {
+												setDraftText(selectedZhTranslation)
+												toast.message(t('toasts.translationApplied'))
+											}}
+										>
+											{t('actions.useTranslation')}
+										</Button>
+									) : null}
+								</div>
+							</div>
+
+							{selectedZhTranslation ? (
+								<Textarea
+									value={selectedZhTranslation}
+									readOnly
+									className="rounded-none font-mono text-xs min-h-[140px]"
+								/>
+							) : (
+								<div className="font-mono text-xs text-muted-foreground">
+									{t('translation.empty')}
 								</div>
 							)}
 						</div>

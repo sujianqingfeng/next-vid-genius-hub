@@ -20,6 +20,7 @@ import {
 	type ThreadTemplateId,
 } from '@app/remotion-project/thread-templates'
 import { ingestThreadAssets } from '~/lib/thread/server/asset-ingest'
+import { translateAllThreadPosts, translateThreadPost } from '~/lib/thread/server/translate'
 
 export const list = os.handler(async ({ context }) => {
 	const ctx = context as RequestContext
@@ -86,6 +87,44 @@ export const byId = os
 				: []
 
 		return { thread, root, replies, assets }
+	})
+
+export const translatePost = os
+	.input(
+		z.object({
+			threadId: z.string().min(1),
+			postId: z.string().min(1),
+			targetLocale: z.enum(['zh-CN']).optional().default('zh-CN'),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		return await translateThreadPost({
+			userId,
+			threadId: input.threadId,
+			postId: input.postId,
+			targetLocale: input.targetLocale,
+		})
+	})
+
+export const translateAllPosts = os
+	.input(
+		z.object({
+			threadId: z.string().min(1),
+			targetLocale: z.enum(['zh-CN']).optional().default('zh-CN'),
+			maxPosts: z.number().int().min(1).max(100).optional(),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		return await translateAllThreadPosts({
+			userId,
+			threadId: input.threadId,
+			targetLocale: input.targetLocale,
+			maxPosts: input.maxPosts,
+		})
 	})
 
 export const deleteById = os

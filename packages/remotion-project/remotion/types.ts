@@ -68,9 +68,24 @@ export type ThreadPostRender = {
 	author: { name: string; handle?: string | null }
 	contentBlocks: ThreadContentBlock[]
 	plainText: string
+	translations?: ThreadPostTranslations | null
 	createdAt?: string | null
 	metrics?: { likes?: number | null } | null
 }
+
+export type ThreadPostTranslationLocale = 'zh-CN'
+
+export type ThreadPostTranslationRecord = {
+	locale: ThreadPostTranslationLocale
+	plainText: string
+	createdAt?: string | null
+	modelId?: string | null
+	usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
+}
+
+export type ThreadPostTranslations = Partial<
+	Record<ThreadPostTranslationLocale, ThreadPostTranslationRecord>
+>
 
 export type ThreadAssetRef = {
 	id: string

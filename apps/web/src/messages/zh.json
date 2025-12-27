@@ -149,6 +149,7 @@
 				"posts": "帖子",
 				"editor": "编辑器",
 				"media": "媒体",
+				"translation": "翻译",
 				"debug": "存储（DB）/ 原始数据",
 				"render": "渲染（云端）"
 			},
@@ -161,6 +162,11 @@
 				"back": "返回",
 				"downloading": "下载中…",
 				"download": "下载",
+				"translateToZh": "翻译（中文）",
+				"translateAllToZh": "全部翻译（中文）",
+				"translating": "翻译中…",
+				"translatingAll": "全部翻译中…",
+				"useTranslation": "使用翻译",
 				"save": "保存",
 				"reset": "重置",
 				"startRender": "开始渲染"
@@ -168,8 +174,14 @@
 			"toasts": {
 				"saved": "已保存",
 				"reset": "已重置",
+				"translated": "已翻译",
+				"translatedAll": "翻译完成：处理={processed} 已翻译={translated} 跳过={skipped} 失败={failed}",
+				"translationApplied": "已将翻译应用到编辑器",
 				"mediaIngest": "媒体下载：处理={processed} 成功={ok} 失败={failed}",
 				"renderQueued": "已加入渲染队列"
+			},
+			"translation": {
+				"empty": "还没有翻译内容。"
 			},
 			"media": {
 				"assetRowMissing": "未在 `thread_assets` 中找到对应资源行",

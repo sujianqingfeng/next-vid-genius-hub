@@ -262,6 +262,32 @@ function renderBlocks(
 	})
 }
 
+function resolvePreferredPostText(post: ThreadVideoInputProps['root']): {
+	primaryText: string
+	secondaryText: string | null
+} {
+	const zh = (post as any)?.translations?.['zh-CN']?.plainText
+	const zhText = typeof zh === 'string' ? zh.trim() : ''
+	if (zhText) {
+		const original = (post.plainText ?? '').trim()
+		return {
+			primaryText: zhText,
+			secondaryText: original && original !== zhText ? original : null,
+		}
+	}
+	return { primaryText: (post.plainText ?? '').trim(), secondaryText: null }
+}
+
+function buildDisplayBlocks(
+	post: ThreadVideoInputProps['root'],
+	primaryText: string,
+): ThreadVideoInputProps['root']['contentBlocks'] {
+	const rest = (post.contentBlocks ?? []).filter((b) => b.type !== 'text')
+	const text = primaryText.trim()
+	if (!text) return post.contentBlocks ?? []
+	return [{ id: `text:${post.id}`, type: 'text', data: { text } }, ...rest] as any
+}
+
 function CoverSlide({
 	thread,
 	root,
@@ -382,14 +408,155 @@ function CoverSlide({
 						padding: 28,
 					}}
 				>
-					{renderBlocks(root.contentBlocks, assets)}
+					{(() => {
+						const { primaryText, secondaryText } = resolvePreferredPostText(root)
+						const blocks = buildDisplayBlocks(root, primaryText)
+						return (
+							<div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+								<div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+									{renderBlocks(blocks, assets)}
+								</div>
+								{secondaryText ? (
+									<div
+										style={{
+											borderTop: '1px solid var(--tf-border)',
+											paddingTop: 14,
+											fontSize: 'calc(16px * var(--tf-font-scale))',
+											color: 'var(--tf-muted)',
+											lineHeight: 1.55,
+											whiteSpace: 'pre-wrap',
+										}}
+									>
+										{secondaryText}
+									</div>
+								) : null}
+							</div>
+						)
+					})()}
 				</div>
 			</div>
 		</AbsoluteFill>
 	)
 }
 
-function ReplySlide({
+function PostCard({
+	post,
+	assets,
+	title,
+	showLikes,
+}: {
+	post: ThreadVideoInputProps['root']
+	assets: ThreadVideoInputProps['assets'] | undefined
+	title: string
+	showLikes?: boolean
+}) {
+	const { primaryText, secondaryText } = resolvePreferredPostText(post)
+	const blocks = buildDisplayBlocks(post, primaryText)
+
+	return (
+		<div
+			style={{
+				border: '1px solid var(--tf-border)',
+				background: 'var(--tf-surface)',
+				padding: 28,
+				display: 'flex',
+				flexDirection: 'column',
+				gap: 16,
+				minHeight: 0,
+			}}
+		>
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'space-between',
+					gap: 14,
+				}}
+			>
+				<div
+					style={{
+						fontSize: 'calc(12px * var(--tf-font-scale))',
+						letterSpacing: '0.22em',
+						textTransform: 'uppercase',
+						color: 'var(--tf-muted)',
+					}}
+				>
+					{title}
+				</div>
+
+				{showLikes ? (
+					<div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--tf-muted)' }}>
+						<ThumbsUp size={18} color="var(--tf-muted)" />
+						<span style={{ fontSize: 'calc(14px * var(--tf-font-scale))' }}>
+							{formatCount(Number(post.metrics?.likes ?? 0) || 0)}
+						</span>
+					</div>
+				) : null}
+			</div>
+
+			<div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+				<div
+					style={{
+						width: 44,
+						height: 44,
+						borderRadius: 999,
+						border: '1px solid var(--tf-border)',
+						background: 'rgba(255,255,255,0.04)',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						color: 'var(--tf-text)',
+						fontWeight: 800,
+						flex: '0 0 auto',
+					}}
+				>
+					{resolveAvatarFallback(post.author.name)}
+				</div>
+				<div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+					<div style={{ fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+						{post.author.name}
+						{post.author.handle ? (
+							<span style={{ marginLeft: 10, color: 'var(--tf-muted)' }}>
+								{String(post.author.handle)}
+							</span>
+						) : null}
+					</div>
+					<div
+						style={{
+							fontSize: 'calc(12px * var(--tf-font-scale))',
+							color: 'var(--tf-muted)',
+						}}
+					>
+						{post.createdAt ? String(post.createdAt).slice(0, 10) : '—'}
+					</div>
+				</div>
+			</div>
+
+			<div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+				{renderBlocks(blocks, assets)}
+			</div>
+
+			{secondaryText ? (
+				<div
+					style={{
+						borderTop: '1px solid var(--tf-border)',
+						paddingTop: 14,
+						fontSize: 'calc(16px * var(--tf-font-scale))',
+						color: 'var(--tf-muted)',
+						lineHeight: 1.55,
+						whiteSpace: 'pre-wrap',
+					}}
+				>
+					{secondaryText}
+				</div>
+			) : null}
+		</div>
+	)
+}
+
+function ReplyWithContextSlide({
+	thread,
+	root,
 	reply,
 	index,
 	total,
@@ -397,6 +564,8 @@ function ReplySlide({
 	assets,
 	fps,
 }: {
+	thread: ThreadVideoInputProps['thread']
+	root: ThreadVideoInputProps['root']
 	reply: ThreadVideoInputProps['replies'][number]
 	index: number
 	total: number
@@ -426,12 +595,19 @@ function ReplySlide({
 				background: 'var(--tf-bg)',
 				color: 'var(--tf-text)',
 				fontFamily: 'var(--tf-font-family)',
-				padding: '80px',
+				padding: '64px',
 				boxSizing: 'border-box',
 				opacity,
 			}}
 		>
-			<div style={{ display: 'flex', justifyContent: 'space-between', gap: 24 }}>
+			<div
+				style={{
+					display: 'flex',
+					justifyContent: 'space-between',
+					gap: 24,
+					alignItems: 'flex-end',
+				}}
+			>
 				<div
 					style={{
 						display: 'flex',
@@ -450,8 +626,15 @@ function ReplySlide({
 							background: 'var(--tf-accent)',
 						}}
 					/>
-					<span>
-						REPLY {index + 1}/{total}
+					<span
+						style={{
+							maxWidth: 980,
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap',
+						}}
+					>
+						{thread.title}
 					</span>
 				</div>
 
@@ -464,58 +647,26 @@ function ReplySlide({
 						fontSize: 'calc(14px * var(--tf-font-scale))',
 					}}
 				>
+					<span
+						style={{
+							letterSpacing: '0.22em',
+							textTransform: 'uppercase',
+							fontSize: 'calc(12px * var(--tf-font-scale))',
+						}}
+					>
+						REPLY {index + 1}/{total}
+					</span>
 					<ThumbsUp size={18} color="var(--tf-muted)" />
 					<span>{formatCount(Number(reply.metrics?.likes ?? 0) || 0)}</span>
 				</div>
 			</div>
 
-			<div
-				style={{
-					marginTop: 18,
-					border: '1px solid var(--tf-border)',
-					background: 'var(--tf-surface)',
-					padding: 28,
-				}}
-			>
-				<div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-					<div
-						style={{
-							width: 44,
-							height: 44,
-							borderRadius: 999,
-							border: '1px solid var(--tf-border)',
-							background: 'rgba(255,255,255,0.04)',
-							display: 'flex',
-							alignItems: 'center',
-							justifyContent: 'center',
-							color: 'var(--tf-text)',
-							fontWeight: 800,
-						}}
-					>
-						{resolveAvatarFallback(reply.author.name)}
-					</div>
-					<div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-						<div style={{ fontWeight: 800 }}>
-							{reply.author.name}
-							{reply.author.handle ? (
-								<span style={{ marginLeft: 10, color: 'var(--tf-muted)' }}>
-									{String(reply.author.handle)}
-								</span>
-							) : null}
-						</div>
-						<div
-							style={{
-								fontSize: 'calc(12px * var(--tf-font-scale))',
-								color: 'var(--tf-muted)',
-							}}
-						>
-							{reply.createdAt ? String(reply.createdAt).slice(0, 10) : '—'}
-						</div>
-					</div>
+			<div style={{ marginTop: 18, display: 'flex', gap: 22, height: 'calc(100% - 70px)' }}>
+				<div style={{ flex: '0 0 58%', minHeight: 0 }}>
+					<PostCard post={root} assets={assets} title="ROOT" showLikes />
 				</div>
-
-				<div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-					{renderBlocks(reply.contentBlocks, assets)}
+				<div style={{ flex: '1 1 auto', minHeight: 0 }}>
+					<PostCard post={reply as any} assets={assets} title="REPLY" />
 				</div>
 			</div>
 		</AbsoluteFill>
@@ -561,7 +712,9 @@ export function ThreadForumVideo({
 								from={startFrame}
 								durationInFrames={durationInFrames}
 							>
-								<ReplySlide
+								<ReplyWithContextSlide
+									thread={thread}
+									root={root}
 									reply={reply}
 									index={idx}
 									total={replies.length}

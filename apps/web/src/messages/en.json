@@ -149,6 +149,7 @@
 				"posts": "Posts",
 				"editor": "Editor",
 				"media": "Media",
+				"translation": "Translation",
 				"debug": "Stored (DB) / Raw",
 				"render": "Render (Cloud)"
 			},
@@ -161,6 +162,11 @@
 				"back": "Back",
 				"downloading": "Downloading…",
 				"download": "Download",
+				"translateToZh": "Translate (zh-CN)",
+				"translateAllToZh": "Translate All (zh-CN)",
+				"translating": "Translating…",
+				"translatingAll": "Translating All…",
+				"useTranslation": "Use Translation",
 				"save": "Save",
 				"reset": "Reset",
 				"startRender": "Start Render"
@@ -168,8 +174,14 @@
 			"toasts": {
 				"saved": "Saved",
 				"reset": "Reset",
+				"translated": "Translated",
+				"translatedAll": "Translated: processed={processed} translated={translated} skipped={skipped} failed={failed}",
+				"translationApplied": "Applied translation to editor",
 				"mediaIngest": "Media ingest: processed={processed} ok={ok} failed={failed}",
 				"renderQueued": "Render queued"
+			},
+			"translation": {
+				"empty": "No translation yet."
 			},
 			"media": {
 				"assetRowMissing": "asset row not found in `thread_assets`",

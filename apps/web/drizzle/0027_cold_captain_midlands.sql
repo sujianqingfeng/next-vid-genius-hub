@@ -1,0 +1,1 @@
+ALTER TABLE `thread_posts` ADD `translations` text;
