@@ -15,6 +15,18 @@ export const Route = createFileRoute('/threads/$id/')({
 	component: ThreadDetailRoute,
 })
 
+function toPrettyJson(value: unknown): string {
+	try {
+		return JSON.stringify(
+			value,
+			(_k, v) => (typeof v === 'bigint' ? v.toString() : v),
+			2,
+		)
+	} catch (e) {
+		return e instanceof Error ? e.message : String(e)
+	}
+}
+
 function firstTextBlockText(blocks: any[] | null | undefined): string {
 	const b = blocks?.find((x) => x && x.type === 'text')
 	if (!b) return ''
@@ -29,6 +41,7 @@ function ThreadDetailRoute() {
 	const thread = dataQuery.data?.thread ?? null
 	const root = dataQuery.data?.root ?? null
 	const replies = dataQuery.data?.replies ?? []
+	const assets = dataQuery.data?.assets ?? []
 
 	const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null)
 	React.useEffect(() => {
@@ -39,6 +52,17 @@ function ThreadDetailRoute() {
 		(selectedPostId &&
 			([root, ...replies].find((p) => p?.id === selectedPostId) ?? null)) ||
 		null
+
+	const selectedPostJson = React.useMemo(
+		() => (selectedPost ? toPrettyJson(selectedPost) : ''),
+		[selectedPost],
+	)
+	const threadJson = React.useMemo(() => (thread ? toPrettyJson(thread) : ''), [thread])
+	const assetsById = React.useMemo(() => {
+		const m = new Map<string, any>()
+		for (const a of assets) m.set(String(a.id), a)
+		return m
+	}, [assets])
 
 	const [draftText, setDraftText] = React.useState('')
 	React.useEffect(() => {
@@ -122,7 +146,19 @@ function ThreadDetailRoute() {
 				</div>
 			</div>
 
-			<div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
+			<div className="mx-auto max-w-6xl px-4 pt-8 pb-6 sm:px-6 lg:px-8">
+				<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+					Preview
+				</div>
+				<ThreadRemotionPreviewCard
+					thread={thread as any}
+					root={root as any}
+					replies={replies as any}
+					isLoading={dataQuery.isLoading}
+				/>
+			</div>
+
+			<div className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8 grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
 				<Card className="rounded-none">
 					<CardHeader>
 						<CardTitle className="font-mono text-sm uppercase tracking-widest">
@@ -186,6 +222,159 @@ function ThreadDetailRoute() {
 						</div>
 
 						<div className="space-y-2">
+							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+								Media
+							</div>
+
+							{selectedPost?.authorAvatarAssetId ? (
+								<div className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs space-y-1">
+									<div>avatarAssetId: {selectedPost.authorAvatarAssetId}</div>
+									{assetsById.get(selectedPost.authorAvatarAssetId) ? (
+										<div className="text-muted-foreground">
+											asset: {assetsById.get(selectedPost.authorAvatarAssetId).kind}{' '}
+											{assetsById.get(selectedPost.authorAvatarAssetId).sourceUrl
+												? `url=${assetsById.get(selectedPost.authorAvatarAssetId).sourceUrl}`
+												: assetsById.get(selectedPost.authorAvatarAssetId).storageKey
+													? `storageKey=${assetsById.get(selectedPost.authorAvatarAssetId).storageKey}`
+													: '(no url)'}
+										</div>
+									) : (
+										<div className="text-muted-foreground">
+											asset row not found in `thread_assets`
+										</div>
+									)}
+								</div>
+							) : null}
+
+							{(selectedPost?.contentBlocks ?? []).filter((b: any) => b?.type !== 'text')
+								.length === 0 ? (
+								<div className="font-mono text-xs text-muted-foreground">
+									No image/video/link blocks on this post.
+								</div>
+							) : (
+								<div className="space-y-2">
+									{(selectedPost?.contentBlocks ?? [])
+										.filter((b: any) => b?.type && b.type !== 'text')
+										.map((b: any) => {
+											if (b.type === 'image' || b.type === 'video') {
+												const assetId = String(b.data?.assetId ?? '')
+												const asset = assetId ? assetsById.get(assetId) : null
+												const url =
+													asset?.sourceUrl ||
+													(asset?.storageKey ? null : null) ||
+													null
+
+												return (
+													<div
+														key={String(b.id)}
+														className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs space-y-1"
+													>
+														<div>
+															{b.type} assetId={assetId || '(missing)'}
+														</div>
+														{b.type === 'image' && b.data?.caption ? (
+															<div className="text-muted-foreground">
+																caption: {String(b.data.caption)}
+															</div>
+														) : null}
+														{b.type === 'video' && b.data?.title ? (
+															<div className="text-muted-foreground">
+																title: {String(b.data.title)}
+															</div>
+														) : null}
+														{asset ? (
+															<div className="text-muted-foreground">
+																asset: kind={asset.kind} bytes={asset.bytes ?? '-'}{' '}
+																{asset.width && asset.height
+																	? `dim=${asset.width}x${asset.height}`
+																	: null}{' '}
+																status={asset.status}
+															</div>
+														) : (
+															<div className="text-muted-foreground">
+																asset row not found in `thread_assets`
+															</div>
+														)}
+														{asset?.sourceUrl ? (
+															<a
+																className="underline"
+																href={asset.sourceUrl}
+																target="_blank"
+																rel="noreferrer"
+															>
+																Open sourceUrl
+															</a>
+														) : null}
+														{b.type === 'image' && url ? (
+															<img
+																alt=""
+																src={url}
+																className="mt-2 max-h-[220px] w-full rounded-none border border-border object-contain bg-background"
+															/>
+														) : null}
+														{b.type === 'video' && url ? (
+															<video
+																controls
+																src={url}
+																className="mt-2 max-h-[260px] w-full rounded-none border border-border bg-background"
+															/>
+														) : null}
+													</div>
+												)
+											}
+
+											if (b.type === 'link') {
+												const previewAssetId = b.data?.previewAssetId
+													? String(b.data.previewAssetId)
+													: null
+												const previewAsset = previewAssetId
+													? assetsById.get(previewAssetId)
+													: null
+
+												return (
+													<div
+														key={String(b.id)}
+														className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs space-y-1"
+													>
+														<div>link: {String(b.data?.url ?? '')}</div>
+														{b.data?.title ? (
+															<div className="text-muted-foreground">
+																title: {String(b.data.title)}
+															</div>
+														) : null}
+														{b.data?.description ? (
+															<div className="text-muted-foreground">
+																desc: {String(b.data.description)}
+															</div>
+														) : null}
+														{previewAssetId ? (
+															<div className="text-muted-foreground">
+																previewAssetId: {previewAssetId}{' '}
+																{previewAsset?.sourceUrl ? `url=${previewAsset.sourceUrl}` : null}
+															</div>
+														) : (
+															<div className="text-muted-foreground">
+																previewAssetId: -
+															</div>
+														)}
+													</div>
+												)
+											}
+
+											return (
+												<div
+													key={String(b.id)}
+													className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs"
+												>
+													unknown block type: {String(b.type)}
+												</div>
+											)
+										})}
+								</div>
+							)}
+						</div>
+
+						<div className="space-y-2">
 							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 								Text (MVP: single text block)
 							</Label>
@@ -227,20 +416,32 @@ function ThreadDetailRoute() {
 								Reset
 							</Button>
 						</div>
+
+						<details className="border border-border rounded-none">
+							<summary className="cursor-pointer select-none px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+								Stored (DB) / Raw
+							</summary>
+							<div className="px-3 pb-3 space-y-3">
+								<div className="space-y-2">
+									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										Selected post row
+									</div>
+									<pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted/30 p-3 font-mono text-xs">
+										{selectedPostJson || '(none)'}
+									</pre>
+								</div>
+								<div className="space-y-2">
+									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										Thread row
+									</div>
+									<pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted/30 p-3 font-mono text-xs">
+										{threadJson || '(none)'}
+									</pre>
+								</div>
+							</div>
+						</details>
 					</CardContent>
 				</Card>
-			</div>
-
-			<div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6 lg:px-8">
-				<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-					Preview
-				</div>
-				<ThreadRemotionPreviewCard
-					thread={thread as any}
-					root={root as any}
-					replies={replies as any}
-					isLoading={dataQuery.isLoading}
-				/>
 			</div>
 
 			<div className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8 space-y-3">

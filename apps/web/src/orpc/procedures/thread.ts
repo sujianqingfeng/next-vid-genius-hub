@@ -1,11 +1,12 @@
 import { os } from '@orpc/server'
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
-import { getJobStatus } from '~/lib/cloudflare'
+import { deleteCloudArtifacts, getJobStatus } from '~/lib/cloudflare'
 import { getDb, schema } from '~/lib/db'
 import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
+import { logger } from '~/lib/logger'
 import { createId } from '~/lib/utils/id'
 import {
 	buildThreadPostsInsertFromDraft,
@@ -53,7 +54,98 @@ export const byId = os
 		const root = posts.find((p) => p.role === 'root') ?? null
 		const replies = posts.filter((p) => p.role === 'reply')
 
-		return { thread, root, replies }
+		const assetIds = new Set<string>()
+		for (const p of posts) {
+			if (p.authorAvatarAssetId) assetIds.add(p.authorAvatarAssetId)
+			for (const b of p.contentBlocks ?? []) {
+				if (!b || typeof b !== 'object') continue
+				if (b.type === 'image' || b.type === 'video') {
+					const id = (b as any).data?.assetId
+					if (typeof id === 'string' && id) assetIds.add(id)
+				}
+				if (b.type === 'link') {
+					const id = (b as any).data?.previewAssetId
+					if (typeof id === 'string' && id) assetIds.add(id)
+				}
+			}
+		}
+
+		const referencedAssetIds = [...assetIds]
+		const assets =
+			referencedAssetIds.length > 0
+				? await db
+						.select()
+						.from(schema.threadAssets)
+						.where(
+							and(
+								eq(schema.threadAssets.userId, userId),
+								inArray(schema.threadAssets.id, referencedAssetIds),
+							),
+						)
+				: []
+
+		return { thread, root, replies, assets }
+	})
+
+export const deleteById = os
+	.input(z.object({ id: z.string().min(1) }))
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+
+		const thread = await db.query.threads.findFirst({
+			where: and(eq(schema.threads.id, input.id), eq(schema.threads.userId, userId)),
+		})
+		if (!thread) throw new Error('Thread not found')
+
+		// Best-effort cloud cleanup (render snapshots / outputs / orchestrator artifacts).
+		try {
+			const renders = await db.query.threadRenders.findMany({
+				where: and(
+					eq(schema.threadRenders.threadId, thread.id),
+					eq(schema.threadRenders.userId, userId),
+				),
+				columns: { jobId: true, inputSnapshotKey: true, outputVideoKey: true },
+			})
+
+			const keys = new Set<string>()
+			const artifactJobIds = new Set<string>()
+			for (const r of renders) {
+				if (r.inputSnapshotKey) keys.add(String(r.inputSnapshotKey))
+				if (r.outputVideoKey) keys.add(String(r.outputVideoKey))
+				if (r.jobId) artifactJobIds.add(String(r.jobId))
+			}
+
+			if (keys.size > 0 || artifactJobIds.size > 0) {
+				await deleteCloudArtifacts({
+					keys: [...keys],
+					artifactJobIds: [...artifactJobIds],
+				})
+			}
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err)
+			logger.warn('thread', `[thread.deleteById] cloud cleanup failed (continuing): ${msg}`)
+		}
+
+		await db.delete(schema.threadPosts).where(eq(schema.threadPosts.threadId, thread.id))
+		await db
+			.delete(schema.threadRenders)
+			.where(eq(schema.threadRenders.threadId, thread.id))
+		await db
+			.delete(schema.tasks)
+			.where(
+				and(
+					eq(schema.tasks.userId, userId),
+					eq(schema.tasks.targetType, 'thread'),
+					eq(schema.tasks.targetId, thread.id),
+				),
+			)
+		await db
+			.delete(schema.threads)
+			.where(and(eq(schema.threads.id, thread.id), eq(schema.threads.userId, userId)))
+
+		return { success: true }
 	})
 
 export const createFromXJson = os
@@ -77,6 +169,84 @@ export const createFromXJson = os
 		const draft = parseXThreadImportDraft(raw)
 
 		const db = await getDb()
+
+		const externalMediaUrls = new Map<string, 'image' | 'video'>()
+		for (const post of [draft.root, ...draft.replies]) {
+			for (const b of post.contentBlocks ?? []) {
+				if (!b || typeof b !== 'object') continue
+				if (b.type !== 'image' && b.type !== 'video') continue
+				const assetId = (b as any).data?.assetId
+				if (typeof assetId !== 'string' || !assetId.startsWith('ext:')) continue
+				const url = assetId.slice('ext:'.length).trim()
+				if (!url) continue
+				externalMediaUrls.set(url, b.type)
+			}
+		}
+
+		const urlList = [...externalMediaUrls.keys()]
+		const assetIdByUrl = new Map<string, string>()
+
+		if (urlList.length > 0) {
+			const existing = await db
+				.select({
+					id: schema.threadAssets.id,
+					sourceUrl: schema.threadAssets.sourceUrl,
+				})
+				.from(schema.threadAssets)
+				.where(
+					and(
+						eq(schema.threadAssets.userId, userId),
+						inArray(schema.threadAssets.sourceUrl, urlList),
+					),
+				)
+
+			for (const a of existing) {
+				if (a.sourceUrl) assetIdByUrl.set(a.sourceUrl, a.id)
+			}
+
+			const toInsert = urlList
+				.filter((u) => !assetIdByUrl.has(u))
+				.map((u) => ({
+					id: createId(),
+					userId,
+					kind: (externalMediaUrls.get(u) ?? 'image') as 'image' | 'video',
+					sourceUrl: u,
+					storageKey: null,
+					contentType: null,
+					bytes: null,
+					width: null,
+					height: null,
+					durationMs: null,
+					thumbnailAssetId: null,
+					status: 'ready' as const,
+					createdAt: now,
+					updatedAt: now,
+				}))
+
+			for (const row of toInsert) assetIdByUrl.set(row.sourceUrl, row.id)
+
+			const CHUNK_SIZE = 20
+			for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
+				await db.insert(schema.threadAssets).values(toInsert.slice(i, i + CHUNK_SIZE))
+			}
+
+			const resolveBlocks = (blocks: any[]) =>
+				(blocks ?? []).map((b) => {
+					if (!b || typeof b !== 'object') return b
+					if (b.type !== 'image' && b.type !== 'video') return b
+					const assetId = (b as any).data?.assetId
+					if (typeof assetId !== 'string' || !assetId.startsWith('ext:')) return b
+					const url = assetId.slice('ext:'.length).trim()
+					const resolved = assetIdByUrl.get(url)
+					if (!resolved) return b
+					return { ...b, data: { ...(b as any).data, assetId: resolved } }
+				})
+
+			draft.root.contentBlocks = resolveBlocks(draft.root.contentBlocks as any) as any
+			for (const r of draft.replies) {
+				r.contentBlocks = resolveBlocks(r.contentBlocks as any) as any
+			}
+		}
 
 		const sourceIdClause = draft.sourceId
 			? eq(schema.threads.sourceId, draft.sourceId)
@@ -150,6 +320,59 @@ export const createFromXJson = os
 					.delete(schema.threadPosts)
 					.where(eq(schema.threadPosts.threadId, threadId))
 			} else {
+				// Existing thread: keep user edits intact, but backfill media blocks from
+				// the latest import draft.
+				const draftBySourcePostId = new Map<string, any>()
+				for (const p of [draft.root, ...draft.replies]) {
+					if (p.sourcePostId) draftBySourcePostId.set(p.sourcePostId, p)
+				}
+
+				const existingPosts = await db
+					.select({
+						id: schema.threadPosts.id,
+						sourcePostId: schema.threadPosts.sourcePostId,
+						contentBlocks: schema.threadPosts.contentBlocks,
+					})
+					.from(schema.threadPosts)
+					.where(eq(schema.threadPosts.threadId, threadId))
+
+				for (const p of existingPosts) {
+					const sourcePostId = p.sourcePostId ?? null
+					if (!sourcePostId) continue
+					const draftPost = draftBySourcePostId.get(sourcePostId)
+					if (!draftPost) continue
+
+					const draftMediaBlocks = (draftPost.contentBlocks ?? []).filter(
+						(b: any) => b?.type && b.type !== 'text',
+					)
+					if (draftMediaBlocks.length === 0) continue
+
+					const currentBlocks = (p.contentBlocks ?? []) as any[]
+					const nextBlocks = [...currentBlocks]
+
+					const hasBlock = (candidate: any) =>
+						nextBlocks.some((b: any) => {
+							if (!b || typeof b !== 'object') return false
+							if (b.type !== candidate?.type) return false
+							if (b.type === 'image' || b.type === 'video') {
+								return b.data?.assetId && b.data.assetId === candidate?.data?.assetId
+							}
+							if (b.type === 'link') return b.data?.url && b.data.url === candidate?.data?.url
+							return b.id && b.id === candidate?.id
+						})
+
+					for (const mb of draftMediaBlocks) {
+						if (!hasBlock(mb)) nextBlocks.push(mb)
+					}
+
+					if (nextBlocks.length !== currentBlocks.length) {
+						await db
+							.update(schema.threadPosts)
+							.set({ contentBlocks: nextBlocks, updatedAt: now })
+							.where(eq(schema.threadPosts.id, p.id))
+					}
+				}
+
 				return { id: threadId, existed: true, repaired: false }
 			}
 		}
@@ -189,7 +412,18 @@ export const updatePostText = os
 		})
 		if (!post) throw new Error('Post not found')
 
-		const nextBlocks = [{ id: 'text-0', type: 'text' as const, data: { text: input.text } }]
+		const currentBlocks = (post.contentBlocks ?? []) as any[]
+		let updated = false
+		const nextBlocks = currentBlocks.map((b) => {
+			if (!updated && b?.type === 'text') {
+				updated = true
+				return { ...b, data: { ...b.data, text: input.text } }
+			}
+			return b
+		})
+		if (!updated) {
+			nextBlocks.unshift({ id: 'text-0', type: 'text' as const, data: { text: input.text } })
+		}
 		await db
 			.update(schema.threadPosts)
 			.set({

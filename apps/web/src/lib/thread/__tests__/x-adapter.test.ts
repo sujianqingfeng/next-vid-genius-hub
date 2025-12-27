@@ -53,5 +53,36 @@ describe('thread.adapters.x', () => {
 		expect(posts[1]?.depth).toBe(1)
 		expect(posts[1]?.plainText).toBe('Reply 1')
 	})
-})
 
+	it('includes external media as non-text blocks', () => {
+		const raw = {
+			sourceUrl: 'https://x.com/a/status/1',
+			total: 1,
+			root: {
+				statusId: '1',
+				url: 'https://x.com/a/status/1',
+				author: { displayName: 'A', handle: '@a', profileUrl: 'https://x.com/a' },
+				createdAt: '2025-12-25T03:47:05.000Z',
+				text: 'Root text',
+				metrics: { replies: 0, likes: 10 },
+				media: [
+					{
+						type: 'image',
+						url: 'https://pbs.twimg.com/media/abc?format=jpg&name=small',
+						alt: 'Image',
+					},
+				],
+				isRoot: true,
+			},
+			replies: [],
+			all: [],
+		}
+
+		const draft = parseXThreadImportDraft(raw)
+		expect(draft.root.contentBlocks[0]?.type).toBe('text')
+		expect(draft.root.contentBlocks[1]?.type).toBe('image')
+		expect((draft.root.contentBlocks[1] as any).data.assetId).toBe(
+			'ext:https://pbs.twimg.com/media/abc?format=jpg&name=small',
+		)
+	})
+})

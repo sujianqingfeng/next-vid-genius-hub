@@ -27,6 +27,12 @@ const XMetricsSchema = z
 		bookmarks: 0,
 	})
 
+const XMediaSchema = z.object({
+	type: z.string().catch(''),
+	url: z.string().optional().catch(''),
+	alt: z.string().optional().catch(''),
+})
+
 const XPostSchema = z.object({
 	statusId: z.string(),
 	url: z.string().optional().catch(''),
@@ -34,6 +40,7 @@ const XPostSchema = z.object({
 	createdAt: z.string().optional().catch(''),
 	text: z.string().optional().catch(''),
 	metrics: XMetricsSchema.optional(),
+	media: z.array(XMediaSchema).optional().catch([]),
 	isRoot: z.boolean().optional().catch(false),
 })
 
@@ -81,6 +88,36 @@ function makeTextBlock(text: string, id = 'text-0'): ThreadContentBlock {
 	return { id, type: 'text', data: { text } }
 }
 
+function appendExternalMediaBlocks(
+	blocks: ThreadContentBlock[],
+	media: Array<z.infer<typeof XMediaSchema>> | null | undefined,
+): ThreadContentBlock[] {
+	const m = media ?? []
+	let idx = 0
+
+	for (const item of m) {
+		const url = String(item.url || '').trim()
+		if (!url) continue
+
+		const type = String(item.type || '').toLowerCase()
+		if (type === 'image') {
+			blocks.push({
+				id: `media-${idx++}`,
+				type: 'image',
+				data: { assetId: `ext:${url}`, caption: item.alt || undefined },
+			})
+		} else if (type === 'video') {
+			blocks.push({
+				id: `media-${idx++}`,
+				type: 'video',
+				data: { assetId: `ext:${url}`, title: item.alt || undefined },
+			})
+		}
+	}
+
+	return blocks
+}
+
 export function parseXThreadImportDraft(input: unknown): XThreadImportDraft {
 	const parsed = XThreadSchema.parse(input)
 	const root = parsed.root
@@ -89,7 +126,10 @@ export function parseXThreadImportDraft(input: unknown): XThreadImportDraft {
 	const sourceId = root.statusId || null
 	const title = (root.text || '').trim() || sourceUrl || 'X Thread'
 
-	const rootBlocks = [makeTextBlock(String(root.text || ''))]
+	const rootBlocks = appendExternalMediaBlocks(
+		[makeTextBlock(String(root.text || ''))],
+		root.media,
+	)
 
 	const parsedReplies = parsed.replies ?? []
 	const parsedAll = parsed.all ?? []
@@ -125,7 +165,10 @@ export function parseXThreadImportDraft(input: unknown): XThreadImportDraft {
 			raw: parsed.root,
 		},
 		replies: replies.map((p, idx) => {
-			const blocks = [makeTextBlock(String(p.text || ''), `text-${idx}`)]
+			const blocks = appendExternalMediaBlocks(
+				[makeTextBlock(String(p.text || ''), `text-${idx}`)],
+				p.media,
+			)
 			return {
 				sourcePostId: p.statusId,
 				role: 'reply',
