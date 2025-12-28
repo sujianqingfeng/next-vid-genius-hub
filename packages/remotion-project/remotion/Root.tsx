@@ -1,10 +1,11 @@
 import { Composition } from 'remotion'
+import { REMOTION_FPS } from '@app/media-comments'
 import { CommentsVideo } from './CommentsVideo'
 import { CommentsVideoVertical } from './CommentsVideoVertical'
 import { ThreadForumVideo } from './ThreadForumVideo'
 import type { CommentVideoInputProps, ThreadVideoInputProps } from './types'
 
-const fps = 40
+const fps = REMOTION_FPS
 const width = 1920
 const height = 1080
 

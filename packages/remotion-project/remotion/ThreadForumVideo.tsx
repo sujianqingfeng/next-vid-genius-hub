@@ -14,6 +14,21 @@ import {
 import type { ThreadVideoInputProps } from './types'
 import { formatCount } from './utils/format'
 
+function clamp01(v: number) {
+	if (v < 0) return 0
+	if (v > 1) return 1
+	return v
+}
+
+function lerp(a: number, b: number, t: number) {
+	return a + (b - a) * t
+}
+
+function easeInOutCubic(t: number) {
+	const x = clamp01(t)
+	return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
+}
+
 function resolveAvatarFallback(name?: string | null) {
 	const value = (name ?? '').trim()
 	if (!value) return '?'
@@ -60,15 +75,6 @@ function buildCssVars(
 		'--tf-font-family': fontFamily,
 		'--tf-font-scale': String(fontScale),
 	} as unknown as CSSProperties
-}
-
-function buildSequences(replyDurationsInFrames: number[]) {
-	let cursor = 0
-	return replyDurationsInFrames.map((durationInFrames, idx) => {
-		const startFrame = cursor
-		cursor += durationInFrames
-		return { idx, startFrame, durationInFrames }
-	})
 }
 
 function resolveAssetUrl(
@@ -262,20 +268,58 @@ function renderBlocks(
 	})
 }
 
-function resolvePreferredPostText(post: ThreadVideoInputProps['root']): {
+type BilingualPrimary = 'zh' | 'original'
+type SecondaryPlacement = 'above' | 'below'
+
+function resolveBilingualPostText(
+	post: ThreadVideoInputProps['root'],
+	primary: BilingualPrimary,
+): {
 	primaryText: string
 	secondaryText: string | null
 } {
 	const zh = (post as any)?.translations?.['zh-CN']?.plainText
 	const zhText = typeof zh === 'string' ? zh.trim() : ''
-	if (zhText) {
-		const original = (post.plainText ?? '').trim()
+
+	const original = (post.plainText ?? '').trim()
+	if (!zhText) return { primaryText: original, secondaryText: null }
+
+	if (primary === 'original') {
+		if (!original) return { primaryText: zhText, secondaryText: null }
 		return {
-			primaryText: zhText,
-			secondaryText: original && original !== zhText ? original : null,
+			primaryText: original,
+			secondaryText: original !== zhText ? zhText : null,
 		}
 	}
-	return { primaryText: (post.plainText ?? '').trim(), secondaryText: null }
+
+	return {
+		primaryText: zhText,
+		secondaryText: original && original !== zhText ? original : null,
+	}
+}
+
+function locateSegmentForFrame(
+	frame: number,
+	durationsInFrames: number[],
+): { idx: number; localFrame: number; durationInFrames: number } {
+	const safeFrame = Math.max(0, Math.floor(frame))
+	let cursor = 0
+	for (let idx = 0; idx < durationsInFrames.length; idx++) {
+		const durationInFrames = Math.max(1, Math.floor(durationsInFrames[idx] ?? 1))
+		const start = cursor
+		const end = cursor + durationInFrames
+		if (safeFrame >= start && safeFrame < end)
+			return { idx, localFrame: safeFrame - start, durationInFrames }
+		cursor = end
+	}
+	const lastIdx = Math.max(0, durationsInFrames.length - 1)
+	const lastDuration = Math.max(1, Math.floor(durationsInFrames[lastIdx] ?? 1))
+	const lastStart = Math.max(0, cursor - lastDuration)
+	return {
+		idx: lastIdx,
+		localFrame: Math.max(0, safeFrame - lastStart),
+		durationInFrames: lastDuration,
+	}
 }
 
 function buildDisplayBlocks(
@@ -409,7 +453,10 @@ function CoverSlide({
 					}}
 				>
 					{(() => {
-						const { primaryText, secondaryText } = resolvePreferredPostText(root)
+						const { primaryText, secondaryText } = resolveBilingualPostText(
+							root,
+							'zh',
+						)
 						const blocks = buildDisplayBlocks(root, primaryText)
 						return (
 							<div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -444,14 +491,64 @@ function PostCard({
 	assets,
 	title,
 	showLikes,
+	bilingualPrimary = 'zh',
+	secondaryPlacement = 'below',
+	scrollProgress,
 }: {
 	post: ThreadVideoInputProps['root']
 	assets: ThreadVideoInputProps['assets'] | undefined
 	title: string
 	showLikes?: boolean
+	bilingualPrimary?: BilingualPrimary
+	secondaryPlacement?: SecondaryPlacement
+	scrollProgress?: number
 }) {
-	const { primaryText, secondaryText } = resolvePreferredPostText(post)
+	const { primaryText, secondaryText } = resolveBilingualPostText(post, bilingualPrimary)
 	const blocks = buildDisplayBlocks(post, primaryText)
+
+	const secondary =
+		secondaryText && secondaryPlacement === 'above' ? (
+			<div
+				style={{
+					borderBottom: '1px solid var(--tf-border)',
+					paddingBottom: 14,
+					fontSize: 'calc(16px * var(--tf-font-scale))',
+					color: 'var(--tf-muted)',
+					lineHeight: 1.55,
+					whiteSpace: 'pre-wrap',
+				}}
+			>
+				{secondaryText}
+			</div>
+		) : secondaryText && secondaryPlacement === 'below' ? (
+			<div
+				style={{
+					borderTop: '1px solid var(--tf-border)',
+					paddingTop: 14,
+					fontSize: 'calc(16px * var(--tf-font-scale))',
+					color: 'var(--tf-muted)',
+					lineHeight: 1.55,
+					whiteSpace: 'pre-wrap',
+				}}
+			>
+				{secondaryText}
+			</div>
+			) : null
+
+	const isScrollable = typeof scrollProgress === 'number'
+	const bodyViewportRef = React.useRef<HTMLDivElement | null>(null)
+	const bodyContentRef = React.useRef<HTMLDivElement | null>(null)
+	const [bodyMaxScrollY, setBodyMaxScrollY] = React.useState(0)
+
+	React.useLayoutEffect(() => {
+		if (!isScrollable) return
+		const viewport = bodyViewportRef.current
+		const content = bodyContentRef.current
+		if (!viewport || !content) return
+		setBodyMaxScrollY(Math.max(0, content.scrollHeight - viewport.clientHeight))
+	}, [isScrollable, post.id])
+
+	const bodyScrollY = isScrollable ? bodyMaxScrollY * clamp01(scrollProgress!) : 0
 
 	return (
 		<div
@@ -462,6 +559,7 @@ function PostCard({
 				display: 'flex',
 				flexDirection: 'column',
 				gap: 16,
+				height: isScrollable ? '100%' : undefined,
 				minHeight: 0,
 			}}
 		>
@@ -532,62 +630,159 @@ function PostCard({
 				</div>
 			</div>
 
-			<div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-				{renderBlocks(blocks, assets)}
-			</div>
-
-			{secondaryText ? (
+			{isScrollable ? (
 				<div
+					ref={bodyViewportRef}
 					style={{
-						borderTop: '1px solid var(--tf-border)',
-						paddingTop: 14,
-						fontSize: 'calc(16px * var(--tf-font-scale))',
-						color: 'var(--tf-muted)',
-						lineHeight: 1.55,
-						whiteSpace: 'pre-wrap',
+						flex: '1 1 auto',
+						minHeight: 0,
+						overflow: 'hidden',
 					}}
 				>
-					{secondaryText}
+					<div
+						ref={bodyContentRef}
+						style={{
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 14,
+							transform: `translateY(-${bodyScrollY}px)`,
+							willChange: 'transform',
+						}}
+					>
+						{secondaryPlacement === 'above' ? secondary : null}
+						{renderBlocks(blocks, assets)}
+						{secondaryPlacement === 'below' ? secondary : null}
+					</div>
 				</div>
-			) : null}
+			) : (
+				<div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+					{secondaryPlacement === 'above' ? secondary : null}
+					{renderBlocks(blocks, assets)}
+					{secondaryPlacement === 'below' ? secondary : null}
+				</div>
+			)}
 		</div>
 	)
 }
 
-function ReplyWithContextSlide({
+function RepliesListSlide({
 	thread,
 	root,
-	reply,
-	index,
-	total,
-	durationInFrames,
+	replies,
+	replyDurationsInFrames,
 	assets,
 	fps,
 }: {
 	thread: ThreadVideoInputProps['thread']
 	root: ThreadVideoInputProps['root']
-	reply: ThreadVideoInputProps['replies'][number]
-	index: number
-	total: number
-	durationInFrames: number
+	replies: ThreadVideoInputProps['replies']
+	replyDurationsInFrames: number[]
 	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
 }) {
 	const frame = useCurrentFrame()
-	const enter = interpolate(frame, [0, Math.min(fps * 0.3, 18)], [0, 1], {
+	const opacity = interpolate(frame, [0, Math.min(fps * 0.3, 18)], [0, 1], {
 		extrapolateLeft: 'clamp',
 		extrapolateRight: 'clamp',
 	})
-	const exit = interpolate(
-		frame,
-		[Math.max(0, durationInFrames - Math.min(fps * 0.3, 18)), durationInFrames],
-		[1, 0],
-		{
-			extrapolateLeft: 'clamp',
-			extrapolateRight: 'clamp',
-		},
+
+	const totalRepliesFrames = React.useMemo(
+		() => replyDurationsInFrames.reduce((sum, d) => sum + d, 0),
+		[replyDurationsInFrames],
 	)
-	const opacity = enter * exit
+	const rootScrollProgress =
+		totalRepliesFrames > 0 ? clamp01(frame / totalRepliesFrames) : 0
+
+	const { idx: activeIdx, localFrame, durationInFrames } = React.useMemo(
+		() => locateSegmentForFrame(frame, replyDurationsInFrames),
+		[frame, replyDurationsInFrames],
+	)
+
+	const rightViewportRef = React.useRef<HTMLDivElement | null>(null)
+	const rightContentRef = React.useRef<HTMLDivElement | null>(null)
+	const [rightItemTops, setRightItemTops] = React.useState<number[] | null>(null)
+	const [rightMaxScrollY, setRightMaxScrollY] = React.useState(0)
+
+	React.useLayoutEffect(() => {
+		const viewport = rightViewportRef.current
+		const content = rightContentRef.current
+		if (!viewport || !content) return
+
+		let raf = 0
+		const measure = () => {
+			const nodes = Array.from(
+				content.querySelectorAll<HTMLElement>('[data-reply-idx]'),
+			)
+			const tops: number[] = []
+			for (const n of nodes) {
+				const idxStr = n.dataset.replyIdx
+				if (!idxStr) continue
+				const idx = Number(idxStr)
+				if (!Number.isFinite(idx)) continue
+				tops[idx] = n.offsetTop
+			}
+			setRightItemTops(tops.length > 0 ? tops : null)
+			setRightMaxScrollY(Math.max(0, content.scrollHeight - viewport.clientHeight))
+		}
+		const scheduleMeasure = () => {
+			cancelAnimationFrame(raf)
+			raf = requestAnimationFrame(measure)
+		}
+
+		scheduleMeasure()
+
+		if (typeof ResizeObserver !== 'undefined') {
+			const ro = new ResizeObserver(() => scheduleMeasure())
+			ro.observe(content)
+			ro.observe(viewport)
+			return () => {
+				ro.disconnect()
+				cancelAnimationFrame(raf)
+			}
+		}
+
+		return () => {
+			cancelAnimationFrame(raf)
+		}
+	}, [replies.length])
+
+	// Smoothly scroll from current reply to the next one, but do the transition
+	// in a short "handoff" window so the active highlight doesn't drift off-screen.
+	const transition = React.useMemo(() => {
+		const dur = Math.max(1, durationInFrames)
+		const transitionFrames = Math.max(8, Math.min(dur, Math.round(fps * 0.35)))
+		const startAt = Math.max(0, dur - transitionFrames)
+		const t = (localFrame - startAt) / transitionFrames
+		return { t: clamp01(t), startAt, transitionFrames }
+	}, [durationInFrames, fps, localFrame])
+
+	const rightScrollY = React.useMemo(() => {
+		if (replies.length === 0) return 0
+		if (!rightItemTops || rightItemTops.length === 0) return 0
+
+		const paddingTop = 18
+		const startRaw = rightItemTops[activeIdx] ?? 0
+		const startY = Math.max(0, startRaw - paddingTop)
+		const endRaw =
+			activeIdx + 1 < replies.length
+				? (rightItemTops[activeIdx + 1] ?? startRaw)
+				: rightMaxScrollY
+		const endY = Math.max(0, endRaw - paddingTop)
+
+		const y = lerp(startY, endY, easeInOutCubic(transition.t))
+		return Math.max(0, Math.min(rightMaxScrollY, y))
+	}, [
+		activeIdx,
+		durationInFrames,
+		localFrame,
+		transition.t,
+		replies.length,
+		rightItemTops,
+		rightMaxScrollY,
+	])
+
+	const replyIndicator =
+		replies.length > 0 ? `REPLY ${activeIdx + 1}/${replies.length}` : 'REPLIES 0'
 
 	return (
 		<AbsoluteFill
@@ -654,19 +849,81 @@ function ReplyWithContextSlide({
 							fontSize: 'calc(12px * var(--tf-font-scale))',
 						}}
 					>
-						REPLY {index + 1}/{total}
+						{replyIndicator}
 					</span>
-					<ThumbsUp size={18} color="var(--tf-muted)" />
-					<span>{formatCount(Number(reply.metrics?.likes ?? 0) || 0)}</span>
 				</div>
 			</div>
 
 			<div style={{ marginTop: 18, display: 'flex', gap: 22, height: 'calc(100% - 70px)' }}>
 				<div style={{ flex: '0 0 58%', minHeight: 0 }}>
-					<PostCard post={root} assets={assets} title="ROOT" showLikes />
+					<PostCard
+						post={root}
+						assets={assets}
+						title="ROOT"
+						showLikes
+						scrollProgress={rootScrollProgress}
+					/>
 				</div>
-				<div style={{ flex: '1 1 auto', minHeight: 0 }}>
-					<PostCard post={reply as any} assets={assets} title="REPLY" />
+				<div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
+					<div
+						ref={rightViewportRef}
+						style={{
+							flex: 1,
+							minHeight: 0,
+							overflow: 'hidden',
+							border: '1px solid var(--tf-border)',
+							background: 'rgba(255,255,255,0.02)',
+						}}
+					>
+						<div
+							ref={rightContentRef}
+							style={{
+								display: 'flex',
+								flexDirection: 'column',
+								gap: 16,
+								padding: 18,
+								transform: `translateY(-${rightScrollY}px)`,
+								willChange: 'transform',
+							}}
+						>
+							{replies.map((reply, idx) => (
+								<div
+									key={reply.id}
+									data-reply-idx={idx}
+									style={{
+										position: 'relative',
+									}}
+								>
+									{(() => {
+										const isCurrent = idx === activeIdx
+										const isNext = idx === activeIdx + 1
+										const strength = isCurrent ? 1 - transition.t : isNext ? transition.t : 0
+										if (strength <= 0) return null
+										return (
+											<div
+												style={{
+													position: 'absolute',
+													inset: 0,
+													border: '2px solid var(--tf-accent)',
+													opacity: strength,
+													pointerEvents: 'none',
+													boxSizing: 'border-box',
+												}}
+											/>
+										)
+									})()}
+									<PostCard
+										post={reply as any}
+										assets={assets}
+										title={`REPLY ${idx + 1}`}
+										showLikes
+										bilingualPrimary="zh"
+										secondaryPlacement="above"
+									/>
+								</div>
+							))}
+						</div>
+					</div>
 				</div>
 			</div>
 		</AbsoluteFill>
@@ -683,10 +940,6 @@ export function ThreadForumVideo({
 	fps,
 	templateConfig,
 }: ThreadVideoInputProps) {
-	const sequences = React.useMemo(
-		() => buildSequences(replyDurationsInFrames),
-		[replyDurationsInFrames],
-	)
 	const repliesTotalDuration = replyDurationsInFrames.reduce((sum, f) => sum + f, 0)
 	const mainDuration = Math.max(repliesTotalDuration, fps)
 
@@ -701,31 +954,14 @@ export function ThreadForumVideo({
 				<CoverSlide thread={thread} root={root} assets={assets} fps={fps} />
 			</Sequence>
 			<Sequence layout="none" from={coverDurationInFrames} durationInFrames={mainDuration}>
-				<AbsoluteFill style={{ background: 'var(--tf-bg)' }}>
-					{sequences.map(({ startFrame, durationInFrames, idx }) => {
-						const reply = replies[idx]
-						if (!reply) return null
-						return (
-							<Sequence
-								key={reply.id}
-								layout="none"
-								from={startFrame}
-								durationInFrames={durationInFrames}
-							>
-								<ReplyWithContextSlide
-									thread={thread}
-									root={root}
-									reply={reply}
-									index={idx}
-									total={replies.length}
-									durationInFrames={durationInFrames}
-									assets={assets}
-									fps={fps}
-								/>
-							</Sequence>
-						)
-					})}
-				</AbsoluteFill>
+				<RepliesListSlide
+					thread={thread}
+					root={root}
+					replies={replies}
+					replyDurationsInFrames={replyDurationsInFrames}
+					assets={assets}
+					fps={fps}
+				/>
 			</Sequence>
 		</AbsoluteFill>
 	)

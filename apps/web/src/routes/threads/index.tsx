@@ -60,13 +60,13 @@ function ThreadsIndexRoute() {
 
 			<div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
 				<div className="grid grid-cols-1 gap-4">
-					{items.map((t) => (
-						<Card key={t.id} className="rounded-none group">
+					{items.map((thread) => (
+						<Card key={thread.id} className="rounded-none group">
 							<CardHeader>
 								<div className="flex items-start justify-between gap-3">
 									<CardTitle className="font-mono text-sm uppercase tracking-widest">
-										<Link to="/threads/$id" params={{ id: t.id }}>
-											{t.title}
+										<Link to="/threads/$id" params={{ id: thread.id }}>
+											{thread.title}
 										</Link>
 									</CardTitle>
 									<Button
@@ -84,17 +84,17 @@ function ThreadsIndexRoute() {
 												const ok = await confirmDialog({
 													title: t('confirmDelete.title'),
 													description: t('confirmDelete.description', {
-														title: t.title,
+														title: thread.title,
 													}),
 													confirmText: t('confirmDelete.confirmText'),
 													variant: 'destructive',
 												})
 												if (!ok) return
-												deleteMutation.mutate({ id: t.id })
+												deleteMutation.mutate({ id: thread.id })
 											})()
 										}}
 									>
-										{deletingId === t.id ? (
+										{deletingId === thread.id ? (
 											<Loader2 className="h-3 w-3 animate-spin" />
 										) : (
 											<Trash2 className="h-3 w-3" />
@@ -104,8 +104,8 @@ function ThreadsIndexRoute() {
 							</CardHeader>
 							<CardContent className="text-xs text-muted-foreground font-mono">
 								<div className="flex flex-wrap gap-3">
-									<span>source={t.source}</span>
-									{t.sourceUrl ? <span>url={t.sourceUrl}</span> : null}
+									<span>source={thread.source}</span>
+									{thread.sourceUrl ? <span>url={thread.sourceUrl}</span> : null}
 								</div>
 							</CardContent>
 						</Card>
