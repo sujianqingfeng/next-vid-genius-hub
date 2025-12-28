@@ -38,6 +38,12 @@ const config = defineConfig(({ mode }) => {
 
 	return {
 		base,
+		server: {
+			allowedHosts: ['code.temp-drop-files.store'],
+		},
+		preview: {
+			allowedHosts: ['code.temp-drop-files.store'],
+		},
 		optimizeDeps: {
 			// TanStack Start provides virtual entry modules via the Vite plugin.
 			// Pre-bundling @tanstack/start-server-core in dev can fail because it
