@@ -16,6 +16,7 @@ import { Route as ProxyRouteRouteImport } from './routes/proxy/route'
 import { Route as PointsRouteRouteImport } from './routes/points/route'
 import { Route as MediaRouteRouteImport } from './routes/media/route'
 import { Route as ChannelsRouteRouteImport } from './routes/channels/route'
+import { Route as AgentRouteRouteImport } from './routes/agent/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ThreadsIndexRouteImport } from './routes/threads/index'
@@ -84,6 +85,11 @@ const MediaRouteRoute = MediaRouteRouteImport.update({
 const ChannelsRouteRoute = ChannelsRouteRouteImport.update({
   id: '/channels',
   path: '/channels',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentRouteRoute = AgentRouteRouteImport.update({
+  id: '/agent',
+  path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRouteRoute = AdminRouteRouteImport.update({
@@ -261,6 +267,7 @@ const ApiInternalAiAsrProviderRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/agent': typeof AgentRouteRoute
   '/channels': typeof ChannelsRouteRoute
   '/media': typeof MediaRouteRouteWithChildren
   '/points': typeof PointsRouteRoute
@@ -303,6 +310,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRouteRoute
   '/channels': typeof ChannelsRouteRoute
   '/points': typeof PointsRouteRoute
   '/proxy': typeof ProxyRouteRoute
@@ -343,6 +351,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/agent': typeof AgentRouteRoute
   '/channels': typeof ChannelsRouteRoute
   '/media': typeof MediaRouteRouteWithChildren
   '/points': typeof PointsRouteRoute
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/agent'
     | '/channels'
     | '/media'
     | '/points'
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agent'
     | '/channels'
     | '/points'
     | '/proxy'
@@ -469,6 +480,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/agent'
     | '/channels'
     | '/media'
     | '/points'
@@ -513,6 +525,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  AgentRouteRoute: typeof AgentRouteRoute
   ChannelsRouteRoute: typeof ChannelsRouteRoute
   MediaRouteRoute: typeof MediaRouteRouteWithChildren
   PointsRouteRoute: typeof PointsRouteRoute
@@ -586,6 +599,13 @@ declare module '@tanstack/react-router' {
       path: '/channels'
       fullPath: '/channels'
       preLoaderRoute: typeof ChannelsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -916,6 +936,7 @@ const ThreadsRouteRouteWithChildren = ThreadsRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
+  AgentRouteRoute: AgentRouteRoute,
   ChannelsRouteRoute: ChannelsRouteRoute,
   MediaRouteRoute: MediaRouteRouteWithChildren,
   PointsRouteRoute: PointsRouteRoute,

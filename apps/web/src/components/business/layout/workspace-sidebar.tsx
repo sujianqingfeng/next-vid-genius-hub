@@ -1,5 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
+	Bot,
 	ChevronLeft,
 	ChevronRight,
 	Coins,
@@ -39,6 +40,11 @@ const baseMenuItems = [
 		key: 'threads',
 		to: '/threads',
 		icon: MessageSquareText,
+	},
+	{
+		key: 'agent',
+		to: '/agent',
+		icon: Bot,
 	},
 	{
 		key: 'channels',

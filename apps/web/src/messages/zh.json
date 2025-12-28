@@ -78,6 +78,10 @@
 				"title": "帖子渲染",
 				"desc": "论坛式评论视频"
 			},
+			"agent": {
+				"title": "Agent",
+				"desc": "AI 智能体工作区"
+			},
 			"channels": {
 				"title": "频道",
 				"desc": "跟踪订阅的频道"

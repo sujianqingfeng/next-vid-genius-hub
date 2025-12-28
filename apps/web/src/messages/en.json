@@ -78,6 +78,10 @@
 				"title": "Threads",
 				"desc": "Forum-style comment renders"
 			},
+			"agent": {
+				"title": "Agent",
+				"desc": "AI agent workspace"
+			},
 			"channels": {
 				"title": "Channels",
 				"desc": "Track your subscriptions"
