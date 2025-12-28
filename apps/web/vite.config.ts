@@ -1,9 +1,9 @@
-import path from 'node:path'
 import { cloudflare } from '@cloudflare/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import { devtools } from '@tanstack/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
+import path from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 
@@ -39,10 +39,10 @@ const config = defineConfig(({ mode }) => {
 	return {
 		base,
 		server: {
-			allowedHosts: ['code.temp-drop-files.store'],
+			allowedHosts: ['code.temp-drop-files.store','vid-dev.temp-drop-files.store'],
 		},
 		preview: {
-			allowedHosts: ['code.temp-drop-files.store'],
+			allowedHosts: ['code.temp-drop-files.store','vid-dev.temp-drop-files.store'],
 		},
 		optimizeDeps: {
 			// TanStack Start provides virtual entry modules via the Vite plugin.
