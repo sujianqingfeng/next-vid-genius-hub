@@ -89,7 +89,7 @@ export type ThreadPostTranslations = Partial<
 
 export type ThreadAssetRef = {
 	id: string
-	kind: 'image' | 'video' | 'avatar' | 'linkPreview'
+	kind: 'image' | 'video' | 'avatar' | 'linkPreview' | 'audio'
 	url: string
 }
 
@@ -99,6 +99,7 @@ export interface ThreadVideoInputProps extends Record<string, unknown> {
 		source?: string | null
 		sourceUrl?: string | null
 	}
+	audio?: { url: string; durationMs: number; volume?: number }
 	root: ThreadPostRender
 	replies: ThreadPostRender[]
 	assets?: Record<string, ThreadAssetRef>

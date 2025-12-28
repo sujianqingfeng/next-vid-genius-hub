@@ -35,6 +35,41 @@ function firstTextBlockText(blocks: any[] | null | undefined): string {
 	return String(b.data?.text ?? '')
 }
 
+function guessAudioContentType(file: File): string {
+	if (file.type) return file.type
+	const name = file.name.toLowerCase()
+	if (name.endsWith('.mp3')) return 'audio/mpeg'
+	if (name.endsWith('.m4a') || name.endsWith('.mp4')) return 'audio/mp4'
+	if (name.endsWith('.wav')) return 'audio/wav'
+	if (name.endsWith('.aac')) return 'audio/aac'
+	if (name.endsWith('.ogg')) return 'audio/ogg'
+	if (name.endsWith('.webm')) return 'audio/webm'
+	if (name.endsWith('.flac')) return 'audio/flac'
+	return ''
+}
+
+async function readAudioDurationMs(file: File): Promise<number> {
+	const url = URL.createObjectURL(file)
+	try {
+		const audio = document.createElement('audio')
+		audio.preload = 'metadata'
+
+		const durationSeconds = await new Promise<number>((resolve, reject) => {
+			audio.onloadedmetadata = () => resolve(audio.duration)
+			audio.onerror = () => reject(new Error('Failed to read audio metadata'))
+			audio.src = url
+		})
+
+		if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+			throw new Error('Invalid audio duration')
+		}
+
+		return Math.round(durationSeconds * 1000)
+	} finally {
+		URL.revokeObjectURL(url)
+	}
+}
+
 function ThreadDetailRoute() {
 	const { id } = Route.useParams()
 	const qc = useQueryClient()
@@ -45,6 +80,8 @@ function ThreadDetailRoute() {
 	const root = dataQuery.data?.root ?? null
 	const replies = dataQuery.data?.replies ?? []
 	const assets = dataQuery.data?.assets ?? []
+	const audio = dataQuery.data?.audio ?? null
+	const audioAssets = dataQuery.data?.audioAssets ?? []
 
 	const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null)
 	React.useEffect(() => {
@@ -185,6 +222,79 @@ function ThreadDetailRoute() {
 		? `/api/threads/rendered?jobId=${encodeURIComponent(renderJobId)}&download=1`
 		: null
 
+	// ---------- Thread audio ----------
+	const audioFileInputRef = React.useRef<HTMLInputElement | null>(null)
+	const [isUploadingAudio, setIsUploadingAudio] = React.useState(false)
+
+	const createAudioUploadMutation = useEnhancedMutation(
+		queryOrpc.thread.audio.createUpload.mutationOptions(),
+	)
+	const completeAudioUploadMutation = useEnhancedMutation(
+		queryOrpc.thread.audio.completeUpload.mutationOptions(),
+	)
+	const setAudioAssetMutation = useEnhancedMutation(
+		queryOrpc.thread.setAudioAsset.mutationOptions(),
+	)
+
+	async function refreshThread() {
+		await qc.invalidateQueries({
+			queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
+		})
+	}
+
+	async function setThreadAudio(audioAssetId: string | null) {
+		await setAudioAssetMutation.mutateAsync({ threadId: id, audioAssetId })
+		await refreshThread()
+		toast.success(audioAssetId ? t('audio.toasts.set') : t('audio.toasts.cleared'))
+	}
+
+	async function uploadThreadAudio(file: File) {
+		const contentType = guessAudioContentType(file)
+		if (!contentType) {
+			toast.error(t('audio.toasts.unknownType'))
+			return
+		}
+
+		setIsUploadingAudio(true)
+		try {
+			const { assetId, putUrl } = await createAudioUploadMutation.mutateAsync({
+				threadId: id,
+				contentType,
+				bytes: file.size,
+			})
+
+			const putRes = await fetch(putUrl, {
+				method: 'PUT',
+				headers: {
+					'content-type': contentType,
+					'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
+				},
+				body: file,
+			})
+			if (!putRes.ok) {
+				throw new Error(`Upload failed: ${putRes.status} ${await putRes.text()}`)
+			}
+
+			const durationMs = await readAudioDurationMs(file)
+			await completeAudioUploadMutation.mutateAsync({
+				threadId: id,
+				assetId,
+				bytes: file.size,
+				durationMs,
+			})
+
+			await setAudioAssetMutation.mutateAsync({ threadId: id, audioAssetId: assetId })
+			await refreshThread()
+			toast.success(t('audio.toasts.uploaded'))
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e)
+			toast.error(msg)
+		} finally {
+			setIsUploadingAudio(false)
+			if (audioFileInputRef.current) audioFileInputRef.current.value = ''
+		}
+	}
+
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
 			<div className="border-b border-border bg-card">
@@ -240,8 +350,121 @@ function ThreadDetailRoute() {
 					root={root as any}
 					replies={replies as any}
 					assets={assets as any}
+					audio={
+						audio?.url && audio?.asset?.durationMs
+							? {
+									url: String(audio.url),
+									durationMs: Number(audio.asset.durationMs),
+								}
+							: null
+					}
 					isLoading={dataQuery.isLoading}
 				/>
+
+				<div className="mt-6">
+					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+						{t('sections.audio')}
+					</div>
+					<Card className="rounded-none">
+						<CardContent className="py-5 space-y-4">
+							<div className="flex flex-wrap items-center gap-3">
+								<input
+									ref={audioFileInputRef}
+									type="file"
+									accept="audio/*"
+									className="hidden"
+									onChange={(e) => {
+										const f = e.target.files?.[0]
+										if (!f) return
+										void uploadThreadAudio(f)
+									}}
+								/>
+								<Button
+									type="button"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={isUploadingAudio}
+									onClick={() => audioFileInputRef.current?.click()}
+								>
+									{isUploadingAudio ? t('audio.actions.uploading') : t('audio.actions.upload')}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={setAudioAssetMutation.isPending || !thread?.audioAssetId}
+									onClick={() => void setThreadAudio(null)}
+								>
+									{t('audio.actions.clear')}
+								</Button>
+								{audio?.asset?.id ? (
+									<div className="font-mono text-xs text-muted-foreground">
+										{t('audio.labels.current', { id: String(audio.asset.id) })}
+									</div>
+								) : (
+									<div className="font-mono text-xs text-muted-foreground">
+										{t('audio.labels.none')}
+									</div>
+								)}
+							</div>
+
+							{audio?.url ? (
+								<audio
+									controls
+									src={String(audio.url)}
+									className="w-full"
+								/>
+							) : audio?.asset ? (
+								<div className="font-mono text-xs text-muted-foreground">
+									{t('audio.labels.urlMissing')}
+								</div>
+							) : null}
+
+							{audioAssets.length > 0 ? (
+								<div className="space-y-2">
+									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										{t('audio.labels.library')}
+									</div>
+									<div className="grid grid-cols-1 gap-2">
+										{audioAssets.map((a: any) => {
+											const isCurrent = thread?.audioAssetId && String(thread.audioAssetId) === String(a.id)
+											return (
+												<div
+													key={String(a.id)}
+													className={`border px-3 py-2 font-mono text-xs ${
+														isCurrent ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'
+													}`}
+												>
+													<div className="flex flex-wrap items-center justify-between gap-3">
+														<div className="truncate">
+															{String(a.id)}
+															{typeof a.durationMs === 'number' ? ` · ${Math.round(a.durationMs / 1000)}s` : ''}
+															{typeof a.bytes === 'number' ? ` · ${Math.round(a.bytes / 1024)}KB` : ''}
+															{a.status ? ` · ${String(a.status)}` : ''}
+														</div>
+														<Button
+															type="button"
+															size="sm"
+															variant="outline"
+															className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+															disabled={setAudioAssetMutation.isPending || String(a.status) !== 'ready'}
+															onClick={() => void setThreadAudio(String(a.id))}
+														>
+															{t('audio.actions.use')}
+														</Button>
+													</div>
+												</div>
+											)
+										})}
+									</div>
+								</div>
+							) : (
+								<div className="font-mono text-xs text-muted-foreground">
+									{t('audio.labels.libraryEmpty')}
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				</div>
 			</div>
 
 			<div className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8 grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">

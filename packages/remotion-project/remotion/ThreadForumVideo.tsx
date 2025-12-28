@@ -5,11 +5,13 @@ import * as React from 'react'
 import { ThumbsUp } from 'lucide-react'
 import {
 	AbsoluteFill,
+	Audio,
 	Img,
 	Sequence,
 	Video,
 	interpolate,
 	useCurrentFrame,
+	useVideoConfig,
 } from 'remotion'
 import type { ThreadVideoInputProps } from './types'
 import { formatCount } from './utils/format'
@@ -932,6 +934,7 @@ function RepliesListSlide({
 
 export function ThreadForumVideo({
 	thread,
+	audio,
 	root,
 	replies,
 	assets,
@@ -940,8 +943,21 @@ export function ThreadForumVideo({
 	fps,
 	templateConfig,
 }: ThreadVideoInputProps) {
+	const videoConfig = useVideoConfig()
 	const repliesTotalDuration = replyDurationsInFrames.reduce((sum, f) => sum + f, 0)
 	const mainDuration = Math.max(repliesTotalDuration, fps)
+
+	const bgmDurationInFrames =
+		audio?.durationMs && audio.durationMs > 0
+			? Math.max(1, Math.round((audio.durationMs / 1000) * fps))
+			: 0
+
+	const totalDurationInFrames = videoConfig.durationInFrames
+	const maxAudioLoops = 2000
+	const audioLoops =
+		audio?.url && bgmDurationInFrames > 0
+			? Math.min(Math.ceil(totalDurationInFrames / bgmDurationInFrames), maxAudioLoops)
+			: 0
 
 	return (
 		<AbsoluteFill
@@ -950,6 +966,25 @@ export function ThreadForumVideo({
 				background: 'var(--tf-bg)',
 			}}
 		>
+			{audio?.url && bgmDurationInFrames > 0 ? (
+				<>
+					{Array.from({ length: audioLoops }).map((_, idx) => {
+						const from = idx * bgmDurationInFrames
+						const remaining = totalDurationInFrames - from
+						if (remaining <= 0) return null
+						return (
+							<Sequence
+								key={idx}
+								layout="none"
+								from={from}
+								durationInFrames={Math.min(bgmDurationInFrames, remaining)}
+							>
+								<Audio src={audio.url} volume={audio.volume ?? 1} />
+							</Sequence>
+						)
+					})}
+				</>
+			) : null}
 			<Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
 				<CoverSlide thread={thread} root={root} assets={assets} fps={fps} />
 			</Sequence>

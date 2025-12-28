@@ -51,6 +51,7 @@ export function ThreadRemotionPreviewCard({
 	replies,
 	isLoading,
 	assets = [],
+	audio = null,
 	templateId = DEFAULT_THREAD_TEMPLATE_ID,
 }: {
 	thread: DbThread | null
@@ -62,6 +63,7 @@ export function ThreadRemotionPreviewCard({
 		kind: string
 		sourceUrl?: string | null
 	}>
+	audio?: { url: string; durationMs: number } | null
 	templateId?: ThreadTemplateId
 }) {
 	const isClient = typeof window !== 'undefined'
@@ -96,6 +98,7 @@ export function ThreadRemotionPreviewCard({
 				source: thread.source,
 				sourceUrl: thread.sourceUrl ?? null,
 			},
+			audio: audio ?? undefined,
 			root: {
 				id: root.id,
 				author: { name: root.authorName, handle: root.authorHandle ?? null },
@@ -120,6 +123,7 @@ export function ThreadRemotionPreviewCard({
 			fps: REMOTION_FPS,
 		}
 	}, [
+		audio,
 		assets,
 		replies,
 		root,

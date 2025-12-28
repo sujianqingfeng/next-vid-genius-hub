@@ -166,6 +166,7 @@
 			},
 			"sections": {
 				"preview": "Preview",
+				"audio": "Audio (BGM)",
 				"posts": "Posts",
 				"editor": "Editor",
 				"media": "Media",
@@ -228,6 +229,27 @@
 				"status": "status: {status}",
 				"progress": "progress: {progress}%",
 				"downloadMp4": "Download mp4"
+			},
+			"audio": {
+				"actions": {
+					"upload": "Upload Audio",
+					"uploading": "Uploading…",
+					"clear": "Clear",
+					"use": "Use"
+				},
+				"labels": {
+					"current": "current: {id}",
+					"none": "No audio selected",
+					"urlMissing": "Audio is selected but URL is unavailable (check orchestrator / presign).",
+					"library": "Audio Library (Recent)",
+					"libraryEmpty": "No audio assets yet."
+				},
+				"toasts": {
+					"uploaded": "Audio uploaded",
+					"set": "Audio set",
+					"cleared": "Audio cleared",
+					"unknownType": "Unknown audio type"
+				}
 			}
 		}
 	},

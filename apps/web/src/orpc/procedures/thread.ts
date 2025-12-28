@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
 import { deleteCloudArtifacts, getJobStatus } from '~/lib/cloudflare'
+import { presignGetByKey, presignPutAndGetByKey, remoteKeyExists } from '~/lib/cloudflare/storage'
 import { getDb, schema } from '~/lib/db'
 import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
@@ -86,7 +87,47 @@ export const byId = os
 						)
 				: []
 
-		return { thread, root, replies, assets }
+		const audioAssetId = thread.audioAssetId ? String(thread.audioAssetId) : null
+		const audioAsset = audioAssetId
+			? await db.query.threadAssets.findFirst({
+					where: and(
+						eq(schema.threadAssets.id, audioAssetId),
+						eq(schema.threadAssets.userId, userId),
+					),
+				})
+			: null
+
+		let audioUrl: string | null = null
+		if (audioAsset?.storageKey) {
+			try {
+				audioUrl = await presignGetByKey(String(audioAsset.storageKey))
+			} catch {
+				audioUrl = audioAsset.sourceUrl ? String(audioAsset.sourceUrl) : null
+			}
+		} else if (audioAsset?.sourceUrl) {
+			audioUrl = String(audioAsset.sourceUrl)
+		}
+
+		const audioAssets = await db
+			.select()
+			.from(schema.threadAssets)
+			.where(and(eq(schema.threadAssets.userId, userId), eq(schema.threadAssets.kind, 'audio')))
+			.orderBy(desc(schema.threadAssets.createdAt))
+			.limit(20)
+
+		return {
+			thread,
+			root,
+			replies,
+			assets,
+			audio: audioAsset
+				? {
+						asset: audioAsset,
+						url: audioUrl,
+					}
+				: null,
+			audioAssets,
+		}
 	})
 
 export const translatePost = os
@@ -528,6 +569,181 @@ export const ingestAssets = os
 		return res
 	})
 
+const DEFAULT_MAX_THREAD_AUDIO_UPLOAD_BYTES = 50 * 1024 * 1024
+
+function normalizeContentType(value: string): string {
+	return value.split(';')[0]?.trim() || ''
+}
+
+function extForAudioContentType(contentType: string): string {
+	switch (contentType) {
+		case 'audio/mpeg':
+		case 'audio/mp3':
+			return '.mp3'
+		case 'audio/mp4':
+			return '.m4a'
+		case 'audio/wav':
+		case 'audio/x-wav':
+			return '.wav'
+		case 'audio/aac':
+			return '.aac'
+		case 'audio/ogg':
+			return '.ogg'
+		case 'audio/webm':
+			return '.webm'
+		case 'audio/flac':
+			return '.flac'
+		default:
+			return ''
+	}
+}
+
+export const audio = os.router({
+	createUpload: os
+		.input(
+			z.object({
+				threadId: z.string().min(1),
+				contentType: z.string().min(1),
+				bytes: z.number().int().min(1),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const ctx = context as RequestContext
+			const userId = ctx.auth.user!.id
+			const db = await getDb()
+
+			const thread = await db.query.threads.findFirst({
+				where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+				columns: { id: true },
+			})
+			if (!thread) throw new Error('Thread not found')
+
+			const contentType = normalizeContentType(input.contentType).toLowerCase()
+			if (!contentType.startsWith('audio/')) throw new Error('Unsupported audio content-type')
+			if (input.bytes > DEFAULT_MAX_THREAD_AUDIO_UPLOAD_BYTES) {
+				throw new Error(
+					`Audio too large: ${input.bytes} bytes (max ${DEFAULT_MAX_THREAD_AUDIO_UPLOAD_BYTES})`,
+				)
+			}
+
+			const assetId = createId()
+			const ext = extForAudioContentType(contentType)
+			const storageKey = `thread-assets/${assetId}${ext}`
+
+			const { putUrl, getUrl } = await presignPutAndGetByKey(storageKey, contentType)
+
+			await db.insert(schema.threadAssets).values({
+				id: assetId,
+				userId,
+				kind: 'audio',
+				sourceUrl: null,
+				storageKey,
+				contentType,
+				bytes: input.bytes,
+				width: null,
+				height: null,
+				durationMs: null,
+				thumbnailAssetId: null,
+				status: 'pending',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			})
+
+			return { assetId, storageKey, putUrl, getUrl }
+		}),
+
+	completeUpload: os
+		.input(
+			z.object({
+				threadId: z.string().min(1),
+				assetId: z.string().min(1),
+				bytes: z.number().int().min(1),
+				durationMs: z.number().int().min(1).max(24 * 60 * 60 * 1000),
+			}),
+		)
+		.handler(async ({ input, context }) => {
+			const ctx = context as RequestContext
+			const userId = ctx.auth.user!.id
+			const db = await getDb()
+
+			const thread = await db.query.threads.findFirst({
+				where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+				columns: { id: true },
+			})
+			if (!thread) throw new Error('Thread not found')
+
+			const asset = await db.query.threadAssets.findFirst({
+				where: and(
+					eq(schema.threadAssets.id, input.assetId),
+					eq(schema.threadAssets.userId, userId),
+					eq(schema.threadAssets.kind, 'audio'),
+				),
+			})
+			if (!asset) throw new Error('Audio asset not found')
+			if (!asset.storageKey) throw new Error('Audio storageKey missing')
+
+			let exists = false
+			for (const delayMs of [0, 200, 500, 1000]) {
+				if (delayMs) await new Promise((r) => setTimeout(r, delayMs))
+				exists = await remoteKeyExists(String(asset.storageKey))
+				if (exists) break
+			}
+			if (!exists) throw new Error('Uploaded audio not found in storage yet')
+
+			await db
+				.update(schema.threadAssets)
+				.set({
+					bytes: input.bytes,
+					durationMs: input.durationMs,
+					status: 'ready',
+					updatedAt: new Date(),
+				})
+				.where(eq(schema.threadAssets.id, asset.id))
+
+			return { success: true }
+		}),
+})
+
+export const setAudioAsset = os
+	.input(
+		z.object({
+			threadId: z.string().min(1),
+			audioAssetId: z.string().min(1).nullable(),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+
+		const thread = await db.query.threads.findFirst({
+			where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+			columns: { id: true },
+		})
+		if (!thread) throw new Error('Thread not found')
+
+		const audioAssetId = input.audioAssetId ? String(input.audioAssetId) : null
+
+		if (audioAssetId) {
+			const audioAsset = await db.query.threadAssets.findFirst({
+				where: and(
+					eq(schema.threadAssets.id, audioAssetId),
+					eq(schema.threadAssets.userId, userId),
+					eq(schema.threadAssets.kind, 'audio'),
+				),
+			})
+			if (!audioAsset) throw new Error('Audio asset not found')
+			if (audioAsset.status !== 'ready') throw new Error('Audio asset is not ready yet')
+		}
+
+		await db
+			.update(schema.threads)
+			.set({ audioAssetId, updatedAt: new Date() })
+			.where(and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)))
+
+		return { success: true }
+	})
+
 export const startCloudRender = os
 	.input(
 		z.object({
@@ -549,6 +765,18 @@ export const startCloudRender = os
 		const renderId = createId()
 		const jobId = `job_${createId()}`
 
+		const audioAssetId = thread.audioAssetId ? String(thread.audioAssetId) : null
+		const audioAsset = audioAssetId
+			? await db.query.threadAssets.findFirst({
+					where: and(
+						eq(schema.threadAssets.id, audioAssetId),
+						eq(schema.threadAssets.userId, userId),
+						eq(schema.threadAssets.kind, 'audio'),
+					),
+					columns: { storageKey: true },
+				})
+			: null
+
 		// Materialize snapshot JSON into the bucket (renderer-remotion will fetch it via presigned URL).
 		const snapshot = await buildThreadRenderSnapshot({
 			threadId: thread.id,
@@ -566,6 +794,7 @@ export const startCloudRender = os
 			jobId,
 			templateId: input.templateId,
 			templateConfig: (input.templateConfig ?? thread.templateConfig ?? null) as any,
+			audioAssetId,
 			inputSnapshotKey: snapshot.key,
 			outputVideoKey: null,
 			error: null,
@@ -607,6 +836,7 @@ export const startCloudRender = os
 						inputs: {
 							videoKey: null,
 							commentsKey: snapshot.key,
+							audioKey: audioAsset?.storageKey ?? null,
 						},
 						outputs: { videoKey: null },
 						optionsSnapshot: {

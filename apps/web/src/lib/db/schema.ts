@@ -349,6 +349,7 @@ export const threads = sqliteTable(
 		lang: text('lang'),
 		templateId: text('template_id'),
 		templateConfig: text('template_config', { mode: 'json' }),
+		audioAssetId: text('audio_asset_id'),
 		createdAt: integer('created_at', { mode: 'timestamp' })
 			.notNull()
 			.$defaultFn(() => new Date()),
@@ -408,7 +409,7 @@ export const threadAssets = sqliteTable('thread_assets', {
 		.notNull()
 		.$defaultFn(() => createId()),
 	userId: text('user_id').notNull(),
-	kind: text('kind', { enum: ['image', 'video', 'avatar', 'linkPreview'] })
+	kind: text('kind', { enum: ['image', 'video', 'avatar', 'linkPreview', 'audio'] })
 		.notNull(),
 	sourceUrl: text('source_url'),
 	storageKey: text('storage_key'),
@@ -442,6 +443,7 @@ export const threadRenders = sqliteTable('thread_renders', {
 	jobId: text('job_id'),
 	templateId: text('template_id'),
 	templateConfig: text('template_config', { mode: 'json' }),
+	audioAssetId: text('audio_asset_id'),
 	inputSnapshotKey: text('input_snapshot_key'),
 	outputVideoKey: text('output_video_key'),
 	error: text('error'),

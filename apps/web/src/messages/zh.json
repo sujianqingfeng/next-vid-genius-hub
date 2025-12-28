@@ -166,6 +166,7 @@
 			},
 			"sections": {
 				"preview": "预览",
+				"audio": "音频（BGM）",
 				"posts": "帖子",
 				"editor": "编辑器",
 				"media": "媒体",
@@ -228,6 +229,27 @@
 				"status": "状态：{status}",
 				"progress": "进度：{progress}%",
 				"downloadMp4": "下载 mp4"
+			},
+			"audio": {
+				"actions": {
+					"upload": "上传音频",
+					"uploading": "上传中…",
+					"clear": "清除",
+					"use": "使用"
+				},
+				"labels": {
+					"current": "当前：{id}",
+					"none": "未选择音频",
+					"urlMissing": "已选择音频但无法获取播放 URL（检查 orchestrator / presign）。",
+					"library": "音频库（最近）",
+					"libraryEmpty": "暂无音频资产。"
+				},
+				"toasts": {
+					"uploaded": "音频已上传",
+					"set": "已设置音频",
+					"cleared": "已清除音频",
+					"unknownType": "未知音频类型"
+				}
 			}
 		}
 	},

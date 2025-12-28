@@ -36,6 +36,29 @@ export async function buildThreadRenderSnapshot(input: {
 	})
 	if (!thread) throw new Error('Thread not found')
 
+	let audio: ThreadVideoInputProps['audio'] | undefined = undefined
+	if (thread.audioAssetId) {
+		const audioAsset = await db.query.threadAssets.findFirst({
+			where: and(
+				eq(schema.threadAssets.userId, input.userId),
+				eq(schema.threadAssets.id, String(thread.audioAssetId)),
+				eq(schema.threadAssets.kind, 'audio'),
+			),
+		})
+
+		if (
+			audioAsset &&
+			audioAsset.status === 'ready' &&
+			audioAsset.storageKey &&
+			audioAsset.durationMs
+		) {
+			try {
+				const url = await presignGetByKey(String(audioAsset.storageKey))
+				audio = { url, durationMs: Number(audioAsset.durationMs) }
+			} catch {}
+		}
+	}
+
 	const posts = await db
 		.select()
 		.from(schema.threadPosts)
@@ -119,6 +142,7 @@ export async function buildThreadRenderSnapshot(input: {
 			source: thread.source,
 			sourceUrl: thread.sourceUrl ?? null,
 		},
+		audio,
 		root: {
 			id: root.id,
 			author: { name: root.authorName, handle: root.authorHandle ?? null },
