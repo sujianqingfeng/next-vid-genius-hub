@@ -40,6 +40,12 @@ yarn-error.log*
 .env.production.local
 .env.test.local
 
+# env examples (committed)
+!.env.example
+!**/.env.example
+!.env.sample
+!**/.env.sample
+
 # pnpm store (local cache)
 .pnpm-store
 

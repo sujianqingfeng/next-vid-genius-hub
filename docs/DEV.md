@@ -187,6 +187,14 @@ pnpm dev:web
 pnpm dev:web:vite
 ```
 
+如果你通过带路径前缀的反向代理访问本地端口（例如 `https://code.temp-drop-files.store/proxy/3100/...`），需要设置 `VITE_BASEPATH`，否则浏览器会去请求 `https://code.temp-drop-files.store/src/styles.css` 这类“根路径资源”导致 404：
+
+```bash
+VITE_BASEPATH=/proxy/3100 pnpm dev:web:vite
+# 或（wrangler dev）
+VITE_BASEPATH=/proxy/3100 pnpm dev:web
+```
+
 业务应用不再承担媒体文件中转，所有媒体 IO 通过 orchestrator Worker + R2 完成。
 
 ## 桶优先与每任务清单（Job Manifest）
