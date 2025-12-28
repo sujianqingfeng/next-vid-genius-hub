@@ -7,7 +7,7 @@ import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-pr
 import { Button } from '~/components/ui/button'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { MEDIA_PAGE_SIZE } from '~/lib/pagination'
-import { useTranslations } from '~/lib/i18n'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
 const SearchSchema = z.object({
@@ -35,17 +35,20 @@ export const Route = createFileRoute('/media/')({
 	component: MediaIndexRoute,
 })
 
-function toDateLabel(input: unknown): string {
-	if (input instanceof Date) return input.toLocaleString()
+function toDateLabel(input: unknown, locale: string): string {
+	if (input instanceof Date) return input.toLocaleString(locale)
 	if (typeof input === 'string' || typeof input === 'number') {
 		const d = new Date(input)
-		if (!Number.isNaN(d.getTime())) return d.toLocaleString()
+		if (!Number.isNaN(d.getTime())) return d.toLocaleString(locale)
 	}
 	return ''
 }
 
 function MediaIndexRoute() {
 	const t = useTranslations('Media')
+	const tCommon = useTranslations('Common')
+	const locale = useLocale()
+	const dateLocale = getBcp47Locale(locale)
 	const navigate = Route.useNavigate()
 	const { page } = Route.useSearch()
 	const qc = useQueryClient()
@@ -72,7 +75,8 @@ function MediaIndexRoute() {
 			successToast: t('toasts.deleteSuccess'),
 			errorToast: ({ error }) =>
 				t('toasts.deleteFail', {
-					message: error instanceof Error ? error.message : 'Unknown',
+					message:
+						error instanceof Error ? error.message : tCommon('fallback.unknown'),
 				}),
 		},
 	)
@@ -181,7 +185,7 @@ function MediaIndexRoute() {
 					{items.length > 0 ? (
 						<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
 							{items.map((item) => {
-								const createdAt = toDateLabel(item.createdAt)
+								const createdAt = toDateLabel(item.createdAt, dateLocale)
 								const title =
 									item.translatedTitle || item.title || item.id || 'Untitled'
 								const isDeleting = deletingId === item.id

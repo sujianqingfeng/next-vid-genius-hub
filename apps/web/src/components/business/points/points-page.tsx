@@ -4,11 +4,13 @@ import { useQuery } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
-import { useTranslations } from '~/lib/i18n'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
 export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 	const t = useTranslations('Points')
+	const locale = useLocale()
+	const dateLocale = getBcp47Locale(locale)
 
 	const balanceQuery = useQuery(queryOrpc.points.getMyBalance.queryOptions())
 	const txQuery = useQuery(
@@ -38,10 +40,10 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
 								<span className="flex items-center gap-1">
 									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-									Ledger System
+									{t('ui.breadcrumb.system')}
 								</span>
 								<span>/</span>
-								<span>Resource Balance</span>
+								<span>{t('ui.breadcrumb.section')}</span>
 							</div>
 							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{t('title')}
@@ -80,7 +82,7 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 							<div className="p-6">
 								<div className="flex items-baseline gap-3">
 									<span className="font-mono text-5xl font-bold tracking-tighter text-primary">
-										{balance.toLocaleString()}
+										{balance.toLocaleString(dateLocale)}
 									</span>
 									<span className="font-mono text-sm font-medium uppercase tracking-widest text-muted-foreground">
 										{t('balance.unit')}
@@ -153,7 +155,7 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 										<tr>
 											<td colSpan={5} className="px-4 py-12 text-center">
 												<div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-													{isLoading ? 'SYNCING_DATA...' : 'NO_RECORDS_LOCATED'}
+													{isLoading ? t('table.loading') : t('table.empty')}
 												</div>
 											</td>
 										</tr>
@@ -164,7 +166,7 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 												className="group hover:bg-muted/20 transition-colors"
 											>
 												<td className="px-4 py-3 text-[10px] text-muted-foreground">
-													{new Date(item.createdAt).toLocaleString()}
+													{new Date(item.createdAt).toLocaleString(dateLocale)}
 												</td>
 												<td className="px-4 py-3">
 													<span className="bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border border-primary/10">
@@ -175,10 +177,10 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 													className={`px-4 py-3 text-xs font-bold tracking-tight ${item.delta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}
 												>
 													{item.sign}
-													{item.abs.toLocaleString()}
+													{item.abs.toLocaleString(dateLocale)}
 												</td>
 												<td className="px-4 py-3 text-xs">
-													{item.balanceAfter.toLocaleString()}
+													{item.balanceAfter.toLocaleString(dateLocale)}
 												</td>
 												<td className="px-4 py-3 text-[10px] uppercase text-muted-foreground max-w-[300px] truncate">
 													{item.remark || item.refType || '-'}

@@ -19,7 +19,7 @@ import {
 import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/ai/models'
 import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { useTranslations } from '~/lib/i18n'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
 type ChannelRow = {
@@ -45,11 +45,11 @@ function channelLabel(ch: ChannelRow): string {
 	)
 }
 
-function toDateLabel(input: unknown): string {
-	if (input instanceof Date) return input.toLocaleString()
+function toDateLabel(input: unknown, locale: string): string {
+	if (input instanceof Date) return input.toLocaleString(locale)
 	if (typeof input === 'string' || typeof input === 'number') {
 		const d = new Date(input)
-		if (!Number.isNaN(d.getTime())) return d.toLocaleString()
+		if (!Number.isNaN(d.getTime())) return d.toLocaleString(locale)
 	}
 	return ''
 }
@@ -65,6 +65,9 @@ export function ChannelsPage() {
 	const t = useTranslations('Channels.page')
 	const tVideos = useTranslations('Channels.videos')
 	const tProxySelector = useTranslations('Proxy.selector')
+	const tCommon = useTranslations('Common')
+	const locale = useLocale()
+	const dateLocale = getBcp47Locale(locale)
 
 	const qc = useQueryClient()
 	const confirmDialog = useConfirmDialog()
@@ -169,13 +172,13 @@ export function ChannelsPage() {
 				})
 			},
 		}),
-		{
-			errorToast: ({ error }) =>
-				error instanceof Error
-					? error.message
-					: t('deleteError', { message: 'Unknown' }),
-		},
-	)
+			{
+				errorToast: ({ error }) =>
+					error instanceof Error
+						? error.message
+						: t('deleteError', { message: tCommon('fallback.unknown') }),
+			},
+		)
 
 	const deleteMutation = useEnhancedMutation(
 		queryOrpc.channel.deleteChannel.mutationOptions({
@@ -186,13 +189,14 @@ export function ChannelsPage() {
 				toast.success(t('deleteSuccess'))
 			},
 		}),
-		{
-			errorToast: ({ error }) =>
-				t('deleteError', {
-					message: error instanceof Error ? error.message : 'Unknown',
-				}),
-		},
-	)
+			{
+				errorToast: ({ error }) =>
+					t('deleteError', {
+						message:
+							error instanceof Error ? error.message : tCommon('fallback.unknown'),
+					}),
+			},
+		)
 
 	const startSyncMutation = useEnhancedMutation(
 		queryOrpc.channel.startCloudSync.mutationOptions({
@@ -225,14 +229,15 @@ export function ChannelsPage() {
 				}))
 			},
 		}),
-		{
-			successToast: t('actions.translateSuccess'),
-			errorToast: ({ error }) =>
-				t('actions.translateError', {
-					message: error instanceof Error ? error.message : 'Unknown',
-				}),
-		},
-	)
+			{
+				successToast: t('actions.translateSuccess'),
+				errorToast: ({ error }) =>
+					t('actions.translateError', {
+						message:
+							error instanceof Error ? error.message : tCommon('fallback.unknown'),
+					}),
+			},
+		)
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
@@ -241,14 +246,14 @@ export function ChannelsPage() {
 				<div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="space-y-1">
-							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-								<span className="flex items-center gap-1">
-									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-									Source Manager
-								</span>
-								<span>/</span>
-								<span>Channel Subscriptions</span>
-							</div>
+								<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+									<span className="flex items-center gap-1">
+										<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+										{t('ui.breadcrumb.system')}
+									</span>
+									<span>/</span>
+									<span>{t('ui.breadcrumb.section')}</span>
+								</div>
 							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{t('title')}
 							</h1>
@@ -553,7 +558,9 @@ function ChannelCard({
 							)}
 							{ch.lastSyncedAt && (
 								<span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground border-l border-border pl-3">
-									LAST_SYNC: {toDateLabel(ch.lastSyncedAt)}
+									{t('ui.labels.lastSync', {
+										datetime: toDateLabel(ch.lastSyncedAt, dateLocale),
+									})}
 								</span>
 							)}
 						</div>
@@ -573,7 +580,9 @@ function ChannelCard({
 								disabled={syncing}
 							>
 								<SelectTrigger className="h-9 rounded-none border-border font-mono text-[10px] uppercase">
-									<SelectValue placeholder="GATEWAY_SELECT" />
+									<SelectValue
+										placeholder={tProxySelector('selectPlaceholder')}
+									/>
 								</SelectTrigger>
 								<SelectContent className="rounded-none">
 									{proxies.map((p) => (

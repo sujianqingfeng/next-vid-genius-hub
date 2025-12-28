@@ -5,20 +5,22 @@ import { Link } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
-import { useTranslations } from '~/lib/i18n'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
-function toDateLabel(input: unknown): string {
-	if (input instanceof Date) return input.toLocaleString()
+function toDateLabel(input: unknown, locale: string): string {
+	if (input instanceof Date) return input.toLocaleString(locale)
 	if (typeof input === 'string' || typeof input === 'number') {
 		const d = new Date(input)
-		if (!Number.isNaN(d.getTime())) return d.toLocaleString()
+		if (!Number.isNaN(d.getTime())) return d.toLocaleString(locale)
 	}
 	return ''
 }
 
 export function TasksPage({ recentLimit = 50 }: { recentLimit?: number }) {
 	const t = useTranslations('Tasks')
+	const locale = useLocale()
+	const dateLocale = getBcp47Locale(locale)
 
 	const tasksQuery = useQuery(
 		queryOrpc.task.listRecent.queryOptions({
@@ -38,10 +40,10 @@ export function TasksPage({ recentLimit = 50 }: { recentLimit?: number }) {
 							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
 								<span className="flex items-center gap-1">
 									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-									Kernel System
+									{t('ui.breadcrumb.system')}
 								</span>
 								<span>/</span>
-								<span>Process Queue</span>
+								<span>{t('ui.breadcrumb.section')}</span>
 							</div>
 							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{t('title')}
@@ -72,13 +74,18 @@ export function TasksPage({ recentLimit = 50 }: { recentLimit?: number }) {
 					{tasksQuery.isLoading && !items.length && (
 						<div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
 							<Loader2 className="h-3 w-3 animate-spin" />
-							Polling_Task_Queue...
+							{t('ui.polling')}
 						</div>
 					)}
 
 					{tasksQuery.isError ? (
 						<div className="border border-destructive/50 bg-destructive/5 p-4 font-mono text-xs uppercase tracking-wider text-destructive">
-							Error: Failed to interface with Task_Manager.
+							{t('errors.recent', {
+								message:
+									tasksQuery.error instanceof Error
+										? tasksQuery.error.message
+										: String(tasksQuery.error),
+							})}
 						</div>
 					) : null}
 
@@ -95,18 +102,18 @@ export function TasksPage({ recentLimit = 50 }: { recentLimit?: number }) {
 							<div className="border border-border bg-card">
 								<div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center justify-between">
 									<div className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-										Live_Task_Monitor
+										{t('ui.monitor.title')}
 									</div>
 									<div className="font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground opacity-50">
-										Active_Nodes: {items.length}
+										{t('ui.monitor.activeNodes', { count: items.length })}
 									</div>
 								</div>
 
 								<div className="divide-y divide-border">
 									{items.map((task) => {
-										const createdAt = toDateLabel(task.createdAt)
-										const updatedAt = toDateLabel(task.updatedAt)
-										const finishedAt = toDateLabel(task.finishedAt)
+										const createdAt = toDateLabel(task.createdAt, dateLocale)
+										const updatedAt = toDateLabel(task.updatedAt, dateLocale)
+										const finishedAt = toDateLabel(task.finishedAt, dateLocale)
 
 										const canOpenMedia =
 											task.targetType === 'media' &&

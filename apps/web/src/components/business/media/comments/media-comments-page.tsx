@@ -138,6 +138,7 @@ export function MediaCommentsPage({
 	onTabChange: (tab: MediaCommentsTab) => void
 }) {
 	const t = useTranslations('MediaComments.page')
+	const tCommon = useTranslations('Common')
 	const locale = useLocale()
 	const qc = useQueryClient()
 
@@ -813,8 +814,8 @@ export function MediaCommentsPage({
 							className="rounded-none uppercase tracking-widest"
 						>
 							{deleteCommentsMutation.isPending
-								? 'EXECUTING...'
-								: '[ CONFIRM_PURGE ]'}
+								? t('bulkDelete.confirm.executing')
+								: t('bulkDelete.confirm.action')}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -827,10 +828,10 @@ export function MediaCommentsPage({
 							<div className="flex flex-wrap items-center gap-3 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
 								<span className="flex items-center gap-1">
 									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-									Media System
+									{t('ui.breadcrumb.system')}
 								</span>
 								<span>/</span>
-								<span>Comments Manager</span>
+								<span>{t('ui.breadcrumb.section')}</span>
 								{commentsCloudJobId || renderJobId ? (
 									<>
 										<span>/</span>
@@ -1539,12 +1540,12 @@ export function MediaCommentsPage({
 															<div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
 																<div className="space-y-3">
 																	<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-																		Branding Control
+																		{t('render.config.brand')}
 																	</Label>
 																	<div className="space-y-3 border border-border p-3">
 																		<div className="flex items-center justify-between">
 																			<div className="font-mono text-[10px] uppercase tracking-widest">
-																				Watermark
+																				{t('render.config.fields.watermark')}
 																			</div>
 																			<Switch
 																				checked={Boolean(
@@ -1560,7 +1561,9 @@ export function MediaCommentsPage({
 																			/>
 																		</div>
 																		<Input
-																			placeholder="LABEL_TEXT"
+																			placeholder={t(
+																				'render.config.fields.watermarkText',
+																			)}
 																			value={String(
 																				effectiveTemplateConfig.brand
 																					?.watermarkText ?? '',
@@ -1662,26 +1665,28 @@ export function MediaCommentsPage({
 															>
 																<SelectTrigger className="h-9 rounded-none font-mono">
 																	<SelectValue />
-																	<span className="sr-only">Toggle</span>
+																	<span className="sr-only">
+																		{tCommon('actions.toggle')}
+																	</span>
 																</SelectTrigger>
 																<SelectContent className="rounded-none">
 																	<SelectItem
 																		value="auto"
 																		className="font-mono text-sm"
 																	>
-																		AUTO_SELECT
+																		{t('render.sourcePolicy.auto')}
 																	</SelectItem>
 																	<SelectItem
 																		value="original"
 																		className="font-mono text-sm"
 																	>
-																		ORIGINAL_SOURCE
+																		{t('render.sourcePolicy.original')}
 																	</SelectItem>
 																	<SelectItem
 																		value="subtitles"
 																		className="font-mono text-sm"
 																	>
-																		SUBTITLE_LAYER
+																		{t('render.sourcePolicy.subtitles')}
 																	</SelectItem>
 																</SelectContent>
 															</Select>
@@ -1872,6 +1877,8 @@ function ModelSelect({
 	options: Array<{ id: string; label: string }>
 	disabled?: boolean
 }) {
+	const t = useTranslations('MediaComments.page')
+
 	return (
 		<div className="space-y-2">
 			<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -1879,7 +1886,7 @@ function ModelSelect({
 			</Label>
 			<Select value={value} onValueChange={onValueChange} disabled={disabled}>
 				<SelectTrigger className="h-9 rounded-none font-mono text-sm">
-					<SelectValue placeholder="SELECT_ENGINE" />
+					<SelectValue placeholder={t('ui.placeholders.selectEngine')} />
 				</SelectTrigger>
 				<SelectContent className="rounded-none">
 					{options.map((m) => (
@@ -1918,6 +1925,8 @@ function ProxySelect({
 	disabled?: boolean
 	help?: string
 }) {
+	const t = useTranslations('MediaComments.page')
+
 	const successProxyIds = new Set(
 		proxies
 			.filter((p) => p.id !== 'none' && p.testStatus === 'success')
@@ -1931,7 +1940,7 @@ function ProxySelect({
 			</Label>
 			<Select value={value} onValueChange={onValueChange} disabled={disabled}>
 				<SelectTrigger className="h-9 rounded-none text-sm">
-					<SelectValue placeholder="SELECT_GATEWAY" />
+					<SelectValue placeholder={t('ui.placeholders.selectGateway')} />
 				</SelectTrigger>
 				<SelectContent className="rounded-none">
 					{options.map((proxy) => {
@@ -1941,7 +1950,7 @@ function ProxySelect({
 						const display =
 							proxy.name ||
 							(proxy.id === 'none'
-								? 'AUTO_DISCOVERY'
+								? t('ui.placeholders.autoDiscovery')
 								: `${proxy.protocol ?? 'http'}://${formatHostPort(proxy.server, proxy.port)}`)
 						return (
 							<SelectItem

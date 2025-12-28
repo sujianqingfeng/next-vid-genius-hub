@@ -7,7 +7,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { useTranslations } from '~/lib/i18n'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
 type Props = {
@@ -17,17 +17,19 @@ type Props = {
 	setSearch: (next: { jobId?: string; taskId?: string; limit?: number }) => void
 }
 
-function toDateLabel(value: unknown): string {
-	if (value instanceof Date) return value.toLocaleString()
+function toDateLabel(value: unknown, locale: string): string {
+	if (value instanceof Date) return value.toLocaleString(locale)
 	if (typeof value === 'number' || typeof value === 'string') {
 		const d = new Date(value)
-		if (!Number.isNaN(d.getTime())) return d.toLocaleString()
+		if (!Number.isNaN(d.getTime())) return d.toLocaleString(locale)
 	}
 	return ''
 }
 
 export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 	const t = useTranslations('Admin.jobEvents')
+	const locale = useLocale()
+	const dateLocale = getBcp47Locale(locale)
 	const [jobIdInput, setJobIdInput] = React.useState(jobId ?? '')
 	const [taskIdInput, setTaskIdInput] = React.useState(taskId ?? '')
 	const [limitInput, setLimitInput] = React.useState(String(limit))
@@ -327,7 +329,7 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 									<summary className="cursor-pointer list-none">
 										<div className="grid grid-cols-12 gap-3 items-start text-xs font-mono">
 											<div className="col-span-2 text-muted-foreground">
-												{toDateLabel(e.createdAt)}
+												{toDateLabel(e.createdAt, dateLocale)}
 											</div>
 											<div className="col-span-1">
 												{String(e.source ?? '')}
@@ -360,7 +362,10 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 												eventId: <span className="text-foreground">{String(e.eventId ?? '')}</span>
 											</div>
 											<div>
-												eventTs: <span className="text-foreground">{toDateLabel(e.eventTs)}</span>
+												eventTs:{' '}
+												<span className="text-foreground">
+													{toDateLabel(e.eventTs, dateLocale)}
+												</span>
 											</div>
 										</div>
 

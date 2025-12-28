@@ -84,7 +84,7 @@ export const translate = os
 			})
 		} catch (err) {
 			if (err instanceof InsufficientPointsError) {
-				throwInsufficientPointsError('积分不足，字幕翻译失败，请先充值。')
+				throwInsufficientPointsError()
 			}
 			throw err
 		}
@@ -218,7 +218,7 @@ export const optimizeTranscription = os
 			})
 		} catch (err) {
 			if (err instanceof InsufficientPointsError) {
-				throwInsufficientPointsError('积分不足，字幕优化失败，请先充值。')
+				throwInsufficientPointsError()
 			}
 			throw err
 		}

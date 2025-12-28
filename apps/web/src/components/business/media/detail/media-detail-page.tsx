@@ -25,14 +25,14 @@ import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import type { MediaItem } from '~/lib/media/types'
-import { useTranslations } from '~/lib/i18n'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
-function toDateLabel(input: unknown): string {
-	if (input instanceof Date) return input.toLocaleString()
+function toDateLabel(input: unknown, locale: string): string {
+	if (input instanceof Date) return input.toLocaleString(locale)
 	if (typeof input === 'string' || typeof input === 'number') {
 		const d = new Date(input)
-		if (!Number.isNaN(d.getTime())) return d.toLocaleString()
+		if (!Number.isNaN(d.getTime())) return d.toLocaleString(locale)
 	}
 	return ''
 }
@@ -50,6 +50,8 @@ function mediaPreviewUrl(media: MediaItem, id: string): string | null {
 
 export function MediaDetailPage({ id }: { id: string }) {
 	const t = useTranslations('MediaDetail')
+	const locale = useLocale()
+	const dateLocale = getBcp47Locale(locale)
 	const qc = useQueryClient()
 	const [pointsOpen, setPointsOpen] = useState(false)
 	const [txPage, setTxPage] = useState(1)
@@ -174,7 +176,7 @@ export function MediaDetailPage({ id }: { id: string }) {
 	}
 
 	const item = mediaQuery.data as MediaItem
-	const createdAt = toDateLabel(item.createdAt)
+	const createdAt = toDateLabel(item.createdAt, dateLocale)
 	const previewUrl = mediaPreviewUrl(item, id)
 	const title = item.translatedTitle || item.title || id
 	const metadataStatus = (metadataStatusQuery.data as any)?.status as

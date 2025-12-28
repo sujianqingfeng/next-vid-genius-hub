@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import type { QueryClient } from '@tanstack/react-query'
 import {
@@ -41,7 +42,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				content: 'width=device-width, initial-scale=1',
 			},
 			{
-				title: 'Vid Genius (Start)',
+				title: 'Video Genius Hub',
 			},
 		],
 		links: [
@@ -92,6 +93,7 @@ function RootLayout() {
 	return (
 		<ThemeProvider defaultTheme="system" enableSystem disableTransitionOnChange>
 			<I18nProvider locale={locale} messages={messages}>
+				<I18nDocumentTitle />
 				<TooltipProvider delayDuration={300}>
 					<ConfirmDialogProvider>
 						{content}
@@ -113,6 +115,16 @@ function RootLayout() {
 			</I18nProvider>
 		</ThemeProvider>
 	)
+}
+
+function I18nDocumentTitle() {
+	const t = useTranslations('Layout')
+
+	useEffect(() => {
+		document.title = t('title')
+	}, [t])
+
+	return null
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {

@@ -66,6 +66,7 @@ export function AdminProxyPage({
 	}) => void
 }) {
 	const t = useTranslations('Proxy')
+	const tCommon = useTranslations('Common')
 	const qc = useQueryClient()
 	const confirmDialog = useConfirmDialog()
 
@@ -110,12 +111,13 @@ export function AdminProxyPage({
 		}),
 		{
 			successToast: t('subscription.dialog.success'),
-			errorToast: ({ error }) =>
-				t('subscription.dialog.error', {
-					message: error instanceof Error ? error.message : 'Unknown',
-				}),
-		},
-	)
+				errorToast: ({ error }) =>
+					t('subscription.dialog.error', {
+						message:
+							error instanceof Error ? error.message : tCommon('fallback.unknown'),
+					}),
+			},
+		)
 
 	const deleteSubscriptionMutation = useEnhancedMutation(
 		queryOrpc.proxy.deleteSSRSubscription.mutationOptions({
@@ -132,12 +134,13 @@ export function AdminProxyPage({
 		}),
 		{
 			successToast: t('subscription.list.deleteSuccess'),
-			errorToast: ({ error }) =>
-				t('subscription.list.deleteError', {
-					message: error instanceof Error ? error.message : 'Unknown',
-				}),
-		},
-	)
+				errorToast: ({ error }) =>
+					t('subscription.list.deleteError', {
+						message:
+							error instanceof Error ? error.message : tCommon('fallback.unknown'),
+					}),
+			},
+		)
 
 	const importMutation = useEnhancedMutation(
 		queryOrpc.proxy.importSSRFromSubscription.mutationOptions({
@@ -156,12 +159,13 @@ export function AdminProxyPage({
 			},
 		}),
 		{
-			errorToast: ({ error }) =>
-				t('subscription.list.importError', {
-					message: error instanceof Error ? error.message : 'Unknown',
-				}),
-		},
-	)
+				errorToast: ({ error }) =>
+					t('subscription.list.importError', {
+						message:
+							error instanceof Error ? error.message : tCommon('fallback.unknown'),
+					}),
+			},
+		)
 
 	const runChecksMutation = useEnhancedMutation(
 		{
@@ -262,12 +266,13 @@ export function AdminProxyPage({
 			},
 		}),
 		{
-			errorToast: ({ error }) =>
-				t('list.setDefaultError', {
-					message: error instanceof Error ? error.message : 'Unknown',
-				}),
-		},
-	)
+				errorToast: ({ error }) =>
+					t('list.setDefaultError', {
+						message:
+							error instanceof Error ? error.message : tCommon('fallback.unknown'),
+					}),
+			},
+		)
 
 	const deleteProxyMutation = useEnhancedMutation(
 		queryOrpc.proxy.deleteProxy.mutationOptions({
@@ -287,12 +292,13 @@ export function AdminProxyPage({
 		}),
 		{
 			successToast: t('list.deleteSuccess'),
-			errorToast: ({ error }) =>
-				t('list.deleteError', {
-					message: error instanceof Error ? error.message : 'Unknown',
-				}),
-		},
-	)
+				errorToast: ({ error }) =>
+					t('list.deleteError', {
+						message:
+							error instanceof Error ? error.message : tCommon('fallback.unknown'),
+					}),
+			},
+		)
 
 	return (
 		<div className="space-y-8 font-sans">

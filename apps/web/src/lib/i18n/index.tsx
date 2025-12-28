@@ -14,6 +14,7 @@ export type Messages = Record<string, Record<string, {}>>
 
 export { DEFAULT_LOCALE }
 export type { Locale } from './config'
+export { getBcp47Locale } from './config'
 
 const messagesByLocale: Record<Locale, Messages> = {
 	en: enMessages as Messages,

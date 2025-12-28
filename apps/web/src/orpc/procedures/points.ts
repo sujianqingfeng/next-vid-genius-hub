@@ -55,7 +55,7 @@ export const spendForTask = os
 			return { balance }
 		} catch (error) {
 			if (error instanceof InsufficientPointsError) {
-				throwInsufficientPointsError('积分不足，任务扣费失败，请先充值。')
+				throwInsufficientPointsError()
 			}
 			throw error
 		}

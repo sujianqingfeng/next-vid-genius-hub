@@ -12,7 +12,14 @@
 	"Common": {
 		"language": {
 			"zh": "中文",
-			"en": "英文"
+			"en": "英文",
+			"switchTo": "切换到{language}"
+		},
+		"actions": {
+			"toggle": "切换"
+		},
+		"fallback": {
+			"unknown": "未知"
 		},
 		"confirmDialog": {
 			"title": "确认操作",
@@ -40,6 +47,15 @@
 				"dark": "深色主题"
 			}
 		}
+	},
+	"Errors": {
+		"codes": {
+			"INSUFFICIENT_POINTS": "积分不足，请前往“积分”页面充值后再重试。",
+			"NO_SUCCESS_PROXY": "暂无可用代理（状态为“可用”），请先在“代理管理”中检测/添加代理后再试。",
+			"PROXY_NOT_SUCCESS": "所选代理不可用，请选择状态为“可用”的代理。",
+			"TIMEOUT": "云转录耗时较长，任务仍在后台运行，请稍后刷新重试。"
+		},
+		"unknown": "发生未知错误，请稍后重试。"
 	},
 	"NotFound": {
 		"title": "页面不存在",
@@ -327,6 +343,17 @@
 	},
 	"Tasks": {
 		"title": "任务",
+		"ui": {
+			"breadcrumb": {
+				"system": "核心系统",
+				"section": "任务队列"
+			},
+			"polling": "正在轮询任务队列...",
+			"monitor": {
+				"title": "实时任务监控",
+				"activeNodes": "活动节点：{count}"
+			}
+		},
 		"filter": "筛选",
 		"targetId": "目标 ID",
 		"targetType": "目标类型",
@@ -383,6 +410,15 @@
 		},
 		"page": {
 			"title": "频道",
+			"ui": {
+				"breadcrumb": {
+					"system": "源管理",
+					"section": "频道订阅"
+				},
+				"labels": {
+					"lastSync": "上次同步：{datetime}"
+				}
+			},
 			"inputPlaceholder": "粘贴 YouTube 频道链接或 ID",
 			"add": "添加频道",
 			"adding": "添加中…",
@@ -526,6 +562,12 @@
 	},
 	"Points": {
 		"title": "积分中心",
+		"ui": {
+			"breadcrumb": {
+				"system": "积分系统",
+				"section": "余额概览"
+			}
+		},
 		"refresh": "刷新",
 		"balance": {
 			"title": "当前积分余额",
@@ -883,6 +925,17 @@
 				"title": "评论",
 				"editTitles": "编辑标题"
 			},
+			"ui": {
+				"breadcrumb": {
+					"system": "媒体系统",
+					"section": "评论管理"
+				},
+				"placeholders": {
+					"selectEngine": "选择模型",
+					"selectGateway": "选择代理",
+					"autoDiscovery": "自动选择"
+				}
+			},
 			"editDialog": {
 				"title": "编辑标题",
 				"description": "更新该媒体的原标题和译文标题。",
@@ -1016,7 +1069,9 @@
 			"bulkDelete": {
 				"confirm": {
 					"title": "删除评论",
-					"description": "确定删除选中的 {count} 条评论？"
+					"description": "确定删除选中的 {count} 条评论？",
+					"action": "[ 确认删除 ]",
+					"executing": "执行中…"
 				}
 			},
 			"toasts": {

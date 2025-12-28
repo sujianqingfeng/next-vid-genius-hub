@@ -309,7 +309,7 @@ export const translateVideoTitles = os
 			})
 		} catch (err) {
 			if (err instanceof InsufficientPointsError) {
-				throwInsufficientPointsError('积分不足，频道标题翻译失败，请先充值。')
+				throwInsufficientPointsError()
 			}
 			throw err
 		}

@@ -12,7 +12,14 @@
 	"Common": {
 		"language": {
 			"zh": "Chinese",
-			"en": "English"
+			"en": "English",
+			"switchTo": "Switch to {language}"
+		},
+		"actions": {
+			"toggle": "Toggle"
+		},
+		"fallback": {
+			"unknown": "Unknown"
 		},
 		"confirmDialog": {
 			"title": "Confirm action",
@@ -40,6 +47,15 @@
 				"dark": "Dark Theme"
 			}
 		}
+	},
+	"Errors": {
+		"codes": {
+			"INSUFFICIENT_POINTS": "Insufficient points. Please top up and try again.",
+			"NO_SUCCESS_PROXY": "No available proxy (status is OK). Please check/add proxies and retry.",
+			"PROXY_NOT_SUCCESS": "Selected proxy is unavailable. Please choose a working proxy.",
+			"TIMEOUT": "Cloud transcription is still running. Please refresh and try again later."
+		},
+		"unknown": "Unexpected error. Please try again."
 	},
 	"NotFound": {
 		"title": "Page not found",
@@ -327,6 +343,17 @@
 	},
 	"Tasks": {
 		"title": "Tasks",
+		"ui": {
+			"breadcrumb": {
+				"system": "Kernel System",
+				"section": "Process Queue"
+			},
+			"polling": "Polling task queue...",
+			"monitor": {
+				"title": "Live Task Monitor",
+				"activeNodes": "Active nodes: {count}"
+			}
+		},
 		"filter": "Filter",
 		"targetId": "Target ID",
 		"targetType": "Target Type",
@@ -383,6 +410,15 @@
 		},
 		"page": {
 			"title": "Channels",
+			"ui": {
+				"breadcrumb": {
+					"system": "Source Manager",
+					"section": "Channel Subscriptions"
+				},
+				"labels": {
+					"lastSync": "LAST_SYNC: {datetime}"
+				}
+			},
 			"inputPlaceholder": "Paste a YouTube channel URL or ID",
 			"add": "Add Channel",
 			"adding": "Adding…",
@@ -526,6 +562,12 @@
 	},
 	"Points": {
 		"title": "Points",
+		"ui": {
+			"breadcrumb": {
+				"system": "Ledger System",
+				"section": "Resource Balance"
+			}
+		},
 		"refresh": "Refresh",
 		"balance": {
 			"title": "Current Balance",
@@ -883,6 +925,17 @@
 				"title": "Comments",
 				"editTitles": "Edit Titles"
 			},
+			"ui": {
+				"breadcrumb": {
+					"system": "Media System",
+					"section": "Comments Manager"
+				},
+				"placeholders": {
+					"selectEngine": "Select model",
+					"selectGateway": "Select proxy",
+					"autoDiscovery": "Auto select"
+				}
+			},
 			"editDialog": {
 				"title": "Edit Titles",
 				"description": "Update the original and translated titles for this media.",
@@ -1016,7 +1069,9 @@
 			"bulkDelete": {
 				"confirm": {
 					"title": "Delete comments",
-					"description": "Delete {count, plural, one {# selected comment} other {# selected comments}}?"
+					"description": "Delete {count, plural, one {# selected comment} other {# selected comments}}?",
+					"action": "[ CONFIRM_PURGE ]",
+					"executing": "EXECUTING..."
 				}
 			},
 			"toasts": {
