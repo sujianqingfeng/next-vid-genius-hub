@@ -51,6 +51,34 @@ const config = defineConfig(({ mode }) => {
 			],
 		},
 		optimizeDeps: {
+			// Pre-bundle common SSR/runtime deps up-front to avoid dev-time reload loops
+			// when Vite discovers/optimizes them lazily during module evaluation.
+			holdUntilCrawlEnd: true,
+			entries: ['src/worker.ts', 'src/router.tsx'],
+			include: [
+				'@ai-sdk/deepseek',
+				'@ai-sdk/openai',
+				'@orpc/openapi',
+				'@orpc/server',
+				'@orpc/tanstack-query',
+				'@radix-ui/react-dialog',
+				'@radix-ui/react-label',
+				'@radix-ui/react-progress',
+				'@radix-ui/react-select',
+				'@radix-ui/react-slot',
+				'@radix-ui/react-switch',
+				'@radix-ui/react-tabs',
+				'@radix-ui/react-tooltip',
+				'@tanstack/react-devtools',
+				'@tanstack/react-query-devtools',
+				'ai',
+				'bcryptjs',
+				'class-variance-authority',
+				'clsx',
+				'lucide-react',
+				'sonner',
+				'tailwind-merge',
+			],
 			// TanStack Start provides virtual entry modules via the Vite plugin.
 			// Pre-bundling @tanstack/start-server-core in dev can fail because it
 			// contains dynamic imports like `import('#tanstack-start-entry')`.
@@ -64,6 +92,32 @@ const config = defineConfig(({ mode }) => {
 		},
 		ssr: {
 			optimizeDeps: {
+				holdUntilCrawlEnd: true,
+				entries: ['src/worker.ts', 'src/router.tsx'],
+				include: [
+					'@ai-sdk/deepseek',
+					'@ai-sdk/openai',
+					'@orpc/openapi',
+					'@orpc/server',
+					'@orpc/tanstack-query',
+					'@radix-ui/react-dialog',
+					'@radix-ui/react-label',
+					'@radix-ui/react-progress',
+					'@radix-ui/react-select',
+					'@radix-ui/react-slot',
+					'@radix-ui/react-switch',
+					'@radix-ui/react-tabs',
+					'@radix-ui/react-tooltip',
+					'@tanstack/react-devtools',
+					'@tanstack/react-query-devtools',
+					'ai',
+					'bcryptjs',
+					'class-variance-authority',
+					'clsx',
+					'lucide-react',
+					'sonner',
+					'tailwind-merge',
+				],
 				exclude: ['@tanstack/start-server-core'],
 				esbuildOptions: {
 					plugins: [externalizeNodeProtocolImports()],
