@@ -60,6 +60,9 @@ describe('normalizeThreadTemplateConfig', () => {
 							{
 								type: 'Box',
 								flex: -1,
+								border: true,
+								borderWidth: 999,
+								borderColor: 'accent',
 								children: [{ type: 'Text', text: 'x' }],
 							},
 						],
@@ -73,6 +76,9 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.flex).toBe(100)
 		expect(root.children?.[0]?.type).toBe('Box')
 		expect(root.children?.[0]?.flex).toBe(0)
+		expect(root.children?.[0]?.border).toBe(true)
+		expect(root.children?.[0]?.borderWidth).toBe(12)
+		expect(root.children?.[0]?.borderColor).toBe('accent')
 	})
 
 	it('keeps Spacer nodes (axis+size)', () => {
@@ -137,6 +143,8 @@ describe('normalizeThreadTemplateConfig', () => {
 					root: {
 						type: 'Builtin',
 						kind: 'repliesList',
+						wrapRootRoot: false,
+						wrapItemRoot: false,
 						highlight: {
 							enabled: true,
 							color: 'accent',
@@ -153,6 +161,8 @@ describe('normalizeThreadTemplateConfig', () => {
 		const root = cfg.scenes?.post?.root as any
 		expect(root.type).toBe('Builtin')
 		expect(root.kind).toBe('repliesList')
+		expect(root.wrapRootRoot).toBe(false)
+		expect(root.wrapItemRoot).toBe(false)
 		expect(root.highlight?.enabled).toBe(true)
 		expect(root.highlight?.color).toBe('accent')
 		expect(root.highlight?.thickness).toBe(1)
@@ -178,12 +188,14 @@ describe('normalizeThreadTemplateConfig', () => {
 									{
 										type: 'Builtin',
 										kind: 'repliesListRootPost',
+										wrapRootRoot: true,
 										rootRoot: { type: 'Text', bind: 'root.plainText' },
 									},
 									{
 										type: 'Builtin',
 										kind: 'repliesListReplies',
 										gap: 999,
+										wrapItemRoot: true,
 										highlight: {
 											color: 'nope',
 											thickness: 999,
@@ -206,9 +218,11 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.children?.[0]?.kind).toBe('repliesListHeader')
 		expect(root.children?.[1]?.type).toBe('Grid')
 		expect(root.children?.[1]?.children?.[0]?.kind).toBe('repliesListRootPost')
+		expect(root.children?.[1]?.children?.[0]?.wrapRootRoot).toBe(true)
 		expect(root.children?.[1]?.children?.[0]?.rootRoot?.type).toBe('Text')
 		expect(root.children?.[1]?.children?.[1]?.kind).toBe('repliesListReplies')
 		expect(root.children?.[1]?.children?.[1]?.gap).toBe(80)
+		expect(root.children?.[1]?.children?.[1]?.wrapItemRoot).toBe(true)
 		expect(root.children?.[1]?.children?.[1]?.highlight?.color).toBeUndefined()
 		expect(root.children?.[1]?.children?.[1]?.highlight?.thickness).toBe(12)
 		expect(root.children?.[1]?.children?.[1]?.highlight?.radius).toBe(0)
@@ -325,13 +339,22 @@ describe('normalizeThreadTemplateConfig', () => {
 			version: 1,
 			scenes: {
 				cover: {
-					root: { type: 'Text', bind: 'timeline.replyIndicator' },
+					root: {
+						type: 'Text',
+						bind: 'timeline.replyIndicator',
+						uppercase: true,
+						letterSpacing: 999,
+						lineHeight: 0.1,
+					},
 				},
 			},
 		})
 		const root = cfg.scenes!.cover!.root as any
 		expect(root.type).toBe('Text')
 		expect(root.bind).toBe('timeline.replyIndicator')
+		expect(root.uppercase).toBe(true)
+		expect(root.letterSpacing).toBe(1)
+		expect(root.lineHeight).toBe(0.8)
 	})
 
 	it('keeps Background nodes with assetId and clamps opacity/blur', () => {

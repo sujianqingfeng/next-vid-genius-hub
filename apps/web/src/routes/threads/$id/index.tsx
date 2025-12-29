@@ -521,65 +521,58 @@ function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 							justify: 'stretch',
 							children: [
 								{
-									type: 'Box',
-									border: true,
-									background: 'rgba(255,255,255,0.02)',
-									padding: 28,
-									children: [
-										{
-											type: 'Builtin',
-											kind: 'repliesListRootPost',
-											rootRoot: {
+									type: 'Builtin',
+									kind: 'repliesListRootPost',
+									wrapRootRoot: true,
+									rootRoot: {
+										type: 'Stack',
+										gapY: 14,
+										children: [
+											{
 												type: 'Stack',
-												gapY: 14,
+												direction: 'row',
+												align: 'center',
+												gapX: 12,
 												children: [
 													{
+														type: 'Avatar',
+														bind: 'post.author.avatarAssetId',
+														size: 44,
+														border: true,
+													},
+													{
 														type: 'Stack',
-														direction: 'row',
-														align: 'center',
-														gapX: 12,
+														direction: 'column',
+														gapY: 2,
 														children: [
 															{
-																type: 'Avatar',
-																bind: 'post.author.avatarAssetId',
-																size: 44,
-																border: true,
+																type: 'Text',
+																bind: 'post.author.name',
+																size: 18,
+																weight: 800,
+																maxLines: 1,
 															},
 															{
-																type: 'Stack',
-																direction: 'column',
-																gapY: 2,
-																children: [
-																	{
-																		type: 'Text',
-																		bind: 'post.author.name',
-																		size: 18,
-																		weight: 800,
-																		maxLines: 1,
-																	},
-																	{
-																		type: 'Text',
-																		bind: 'post.author.handle',
-																		color: 'muted',
-																		size: 14,
-																		weight: 600,
-																		maxLines: 1,
-																	},
-																],
+																type: 'Text',
+																bind: 'post.author.handle',
+																color: 'muted',
+																size: 14,
+																weight: 600,
+																maxLines: 1,
 															},
 														],
 													},
-													{ type: 'Divider', opacity: 0.6, margin: 12 },
-													{
-														type: 'ContentBlocks',
-														bind: 'post.contentBlocks',
-														gap: 12,
-														maxHeight: 900,
-													},
 												],
 											},
-										},
-									],
+											{ type: 'Divider', opacity: 0.6, margin: 12 },
+											{
+												type: 'ContentBlocks',
+												bind: 'post.contentBlocks',
+												gap: 12,
+												maxHeight: 900,
+											},
+										],
+									},
 								},
 								{
 									type: 'Box',
@@ -590,6 +583,7 @@ function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 										{
 											type: 'Builtin',
 											kind: 'repliesListReplies',
+											wrapItemRoot: true,
 											gap: 12,
 											highlight: {
 												enabled: true,
@@ -730,7 +724,16 @@ function analyzeRenderTreeNode(
 
 	if (type === 'Builtin') {
 		warnUnknownKeys(
-			new Set(['type', 'kind', 'rootRoot', 'itemRoot', 'gap', 'highlight']),
+			new Set([
+				'type',
+				'kind',
+				'rootRoot',
+				'itemRoot',
+				'wrapRootRoot',
+				'wrapItemRoot',
+				'gap',
+				'highlight',
+			]),
 		)
 		const kind = (rawNode as any).kind
 		const kindAllowed =
@@ -844,6 +847,30 @@ function analyzeRenderTreeNode(
 				assetsById,
 			)
 		}
+		const wrapItemRoot = (rawNode as any).wrapItemRoot
+		if (wrapItemRoot != null) {
+			if (kind !== 'repliesList' && kind !== 'repliesListReplies') {
+				push(
+					`${path}.wrapItemRoot is ignored unless kind='repliesList' or kind='repliesListReplies'.`,
+				)
+			} else if (typeof wrapItemRoot !== 'boolean') {
+				push(`${path}.wrapItemRoot: must be boolean; ignored.`)
+			} else if ((rawNode as any).itemRoot == null) {
+				push(`${path}.wrapItemRoot is ignored unless itemRoot is provided.`)
+			}
+		}
+		const wrapRootRoot = (rawNode as any).wrapRootRoot
+		if (wrapRootRoot != null) {
+			if (kind !== 'repliesList' && kind !== 'repliesListRootPost') {
+				push(
+					`${path}.wrapRootRoot is ignored unless kind='repliesList' or kind='repliesListRootPost'.`,
+				)
+			} else if (typeof wrapRootRoot !== 'boolean') {
+				push(`${path}.wrapRootRoot: must be boolean; ignored.`)
+			} else if ((rawNode as any).rootRoot == null) {
+				push(`${path}.wrapRootRoot is ignored unless rootRoot is provided.`)
+			}
+		}
 		if (
 			kind !== 'repliesList' &&
 			kind !== 'repliesListRootPost' &&
@@ -941,6 +968,9 @@ function analyzeRenderTreeNode(
 				'align',
 				'size',
 				'weight',
+				'lineHeight',
+				'letterSpacing',
+				'uppercase',
 				'maxLines',
 			]),
 		)
@@ -963,6 +993,26 @@ function analyzeRenderTreeNode(
 			push(`${path}: Text node needs 'text' or 'bind'; ignored.`)
 		} else if (bind != null && !bindAllowed) {
 			push(`${path}.bind: unsupported (${String(bind)}); ignored.`)
+		}
+		const uppercase = (rawNode as any).uppercase
+		if (uppercase != null && typeof uppercase !== 'boolean') {
+			push(`${path}.uppercase: must be boolean; ignored.`)
+		}
+		const lineHeight = (rawNode as any).lineHeight
+		if (lineHeight != null) {
+			if (typeof lineHeight !== 'number' || !Number.isFinite(lineHeight)) {
+				push(`${path}.lineHeight: must be a number; ignored.`)
+			} else if (lineHeight < 0.8 || lineHeight > 2) {
+				push(`${path}.lineHeight: must be between 0.8 and 2; clamped.`)
+			}
+		}
+		const letterSpacing = (rawNode as any).letterSpacing
+		if (letterSpacing != null) {
+			if (typeof letterSpacing !== 'number' || !Number.isFinite(letterSpacing)) {
+				push(`${path}.letterSpacing: must be a number; ignored.`)
+			} else if (letterSpacing < -0.2 || letterSpacing > 1) {
+				push(`${path}.letterSpacing: must be between -0.2 and 1; clamped.`)
+			}
 		}
 		return
 	}
@@ -1411,6 +1461,8 @@ function analyzeRenderTreeNode(
 				'paddingX',
 				'paddingY',
 				'border',
+				'borderWidth',
+				'borderColor',
 				'background',
 				'radius',
 				'width',
@@ -1423,6 +1475,33 @@ function analyzeRenderTreeNode(
 		warnFlexProp()
 		warnSizeProps()
 		warnSpaceProps(['padding', 'paddingX', 'paddingY'], 0, 240)
+		const borderWidth = (rawNode as any).borderWidth
+		if (borderWidth != null) {
+			if (typeof borderWidth !== 'number' || !Number.isFinite(borderWidth)) {
+				push(`${path}.borderWidth: must be a number; ignored.`)
+			} else if (borderWidth < 1 || borderWidth > 12) {
+				push(`${path}.borderWidth: must be between 1 and 12; clamped.`)
+			}
+			if ((rawNode as any).border !== true) {
+				push(`${path}.borderWidth is ignored unless border=true.`)
+			}
+		}
+		const borderColor = (rawNode as any).borderColor
+		if (borderColor != null) {
+			if (
+				borderColor !== 'border' &&
+				borderColor !== 'primary' &&
+				borderColor !== 'muted' &&
+				borderColor !== 'accent'
+			) {
+				push(
+					`${path}.borderColor: must be 'border' | 'primary' | 'muted' | 'accent'; ignored.`,
+				)
+			}
+			if ((rawNode as any).border !== true) {
+				push(`${path}.borderColor is ignored unless border=true.`)
+			}
+		}
 		const background = (rawNode as any).background
 		if (background != null && (typeof background !== 'string' || !background.trim())) {
 			push(`${path}.background: must be a non-empty string when provided; ignored.`)

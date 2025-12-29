@@ -170,7 +170,9 @@ function renderThreadTemplateNode(
 					assets={ctx.assets}
 					fps={ctx.fps}
 					rootRoot={node.rootRoot}
+					wrapRootRoot={node.wrapRootRoot}
 					itemRoot={node.itemRoot}
+					wrapItemRoot={node.wrapItemRoot}
 					repliesGap={node.gap}
 					repliesHighlight={node.highlight}
 				/>
@@ -199,6 +201,7 @@ function renderThreadTemplateNode(
 					assets={ctx.assets}
 					fps={ctx.fps}
 					rootRoot={node.rootRoot}
+					wrapRootRoot={node.wrapRootRoot ?? false}
 				/>
 			)
 		}
@@ -214,7 +217,7 @@ function renderThreadTemplateNode(
 					assets={ctx.assets}
 					fps={ctx.fps}
 					itemRoot={node.itemRoot}
-					wrapItemRoot={false}
+					wrapItemRoot={node.wrapItemRoot ?? false}
 					gap={node.gap}
 					highlight={node.highlight}
 				/>
@@ -279,13 +282,20 @@ function renderThreadTemplateNode(
 
 		const sizePx = typeof node.size === 'number' ? node.size : 16
 		const weight = typeof node.weight === 'number' ? node.weight : 600
+		const lineHeight =
+			typeof node.lineHeight === 'number'
+				? Math.min(2, Math.max(0.8, node.lineHeight))
+				: null
 		const style: CSSProperties = {
 			margin: 0,
 			color,
 			fontWeight: weight,
 			fontSize: `calc(${sizePx}px * var(--tf-font-scale))`,
-			lineHeight: 1.25,
+			lineHeight: lineHeight ?? 1.25,
 			whiteSpace: 'pre-wrap',
+			letterSpacing:
+				typeof node.letterSpacing === 'number' ? `${node.letterSpacing}em` : undefined,
+			textTransform: node.uppercase ? 'uppercase' : undefined,
 			textAlign:
 				node.align === 'center'
 					? 'center'
@@ -854,6 +864,16 @@ function renderThreadTemplateNode(
 		const hasPaddingXY =
 			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
 		const flex = typeof node.flex === 'number' ? node.flex : undefined
+		const borderWidth =
+			node.border && typeof node.borderWidth === 'number' ? node.borderWidth : 1
+		const borderColor =
+			node.borderColor === 'primary'
+				? 'var(--tf-text)'
+				: node.borderColor === 'muted'
+					? 'var(--tf-muted)'
+					: node.borderColor === 'accent'
+						? 'var(--tf-accent)'
+						: 'var(--tf-border)'
 		const style: CSSProperties = {
 			position: 'relative',
 			flex,
@@ -891,7 +911,9 @@ function renderThreadTemplateNode(
 						? node.padding
 						: undefined
 				: undefined,
-			border: node.border ? '1px solid var(--tf-border)' : undefined,
+			border: node.border
+				? `${Math.max(1, Math.round(borderWidth))}px solid ${borderColor}`
+				: undefined,
 			background: node.background ?? undefined,
 			borderRadius: typeof node.radius === 'number' ? node.radius : undefined,
 			width: typeof node.width === 'number' ? node.width : undefined,
@@ -1404,6 +1426,7 @@ function RepliesListRootPost({
 	assets,
 	fps,
 	rootRoot,
+	wrapRootRoot,
 }: {
 	templateConfig: ThreadVideoInputProps['templateConfig'] | undefined
 	chromeless?: boolean
@@ -1415,6 +1438,7 @@ function RepliesListRootPost({
 	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
 	rootRoot?: ThreadRenderTreeNode
+	wrapRootRoot?: boolean
 }) {
 	const frame = useCurrentFrame()
 	const totalRepliesFrames = React.useMemo(
@@ -1425,18 +1449,37 @@ function RepliesListRootPost({
 		totalRepliesFrames > 0 ? clamp01(frame / totalRepliesFrames) : 0
 
 	if (rootRoot) {
-		return (
-			<>{renderThreadTemplateNode(rootRoot, {
-				templateConfig,
-				thread,
-				root,
-				post: root,
-				replies,
-				assets,
-				coverDurationInFrames,
-				replyDurationsInFrames,
-				fps,
-			})}</>
+		const inner = (
+			<>
+				{renderThreadTemplateNode(rootRoot, {
+					templateConfig,
+					thread,
+					root,
+					post: root,
+					replies,
+					assets,
+					coverDurationInFrames,
+					replyDurationsInFrames,
+					fps,
+				})}
+			</>
+		)
+
+		return wrapRootRoot === true ? (
+			<div
+				style={{
+					border: '1px solid var(--tf-border)',
+					background: 'var(--tf-surface)',
+					padding: 28,
+					boxSizing: 'border-box',
+					height: '100%',
+					minHeight: 0,
+				}}
+			>
+				{inner}
+			</div>
+		) : (
+			inner
 		)
 	}
 
@@ -1877,7 +1920,9 @@ function PostCard({
 		assets,
 		fps,
 		rootRoot,
+		wrapRootRoot,
 		itemRoot,
+		wrapItemRoot,
 		repliesGap,
 		repliesHighlight,
 	}: {
@@ -1890,7 +1935,9 @@ function PostCard({
 		assets: ThreadVideoInputProps['assets'] | undefined
 		fps: number
 		rootRoot?: ThreadRenderTreeNode
+		wrapRootRoot?: boolean
 		itemRoot?: ThreadRenderTreeNode
+		wrapItemRoot?: boolean
 		repliesGap?: number
 		repliesHighlight?: {
 			enabled?: boolean
@@ -1926,41 +1973,18 @@ function PostCard({
 
 				<div style={{ marginTop: 18, display: 'flex', gap: 22, height: 'calc(100% - 70px)' }}>
 					<div style={{ flex: '0 0 58%', minHeight: 0 }}>
-						{rootRoot ? (
-							<div
-								style={{
-									border: '1px solid var(--tf-border)',
-									background: 'var(--tf-surface)',
-									padding: 28,
-									boxSizing: 'border-box',
-									height: '100%',
-									minHeight: 0,
-								}}
-							>
-								<RepliesListRootPost
-									templateConfig={templateConfig}
-									thread={thread}
-									root={root}
-									replies={replies}
-									replyDurationsInFrames={replyDurationsInFrames}
-									coverDurationInFrames={coverDurationInFrames}
-									assets={assets}
-									fps={fps}
-									rootRoot={rootRoot}
-								/>
-							</div>
-						) : (
-							<RepliesListRootPost
-								templateConfig={templateConfig}
-								thread={thread}
-								root={root}
-								replies={replies}
-								replyDurationsInFrames={replyDurationsInFrames}
-								coverDurationInFrames={coverDurationInFrames}
-								assets={assets}
-								fps={fps}
-							/>
-						)}
+						<RepliesListRootPost
+							templateConfig={templateConfig}
+							thread={thread}
+							root={root}
+							replies={replies}
+							replyDurationsInFrames={replyDurationsInFrames}
+							coverDurationInFrames={coverDurationInFrames}
+							assets={assets}
+							fps={fps}
+							rootRoot={rootRoot}
+							wrapRootRoot={wrapRootRoot ?? Boolean(rootRoot)}
+						/>
 					</div>
 					<div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
 						<div
@@ -1984,7 +2008,7 @@ function PostCard({
 								assets={assets}
 								fps={fps}
 								itemRoot={itemRoot}
-								wrapItemRoot={Boolean(itemRoot)}
+								wrapItemRoot={wrapItemRoot ?? Boolean(itemRoot)}
 								gap={repliesGap}
 								highlight={repliesHighlight}
 							/>

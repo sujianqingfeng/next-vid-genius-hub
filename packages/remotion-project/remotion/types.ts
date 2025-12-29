@@ -139,6 +139,8 @@ export type ThreadRenderTreeNode =
 			paddingX?: number
 			paddingY?: number
 			border?: boolean
+			borderWidth?: number
+			borderColor?: 'border' | 'primary' | 'muted' | 'accent'
 			background?: string
 			radius?: number
 			width?: number
@@ -217,6 +219,9 @@ export type ThreadRenderTreeNode =
 			align?: 'left' | 'center' | 'right'
 			size?: number
 			weight?: number
+			lineHeight?: number
+			letterSpacing?: number
+			uppercase?: boolean
 			maxLines?: number
 	  }
 	| {
@@ -250,8 +255,26 @@ export type ThreadRenderTreeNode =
 			kind: 'repliesList'
 			/** Optional root post override (rendered with `ctx.post = root`). */
 			rootRoot?: ThreadRenderTreeNode
+			/**
+			 * When `rootRoot` is provided, controls whether the builtin should wrap the root post
+			 * with the default card chrome (border/background/padding).
+			 *
+			 * - `true`: wrap (useful when `rootRoot` only contains inner content)
+			 * - `false`: no wrap (useful when `rootRoot` includes its own container)
+			 * - `undefined`: defaults to `true` (preserves legacy builtin behavior)
+			 */
+			wrapRootRoot?: boolean
 			/** Optional per-reply override (rendered with `ctx.post = reply`). */
 			itemRoot?: ThreadRenderTreeNode
+			/**
+			 * When `itemRoot` is provided, controls whether the builtin should wrap each reply item
+			 * with the default card chrome (border/background/padding).
+			 *
+			 * - `true`: wrap (useful when `itemRoot` only contains inner content)
+			 * - `false`: no wrap (useful when `itemRoot` includes its own container)
+			 * - `undefined`: defaults to `Boolean(itemRoot)` for `repliesList`
+			 */
+			wrapItemRoot?: boolean
 			/** Gap between reply items (defaults to builtin). */
 			gap?: number
 			highlight?: {
@@ -271,12 +294,24 @@ export type ThreadRenderTreeNode =
 			kind: 'repliesListRootPost'
 			/** Optional root post override (rendered with `ctx.post = root`). */
 			rootRoot?: ThreadRenderTreeNode
+			/**
+			 * When `rootRoot` is provided, controls whether the builtin should wrap the root post
+			 * with the default card chrome (border/background/padding).
+			 *
+			 * Defaults to `false` for split layouts to avoid double-wrapping.
+			 */
+			wrapRootRoot?: boolean
 	  }
 	| {
 			type: 'Builtin'
 			kind: 'repliesListReplies'
 			/** Optional per-reply override (rendered with `ctx.post = reply`). */
 			itemRoot?: ThreadRenderTreeNode
+			/**
+			 * Controls whether the builtin should wrap `itemRoot` with the default card chrome.
+			 * Defaults to `false` for `repliesListReplies` (to avoid double-wrapping in split layouts).
+			 */
+			wrapItemRoot?: boolean
 			/** Gap between reply items (defaults to builtin). */
 			gap?: number
 			highlight?: {

@@ -51,6 +51,12 @@ function safeColorToken(value: unknown): ColorToken | null {
 	return value === 'primary' || value === 'muted' || value === 'accent' ? value : null
 }
 
+type BorderColorToken = 'border' | ColorToken
+
+function safeBorderColorToken(value: unknown): BorderColorToken | null {
+	return value === 'border' ? value : safeColorToken(value)
+}
+
 const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 	cover: {
 		root: {
@@ -333,6 +339,14 @@ function normalizeRenderTreeNode(
 		) {
 			return null
 		}
+		const wrapRootRoot =
+			kind === 'repliesList' || kind === 'repliesListRootPost'
+				? (safeBoolean(input.wrapRootRoot) ?? undefined)
+				: undefined
+		const wrapItemRoot =
+			kind === 'repliesList' || kind === 'repliesListReplies'
+				? (safeBoolean(input.wrapItemRoot) ?? undefined)
+				: undefined
 		const gap =
 			kind === 'repliesList' || kind === 'repliesListReplies'
 				? (clampInt(input.gap, 0, 80) ?? undefined)
@@ -360,7 +374,14 @@ function normalizeRenderTreeNode(
 				: null
 		state.nodeCount += 1
 		if (kind === 'repliesListRootPost') {
-			return rootRoot ? { type: 'Builtin', kind, rootRoot } : { type: 'Builtin', kind }
+			return rootRoot
+				? {
+						type: 'Builtin',
+						kind,
+						rootRoot,
+						...(wrapRootRoot != null ? { wrapRootRoot } : {}),
+					}
+				: { type: 'Builtin', kind }
 		}
 		if (kind === 'repliesListReplies') {
 			return itemRoot || gap != null || highlight
@@ -368,6 +389,7 @@ function normalizeRenderTreeNode(
 						type: 'Builtin',
 						kind,
 						...(itemRoot ? { itemRoot } : {}),
+						...(wrapItemRoot != null ? { wrapItemRoot } : {}),
 						...(gap != null ? { gap } : {}),
 						...(highlight ? { highlight } : {}),
 					}
@@ -379,7 +401,9 @@ function normalizeRenderTreeNode(
 						type: 'Builtin',
 						kind,
 						...(rootRoot ? { rootRoot } : {}),
+						...(wrapRootRoot != null ? { wrapRootRoot } : {}),
 						...(itemRoot ? { itemRoot } : {}),
+						...(wrapItemRoot != null ? { wrapItemRoot } : {}),
 						...(gap != null ? { gap } : {}),
 						...(highlight ? { highlight } : {}),
 					}
@@ -387,6 +411,8 @@ function normalizeRenderTreeNode(
 					? {
 							type: 'Builtin',
 							kind,
+							...(wrapRootRoot != null ? { wrapRootRoot } : {}),
+							...(wrapItemRoot != null ? { wrapItemRoot } : {}),
 							...(gap != null ? { gap } : {}),
 							...(highlight ? { highlight } : {}),
 						}
@@ -426,6 +452,9 @@ function normalizeRenderTreeNode(
 				: undefined
 		const size = clampInt(input.size, 8, 120) ?? undefined
 		const weight = clampInt(input.weight, 200, 900) ?? undefined
+		const lineHeight = clampNumber(input.lineHeight, 0.8, 2) ?? undefined
+		const letterSpacing = clampNumber(input.letterSpacing, -0.2, 1) ?? undefined
+		const uppercase = safeBoolean(input.uppercase) ?? undefined
 		const maxLines = clampInt(input.maxLines, 1, 20) ?? undefined
 
 		state.nodeCount += 1
@@ -437,6 +466,9 @@ function normalizeRenderTreeNode(
 			align,
 			size,
 			weight,
+			lineHeight,
+			letterSpacing,
+			uppercase,
 			maxLines,
 		}
 	}
@@ -684,6 +716,8 @@ function normalizeRenderTreeNode(
 		const padding = normalizeBoxPadding(input)
 		const radius = clampInt(input.radius, 0, 120) ?? undefined
 		const border = safeBoolean(input.border) ?? undefined
+		const borderWidth = clampInt(input.borderWidth, 1, 12) ?? undefined
+		const borderColor = safeBorderColorToken(input.borderColor) ?? undefined
 		const background = safeCssValue(input.background, 200) ?? undefined
 		const size = normalizeBoxSize(input)
 		const flex = normalizeFlex(input)
@@ -699,6 +733,8 @@ function normalizeRenderTreeNode(
 			...flex,
 			...padding,
 			border,
+			borderWidth,
+			borderColor,
 			background,
 			radius,
 			...size,
@@ -732,7 +768,7 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template normalization/compile logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 8
+export const THREAD_TEMPLATE_COMPILE_VERSION = 12
 
 export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateConfigV1 {
 	if (!isPlainObject(input)) return DEFAULT_THREAD_TEMPLATE_CONFIG

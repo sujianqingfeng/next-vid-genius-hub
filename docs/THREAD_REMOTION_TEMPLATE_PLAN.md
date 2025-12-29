@@ -206,9 +206,11 @@ V2（可视化编辑器）：
 ### RenderTree v1 节点
 
 - 布局/容器：`Stack`、`Grid`、`Absolute`、`Box`（容器节点支持 `flex`，用于填充剩余高度/控制左右比例）
+	- `Box`：支持 `borderWidth` / `borderColor`（配合 `border=true`）
 - 背景：`Background`（color/assetId + opacity/blur）
 - 文本：`Text`
 	- bind：支持 `timeline.replyIndicator` / `timeline.replyIndex` / `timeline.replyCount`（用于用纯 RenderTree 自定义 header）
+	- style：支持 `uppercase` / `letterSpacing` / `lineHeight`
 - 指标：`Metrics`（当前支持 likes）
 - 头像：`Avatar`
 - 内容：`ContentBlocks`
@@ -222,6 +224,8 @@ V2（可视化编辑器）：
 	- `repliesListReplies` 支持 `gap`（控制每条 reply 的间距）
 	- `repliesList` / `repliesListReplies` 支持 `highlight`（控制当前/下一个 reply 的高亮边框）
 		- `highlight: { enabled?, color?, thickness?, radius?, opacity? }`（均为可选；数值会做 clamp）
+	- `repliesList` / `repliesListReplies` 支持 `wrapItemRoot`（当提供 `itemRoot` 时，是否用内置卡片外框包裹每条 reply；split 布局默认 `false`）
+	- `repliesList` / `repliesListRootPost` 支持 `wrapRootRoot`（当提供 `rootRoot` 时，是否用内置卡片外框包裹 ROOT 帖子；split 布局默认 `false`）
 
 ### Web 编辑体验（当前）
 
