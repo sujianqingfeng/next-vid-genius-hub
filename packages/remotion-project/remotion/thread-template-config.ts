@@ -23,8 +23,32 @@ function safeString(value: unknown, maxLen: number): string | null {
 	return s.length > maxLen ? s.slice(0, maxLen) : s
 }
 
+function safeCssValue(value: unknown, maxLen: number): string | null {
+	const s = safeString(value, maxLen)
+	if (!s) return null
+	const lower = s.toLowerCase()
+	if (
+		lower.includes('url(') ||
+		lower.includes('image-set(') ||
+		lower.includes('image(') ||
+		lower.includes('src(') ||
+		lower.includes('http://') ||
+		lower.includes('https://') ||
+		lower.includes('ext:')
+	) {
+		return null
+	}
+	return s
+}
+
 function safeBoolean(value: unknown): boolean | null {
 	return typeof value === 'boolean' ? value : null
+}
+
+type ColorToken = 'primary' | 'muted' | 'accent'
+
+function safeColorToken(value: unknown): ColorToken | null {
+	return value === 'primary' || value === 'muted' || value === 'accent' ? value : null
 }
 
 const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
@@ -125,10 +149,103 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 						},
 					],
 				},
+				{
+					type: 'Watermark',
+					position: 'bottom-right',
+					color: 'muted',
+					size: 12,
+					weight: 700,
+					opacity: 0.7,
+					padding: 18,
+				},
 			],
 		},
 	},
-	post: { root: { type: 'Builtin', kind: 'repliesList' } },
+	post: {
+		root: {
+			type: 'Stack',
+			direction: 'column',
+			gapY: 18,
+			padding: 64,
+			children: [
+				{
+					type: 'Stack',
+					direction: 'row',
+					align: 'end',
+					justify: 'between',
+					gapX: 24,
+					children: [
+						{
+							type: 'Stack',
+							direction: 'row',
+							align: 'center',
+							gapX: 12,
+							children: [
+								{
+									type: 'Box',
+									width: 10,
+									height: 10,
+									background: 'var(--tf-accent)',
+								},
+								{
+									type: 'Text',
+									bind: 'thread.title',
+									color: 'muted',
+									size: 12,
+									weight: 700,
+									maxLines: 1,
+								},
+							],
+						},
+						{
+							type: 'Text',
+							bind: 'timeline.replyIndicator',
+							color: 'muted',
+							size: 12,
+							weight: 700,
+							maxLines: 1,
+						},
+					],
+				},
+				{
+					type: 'Stack',
+					direction: 'row',
+					align: 'stretch',
+					gapX: 22,
+					flex: 1,
+					children: [
+						{
+							type: 'Box',
+							flex: 58,
+							border: true,
+							background: 'var(--tf-surface)',
+							padding: 28,
+							maxHeight: 2000,
+							children: [{ type: 'Builtin', kind: 'repliesListRootPost' }],
+						},
+						{
+							type: 'Box',
+							flex: 42,
+							maxHeight: 2000,
+							border: true,
+							background: 'rgba(255,255,255,0.02)',
+							padding: 18,
+							children: [{ type: 'Builtin', kind: 'repliesListReplies' }],
+						},
+					],
+				},
+				{
+					type: 'Watermark',
+					position: 'bottom-right',
+					color: 'muted',
+					size: 12,
+					weight: 700,
+					opacity: 0.7,
+					padding: 18,
+				},
+			],
+		},
+	},
 }
 
 type RenderTreeNormalizeState = {
@@ -159,6 +276,11 @@ function normalizeBoxPadding(input: Record<string, unknown>): {
 	return { padding, paddingX, paddingY }
 }
 
+function normalizeFlex(input: Record<string, unknown>): { flex?: number } {
+	const flex = clampNumber(input.flex, 0, 100) ?? undefined
+	return { flex }
+}
+
 function normalizeGap(input: Record<string, unknown>): {
 	gap?: number
 	gapX?: number
@@ -180,6 +302,26 @@ function normalizeRenderTreeNode(
 	if (state.nodeCount >= 200) return null
 
 	const type = input.type
+	if (type === 'Background') {
+		const color = safeCssValue(input.color, 200) ?? undefined
+		let assetId = safeString(input.assetId, 240) ?? undefined
+		if (
+			assetId &&
+			(assetId.startsWith('ext:') ||
+				assetId.startsWith('http://') ||
+				assetId.startsWith('https://'))
+		) {
+			assetId = undefined
+		}
+		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
+		const blur = clampInt(input.blur, 0, 80) ?? undefined
+
+		if (!color && !assetId) return null
+
+		state.nodeCount += 1
+		return { type: 'Background', color, assetId, opacity, blur }
+	}
+
 	if (type === 'Builtin') {
 		const kind = input.kind
 		if (
@@ -191,6 +333,23 @@ function normalizeRenderTreeNode(
 		) {
 			return null
 		}
+		const gap =
+			kind === 'repliesList' || kind === 'repliesListReplies'
+				? (clampInt(input.gap, 0, 80) ?? undefined)
+				: undefined
+		const highlightRaw = isPlainObject(input.highlight) ? input.highlight : null
+		const highlight =
+			kind === 'repliesList' || kind === 'repliesListReplies'
+				? highlightRaw
+					? {
+							enabled: safeBoolean(highlightRaw.enabled) ?? undefined,
+							color: safeColorToken(highlightRaw.color) ?? undefined,
+							thickness: clampInt(highlightRaw.thickness, 1, 12) ?? undefined,
+							radius: clampInt(highlightRaw.radius, 0, 48) ?? undefined,
+							opacity: clampNumber(highlightRaw.opacity, 0, 1) ?? undefined,
+						}
+					: undefined
+				: undefined
 		const rootRoot =
 			kind === 'repliesList' || kind === 'repliesListRootPost'
 				? normalizeRenderTreeNode(input.rootRoot, state, depth + 1)
@@ -204,7 +363,15 @@ function normalizeRenderTreeNode(
 			return rootRoot ? { type: 'Builtin', kind, rootRoot } : { type: 'Builtin', kind }
 		}
 		if (kind === 'repliesListReplies') {
-			return itemRoot ? { type: 'Builtin', kind, itemRoot } : { type: 'Builtin', kind }
+			return itemRoot || gap != null || highlight
+				? {
+						type: 'Builtin',
+						kind,
+						...(itemRoot ? { itemRoot } : {}),
+						...(gap != null ? { gap } : {}),
+						...(highlight ? { highlight } : {}),
+					}
+				: { type: 'Builtin', kind }
 		}
 		if (kind === 'repliesList') {
 			return rootRoot || itemRoot
@@ -213,8 +380,17 @@ function normalizeRenderTreeNode(
 						kind,
 						...(rootRoot ? { rootRoot } : {}),
 						...(itemRoot ? { itemRoot } : {}),
+						...(gap != null ? { gap } : {}),
+						...(highlight ? { highlight } : {}),
 					}
-				: { type: 'Builtin', kind }
+				: gap != null || highlight
+					? {
+							type: 'Builtin',
+							kind,
+							...(gap != null ? { gap } : {}),
+							...(highlight ? { highlight } : {}),
+						}
+					: { type: 'Builtin', kind }
 		}
 		return { type: 'Builtin', kind }
 	}
@@ -226,6 +402,9 @@ function normalizeRenderTreeNode(
 				bind === 'thread.title' ||
 				bind === 'thread.source' ||
 				bind === 'thread.sourceUrl' ||
+				bind === 'timeline.replyIndicator' ||
+				bind === 'timeline.replyIndex' ||
+				bind === 'timeline.replyCount' ||
 				bind === 'root.author.name' ||
 				bind === 'root.author.handle' ||
 				bind === 'root.plainText' ||
@@ -262,6 +441,43 @@ function normalizeRenderTreeNode(
 		}
 	}
 
+	if (type === 'Watermark') {
+		const text = safeString(input.text, 160) ?? undefined
+		const position =
+			input.position === 'top-left' ||
+			input.position === 'top-right' ||
+			input.position === 'bottom-left' ||
+			input.position === 'bottom-right'
+				? input.position
+				: undefined
+		const color =
+			input.color === 'primary' || input.color === 'muted' || input.color === 'accent'
+				? input.color
+				: undefined
+		const size = clampInt(input.size, 8, 64) ?? undefined
+		const weight = clampInt(input.weight, 200, 900) ?? undefined
+		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
+		const padding = clampInt(input.padding, 0, 120) ?? undefined
+
+		state.nodeCount += 1
+		return { type: 'Watermark', text, position, color, size, weight, opacity, padding }
+	}
+
+	if (type === 'Metrics') {
+		const bind = input.bind
+		const bindAllowed =
+			bind === 'root.metrics.likes' || bind === 'post.metrics.likes' ? bind : undefined
+		const color =
+			input.color === 'primary' || input.color === 'muted' || input.color === 'accent'
+				? input.color
+				: undefined
+		const size = clampInt(input.size, 10, 64) ?? undefined
+		const showIcon = safeBoolean(input.showIcon) ?? undefined
+
+		state.nodeCount += 1
+		return { type: 'Metrics', bind: bindAllowed, color, size, showIcon }
+	}
+
 		if (type === 'Avatar') {
 			const bind = input.bind
 			const bindAllowed =
@@ -273,7 +489,7 @@ function normalizeRenderTreeNode(
 		const size = clampInt(input.size, 24, 240) ?? undefined
 		const radius = clampInt(input.radius, 0, 999) ?? undefined
 		const border = safeBoolean(input.border) ?? undefined
-		const background = safeString(input.background, 200) ?? undefined
+		const background = safeCssValue(input.background, 200) ?? undefined
 
 		state.nodeCount += 1
 		return { type: 'Avatar', bind: bindAllowed, size, radius, border, background }
@@ -296,12 +512,19 @@ function normalizeRenderTreeNode(
 	if (type === 'Image') {
 		const assetId = safeString(input.assetId, 240) ?? undefined
 		if (!assetId) return null
+		if (
+			assetId.startsWith('ext:') ||
+			assetId.startsWith('http://') ||
+			assetId.startsWith('https://')
+		) {
+			return null
+		}
 		const fit = input.fit === 'cover' || input.fit === 'contain' ? input.fit : undefined
 		const width = clampInt(input.width, 16, 1600) ?? undefined
 		const height = clampInt(input.height, 16, 1600) ?? undefined
 		const radius = clampInt(input.radius, 0, 999) ?? undefined
 		const border = safeBoolean(input.border) ?? undefined
-		const background = safeString(input.background, 200) ?? undefined
+		const background = safeCssValue(input.background, 200) ?? undefined
 
 		state.nodeCount += 1
 		return { type: 'Image', assetId, fit, width, height, radius, border, background }
@@ -310,12 +533,19 @@ function normalizeRenderTreeNode(
 	if (type === 'Video') {
 		const assetId = safeString(input.assetId, 240) ?? undefined
 		if (!assetId) return null
+		if (
+			assetId.startsWith('ext:') ||
+			assetId.startsWith('http://') ||
+			assetId.startsWith('https://')
+		) {
+			return null
+		}
 		const fit = input.fit === 'cover' || input.fit === 'contain' ? input.fit : undefined
 		const width = clampInt(input.width, 16, 1600) ?? undefined
 		const height = clampInt(input.height, 16, 1600) ?? undefined
 		const radius = clampInt(input.radius, 0, 999) ?? undefined
 		const border = safeBoolean(input.border) ?? undefined
-		const background = safeString(input.background, 200) ?? undefined
+		const background = safeCssValue(input.background, 200) ?? undefined
 
 		state.nodeCount += 1
 		return { type: 'Video', assetId, fit, width, height, radius, border, background }
@@ -364,6 +594,7 @@ function normalizeRenderTreeNode(
 		const gap = normalizeGap(input)
 		const padding = normalizeBoxPadding(input)
 		const size = normalizeBoxSize(input)
+		const flex = normalizeFlex(input)
 		const children = Array.isArray(input.children) ? input.children : []
 		state.nodeCount += 1
 		const nextChildren: ThreadRenderTreeNode[] = []
@@ -376,6 +607,7 @@ function normalizeRenderTreeNode(
 			columns,
 			align,
 			justify,
+			...flex,
 			...gap,
 			...padding,
 			...size,
@@ -427,6 +659,7 @@ function normalizeRenderTreeNode(
 		const gap = normalizeGap(input)
 		const padding = normalizeBoxPadding(input)
 		const size = normalizeBoxSize(input)
+		const flex = normalizeFlex(input)
 		const children = Array.isArray(input.children) ? input.children : []
 		state.nodeCount += 1
 		const nextChildren: ThreadRenderTreeNode[] = []
@@ -439,6 +672,7 @@ function normalizeRenderTreeNode(
 			direction,
 			align,
 			justify,
+			...flex,
 			...gap,
 			...padding,
 			...size,
@@ -450,8 +684,9 @@ function normalizeRenderTreeNode(
 		const padding = normalizeBoxPadding(input)
 		const radius = clampInt(input.radius, 0, 120) ?? undefined
 		const border = safeBoolean(input.border) ?? undefined
-		const background = safeString(input.background, 200) ?? undefined
+		const background = safeCssValue(input.background, 200) ?? undefined
 		const size = normalizeBoxSize(input)
+		const flex = normalizeFlex(input)
 		const children = Array.isArray(input.children) ? input.children : []
 		state.nodeCount += 1
 		const nextChildren: ThreadRenderTreeNode[] = []
@@ -461,6 +696,7 @@ function normalizeRenderTreeNode(
 		}
 		return {
 			type: 'Box',
+			...flex,
 			...padding,
 			border,
 			background,
@@ -496,7 +732,7 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template normalization/compile logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 2
+export const THREAD_TEMPLATE_COMPILE_VERSION = 8
 
 export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateConfigV1 {
 	if (!isPlainObject(input)) return DEFAULT_THREAD_TEMPLATE_CONFIG
@@ -526,7 +762,7 @@ export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateCon
 			'accent',
 			'accentGlow',
 		] as const) {
-			const v = safeString(theme[key], 200)
+			const v = safeCssValue(theme[key], 200)
 			if (v != null) (out.theme as any)[key] = v
 		}
 	}

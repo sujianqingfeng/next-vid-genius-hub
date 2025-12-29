@@ -58,6 +58,19 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
+function containsUnsafeCssUrl(value: string): boolean {
+	const lower = value.toLowerCase()
+	return (
+		lower.includes('url(') ||
+		lower.includes('image-set(') ||
+		lower.includes('image(') ||
+		lower.includes('src(') ||
+		lower.includes('http://') ||
+		lower.includes('https://') ||
+		lower.includes('ext:')
+	)
+}
+
 function buildRepliesListItemRootExample(): ThreadTemplateConfigV1 {
 	return {
 		version: 1,
@@ -435,6 +448,58 @@ function buildAbsoluteSnippetExample(): Record<string, unknown> {
 	}
 }
 
+function buildRepliesListHeaderSnippetExample(): Record<string, unknown> {
+	return {
+		type: 'Stack',
+		direction: 'row',
+		align: 'end',
+		justify: 'between',
+		gapX: 24,
+		children: [
+			{
+				type: 'Stack',
+				direction: 'row',
+				align: 'center',
+				gapX: 12,
+				children: [
+					{ type: 'Box', width: 10, height: 10, background: 'var(--tf-accent)' },
+					{
+						type: 'Text',
+						bind: 'thread.title',
+						color: 'muted',
+						size: 12,
+						weight: 700,
+						maxLines: 1,
+					},
+				],
+			},
+			{
+				type: 'Text',
+				bind: 'timeline.replyIndicator',
+				color: 'muted',
+				size: 12,
+				weight: 700,
+				maxLines: 1,
+			},
+		],
+	}
+}
+
+function buildRepliesHighlightSnippetExample(): Record<string, unknown> {
+	return {
+		type: 'Builtin',
+		kind: 'repliesListReplies',
+		gap: 12,
+		highlight: {
+			enabled: true,
+			color: 'accent',
+			thickness: 3,
+			radius: 0,
+			opacity: 1,
+		},
+	}
+}
+
 function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 	return {
 		version: 1,
@@ -446,7 +511,7 @@ function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 					gapY: 18,
 					padding: 64,
 					children: [
-						{ type: 'Builtin', kind: 'repliesListHeader' },
+						buildRepliesListHeaderSnippetExample() as any,
 						{
 							type: 'Grid',
 							columns: 2,
@@ -520,11 +585,19 @@ function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 									type: 'Box',
 									border: true,
 									background: 'rgba(255,255,255,0.02)',
-									padding: 0,
+									padding: 18,
 									children: [
 										{
 											type: 'Builtin',
 											kind: 'repliesListReplies',
+											gap: 12,
+											highlight: {
+												enabled: true,
+												color: 'accent',
+												thickness: 3,
+												radius: 0,
+												opacity: 1,
+											},
 											itemRoot: {
 												type: 'Text',
 												bind: 'post.plainText',
@@ -544,6 +617,7 @@ function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 
 function isSupportedRenderTreeNodeType(type: unknown): boolean {
 	return (
+		type === 'Background' ||
 		type === 'Builtin' ||
 		type === 'Stack' ||
 		type === 'Grid' ||
@@ -554,6 +628,8 @@ function isSupportedRenderTreeNodeType(type: unknown): boolean {
 		type === 'Spacer' ||
 		type === 'Divider' ||
 		type === 'Text' ||
+		type === 'Watermark' ||
+		type === 'Metrics' ||
 		type === 'Avatar' ||
 		type === 'ContentBlocks'
 	)
@@ -625,6 +701,19 @@ function analyzeRenderTreeNode(
 		}
 	}
 
+	const warnFlexProp = () => {
+		const v = (rawNode as any).flex
+		if (v == null) return
+		if (typeof v !== 'number' || !Number.isFinite(v)) {
+			push(`${path}.flex: must be a number; ignored.`)
+			return
+		}
+		const min = 0
+		const max = 100
+		if (v < min || v > max)
+			push(`${path}.flex: must be between ${min} and ${max}; clamped.`)
+	}
+
 	const warnSpaceProps = (keys: string[], min: number, max: number) => {
 		for (const k of keys) {
 			if (!(k in (rawNode as any))) continue
@@ -640,7 +729,9 @@ function analyzeRenderTreeNode(
 	}
 
 	if (type === 'Builtin') {
-		warnUnknownKeys(new Set(['type', 'kind', 'rootRoot', 'itemRoot']))
+		warnUnknownKeys(
+			new Set(['type', 'kind', 'rootRoot', 'itemRoot', 'gap', 'highlight']),
+		)
 		const kind = (rawNode as any).kind
 		const kindAllowed =
 			kind === 'cover' ||
@@ -653,6 +744,81 @@ function analyzeRenderTreeNode(
 				`${path}.kind: must be 'cover' | 'repliesList' | 'repliesListHeader' | 'repliesListRootPost' | 'repliesListReplies'; ignored.`,
 			)
 			return
+		}
+		const gap = (rawNode as any).gap
+		if (gap != null) {
+			if (kind !== 'repliesList' && kind !== 'repliesListReplies') {
+				push(
+					`${path}.gap is ignored unless kind='repliesList' or kind='repliesListReplies'.`,
+				)
+			} else if (typeof gap !== 'number' || !Number.isFinite(gap)) {
+				push(`${path}.gap: must be a number; ignored.`)
+			} else if (gap < 0 || gap > 80) {
+				push(`${path}.gap: must be between 0 and 80; clamped.`)
+			}
+		}
+
+		const highlight = (rawNode as any).highlight
+		if (highlight != null) {
+			if (kind !== 'repliesList' && kind !== 'repliesListReplies') {
+				push(
+					`${path}.highlight is ignored unless kind='repliesList' or kind='repliesListReplies'.`,
+				)
+			} else if (!isPlainObject(highlight)) {
+				push(`${path}.highlight: must be an object; ignored.`)
+			} else {
+				const allowed = new Set([
+					'enabled',
+					'color',
+					'thickness',
+					'radius',
+					'opacity',
+				])
+				for (const k of Object.keys(highlight)) {
+					if (!allowed.has(k)) push(`${path}.highlight: ignored field: ${k}`)
+				}
+				if ('enabled' in highlight && typeof (highlight as any).enabled !== 'boolean') {
+					push(`${path}.highlight.enabled: must be boolean; ignored.`)
+				}
+				if ('color' in highlight) {
+					const v = (highlight as any).color
+					if (v != null && v !== 'primary' && v !== 'muted' && v !== 'accent') {
+						push(
+							`${path}.highlight.color: must be 'primary' | 'muted' | 'accent'; ignored.`,
+						)
+					}
+				}
+				if ('thickness' in highlight) {
+					const v = (highlight as any).thickness
+					if (v != null) {
+						if (typeof v !== 'number' || !Number.isFinite(v)) {
+							push(`${path}.highlight.thickness: must be a number; ignored.`)
+						} else if (v < 1 || v > 12) {
+							push(`${path}.highlight.thickness: must be between 1 and 12; clamped.`)
+						}
+					}
+				}
+				if ('radius' in highlight) {
+					const v = (highlight as any).radius
+					if (v != null) {
+						if (typeof v !== 'number' || !Number.isFinite(v)) {
+							push(`${path}.highlight.radius: must be a number; ignored.`)
+						} else if (v < 0 || v > 48) {
+							push(`${path}.highlight.radius: must be between 0 and 48; clamped.`)
+						}
+					}
+				}
+				if ('opacity' in highlight) {
+					const v = (highlight as any).opacity
+					if (v != null) {
+						if (typeof v !== 'number' || !Number.isFinite(v)) {
+							push(`${path}.highlight.opacity: must be a number; ignored.`)
+						} else if (v < 0 || v > 1) {
+							push(`${path}.highlight.opacity: must be between 0 and 1; clamped.`)
+						}
+					}
+				}
+			}
 		}
 		if (
 			(kind === 'repliesList' || kind === 'repliesListRootPost') &&
@@ -699,6 +865,72 @@ function analyzeRenderTreeNode(
 		return
 	}
 
+	if (type === 'Background') {
+		warnUnknownKeys(new Set(['type', 'color', 'assetId', 'opacity', 'blur']))
+		const color = (rawNode as any).color
+		const assetId = (rawNode as any).assetId
+		if (
+			color == null &&
+			(assetId == null || (typeof assetId === 'string' && !assetId.trim()))
+		) {
+			push(`${path}: Background needs 'color' or 'assetId'; ignored.`)
+			return
+		}
+		if (color != null && (typeof color !== 'string' || !color.trim())) {
+			push(`${path}.color: must be a non-empty string; ignored.`)
+		} else if (typeof color === 'string' && containsUnsafeCssUrl(color.trim())) {
+			push(`${path}.color: url()/http(s)/ext: are not allowed; ignored.`)
+		}
+		if (assetId != null) {
+			if (typeof assetId !== 'string' || !assetId.trim()) {
+				push(`${path}.assetId: must be a non-empty string; ignored.`)
+			} else {
+				const id = assetId.trim()
+				if (
+					id.startsWith('ext:') ||
+					id.startsWith('http://') ||
+					id.startsWith('https://')
+				) {
+					push(
+						`${path}.assetId: external URLs are not allowed; use ingest to create a thread asset ID.`,
+					)
+				} else if (assetsById) {
+					const asset = assetsById.get(id)
+					if (!asset) {
+						push(
+							`${path}.assetId: not found in this thread's assets list (may need ingest).`,
+						)
+					} else if (asset?.status && asset.status !== 'ready') {
+						push(
+							`${path}.assetId: asset status=${String(asset.status)} (may not be usable yet).`,
+						)
+					} else if (!asset?.storageKey) {
+						push(
+							`${path}.assetId: asset has no storageKey (may not be usable yet).`,
+						)
+					}
+				}
+			}
+		}
+		const opacity = (rawNode as any).opacity
+		if (opacity != null) {
+			if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+				push(`${path}.opacity: must be a number; ignored.`)
+			} else if (opacity < 0 || opacity > 1) {
+				push(`${path}.opacity: must be between 0 and 1; clamped.`)
+			}
+		}
+		const blur = (rawNode as any).blur
+		if (blur != null) {
+			if (typeof blur !== 'number' || !Number.isFinite(blur)) {
+				push(`${path}.blur: must be a number; ignored.`)
+			} else if (blur < 0 || blur > 80) {
+				push(`${path}.blur: must be between 0 and 80; clamped.`)
+			}
+		}
+		return
+	}
+
 	if (type === 'Text') {
 		warnUnknownKeys(
 			new Set([
@@ -718,6 +950,9 @@ function analyzeRenderTreeNode(
 			bind === 'thread.title' ||
 			bind === 'thread.source' ||
 			bind === 'thread.sourceUrl' ||
+			bind === 'timeline.replyIndicator' ||
+			bind === 'timeline.replyIndex' ||
+			bind === 'timeline.replyCount' ||
 			bind === 'root.author.name' ||
 			bind === 'root.author.handle' ||
 			bind === 'root.plainText' ||
@@ -728,6 +963,97 @@ function analyzeRenderTreeNode(
 			push(`${path}: Text node needs 'text' or 'bind'; ignored.`)
 		} else if (bind != null && !bindAllowed) {
 			push(`${path}.bind: unsupported (${String(bind)}); ignored.`)
+		}
+		return
+	}
+
+	if (type === 'Metrics') {
+		warnUnknownKeys(new Set(['type', 'bind', 'color', 'size', 'showIcon']))
+		const bind = (rawNode as any).bind
+		if (
+			bind != null &&
+			bind !== 'root.metrics.likes' &&
+			bind !== 'post.metrics.likes'
+		) {
+			push(
+				`${path}.bind: must be 'root.metrics.likes' or 'post.metrics.likes'; ignored.`,
+			)
+		}
+		const showIcon = (rawNode as any).showIcon
+		if (showIcon != null && typeof showIcon !== 'boolean') {
+			push(`${path}.showIcon: must be boolean; ignored.`)
+		}
+		const size = (rawNode as any).size
+		if (size != null) {
+			if (typeof size !== 'number' || !Number.isFinite(size)) {
+				push(`${path}.size: must be a number; ignored.`)
+			} else if (size < 10 || size > 64) {
+				push(`${path}.size: must be between 10 and 64; clamped.`)
+			}
+		}
+		return
+	}
+
+	if (type === 'Watermark') {
+		warnUnknownKeys(
+			new Set([
+				'type',
+				'text',
+				'position',
+				'color',
+				'size',
+				'weight',
+				'opacity',
+				'padding',
+			]),
+		)
+		const text = (rawNode as any).text
+		if (text != null && (typeof text !== 'string' || !text.trim())) {
+			push(`${path}.text: must be a non-empty string when provided; ignored.`)
+		}
+		const position = (rawNode as any).position
+		if (
+			position != null &&
+			position !== 'top-left' &&
+			position !== 'top-right' &&
+			position !== 'bottom-left' &&
+			position !== 'bottom-right'
+		) {
+			push(
+				`${path}.position: must be 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'; ignored.`,
+			)
+		}
+		const opacity = (rawNode as any).opacity
+		if (opacity != null) {
+			if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+				push(`${path}.opacity: must be a number; ignored.`)
+			} else if (opacity < 0 || opacity > 1) {
+				push(`${path}.opacity: must be between 0 and 1; clamped.`)
+			}
+		}
+		const size = (rawNode as any).size
+		if (size != null) {
+			if (typeof size !== 'number' || !Number.isFinite(size)) {
+				push(`${path}.size: must be a number; ignored.`)
+			} else if (size < 8 || size > 64) {
+				push(`${path}.size: must be between 8 and 64; clamped.`)
+			}
+		}
+		const weight = (rawNode as any).weight
+		if (weight != null) {
+			if (typeof weight !== 'number' || !Number.isFinite(weight)) {
+				push(`${path}.weight: must be a number; ignored.`)
+			} else if (weight < 200 || weight > 900) {
+				push(`${path}.weight: must be between 200 and 900; clamped.`)
+			}
+		}
+		const padding = (rawNode as any).padding
+		if (padding != null) {
+			if (typeof padding !== 'number' || !Number.isFinite(padding)) {
+				push(`${path}.padding: must be a number; ignored.`)
+			} else if (padding < 0 || padding > 120) {
+				push(`${path}.padding: must be between 0 and 120; clamped.`)
+			}
 		}
 		return
 	}
@@ -744,6 +1070,15 @@ function analyzeRenderTreeNode(
 			push(
 				`${path}.bind: must be 'root.author.avatarAssetId' or 'post.author.avatarAssetId'; ignored.`,
 			)
+		}
+		const background = (rawNode as any).background
+		if (background != null && (typeof background !== 'string' || !background.trim())) {
+			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		} else if (
+			typeof background === 'string' &&
+			containsUnsafeCssUrl(background.trim())
+		) {
+			push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
 		}
 		return
 	}
@@ -810,6 +1145,15 @@ function analyzeRenderTreeNode(
 		if (fit != null && fit !== 'cover' && fit !== 'contain') {
 			push(`${path}.fit: must be 'cover' or 'contain'; ignored.`)
 		}
+		const background = (rawNode as any).background
+		if (background != null && (typeof background !== 'string' || !background.trim())) {
+			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		} else if (
+			typeof background === 'string' &&
+			containsUnsafeCssUrl(background.trim())
+		) {
+			push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
+		}
 		return
 	}
 
@@ -864,6 +1208,15 @@ function analyzeRenderTreeNode(
 		if (fit != null && fit !== 'cover' && fit !== 'contain') {
 			push(`${path}.fit: must be 'cover' or 'contain'; ignored.`)
 		}
+		const background = (rawNode as any).background
+		if (background != null && (typeof background !== 'string' || !background.trim())) {
+			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		} else if (
+			typeof background === 'string' &&
+			containsUnsafeCssUrl(background.trim())
+		) {
+			push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
+		}
 		return
 	}
 
@@ -917,6 +1270,7 @@ function analyzeRenderTreeNode(
 		warnUnknownKeys(
 			new Set([
 				'type',
+				'flex',
 				'columns',
 				'align',
 				'justify',
@@ -933,6 +1287,7 @@ function analyzeRenderTreeNode(
 				'children',
 			]),
 		)
+		warnFlexProp()
 		warnSizeProps()
 		warnSpaceProps(
 			['gap', 'gapX', 'gapY', 'padding', 'paddingX', 'paddingY'],
@@ -1005,6 +1360,7 @@ function analyzeRenderTreeNode(
 		warnUnknownKeys(
 			new Set([
 				'type',
+				'flex',
 				'direction',
 				'align',
 				'justify',
@@ -1021,6 +1377,7 @@ function analyzeRenderTreeNode(
 				'children',
 			]),
 		)
+		warnFlexProp()
 		warnSizeProps()
 		warnSpaceProps(
 			['gap', 'gapX', 'gapY', 'padding', 'paddingX', 'paddingY'],
@@ -1049,6 +1406,7 @@ function analyzeRenderTreeNode(
 		warnUnknownKeys(
 			new Set([
 				'type',
+				'flex',
 				'padding',
 				'paddingX',
 				'paddingY',
@@ -1062,8 +1420,18 @@ function analyzeRenderTreeNode(
 				'children',
 			]),
 		)
+		warnFlexProp()
 		warnSizeProps()
 		warnSpaceProps(['padding', 'paddingX', 'paddingY'], 0, 240)
+		const background = (rawNode as any).background
+		if (background != null && (typeof background !== 'string' || !background.trim())) {
+			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		} else if (
+			typeof background === 'string' &&
+			containsUnsafeCssUrl(background.trim())
+		) {
+			push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
+		}
 		const children = (rawNode as any).children
 		if (children != null && !Array.isArray(children)) {
 			push(`${path}.children: must be an array; ignored.`)
@@ -1141,6 +1509,10 @@ function analyzeThreadTemplateConfig(
 			const v = (theme as any)[k]
 			if (typeof v !== 'string' || !v.trim()) {
 				issues.push(`theme.${k} must be a non-empty string; ignored.`)
+				continue
+			}
+			if (containsUnsafeCssUrl(v.trim())) {
+				issues.push(`theme.${k} cannot contain url()/http(s)/ext:; ignored.`)
 				continue
 			}
 			const next = (normalized.theme as any)[k]
@@ -2181,6 +2553,34 @@ function ThreadDetailRoute() {
 									}}
 								>
 									Insert Replies Layout
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => {
+										insertTemplateText(
+											toPrettyJson(buildRepliesListHeaderSnippetExample()),
+										)
+										toast.message('Inserted snippet (replies header)')
+									}}
+								>
+									Insert Header Snippet
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => {
+										insertTemplateText(
+											toPrettyJson(buildRepliesHighlightSnippetExample()),
+										)
+										toast.message('Inserted snippet (replies highlight)')
+									}}
+								>
+									Insert Highlight Snippet
 								</Button>
 								<Button
 									type="button"

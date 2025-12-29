@@ -205,21 +205,29 @@ V2（可视化编辑器）：
 
 ### RenderTree v1 节点
 
-- 布局/容器：`Stack`、`Grid`、`Absolute`、`Box`
+- 布局/容器：`Stack`、`Grid`、`Absolute`、`Box`（容器节点支持 `flex`，用于填充剩余高度/控制左右比例）
+- 背景：`Background`（color/assetId + opacity/blur）
 - 文本：`Text`
+	- bind：支持 `timeline.replyIndicator` / `timeline.replyIndex` / `timeline.replyCount`（用于用纯 RenderTree 自定义 header）
+- 指标：`Metrics`（当前支持 likes）
 - 头像：`Avatar`
 - 内容：`ContentBlocks`
 - 媒体：`Image`、`Video`（仅允许 `assetId` → `assetsMap`，不允许外链 URL）
+- 水印：`Watermark`（由 `brand.showWatermark` + `brand.watermarkText` 控制）
 - 辅助：`Spacer`、`Divider`
 - 内置：`Builtin(cover)`、`Builtin(repliesList)`
 	- `repliesList` 支持 `rootRoot`（左侧 ROOT）与 `itemRoot`（右侧每条 reply）做自定义布局
 	- 默认 `cover` 已使用纯 RenderTree；`Builtin(cover)` 仍可用于自定义/回退
 	- `repliesList` 外层可拆分为 `Builtin(repliesListHeader)` + `Builtin(repliesListRootPost)` + `Builtin(repliesListReplies)`，用于自定义 header/左右栏容器布局
+	- `repliesListReplies` 支持 `gap`（控制每条 reply 的间距）
+	- `repliesList` / `repliesListReplies` 支持 `highlight`（控制当前/下一个 reply 的高亮边框）
+		- `highlight: { enabled?, color?, thickness?, radius?, opacity? }`（均为可选；数值会做 clamp）
 
 ### Web 编辑体验（当前）
 
 - 线程详情页：支持 templateId 选择 + JSON 编辑 + 保存（raw/normalized）+ 规范化提示
 - 示例配置：`Insert Cover Example` / `Insert Example`（含 `Image/Video`）
+- 布局片段：`Insert Replies Layout` / `Insert Header Snippet` / `Insert Highlight Snippet`
 - Assets 插入器：支持把 `thread_assets.id` 插入/替换到模板 JSON（可复制 assetId，按 kind 优先替换占位符）
 - 媒体占位符：
 	- `__IMAGE_ASSET_ID__`
@@ -244,6 +252,7 @@ V2（可视化编辑器）：
 - M2（部分）：RenderTree v1（含媒体/辅助节点）+ `post.*` 绑定 + `repliesList.rootRoot/itemRoot` + 资产入库/安全限制 + 示例/插入器 + 基础测试
 	- 默认 `cover` 已切到纯 RenderTree（仍保留 `Builtin(cover)` 作为可选回退/自定义）
 	- 线程详情页增加：`Insert Replies Layout`（插入拆分的 repliesList 布局片段）
+	- 线程详情页增加：`Insert Header Snippet` / `Insert Highlight Snippet`
 
 ### 未完成（明天可以做）
 
@@ -259,4 +268,5 @@ V2（可视化编辑器）：
 
 - 兼容性：当前策略为 v1-only，不兼容旧 `templateConfig`；升级时需要先全清 threads 的模板字段（见 `docs/THREAD_REMOTION_TEMPLATE_CLEAR.md`）。
 - 安全：严格白名单字段；不允许任意 HTML/JS；资源引用必须受控（禁止生产路径直链）。
+	- `theme.*` / `*.background` 等 CSS 字符串字段会拒绝包含 `url()` / `http(s)` / `ext:`，避免绕过 `assetId` 受控资源模型。
 - 一致性：Player 预览与 cloud render 必须使用相同的 resolved config；snapshot 需固化 resolved + hash + compileVersion，避免未来代码变更导致回放不同。

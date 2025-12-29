@@ -77,7 +77,18 @@ export type ThreadTemplateConfigV1 = {
 
 export type ThreadRenderTreeNode =
 	| {
+			type: 'Background'
+			/** Optional solid color fill (e.g. '#000' or 'rgba(...)' or 'var(--tf-bg)') */
+			color?: string
+			/** Optional background image asset (must be a thread asset id, not a URL). */
+			assetId?: string
+			opacity?: number
+			blur?: number
+	  }
+	| {
 			type: 'Stack'
+			/** Flex weight when this node is a child of another Stack. */
+			flex?: number
 			direction?: 'row' | 'column'
 			align?: 'start' | 'center' | 'end' | 'stretch'
 			justify?: 'start' | 'center' | 'end' | 'between'
@@ -95,6 +106,8 @@ export type ThreadRenderTreeNode =
 	  }
 	| {
 			type: 'Grid'
+			/** Flex weight when this node is a child of a Stack. */
+			flex?: number
 			columns?: number
 			align?: 'start' | 'center' | 'end' | 'stretch'
 			justify?: 'start' | 'center' | 'end' | 'stretch'
@@ -120,6 +133,8 @@ export type ThreadRenderTreeNode =
 	  }
 	| {
 			type: 'Box'
+			/** Flex weight when this node is a child of a Stack. */
+			flex?: number
 			padding?: number
 			paddingX?: number
 			paddingY?: number
@@ -189,6 +204,9 @@ export type ThreadRenderTreeNode =
 				| 'thread.title'
 				| 'thread.source'
 				| 'thread.sourceUrl'
+				| 'timeline.replyIndicator'
+				| 'timeline.replyIndex'
+				| 'timeline.replyCount'
 				| 'root.author.name'
 				| 'root.author.handle'
 				| 'root.plainText'
@@ -202,6 +220,28 @@ export type ThreadRenderTreeNode =
 			maxLines?: number
 	  }
 	| {
+			type: 'Watermark'
+			/**
+			 * When omitted, uses `templateConfig.brand.watermarkText`.
+			 * Rendering is controlled by `templateConfig.brand.showWatermark`.
+			 */
+			text?: string
+			position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+			color?: 'primary' | 'muted' | 'accent'
+			size?: number
+			weight?: number
+			opacity?: number
+			padding?: number
+	  }
+	| {
+			type: 'Metrics'
+			/** Defaults to post likes (ctx.post). */
+			bind?: 'root.metrics.likes' | 'post.metrics.likes'
+			color?: 'primary' | 'muted' | 'accent'
+			size?: number
+			showIcon?: boolean
+	  }
+	| {
 			type: 'Builtin'
 			kind: 'cover'
 	  }
@@ -212,6 +252,15 @@ export type ThreadRenderTreeNode =
 			rootRoot?: ThreadRenderTreeNode
 			/** Optional per-reply override (rendered with `ctx.post = reply`). */
 			itemRoot?: ThreadRenderTreeNode
+			/** Gap between reply items (defaults to builtin). */
+			gap?: number
+			highlight?: {
+				enabled?: boolean
+				color?: 'primary' | 'muted' | 'accent'
+				thickness?: number
+				radius?: number
+				opacity?: number
+			}
 	  }
 	| {
 			type: 'Builtin'
@@ -228,6 +277,15 @@ export type ThreadRenderTreeNode =
 			kind: 'repliesListReplies'
 			/** Optional per-reply override (rendered with `ctx.post = reply`). */
 			itemRoot?: ThreadRenderTreeNode
+			/** Gap between reply items (defaults to builtin). */
+			gap?: number
+			highlight?: {
+				enabled?: boolean
+				color?: 'primary' | 'muted' | 'accent'
+				thickness?: number
+				radius?: number
+				opacity?: number
+			}
 	  }
 
 export interface CommentVideoInputProps extends Record<string, unknown> {
