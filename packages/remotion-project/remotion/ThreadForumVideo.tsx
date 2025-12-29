@@ -131,6 +131,45 @@ function renderThreadTemplateNode(
 				/>
 			)
 		}
+		if (node.kind === 'repliesListHeader') {
+			return (
+				<RepliesListHeader
+					thread={ctx.thread}
+					replies={ctx.replies}
+					replyDurationsInFrames={ctx.replyDurationsInFrames}
+					fps={ctx.fps}
+				/>
+			)
+		}
+		if (node.kind === 'repliesListRootPost') {
+			return (
+				<RepliesListRootPost
+					thread={ctx.thread}
+					root={ctx.root}
+					replies={ctx.replies}
+					replyDurationsInFrames={ctx.replyDurationsInFrames}
+					coverDurationInFrames={ctx.coverDurationInFrames}
+					assets={ctx.assets}
+					fps={ctx.fps}
+					rootRoot={node.rootRoot}
+				/>
+			)
+		}
+		if (node.kind === 'repliesListReplies') {
+			return (
+				<RepliesListReplies
+					thread={ctx.thread}
+					root={ctx.root}
+					replies={ctx.replies}
+					replyDurationsInFrames={ctx.replyDurationsInFrames}
+					coverDurationInFrames={ctx.coverDurationInFrames}
+					assets={ctx.assets}
+					fps={ctx.fps}
+					itemRoot={node.itemRoot}
+					wrapItemRoot={false}
+				/>
+			)
+		}
 		return null
 	}
 
@@ -437,11 +476,67 @@ function renderThreadTemplateNode(
 	}
 
 	if (node.type === 'Stack') {
+		const hasGapXY = typeof node.gapX === 'number' || typeof node.gapY === 'number'
+		const hasPaddingXY =
+			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
 		const style: CSSProperties = {
 			display: 'flex',
 			flexDirection: node.direction === 'row' ? 'row' : 'column',
-			gap: typeof node.gap === 'number' ? node.gap : undefined,
-			padding: typeof node.padding === 'number' ? node.padding : undefined,
+			gap:
+				!hasGapXY && typeof node.gap === 'number'
+					? node.gap
+					: undefined,
+			columnGap: hasGapXY
+				? typeof node.gapX === 'number'
+					? node.gapX
+					: typeof node.gap === 'number'
+						? node.gap
+						: undefined
+				: undefined,
+			rowGap: hasGapXY
+				? typeof node.gapY === 'number'
+					? node.gapY
+					: typeof node.gap === 'number'
+						? node.gap
+						: undefined
+				: undefined,
+			padding:
+				!hasPaddingXY && typeof node.padding === 'number'
+					? node.padding
+					: undefined,
+			paddingLeft: hasPaddingXY
+				? typeof node.paddingX === 'number'
+					? node.paddingX
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingRight: hasPaddingXY
+				? typeof node.paddingX === 'number'
+					? node.paddingX
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingTop: hasPaddingXY
+				? typeof node.paddingY === 'number'
+					? node.paddingY
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingBottom: hasPaddingXY
+				? typeof node.paddingY === 'number'
+					? node.paddingY
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			width: typeof node.width === 'number' ? node.width : undefined,
+			height: typeof node.height === 'number' ? node.height : undefined,
+			maxWidth: typeof node.maxWidth === 'number' ? node.maxWidth : undefined,
+			maxHeight: typeof node.maxHeight === 'number' ? node.maxHeight : undefined,
+			boxSizing: 'border-box',
 			alignItems:
 				node.align === 'center'
 					? 'center'
@@ -472,12 +567,163 @@ function renderThreadTemplateNode(
 		return <div style={style}>{children}</div>
 	}
 
-	if (node.type === 'Box') {
+	if (node.type === 'Grid') {
+		const columns = typeof node.columns === 'number' ? node.columns : 2
+		const hasGapXY = typeof node.gapX === 'number' || typeof node.gapY === 'number'
+		const hasPaddingXY =
+			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
+		const alignItems =
+			node.align === 'center'
+				? 'center'
+				: node.align === 'end'
+					? 'end'
+					: node.align === 'stretch'
+						? 'stretch'
+						: 'start'
+		const justifyItems =
+			node.justify === 'center'
+				? 'center'
+				: node.justify === 'end'
+					? 'end'
+					: node.justify === 'stretch'
+						? 'stretch'
+						: 'start'
 		const style: CSSProperties = {
-			padding: typeof node.padding === 'number' ? node.padding : undefined,
+			display: 'grid',
+			gridTemplateColumns: `repeat(${Math.max(1, Math.floor(columns))}, minmax(0, 1fr))`,
+			gap:
+				!hasGapXY && typeof node.gap === 'number'
+					? node.gap
+					: undefined,
+			columnGap: hasGapXY
+				? typeof node.gapX === 'number'
+					? node.gapX
+					: typeof node.gap === 'number'
+						? node.gap
+						: undefined
+				: undefined,
+			rowGap: hasGapXY
+				? typeof node.gapY === 'number'
+					? node.gapY
+					: typeof node.gap === 'number'
+						? node.gap
+						: undefined
+				: undefined,
+			padding:
+				!hasPaddingXY && typeof node.padding === 'number'
+					? node.padding
+					: undefined,
+			paddingLeft: hasPaddingXY
+				? typeof node.paddingX === 'number'
+					? node.paddingX
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingRight: hasPaddingXY
+				? typeof node.paddingX === 'number'
+					? node.paddingX
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingTop: hasPaddingXY
+				? typeof node.paddingY === 'number'
+					? node.paddingY
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingBottom: hasPaddingXY
+				? typeof node.paddingY === 'number'
+					? node.paddingY
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			width: typeof node.width === 'number' ? node.width : undefined,
+			height: typeof node.height === 'number' ? node.height : undefined,
+			maxWidth: typeof node.maxWidth === 'number' ? node.maxWidth : undefined,
+			maxHeight: typeof node.maxHeight === 'number' ? node.maxHeight : undefined,
+			alignItems,
+			justifyItems,
+			boxSizing: 'border-box',
+		}
+
+		const children = (node.children ?? []).map((c: ThreadRenderTreeNode, idx: number) => (
+			<React.Fragment key={idx}>
+				{renderThreadTemplateNode(c, ctx)}
+			</React.Fragment>
+		))
+
+		if (opts?.isRoot) {
+			return <AbsoluteFill style={style}>{children}</AbsoluteFill>
+		}
+		return <div style={style}>{children}</div>
+	}
+
+	if (node.type === 'Absolute') {
+		const style: CSSProperties = {
+			position: 'absolute',
+			left: typeof node.x === 'number' ? node.x : undefined,
+			top: typeof node.y === 'number' ? node.y : undefined,
+			width: typeof node.width === 'number' ? node.width : undefined,
+			height: typeof node.height === 'number' ? node.height : undefined,
+			boxSizing: 'border-box',
+		}
+
+		const children = (node.children ?? []).map((c: ThreadRenderTreeNode, idx: number) => (
+			<React.Fragment key={idx}>
+				{renderThreadTemplateNode(c, ctx)}
+			</React.Fragment>
+		))
+
+		return <div style={style}>{children}</div>
+	}
+
+	if (node.type === 'Box') {
+		const hasPaddingXY =
+			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
+		const style: CSSProperties = {
+			padding:
+				!hasPaddingXY && typeof node.padding === 'number'
+					? node.padding
+					: undefined,
+			paddingLeft: hasPaddingXY
+				? typeof node.paddingX === 'number'
+					? node.paddingX
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingRight: hasPaddingXY
+				? typeof node.paddingX === 'number'
+					? node.paddingX
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingTop: hasPaddingXY
+				? typeof node.paddingY === 'number'
+					? node.paddingY
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
+			paddingBottom: hasPaddingXY
+				? typeof node.paddingY === 'number'
+					? node.paddingY
+					: typeof node.padding === 'number'
+						? node.padding
+						: undefined
+				: undefined,
 			border: node.border ? '1px solid var(--tf-border)' : undefined,
 			background: node.background ?? undefined,
 			borderRadius: typeof node.radius === 'number' ? node.radius : undefined,
+			width: typeof node.width === 'number' ? node.width : undefined,
+			height: typeof node.height === 'number' ? node.height : undefined,
+			maxWidth: typeof node.maxWidth === 'number' ? node.maxWidth : undefined,
+			maxHeight: typeof node.maxHeight === 'number' ? node.maxHeight : undefined,
 			boxSizing: 'border-box',
 		}
 		const children = (node.children ?? []).map((c: ThreadRenderTreeNode, idx: number) => (
@@ -896,6 +1142,340 @@ function CoverSlide({
 	)
 }
 
+function RepliesListHeader({
+	thread,
+	replies,
+	replyDurationsInFrames,
+	fps,
+}: {
+	thread: ThreadVideoInputProps['thread']
+	replies: ThreadVideoInputProps['replies']
+	replyDurationsInFrames: number[]
+	fps: number
+}) {
+	const frame = useCurrentFrame()
+	const { idx: activeIdx } = React.useMemo(
+		() => locateSegmentForFrame(frame, replyDurationsInFrames),
+		[frame, replyDurationsInFrames],
+	)
+	const replyIndicator =
+		replies.length > 0 ? `REPLY ${activeIdx + 1}/${replies.length}` : 'REPLIES 0'
+
+	return (
+		<div
+			style={{
+				display: 'flex',
+				justifyContent: 'space-between',
+				gap: 24,
+				alignItems: 'flex-end',
+			}}
+		>
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 12,
+					color: 'var(--tf-muted)',
+					fontSize: 'calc(12px * var(--tf-font-scale))',
+					letterSpacing: '0.22em',
+					textTransform: 'uppercase',
+					minWidth: 0,
+				}}
+			>
+				<span
+					style={{
+						width: 10,
+						height: 10,
+						background: 'var(--tf-accent)',
+						flex: '0 0 auto',
+					}}
+				/>
+				<span
+					style={{
+						maxWidth: 980,
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap',
+					}}
+				>
+					{thread.title}
+				</span>
+			</div>
+
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 10,
+					color: 'var(--tf-muted)',
+					fontSize: 'calc(14px * var(--tf-font-scale))',
+				}}
+			>
+				<span
+					style={{
+						letterSpacing: '0.22em',
+						textTransform: 'uppercase',
+						fontSize: 'calc(12px * var(--tf-font-scale))',
+					}}
+				>
+					{replyIndicator}
+				</span>
+			</div>
+		</div>
+	)
+}
+
+function RepliesListRootPost({
+	thread,
+	root,
+	replies,
+	replyDurationsInFrames,
+	coverDurationInFrames,
+	assets,
+	fps,
+	rootRoot,
+}: {
+	thread: ThreadVideoInputProps['thread']
+	root: ThreadVideoInputProps['root']
+	replies: ThreadVideoInputProps['replies']
+	replyDurationsInFrames: number[]
+	coverDurationInFrames: number
+	assets: ThreadVideoInputProps['assets'] | undefined
+	fps: number
+	rootRoot?: ThreadRenderTreeNode
+}) {
+	const frame = useCurrentFrame()
+	const totalRepliesFrames = React.useMemo(
+		() => replyDurationsInFrames.reduce((sum, d) => sum + d, 0),
+		[replyDurationsInFrames],
+	)
+	const rootScrollProgress =
+		totalRepliesFrames > 0 ? clamp01(frame / totalRepliesFrames) : 0
+
+	if (rootRoot) {
+		return (
+			<>{renderThreadTemplateNode(rootRoot, {
+				thread,
+				root,
+				post: root,
+				replies,
+				assets,
+				coverDurationInFrames,
+				replyDurationsInFrames,
+				fps,
+			})}</>
+		)
+	}
+
+	return (
+		<PostCard
+			post={root}
+			assets={assets}
+			title="ROOT"
+			showLikes
+			scrollProgress={rootScrollProgress}
+		/>
+	)
+}
+
+function RepliesListReplies({
+	thread,
+	root,
+	replies,
+	replyDurationsInFrames,
+	coverDurationInFrames,
+	assets,
+	fps,
+	itemRoot,
+	wrapItemRoot,
+}: {
+	thread: ThreadVideoInputProps['thread']
+	root: ThreadVideoInputProps['root']
+	replies: ThreadVideoInputProps['replies']
+	replyDurationsInFrames: number[]
+	coverDurationInFrames: number
+	assets: ThreadVideoInputProps['assets'] | undefined
+	fps: number
+	itemRoot?: ThreadRenderTreeNode
+	wrapItemRoot?: boolean
+}) {
+	const frame = useCurrentFrame()
+
+	const { idx: activeIdx, localFrame, durationInFrames } = React.useMemo(
+		() => locateSegmentForFrame(frame, replyDurationsInFrames),
+		[frame, replyDurationsInFrames],
+	)
+
+	const rightViewportRef = React.useRef<HTMLDivElement | null>(null)
+	const rightContentRef = React.useRef<HTMLDivElement | null>(null)
+	const [rightItemTops, setRightItemTops] = React.useState<number[] | null>(null)
+	const [rightMaxScrollY, setRightMaxScrollY] = React.useState(0)
+
+	React.useLayoutEffect(() => {
+		const viewport = rightViewportRef.current
+		const content = rightContentRef.current
+		if (!viewport || !content) return
+
+		let raf = 0
+		const measure = () => {
+			const nodes = Array.from(
+				content.querySelectorAll<HTMLElement>('[data-reply-idx]'),
+			)
+			const tops: number[] = []
+			for (const n of nodes) {
+				const idxStr = n.dataset.replyIdx
+				if (!idxStr) continue
+				const idx = Number(idxStr)
+				if (!Number.isFinite(idx)) continue
+				tops[idx] = n.offsetTop
+			}
+			setRightItemTops(tops.length > 0 ? tops : null)
+			setRightMaxScrollY(Math.max(0, content.scrollHeight - viewport.clientHeight))
+		}
+		const scheduleMeasure = () => {
+			cancelAnimationFrame(raf)
+			raf = requestAnimationFrame(measure)
+		}
+
+		scheduleMeasure()
+
+		if (typeof ResizeObserver !== 'undefined') {
+			const ro = new ResizeObserver(() => scheduleMeasure())
+			ro.observe(content)
+			ro.observe(viewport)
+			return () => {
+				ro.disconnect()
+				cancelAnimationFrame(raf)
+			}
+		}
+
+		return () => {
+			cancelAnimationFrame(raf)
+		}
+	}, [replies.length])
+
+	const transition = React.useMemo(() => {
+		const dur = Math.max(1, durationInFrames)
+		const transitionFrames = Math.max(8, Math.min(dur, Math.round(fps * 0.35)))
+		const startAt = Math.max(0, dur - transitionFrames)
+		const t = (localFrame - startAt) / transitionFrames
+		return { t: clamp01(t), startAt, transitionFrames }
+	}, [durationInFrames, fps, localFrame])
+
+	const rightScrollY = React.useMemo(() => {
+		if (replies.length === 0) return 0
+		if (!rightItemTops || rightItemTops.length === 0) return 0
+
+		const paddingTop = 18
+		const startRaw = rightItemTops[activeIdx] ?? 0
+		const startY = Math.max(0, startRaw - paddingTop)
+		const endRaw = rightItemTops[activeIdx + 1]
+		const endY =
+			typeof endRaw === 'number' ? Math.max(0, endRaw - paddingTop) : startY
+
+		const target = lerp(startY, endY, transition.t)
+		return Math.max(0, Math.min(rightMaxScrollY, target))
+	}, [activeIdx, replies.length, rightItemTops, rightMaxScrollY, transition.t])
+
+	return (
+		<div
+			ref={rightViewportRef}
+			style={{
+				width: '100%',
+				height: '100%',
+				minHeight: 0,
+				overflow: 'hidden',
+			}}
+		>
+			<div
+				ref={rightContentRef}
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					gap: 16,
+					padding: 18,
+					transform: `translateY(-${rightScrollY}px)`,
+					willChange: 'transform',
+				}}
+			>
+				{replies.map((reply, idx) => (
+					<div
+						key={reply.id}
+						data-reply-idx={idx}
+						style={{
+							position: 'relative',
+						}}
+					>
+						{(() => {
+							const isCurrent = idx === activeIdx
+							const isNext = idx === activeIdx + 1
+							const strength = isCurrent ? 1 - transition.t : isNext ? transition.t : 0
+							if (strength <= 0) return null
+							return (
+								<div
+									style={{
+										position: 'absolute',
+										inset: 0,
+										border: '2px solid var(--tf-accent)',
+										opacity: strength,
+										pointerEvents: 'none',
+										boxSizing: 'border-box',
+									}}
+								/>
+							)
+						})()}
+						{itemRoot ? (
+							wrapItemRoot ? (
+								<div
+									style={{
+										border: '1px solid var(--tf-border)',
+										background: 'var(--tf-surface)',
+										padding: 28,
+										boxSizing: 'border-box',
+									}}
+								>
+									{renderThreadTemplateNode(itemRoot, {
+										thread,
+										root,
+										post: reply,
+										replies,
+										assets,
+										coverDurationInFrames,
+										replyDurationsInFrames,
+										fps,
+									})}
+								</div>
+							) : (
+								<>
+									{renderThreadTemplateNode(itemRoot, {
+										thread,
+										root,
+										post: reply,
+										replies,
+										assets,
+										coverDurationInFrames,
+										replyDurationsInFrames,
+										fps,
+									})}
+								</>
+							)
+						) : (
+							<PostCard
+								post={reply as any}
+								assets={assets}
+								title={`REPLY ${idx + 1}`}
+								showLikes
+								bilingualPrimary="zh"
+								secondaryPlacement="above"
+							/>
+						)}
+					</div>
+				))}
+			</div>
+		</div>
+	)
+}
+
 function PostCard({
 	post,
 	assets,
@@ -1075,322 +1655,114 @@ function PostCard({
 	)
 }
 
-function RepliesListSlide({
-	thread,
-	root,
-	replies,
-	replyDurationsInFrames,
-	coverDurationInFrames,
-	assets,
-	fps,
-	rootRoot,
-	itemRoot,
-}: {
-	thread: ThreadVideoInputProps['thread']
-	root: ThreadVideoInputProps['root']
-	replies: ThreadVideoInputProps['replies']
-	replyDurationsInFrames: number[]
-	coverDurationInFrames: number
-	assets: ThreadVideoInputProps['assets'] | undefined
-	fps: number
-	rootRoot?: ThreadRenderTreeNode
-	itemRoot?: ThreadRenderTreeNode
-}) {
-	const frame = useCurrentFrame()
-	const opacity = interpolate(frame, [0, Math.min(fps * 0.3, 18)], [0, 1], {
-		extrapolateLeft: 'clamp',
-		extrapolateRight: 'clamp',
-	})
+	function RepliesListSlide({
+		thread,
+		root,
+		replies,
+		replyDurationsInFrames,
+		coverDurationInFrames,
+		assets,
+		fps,
+		rootRoot,
+		itemRoot,
+	}: {
+		thread: ThreadVideoInputProps['thread']
+		root: ThreadVideoInputProps['root']
+		replies: ThreadVideoInputProps['replies']
+		replyDurationsInFrames: number[]
+		coverDurationInFrames: number
+		assets: ThreadVideoInputProps['assets'] | undefined
+		fps: number
+		rootRoot?: ThreadRenderTreeNode
+		itemRoot?: ThreadRenderTreeNode
+	}) {
+		const frame = useCurrentFrame()
+		const opacity = interpolate(frame, [0, Math.min(fps * 0.3, 18)], [0, 1], {
+			extrapolateLeft: 'clamp',
+			extrapolateRight: 'clamp',
+		})
 
-	const totalRepliesFrames = React.useMemo(
-		() => replyDurationsInFrames.reduce((sum, d) => sum + d, 0),
-		[replyDurationsInFrames],
-	)
-	const rootScrollProgress =
-		totalRepliesFrames > 0 ? clamp01(frame / totalRepliesFrames) : 0
-
-	const { idx: activeIdx, localFrame, durationInFrames } = React.useMemo(
-		() => locateSegmentForFrame(frame, replyDurationsInFrames),
-		[frame, replyDurationsInFrames],
-	)
-
-	const rightViewportRef = React.useRef<HTMLDivElement | null>(null)
-	const rightContentRef = React.useRef<HTMLDivElement | null>(null)
-	const [rightItemTops, setRightItemTops] = React.useState<number[] | null>(null)
-	const [rightMaxScrollY, setRightMaxScrollY] = React.useState(0)
-
-	React.useLayoutEffect(() => {
-		const viewport = rightViewportRef.current
-		const content = rightContentRef.current
-		if (!viewport || !content) return
-
-		let raf = 0
-		const measure = () => {
-			const nodes = Array.from(
-				content.querySelectorAll<HTMLElement>('[data-reply-idx]'),
-			)
-			const tops: number[] = []
-			for (const n of nodes) {
-				const idxStr = n.dataset.replyIdx
-				if (!idxStr) continue
-				const idx = Number(idxStr)
-				if (!Number.isFinite(idx)) continue
-				tops[idx] = n.offsetTop
-			}
-			setRightItemTops(tops.length > 0 ? tops : null)
-			setRightMaxScrollY(Math.max(0, content.scrollHeight - viewport.clientHeight))
-		}
-		const scheduleMeasure = () => {
-			cancelAnimationFrame(raf)
-			raf = requestAnimationFrame(measure)
-		}
-
-		scheduleMeasure()
-
-		if (typeof ResizeObserver !== 'undefined') {
-			const ro = new ResizeObserver(() => scheduleMeasure())
-			ro.observe(content)
-			ro.observe(viewport)
-			return () => {
-				ro.disconnect()
-				cancelAnimationFrame(raf)
-			}
-		}
-
-		return () => {
-			cancelAnimationFrame(raf)
-		}
-	}, [replies.length])
-
-	// Smoothly scroll from current reply to the next one, but do the transition
-	// in a short "handoff" window so the active highlight doesn't drift off-screen.
-	const transition = React.useMemo(() => {
-		const dur = Math.max(1, durationInFrames)
-		const transitionFrames = Math.max(8, Math.min(dur, Math.round(fps * 0.35)))
-		const startAt = Math.max(0, dur - transitionFrames)
-		const t = (localFrame - startAt) / transitionFrames
-		return { t: clamp01(t), startAt, transitionFrames }
-	}, [durationInFrames, fps, localFrame])
-
-	const rightScrollY = React.useMemo(() => {
-		if (replies.length === 0) return 0
-		if (!rightItemTops || rightItemTops.length === 0) return 0
-
-		const paddingTop = 18
-		const startRaw = rightItemTops[activeIdx] ?? 0
-		const startY = Math.max(0, startRaw - paddingTop)
-		const endRaw =
-			activeIdx + 1 < replies.length
-				? (rightItemTops[activeIdx + 1] ?? startRaw)
-				: rightMaxScrollY
-		const endY = Math.max(0, endRaw - paddingTop)
-
-		const y = lerp(startY, endY, easeInOutCubic(transition.t))
-		return Math.max(0, Math.min(rightMaxScrollY, y))
-	}, [
-		activeIdx,
-		durationInFrames,
-		localFrame,
-		transition.t,
-		replies.length,
-		rightItemTops,
-		rightMaxScrollY,
-	])
-
-	const replyIndicator =
-		replies.length > 0 ? `REPLY ${activeIdx + 1}/${replies.length}` : 'REPLIES 0'
-
-	return (
-		<AbsoluteFill
-			style={{
-				background: 'var(--tf-bg)',
-				color: 'var(--tf-text)',
-				fontFamily: 'var(--tf-font-family)',
-				padding: '64px',
-				boxSizing: 'border-box',
-				opacity,
-			}}
-		>
-			<div
+		return (
+			<AbsoluteFill
 				style={{
-					display: 'flex',
-					justifyContent: 'space-between',
-					gap: 24,
-					alignItems: 'flex-end',
+					background: 'var(--tf-bg)',
+					color: 'var(--tf-text)',
+					fontFamily: 'var(--tf-font-family)',
+					padding: '64px',
+					boxSizing: 'border-box',
+					opacity,
 				}}
 			>
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: 12,
-						color: 'var(--tf-muted)',
-						fontSize: 'calc(12px * var(--tf-font-scale))',
-						letterSpacing: '0.22em',
-						textTransform: 'uppercase',
-					}}
-				>
-					<span
-						style={{
-							width: 10,
-							height: 10,
-							background: 'var(--tf-accent)',
-						}}
-					/>
-					<span
-						style={{
-							maxWidth: 980,
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap',
-						}}
-					>
-						{thread.title}
-					</span>
-				</div>
+				<RepliesListHeader
+					thread={thread}
+					replies={replies}
+					replyDurationsInFrames={replyDurationsInFrames}
+					fps={fps}
+				/>
 
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: 10,
-						color: 'var(--tf-muted)',
-						fontSize: 'calc(14px * var(--tf-font-scale))',
-					}}
-				>
-					<span
-						style={{
-							letterSpacing: '0.22em',
-							textTransform: 'uppercase',
-							fontSize: 'calc(12px * var(--tf-font-scale))',
-						}}
-					>
-						{replyIndicator}
-					</span>
-				</div>
-			</div>
-
-			<div style={{ marginTop: 18, display: 'flex', gap: 22, height: 'calc(100% - 70px)' }}>
-				<div style={{ flex: '0 0 58%', minHeight: 0 }}>
-					{rootRoot ? (
+				<div style={{ marginTop: 18, display: 'flex', gap: 22, height: 'calc(100% - 70px)' }}>
+					<div style={{ flex: '0 0 58%', minHeight: 0 }}>
+						{rootRoot ? (
+							<div
+								style={{
+									border: '1px solid var(--tf-border)',
+									background: 'var(--tf-surface)',
+									padding: 28,
+									boxSizing: 'border-box',
+									height: '100%',
+									minHeight: 0,
+								}}
+							>
+								<RepliesListRootPost
+									thread={thread}
+									root={root}
+									replies={replies}
+									replyDurationsInFrames={replyDurationsInFrames}
+									coverDurationInFrames={coverDurationInFrames}
+									assets={assets}
+									fps={fps}
+									rootRoot={rootRoot}
+								/>
+							</div>
+						) : (
+							<RepliesListRootPost
+								thread={thread}
+								root={root}
+								replies={replies}
+								replyDurationsInFrames={replyDurationsInFrames}
+								coverDurationInFrames={coverDurationInFrames}
+								assets={assets}
+								fps={fps}
+							/>
+						)}
+					</div>
+					<div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
 						<div
 							style={{
-								border: '1px solid var(--tf-border)',
-								background: 'var(--tf-surface)',
-								padding: 28,
-								boxSizing: 'border-box',
-								height: '100%',
+								flex: 1,
 								minHeight: 0,
+								overflow: 'hidden',
+								border: '1px solid var(--tf-border)',
+								background: 'rgba(255,255,255,0.02)',
 							}}
 						>
-							{renderThreadTemplateNode(rootRoot, {
-								thread,
-								root,
-								post: root,
-								replies,
-								assets,
-								coverDurationInFrames,
-								replyDurationsInFrames,
-								fps,
-							})}
-						</div>
-					) : (
-						<PostCard
-							post={root}
-							assets={assets}
-							title="ROOT"
-							showLikes
-							scrollProgress={rootScrollProgress}
-						/>
-					)}
-				</div>
-				<div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
-					<div
-						ref={rightViewportRef}
-						style={{
-							flex: 1,
-							minHeight: 0,
-							overflow: 'hidden',
-							border: '1px solid var(--tf-border)',
-							background: 'rgba(255,255,255,0.02)',
-						}}
-					>
-						<div
-							ref={rightContentRef}
-							style={{
-								display: 'flex',
-								flexDirection: 'column',
-								gap: 16,
-								padding: 18,
-								transform: `translateY(-${rightScrollY}px)`,
-								willChange: 'transform',
-							}}
-						>
-							{replies.map((reply, idx) => (
-								<div
-									key={reply.id}
-									data-reply-idx={idx}
-									style={{
-										position: 'relative',
-									}}
-								>
-									{(() => {
-										const isCurrent = idx === activeIdx
-										const isNext = idx === activeIdx + 1
-										const strength = isCurrent ? 1 - transition.t : isNext ? transition.t : 0
-										if (strength <= 0) return null
-										return (
-											<div
-												style={{
-													position: 'absolute',
-													inset: 0,
-													border: '2px solid var(--tf-accent)',
-													opacity: strength,
-													pointerEvents: 'none',
-													boxSizing: 'border-box',
-												}}
-											/>
-										)
-									})()}
-									{itemRoot ? (
-										<div
-											style={{
-												border: '1px solid var(--tf-border)',
-												background: 'var(--tf-surface)',
-												padding: 28,
-												boxSizing: 'border-box',
-											}}
-										>
-											{renderThreadTemplateNode(itemRoot, {
-												thread,
-												root,
-												post: reply,
-												replies,
-												assets,
-												coverDurationInFrames,
-												replyDurationsInFrames,
-												fps,
-											})}
-										</div>
-									) : (
-										<PostCard
-											post={reply as any}
-											assets={assets}
-											title={`REPLY ${idx + 1}`}
-											showLikes
-											bilingualPrimary="zh"
-											secondaryPlacement="above"
-										/>
-									)}
-								</div>
-							))}
+							<RepliesListReplies
+								thread={thread}
+								root={root}
+								replies={replies}
+								replyDurationsInFrames={replyDurationsInFrames}
+								coverDurationInFrames={coverDurationInFrames}
+								assets={assets}
+								fps={fps}
+								itemRoot={itemRoot}
+								wrapItemRoot={Boolean(itemRoot)}
+							/>
 						</div>
 					</div>
 				</div>
-			</div>
-		</AbsoluteFill>
-	)
-}
+			</AbsoluteFill>
+		)
+	}
 
 export function ThreadForumVideo({
 	thread,
@@ -1404,6 +1776,7 @@ export function ThreadForumVideo({
 	templateConfig,
 }: ThreadVideoInputProps) {
 	const videoConfig = useVideoConfig()
+	const frame = useCurrentFrame()
 	const normalizedTemplateConfig = React.useMemo(
 		() => normalizeThreadTemplateConfig(templateConfig),
 		[templateConfig],
@@ -1430,11 +1803,22 @@ export function ThreadForumVideo({
 			? Math.min(Math.ceil(totalDurationInFrames / bgmDurationInFrames), maxAudioLoops)
 			: 0
 
+	const coverFadeDurationInFrames = Math.max(1, Math.min(coverDurationInFrames, Math.round(fps * 0.5)))
+	const coverOpacity =
+		normalizedTemplateConfig.motion?.enabled === false
+			? 1
+			: interpolate(frame, [0, coverFadeDurationInFrames], [0, 1], {
+					extrapolateLeft: 'clamp',
+					extrapolateRight: 'clamp',
+				})
+
 	return (
 		<AbsoluteFill
 			style={{
 				...(buildCssVars(normalizedTemplateConfig) as any),
 				background: 'var(--tf-bg)',
+				color: 'var(--tf-text)',
+				fontFamily: 'var(--tf-font-family)',
 			}}
 		>
 			{audio?.url && bgmDurationInFrames > 0 ? (
@@ -1457,16 +1841,22 @@ export function ThreadForumVideo({
 				</>
 			) : null}
 			<Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
-				{renderThreadTemplateNode(coverRoot, {
-					thread,
-					root,
-					post: root,
-					replies,
-					assets,
-					coverDurationInFrames,
-					replyDurationsInFrames,
-					fps,
-				}, { isRoot: true })}
+				<AbsoluteFill style={{ opacity: coverOpacity }}>
+					{renderThreadTemplateNode(
+						coverRoot,
+						{
+							thread,
+							root,
+							post: root,
+							replies,
+							assets,
+							coverDurationInFrames,
+							replyDurationsInFrames,
+							fps,
+						},
+						{ isRoot: true },
+					)}
+				</AbsoluteFill>
 			</Sequence>
 			<Sequence layout="none" from={coverDurationInFrames} durationInFrames={mainDuration}>
 				{renderThreadTemplateNode(postRoot, {

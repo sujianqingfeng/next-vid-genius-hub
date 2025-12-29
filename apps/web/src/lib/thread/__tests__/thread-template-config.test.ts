@@ -4,26 +4,60 @@ import type { ThreadRenderTreeNode } from '@app/remotion-project/types'
 
 function countNodes(node: ThreadRenderTreeNode | undefined): number {
 	if (!node) return 0
-	if (node.type === 'Stack' || node.type === 'Box') {
+	if (
+		node.type === 'Stack' ||
+		node.type === 'Box' ||
+		node.type === 'Grid' ||
+		node.type === 'Absolute'
+	) {
 		const children = node.children ?? []
 		return 1 + children.reduce((sum, c) => sum + countNodes(c), 0)
 	}
 	if (node.type === 'Builtin' && node.kind === 'repliesList') {
-		return 1 + countNodes(node.itemRoot)
+		return 1 + countNodes(node.rootRoot) + countNodes(node.itemRoot)
 	}
 	return 1
 }
 
 describe('normalizeThreadTemplateConfig', () => {
+	it('keeps Grid nodes and clamps columns', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: {
+					root: {
+						type: 'Grid',
+						columns: 999,
+						align: 'center',
+						justify: 'end',
+						gap: -1,
+						padding: 999,
+						children: [{ type: 'Text', text: 'x' }],
+					},
+				},
+			},
+		})
+
+		const root = cfg.scenes?.cover?.root as any
+		expect(root.type).toBe('Grid')
+		expect(root.columns).toBe(12)
+		expect(root.align).toBe('center')
+		expect(root.justify).toBe('end')
+		expect(root.gap).toBe(0)
+		expect(root.padding).toBe(240)
+		expect(root.children?.[0]?.type).toBe('Text')
+	})
+
 	it('keeps Spacer nodes (axis+size)', () => {
 		const cfg = normalizeThreadTemplateConfig({
 			version: 1,
 			scenes: { cover: { root: { type: 'Spacer', axis: 'y', size: 24 } } },
 		})
 
-		expect(cfg.scenes?.cover?.root?.type).toBe('Spacer')
-		expect((cfg.scenes?.cover?.root as any).axis).toBe('y')
-		expect((cfg.scenes?.cover?.root as any).size).toBe(24)
+		const root = cfg.scenes!.cover!.root as any
+		expect(root?.type).toBe('Spacer')
+		expect(root.axis).toBe('y')
+		expect(root.size).toBe(24)
 	})
 
 	it('clamps Divider thickness when provided', () => {
@@ -31,8 +65,9 @@ describe('normalizeThreadTemplateConfig', () => {
 			version: 1,
 			scenes: { cover: { root: { type: 'Divider', thickness: 0 } } },
 		})
-		expect(cfg.scenes?.cover?.root?.type).toBe('Divider')
-		expect((cfg.scenes?.cover?.root as any).thickness).toBe(1)
+		const root = cfg.scenes!.cover!.root as any
+		expect(root?.type).toBe('Divider')
+		expect(root.thickness).toBe(1)
 	})
 
 	it('falls back to default scene root on unknown node', () => {
@@ -40,8 +75,9 @@ describe('normalizeThreadTemplateConfig', () => {
 			version: 1,
 			scenes: { post: { root: { type: 'Nope', foo: 1 } } },
 		})
-		expect(cfg.scenes?.post?.root?.type).toBe('Builtin')
-		expect((cfg.scenes?.post?.root as any).kind).toBe('repliesList')
+		const root = cfg.scenes!.post!.root as any
+		expect(root?.type).toBe('Builtin')
+		expect(root.kind).toBe('repliesList')
 	})
 
 	it('enforces RenderTree node limit', () => {
@@ -85,13 +121,54 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.itemRoot?.type).toBe('Text')
 	})
 
+	it('keeps Builtin(repliesListHeader/repliesListRootPost/repliesListReplies)', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				post: {
+					root: {
+						type: 'Stack',
+						children: [
+							{ type: 'Builtin', kind: 'repliesListHeader' },
+							{
+								type: 'Grid',
+								columns: 2,
+								children: [
+									{
+										type: 'Builtin',
+										kind: 'repliesListRootPost',
+										rootRoot: { type: 'Text', bind: 'root.plainText' },
+									},
+									{
+										type: 'Builtin',
+										kind: 'repliesListReplies',
+										itemRoot: { type: 'Text', bind: 'post.plainText' },
+									},
+								],
+							},
+						],
+					},
+				},
+			},
+		})
+
+		const root = cfg.scenes?.post?.root as any
+		expect(root.type).toBe('Stack')
+		expect(root.children?.[0]?.kind).toBe('repliesListHeader')
+		expect(root.children?.[1]?.type).toBe('Grid')
+		expect(root.children?.[1]?.children?.[0]?.kind).toBe('repliesListRootPost')
+		expect(root.children?.[1]?.children?.[0]?.rootRoot?.type).toBe('Text')
+		expect(root.children?.[1]?.children?.[1]?.kind).toBe('repliesListReplies')
+		expect(root.children?.[1]?.children?.[1]?.itemRoot?.type).toBe('Text')
+	})
+
 	it('drops Image node when assetId is missing', () => {
 		const cfg = normalizeThreadTemplateConfig({
 			version: 1,
 			scenes: { cover: { root: { type: 'Image', assetId: '' } } },
 		})
-		expect(cfg.scenes?.cover?.root?.type).toBe('Builtin')
-		expect((cfg.scenes?.cover?.root as any).kind).toBe('cover')
+		const root = cfg.scenes!.cover!.root as any
+		expect(root?.type).toBe('Stack')
 	})
 
 	it('normalizes Image fit and clamps dimensions', () => {
@@ -123,8 +200,85 @@ describe('normalizeThreadTemplateConfig', () => {
 			version: 1,
 			scenes: { cover: { root: { type: 'Video', assetId: '   ' } } },
 		})
-		expect(cfg.scenes?.cover?.root?.type).toBe('Builtin')
-		expect((cfg.scenes?.cover?.root as any).kind).toBe('cover')
+		const root = cfg.scenes!.cover!.root as any
+		expect(root?.type).toBe('Stack')
+	})
+
+	it('keeps Absolute nodes and clamps geometry', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: {
+					root: {
+						type: 'Absolute',
+						x: -99999,
+						y: 99999,
+						width: -10,
+						height: 99999,
+						children: [{ type: 'Text', text: 'x' }],
+					},
+				},
+			},
+		})
+
+		const root = cfg.scenes!.cover!.root as any
+		expect(root.type).toBe('Absolute')
+		expect(root.x).toBe(-2000)
+		expect(root.y).toBe(2000)
+		expect(root.width).toBe(0)
+		expect(root.height).toBe(2000)
+		expect(root.children?.[0]?.type).toBe('Text')
+	})
+
+	it('clamps Stack size props', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: {
+					root: {
+						type: 'Stack',
+						width: -1,
+						height: 99999,
+						maxWidth: 99999,
+						maxHeight: -1,
+						children: [{ type: 'Text', text: 'x' }],
+					},
+				},
+			},
+		})
+
+		const root = cfg.scenes!.cover!.root as any
+		expect(root.type).toBe('Stack')
+		expect(root.width).toBe(0)
+		expect(root.height).toBe(2000)
+		expect(root.maxWidth).toBe(2000)
+		expect(root.maxHeight).toBe(0)
+	})
+
+	it('clamps Grid gapX/gapY and paddingX/paddingY', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: {
+					root: {
+						type: 'Grid',
+						columns: 2,
+						gapX: -1,
+						gapY: 999,
+						paddingX: 999,
+						paddingY: -1,
+						children: [{ type: 'Text', text: 'x' }],
+					},
+				},
+			},
+		})
+
+		const root = cfg.scenes!.cover!.root as any
+		expect(root.type).toBe('Grid')
+		expect(root.gapX).toBe(0)
+		expect(root.gapY).toBe(240)
+		expect(root.paddingX).toBe(240)
+		expect(root.paddingY).toBe(0)
 	})
 
 	it('normalizes Video fit and clamps dimensions', () => {

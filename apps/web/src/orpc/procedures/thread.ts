@@ -977,6 +977,9 @@ export const setTemplate = os
 		const userId = ctx.auth.user!.id
 		const db = await getDb()
 
+		const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+			Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
 		const thread = await db.query.threads.findFirst({
 			where: and(
 				eq(schema.threads.id, input.threadId),
@@ -993,6 +996,15 @@ export const setTemplate = os
 		}
 
 		if (input.templateConfig !== undefined && input.templateConfig !== null) {
+			if (
+				!isPlainObject(input.templateConfig) ||
+				input.templateConfig.version !== 1
+			) {
+				throw new Error(
+					'templateConfig must be an object with version: 1 (v1 only)',
+				)
+			}
+
 			let json = ''
 			try {
 				json = JSON.stringify(input.templateConfig)

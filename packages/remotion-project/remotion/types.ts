@@ -82,15 +82,54 @@ export type ThreadRenderTreeNode =
 			align?: 'start' | 'center' | 'end' | 'stretch'
 			justify?: 'start' | 'center' | 'end' | 'between'
 			gap?: number
+			gapX?: number
+			gapY?: number
 			padding?: number
+			paddingX?: number
+			paddingY?: number
+			width?: number
+			height?: number
+			maxWidth?: number
+			maxHeight?: number
+			children?: ThreadRenderTreeNode[]
+	  }
+	| {
+			type: 'Grid'
+			columns?: number
+			align?: 'start' | 'center' | 'end' | 'stretch'
+			justify?: 'start' | 'center' | 'end' | 'stretch'
+			gap?: number
+			gapX?: number
+			gapY?: number
+			padding?: number
+			paddingX?: number
+			paddingY?: number
+			width?: number
+			height?: number
+			maxWidth?: number
+			maxHeight?: number
+			children?: ThreadRenderTreeNode[]
+	  }
+	| {
+			type: 'Absolute'
+			x?: number
+			y?: number
+			width?: number
+			height?: number
 			children?: ThreadRenderTreeNode[]
 	  }
 	| {
 			type: 'Box'
 			padding?: number
+			paddingX?: number
+			paddingY?: number
 			border?: boolean
 			background?: string
 			radius?: number
+			width?: number
+			height?: number
+			maxWidth?: number
+			maxHeight?: number
 			children?: ThreadRenderTreeNode[]
 	  }
 	| {
@@ -171,6 +210,22 @@ export type ThreadRenderTreeNode =
 			kind: 'repliesList'
 			/** Optional root post override (rendered with `ctx.post = root`). */
 			rootRoot?: ThreadRenderTreeNode
+			/** Optional per-reply override (rendered with `ctx.post = reply`). */
+			itemRoot?: ThreadRenderTreeNode
+	  }
+	| {
+			type: 'Builtin'
+			kind: 'repliesListHeader'
+	  }
+	| {
+			type: 'Builtin'
+			kind: 'repliesListRootPost'
+			/** Optional root post override (rendered with `ctx.post = root`). */
+			rootRoot?: ThreadRenderTreeNode
+	  }
+	| {
+			type: 'Builtin'
+			kind: 'repliesListReplies'
 			/** Optional per-reply override (rendered with `ctx.post = reply`). */
 			itemRoot?: ThreadRenderTreeNode
 	  }

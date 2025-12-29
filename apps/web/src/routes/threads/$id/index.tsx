@@ -345,10 +345,209 @@ function buildCoverRootExample(): ThreadTemplateConfigV1 {
 	}
 }
 
+function buildGridSnippetExample(): Record<string, unknown> {
+	return {
+		type: 'Grid',
+		columns: 2,
+		align: 'stretch',
+		justify: 'stretch',
+		gapX: 24,
+		gapY: 16,
+		paddingX: 24,
+		paddingY: 18,
+		children: [
+			{
+				type: 'Box',
+				border: true,
+				background: 'rgba(255,255,255,0.04)',
+				padding: 18,
+				radius: 12,
+				children: [
+					{
+						type: 'Text',
+						bind: 'post.author.name',
+						size: 18,
+						weight: 800,
+						maxLines: 1,
+					},
+					{
+						type: 'Text',
+						bind: 'post.plainText',
+						color: 'muted',
+						size: 14,
+						weight: 600,
+						maxLines: 6,
+					},
+				],
+			},
+			{
+				type: 'Box',
+				border: true,
+				background: 'rgba(255,255,255,0.02)',
+				padding: 18,
+				radius: 12,
+				children: [
+					{
+						type: 'ContentBlocks',
+						bind: 'post.contentBlocks',
+						gap: 12,
+						maxHeight: 520,
+					},
+				],
+			},
+		],
+	}
+}
+
+function buildAbsoluteSnippetExample(): Record<string, unknown> {
+	return {
+		type: 'Absolute',
+		x: 80,
+		y: 80,
+		width: 860,
+		children: [
+			{
+				type: 'Box',
+				border: true,
+				background: 'var(--tf-surface)',
+				paddingX: 28,
+				paddingY: 22,
+				radius: 14,
+				children: [
+					{
+						type: 'Text',
+						bind: 'thread.title',
+						size: 42,
+						weight: 900,
+						maxLines: 2,
+					},
+					{
+						type: 'Text',
+						bind: 'thread.source',
+						color: 'muted',
+						size: 14,
+						weight: 700,
+						maxLines: 1,
+					},
+				],
+			},
+		],
+	}
+}
+
+function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
+	return {
+		version: 1,
+		typography: { fontPreset: 'noto', fontScale: 1 },
+		scenes: {
+			post: {
+				root: {
+					type: 'Stack',
+					gapY: 18,
+					padding: 64,
+					children: [
+						{ type: 'Builtin', kind: 'repliesListHeader' },
+						{
+							type: 'Grid',
+							columns: 2,
+							gapX: 22,
+							gapY: 16,
+							align: 'stretch',
+							justify: 'stretch',
+							children: [
+								{
+									type: 'Box',
+									border: true,
+									background: 'rgba(255,255,255,0.02)',
+									padding: 28,
+									children: [
+										{
+											type: 'Builtin',
+											kind: 'repliesListRootPost',
+											rootRoot: {
+												type: 'Stack',
+												gapY: 14,
+												children: [
+													{
+														type: 'Stack',
+														direction: 'row',
+														align: 'center',
+														gapX: 12,
+														children: [
+															{
+																type: 'Avatar',
+																bind: 'post.author.avatarAssetId',
+																size: 44,
+																border: true,
+															},
+															{
+																type: 'Stack',
+																direction: 'column',
+																gapY: 2,
+																children: [
+																	{
+																		type: 'Text',
+																		bind: 'post.author.name',
+																		size: 18,
+																		weight: 800,
+																		maxLines: 1,
+																	},
+																	{
+																		type: 'Text',
+																		bind: 'post.author.handle',
+																		color: 'muted',
+																		size: 14,
+																		weight: 600,
+																		maxLines: 1,
+																	},
+																],
+															},
+														],
+													},
+													{ type: 'Divider', opacity: 0.6, margin: 12 },
+													{
+														type: 'ContentBlocks',
+														bind: 'post.contentBlocks',
+														gap: 12,
+														maxHeight: 900,
+													},
+												],
+											},
+										},
+									],
+								},
+								{
+									type: 'Box',
+									border: true,
+									background: 'rgba(255,255,255,0.02)',
+									padding: 0,
+									children: [
+										{
+											type: 'Builtin',
+											kind: 'repliesListReplies',
+											itemRoot: {
+												type: 'Text',
+												bind: 'post.plainText',
+												maxLines: 10,
+											},
+										},
+									],
+								},
+							],
+						},
+					],
+				},
+			},
+		},
+	}
+}
+
 function isSupportedRenderTreeNodeType(type: unknown): boolean {
 	return (
 		type === 'Builtin' ||
 		type === 'Stack' ||
+		type === 'Grid' ||
+		type === 'Absolute' ||
 		type === 'Box' ||
 		type === 'Image' ||
 		type === 'Video' ||
@@ -410,14 +609,55 @@ function analyzeRenderTreeNode(
 		}
 	}
 
+	const warnSizeProps = () => {
+		for (const k of ['width', 'height', 'maxWidth', 'maxHeight'] as const) {
+			if (!(k in (rawNode as any))) continue
+			const v = (rawNode as any)[k]
+			if (v == null) continue
+			if (typeof v !== 'number' || !Number.isFinite(v)) {
+				push(`${path}.${k}: must be a number; ignored.`)
+				continue
+			}
+			const min = 0
+			const max = 2000
+			if (v < min || v > max)
+				push(`${path}.${k}: must be between ${min} and ${max}; clamped.`)
+		}
+	}
+
+	const warnSpaceProps = (keys: string[], min: number, max: number) => {
+		for (const k of keys) {
+			if (!(k in (rawNode as any))) continue
+			const v = (rawNode as any)[k]
+			if (v == null) continue
+			if (typeof v !== 'number' || !Number.isFinite(v)) {
+				push(`${path}.${k}: must be a number; ignored.`)
+				continue
+			}
+			if (v < min || v > max)
+				push(`${path}.${k}: must be between ${min} and ${max}; clamped.`)
+		}
+	}
+
 	if (type === 'Builtin') {
 		warnUnknownKeys(new Set(['type', 'kind', 'rootRoot', 'itemRoot']))
 		const kind = (rawNode as any).kind
-		if (kind !== 'cover' && kind !== 'repliesList') {
-			push(`${path}.kind: must be 'cover' or 'repliesList'; ignored.`)
+		const kindAllowed =
+			kind === 'cover' ||
+			kind === 'repliesList' ||
+			kind === 'repliesListHeader' ||
+			kind === 'repliesListRootPost' ||
+			kind === 'repliesListReplies'
+		if (!kindAllowed) {
+			push(
+				`${path}.kind: must be 'cover' | 'repliesList' | 'repliesListHeader' | 'repliesListRootPost' | 'repliesListReplies'; ignored.`,
+			)
 			return
 		}
-		if (kind === 'repliesList' && (rawNode as any).rootRoot != null) {
+		if (
+			(kind === 'repliesList' || kind === 'repliesListRootPost') &&
+			(rawNode as any).rootRoot != null
+		) {
 			analyzeRenderTreeNode(
 				(rawNode as any).rootRoot,
 				`${path}.rootRoot`,
@@ -426,7 +666,10 @@ function analyzeRenderTreeNode(
 				assetsById,
 			)
 		}
-		if (kind === 'repliesList' && (rawNode as any).itemRoot != null) {
+		if (
+			(kind === 'repliesList' || kind === 'repliesListReplies') &&
+			(rawNode as any).itemRoot != null
+		) {
 			analyzeRenderTreeNode(
 				(rawNode as any).itemRoot,
 				`${path}.itemRoot`,
@@ -435,11 +678,23 @@ function analyzeRenderTreeNode(
 				assetsById,
 			)
 		}
-		if (kind !== 'repliesList' && (rawNode as any).rootRoot != null) {
-			push(`${path}.rootRoot is ignored unless kind='repliesList'.`)
+		if (
+			kind !== 'repliesList' &&
+			kind !== 'repliesListRootPost' &&
+			(rawNode as any).rootRoot != null
+		) {
+			push(
+				`${path}.rootRoot is ignored unless kind='repliesList' or kind='repliesListRootPost'.`,
+			)
 		}
-		if (kind !== 'repliesList' && (rawNode as any).itemRoot != null) {
-			push(`${path}.itemRoot is ignored unless kind='repliesList'.`)
+		if (
+			kind !== 'repliesList' &&
+			kind !== 'repliesListReplies' &&
+			(rawNode as any).itemRoot != null
+		) {
+			push(
+				`${path}.itemRoot is ignored unless kind='repliesList' or kind='repliesListReplies'.`,
+			)
 		}
 		return
 	}
@@ -486,7 +741,9 @@ function analyzeRenderTreeNode(
 			bind !== 'root.author.avatarAssetId' &&
 			bind !== 'post.author.avatarAssetId'
 		) {
-			push(`${path}.bind: must be 'root.author.avatarAssetId' or 'post.author.avatarAssetId'; ignored.`)
+			push(
+				`${path}.bind: must be 'root.author.avatarAssetId' or 'post.author.avatarAssetId'; ignored.`,
+			)
 		}
 		return
 	}
@@ -495,7 +752,9 @@ function analyzeRenderTreeNode(
 		warnUnknownKeys(new Set(['type', 'bind', 'gap', 'maxHeight']))
 		const bind = (rawNode as any).bind
 		if (bind !== 'root.contentBlocks' && bind !== 'post.contentBlocks') {
-			push(`${path}.bind: must be 'root.contentBlocks' or 'post.contentBlocks'; ignored.`)
+			push(
+				`${path}.bind: must be 'root.contentBlocks' or 'post.contentBlocks'; ignored.`,
+			)
 		}
 		return
 	}
@@ -520,21 +779,31 @@ function analyzeRenderTreeNode(
 		}
 		const id = assetId.trim()
 		if (id === IMAGE_ASSET_ID_PLACEHOLDER) {
-			push(`${path}.assetId: replace ${IMAGE_ASSET_ID_PLACEHOLDER} with a real image asset id.`)
+			push(
+				`${path}.assetId: replace ${IMAGE_ASSET_ID_PLACEHOLDER} with a real image asset id.`,
+			)
 		} else if (
 			id.startsWith('ext:') ||
 			id.startsWith('http://') ||
 			id.startsWith('https://')
 		) {
-			push(`${path}.assetId: external URLs are not allowed; use ingest to create a thread asset ID.`)
+			push(
+				`${path}.assetId: external URLs are not allowed; use ingest to create a thread asset ID.`,
+			)
 		} else if (assetsById) {
 			const asset = assetsById.get(id)
 			if (!asset) {
-				push(`${path}.assetId: not found in this thread's assets list (may need ingest).`)
+				push(
+					`${path}.assetId: not found in this thread's assets list (may need ingest).`,
+				)
 			} else if (asset?.status && asset.status !== 'ready') {
-				push(`${path}.assetId: asset status=${String(asset.status)} (may not be usable yet).`)
+				push(
+					`${path}.assetId: asset status=${String(asset.status)} (may not be usable yet).`,
+				)
 			} else if (!asset?.storageKey) {
-				push(`${path}.assetId: asset has no storageKey (may not be usable yet).`)
+				push(
+					`${path}.assetId: asset has no storageKey (may not be usable yet).`,
+				)
 			}
 		}
 		const fit = (rawNode as any).fit
@@ -564,21 +833,31 @@ function analyzeRenderTreeNode(
 		}
 		const id = assetId.trim()
 		if (id === VIDEO_ASSET_ID_PLACEHOLDER) {
-			push(`${path}.assetId: replace ${VIDEO_ASSET_ID_PLACEHOLDER} with a real video asset id.`)
+			push(
+				`${path}.assetId: replace ${VIDEO_ASSET_ID_PLACEHOLDER} with a real video asset id.`,
+			)
 		} else if (
 			id.startsWith('ext:') ||
 			id.startsWith('http://') ||
 			id.startsWith('https://')
 		) {
-			push(`${path}.assetId: external URLs are not allowed; use ingest to create a thread asset ID.`)
+			push(
+				`${path}.assetId: external URLs are not allowed; use ingest to create a thread asset ID.`,
+			)
 		} else if (assetsById) {
 			const asset = assetsById.get(id)
 			if (!asset) {
-				push(`${path}.assetId: not found in this thread's assets list (may need ingest).`)
+				push(
+					`${path}.assetId: not found in this thread's assets list (may need ingest).`,
+				)
 			} else if (asset?.status && asset.status !== 'ready') {
-				push(`${path}.assetId: asset status=${String(asset.status)} (may not be usable yet).`)
+				push(
+					`${path}.assetId: asset status=${String(asset.status)} (may not be usable yet).`,
+				)
 			} else if (!asset?.storageKey) {
-				push(`${path}.assetId: asset has no storageKey (may not be usable yet).`)
+				push(
+					`${path}.assetId: asset has no storageKey (may not be usable yet).`,
+				)
 			}
 		}
 		const fit = (rawNode as any).fit
@@ -609,7 +888,15 @@ function analyzeRenderTreeNode(
 
 	if (type === 'Divider') {
 		warnUnknownKeys(
-			new Set(['type', 'axis', 'thickness', 'length', 'color', 'opacity', 'margin']),
+			new Set([
+				'type',
+				'axis',
+				'thickness',
+				'length',
+				'color',
+				'opacity',
+				'margin',
+			]),
 		)
 		const axis = (rawNode as any).axis
 		if (axis != null && axis !== 'x' && axis !== 'y') {
@@ -626,6 +913,94 @@ function analyzeRenderTreeNode(
 		return
 	}
 
+	if (type === 'Grid') {
+		warnUnknownKeys(
+			new Set([
+				'type',
+				'columns',
+				'align',
+				'justify',
+				'gap',
+				'gapX',
+				'gapY',
+				'padding',
+				'paddingX',
+				'paddingY',
+				'width',
+				'height',
+				'maxWidth',
+				'maxHeight',
+				'children',
+			]),
+		)
+		warnSizeProps()
+		warnSpaceProps(
+			['gap', 'gapX', 'gapY', 'padding', 'paddingX', 'paddingY'],
+			0,
+			240,
+		)
+		const align = (rawNode as any).align
+		if (
+			align != null &&
+			align !== 'start' &&
+			align !== 'center' &&
+			align !== 'end' &&
+			align !== 'stretch'
+		) {
+			push(
+				`${path}.align: must be 'start' | 'center' | 'end' | 'stretch'; ignored.`,
+			)
+		}
+		const justify = (rawNode as any).justify
+		if (
+			justify != null &&
+			justify !== 'start' &&
+			justify !== 'center' &&
+			justify !== 'end' &&
+			justify !== 'stretch'
+		) {
+			push(
+				`${path}.justify: must be 'start' | 'center' | 'end' | 'stretch'; ignored.`,
+			)
+		}
+		const children = (rawNode as any).children
+		if (children != null && !Array.isArray(children)) {
+			push(`${path}.children: must be an array; ignored.`)
+			return
+		}
+		const list = Array.isArray(children) ? children : []
+		for (let i = 0; i < list.length; i += 1) {
+			analyzeRenderTreeNode(
+				list[i],
+				`${path}.children[${i}]`,
+				state,
+				depth + 1,
+				assetsById,
+			)
+		}
+		return
+	}
+
+	if (type === 'Absolute') {
+		warnUnknownKeys(new Set(['type', 'x', 'y', 'width', 'height', 'children']))
+		const children = (rawNode as any).children
+		if (children != null && !Array.isArray(children)) {
+			push(`${path}.children: must be an array; ignored.`)
+			return
+		}
+		const list = Array.isArray(children) ? children : []
+		for (let i = 0; i < list.length; i += 1) {
+			analyzeRenderTreeNode(
+				list[i],
+				`${path}.children[${i}]`,
+				state,
+				depth + 1,
+				assetsById,
+			)
+		}
+		return
+	}
+
 	if (type === 'Stack') {
 		warnUnknownKeys(
 			new Set([
@@ -634,9 +1009,23 @@ function analyzeRenderTreeNode(
 				'align',
 				'justify',
 				'gap',
+				'gapX',
+				'gapY',
 				'padding',
+				'paddingX',
+				'paddingY',
+				'width',
+				'height',
+				'maxWidth',
+				'maxHeight',
 				'children',
 			]),
+		)
+		warnSizeProps()
+		warnSpaceProps(
+			['gap', 'gapX', 'gapY', 'padding', 'paddingX', 'paddingY'],
+			0,
+			240,
 		)
 		const children = (rawNode as any).children
 		if (children != null && !Array.isArray(children)) {
@@ -661,12 +1050,20 @@ function analyzeRenderTreeNode(
 			new Set([
 				'type',
 				'padding',
+				'paddingX',
+				'paddingY',
 				'border',
 				'background',
 				'radius',
+				'width',
+				'height',
+				'maxWidth',
+				'maxHeight',
 				'children',
 			]),
 		)
+		warnSizeProps()
+		warnSpaceProps(['padding', 'paddingX', 'paddingY'], 0, 240)
 		const children = (rawNode as any).children
 		if (children != null && !Array.isArray(children)) {
 			push(`${path}.children: must be an array; ignored.`)
@@ -713,7 +1110,9 @@ function analyzeThreadTemplateConfig(
 		if (!allowedTop.has(k)) issues.push(`Ignored field: ${k}`)
 	}
 
-	if ('version' in raw && raw.version !== 1) {
+	if (!('version' in raw)) {
+		issues.push('Missing required field: version (must be 1).')
+	} else if (raw.version !== 1) {
 		issues.push('version must be 1; other values are ignored.')
 	}
 
@@ -1243,11 +1642,18 @@ function ThreadDetailRoute() {
 	const [templateIdDraft, setTemplateIdDraft] =
 		React.useState<string>(TEMPLATE_DEFAULT)
 	const [templateConfigText, setTemplateConfigText] = React.useState<string>('')
-	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(null)
+	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(
+		null,
+	)
 
-	function suggestMediaHeight(kind: 'image' | 'video', width: unknown, height: unknown) {
+	function suggestMediaHeight(
+		kind: 'image' | 'video',
+		width: unknown,
+		height: unknown,
+	) {
 		const w = typeof width === 'number' && Number.isFinite(width) ? width : null
-		const h = typeof height === 'number' && Number.isFinite(height) ? height : null
+		const h =
+			typeof height === 'number' && Number.isFinite(height) ? height : null
 		if (!w || !h) return kind === 'video' ? 360 : 320
 		const ratio = w / h
 		if (kind === 'video') {
@@ -1389,6 +1795,14 @@ function ThreadDetailRoute() {
 				: templateConfigParsed.value === null
 					? null
 					: templateConfigParsed.value
+
+		if (
+			templateConfig != null &&
+			(!isPlainObject(templateConfig) || (templateConfig as any).version !== 1)
+		) {
+			toast.error('templateConfig must include "version": 1 (v1 only)')
+			return
+		}
 
 		await setTemplateMutation.mutateAsync({
 			threadId: thread.id,
@@ -1565,7 +1979,9 @@ function ThreadDetailRoute() {
 													const ka = String(a?.kind ?? '')
 													const kb = String(b?.kind ?? '')
 													if (ka !== kb) return ka.localeCompare(kb)
-													return String(a?.id ?? '').localeCompare(String(b?.id ?? ''))
+													return String(a?.id ?? '').localeCompare(
+														String(b?.id ?? ''),
+													)
 												})
 												.map((a: any) => (
 													<div
@@ -1593,9 +2009,13 @@ function ThreadDetailRoute() {
 																	const id = String(a.id)
 																	void navigator.clipboard
 																		.writeText(id)
-																		.then(() => toast.message('Copied asset id'))
+																		.then(() =>
+																			toast.message('Copied asset id'),
+																		)
 																		.catch(() =>
-																			toast.message('Copy failed (clipboard not available)'),
+																			toast.message(
+																				'Copy failed (clipboard not available)',
+																			),
 																		)
 
 																	const kind =
@@ -1619,7 +2039,9 @@ function ThreadDetailRoute() {
 																	className="rounded-none font-mono text-[10px] uppercase"
 																	onClick={() => {
 																		const id = String(a.id)
-																		if (replaceAssetIdPlaceholder(id, 'image')) {
+																		if (
+																			replaceAssetIdPlaceholder(id, 'image')
+																		) {
 																			toast.message('Replaced placeholder')
 																			return
 																		}
@@ -1651,7 +2073,9 @@ function ThreadDetailRoute() {
 																	className="rounded-none font-mono text-[10px] uppercase"
 																	onClick={() => {
 																		const id = String(a.id)
-																		if (replaceAssetIdPlaceholder(id, 'video')) {
+																		if (
+																			replaceAssetIdPlaceholder(id, 'video')
+																		) {
 																			toast.message('Replaced placeholder')
 																			return
 																		}
@@ -1740,6 +2164,49 @@ function ThreadDetailRoute() {
 									}}
 								>
 									Insert Cover Example
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => {
+										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
+										setTemplateConfigText(
+											toPrettyJson(buildRepliesListSplitLayoutExample()),
+										)
+										toast.message(
+											'Inserted example config (repliesList split layout)',
+										)
+									}}
+								>
+									Insert Replies Layout
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => {
+										insertTemplateText(toPrettyJson(buildGridSnippetExample()))
+										toast.message('Inserted snippet (Grid)')
+									}}
+								>
+									Insert Grid Snippet
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => {
+										insertTemplateText(
+											toPrettyJson(buildAbsoluteSnippetExample()),
+										)
+										toast.message('Inserted snippet (Absolute)')
+									}}
+								>
+									Insert Absolute Snippet
 								</Button>
 								<Button
 									type="button"

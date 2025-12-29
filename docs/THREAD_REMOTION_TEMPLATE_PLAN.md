@@ -205,7 +205,7 @@ V2（可视化编辑器）：
 
 ### RenderTree v1 节点
 
-- 布局/容器：`Stack`、`Box`
+- 布局/容器：`Stack`、`Grid`、`Absolute`、`Box`
 - 文本：`Text`
 - 头像：`Avatar`
 - 内容：`ContentBlocks`
@@ -213,6 +213,8 @@ V2（可视化编辑器）：
 - 辅助：`Spacer`、`Divider`
 - 内置：`Builtin(cover)`、`Builtin(repliesList)`
 	- `repliesList` 支持 `rootRoot`（左侧 ROOT）与 `itemRoot`（右侧每条 reply）做自定义布局
+	- 默认 `cover` 已使用纯 RenderTree；`Builtin(cover)` 仍可用于自定义/回退
+	- `repliesList` 外层可拆分为 `Builtin(repliesListHeader)` + `Builtin(repliesListRootPost)` + `Builtin(repliesListReplies)`，用于自定义 header/左右栏容器布局
 
 ### Web 编辑体验（当前）
 
@@ -240,13 +242,14 @@ V2（可视化编辑器）：
 - M0：预览与云渲染使用 thread 粒度 template 设置；snapshot 写入 resolved/hash/version
 - M1：`thread.setTemplate` + 线程详情页 JSON 编辑/校验/保存 + 预览实时生效
 - M2（部分）：RenderTree v1（含媒体/辅助节点）+ `post.*` 绑定 + `repliesList.rootRoot/itemRoot` + 资产入库/安全限制 + 示例/插入器 + 基础测试
+	- 默认 `cover` 已切到纯 RenderTree（仍保留 `Builtin(cover)` 作为可选回退/自定义）
+	- 线程详情页增加：`Insert Replies Layout`（插入拆分的 repliesList 布局片段）
 
 ### 未完成（明天可以做）
 
 - M2 收口
-	- 增加更丰富节点：`Grid`/绝对定位/对齐细节/更多样式能力（按需求逐步加）
+	- 增加更丰富节点：绝对定位/对齐细节/更多样式能力（按需求逐步加）
 	- 将更多“内置布局”迁移到纯 RenderTree（减少 Builtin 依赖；时间轴仍可保留在 Builtin）
-	- 兼容迁移策略：识别历史 `templateConfig`（旧结构）并平滑迁移/回退
 - M3（产品化）
 	- 最小可视化编辑器（节点树 + 属性面板 + 实时预览），保留 JSON 高级模式
 	- 模板库（跨 thread 复用、版本化、回滚、共享）
@@ -254,6 +257,6 @@ V2（可视化编辑器）：
 
 ## 风险与注意事项
 
-- 兼容性：历史 `templateConfig` 可能是旧结构（当前 CommentsTemplateConfig 等），必须可识别并迁移，且尽量不改变既有视觉结果。
+- 兼容性：当前策略为 v1-only，不兼容旧 `templateConfig`；升级时需要先全清 threads 的模板字段（见 `docs/THREAD_REMOTION_TEMPLATE_CLEAR.md`）。
 - 安全：严格白名单字段；不允许任意 HTML/JS；资源引用必须受控（禁止生产路径直链）。
 - 一致性：Player 预览与 cloud render 必须使用相同的 resolved config；snapshot 需固化 resolved + hash + compileVersion，避免未来代码变更导致回放不同。
