@@ -20,4 +20,3 @@ function AgentRoute() {
 		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground" />
 	)
 }
-

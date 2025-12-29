@@ -86,7 +86,9 @@ function ThreadsNewRoute() {
 										const text = await file.text()
 										setJsonText(text)
 										setFileName(file.name)
-										toast.success(t('toasts.fileLoaded', { fileName: file.name }))
+										toast.success(
+											t('toasts.fileLoaded', { fileName: file.name }),
+										)
 									} catch (error) {
 										toast.error(
 											error instanceof Error

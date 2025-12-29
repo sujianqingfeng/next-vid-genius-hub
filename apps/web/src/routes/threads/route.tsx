@@ -17,4 +17,3 @@ export const Route = createFileRoute('/threads')({
 function ThreadsLayoutRoute() {
 	return <Outlet />
 }
-

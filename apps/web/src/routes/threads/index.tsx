@@ -33,7 +33,9 @@ function ThreadsIndexRoute() {
 		},
 	)
 
-	const deletingId = deleteMutation.isPending ? deleteMutation.variables?.id : null
+	const deletingId = deleteMutation.isPending
+		? deleteMutation.variables?.id
+		: null
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
@@ -48,7 +50,10 @@ function ThreadsIndexRoute() {
 								{t('header.title')}
 							</h1>
 						</div>
-						<Button asChild className="rounded-none font-mono text-xs uppercase">
+						<Button
+							asChild
+							className="rounded-none font-mono text-xs uppercase"
+						>
 							<Link to="/threads/new">
 								<Plus className="h-4 w-4" />
 								{t('actions.new')}
@@ -105,7 +110,9 @@ function ThreadsIndexRoute() {
 							<CardContent className="text-xs text-muted-foreground font-mono">
 								<div className="flex flex-wrap gap-3">
 									<span>source={thread.source}</span>
-									{thread.sourceUrl ? <span>url={thread.sourceUrl}</span> : null}
+									{thread.sourceUrl ? (
+										<span>url={thread.sourceUrl}</span>
+									) : null}
 								</div>
 							</CardContent>
 						</Card>

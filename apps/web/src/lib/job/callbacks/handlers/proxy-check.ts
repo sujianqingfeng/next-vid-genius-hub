@@ -45,11 +45,18 @@ export async function handleProxyCheckCallback(input: {
 			: undefined
 
 	if (!proxyId) {
-		logger.warn('api', `[cf-callback.proxy-check] missing proxyId job=${payload.jobId}`)
-		return Response.json({ ok: false, error: 'missing proxyId' }, { status: 400 })
+		logger.warn(
+			'api',
+			`[cf-callback.proxy-check] missing proxyId job=${payload.jobId}`,
+		)
+		return Response.json(
+			{ ok: false, error: 'missing proxyId' },
+			{ status: 400 },
+		)
 	}
 
-	const status = payload.status === 'completed' && okFlag !== false ? 'success' : 'failed'
+	const status =
+		payload.status === 'completed' && okFlag !== false ? 'success' : 'failed'
 
 	await db
 		.update(schema.proxies)

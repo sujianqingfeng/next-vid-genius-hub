@@ -39,10 +39,16 @@ const config = defineConfig(({ mode }) => {
 	return {
 		base,
 		server: {
-			allowedHosts: ['code.temp-drop-files.store','vid-dev.temp-drop-files.store'],
+			allowedHosts: [
+				'code.temp-drop-files.store',
+				'vid-dev.temp-drop-files.store',
+			],
 		},
 		preview: {
-			allowedHosts: ['code.temp-drop-files.store','vid-dev.temp-drop-files.store'],
+			allowedHosts: [
+				'code.temp-drop-files.store',
+				'vid-dev.temp-drop-files.store',
+			],
 		},
 		optimizeDeps: {
 			// TanStack Start provides virtual entry modules via the Vite plugin.

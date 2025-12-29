@@ -128,44 +128,44 @@ export const startCloudSync = os
 		const proxyPayload = toProxyJobPayload(proxyRecord)
 
 		const { taskId, jobId } = await enqueueCloudTask({
-				db,
-				userId,
-				kind: TASK_KINDS.CHANNEL_SYNC,
-				engine: 'media-downloader',
-				targetType: 'channel',
-				targetId: channel.id,
-				mediaId: channel.id,
-				purpose: TASK_KINDS.CHANNEL_SYNC,
-				title: channel.title || undefined,
-				payload: {
-					limit: input.limit,
-					proxyId: effectiveProxyId ?? null,
-					channelUrlOrId,
-				},
-				options: {
-					task: 'channel-list',
-					source: MEDIA_SOURCES.YOUTUBE,
-					channelUrlOrId,
-					limit: input.limit,
-					proxy: proxyPayload,
-				},
-				buildManifest: ({ jobId }): JobManifest => {
-					return {
-						jobId,
-						mediaId: channel.id,
-						purpose: TASK_KINDS.CHANNEL_SYNC,
-						engine: 'media-downloader',
-						createdAt: Date.now(),
-						inputs: {},
-						optionsSnapshot: {
-							task: 'channel-list',
-							source: MEDIA_SOURCES.YOUTUBE,
-							channelUrlOrId,
-							limit: input.limit,
-							proxyId: effectiveProxyId ?? null,
-						},
-					}
-				},
+			db,
+			userId,
+			kind: TASK_KINDS.CHANNEL_SYNC,
+			engine: 'media-downloader',
+			targetType: 'channel',
+			targetId: channel.id,
+			mediaId: channel.id,
+			purpose: TASK_KINDS.CHANNEL_SYNC,
+			title: channel.title || undefined,
+			payload: {
+				limit: input.limit,
+				proxyId: effectiveProxyId ?? null,
+				channelUrlOrId,
+			},
+			options: {
+				task: 'channel-list',
+				source: MEDIA_SOURCES.YOUTUBE,
+				channelUrlOrId,
+				limit: input.limit,
+				proxy: proxyPayload,
+			},
+			buildManifest: ({ jobId }): JobManifest => {
+				return {
+					jobId,
+					mediaId: channel.id,
+					purpose: TASK_KINDS.CHANNEL_SYNC,
+					engine: 'media-downloader',
+					createdAt: Date.now(),
+					inputs: {},
+					optionsSnapshot: {
+						task: 'channel-list',
+						source: MEDIA_SOURCES.YOUTUBE,
+						channelUrlOrId,
+						limit: input.limit,
+						proxyId: effectiveProxyId ?? null,
+					},
+				}
+			},
 		})
 
 		await db

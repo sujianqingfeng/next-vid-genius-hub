@@ -19,14 +19,19 @@ import {
 	ProxyCheckCallbackSchema,
 } from './validate'
 
-export async function handleCfCallbackRequest(request: Request): Promise<Response> {
+export async function handleCfCallbackRequest(
+	request: Request,
+): Promise<Response> {
 	try {
 		const signature = request.headers.get('x-signature') || ''
 		const bodyText = await request.text()
 
 		const secret = JOB_CALLBACK_HMAC_SECRET
 		if (!secret) {
-			logger.error('api', '[cf-callback] JOB_CALLBACK_HMAC_SECRET is not configured')
+			logger.error(
+				'api',
+				'[cf-callback] JOB_CALLBACK_HMAC_SECRET is not configured',
+			)
 			return Response.json({ error: 'server misconfigured' }, { status: 500 })
 		}
 		if (!verifyHmacSHA256(secret, bodyText, signature)) {
@@ -56,7 +61,9 @@ export async function handleCfCallbackRequest(request: Request): Promise<Respons
 		const parsed = payloadSchema.safeParse(raw)
 		if (!parsed.success) {
 			const maybeJobId =
-				typeof (raw as any)?.jobId === 'string' ? String((raw as any).jobId) : ''
+				typeof (raw as any)?.jobId === 'string'
+					? String((raw as any).jobId)
+					: ''
 			const maybeStatus =
 				typeof (raw as any)?.status === 'string'
 					? String((raw as any).status)
@@ -87,8 +94,7 @@ export async function handleCfCallbackRequest(request: Request): Promise<Respons
 							schemaVersion: maybeSchemaVersion,
 							issues: parsed.error.issues,
 						})
-						const msg =
-							'callback payload schema validation failed (v2)'
+						const msg = 'callback payload schema validation failed (v2)'
 						try {
 							await db
 								.update(schema.tasks)
@@ -123,7 +129,11 @@ export async function handleCfCallbackRequest(request: Request): Promise<Respons
 					},
 				})
 			}
-			return Response.json({ ok: false, ignored: true, error: 'invalid payload' })
+			return Response.json({
+				ok: false,
+				ignored: true,
+				error: 'invalid payload',
+			})
 		}
 
 		payload = parsed.data as CallbackPayload

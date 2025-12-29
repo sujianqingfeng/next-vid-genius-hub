@@ -152,7 +152,10 @@ export async function transcribe(input: {
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Failed to start ASR pipeline'
-		logger.warn('transcription', `[asr.start] failed media=${mediaId} ${message}`)
+		logger.warn(
+			'transcription',
+			`[asr.start] failed media=${mediaId} ${message}`,
+		)
 		throw error
 	}
 

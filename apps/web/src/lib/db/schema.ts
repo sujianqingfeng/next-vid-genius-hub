@@ -5,7 +5,11 @@ import {
 	uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 import type { CommentsTemplateConfig } from '@app/remotion-project/types'
-import type { ThreadContentBlock, ThreadPostMetrics, ThreadSource } from '~/lib/thread/types'
+import type {
+	ThreadContentBlock,
+	ThreadPostMetrics,
+	ThreadSource,
+} from '~/lib/thread/types'
 import { createId } from '~/lib/utils/id'
 
 export interface Comment {
@@ -396,10 +400,9 @@ export const threadPosts = sqliteTable(
 			.$defaultFn(() => new Date()),
 	},
 	(table) => ({
-		threadSourcePostIdIdx: uniqueIndex('thread_posts_thread_source_post_id_idx').on(
-			table.threadId,
-			table.sourcePostId,
-		),
+		threadSourcePostIdIdx: uniqueIndex(
+			'thread_posts_thread_source_post_id_idx',
+		).on(table.threadId, table.sourcePostId),
 	}),
 )
 
@@ -409,8 +412,9 @@ export const threadAssets = sqliteTable('thread_assets', {
 		.notNull()
 		.$defaultFn(() => createId()),
 	userId: text('user_id').notNull(),
-	kind: text('kind', { enum: ['image', 'video', 'avatar', 'linkPreview', 'audio'] })
-		.notNull(),
+	kind: text('kind', {
+		enum: ['image', 'video', 'avatar', 'linkPreview', 'audio'],
+	}).notNull(),
 	sourceUrl: text('source_url'),
 	storageKey: text('storage_key'),
 	contentType: text('content_type'),

@@ -146,12 +146,22 @@ export function AdminAiProvidersPage() {
 				</Button>
 			</div>
 
-			<Tabs value={kind} onValueChange={(v) => setKind(v as ProviderKind)} className="space-y-0">
+			<Tabs
+				value={kind}
+				onValueChange={(v) => setKind(v as ProviderKind)}
+				className="space-y-0"
+			>
 				<TabsList className="h-auto w-full justify-start rounded-none bg-transparent p-0 border-b border-border mb-8">
-					<TabsTrigger value="llm" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+					<TabsTrigger
+						value="llm"
+						className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none"
+					>
 						{t('tabs.llm')}
 					</TabsTrigger>
-					<TabsTrigger value="asr" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+					<TabsTrigger
+						value="asr"
+						className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none"
+					>
 						{t('tabs.asr')}
 					</TabsTrigger>
 				</TabsList>
@@ -166,20 +176,31 @@ export function AdminAiProvidersPage() {
 							providers.map((p) => {
 								const meta = (p.metadata ?? {}) as any
 								return (
-									<div key={p.id} className="border border-border bg-card p-6 flex flex-col justify-between group">
+									<div
+										key={p.id}
+										className="border border-border bg-card p-6 flex flex-col justify-between group"
+									>
 										<div className="space-y-4">
 											<div className="flex items-start justify-between border-b border-border pb-3">
 												<div>
-													<div className="font-mono text-xs font-black uppercase tracking-wider">{p.name}</div>
+													<div className="font-mono text-xs font-black uppercase tracking-wider">
+														{p.name}
+													</div>
 													<div className="font-mono text-[10px] text-muted-foreground mt-1 tracking-tighter lowercase">
 														{p.slug} // {p.type}
 													</div>
 												</div>
-												<div className={cn(
-													"px-2 py-0.5 text-[9px] font-bold uppercase border",
-													p.enabled ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
-												)}>
-													{p.enabled ? t('status.enabled') : t('status.disabled')}
+												<div
+													className={cn(
+														'px-2 py-0.5 text-[9px] font-bold uppercase border',
+														p.enabled
+															? 'bg-primary text-primary-foreground border-primary'
+															: 'border-border text-muted-foreground',
+													)}
+												>
+													{p.enabled
+														? t('status.enabled')
+														: t('status.disabled')}
 												</div>
 											</div>
 
@@ -287,14 +308,17 @@ export function AdminAiProvidersPage() {
 				<DialogContent className="rounded-none border-2 border-primary p-0 overflow-hidden max-w-lg">
 					<DialogHeader className="bg-primary p-4 text-primary-foreground">
 						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
-							{editing?.id ? 'EDIT_PROVIDER' : 'ADD_NEW_PROVIDER'} // {kind.toUpperCase()}
+							{editing?.id ? 'EDIT_PROVIDER' : 'ADD_NEW_PROVIDER'} //{' '}
+							{kind.toUpperCase()}
 						</DialogTitle>
 					</DialogHeader>
 					{editing ? (
 						<div className="p-6 space-y-6">
 							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.slug')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										{t('fields.slug')}
+									</Label>
 									<Input
 										value={editing.slug}
 										onChange={(e) =>
@@ -304,7 +328,9 @@ export function AdminAiProvidersPage() {
 									/>
 								</div>
 								<div className="space-y-2">
-									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.name')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										{t('fields.name')}
+									</Label>
 									<Input
 										value={editing.name}
 										onChange={(e) =>
@@ -315,7 +341,9 @@ export function AdminAiProvidersPage() {
 								</div>
 							</div>
 							<div className="space-y-2">
-								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.type')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+									{t('fields.type')}
+								</Label>
 								<Select
 									value={editing.type}
 									onValueChange={(v) =>
@@ -327,7 +355,11 @@ export function AdminAiProvidersPage() {
 									</SelectTrigger>
 									<SelectContent className="rounded-none border-border">
 										{typeOptions.map((tp) => (
-											<SelectItem key={tp} value={tp} className="rounded-none font-mono text-[10px] uppercase tracking-wider">
+											<SelectItem
+												key={tp}
+												value={tp}
+												className="rounded-none font-mono text-[10px] uppercase tracking-wider"
+											>
 												{tp}
 											</SelectItem>
 										))}
@@ -336,7 +368,9 @@ export function AdminAiProvidersPage() {
 							</div>
 							{editing.kind === 'llm' ? (
 								<div className="space-y-2">
-									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.baseUrl')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										{t('fields.baseUrl')}
+									</Label>
 									<Input
 										placeholder="https://api.example.com/v1"
 										value={editing.baseUrl}
@@ -349,7 +383,9 @@ export function AdminAiProvidersPage() {
 							) : null}
 							{editing.kind === 'asr' && editing.type === 'whisper_api' ? (
 								<div className="space-y-2">
-									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.baseUrl')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										{t('fields.baseUrl')}
+									</Label>
 									<Input
 										placeholder="https://vid.temp-drop-files.store"
 										value={editing.baseUrl}
@@ -362,7 +398,9 @@ export function AdminAiProvidersPage() {
 							) : null}
 							{editing.kind === 'asr' && editing.type === 'cloudflare_asr' ? (
 								<div className="space-y-2">
-									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.accountId')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										{t('fields.accountId')}
+									</Label>
 									<Input
 										placeholder="CLOUDFLARE_ID"
 										value={editing.accountId}
@@ -376,12 +414,17 @@ export function AdminAiProvidersPage() {
 							<div className="grid grid-cols-2 gap-4">
 								{editing.kind === 'asr' ? (
 									<div className="space-y-2">
-										<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.maxUploadBytes')}</Label>
+										<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+											{t('fields.maxUploadBytes')}
+										</Label>
 										<Input
 											placeholder="524288000"
 											value={editing.maxUploadBytes}
 											onChange={(e) =>
-												setEditing({ ...editing, maxUploadBytes: e.target.value })
+												setEditing({
+													...editing,
+													maxUploadBytes: e.target.value,
+												})
 											}
 											className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 										/>
@@ -389,7 +432,9 @@ export function AdminAiProvidersPage() {
 								) : null}
 								<div className="space-y-2 flex-1">
 									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-										{editing.kind === 'asr' ? t('fields.apiToken') : t('fields.apiKey')}
+										{editing.kind === 'asr'
+											? t('fields.apiToken')
+											: t('fields.apiKey')}
 									</Label>
 									<Input
 										type="password"
@@ -409,12 +454,18 @@ export function AdminAiProvidersPage() {
 									}
 									className="scale-75 data-[state=checked]:bg-primary"
 								/>
-								<span className="text-[10px] font-bold uppercase tracking-widest">{t('fields.enabled')}</span>
+								<span className="text-[10px] font-bold uppercase tracking-widest">
+									{t('fields.enabled')}
+								</span>
 							</div>
 						</div>
 					) : null}
 					<div className="flex border-t border-border">
-						<Button variant="ghost" onClick={() => setEditing(null)} className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted">
+						<Button
+							variant="ghost"
+							onClick={() => setEditing(null)}
+							className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted"
+						>
 							{t('actions.cancel')}
 						</Button>
 						<Button

@@ -86,7 +86,8 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 						: ''
 				return seq ? t('replay.toast.okWithSeq', { seq }) : t('replay.toast.ok')
 			},
-			errorToast: ({ error }) => (error as Error)?.message || t('replay.toast.fail'),
+			errorToast: ({ error }) =>
+				(error as Error)?.message || t('replay.toast.fail'),
 		},
 	)
 
@@ -139,7 +140,9 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 					className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
 				>
 					<RefreshCcw className="mr-2 h-3 w-3" />
-					{eventsQuery.isFetching ? t('actions.refreshing') : t('actions.refresh')}
+					{eventsQuery.isFetching
+						? t('actions.refreshing')
+						: t('actions.refresh')}
 				</Button>
 			</div>
 
@@ -244,10 +247,7 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 					</div>
 
 					<div className="flex items-center gap-3 md:col-span-2">
-						<Switch
-							checked={replayForce}
-							onCheckedChange={setReplayForce}
-						/>
+						<Switch checked={replayForce} onCheckedChange={setReplayForce} />
 						<Label className="font-mono text-xs">
 							{t('replay.fields.force')}
 						</Label>
@@ -287,13 +287,18 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 							<div className="text-muted-foreground">
 								{t('replay.stats.appNotified')}:{' '}
 								<span className="text-foreground">
-									{String(Boolean((orchestratorQuery.data as any)?.appNotified))}
+									{String(
+										Boolean((orchestratorQuery.data as any)?.appNotified),
+									)}
 								</span>
 							</div>
 							<div className="text-muted-foreground">
 								{t('replay.stats.notifyAttempts')}:{' '}
 								<span className="text-foreground">
-									{String((orchestratorQuery.data as any)?.pendingNotify?.attempt ?? 0)}
+									{String(
+										(orchestratorQuery.data as any)?.pendingNotify?.attempt ??
+											0,
+									)}
 								</span>
 							</div>
 						</div>
@@ -331,9 +336,7 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 											<div className="col-span-2 text-muted-foreground">
 												{toDateLabel(e.createdAt, dateLocale)}
 											</div>
-											<div className="col-span-1">
-												{String(e.source ?? '')}
-											</div>
+											<div className="col-span-1">{String(e.source ?? '')}</div>
 											<div className="col-span-2">{String(e.kind ?? '')}</div>
 											<div className="col-span-3 truncate">
 												{String(e.jobId ?? '')}
@@ -356,10 +359,16 @@ export function AdminJobEventsPage({ jobId, taskId, limit, setSearch }: Props) {
 									<div className="mt-3 grid grid-cols-1 gap-3">
 										<div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-muted-foreground">
 											<div>
-												purpose: <span className="text-foreground">{String(e.purpose ?? '')}</span>
+												purpose:{' '}
+												<span className="text-foreground">
+													{String(e.purpose ?? '')}
+												</span>
 											</div>
 											<div>
-												eventId: <span className="text-foreground">{String(e.eventId ?? '')}</span>
+												eventId:{' '}
+												<span className="text-foreground">
+													{String(e.eventId ?? '')}
+												</span>
 											</div>
 											<div>
 												eventTs:{' '}

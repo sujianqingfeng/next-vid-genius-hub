@@ -148,7 +148,10 @@ export async function enqueueCloudTask(input: {
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Failed to start cloud task'
-		logger.warn('api', `[enqueueCloudTask] failed kind=${input.kind} job=${jobId} ${message}`)
+		logger.warn(
+			'api',
+			`[enqueueCloudTask] failed kind=${input.kind} job=${jobId} ${message}`,
+		)
 		await db
 			.update(schema.tasks)
 			.set({

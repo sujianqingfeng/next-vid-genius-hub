@@ -83,4 +83,3 @@ export type Thread = {
 	createdAt: Date
 	updatedAt: Date
 }
-

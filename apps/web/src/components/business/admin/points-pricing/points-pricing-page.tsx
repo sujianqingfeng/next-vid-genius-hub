@@ -459,7 +459,9 @@ export function AdminPointsPricingPage() {
 				const effective = direct ?? globalDefaultRule
 				table.push({
 					key: `provider:${model.providerId}`,
-					providerLabel: provider ? `${provider.name} (${provider.slug})` : '---',
+					providerLabel: provider
+						? `${provider.name} (${provider.slug})`
+						: '---',
 					modelLabel: t('labels.providerDefault'),
 					provider,
 					modelId: null,
@@ -578,7 +580,9 @@ export function AdminPointsPricingPage() {
 		return (
 			<div className="border border-border bg-card">
 				<div className="flex flex-row items-center justify-between gap-3 p-4 border-b border-border bg-muted/30">
-					<div className="text-xs font-bold uppercase tracking-widest">{t('table.title')}</div>
+					<div className="text-xs font-bold uppercase tracking-widest">
+						{t('table.title')}
+					</div>
 					<Button
 						variant="outline"
 						size="sm"
@@ -596,7 +600,9 @@ export function AdminPointsPricingPage() {
 								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
 									{t('table.provider')}
 								</th>
-								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.model')}</th>
+								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+									{t('table.model')}
+								</th>
 								{showLlmColumns ? (
 									<>
 										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
@@ -617,7 +623,9 @@ export function AdminPointsPricingPage() {
 								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
 									{t('table.updatedAt')}
 								</th>
-								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.status')}</th>
+								<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+									{t('table.status')}
+								</th>
 								<th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 									{t('table.actions')}
 								</th>
@@ -653,7 +661,10 @@ export function AdminPointsPricingPage() {
 										: null
 
 								return (
-									<tr key={row.key} className="hover:bg-muted/30 transition-none group">
+									<tr
+										key={row.key}
+										className="hover:bg-muted/30 transition-none group"
+									>
 										<td className="px-4 py-3 border-r border-border font-mono text-[10px] text-muted-foreground">
 											{row.providerLabel}
 										</td>
@@ -686,11 +697,21 @@ export function AdminPointsPricingPage() {
 											{formatMaybeDate(effective?.updatedAt)}
 										</td>
 										<td className="px-4 py-3 border-r border-border">
-											<div className={cn(
-												"inline-block px-2 py-0.5 text-[9px] font-bold uppercase border",
-												direct ? "bg-primary text-primary-foreground border-primary" : effective ? "border-border text-muted-foreground" : "border-destructive text-destructive"
-											)}>
-												{direct ? t('status.override') : effective ? t('status.inherited') : t('status.missing')}
+											<div
+												className={cn(
+													'inline-block px-2 py-0.5 text-[9px] font-bold uppercase border',
+													direct
+														? 'bg-primary text-primary-foreground border-primary'
+														: effective
+															? 'border-border text-muted-foreground'
+															: 'border-destructive text-destructive',
+												)}
+											>
+												{direct
+													? t('status.override')
+													: effective
+														? t('status.inherited')
+														: t('status.missing')}
 											</div>
 										</td>
 										<td className="px-4 py-3 text-right">
@@ -721,9 +742,7 @@ export function AdminPointsPricingPage() {
 														size="xs"
 														variant="outline"
 														className="rounded-none border-border hover:bg-destructive hover:text-destructive-foreground uppercase text-[9px] font-bold px-2 h-7"
-														onClick={() =>
-															deleteRule.mutate({ id: direct.id })
-														}
+														onClick={() => deleteRule.mutate({ id: direct.id })}
 														disabled={isBusy}
 													>
 														RESET
@@ -748,7 +767,9 @@ export function AdminPointsPricingPage() {
 		return (
 			<div className="border border-border bg-card h-full">
 				<div className="p-4 border-b border-border bg-muted/30">
-					<div className="text-xs font-bold uppercase tracking-widest">{t('preview.title')}</div>
+					<div className="text-xs font-bold uppercase tracking-widest">
+						{t('preview.title')}
+					</div>
 				</div>
 				<div className="p-4 space-y-6">
 					{showModelPicker ? (
@@ -761,11 +782,18 @@ export function AdminPointsPricingPage() {
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent className="rounded-none border-border">
-									<SelectItem value="__default__" className="rounded-none font-mono text-[10px] uppercase tracking-wider">
+									<SelectItem
+										value="__default__"
+										className="rounded-none font-mono text-[10px] uppercase tracking-wider"
+									>
 										{t('labels.defaultModel')}
 									</SelectItem>
 									{modelsSorted.map((m) => (
-										<SelectItem key={m.id} value={m.id} className="rounded-none font-mono text-[10px] uppercase tracking-wider">
+										<SelectItem
+											key={m.id}
+											value={m.id}
+											className="rounded-none font-mono text-[10px] uppercase tracking-wider"
+										>
 											{m.label || m.id}
 										</SelectItem>
 									))}
@@ -828,7 +856,9 @@ export function AdminPointsPricingPage() {
 							PREVIEW_CALCULATION
 						</div>
 						<div className="font-mono text-3xl font-black tabular-nums">
-							{preview.ok ? preview.points.toString().padStart(6, '0') : '000000'}
+							{preview.ok
+								? preview.points.toString().padStart(6, '0')
+								: '000000'}
 						</div>
 						<div className="mt-2 text-[10px] font-mono text-muted-foreground leading-relaxed uppercase break-all border-t border-primary/20 pt-2">
 							{preview.detail}
@@ -855,7 +885,9 @@ export function AdminPointsPricingPage() {
 						Active Rules
 					</div>
 					<div className="font-mono text-xl font-bold">
-						{Number(rulesQuery.data?.total ?? 0).toString().padStart(4, '0')}
+						{Number(rulesQuery.data?.total ?? 0)
+							.toString()
+							.padStart(4, '0')}
 					</div>
 				</div>
 			</div>
@@ -869,13 +901,22 @@ export function AdminPointsPricingPage() {
 				className="space-y-0"
 			>
 				<TabsList className="h-auto w-full justify-start rounded-none bg-transparent p-0 border-b border-border mb-8">
-					<TabsTrigger value="llm" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+					<TabsTrigger
+						value="llm"
+						className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none"
+					>
 						{t('filters.resource.llm')}
 					</TabsTrigger>
-					<TabsTrigger value="asr" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+					<TabsTrigger
+						value="asr"
+						className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none"
+					>
 						{t('filters.resource.asr')}
 					</TabsTrigger>
-					<TabsTrigger value="download" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+					<TabsTrigger
+						value="download"
+						className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none"
+					>
 						{t('filters.resource.download')}
 					</TabsTrigger>
 				</TabsList>
@@ -923,7 +964,9 @@ export function AdminPointsPricingPage() {
 								<>
 									<div className="grid gap-4 sm:grid-cols-2">
 										<div className="space-y-2">
-											<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('form.inputRmbPerMillion')}</Label>
+											<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+												{t('form.inputRmbPerMillion')}
+											</Label>
 											<Input
 												type="number"
 												min={0}
@@ -952,7 +995,9 @@ export function AdminPointsPricingPage() {
 											</p>
 										</div>
 										<div className="space-y-2">
-											<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('form.outputRmbPerMillion')}</Label>
+											<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+												{t('form.outputRmbPerMillion')}
+											</Label>
 											<Input
 												type="number"
 												min={0}
@@ -987,7 +1032,9 @@ export function AdminPointsPricingPage() {
 								</>
 							) : (
 								<div className="space-y-2">
-									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('form.pointsPerMinute')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										{t('form.pointsPerMinute')}
+									</Label>
 									<Input
 										type="number"
 										min={0}
@@ -1008,7 +1055,9 @@ export function AdminPointsPricingPage() {
 							)}
 
 							<div className="space-y-2">
-								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('form.minCharge')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+									{t('form.minCharge')}
+								</Label>
 								<Input
 									type="number"
 									min={0}
@@ -1048,7 +1097,11 @@ export function AdminPointsPricingPage() {
 						>
 							{t('form.cancel')}
 						</Button>
-						<Button onClick={handleSave} disabled={isBusy} className="flex-1 rounded-none h-12 bg-primary text-primary-foreground uppercase text-xs font-bold tracking-widest hover:bg-primary/90">
+						<Button
+							onClick={handleSave}
+							disabled={isBusy}
+							className="flex-1 rounded-none h-12 bg-primary text-primary-foreground uppercase text-xs font-bold tracking-widest hover:bg-primary/90"
+						>
 							{t('form.save')}
 						</Button>
 					</div>

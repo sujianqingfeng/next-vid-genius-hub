@@ -7,4 +7,3 @@ export const Route = createFileRoute('/threads/$id')({
 function ThreadDetailLayoutRoute() {
 	return <Outlet />
 }
-

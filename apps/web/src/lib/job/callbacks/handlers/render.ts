@@ -40,11 +40,16 @@ export async function handleRenderCallback(input: {
 	} else if (payload.status === 'failed' || payload.status === 'canceled') {
 		const errorMessage =
 			payload.error ||
-			(payload.status === 'failed' ? 'Cloud render failed' : 'Cloud render canceled')
+			(payload.status === 'failed'
+				? 'Cloud render failed'
+				: 'Cloud render canceled')
 		const updates: Record<string, unknown> = {
 			downloadError: `[${payload.engine}] ${errorMessage}`,
 		}
-		await db.update(schema.media).set(updates).where(eq(schema.media.id, media.id))
+		await db
+			.update(schema.media)
+			.set(updates)
+			.where(eq(schema.media.id, media.id))
 		logger.warn(
 			'api',
 			`[cf-callback] render ${payload.status} job=${payload.jobId} media=${payload.mediaId} engine=${payload.engine} error=${errorMessage}`,

@@ -172,13 +172,13 @@ export function ChannelsPage() {
 				})
 			},
 		}),
-			{
-				errorToast: ({ error }) =>
-					error instanceof Error
-						? error.message
-						: t('deleteError', { message: tCommon('fallback.unknown') }),
-			},
-		)
+		{
+			errorToast: ({ error }) =>
+				error instanceof Error
+					? error.message
+					: t('deleteError', { message: tCommon('fallback.unknown') }),
+		},
+	)
 
 	const deleteMutation = useEnhancedMutation(
 		queryOrpc.channel.deleteChannel.mutationOptions({
@@ -189,14 +189,16 @@ export function ChannelsPage() {
 				toast.success(t('deleteSuccess'))
 			},
 		}),
-			{
-				errorToast: ({ error }) =>
-					t('deleteError', {
-						message:
-							error instanceof Error ? error.message : tCommon('fallback.unknown'),
-					}),
-			},
-		)
+		{
+			errorToast: ({ error }) =>
+				t('deleteError', {
+					message:
+						error instanceof Error
+							? error.message
+							: tCommon('fallback.unknown'),
+				}),
+		},
+	)
 
 	const startSyncMutation = useEnhancedMutation(
 		queryOrpc.channel.startCloudSync.mutationOptions({
@@ -229,15 +231,17 @@ export function ChannelsPage() {
 				}))
 			},
 		}),
-			{
-				successToast: t('actions.translateSuccess'),
-				errorToast: ({ error }) =>
-					t('actions.translateError', {
-						message:
-							error instanceof Error ? error.message : tCommon('fallback.unknown'),
-					}),
-			},
-		)
+		{
+			successToast: t('actions.translateSuccess'),
+			errorToast: ({ error }) =>
+				t('actions.translateError', {
+					message:
+						error instanceof Error
+							? error.message
+							: tCommon('fallback.unknown'),
+				}),
+		},
+	)
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
@@ -246,14 +250,14 @@ export function ChannelsPage() {
 				<div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="space-y-1">
-								<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-									<span className="flex items-center gap-1">
-										<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-										{t('ui.breadcrumb.system')}
-									</span>
-									<span>/</span>
-									<span>{t('ui.breadcrumb.section')}</span>
-								</div>
+							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+								<span className="flex items-center gap-1">
+									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+									{t('ui.breadcrumb.system')}
+								</span>
+								<span>/</span>
+								<span>{t('ui.breadcrumb.section')}</span>
+							</div>
 							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
 								{t('title')}
 							</h1>
@@ -373,12 +377,12 @@ export function ChannelsPage() {
 											limit: SYNC_VIDEO_LIMIT,
 											proxyId: sel && sel !== 'none' ? sel : undefined,
 										})
-										}}
-										syncing={startSyncMutation.isPending}
-										onTranslate={() =>
-											translateMutation.mutate({
-												channelId: ch.id,
-												limit: SYNC_VIDEO_LIMIT,
+									}}
+									syncing={startSyncMutation.isPending}
+									onTranslate={() =>
+										translateMutation.mutate({
+											channelId: ch.id,
+											limit: SYNC_VIDEO_LIMIT,
 											model: (selectedModelByChannel[ch.id] ??
 												llmDefaultId) as string,
 										})
@@ -414,12 +418,12 @@ function ChannelCard({
 	onToggleTranslation,
 	onDelete,
 	deleting,
-		onSync,
-		syncing,
-		onTranslate,
-		translating,
-		t,
-		tVideos,
+	onSync,
+	syncing,
+	onTranslate,
+	translating,
+	t,
+	tVideos,
 }: {
 	ch: ChannelRow
 	dateLocale: string
@@ -696,20 +700,20 @@ function ChannelCard({
 							)}
 						</Button>
 
-							{translationAvailable && (
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={onToggleTranslation}
-									className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
-								>
-									{translationVisible ? 'HIDE_TRANSL' : 'SHOW_TRANSL'}
-								</Button>
-							)}
-
+						{translationAvailable && (
 							<Button
 								variant="ghost"
 								size="sm"
+								onClick={onToggleTranslation}
+								className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8"
+							>
+								{translationVisible ? 'HIDE_TRANSL' : 'SHOW_TRANSL'}
+							</Button>
+						)}
+
+						<Button
+							variant="ghost"
+							size="sm"
 							onClick={onDelete}
 							disabled={deleting}
 							className="rounded-none font-mono text-[10px] uppercase tracking-widest h-8 text-destructive ml-auto"

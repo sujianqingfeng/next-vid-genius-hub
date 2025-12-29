@@ -1,10 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/db'
 import { logger } from '~/lib/logger'
-import {
-	chargeAsrUsage,
-	InsufficientPointsError,
-} from '~/lib/points/billing'
+import { chargeAsrUsage, InsufficientPointsError } from '~/lib/points/billing'
 import { persistAsrResultFromBucket } from '~/lib/subtitle/server/asr-result'
 import type { CallbackPayload } from '../types'
 
@@ -48,9 +45,13 @@ export async function handleAsrCallback(input: {
 
 		try {
 			const durationSeconds =
-				typeof media.duration === 'number' && media.duration > 0 ? media.duration : 0
+				typeof media.duration === 'number' && media.duration > 0
+					? media.duration
+					: 0
 			const modelId =
-				typeof payload.metadata?.model === 'string' ? payload.metadata.model : undefined
+				typeof payload.metadata?.model === 'string'
+					? payload.metadata.model
+					: undefined
 			if (durationSeconds > 0 && modelId && media.userId) {
 				await chargeAsrUsage({
 					userId: media.userId,
@@ -94,4 +95,3 @@ export async function handleAsrCallback(input: {
 
 	return Response.json({ ok: true })
 }
-

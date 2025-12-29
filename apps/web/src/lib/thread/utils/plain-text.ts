@@ -18,4 +18,3 @@ export function blocksToPlainText(blocks: ThreadContentBlock[]): string {
 
 	return parts.join('\n\n')
 }
-

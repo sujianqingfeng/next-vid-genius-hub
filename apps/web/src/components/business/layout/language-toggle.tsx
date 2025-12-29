@@ -1,5 +1,10 @@
 import { useCallback } from 'react'
-import { setLocaleCookie, type Locale, useLocale, useTranslations } from '~/lib/i18n'
+import {
+	setLocaleCookie,
+	type Locale,
+	useLocale,
+	useTranslations,
+} from '~/lib/i18n'
 import { cn } from '~/lib/utils'
 
 interface LanguageToggleProps {

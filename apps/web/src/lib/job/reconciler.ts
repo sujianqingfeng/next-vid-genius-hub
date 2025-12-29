@@ -143,7 +143,8 @@ export async function runScheduledTaskReconciler(opts?: {
 				}
 
 				const progressPct =
-					typeof status.progress === 'number' && Number.isFinite(status.progress)
+					typeof status.progress === 'number' &&
+					Number.isFinite(status.progress)
 						? Math.round(
 								Math.max(0, Math.min(1, status.progress as number)) * 100,
 							)
@@ -208,7 +209,6 @@ export async function runScheduledTaskReconciler(opts?: {
 						progress: status.progress ?? null,
 					},
 				})
-
 			} catch (e) {
 				failures += 1
 				const msg = e instanceof Error ? e.message : String(e)
@@ -227,7 +227,10 @@ export async function runScheduledTaskReconciler(opts?: {
 						payload: { runId },
 					})
 				} catch {}
-				logger.warn('api', `[reconciler] run=${runId} job=${jobId} task=${task.id} ${msg}`)
+				logger.warn(
+					'api',
+					`[reconciler] run=${runId} job=${jobId} task=${task.id} ${msg}`,
+				)
 			}
 		}
 	} catch (e) {

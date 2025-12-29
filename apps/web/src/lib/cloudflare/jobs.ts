@@ -62,7 +62,12 @@ export async function replayAppCallback(input: {
 	jobId: string
 	reason?: string | null
 	force?: boolean
-}): Promise<{ ok: boolean; jobId: string; eventSeq?: number; eventId?: string }> {
+}): Promise<{
+	ok: boolean
+	jobId: string
+	eventSeq?: number
+	eventId?: string
+}> {
 	const base = requireOrchestratorUrl()
 	const url = `${base.replace(/\/$/, '')}/debug/replay-app-callback`
 	const secret = requireJobCallbackSecret()

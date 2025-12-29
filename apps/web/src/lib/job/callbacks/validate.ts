@@ -85,5 +85,7 @@ export const OrchestratorCallbackV2Schema = OrchestratorCallbackSchema.refine(
 export function isProxyCheckPayload(raw: unknown): boolean {
 	if (!raw || typeof raw !== 'object') return false
 	const meta = (raw as any).metadata
-	return Boolean(meta && typeof meta === 'object' && (meta as any).kind === 'proxy-check')
+	return Boolean(
+		meta && typeof meta === 'object' && (meta as any).kind === 'proxy-check',
+	)
 }

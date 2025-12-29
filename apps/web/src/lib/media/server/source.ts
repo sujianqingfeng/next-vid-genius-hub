@@ -98,7 +98,10 @@ export async function handleMediaSourceRequest(
 				defaultCacheSeconds: 60,
 			})
 			if (proxied) {
-				logger.info('api', `[source] subtitles via orchestrator media=${mediaId}`)
+				logger.info(
+					'api',
+					`[source] subtitles via orchestrator media=${mediaId}`,
+				)
 				return proxied
 			}
 

@@ -95,10 +95,7 @@ export async function handleDownloadCallback(input: {
 		`[cf-callback.download] start job=${payload.jobId} media=${payload.mediaId} status=${payload.status}`,
 	)
 
-	if (
-		media.downloadJobId &&
-		media.downloadJobId !== payload.jobId
-	) {
+	if (media.downloadJobId && media.downloadJobId !== payload.jobId) {
 		logger.warn(
 			'api',
 			`[cf-callback.download] ignored stale callback job=${payload.jobId} (current=${media.downloadJobId}) media=${payload.mediaId} status=${payload.status}`,
@@ -113,7 +110,8 @@ export async function handleDownloadCallback(input: {
 		key?: string | null
 		directUrl?: string | null
 	}): Promise<RemoteProbe> {
-		const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+		const sleep = (ms: number) =>
+			new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 		const parseSizeBytes = (res: Response): number | undefined => {
 			const contentRange = res.headers.get('content-range')
@@ -224,9 +222,7 @@ export async function handleDownloadCallback(input: {
 	const rawVideoKey = payload.outputs?.video?.key ?? null
 	const resolvedVideoKey = rawVideoKey ?? null
 	const audioProcessedKey =
-		payload.outputs?.audioProcessed?.key ??
-		payload.outputs?.audio?.key ??
-		null
+		payload.outputs?.audioProcessed?.key ?? payload.outputs?.audio?.key ?? null
 	const audioSourceKey = payload.outputs?.audioSource?.key ?? null
 	const metadataKey = payload.outputs?.metadata?.key ?? null
 	const videoUrl = payload.outputs?.video?.url ?? null
@@ -282,8 +278,10 @@ export async function handleDownloadCallback(input: {
 		return
 	}
 
-	const shouldProbeVideoForSize = typeof payload.metadata?.videoBytes !== 'number'
-	const shouldProbeAudioForSize = typeof payload.metadata?.audioBytes !== 'number'
+	const shouldProbeVideoForSize =
+		typeof payload.metadata?.videoBytes !== 'number'
+	const shouldProbeAudioForSize =
+		typeof payload.metadata?.audioBytes !== 'number'
 	const shouldProbeMetadataForSummary =
 		!payload.metadata?.title ||
 		!payload.metadata?.author ||
@@ -345,7 +343,8 @@ export async function handleDownloadCallback(input: {
 				downloadCompletedAt: null,
 				remoteVideoKey: resolvedVideoKey ?? media.remoteVideoKey ?? null,
 				remoteAudioProcessedKey: null,
-				remoteAudioSourceKey: audioSourceKey ?? media.remoteAudioSourceKey ?? null,
+				remoteAudioSourceKey:
+					audioSourceKey ?? media.remoteAudioSourceKey ?? null,
 				remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
 			})
 			.where(where)
@@ -426,7 +425,8 @@ export async function handleDownloadCallback(input: {
 		downloadJobId: payload.jobId,
 		downloadCompletedAt: new Date(),
 		remoteVideoKey: resolvedVideoKey ?? media.remoteVideoKey ?? null,
-		remoteAudioProcessedKey: audioProcessedKey ?? media.remoteAudioProcessedKey ?? null,
+		remoteAudioProcessedKey:
+			audioProcessedKey ?? media.remoteAudioProcessedKey ?? null,
 		remoteAudioSourceKey: audioSourceKey ?? media.remoteAudioSourceKey ?? null,
 		remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
 	}
@@ -446,7 +446,8 @@ export async function handleDownloadCallback(input: {
 	if (thumbnail) updates.thumbnail = thumbnail
 	if (viewCount !== undefined) updates.viewCount = viewCount
 	if (likeCount !== undefined) updates.likeCount = likeCount
-	if (metadataFromPayload?.quality) updates.quality = metadataFromPayload.quality
+	if (metadataFromPayload?.quality)
+		updates.quality = metadataFromPayload.quality
 	if (metadataFromPayload?.source) updates.source = metadataFromPayload.source
 
 	const videoBytes =

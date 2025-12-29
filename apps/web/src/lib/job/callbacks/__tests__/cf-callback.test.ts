@@ -55,7 +55,10 @@ describe('handleCfCallbackRequest', () => {
 		}
 
 		const bodyText = JSON.stringify(payload)
-		const signature = signHmacSHA256(process.env.JOB_CALLBACK_HMAC_SECRET, bodyText)
+		const signature = signHmacSHA256(
+			process.env.JOB_CALLBACK_HMAC_SECRET,
+			bodyText,
+		)
 
 		const { handleCfCallbackRequest } = await import('../cf-callback')
 		const res = await handleCfCallbackRequest(
@@ -92,7 +95,10 @@ describe('handleCfCallbackRequest', () => {
 		}
 
 		const bodyText = JSON.stringify(payload)
-		const signature = signHmacSHA256(process.env.JOB_CALLBACK_HMAC_SECRET, bodyText)
+		const signature = signHmacSHA256(
+			process.env.JOB_CALLBACK_HMAC_SECRET,
+			bodyText,
+		)
 
 		const { handleCfCallbackRequest } = await import('../cf-callback')
 		const { dispatchCfCallback } = await import('../router')
@@ -119,7 +125,10 @@ describe('handleCfCallbackRequest', () => {
 		process.env.JOB_CALLBACK_HMAC_SECRET = 'test_secret'
 
 		const bodyText = '{nope'
-		const signature = signHmacSHA256(process.env.JOB_CALLBACK_HMAC_SECRET, bodyText)
+		const signature = signHmacSHA256(
+			process.env.JOB_CALLBACK_HMAC_SECRET,
+			bodyText,
+		)
 
 		const { handleCfCallbackRequest } = await import('../cf-callback')
 		const res = await handleCfCallbackRequest(
@@ -131,6 +140,9 @@ describe('handleCfCallbackRequest', () => {
 		)
 
 		expect(res.status).toBe(200)
-		await expect(res.json()).resolves.toMatchObject({ ok: false, ignored: true })
+		await expect(res.json()).resolves.toMatchObject({
+			ok: false,
+			ignored: true,
+		})
 	})
 })

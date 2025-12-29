@@ -108,13 +108,15 @@ export function AdminProxyPage({
 		}),
 		{
 			successToast: t('subscription.dialog.success'),
-				errorToast: ({ error }) =>
-					t('subscription.dialog.error', {
-						message:
-							error instanceof Error ? error.message : tCommon('fallback.unknown'),
-					}),
-			},
-		)
+			errorToast: ({ error }) =>
+				t('subscription.dialog.error', {
+					message:
+						error instanceof Error
+							? error.message
+							: tCommon('fallback.unknown'),
+				}),
+		},
+	)
 
 	const deleteSubscriptionMutation = useEnhancedMutation(
 		queryOrpc.proxy.deleteSSRSubscription.mutationOptions({
@@ -131,13 +133,15 @@ export function AdminProxyPage({
 		}),
 		{
 			successToast: t('subscription.list.deleteSuccess'),
-				errorToast: ({ error }) =>
-					t('subscription.list.deleteError', {
-						message:
-							error instanceof Error ? error.message : tCommon('fallback.unknown'),
-					}),
-			},
-		)
+			errorToast: ({ error }) =>
+				t('subscription.list.deleteError', {
+					message:
+						error instanceof Error
+							? error.message
+							: tCommon('fallback.unknown'),
+				}),
+		},
+	)
 
 	const importMutation = useEnhancedMutation(
 		queryOrpc.proxy.importSSRFromSubscription.mutationOptions({
@@ -156,13 +160,15 @@ export function AdminProxyPage({
 			},
 		}),
 		{
-				errorToast: ({ error }) =>
-					t('subscription.list.importError', {
-						message:
-							error instanceof Error ? error.message : tCommon('fallback.unknown'),
-					}),
-			},
-		)
+			errorToast: ({ error }) =>
+				t('subscription.list.importError', {
+					message:
+						error instanceof Error
+							? error.message
+							: tCommon('fallback.unknown'),
+				}),
+		},
+	)
 
 	const runChecksMutation = useEnhancedMutation(
 		{
@@ -263,13 +269,15 @@ export function AdminProxyPage({
 			},
 		}),
 		{
-				errorToast: ({ error }) =>
-					t('list.setDefaultError', {
-						message:
-							error instanceof Error ? error.message : tCommon('fallback.unknown'),
-					}),
-			},
-		)
+			errorToast: ({ error }) =>
+				t('list.setDefaultError', {
+					message:
+						error instanceof Error
+							? error.message
+							: tCommon('fallback.unknown'),
+				}),
+		},
+	)
 
 	const deleteProxyMutation = useEnhancedMutation(
 		queryOrpc.proxy.deleteProxy.mutationOptions({
@@ -289,13 +297,15 @@ export function AdminProxyPage({
 		}),
 		{
 			successToast: t('list.deleteSuccess'),
-				errorToast: ({ error }) =>
-					t('list.deleteError', {
-						message:
-							error instanceof Error ? error.message : tCommon('fallback.unknown'),
-					}),
-			},
-		)
+			errorToast: ({ error }) =>
+				t('list.deleteError', {
+					message:
+						error instanceof Error
+							? error.message
+							: tCommon('fallback.unknown'),
+				}),
+		},
+	)
 
 	return (
 		<div className="space-y-8 font-sans">
@@ -402,9 +412,21 @@ export function AdminProxyPage({
 												URL: {s.url}
 											</div>
 											<div className="flex gap-4 font-mono text-[10px] uppercase tracking-tighter">
-												<div>NODES: <span className="text-foreground font-bold">{(s.proxies?.length ?? 0).toString().padStart(3, '0')}</span></div>
+												<div>
+													NODES:{' '}
+													<span className="text-foreground font-bold">
+														{(s.proxies?.length ?? 0)
+															.toString()
+															.padStart(3, '0')}
+													</span>
+												</div>
 												{s.lastUpdated ? (
-													<div>SYNC: <span className="text-foreground font-bold">{toDateLabel(s.lastUpdated)}</span></div>
+													<div>
+														SYNC:{' '}
+														<span className="text-foreground font-bold">
+															{toDateLabel(s.lastUpdated)}
+														</span>
+													</div>
 												) : null}
 											</div>
 										</div>
@@ -429,9 +451,7 @@ export function AdminProxyPage({
 												onClick={() =>
 													void (async () => {
 														const ok = await confirmDialog({
-															description: t(
-																'subscription.list.deleteConfirm',
-															),
+															description: t('subscription.list.deleteConfirm'),
 															variant: 'destructive',
 														})
 														if (!ok) return
@@ -452,7 +472,9 @@ export function AdminProxyPage({
 				<TabsContent value="proxies" className="mt-0 outline-none">
 					<div className="border border-border bg-muted/30 p-4 mb-6">
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-							<div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">FILTER_BY_SOURCE:</div>
+							<div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+								FILTER_BY_SOURCE:
+							</div>
 							<div className="flex flex-wrap gap-1">
 								<Button
 									variant={!subscriptionId ? 'primary' : 'outline'}
@@ -498,11 +520,21 @@ export function AdminProxyPage({
 							<table className="min-w-full border-collapse">
 								<thead>
 									<tr className="border-b border-border bg-muted/50">
-										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">NODE_IDENTIFIER</th>
-										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">STATUS</th>
-										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">ADDRESS_INFRA</th>
-										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">METRICS</th>
-										<th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">CONTROL</th>
+										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+											NODE_IDENTIFIER
+										</th>
+										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+											STATUS
+										</th>
+										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+											ADDRESS_INFRA
+										</th>
+										<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+											METRICS
+										</th>
+										<th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+											CONTROL
+										</th>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-border">
@@ -510,37 +542,67 @@ export function AdminProxyPage({
 										const isDefault = defaultProxyId && p.id === defaultProxyId
 										const hostKind = classifyHost(p.server)
 										const hostLabel = hostKindLabel(hostKind)
-										const rtt = typeof p.responseTime === 'number' && Number.isFinite(p.responseTime) ? Math.max(0, Math.trunc(p.responseTime)) : null
+										const rtt =
+											typeof p.responseTime === 'number' &&
+											Number.isFinite(p.responseTime)
+												? Math.max(0, Math.trunc(p.responseTime))
+												: null
 
 										return (
-											<tr key={p.id} className="hover:bg-muted/30 transition-none group">
+											<tr
+												key={p.id}
+												className="hover:bg-muted/30 transition-none group"
+											>
 												<td className="px-4 py-3 border-r border-border">
 													<div className="flex items-center gap-2">
-														<div className="font-mono text-xs font-bold uppercase">{p.name || p.server}</div>
+														<div className="font-mono text-xs font-bold uppercase">
+															{p.name || p.server}
+														</div>
 														{isDefault && (
-															<div className="bg-primary text-primary-foreground text-[8px] font-black px-1 uppercase tracking-tighter">DEFAULT</div>
+															<div className="bg-primary text-primary-foreground text-[8px] font-black px-1 uppercase tracking-tighter">
+																DEFAULT
+															</div>
 														)}
 													</div>
 												</td>
 												<td className="px-4 py-3 border-r border-border">
-													<div className={cn(
-														"inline-block px-2 py-0.5 text-[9px] font-bold uppercase border",
-														proxyStatusBadgeClass(p.testStatus)
-													)}>
-														{p.testStatus === 'success' ? 'OK' : p.testStatus === 'failed' ? 'ERR' : 'NULL'}
+													<div
+														className={cn(
+															'inline-block px-2 py-0.5 text-[9px] font-bold uppercase border',
+															proxyStatusBadgeClass(p.testStatus),
+														)}
+													>
+														{p.testStatus === 'success'
+															? 'OK'
+															: p.testStatus === 'failed'
+																? 'ERR'
+																: 'NULL'}
 													</div>
 												</td>
 												<td className="px-4 py-3 border-r border-border">
 													<div className="font-mono text-[10px] text-muted-foreground">
 														{p.protocol}://{formatHostPort(p.server, p.port)}
-														{hostLabel && <span className="ml-2 border border-border px-1 text-[8px]">{hostLabel}</span>}
+														{hostLabel && (
+															<span className="ml-2 border border-border px-1 text-[8px]">
+																{hostLabel}
+															</span>
+														)}
 													</div>
 												</td>
 												<td className="px-4 py-3 border-r border-border font-mono text-[10px] text-muted-foreground space-y-1">
 													{rtt !== null && (
 														<div className="flex items-center gap-2">
 															<span>LATENCY:</span>
-															<span className={cn("font-bold", rtt < 200 ? "text-green-600" : rtt < 500 ? "text-yellow-600" : "text-red-600")}>
+															<span
+																className={cn(
+																	'font-bold',
+																	rtt < 200
+																		? 'text-green-600'
+																		: rtt < 500
+																			? 'text-yellow-600'
+																			: 'text-red-600',
+																)}
+															>
 																{rtt.toString().padStart(4, ' ')}ms
 															</span>
 														</div>
@@ -566,7 +628,11 @@ export function AdminProxyPage({
 															size="xs"
 															className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-2 h-7"
 															disabled={setDefaultMutation.isPending}
-															onClick={() => setDefaultMutation.mutate({ proxyId: isDefault ? null : p.id })}
+															onClick={() =>
+																setDefaultMutation.mutate({
+																	proxyId: isDefault ? null : p.id,
+																})
+															}
 														>
 															{isDefault ? 'UNSET_DEF' : 'SET_DEF'}
 														</Button>
@@ -601,13 +667,16 @@ export function AdminProxyPage({
 					{totalPages > 1 ? (
 						<div className="flex flex-col gap-0 border border-t-0 border-border sm:flex-row sm:items-center sm:justify-between bg-muted/30">
 							<p className="px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								PAGE: {page.toString().padStart(3, '0')} / {totalPages.toString().padStart(3, '0')} | TOTAL: {total}
+								PAGE: {page.toString().padStart(3, '0')} /{' '}
+								{totalPages.toString().padStart(3, '0')} | TOTAL: {total}
 							</p>
 							<div className="flex border-l border-border">
 								<Button
 									variant="ghost"
 									disabled={page <= 1}
-									onClick={() => setSearch({ tab, subscriptionId, page: page - 1 })}
+									onClick={() =>
+										setSearch({ tab, subscriptionId, page: page - 1 })
+									}
 									className="rounded-none border-r border-border px-6 py-3 h-auto uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-primary hover:text-primary-foreground disabled:opacity-30"
 								>
 									PREV
@@ -615,7 +684,9 @@ export function AdminProxyPage({
 								<Button
 									variant="ghost"
 									disabled={page >= totalPages}
-									onClick={() => setSearch({ tab, subscriptionId, page: page + 1 })}
+									onClick={() =>
+										setSearch({ tab, subscriptionId, page: page + 1 })
+									}
 									className="rounded-none px-6 py-3 h-auto uppercase text-[10px] font-bold tracking-[0.2em] hover:bg-primary hover:text-primary-foreground disabled:opacity-30"
 								>
 									NEXT
@@ -636,7 +707,10 @@ export function AdminProxyPage({
 
 					<div className="p-6 space-y-6">
 						<div className="space-y-2">
-							<Label htmlFor="sub-name" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+							<Label
+								htmlFor="sub-name"
+								className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+							>
 								SOURCE_NAME
 							</Label>
 							<Input
@@ -648,7 +722,10 @@ export function AdminProxyPage({
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="sub-url" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+							<Label
+								htmlFor="sub-url"
+								className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+							>
 								SOURCE_URL_ENDPOINT
 							</Label>
 							<Input
@@ -690,7 +767,9 @@ export function AdminProxyPage({
 							}}
 							className="flex-1 rounded-none h-12 bg-primary text-primary-foreground uppercase text-xs font-bold tracking-widest hover:bg-primary/90"
 						>
-							{createSubscriptionMutation.isPending ? 'CREATING...' : 'COMMIT_SOURCE'}
+							{createSubscriptionMutation.isPending
+								? 'CREATING...'
+								: 'COMMIT_SOURCE'}
 						</Button>
 					</div>
 				</DialogContent>
@@ -709,7 +788,10 @@ export function AdminProxyPage({
 
 					<div className="p-6 space-y-6">
 						<div className="space-y-2">
-							<Label htmlFor="proxy-check-test-url" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+							<Label
+								htmlFor="proxy-check-test-url"
+								className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+							>
 								VALIDATION_TARGET_URL
 							</Label>
 							<Input
@@ -722,7 +804,10 @@ export function AdminProxyPage({
 
 						<div className="grid grid-cols-3 gap-4">
 							<div className="space-y-2">
-								<Label htmlFor="proxy-check-timeout" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+								<Label
+									htmlFor="proxy-check-timeout"
+									className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+								>
 									TIMEOUT_MS
 								</Label>
 								<Input
@@ -734,7 +819,10 @@ export function AdminProxyPage({
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="proxy-check-probe-bytes" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+								<Label
+									htmlFor="proxy-check-probe-bytes"
+									className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+								>
 									PROBE_B
 								</Label>
 								<Input
@@ -746,7 +834,10 @@ export function AdminProxyPage({
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="proxy-check-concurrency" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+								<Label
+									htmlFor="proxy-check-concurrency"
+									className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+								>
 									CONCURRENCY
 								</Label>
 								<Input
@@ -779,7 +870,11 @@ export function AdminProxyPage({
 								const timeoutMs = Number(checkTimeoutMs)
 								const probeBytes = Number(checkProbeBytes)
 								const concurrency = Number(checkConcurrency)
-								if (!Number.isFinite(timeoutMs) || !Number.isFinite(probeBytes) || !Number.isFinite(concurrency)) {
+								if (
+									!Number.isFinite(timeoutMs) ||
+									!Number.isFinite(probeBytes) ||
+									!Number.isFinite(concurrency)
+								) {
 									toast.error(t('page.checkSettingsBadNumber'))
 									return
 								}
@@ -792,7 +887,9 @@ export function AdminProxyPage({
 							}}
 							className="flex-1 rounded-none h-12 bg-primary text-primary-foreground uppercase text-xs font-bold tracking-widest hover:bg-primary/90"
 						>
-							{saveCheckSettingsMutation.isPending ? 'SAVING...' : 'SAVE_CONFIG'}
+							{saveCheckSettingsMutation.isPending
+								? 'SAVING...'
+								: 'SAVE_CONFIG'}
 						</Button>
 					</div>
 				</DialogContent>

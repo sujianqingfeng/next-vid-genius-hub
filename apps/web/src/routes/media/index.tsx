@@ -76,7 +76,9 @@ function MediaIndexRoute() {
 			errorToast: ({ error }) =>
 				t('toasts.deleteFail', {
 					message:
-						error instanceof Error ? error.message : tCommon('fallback.unknown'),
+						error instanceof Error
+							? error.message
+							: tCommon('fallback.unknown'),
 				}),
 		},
 	)

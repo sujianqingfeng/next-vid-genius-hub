@@ -52,7 +52,9 @@ export function SubtitleConfigControls({
 			<div className="flex items-center justify-between">
 				<h3 className="text-sm font-medium">{t('title')}</h3>
 				<Badge variant="outline" className="text-xs">
-					{selectedPresetId === 'custom' ? t('badge.custom') : t('badge.preset')}
+					{selectedPresetId === 'custom'
+						? t('badge.custom')
+						: t('badge.preset')}
 				</Badge>
 			</div>
 
@@ -158,7 +160,9 @@ export function SubtitleConfigControls({
 
 						{/* 颜色控制 */}
 						<div className="space-y-2">
-							<Label className="text-xs font-medium">{t('fields.colors')}</Label>
+							<Label className="text-xs font-medium">
+								{t('fields.colors')}
+							</Label>
 							<ColorPickerGrid
 								fields={[
 									{

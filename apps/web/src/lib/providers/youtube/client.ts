@@ -17,7 +17,10 @@ export async function getYouTubeClient(
 	const fetchWithProxy: SessionOptions['fetch'] | undefined = agent
 		? (input, init) => {
 				const undiciInit: Parameters<typeof undiciFetch>[1] = init
-					? { ...(init as Parameters<typeof undiciFetch>[1]), dispatcher: agent }
+					? {
+							...(init as Parameters<typeof undiciFetch>[1]),
+							dispatcher: agent,
+						}
 					: { dispatcher: agent }
 				return undiciFetch(
 					input as Parameters<typeof undiciFetch>[0],

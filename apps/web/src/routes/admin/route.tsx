@@ -160,21 +160,21 @@ function AdminLayoutRoute() {
 
 						<div className="space-y-2">
 							<Button
-								variant='outline'
-								size='sm'
+								variant="outline"
+								size="sm"
 								asChild
 								className="w-full rounded-none border-border h-9 uppercase text-[10px] font-bold tracking-widest transition-colors hover:bg-muted"
 							>
-								<Link to='/media'>
+								<Link to="/media">
 									<ArrowLeft className="h-3 w-3 mr-2" />
 									{t('actions.backToWorkspace')}
 								</Link>
 							</Button>
 
 							<Button
-								type='button'
-								variant='outline'
-								size='sm'
+								type="button"
+								variant="outline"
+								size="sm"
 								className="w-full rounded-none border-border h-9 uppercase text-[10px] font-bold tracking-widest hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
 								onClick={() => logoutMutation.mutate(undefined)}
 								disabled={logoutMutation.isPending}

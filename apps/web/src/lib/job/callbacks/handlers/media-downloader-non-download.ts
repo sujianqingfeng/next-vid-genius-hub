@@ -28,7 +28,9 @@ function parseCommentsMetadata(raw: unknown): schema.Comment[] {
 	}
 
 	return rawComments
-		.map((c) => (c && typeof c === 'object' ? (c as Record<string, unknown>) : {}))
+		.map((c) =>
+			c && typeof c === 'object' ? (c as Record<string, unknown>) : {},
+		)
 		.map((c): schema.Comment => {
 			return {
 				id: String(c.id ?? ''),
@@ -186,8 +188,10 @@ export async function handleMediaDownloaderNonDownloadCallback(input: {
 							? String(v.thumbnails[0].url)
 							: undefined
 
-				const viewCount = typeof v.viewCount === 'number' ? v.viewCount : undefined
-				const likeCount = typeof v.likeCount === 'number' ? v.likeCount : undefined
+				const viewCount =
+					typeof v.viewCount === 'number' ? v.viewCount : undefined
+				const likeCount =
+					typeof v.likeCount === 'number' ? v.likeCount : undefined
 
 				await db
 					.insert(schema.channelVideos)
@@ -222,7 +226,8 @@ export async function handleMediaDownloaderNonDownloadCallback(input: {
 			if (thumbnail) updates.thumbnail = thumbnail
 			// Preserve existing values when metadata is missing.
 			if (!title && channel?.title) updates.title = channel.title
-			if (!thumbnail && channel?.thumbnail) updates.thumbnail = channel.thumbnail
+			if (!thumbnail && channel?.thumbnail)
+				updates.thumbnail = channel.thumbnail
 
 			await db.update(schema.channels).set(updates).where(where)
 		} else if (payload.status === 'failed' || payload.status === 'canceled') {
@@ -247,8 +252,10 @@ export async function handleMediaDownloaderNonDownloadCallback(input: {
 			const author = typeof meta.author === 'string' ? meta.author.trim() : ''
 			const thumbnail =
 				typeof meta.thumbnail === 'string' ? meta.thumbnail.trim() : ''
-			const viewCount = typeof meta.viewCount === 'number' ? meta.viewCount : undefined
-			const likeCount = typeof meta.likeCount === 'number' ? meta.likeCount : undefined
+			const viewCount =
+				typeof meta.viewCount === 'number' ? meta.viewCount : undefined
+			const likeCount =
+				typeof meta.likeCount === 'number' ? meta.likeCount : undefined
 
 			if (title) updates.title = title
 			if (author) updates.author = author
@@ -264,7 +271,10 @@ export async function handleMediaDownloaderNonDownloadCallback(input: {
 
 			const targetMediaId = task?.targetId || payload.mediaId
 			if (Object.keys(updates).length > 0) {
-				await db.update(schema.media).set(updates).where(eq(schema.media.id, targetMediaId))
+				await db
+					.update(schema.media)
+					.set(updates)
+					.where(eq(schema.media.id, targetMediaId))
 			}
 		}
 

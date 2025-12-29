@@ -101,7 +101,9 @@ export function HintTextConfigControls({
 
 						{/* 位置 */}
 						<div className="space-y-2">
-							<Label className="text-sm font-medium">{t('position.label')}</Label>
+							<Label className="text-sm font-medium">
+								{t('position.label')}
+							</Label>
 							<Select
 								value={hintConfig.position}
 								onValueChange={(value: 'center' | 'top' | 'bottom') =>
@@ -135,8 +137,12 @@ export function HintTextConfigControls({
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="none">{t('animation.none')}</SelectItem>
-									<SelectItem value="fade-in">{t('animation.fadeIn')}</SelectItem>
-									<SelectItem value="slide-up">{t('animation.slideUp')}</SelectItem>
+									<SelectItem value="fade-in">
+										{t('animation.fadeIn')}
+									</SelectItem>
+									<SelectItem value="slide-up">
+										{t('animation.slideUp')}
+									</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>

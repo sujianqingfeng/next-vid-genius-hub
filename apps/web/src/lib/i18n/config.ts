@@ -16,5 +16,7 @@ export function getValidLocale(value?: string | null): Locale {
 }
 
 export function getBcp47Locale(locale: Locale): string {
-	return BCP47_LOCALE_BY_LOCALE[locale] ?? BCP47_LOCALE_BY_LOCALE[DEFAULT_LOCALE]
+	return (
+		BCP47_LOCALE_BY_LOCALE[locale] ?? BCP47_LOCALE_BY_LOCALE[DEFAULT_LOCALE]
+	)
 }

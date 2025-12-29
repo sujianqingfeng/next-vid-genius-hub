@@ -187,7 +187,11 @@ export function AdminUsersPage() {
 							onChange={(e) => setSearch(e.target.value)}
 							className="rounded-none border-border font-mono text-xs focus-visible:ring-0 focus-visible:border-primary"
 						/>
-						<Button type="submit" variant="primary" className="rounded-none uppercase text-xs font-bold tracking-widest px-6">
+						<Button
+							type="submit"
+							variant="primary"
+							className="rounded-none uppercase text-xs font-bold tracking-widest px-6"
+						>
 							{t('searchButton')}
 						</Button>
 					</form>
@@ -197,12 +201,18 @@ export function AdminUsersPage() {
 						<table className="min-w-full border-collapse">
 							<thead>
 								<tr className="border-b border-border bg-muted/50">
-									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.email')}</th>
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+										{t('table.email')}
+									</th>
 									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
 										{t('table.nickname')}
 									</th>
-									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.role')}</th>
-									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">{t('table.status')}</th>
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+										{t('table.role')}
+									</th>
+									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+										{t('table.status')}
+									</th>
 									<th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
 										{t('table.createdAt')}
 									</th>
@@ -216,17 +226,28 @@ export function AdminUsersPage() {
 							</thead>
 							<tbody className="divide-y divide-border">
 								{users.map((user) => (
-									<tr key={user.id} className="hover:bg-muted/30 transition-none">
-										<td className="px-4 py-3 font-mono text-xs border-r border-border">{user.email}</td>
+									<tr
+										key={user.id}
+										className="hover:bg-muted/30 transition-none"
+									>
+										<td className="px-4 py-3 font-mono text-xs border-r border-border">
+											{user.email}
+										</td>
 										<td className="px-4 py-3 font-mono text-xs text-muted-foreground border-r border-border">
 											{user.nickname || '---'}
 										</td>
 										<td className="px-4 py-3 border-r border-border">
-											<div className={cn(
-												"inline-block px-2 py-0.5 text-[10px] font-bold uppercase border",
-												user.role === 'admin' ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
-											)}>
-												{user.role === 'admin' ? t('roles.admin') : t('roles.user')}
+											<div
+												className={cn(
+													'inline-block px-2 py-0.5 text-[10px] font-bold uppercase border',
+													user.role === 'admin'
+														? 'bg-primary text-primary-foreground border-primary'
+														: 'border-border text-muted-foreground',
+												)}
+											>
+												{user.role === 'admin'
+													? t('roles.admin')
+													: t('roles.user')}
 											</div>
 										</td>
 										<td className="px-4 py-3 border-r border-border">
@@ -322,7 +343,9 @@ export function AdminUsersPage() {
 
 					<div className="flex flex-col gap-0 border-t border-border sm:flex-row sm:items-center sm:justify-between bg-muted/30">
 						<p className="px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-							PAGE: {page.toString().padStart(3, '0')} / {pageCount.toString().padStart(3, '0')} | TOTAL: {formattedStats.total}
+							PAGE: {page.toString().padStart(3, '0')} /{' '}
+							{pageCount.toString().padStart(3, '0')} | TOTAL:{' '}
+							{formattedStats.total}
 						</p>
 						<div className="flex border-l border-border">
 							<Button
@@ -426,23 +449,40 @@ export function AdminUsersPage() {
 						<table className="min-w-full border-collapse">
 							<thead>
 								<tr className="border-b border-border bg-muted/50 sticky top-0">
-									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">TIMESTAMP</th>
-									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">DELTA</th>
-									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">BALANCE</th>
-									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">TYPE</th>
-									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">REMARK</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+										TIMESTAMP
+									</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+										DELTA
+									</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+										BALANCE
+									</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-r border-border">
+										TYPE
+									</th>
+									<th className="px-4 py-2 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										REMARK
+									</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-border">
 								{transactionsQuery.data?.items?.map((row) => (
-									<tr key={row.id} className="hover:bg-muted/20 transition-none font-mono text-[10px]">
+									<tr
+										key={row.id}
+										className="hover:bg-muted/20 transition-none font-mono text-[10px]"
+									>
 										<td className="px-4 py-2 text-muted-foreground border-r border-border">
 											{formatDate(row.createdAt)}
 										</td>
-										<td className={cn(
-											"px-4 py-2 font-bold border-r border-border text-xs",
-											row.delta > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-										)}>
+										<td
+											className={cn(
+												'px-4 py-2 font-bold border-r border-border text-xs',
+												row.delta > 0
+													? 'text-green-600 dark:text-green-400'
+													: 'text-red-600 dark:text-red-400',
+											)}
+										>
 											{row.delta > 0 ? `+${row.delta}` : row.delta}
 										</td>
 										<td className="px-4 py-2 text-muted-foreground border-r border-border">
@@ -483,9 +523,14 @@ export function AdminUsersPage() {
 					</DialogHeader>
 					<div className="p-6 space-y-4">
 						<p className="text-xs font-mono leading-relaxed">
-							WARNING: YOU ARE ABOUT TO PERMANENTLY REMOVE THE FOLLOWING ACCOUNT FROM THE SYSTEM. THIS ACTION IS IRREVERSIBLE.
-							<br /><br />
-							IDENTIFIER: <span className="font-bold underline">{selectedUserForDelete?.email}</span>
+							WARNING: YOU ARE ABOUT TO PERMANENTLY REMOVE THE FOLLOWING ACCOUNT
+							FROM THE SYSTEM. THIS ACTION IS IRREVERSIBLE.
+							<br />
+							<br />
+							IDENTIFIER:{' '}
+							<span className="font-bold underline">
+								{selectedUserForDelete?.email}
+							</span>
 						</p>
 					</div>
 					<div className="flex border-t border-border">
@@ -506,9 +551,7 @@ export function AdminUsersPage() {
 							disabled={!selectedUserForDelete || deleteUserMutation.isPending}
 							className="flex-1 rounded-none h-12 uppercase text-xs font-bold tracking-widest"
 						>
-							{deleteUserMutation.isPending
-								? 'DELETING...'
-								: 'CONFIRM_DELETE'}
+							{deleteUserMutation.isPending ? 'DELETING...' : 'CONFIRM_DELETE'}
 						</Button>
 					</div>
 				</DialogContent>

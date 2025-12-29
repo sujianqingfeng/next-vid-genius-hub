@@ -154,12 +154,22 @@ export function AdminAiModelsPage() {
 				</Button>
 			</div>
 
-			<Tabs value={kind} onValueChange={(v) => setKind(v as ModelKind)} className="space-y-0">
+			<Tabs
+				value={kind}
+				onValueChange={(v) => setKind(v as ModelKind)}
+				className="space-y-0"
+			>
 				<TabsList className="h-auto w-full justify-start rounded-none bg-transparent p-0 border-b border-border mb-8">
-					<TabsTrigger value="llm" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+					<TabsTrigger
+						value="llm"
+						className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none"
+					>
 						{t('tabs.llm')}
 					</TabsTrigger>
-					<TabsTrigger value="asr" className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none">
+					<TabsTrigger
+						value="asr"
+						className="rounded-none border-b-2 border-transparent px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] data-[state=active]:border-primary data-[state=active]:bg-muted/50 data-[state=active]:shadow-none"
+					>
 						{t('tabs.asr')}
 					</TabsTrigger>
 				</TabsList>
@@ -172,15 +182,18 @@ export function AdminAiModelsPage() {
 							</div>
 						) : (
 							models.map((m) => {
-								const provider = providers.find(
-									(p) => p.id === m.providerId,
-								)
+								const provider = providers.find((p) => p.id === m.providerId)
 								return (
-									<div key={m.id} className="border border-border bg-card p-6 flex flex-col justify-between group">
+									<div
+										key={m.id}
+										className="border border-border bg-card p-6 flex flex-col justify-between group"
+									>
 										<div className="space-y-4">
 											<div className="flex items-start justify-between border-b border-border pb-3">
 												<div>
-													<div className="font-mono text-xs font-black uppercase tracking-wider">{m.label}</div>
+													<div className="font-mono text-xs font-black uppercase tracking-wider">
+														{m.label}
+													</div>
 													<div className="font-mono text-[10px] text-muted-foreground mt-1 tracking-tighter lowercase">
 														{m.id}
 													</div>
@@ -191,21 +204,33 @@ export function AdminAiModelsPage() {
 															DEFAULT
 														</div>
 													)}
-													<div className={cn(
-														"px-2 py-0.5 text-[9px] font-bold uppercase border",
-														m.enabled ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"
-													)}>
-														{m.enabled ? t('status.enabled') : t('status.disabled')}
+													<div
+														className={cn(
+															'px-2 py-0.5 text-[9px] font-bold uppercase border',
+															m.enabled
+																? 'bg-primary text-primary-foreground border-primary'
+																: 'border-border text-muted-foreground',
+														)}
+													>
+														{m.enabled
+															? t('status.enabled')
+															: t('status.disabled')}
 													</div>
 												</div>
 											</div>
 
 											<div className="space-y-1">
 												<div className="font-mono text-[10px] text-muted-foreground uppercase tracking-tighter">
-													PROVIDER: <span className="text-foreground font-bold">{provider?.slug || '---'}</span>
+													PROVIDER:{' '}
+													<span className="text-foreground font-bold">
+														{provider?.slug || '---'}
+													</span>
 												</div>
 												<div className="font-mono text-[10px] text-muted-foreground uppercase tracking-tighter">
-													REMOTE_ID: <span className="text-foreground font-bold">{m.remoteModelId}</span>
+													REMOTE_ID:{' '}
+													<span className="text-foreground font-bold">
+														{m.remoteModelId}
+													</span>
 												</div>
 												{m.description && (
 													<div className="font-mono text-[10px] text-muted-foreground bg-muted/30 p-2 mt-2 leading-relaxed">
@@ -253,9 +278,7 @@ export function AdminAiModelsPage() {
 													variant="outline"
 													size="xs"
 													className="rounded-none border-border hover:bg-primary hover:text-primary-foreground uppercase text-[9px] font-bold px-3 h-8"
-													onClick={() =>
-														setDefault.mutate({ kind, id: m.id })
-													}
+													onClick={() => setDefault.mutate({ kind, id: m.id })}
 												>
 													SET_DEF
 												</Button>
@@ -276,13 +299,16 @@ export function AdminAiModelsPage() {
 				<DialogContent className="rounded-none border-2 border-primary p-0 overflow-hidden max-w-lg">
 					<DialogHeader className="bg-primary p-4 text-primary-foreground">
 						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
-							{editing?.id ? 'EDIT_MODEL' : 'ADD_NEW_MODEL'} // {kind.toUpperCase()}
+							{editing?.id ? 'EDIT_MODEL' : 'ADD_NEW_MODEL'} //{' '}
+							{kind.toUpperCase()}
 						</DialogTitle>
 					</DialogHeader>
 					{editing ? (
 						<div className="p-6 space-y-6">
 							<div className="space-y-2">
-								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.id')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+									{t('fields.id')}
+								</Label>
 								<Input
 									placeholder={
 										editing.kind === 'asr'
@@ -311,7 +337,9 @@ export function AdminAiModelsPage() {
 							</div>
 							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.provider')}</Label>
+									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+										{t('fields.provider')}
+									</Label>
 									<Select
 										value={editing.providerId}
 										onValueChange={(v) =>
@@ -323,7 +351,11 @@ export function AdminAiModelsPage() {
 										</SelectTrigger>
 										<SelectContent className="rounded-none border-border">
 											{providerOptions.map((p) => (
-												<SelectItem key={p.id} value={p.id} className="rounded-none font-mono text-[10px] uppercase tracking-wider">
+												<SelectItem
+													key={p.id}
+													value={p.id}
+													className="rounded-none font-mono text-[10px] uppercase tracking-wider"
+												>
 													{p.slug}
 												</SelectItem>
 											))}
@@ -332,7 +364,9 @@ export function AdminAiModelsPage() {
 								</div>
 								{editing.kind === 'llm' || isWhisperApiAsr ? (
 									<div className="space-y-2">
-										<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.remoteModelId')}</Label>
+										<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+											{t('fields.remoteModelId')}
+										</Label>
 										<Input
 											placeholder={
 												isWhisperApiAsr ? 'distil-large-v3' : 'gpt-4.1-mini'
@@ -359,7 +393,9 @@ export function AdminAiModelsPage() {
 								) : null}
 							</div>
 							<div className="space-y-2">
-								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.label')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+									{t('fields.label')}
+								</Label>
 								<Input
 									value={editing.label}
 									onChange={(e) =>
@@ -369,7 +405,9 @@ export function AdminAiModelsPage() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t('fields.description')}</Label>
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+									{t('fields.description')}
+								</Label>
 								<Input
 									value={editing.description}
 									onChange={(e) =>
@@ -388,7 +426,9 @@ export function AdminAiModelsPage() {
 										}
 										className="scale-75 data-[state=checked]:bg-primary"
 									/>
-									<span className="text-[10px] font-bold uppercase tracking-widest">{t('fields.enabled')}</span>
+									<span className="text-[10px] font-bold uppercase tracking-widest">
+										{t('fields.enabled')}
+									</span>
 								</div>
 
 								<div className="flex items-center gap-3 border border-border p-3 bg-muted/20">
@@ -399,13 +439,19 @@ export function AdminAiModelsPage() {
 										}
 										className="scale-75 data-[state=checked]:bg-primary"
 									/>
-									<span className="text-[10px] font-bold uppercase tracking-widest">{t('fields.isDefault')}</span>
+									<span className="text-[10px] font-bold uppercase tracking-widest">
+										{t('fields.isDefault')}
+									</span>
 								</div>
 							</div>
 						</div>
 					) : null}
 					<div className="flex border-t border-border">
-						<Button variant="ghost" onClick={() => setEditing(null)} className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted">
+						<Button
+							variant="ghost"
+							onClick={() => setEditing(null)}
+							className="flex-1 rounded-none border-r border-border h-12 uppercase text-xs font-bold tracking-widest hover:bg-muted"
+						>
 							{t('actions.cancel')}
 						</Button>
 						<Button
