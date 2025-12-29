@@ -12,7 +12,11 @@ describe('thread.adapters.x', () => {
 			root: {
 				statusId: '1',
 				url: 'https://x.com/a/status/1',
-				author: { displayName: 'A', handle: '@a', profileUrl: 'https://x.com/a' },
+				author: {
+					displayName: 'A',
+					handle: '@a',
+					profileUrl: 'https://x.com/a',
+				},
 				createdAt: '2025-12-25T03:47:05.000Z',
 				text: 'Root text',
 				metrics: { replies: 1, likes: 10 },
@@ -61,7 +65,11 @@ describe('thread.adapters.x', () => {
 			root: {
 				statusId: '1',
 				url: 'https://x.com/a/status/1',
-				author: { displayName: 'A', handle: '@a', profileUrl: 'https://x.com/a' },
+				author: {
+					displayName: 'A',
+					handle: '@a',
+					profileUrl: 'https://x.com/a',
+				},
 				createdAt: '2025-12-25T03:47:05.000Z',
 				text: 'Root text',
 				metrics: { replies: 0, likes: 10 },

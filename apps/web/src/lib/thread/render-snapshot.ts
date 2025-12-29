@@ -1,5 +1,9 @@
 import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
 import type { ThreadVideoInputProps } from '@app/remotion-project/types'
+import {
+	THREAD_TEMPLATE_COMPILE_VERSION,
+	normalizeThreadTemplateConfig,
+} from '@app/remotion-project/thread-template-config'
 import { bucketPaths } from '@app/media-domain'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { putObjectByKey } from '~/lib/cloudflare'
@@ -12,6 +16,45 @@ function toIso(input: unknown): string | null {
 	const d = input instanceof Date ? input : new Date(String(input))
 	if (Number.isNaN(d.getTime())) return null
 	return d.toISOString()
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function stableJsonValue(value: unknown, depth = 0): unknown {
+	if (depth > 50) return null
+	if (Array.isArray(value))
+		return value.map((v) => stableJsonValue(v, depth + 1))
+	if (isPlainObject(value)) {
+		const out: Record<string, unknown> = {}
+		for (const key of Object.keys(value).sort()) {
+			out[key] = stableJsonValue(value[key], depth + 1)
+		}
+		return out
+	}
+	return value
+}
+
+function stableStringify(value: unknown): string | null {
+	try {
+		return JSON.stringify(stableJsonValue(value))
+	} catch {
+		return null
+	}
+}
+
+async function sha256Hex(input: string): Promise<string | null> {
+	try {
+		const subtle = (globalThis as any)?.crypto?.subtle
+		if (!subtle) return null
+		const buf = await subtle.digest('SHA-256', new TextEncoder().encode(input))
+		return [...new Uint8Array(buf)]
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('')
+	} catch {
+		return null
+	}
 }
 
 function firstTextBlock(blocks: unknown): string {
@@ -80,7 +123,11 @@ export async function buildThreadRenderSnapshot(input: {
 	const timeline = buildCommentTimeline(commentsForTiming, REMOTION_FPS)
 
 	const rootBlocks = (root.contentBlocks ?? [
-		{ id: 'text-0', type: 'text', data: { text: firstTextBlock(root.contentBlocks) } },
+		{
+			id: 'text-0',
+			type: 'text',
+			data: { text: firstTextBlock(root.contentBlocks) },
+		},
 	]) as any
 	const rootPlain = root.plainText || blocksToPlainText(rootBlocks)
 
@@ -119,14 +166,11 @@ export async function buildThreadRenderSnapshot(input: {
 		for (const id of referencedAssetIds) {
 			const a = byId.get(id)
 			if (!a) continue
-			let url: string | null = a.sourceUrl ?? null
-			if (a.storageKey) {
-				try {
-					url = await presignGetByKey(String(a.storageKey))
-				} catch {
-					url = a.sourceUrl ?? null
-				}
-			}
+			if (!a.storageKey) continue
+			let url: string | null = null
+			try {
+				url = await presignGetByKey(String(a.storageKey))
+			} catch {}
 			if (!url) continue
 			assetsMap[String(a.id)] = {
 				id: String(a.id),
@@ -135,6 +179,18 @@ export async function buildThreadRenderSnapshot(input: {
 			}
 		}
 	}
+
+	const templateConfigResolved =
+		input.templateConfig === undefined
+			? undefined
+			: normalizeThreadTemplateConfig(input.templateConfig)
+	const templateConfigJson =
+		templateConfigResolved === undefined
+			? null
+			: stableStringify(templateConfigResolved)
+	const templateConfigHash = templateConfigJson
+		? await sha256Hex(templateConfigJson)
+		: null
 
 	const inputProps: ThreadVideoInputProps = {
 		thread: {
@@ -145,7 +201,11 @@ export async function buildThreadRenderSnapshot(input: {
 		audio,
 		root: {
 			id: root.id,
-			author: { name: root.authorName, handle: root.authorHandle ?? null },
+			author: {
+				name: root.authorName,
+				handle: root.authorHandle ?? null,
+				avatarAssetId: root.authorAvatarAssetId ?? null,
+			},
 			contentBlocks: rootBlocks,
 			plainText: rootPlain,
 			translations: (root as any).translations ?? null,
@@ -154,9 +214,14 @@ export async function buildThreadRenderSnapshot(input: {
 		},
 		replies: replies.map((r) => ({
 			id: r.id,
-			author: { name: r.authorName, handle: r.authorHandle ?? null },
+			author: {
+				name: r.authorName,
+				handle: r.authorHandle ?? null,
+				avatarAssetId: r.authorAvatarAssetId ?? null,
+			},
 			contentBlocks: (r.contentBlocks ?? []) as any,
-			plainText: r.plainText || blocksToPlainText((r.contentBlocks ?? []) as any),
+			plainText:
+				r.plainText || blocksToPlainText((r.contentBlocks ?? []) as any),
 			translations: (r as any).translations ?? null,
 			createdAt: toIso(r.createdAt),
 			metrics: { likes: Number((r.metrics as any)?.likes ?? 0) || 0 },
@@ -165,7 +230,10 @@ export async function buildThreadRenderSnapshot(input: {
 		coverDurationInFrames: timeline.coverDurationInFrames,
 		replyDurationsInFrames: timeline.commentDurationsInFrames,
 		fps: REMOTION_FPS,
-		templateConfig: (input.templateConfig ?? undefined) as any,
+		templateConfig:
+			templateConfigResolved === undefined
+				? undefined
+				: (templateConfigResolved as any),
 	}
 
 	const key = bucketPaths.inputs.comments(thread.id, { title: thread.title })
@@ -177,6 +245,9 @@ export async function buildThreadRenderSnapshot(input: {
 			threadId: thread.id,
 			jobId: input.jobId,
 			templateId: input.templateId,
+			templateConfigResolved: templateConfigResolved ?? null,
+			templateConfigHash,
+			compileVersion: THREAD_TEMPLATE_COMPILE_VERSION,
 			inputProps,
 		}),
 	)

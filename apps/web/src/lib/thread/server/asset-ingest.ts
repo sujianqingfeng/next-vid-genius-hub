@@ -77,7 +77,9 @@ export async function ingestThreadAssets(opts?: {
 
 	const db = await getDb()
 
-	const shouldIncludeFailed = Boolean(opts?.includeFailed || opts?.assetIds?.length)
+	const shouldIncludeFailed = Boolean(
+		opts?.includeFailed || opts?.assetIds?.length,
+	)
 
 	const conditions = [
 		or(
@@ -88,7 +90,9 @@ export async function ingestThreadAssets(opts?: {
 		isNull(schema.threadAssets.storageKey),
 		isNotNull(schema.threadAssets.sourceUrl),
 		opts?.userId ? eq(schema.threadAssets.userId, opts.userId) : null,
-		opts?.assetIds?.length ? inArray(schema.threadAssets.id, opts.assetIds) : null,
+		opts?.assetIds?.length
+			? inArray(schema.threadAssets.id, opts.assetIds)
+			: null,
 	].filter(Boolean)
 
 	const candidates = await db.query.threadAssets.findMany({
@@ -130,7 +134,11 @@ export async function ingestThreadAssets(opts?: {
 			const bytes = await readBodyWithLimit(res, maxBytes)
 			const key = `thread-assets/${asset.id}${extForContentType(contentType)}`
 
-			await putObjectByKey(key, contentType ?? 'application/octet-stream', bytes)
+			await putObjectByKey(
+				key,
+				contentType ?? 'application/octet-stream',
+				bytes,
+			)
 
 			await db
 				.update(schema.threadAssets)
@@ -147,7 +155,10 @@ export async function ingestThreadAssets(opts?: {
 		} catch (e) {
 			failed += 1
 			const msg = e instanceof Error ? e.message : String(e)
-			logger.warn('api', `[thread-assets] ingest failed asset=${asset.id} ${msg}`)
+			logger.warn(
+				'api',
+				`[thread-assets] ingest failed asset=${asset.id} ${msg}`,
+			)
 			const isConfigError =
 				msg.includes('CF_ORCHESTRATOR_URL is not configured') ||
 				msg.includes('JOB_CALLBACK_HMAC_SECRET is not configured')

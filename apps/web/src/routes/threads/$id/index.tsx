@@ -6,12 +6,31 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Label } from '~/components/ui/label'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '~/components/ui/select'
 import { Textarea } from '~/components/ui/textarea'
 import { ThreadRemotionPreviewCard } from '~/components/business/threads/thread-remotion-preview-card'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
+import {
+	DEFAULT_THREAD_TEMPLATE_ID,
+	listThreadTemplates,
+} from '@app/remotion-project/thread-templates'
+import {
+	DEFAULT_THREAD_TEMPLATE_CONFIG,
+	normalizeThreadTemplateConfig,
+} from '@app/remotion-project/thread-template-config'
+import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
+
+const IMAGE_ASSET_ID_PLACEHOLDER = '__IMAGE_ASSET_ID__'
+const VIDEO_ASSET_ID_PLACEHOLDER = '__VIDEO_ASSET_ID__'
 
 export const Route = createFileRoute('/threads/$id/')({
 	component: ThreadDetailRoute,
@@ -33,6 +52,853 @@ function firstTextBlockText(blocks: any[] | null | undefined): string {
 	const b = blocks?.find((x) => x && x.type === 'text')
 	if (!b) return ''
 	return String(b.data?.text ?? '')
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function buildRepliesListItemRootExample(): ThreadTemplateConfigV1 {
+	return {
+		version: 1,
+		typography: { fontPreset: 'noto', fontScale: 1 },
+		scenes: {
+			post: {
+				root: {
+					type: 'Builtin',
+					kind: 'repliesList',
+					rootRoot: {
+						type: 'Stack',
+						direction: 'column',
+						gap: 14,
+						children: [
+							{
+								type: 'Stack',
+								direction: 'row',
+								align: 'center',
+								gap: 12,
+								children: [
+									{
+										type: 'Avatar',
+										bind: 'root.author.avatarAssetId',
+										size: 44,
+										border: true,
+									},
+									{
+										type: 'Stack',
+										direction: 'column',
+										gap: 4,
+										children: [
+											{
+												type: 'Text',
+												bind: 'root.author.name',
+												size: 18,
+												weight: 800,
+												maxLines: 1,
+											},
+											{
+												type: 'Text',
+												bind: 'root.author.handle',
+												color: 'muted',
+												size: 14,
+												weight: 600,
+												maxLines: 1,
+											},
+										],
+									},
+								],
+							},
+							{
+								type: 'Divider',
+								opacity: 0.75,
+								margin: 10,
+							},
+							{
+								type: 'Image',
+								assetId: IMAGE_ASSET_ID_PLACEHOLDER,
+								fit: 'contain',
+								height: 240,
+								radius: 12,
+								border: true,
+								background: 'rgba(255,255,255,0.02)',
+							},
+							{
+								type: 'Spacer',
+								axis: 'y',
+								size: 6,
+							},
+							{
+								type: 'Video',
+								assetId: VIDEO_ASSET_ID_PLACEHOLDER,
+								fit: 'cover',
+								height: 300,
+								radius: 12,
+								border: true,
+								background: 'rgba(0,0,0,0.25)',
+							},
+							{
+								type: 'Spacer',
+								axis: 'y',
+								size: 6,
+							},
+							{
+								type: 'Box',
+								border: true,
+								background: 'rgba(255,255,255,0.02)',
+								padding: 14,
+								radius: 12,
+								children: [
+									{
+										type: 'ContentBlocks',
+										bind: 'root.contentBlocks',
+										gap: 12,
+										maxHeight: 520,
+									},
+								],
+							},
+						],
+					},
+					itemRoot: {
+						type: 'Stack',
+						direction: 'column',
+						gap: 14,
+						children: [
+							{
+								type: 'Stack',
+								direction: 'row',
+								align: 'center',
+								gap: 12,
+								children: [
+									{
+										type: 'Avatar',
+										bind: 'post.author.avatarAssetId',
+										size: 44,
+										border: true,
+									},
+									{
+										type: 'Stack',
+										direction: 'column',
+										gap: 4,
+										children: [
+											{
+												type: 'Text',
+												bind: 'post.author.name',
+												size: 18,
+												weight: 800,
+												maxLines: 1,
+											},
+											{
+												type: 'Text',
+												bind: 'post.author.handle',
+												color: 'muted',
+												size: 14,
+												weight: 600,
+												maxLines: 1,
+											},
+										],
+									},
+								],
+							},
+							{
+								type: 'Divider',
+								opacity: 0.75,
+								margin: 10,
+							},
+							{
+								type: 'Image',
+								assetId: IMAGE_ASSET_ID_PLACEHOLDER,
+								fit: 'contain',
+								height: 220,
+								radius: 12,
+								border: true,
+								background: 'rgba(255,255,255,0.02)',
+							},
+							{
+								type: 'Spacer',
+								axis: 'y',
+								size: 6,
+							},
+							{
+								type: 'Video',
+								assetId: VIDEO_ASSET_ID_PLACEHOLDER,
+								fit: 'cover',
+								height: 280,
+								radius: 12,
+								border: true,
+								background: 'rgba(0,0,0,0.25)',
+							},
+							{
+								type: 'Spacer',
+								axis: 'y',
+								size: 6,
+							},
+							{
+								type: 'Box',
+								border: true,
+								background: 'rgba(255,255,255,0.02)',
+								padding: 14,
+								radius: 12,
+								children: [
+									{
+										type: 'ContentBlocks',
+										bind: 'post.contentBlocks',
+										gap: 12,
+										maxHeight: 360,
+									},
+								],
+							},
+							{
+								type: 'Spacer',
+								axis: 'y',
+								size: 4,
+							},
+						],
+					},
+				},
+			},
+		},
+	}
+}
+
+function buildCoverRootExample(): ThreadTemplateConfigV1 {
+	return {
+		version: 1,
+		typography: { fontPreset: 'noto', fontScale: 1 },
+		scenes: {
+			cover: {
+				root: {
+					type: 'Stack',
+					direction: 'column',
+					align: 'center',
+					justify: 'center',
+					gap: 18,
+					padding: 64,
+					children: [
+						{
+							type: 'Text',
+							bind: 'thread.title',
+							size: 56,
+							weight: 900,
+							align: 'center',
+							maxLines: 3,
+						},
+						{
+							type: 'Spacer',
+							axis: 'y',
+							size: 8,
+						},
+						{
+							type: 'Image',
+							assetId: IMAGE_ASSET_ID_PLACEHOLDER,
+							fit: 'contain',
+							height: 260,
+							radius: 12,
+							border: true,
+							background: 'rgba(255,255,255,0.02)',
+						},
+						{
+							type: 'Divider',
+							opacity: 0.75,
+							margin: 18,
+						},
+						{
+							type: 'Stack',
+							direction: 'row',
+							align: 'center',
+							justify: 'center',
+							gap: 14,
+							children: [
+								{
+									type: 'Avatar',
+									bind: 'root.author.avatarAssetId',
+									size: 52,
+									border: true,
+								},
+								{
+									type: 'Stack',
+									direction: 'column',
+									gap: 4,
+									children: [
+										{
+											type: 'Text',
+											bind: 'root.author.name',
+											size: 20,
+											weight: 800,
+											maxLines: 1,
+										},
+										{
+											type: 'Text',
+											bind: 'thread.source',
+											color: 'muted',
+											size: 14,
+											weight: 600,
+											maxLines: 1,
+										},
+									],
+								},
+							],
+						},
+					],
+				},
+			},
+		},
+	}
+}
+
+function isSupportedRenderTreeNodeType(type: unknown): boolean {
+	return (
+		type === 'Builtin' ||
+		type === 'Stack' ||
+		type === 'Box' ||
+		type === 'Image' ||
+		type === 'Video' ||
+		type === 'Spacer' ||
+		type === 'Divider' ||
+		type === 'Text' ||
+		type === 'Avatar' ||
+		type === 'ContentBlocks'
+	)
+}
+
+function analyzeRenderTreeNode(
+	rawNode: unknown,
+	path: string,
+	state: { issues: string[]; nodeCount: number; truncated: boolean },
+	depth: number,
+	assetsById?: Map<string, any>,
+) {
+	const MAX_DEPTH = 12
+	const MAX_NODES = 200
+	const MAX_ISSUES = 80
+
+	const push = (msg: string) => {
+		if (state.issues.length >= MAX_ISSUES) {
+			if (!state.truncated) {
+				state.issues.push('…too many issues, truncated.')
+				state.truncated = true
+			}
+			return
+		}
+		state.issues.push(msg)
+	}
+
+	if (depth > MAX_DEPTH) {
+		push(`${path}: too deep (>${MAX_DEPTH}); ignored.`)
+		return
+	}
+	if (!isPlainObject(rawNode)) {
+		push(`${path}: must be an object RenderTree node; ignored.`)
+		return
+	}
+
+	const type = (rawNode as any).type
+	if (!isSupportedRenderTreeNodeType(type)) {
+		push(`${path}.type: unsupported (${String(type)}); ignored.`)
+		return
+	}
+
+	state.nodeCount += 1
+	if (state.nodeCount > MAX_NODES) {
+		push(`RenderTree: too many nodes (>${MAX_NODES}); extra nodes ignored.`)
+		return
+	}
+
+	const keys = Object.keys(rawNode)
+	const warnUnknownKeys = (allowed: Set<string>) => {
+		for (const k of keys) {
+			if (!allowed.has(k)) push(`${path}: ignored field: ${k}`)
+		}
+	}
+
+	if (type === 'Builtin') {
+		warnUnknownKeys(new Set(['type', 'kind', 'rootRoot', 'itemRoot']))
+		const kind = (rawNode as any).kind
+		if (kind !== 'cover' && kind !== 'repliesList') {
+			push(`${path}.kind: must be 'cover' or 'repliesList'; ignored.`)
+			return
+		}
+		if (kind === 'repliesList' && (rawNode as any).rootRoot != null) {
+			analyzeRenderTreeNode(
+				(rawNode as any).rootRoot,
+				`${path}.rootRoot`,
+				state,
+				depth + 1,
+				assetsById,
+			)
+		}
+		if (kind === 'repliesList' && (rawNode as any).itemRoot != null) {
+			analyzeRenderTreeNode(
+				(rawNode as any).itemRoot,
+				`${path}.itemRoot`,
+				state,
+				depth + 1,
+				assetsById,
+			)
+		}
+		if (kind !== 'repliesList' && (rawNode as any).rootRoot != null) {
+			push(`${path}.rootRoot is ignored unless kind='repliesList'.`)
+		}
+		if (kind !== 'repliesList' && (rawNode as any).itemRoot != null) {
+			push(`${path}.itemRoot is ignored unless kind='repliesList'.`)
+		}
+		return
+	}
+
+	if (type === 'Text') {
+		warnUnknownKeys(
+			new Set([
+				'type',
+				'text',
+				'bind',
+				'color',
+				'align',
+				'size',
+				'weight',
+				'maxLines',
+			]),
+		)
+		const text = (rawNode as any).text
+		const bind = (rawNode as any).bind
+		const bindAllowed =
+			bind === 'thread.title' ||
+			bind === 'thread.source' ||
+			bind === 'thread.sourceUrl' ||
+			bind === 'root.author.name' ||
+			bind === 'root.author.handle' ||
+			bind === 'root.plainText' ||
+			bind === 'post.author.name' ||
+			bind === 'post.author.handle' ||
+			bind === 'post.plainText'
+		if (text == null && bind == null) {
+			push(`${path}: Text node needs 'text' or 'bind'; ignored.`)
+		} else if (bind != null && !bindAllowed) {
+			push(`${path}.bind: unsupported (${String(bind)}); ignored.`)
+		}
+		return
+	}
+
+	if (type === 'Avatar') {
+		warnUnknownKeys(
+			new Set(['type', 'bind', 'size', 'radius', 'border', 'background']),
+		)
+		const bind = (rawNode as any).bind
+		if (
+			bind !== 'root.author.avatarAssetId' &&
+			bind !== 'post.author.avatarAssetId'
+		) {
+			push(`${path}.bind: must be 'root.author.avatarAssetId' or 'post.author.avatarAssetId'; ignored.`)
+		}
+		return
+	}
+
+	if (type === 'ContentBlocks') {
+		warnUnknownKeys(new Set(['type', 'bind', 'gap', 'maxHeight']))
+		const bind = (rawNode as any).bind
+		if (bind !== 'root.contentBlocks' && bind !== 'post.contentBlocks') {
+			push(`${path}.bind: must be 'root.contentBlocks' or 'post.contentBlocks'; ignored.`)
+		}
+		return
+	}
+
+	if (type === 'Image') {
+		warnUnknownKeys(
+			new Set([
+				'type',
+				'assetId',
+				'fit',
+				'width',
+				'height',
+				'radius',
+				'border',
+				'background',
+			]),
+		)
+		const assetId = (rawNode as any).assetId
+		if (typeof assetId !== 'string' || !assetId.trim()) {
+			push(`${path}.assetId: must be a non-empty string; ignored.`)
+			return
+		}
+		const id = assetId.trim()
+		if (id === IMAGE_ASSET_ID_PLACEHOLDER) {
+			push(`${path}.assetId: replace ${IMAGE_ASSET_ID_PLACEHOLDER} with a real image asset id.`)
+		} else if (
+			id.startsWith('ext:') ||
+			id.startsWith('http://') ||
+			id.startsWith('https://')
+		) {
+			push(`${path}.assetId: external URLs are not allowed; use ingest to create a thread asset ID.`)
+		} else if (assetsById) {
+			const asset = assetsById.get(id)
+			if (!asset) {
+				push(`${path}.assetId: not found in this thread's assets list (may need ingest).`)
+			} else if (asset?.status && asset.status !== 'ready') {
+				push(`${path}.assetId: asset status=${String(asset.status)} (may not be usable yet).`)
+			} else if (!asset?.storageKey) {
+				push(`${path}.assetId: asset has no storageKey (may not be usable yet).`)
+			}
+		}
+		const fit = (rawNode as any).fit
+		if (fit != null && fit !== 'cover' && fit !== 'contain') {
+			push(`${path}.fit: must be 'cover' or 'contain'; ignored.`)
+		}
+		return
+	}
+
+	if (type === 'Video') {
+		warnUnknownKeys(
+			new Set([
+				'type',
+				'assetId',
+				'fit',
+				'width',
+				'height',
+				'radius',
+				'border',
+				'background',
+			]),
+		)
+		const assetId = (rawNode as any).assetId
+		if (typeof assetId !== 'string' || !assetId.trim()) {
+			push(`${path}.assetId: must be a non-empty string; ignored.`)
+			return
+		}
+		const id = assetId.trim()
+		if (id === VIDEO_ASSET_ID_PLACEHOLDER) {
+			push(`${path}.assetId: replace ${VIDEO_ASSET_ID_PLACEHOLDER} with a real video asset id.`)
+		} else if (
+			id.startsWith('ext:') ||
+			id.startsWith('http://') ||
+			id.startsWith('https://')
+		) {
+			push(`${path}.assetId: external URLs are not allowed; use ingest to create a thread asset ID.`)
+		} else if (assetsById) {
+			const asset = assetsById.get(id)
+			if (!asset) {
+				push(`${path}.assetId: not found in this thread's assets list (may need ingest).`)
+			} else if (asset?.status && asset.status !== 'ready') {
+				push(`${path}.assetId: asset status=${String(asset.status)} (may not be usable yet).`)
+			} else if (!asset?.storageKey) {
+				push(`${path}.assetId: asset has no storageKey (may not be usable yet).`)
+			}
+		}
+		const fit = (rawNode as any).fit
+		if (fit != null && fit !== 'cover' && fit !== 'contain') {
+			push(`${path}.fit: must be 'cover' or 'contain'; ignored.`)
+		}
+		return
+	}
+
+	if (type === 'Spacer') {
+		warnUnknownKeys(new Set(['type', 'axis', 'size', 'width', 'height']))
+		const axis = (rawNode as any).axis
+		if (axis != null && axis !== 'x' && axis !== 'y') {
+			push(`${path}.axis: must be 'x' or 'y'; ignored.`)
+		}
+		const size = (rawNode as any).size
+		const width = (rawNode as any).width
+		const height = (rawNode as any).height
+		const hasSome =
+			(typeof size === 'number' && Number.isFinite(size)) ||
+			(typeof width === 'number' && Number.isFinite(width)) ||
+			(typeof height === 'number' && Number.isFinite(height))
+		if (!hasSome) {
+			push(`${path}: Spacer needs one of: size, width, height; ignored.`)
+		}
+		return
+	}
+
+	if (type === 'Divider') {
+		warnUnknownKeys(
+			new Set(['type', 'axis', 'thickness', 'length', 'color', 'opacity', 'margin']),
+		)
+		const axis = (rawNode as any).axis
+		if (axis != null && axis !== 'x' && axis !== 'y') {
+			push(`${path}.axis: must be 'x' or 'y'; ignored.`)
+		}
+		const opacity = (rawNode as any).opacity
+		if (opacity != null) {
+			if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+				push(`${path}.opacity: must be a number; ignored.`)
+			} else if (opacity < 0 || opacity > 1) {
+				push(`${path}.opacity: must be between 0 and 1; clamped.`)
+			}
+		}
+		return
+	}
+
+	if (type === 'Stack') {
+		warnUnknownKeys(
+			new Set([
+				'type',
+				'direction',
+				'align',
+				'justify',
+				'gap',
+				'padding',
+				'children',
+			]),
+		)
+		const children = (rawNode as any).children
+		if (children != null && !Array.isArray(children)) {
+			push(`${path}.children: must be an array; ignored.`)
+			return
+		}
+		const list = Array.isArray(children) ? children : []
+		for (let i = 0; i < list.length; i += 1) {
+			analyzeRenderTreeNode(
+				list[i],
+				`${path}.children[${i}]`,
+				state,
+				depth + 1,
+				assetsById,
+			)
+		}
+		return
+	}
+
+	if (type === 'Box') {
+		warnUnknownKeys(
+			new Set([
+				'type',
+				'padding',
+				'border',
+				'background',
+				'radius',
+				'children',
+			]),
+		)
+		const children = (rawNode as any).children
+		if (children != null && !Array.isArray(children)) {
+			push(`${path}.children: must be an array; ignored.`)
+			return
+		}
+		const list = Array.isArray(children) ? children : []
+		for (let i = 0; i < list.length; i += 1) {
+			analyzeRenderTreeNode(
+				list[i],
+				`${path}.children[${i}]`,
+				state,
+				depth + 1,
+				assetsById,
+			)
+		}
+		return
+	}
+}
+
+function analyzeThreadTemplateConfig(
+	raw: unknown,
+	normalized: ThreadTemplateConfigV1,
+	assetsById?: Map<string, any>,
+): string[] {
+	const issues: string[] = []
+	if (raw == null) return issues
+	if (!isPlainObject(raw)) {
+		issues.push(
+			`Config should be an object; got ${Array.isArray(raw) ? 'array' : typeof raw}. It will be treated as defaults.`,
+		)
+		return issues
+	}
+
+	const allowedTop = new Set([
+		'version',
+		'theme',
+		'typography',
+		'layout',
+		'brand',
+		'motion',
+		'scenes',
+	])
+	for (const k of Object.keys(raw)) {
+		if (!allowedTop.has(k)) issues.push(`Ignored field: ${k}`)
+	}
+
+	if ('version' in raw && raw.version !== 1) {
+		issues.push('version must be 1; other values are ignored.')
+	}
+
+	const theme = isPlainObject(raw.theme)
+		? raw.theme
+		: raw.theme == null
+			? null
+			: 'invalid'
+	if (theme === 'invalid') issues.push('theme must be an object; ignored.')
+	if (theme && isPlainObject(normalized.theme)) {
+		const allowed = new Set([
+			'background',
+			'surface',
+			'border',
+			'textPrimary',
+			'textSecondary',
+			'textMuted',
+			'accent',
+			'accentGlow',
+		])
+		for (const k of Object.keys(theme)) {
+			if (!allowed.has(k)) issues.push(`Ignored field: theme.${k}`)
+		}
+		for (const k of allowed) {
+			if (!(k in theme)) continue
+			const v = (theme as any)[k]
+			if (typeof v !== 'string' || !v.trim()) {
+				issues.push(`theme.${k} must be a non-empty string; ignored.`)
+				continue
+			}
+			const next = (normalized.theme as any)[k]
+			if (typeof next === 'string' && next !== v.trim()) {
+				issues.push(`theme.${k} normalized (trimmed/truncated).`)
+			}
+		}
+	}
+
+	const typography = isPlainObject(raw.typography)
+		? raw.typography
+		: raw.typography == null
+			? null
+			: 'invalid'
+	if (typography === 'invalid')
+		issues.push('typography must be an object; ignored.')
+	if (typography && isPlainObject(normalized.typography)) {
+		const allowed = new Set(['fontPreset', 'fontScale'])
+		for (const k of Object.keys(typography)) {
+			if (!allowed.has(k)) issues.push(`Ignored field: typography.${k}`)
+		}
+		if ('fontPreset' in typography) {
+			const v = (typography as any).fontPreset
+			if (v !== 'noto' && v !== 'inter' && v !== 'system') {
+				issues.push(
+					'typography.fontPreset must be one of: noto, inter, system; ignored.',
+				)
+			}
+		}
+		if ('fontScale' in typography) {
+			const v = (typography as any).fontScale
+			const next = (normalized.typography as any).fontScale
+			if (typeof v !== 'number' || !Number.isFinite(v)) {
+				issues.push('typography.fontScale must be a number; ignored.')
+			} else if (typeof next === 'number' && next !== v) {
+				issues.push(`typography.fontScale clamped to ${next}.`)
+			}
+		}
+	}
+
+	const layout = isPlainObject(raw.layout)
+		? raw.layout
+		: raw.layout == null
+			? null
+			: 'invalid'
+	if (layout === 'invalid') issues.push('layout must be an object; ignored.')
+	if (layout && isPlainObject(normalized.layout)) {
+		const allowed = new Set(['paddingX', 'paddingY', 'infoPanelWidth'])
+		for (const k of Object.keys(layout)) {
+			if (!allowed.has(k)) issues.push(`Ignored field: layout.${k}`)
+		}
+		for (const k of ['paddingX', 'paddingY', 'infoPanelWidth'] as const) {
+			if (!(k in layout)) continue
+			const v = (layout as any)[k]
+			const next = (normalized.layout as any)[k]
+			if (typeof v !== 'number' || !Number.isFinite(v)) {
+				issues.push(`layout.${k} must be a number; ignored.`)
+				continue
+			}
+			if (typeof next === 'number' && next !== Math.round(v)) {
+				issues.push(`layout.${k} clamped to ${next}.`)
+			}
+		}
+	}
+
+	const brand = isPlainObject(raw.brand)
+		? raw.brand
+		: raw.brand == null
+			? null
+			: 'invalid'
+	if (brand === 'invalid') issues.push('brand must be an object; ignored.')
+	if (brand && isPlainObject(normalized.brand)) {
+		const allowed = new Set(['showWatermark', 'watermarkText'])
+		for (const k of Object.keys(brand)) {
+			if (!allowed.has(k)) issues.push(`Ignored field: brand.${k}`)
+		}
+		if ('showWatermark' in brand) {
+			const v = (brand as any).showWatermark
+			if (typeof v !== 'boolean')
+				issues.push('brand.showWatermark must be boolean; ignored.')
+		}
+		if ('watermarkText' in brand) {
+			const v = (brand as any).watermarkText
+			const next = (normalized.brand as any).watermarkText
+			if (typeof v !== 'string') {
+				issues.push('brand.watermarkText must be string; ignored.')
+			} else if (typeof next === 'string' && next !== v.trim()) {
+				issues.push('brand.watermarkText normalized (trimmed/truncated).')
+			}
+		}
+	}
+
+	const motion = isPlainObject(raw.motion)
+		? raw.motion
+		: raw.motion == null
+			? null
+			: 'invalid'
+	if (motion === 'invalid') issues.push('motion must be an object; ignored.')
+	if (motion && isPlainObject(normalized.motion)) {
+		const allowed = new Set(['enabled', 'intensity'])
+		for (const k of Object.keys(motion)) {
+			if (!allowed.has(k)) issues.push(`Ignored field: motion.${k}`)
+		}
+		if ('enabled' in motion) {
+			const v = (motion as any).enabled
+			if (typeof v !== 'boolean')
+				issues.push('motion.enabled must be boolean; ignored.')
+		}
+		if ('intensity' in motion) {
+			const v = (motion as any).intensity
+			if (v !== 'subtle' && v !== 'normal' && v !== 'strong') {
+				issues.push(
+					'motion.intensity must be one of: subtle, normal, strong; ignored.',
+				)
+			}
+		}
+	}
+
+	const scenes = isPlainObject(raw.scenes)
+		? raw.scenes
+		: raw.scenes == null
+			? null
+			: 'invalid'
+	if (scenes === 'invalid') issues.push('scenes must be an object; ignored.')
+	if (scenes && isPlainObject((normalized as any).scenes)) {
+		const allowedScenes = new Set(['cover', 'post'])
+		for (const k of Object.keys(scenes)) {
+			if (!allowedScenes.has(k)) issues.push(`Ignored field: scenes.${k}`)
+		}
+
+		for (const sceneKey of ['cover', 'post'] as const) {
+			const scene = (scenes as any)[sceneKey]
+			if (scene == null) continue
+			if (!isPlainObject(scene)) {
+				issues.push(`scenes.${sceneKey} must be an object; ignored.`)
+				continue
+			}
+			const allowedSceneKeys = new Set(['root'])
+			for (const k of Object.keys(scene)) {
+				if (!allowedSceneKeys.has(k))
+					issues.push(`Ignored field: scenes.${sceneKey}.${k}`)
+			}
+			if ('root' in scene) {
+				const state = { issues: [] as string[], nodeCount: 0, truncated: false }
+				analyzeRenderTreeNode(
+					(scene as any).root,
+					`scenes.${sceneKey}.root`,
+					state,
+					0,
+					assetsById,
+				)
+				issues.push(...state.issues)
+			}
+		}
+	}
+
+	return issues
 }
 
 function guessAudioContentType(file: File): string {
@@ -75,7 +941,9 @@ function ThreadDetailRoute() {
 	const qc = useQueryClient()
 	const t = useTranslations('Threads.detail')
 
-	const dataQuery = useQuery(queryOrpc.thread.byId.queryOptions({ input: { id } }))
+	const dataQuery = useQuery(
+		queryOrpc.thread.byId.queryOptions({ input: { id } }),
+	)
 	const thread = dataQuery.data?.thread ?? null
 	const root = dataQuery.data?.root ?? null
 	const replies = dataQuery.data?.replies ?? []
@@ -83,7 +951,9 @@ function ThreadDetailRoute() {
 	const audio = dataQuery.data?.audio ?? null
 	const audioAssets = dataQuery.data?.audioAssets ?? []
 
-	const [selectedPostId, setSelectedPostId] = React.useState<string | null>(null)
+	const [selectedPostId, setSelectedPostId] = React.useState<string | null>(
+		null,
+	)
 	React.useEffect(() => {
 		if (!selectedPostId && root?.id) setSelectedPostId(root.id)
 	}, [root?.id, selectedPostId])
@@ -97,12 +967,61 @@ function ThreadDetailRoute() {
 		() => (selectedPost ? toPrettyJson(selectedPost) : ''),
 		[selectedPost],
 	)
-	const threadJson = React.useMemo(() => (thread ? toPrettyJson(thread) : ''), [thread])
+	const threadJson = React.useMemo(
+		() => (thread ? toPrettyJson(thread) : ''),
+		[thread],
+	)
 	const assetsById = React.useMemo(() => {
 		const m = new Map<string, any>()
 		for (const a of assets) m.set(String(a.id), a)
 		return m
 	}, [assets])
+
+	const hasExternalMediaRefs = React.useMemo(() => {
+		const posts = [root, ...replies].filter(Boolean) as any[]
+		for (const p of posts) {
+			const avatar = String(p?.authorAvatarAssetId ?? '')
+			if (
+				avatar.startsWith('ext:') ||
+				avatar.startsWith('http://') ||
+				avatar.startsWith('https://')
+			) {
+				return true
+			}
+			for (const b of (p?.contentBlocks ?? []) as any[]) {
+				if (!b || typeof b !== 'object') continue
+				if (b.type === 'image' || b.type === 'video') {
+					const id = String((b as any).data?.assetId ?? '')
+					if (
+						id.startsWith('ext:') ||
+						id.startsWith('http://') ||
+						id.startsWith('https://')
+					) {
+						return true
+					}
+				}
+				if (b.type === 'link') {
+					const id = String((b as any).data?.previewAssetId ?? '')
+					if (
+						id.startsWith('ext:') ||
+						id.startsWith('http://') ||
+						id.startsWith('https://')
+					) {
+						return true
+					}
+				}
+			}
+		}
+		return false
+	}, [replies, root])
+
+	const canIngestAssets = React.useMemo(() => {
+		const hasPendingDbAssets = assets.some(
+			(a: any) =>
+				a?.status === 'pending' || (a?.status === 'ready' && !a?.storageKey),
+		)
+		return hasExternalMediaRefs || hasPendingDbAssets
+	}, [assets, hasExternalMediaRefs])
 
 	const [draftText, setDraftText] = React.useState('')
 	React.useEffect(() => {
@@ -201,7 +1120,8 @@ function ThreadDetailRoute() {
 				enabled: !!jobId,
 				refetchInterval: (q: { state: { data?: any } }) => {
 					const s = q.state.data?.status
-					if (s === 'completed' || s === 'failed' || s === 'canceled') return false
+					if (s === 'completed' || s === 'failed' || s === 'canceled')
+						return false
 					return 2000
 				},
 			}),
@@ -235,6 +1155,20 @@ function ThreadDetailRoute() {
 	const setAudioAssetMutation = useEnhancedMutation(
 		queryOrpc.thread.setAudioAsset.mutationOptions(),
 	)
+	const setTemplateMutation = useEnhancedMutation(
+		queryOrpc.thread.setTemplate.mutationOptions({
+			onSuccess: async () => {
+				await qc.invalidateQueries({
+					queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: 'Saved template settings',
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : String(error),
+		},
+	)
 
 	async function refreshThread() {
 		await qc.invalidateQueries({
@@ -245,7 +1179,9 @@ function ThreadDetailRoute() {
 	async function setThreadAudio(audioAssetId: string | null) {
 		await setAudioAssetMutation.mutateAsync({ threadId: id, audioAssetId })
 		await refreshThread()
-		toast.success(audioAssetId ? t('audio.toasts.set') : t('audio.toasts.cleared'))
+		toast.success(
+			audioAssetId ? t('audio.toasts.set') : t('audio.toasts.cleared'),
+		)
 	}
 
 	async function uploadThreadAudio(file: File) {
@@ -272,7 +1208,9 @@ function ThreadDetailRoute() {
 				body: file,
 			})
 			if (!putRes.ok) {
-				throw new Error(`Upload failed: ${putRes.status} ${await putRes.text()}`)
+				throw new Error(
+					`Upload failed: ${putRes.status} ${await putRes.text()}`,
+				)
 			}
 
 			const durationMs = await readAudioDurationMs(file)
@@ -283,7 +1221,10 @@ function ThreadDetailRoute() {
 				durationMs,
 			})
 
-			await setAudioAssetMutation.mutateAsync({ threadId: id, audioAssetId: assetId })
+			await setAudioAssetMutation.mutateAsync({
+				threadId: id,
+				audioAssetId: assetId,
+			})
 			await refreshThread()
 			toast.success(t('audio.toasts.uploaded'))
 		} catch (e) {
@@ -294,6 +1235,178 @@ function ThreadDetailRoute() {
 			if (audioFileInputRef.current) audioFileInputRef.current.value = ''
 		}
 	}
+
+	// ---------- Thread template ----------
+	const templates = React.useMemo(() => listThreadTemplates(), [])
+	const TEMPLATE_DEFAULT = '__default__'
+
+	const [templateIdDraft, setTemplateIdDraft] =
+		React.useState<string>(TEMPLATE_DEFAULT)
+	const [templateConfigText, setTemplateConfigText] = React.useState<string>('')
+	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(null)
+
+	function suggestMediaHeight(kind: 'image' | 'video', width: unknown, height: unknown) {
+		const w = typeof width === 'number' && Number.isFinite(width) ? width : null
+		const h = typeof height === 'number' && Number.isFinite(height) ? height : null
+		if (!w || !h) return kind === 'video' ? 360 : 320
+		const ratio = w / h
+		if (kind === 'video') {
+			if (ratio >= 1.6) return 260
+			if (ratio <= 0.8) return 420
+			return 360
+		}
+		if (ratio >= 1.6) return 220
+		if (ratio <= 0.8) return 420
+		return 320
+	}
+
+	function insertTemplateText(snippet: string) {
+		const el = templateConfigTextAreaRef.current
+		const text = templateConfigText
+
+		if (!el) {
+			setTemplateConfigText(text ? `${text}\n${snippet}` : snippet)
+			return
+		}
+
+		const start =
+			typeof el.selectionStart === 'number' ? el.selectionStart : text.length
+		const end =
+			typeof el.selectionEnd === 'number' ? el.selectionEnd : text.length
+		const next = `${text.slice(0, start)}${snippet}${text.slice(end)}`
+
+		setTemplateConfigText(next)
+		requestAnimationFrame(() => {
+			el.focus()
+			const pos = start + snippet.length
+			el.selectionStart = pos
+			el.selectionEnd = pos
+		})
+	}
+
+	function replaceAssetIdPlaceholder(
+		assetId: string,
+		kind?: 'image' | 'video' | null,
+	): boolean {
+		const order =
+			kind === 'image'
+				? [IMAGE_ASSET_ID_PLACEHOLDER, VIDEO_ASSET_ID_PLACEHOLDER]
+				: kind === 'video'
+					? [VIDEO_ASSET_ID_PLACEHOLDER, IMAGE_ASSET_ID_PLACEHOLDER]
+					: [IMAGE_ASSET_ID_PLACEHOLDER, VIDEO_ASSET_ID_PLACEHOLDER]
+
+		for (const placeholder of order) {
+			if (!templateConfigText.includes(placeholder)) continue
+			setTemplateConfigText(templateConfigText.replace(placeholder, assetId))
+			return true
+		}
+		return false
+	}
+
+	React.useEffect(() => {
+		if (!thread) return
+		const nextTemplateId = thread.templateId
+			? String(thread.templateId)
+			: TEMPLATE_DEFAULT
+		setTemplateIdDraft(nextTemplateId)
+		setTemplateConfigText(
+			thread.templateConfig == null ? '' : toPrettyJson(thread.templateConfig),
+		)
+	}, [thread?.id])
+
+	const templateConfigParsed = React.useMemo(() => {
+		const text = templateConfigText.trim()
+		if (!text) return { value: null as unknown, error: null as string | null }
+		try {
+			return {
+				value: JSON.parse(text) as unknown,
+				error: null as string | null,
+			}
+		} catch (e) {
+			return {
+				value: undefined,
+				error: e instanceof Error ? e.message : String(e),
+			}
+		}
+	}, [templateConfigText])
+
+	const normalizedTemplateConfig = React.useMemo(() => {
+		if (templateConfigParsed.value === undefined) return null
+		if (templateConfigParsed.value === null)
+			return DEFAULT_THREAD_TEMPLATE_CONFIG
+		return normalizeThreadTemplateConfig(templateConfigParsed.value)
+	}, [templateConfigParsed.value])
+
+	const templateConfigIssues = React.useMemo(() => {
+		if (!normalizedTemplateConfig) return []
+		if (
+			templateConfigParsed.value === undefined ||
+			templateConfigParsed.value === null
+		) {
+			return []
+		}
+		return analyzeThreadTemplateConfig(
+			templateConfigParsed.value,
+			normalizedTemplateConfig,
+			assetsById,
+		)
+	}, [assetsById, normalizedTemplateConfig, templateConfigParsed.value])
+
+	const previewTemplateId =
+		templateIdDraft === TEMPLATE_DEFAULT
+			? thread?.templateId
+				? (String(thread.templateId) as any)
+				: undefined
+			: (templateIdDraft as any)
+
+	const previewTemplateConfig =
+		templateConfigParsed.value === undefined
+			? (thread?.templateConfig as any)
+			: (templateConfigParsed.value as any)
+
+	async function saveTemplateSettings(mode: 'raw' | 'normalized' = 'raw') {
+		if (!thread) return
+		if (templateConfigParsed.error) {
+			toast.error(`Invalid JSON: ${templateConfigParsed.error}`)
+			return
+		}
+
+		if (mode === 'normalized' && !normalizedTemplateConfig) {
+			toast.error('Normalized config is not available')
+			return
+		}
+
+		if (mode === 'normalized' && !templateConfigText.trim()) {
+			toast.error('Nothing to normalize: Config JSON is empty')
+			return
+		}
+
+		const templateId =
+			templateIdDraft === TEMPLATE_DEFAULT ? null : String(templateIdDraft)
+		const templateConfig =
+			mode === 'normalized'
+				? normalizedTemplateConfig
+				: templateConfigParsed.value === null
+					? null
+					: templateConfigParsed.value
+
+		await setTemplateMutation.mutateAsync({
+			threadId: thread.id,
+			templateId,
+			templateConfig,
+		})
+	}
+
+	const normalizedTemplateConfigText = React.useMemo(() => {
+		if (!normalizedTemplateConfig) return ''
+		return toPrettyJson(normalizedTemplateConfig)
+	}, [normalizedTemplateConfig])
+
+	const canSaveNormalized =
+		Boolean(thread) &&
+		!setTemplateMutation.isPending &&
+		!templateConfigParsed.error &&
+		Boolean(templateConfigText.trim())
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
@@ -359,7 +1472,318 @@ function ThreadDetailRoute() {
 							: null
 					}
 					isLoading={dataQuery.isLoading}
+					templateId={previewTemplateId}
+					templateConfig={previewTemplateConfig}
 				/>
+
+				<div className="mt-6">
+					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+						Template
+					</div>
+					<Card className="rounded-none">
+						<CardContent className="py-5 space-y-4">
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div className="space-y-2">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										Template ID
+									</Label>
+									<Select
+										value={templateIdDraft}
+										onValueChange={(v) => setTemplateIdDraft(v)}
+									>
+										<SelectTrigger className="w-full rounded-none font-mono text-xs">
+											<SelectValue placeholder="Select template" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value={TEMPLATE_DEFAULT}>
+												Default ({DEFAULT_THREAD_TEMPLATE_ID})
+											</SelectItem>
+											{templates.map((tpl) => (
+												<SelectItem key={tpl.id} value={tpl.id}>
+													{tpl.name} ({tpl.id})
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div className="space-y-2">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										Config JSON
+									</Label>
+									<Textarea
+										ref={templateConfigTextAreaRef}
+										value={templateConfigText}
+										onChange={(e) => setTemplateConfigText(e.target.value)}
+										placeholder="{}"
+										className="min-h-[120px] rounded-none font-mono text-xs"
+									/>
+									{templateConfigParsed.error ? (
+										<div className="font-mono text-xs text-destructive">
+											Invalid JSON: {templateConfigParsed.error}
+										</div>
+									) : (
+										<div className="font-mono text-xs text-muted-foreground">
+											Empty = use defaults
+										</div>
+									)}
+									{!templateConfigParsed.error &&
+									templateConfigIssues.length > 0 ? (
+										<div className="space-y-1">
+											<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												Normalization
+											</div>
+											<ul className="space-y-0.5 font-mono text-xs text-muted-foreground">
+												{templateConfigIssues.slice(0, 12).map((msg, idx) => (
+													<li key={idx}>- {msg}</li>
+												))}
+												{templateConfigIssues.length > 12 ? (
+													<li>
+														- …and {templateConfigIssues.length - 12} more
+													</li>
+												) : null}
+											</ul>
+										</div>
+									) : null}
+								</div>
+							</div>
+
+							<div className="space-y-2">
+								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									Assets (insert)
+								</Label>
+								<div className="rounded-none border border-border bg-card">
+									{assets.length === 0 ? (
+										<div className="px-3 py-3 font-mono text-xs text-muted-foreground">
+											No referenced assets in this thread yet.
+										</div>
+									) : (
+										<div className="max-h-[260px] overflow-auto">
+											{assets
+												.slice()
+												.sort((a: any, b: any) => {
+													const ka = String(a?.kind ?? '')
+													const kb = String(b?.kind ?? '')
+													if (ka !== kb) return ka.localeCompare(kb)
+													return String(a?.id ?? '').localeCompare(String(b?.id ?? ''))
+												})
+												.map((a: any) => (
+													<div
+														key={String(a.id)}
+														className="flex items-start justify-between gap-3 px-3 py-2 border-t border-border first:border-t-0"
+													>
+														<div className="min-w-0">
+															<div className="font-mono text-xs text-foreground">
+																{String(a.kind)}{' '}
+																<span className="text-muted-foreground">
+																	({String(a.status ?? 'unknown')})
+																</span>
+															</div>
+															<div className="font-mono text-[10px] text-muted-foreground break-all">
+																{String(a.id)}
+															</div>
+														</div>
+														<div className="flex flex-wrap items-center justify-end gap-2">
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase"
+																onClick={() => {
+																	const id = String(a.id)
+																	void navigator.clipboard
+																		.writeText(id)
+																		.then(() => toast.message('Copied asset id'))
+																		.catch(() =>
+																			toast.message('Copy failed (clipboard not available)'),
+																		)
+
+																	const kind =
+																		a.kind === 'image' || a.kind === 'video'
+																			? (a.kind as 'image' | 'video')
+																			: null
+																	if (replaceAssetIdPlaceholder(id, kind)) {
+																		toast.message('Replaced placeholder')
+																		return
+																	}
+																	insertTemplateText(JSON.stringify(id))
+																}}
+															>
+																Insert ID
+															</Button>
+															{a.kind === 'image' ? (
+																<Button
+																	type="button"
+																	size="sm"
+																	variant="outline"
+																	className="rounded-none font-mono text-[10px] uppercase"
+																	onClick={() => {
+																		const id = String(a.id)
+																		if (replaceAssetIdPlaceholder(id, 'image')) {
+																			toast.message('Replaced placeholder')
+																			return
+																		}
+																		const height = suggestMediaHeight(
+																			'image',
+																			a.width,
+																			a.height,
+																		)
+																		insertTemplateText(
+																			toPrettyJson({
+																				type: 'Image',
+																				assetId: id,
+																				fit: 'cover',
+																				height,
+																				radius: 12,
+																				border: true,
+																			}),
+																		)
+																	}}
+																>
+																	Insert Image
+																</Button>
+															) : null}
+															{a.kind === 'video' ? (
+																<Button
+																	type="button"
+																	size="sm"
+																	variant="outline"
+																	className="rounded-none font-mono text-[10px] uppercase"
+																	onClick={() => {
+																		const id = String(a.id)
+																		if (replaceAssetIdPlaceholder(id, 'video')) {
+																			toast.message('Replaced placeholder')
+																			return
+																		}
+																		const height = suggestMediaHeight(
+																			'video',
+																			a.width,
+																			a.height,
+																		)
+																		insertTemplateText(
+																			toPrettyJson({
+																				type: 'Video',
+																				assetId: id,
+																				fit: 'cover',
+																				height,
+																				radius: 12,
+																				border: true,
+																			}),
+																		)
+																	}}
+																>
+																	Insert Video
+																</Button>
+															) : null}
+														</div>
+													</div>
+												))}
+										</div>
+									)}
+								</div>
+								<div className="font-mono text-xs text-muted-foreground">
+									Tip: `Image/Video.assetId` must be a `thread_assets.id`. Use
+									`Download/ingest` first for external media. Placeholders:
+									{` ${IMAGE_ASSET_ID_PLACEHOLDER}, ${VIDEO_ASSET_ID_PLACEHOLDER}`}
+								</div>
+							</div>
+
+							{!templateConfigParsed.error ? (
+								<div className="space-y-2">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										Normalized (preview)
+									</Label>
+									<Textarea
+										value={normalizedTemplateConfigText}
+										readOnly
+										className="min-h-[120px] rounded-none font-mono text-xs"
+									/>
+									<div className="font-mono text-xs text-muted-foreground">
+										Preview/render uses the normalized config.
+									</div>
+								</div>
+							) : null}
+
+							<div className="flex flex-wrap items-center gap-3">
+								<Button
+									type="button"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={setTemplateMutation.isPending || !thread}
+									onClick={() => void saveTemplateSettings('raw')}
+								>
+									{setTemplateMutation.isPending ? 'Saving…' : 'Save'}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => {
+										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
+										setTemplateConfigText(
+											toPrettyJson(buildRepliesListItemRootExample()),
+										)
+										toast.message('Inserted example config (replies itemRoot)')
+									}}
+								>
+									Insert Example
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => {
+										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
+										setTemplateConfigText(toPrettyJson(buildCoverRootExample()))
+										toast.message('Inserted example config (cover root)')
+									}}
+								>
+									Insert Cover Example
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canSaveNormalized}
+									onClick={() => void saveTemplateSettings('normalized')}
+								>
+									Save Normalized
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => {
+										if (!thread) return
+										setTemplateIdDraft(
+											thread.templateId
+												? String(thread.templateId)
+												: TEMPLATE_DEFAULT,
+										)
+										setTemplateConfigText(
+											thread.templateConfig == null
+												? ''
+												: toPrettyJson(thread.templateConfig),
+										)
+									}}
+								>
+									Reset
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!thread}
+									onClick={() => setTemplateConfigText('')}
+								>
+									Clear Config
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				</div>
 
 				<div className="mt-6">
 					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -385,13 +1809,17 @@ function ThreadDetailRoute() {
 									disabled={isUploadingAudio}
 									onClick={() => audioFileInputRef.current?.click()}
 								>
-									{isUploadingAudio ? t('audio.actions.uploading') : t('audio.actions.upload')}
+									{isUploadingAudio
+										? t('audio.actions.uploading')
+										: t('audio.actions.upload')}
 								</Button>
 								<Button
 									type="button"
 									variant="outline"
 									className="rounded-none font-mono text-xs uppercase"
-									disabled={setAudioAssetMutation.isPending || !thread?.audioAssetId}
+									disabled={
+										setAudioAssetMutation.isPending || !thread?.audioAssetId
+									}
 									onClick={() => void setThreadAudio(null)}
 								>
 									{t('audio.actions.clear')}
@@ -408,11 +1836,7 @@ function ThreadDetailRoute() {
 							</div>
 
 							{audio?.url ? (
-								<audio
-									controls
-									src={String(audio.url)}
-									className="w-full"
-								/>
+								<audio controls src={String(audio.url)} className="w-full" />
 							) : audio?.asset ? (
 								<div className="font-mono text-xs text-muted-foreground">
 									{t('audio.labels.urlMissing')}
@@ -426,19 +1850,27 @@ function ThreadDetailRoute() {
 									</div>
 									<div className="grid grid-cols-1 gap-2">
 										{audioAssets.map((a: any) => {
-											const isCurrent = thread?.audioAssetId && String(thread.audioAssetId) === String(a.id)
+											const isCurrent =
+												thread?.audioAssetId &&
+												String(thread.audioAssetId) === String(a.id)
 											return (
 												<div
 													key={String(a.id)}
 													className={`border px-3 py-2 font-mono text-xs ${
-														isCurrent ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'
+														isCurrent
+															? 'border-primary bg-primary/5'
+															: 'border-border bg-muted/30'
 													}`}
 												>
 													<div className="flex flex-wrap items-center justify-between gap-3">
 														<div className="truncate">
 															{String(a.id)}
-															{typeof a.durationMs === 'number' ? ` · ${Math.round(a.durationMs / 1000)}s` : ''}
-															{typeof a.bytes === 'number' ? ` · ${Math.round(a.bytes / 1024)}KB` : ''}
+															{typeof a.durationMs === 'number'
+																? ` · ${Math.round(a.durationMs / 1000)}s`
+																: ''}
+															{typeof a.bytes === 'number'
+																? ` · ${Math.round(a.bytes / 1024)}KB`
+																: ''}
 															{a.status ? ` · ${String(a.status)}` : ''}
 														</div>
 														<Button
@@ -446,7 +1878,10 @@ function ThreadDetailRoute() {
 															size="sm"
 															variant="outline"
 															className="rounded-none font-mono text-[10px] uppercase tracking-widest"
-															disabled={setAudioAssetMutation.isPending || String(a.status) !== 'ready'}
+															disabled={
+																setAudioAssetMutation.isPending ||
+																String(a.status) !== 'ready'
+															}
 															onClick={() => void setThreadAudio(String(a.id))}
 														>
 															{t('audio.actions.use')}
@@ -529,16 +1964,16 @@ function ThreadDetailRoute() {
 								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 									{t('sections.media')}
 								</div>
-								{assets.some(
-									(a: any) => a?.status === 'pending' || (a?.status === 'ready' && !a?.storageKey),
-								) ? (
+								{canIngestAssets ? (
 									<Button
 										type="button"
 										size="sm"
 										variant="outline"
 										className="rounded-none font-mono text-[10px] uppercase tracking-widest"
 										disabled={ingestAssetsMutation.isPending}
-										onClick={() => ingestAssetsMutation.mutate({ threadId: id })}
+										onClick={() =>
+											ingestAssetsMutation.mutate({ threadId: id })
+										}
 									>
 										{ingestAssetsMutation.isPending
 											? t('actions.downloading')
@@ -552,10 +1987,13 @@ function ThreadDetailRoute() {
 									<div>avatarAssetId: {selectedPost.authorAvatarAssetId}</div>
 									{assetsById.get(selectedPost.authorAvatarAssetId) ? (
 										<div className="text-muted-foreground">
-										asset: {assetsById.get(selectedPost.authorAvatarAssetId).kind}{' '}
-											{assetsById.get(selectedPost.authorAvatarAssetId).sourceUrl
+											asset:{' '}
+											{assetsById.get(selectedPost.authorAvatarAssetId).kind}{' '}
+											{assetsById.get(selectedPost.authorAvatarAssetId)
+												.sourceUrl
 												? `url=${assetsById.get(selectedPost.authorAvatarAssetId).sourceUrl}`
-												: assetsById.get(selectedPost.authorAvatarAssetId).storageKey
+												: assetsById.get(selectedPost.authorAvatarAssetId)
+															.storageKey
 													? `storageKey=${assetsById.get(selectedPost.authorAvatarAssetId).storageKey}`
 													: '(no url)'}
 											{assetsById.get(selectedPost.authorAvatarAssetId).status
@@ -570,8 +2008,9 @@ function ThreadDetailRoute() {
 								</div>
 							) : null}
 
-							{(selectedPost?.contentBlocks ?? []).filter((b: any) => b?.type !== 'text')
-								.length === 0 ? (
+							{(selectedPost?.contentBlocks ?? []).filter(
+								(b: any) => b?.type !== 'text',
+							).length === 0 ? (
 								<div className="font-mono text-xs text-muted-foreground">
 									{t('media.noBlocks')}
 								</div>
@@ -605,12 +2044,15 @@ function ThreadDetailRoute() {
 														) : null}
 														{asset ? (
 															<div className="text-muted-foreground">
-																asset: kind={asset.kind} bytes={asset.bytes ?? '-'}{' '}
+																asset: kind={asset.kind} bytes=
+																{asset.bytes ?? '-'}{' '}
 																{asset.width && asset.height
 																	? `dim=${asset.width}x${asset.height}`
 																	: null}{' '}
 																status={asset.status}{' '}
-																{asset.storageKey ? `storageKey=${asset.storageKey}` : null}
+																{asset.storageKey
+																	? `storageKey=${asset.storageKey}`
+																	: null}
 															</div>
 														) : (
 															<div className="text-muted-foreground">
@@ -659,11 +2101,13 @@ function ThreadDetailRoute() {
 														className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs space-y-1"
 													>
 														<div>
-															{t('media.labels.link')}: {String(b.data?.url ?? '')}
+															{t('media.labels.link')}:{' '}
+															{String(b.data?.url ?? '')}
 														</div>
 														{b.data?.title ? (
 															<div className="text-muted-foreground">
-																{t('media.labels.title')}: {String(b.data.title)}
+																{t('media.labels.title')}:{' '}
+																{String(b.data.title)}
 															</div>
 														) : null}
 														{b.data?.description ? (
@@ -674,8 +2118,11 @@ function ThreadDetailRoute() {
 														) : null}
 														{previewAssetId ? (
 															<div className="text-muted-foreground">
-																{t('media.labels.previewAssetId')}: {previewAssetId}{' '}
-																{previewAsset?.sourceUrl ? `url=${previewAsset.sourceUrl}` : null}
+																{t('media.labels.previewAssetId')}:{' '}
+																{previewAssetId}{' '}
+																{previewAsset?.sourceUrl
+																	? `url=${previewAsset.sourceUrl}`
+																	: null}
 															</div>
 														) : (
 															<div className="text-muted-foreground">
@@ -691,7 +2138,9 @@ function ThreadDetailRoute() {
 													key={String(b.id)}
 													className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs"
 												>
-													{t('media.unknownBlockType', { type: String(b.type) })}
+													{t('media.unknownBlockType', {
+														type: String(b.type),
+													})}
 												</div>
 											)
 										})}
@@ -710,7 +2159,11 @@ function ThreadDetailRoute() {
 										size="sm"
 										variant="outline"
 										className="rounded-none font-mono text-[10px] uppercase tracking-widest"
-										disabled={translateMutation.isPending || !thread?.id || !selectedPost?.id}
+										disabled={
+											translateMutation.isPending ||
+											!thread?.id ||
+											!selectedPost?.id
+										}
 										onClick={() => {
 											if (!thread?.id || !selectedPost?.id) return
 											translateMutation.mutate({
@@ -775,9 +2228,7 @@ function ThreadDetailRoute() {
 							<Button
 								className="rounded-none font-mono text-xs uppercase"
 								disabled={
-									updateMutation.isPending ||
-									!selectedPost?.id ||
-									!thread?.id
+									updateMutation.isPending || !selectedPost?.id || !thread?.id
 								}
 								onClick={() => {
 									if (!thread?.id || !selectedPost?.id) return
@@ -795,7 +2246,9 @@ function ThreadDetailRoute() {
 								variant="outline"
 								className="rounded-none font-mono text-xs uppercase"
 								onClick={() => {
-									setDraftText(firstTextBlockText(selectedPost?.contentBlocks) || '')
+									setDraftText(
+										firstTextBlockText(selectedPost?.contentBlocks) || '',
+									)
 									toast.message(t('toasts.reset'))
 								}}
 							>
@@ -863,7 +2316,9 @@ function ThreadDetailRoute() {
 								{typeof renderStatusQuery.data?.progress === 'number' ? (
 									<div>
 										{t('render.progress', {
-											progress: Math.round(renderStatusQuery.data.progress * 100),
+											progress: Math.round(
+												renderStatusQuery.data.progress * 100,
+											),
 										})}
 									</div>
 								) : null}

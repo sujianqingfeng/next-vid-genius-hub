@@ -25,12 +25,15 @@ type DbThread = {
 	title: string
 	source: string
 	sourceUrl?: string | null
+	templateId?: string | null
+	templateConfig?: unknown | null
 }
 
 type DbThreadPost = {
 	id: string
 	authorName: string
 	authorHandle?: string | null
+	authorAvatarAssetId?: string | null
 	contentBlocks: any[]
 	plainText: string
 	translations?: ThreadVideoInputProps['root']['translations'] | null
@@ -52,7 +55,8 @@ export function ThreadRemotionPreviewCard({
 	isLoading,
 	assets = [],
 	audio = null,
-	templateId = DEFAULT_THREAD_TEMPLATE_ID,
+	templateId,
+	templateConfig,
 }: {
 	thread: DbThread | null
 	root: DbThreadPost | null
@@ -62,9 +66,11 @@ export function ThreadRemotionPreviewCard({
 		id: string
 		kind: string
 		sourceUrl?: string | null
+		renderUrl?: string | null
 	}>
 	audio?: { url: string; durationMs: number } | null
 	templateId?: ThreadTemplateId
+	templateConfig?: ThreadVideoInputProps['templateConfig'] | null
 }) {
 	const isClient = typeof window !== 'undefined'
 
@@ -79,16 +85,29 @@ export function ThreadRemotionPreviewCard({
 		return buildCommentTimeline(commentsForTiming, REMOTION_FPS)
 	}, [replies])
 
+	const effectiveTemplateId = React.useMemo(() => {
+		if (templateId) return templateId
+		const fromThread = thread?.templateId
+		return (fromThread as ThreadTemplateId | null) ?? DEFAULT_THREAD_TEMPLATE_ID
+	}, [templateId, thread?.templateId])
+
+	const effectiveTemplateConfig = React.useMemo(() => {
+		if (templateConfig !== undefined) return templateConfig
+		const fromThread = thread?.templateConfig
+		return (fromThread ?? undefined) as any
+	}, [templateConfig, thread?.templateConfig])
+
 	const inputProps: ThreadVideoInputProps | undefined = React.useMemo(() => {
 		if (!thread || !root) return undefined
 
 		const assetsMap: ThreadVideoInputProps['assets'] = {}
 		for (const a of assets) {
-			if (!a?.id || !a?.sourceUrl) continue
+			const url = a?.renderUrl
+			if (!a?.id || !url) continue
 			assetsMap[String(a.id)] = {
 				id: String(a.id),
 				kind: (a.kind as any) ?? 'image',
-				url: String(a.sourceUrl),
+				url: String(url),
 			}
 		}
 
@@ -101,7 +120,11 @@ export function ThreadRemotionPreviewCard({
 			audio: audio ?? undefined,
 			root: {
 				id: root.id,
-				author: { name: root.authorName, handle: root.authorHandle ?? null },
+				author: {
+					name: root.authorName,
+					handle: root.authorHandle ?? null,
+					avatarAssetId: root.authorAvatarAssetId ?? null,
+				},
 				contentBlocks: (root.contentBlocks ?? []) as any,
 				plainText: root.plainText,
 				translations: root.translations ?? null,
@@ -110,7 +133,11 @@ export function ThreadRemotionPreviewCard({
 			},
 			replies: replies.map((r) => ({
 				id: r.id,
-				author: { name: r.authorName, handle: r.authorHandle ?? null },
+				author: {
+					name: r.authorName,
+					handle: r.authorHandle ?? null,
+					avatarAssetId: r.authorAvatarAssetId ?? null,
+				},
 				contentBlocks: (r.contentBlocks ?? []) as any,
 				plainText: r.plainText,
 				translations: r.translations ?? null,
@@ -121,10 +148,12 @@ export function ThreadRemotionPreviewCard({
 			coverDurationInFrames: timeline.coverDurationInFrames,
 			replyDurationsInFrames: timeline.commentDurationsInFrames,
 			fps: REMOTION_FPS,
+			templateConfig: effectiveTemplateConfig ?? undefined,
 		}
 	}, [
 		audio,
 		assets,
+		effectiveTemplateConfig,
 		replies,
 		root,
 		thread,
@@ -132,7 +161,7 @@ export function ThreadRemotionPreviewCard({
 		timeline.coverDurationInFrames,
 	])
 
-	const template = getThreadTemplate(templateId)
+	const template = getThreadTemplate(effectiveTemplateId)
 	const TemplateComponent = template.component
 
 	return (

@@ -66,7 +66,10 @@ export type XThreadImportDraft = {
 		contentBlocks: ThreadContentBlock[]
 	}
 	replies: Array<
-		Omit<ThreadPost, 'id' | 'threadId' | 'plainText' | 'createdAt' | 'editedAt'> & {
+		Omit<
+			ThreadPost,
+			'id' | 'threadId' | 'plainText' | 'createdAt' | 'editedAt'
+		> & {
 			sourcePostId: string
 			createdAt: Date | null
 			contentBlocks: ThreadContentBlock[]
@@ -148,7 +151,10 @@ export function parseXThreadImportDraft(input: unknown): XThreadImportDraft {
 			sourcePostId: root.statusId,
 			role: 'root',
 			author: {
-				name: root.author.displayName || stripLeadingAt(root.author.handle) || 'Unknown',
+				name:
+					root.author.displayName ||
+					stripLeadingAt(root.author.handle) ||
+					'Unknown',
 				handle: root.author.handle || undefined,
 				profileUrl: root.author.profileUrl || undefined,
 			},

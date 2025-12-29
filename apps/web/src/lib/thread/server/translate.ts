@@ -24,17 +24,24 @@ export async function translateThreadPost(input: {
 	postId: string
 	targetLocale?: ThreadPostTranslationLocale
 }): Promise<{ ok: true; translation: ThreadPostTranslationRecord | null }> {
-	const targetLocale: ThreadPostTranslationLocale = input.targetLocale ?? 'zh-CN'
+	const targetLocale: ThreadPostTranslationLocale =
+		input.targetLocale ?? 'zh-CN'
 
 	const db = await getDb()
 	const thread = await db.query.threads.findFirst({
-		where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, input.userId)),
+		where: and(
+			eq(schema.threads.id, input.threadId),
+			eq(schema.threads.userId, input.userId),
+		),
 		columns: { id: true },
 	})
 	if (!thread) throw new Error('Thread not found')
 
 	const post = await db.query.threadPosts.findFirst({
-		where: and(eq(schema.threadPosts.id, input.postId), eq(schema.threadPosts.threadId, thread.id)),
+		where: and(
+			eq(schema.threadPosts.id, input.postId),
+			eq(schema.threadPosts.threadId, thread.id),
+		),
 	})
 	if (!post) throw new Error('Post not found')
 
@@ -45,7 +52,10 @@ export async function translateThreadPost(input: {
 	if (!sourceText) return { ok: true, translation: null }
 
 	const model = await getDefaultAiModel('llm')
-	const { translation, usage } = await translateTextWithUsage(sourceText, model.id)
+	const { translation, usage } = await translateTextWithUsage(
+		sourceText,
+		model.id,
+	)
 
 	const record: ThreadPostTranslationRecord = {
 		locale: targetLocale,
@@ -81,12 +91,16 @@ export async function translateAllThreadPosts(input: {
 	failed: number
 	limitHit: boolean
 }> {
-	const targetLocale: ThreadPostTranslationLocale = input.targetLocale ?? 'zh-CN'
+	const targetLocale: ThreadPostTranslationLocale =
+		input.targetLocale ?? 'zh-CN'
 	const maxPosts = Math.max(1, Math.min(100, input.maxPosts ?? 30))
 
 	const db = await getDb()
 	const thread = await db.query.threads.findFirst({
-		where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, input.userId)),
+		where: and(
+			eq(schema.threads.id, input.threadId),
+			eq(schema.threads.userId, input.userId),
+		),
 		columns: { id: true },
 	})
 	if (!thread) throw new Error('Thread not found')
@@ -98,7 +112,14 @@ export async function translateAllThreadPosts(input: {
 		.orderBy(asc(schema.threadPosts.depth), asc(schema.threadPosts.createdAt))
 
 	if (posts.length === 0) {
-		return { ok: true, processed: 0, translated: 0, skipped: 0, failed: 0, limitHit: false }
+		return {
+			ok: true,
+			processed: 0,
+			translated: 0,
+			skipped: 0,
+			failed: 0,
+			limitHit: false,
+		}
 	}
 
 	const model = await getDefaultAiModel('llm')
@@ -131,7 +152,10 @@ export async function translateAllThreadPosts(input: {
 		}
 
 		try {
-			const { translation, usage } = await translateTextWithUsage(sourceText, model.id)
+			const { translation, usage } = await translateTextWithUsage(
+				sourceText,
+				model.id,
+			)
 			if (!translation?.trim()) {
 				failed++
 				continue
@@ -145,7 +169,10 @@ export async function translateAllThreadPosts(input: {
 				usage,
 			}
 
-			const next: ThreadPostTranslations = { ...existing, [targetLocale]: record }
+			const next: ThreadPostTranslations = {
+				...existing,
+				[targetLocale]: record,
+			}
 
 			await db
 				.update(schema.threadPosts)

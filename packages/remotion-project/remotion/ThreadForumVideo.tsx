@@ -13,8 +13,9 @@ import {
 	useCurrentFrame,
 	useVideoConfig,
 } from 'remotion'
-import type { ThreadVideoInputProps } from './types'
+import type { ThreadRenderTreeNode, ThreadVideoInputProps } from './types'
 import { formatCount } from './utils/format'
+import { normalizeThreadTemplateConfig } from './thread-template-config'
 
 function clamp01(v: number) {
 	if (v < 0) return 0
@@ -85,8 +86,415 @@ function resolveAssetUrl(
 ): string | null {
 	const fromMap = assets?.[assetId]?.url
 	if (typeof fromMap === 'string' && fromMap) return fromMap
-	if (assetId.startsWith('ext:')) return assetId.slice('ext:'.length)
-	if (assetId.startsWith('http://') || assetId.startsWith('https://')) return assetId
+	return null
+}
+
+function renderThreadTemplateNode(
+	node: ThreadRenderTreeNode | undefined,
+	ctx: {
+		thread: ThreadVideoInputProps['thread']
+		root: ThreadVideoInputProps['root']
+		post?: ThreadVideoInputProps['root']
+		replies: ThreadVideoInputProps['replies']
+		assets: ThreadVideoInputProps['assets'] | undefined
+		coverDurationInFrames: number
+		replyDurationsInFrames: number[]
+		fps: number
+	},
+	opts?: { isRoot?: boolean },
+): React.ReactNode {
+	if (!node) return null
+
+	if (node.type === 'Builtin') {
+		if (node.kind === 'cover') {
+			return (
+				<CoverSlide
+					thread={ctx.thread}
+					root={ctx.root}
+					assets={ctx.assets}
+					fps={ctx.fps}
+				/>
+			)
+		}
+		if (node.kind === 'repliesList') {
+			return (
+				<RepliesListSlide
+					thread={ctx.thread}
+					root={ctx.root}
+					replies={ctx.replies}
+					replyDurationsInFrames={ctx.replyDurationsInFrames}
+					coverDurationInFrames={ctx.coverDurationInFrames}
+					assets={ctx.assets}
+					fps={ctx.fps}
+					rootRoot={node.rootRoot}
+					itemRoot={node.itemRoot}
+				/>
+			)
+		}
+		return null
+	}
+
+	if (node.type === 'Text') {
+		const post = ctx.post ?? ctx.root
+		const bound = (() => {
+			switch (node.bind) {
+				case 'thread.title':
+					return ctx.thread.title
+				case 'thread.source':
+					return ctx.thread.source ?? null
+				case 'thread.sourceUrl':
+					return ctx.thread.sourceUrl ?? null
+				case 'root.author.name':
+					return ctx.root.author.name
+				case 'root.author.handle':
+					return ctx.root.author.handle ?? null
+				case 'root.plainText':
+					return ctx.root.plainText
+				case 'post.author.name':
+					return post.author.name
+				case 'post.author.handle':
+					return post.author.handle ?? null
+				case 'post.plainText':
+					return post.plainText
+				default:
+					return null
+			}
+		})()
+
+		const text = node.text ?? bound ?? ''
+		const color =
+			node.color === 'accent'
+				? 'var(--tf-accent)'
+				: node.color === 'muted'
+					? 'var(--tf-muted)'
+					: 'var(--tf-text)'
+
+		const sizePx = typeof node.size === 'number' ? node.size : 16
+		const weight = typeof node.weight === 'number' ? node.weight : 600
+		const style: CSSProperties = {
+			margin: 0,
+			color,
+			fontWeight: weight,
+			fontSize: `calc(${sizePx}px * var(--tf-font-scale))`,
+			lineHeight: 1.25,
+			whiteSpace: 'pre-wrap',
+			textAlign:
+				node.align === 'center'
+					? 'center'
+					: node.align === 'right'
+						? 'right'
+						: 'left',
+		}
+
+		if (typeof node.maxLines === 'number' && node.maxLines > 0) {
+			;(style as any).display = '-webkit-box'
+			;(style as any).WebkitBoxOrient = 'vertical'
+			;(style as any).WebkitLineClamp = String(node.maxLines)
+			style.overflow = 'hidden'
+		}
+
+		return <p style={style}>{text}</p>
+	}
+
+	if (node.type === 'Avatar') {
+		const post = ctx.post ?? ctx.root
+		const assetId =
+			node.bind === 'root.author.avatarAssetId'
+				? ctx.root.author.avatarAssetId
+				: node.bind === 'post.author.avatarAssetId'
+					? post.author.avatarAssetId
+				: null
+		const url = assetId ? resolveAssetUrl(String(assetId), ctx.assets) : null
+		const size = typeof node.size === 'number' ? node.size : 96
+		const radius = typeof node.radius === 'number' ? node.radius : 999
+		const bg = node.background ?? 'rgba(255,255,255,0.06)'
+		const border = node.border ? '1px solid var(--tf-border)' : undefined
+
+		if (url) {
+			return (
+				<Img
+					src={url}
+					style={{
+						width: size,
+						height: size,
+						borderRadius: radius,
+						objectFit: 'cover',
+						border,
+						background: bg,
+						display: 'block',
+					}}
+				/>
+			)
+		}
+
+		const fallbackName =
+			node.bind === 'post.author.avatarAssetId' ? post.author.name : ctx.root.author.name
+		const fallback = resolveAvatarFallback(fallbackName)
+		return (
+			<div
+				style={{
+					width: size,
+					height: size,
+					borderRadius: radius,
+					border,
+					background: bg,
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					color: 'var(--tf-text)',
+					fontWeight: 800,
+					fontSize: `calc(${Math.max(14, Math.round(size / 3))}px * var(--tf-font-scale))`,
+					letterSpacing: '0.06em',
+					textTransform: 'uppercase',
+					boxSizing: 'border-box',
+				}}
+			>
+				{fallback}
+			</div>
+		)
+	}
+
+	if (node.type === 'ContentBlocks') {
+		const blocks =
+			node.bind === 'root.contentBlocks'
+				? ctx.root.contentBlocks
+				: node.bind === 'post.contentBlocks'
+					? (ctx.post ?? ctx.root).contentBlocks
+					: []
+		const gap = typeof node.gap === 'number' ? node.gap : 14
+		const maxHeight = typeof node.maxHeight === 'number' ? node.maxHeight : undefined
+
+		return (
+			<div
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					gap,
+					maxHeight,
+					overflow: maxHeight ? 'hidden' : undefined,
+				}}
+			>
+				{renderBlocks(blocks, ctx.assets)}
+			</div>
+		)
+	}
+
+	if (node.type === 'Image') {
+		const url = resolveAssetUrl(String(node.assetId), ctx.assets)
+		const fit = node.fit === 'contain' ? 'contain' : 'cover'
+		const width = typeof node.width === 'number' ? node.width : undefined
+		const height = typeof node.height === 'number' ? node.height : undefined
+		const radius = typeof node.radius === 'number' ? node.radius : 0
+		const border = node.border ? '1px solid var(--tf-border)' : undefined
+		const background = node.background ?? 'rgba(255,255,255,0.02)'
+
+		if (url) {
+			return (
+				<Img
+					src={url}
+					style={{
+						display: 'block',
+						width: width ?? '100%',
+						height: height ?? 'auto',
+						objectFit: fit,
+						borderRadius: radius,
+						border,
+						background,
+					}}
+				/>
+			)
+		}
+
+		return (
+			<div
+				style={{
+					border: border ?? '1px dashed var(--tf-border)',
+					background,
+					borderRadius: radius,
+					padding: 14,
+					fontSize: 'calc(14px * var(--tf-font-scale))',
+					color: 'var(--tf-muted)',
+					boxSizing: 'border-box',
+					width: width ?? '100%',
+					height: height ?? undefined,
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					textAlign: 'center',
+				}}
+			>
+				[image: {String(node.assetId)}]
+			</div>
+		)
+	}
+
+	if (node.type === 'Video') {
+		const url = resolveAssetUrl(String(node.assetId), ctx.assets)
+		const fit = node.fit === 'contain' ? 'contain' : 'cover'
+		const width = typeof node.width === 'number' ? node.width : undefined
+		const height = typeof node.height === 'number' ? node.height : undefined
+		const radius = typeof node.radius === 'number' ? node.radius : 0
+		const border = node.border ? '1px solid var(--tf-border)' : undefined
+		const background = node.background ?? 'rgba(0,0,0,0.25)'
+
+		if (url) {
+			return (
+				<Video
+					src={url}
+					muted
+					style={{
+						display: 'block',
+						width: width ?? '100%',
+						height: height ?? 'auto',
+						objectFit: fit,
+						borderRadius: radius,
+						border,
+						backgroundColor: background,
+					}}
+				/>
+			)
+		}
+
+		return (
+			<div
+				style={{
+					border: border ?? '1px dashed var(--tf-border)',
+					background: 'rgba(255,255,255,0.02)',
+					borderRadius: radius,
+					padding: 14,
+					fontSize: 'calc(14px * var(--tf-font-scale))',
+					color: 'var(--tf-muted)',
+					boxSizing: 'border-box',
+					width: width ?? '100%',
+					height: height ?? undefined,
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					textAlign: 'center',
+				}}
+			>
+				[video: {String(node.assetId)}]
+			</div>
+		)
+	}
+
+	if (node.type === 'Spacer') {
+		const size = typeof node.size === 'number' ? node.size : undefined
+		const width =
+			typeof node.width === 'number'
+				? node.width
+				: node.axis === 'x'
+					? (size ?? 0)
+					: undefined
+		const height =
+			typeof node.height === 'number'
+				? node.height
+				: node.axis === 'y'
+					? (size ?? 0)
+					: undefined
+
+		return (
+			<div
+				style={{
+					width,
+					height,
+					flex: '0 0 auto',
+				}}
+			/>
+		)
+	}
+
+	if (node.type === 'Divider') {
+		const thickness = typeof node.thickness === 'number' ? node.thickness : 1
+		const length = typeof node.length === 'number' ? node.length : undefined
+		const axis = node.axis === 'y' ? 'y' : 'x'
+		const margin = typeof node.margin === 'number' ? node.margin : 0
+		const opacity = typeof node.opacity === 'number' ? clamp01(node.opacity) : 1
+		const color = node.color ?? 'var(--tf-border)'
+
+		const style: CSSProperties =
+			axis === 'y'
+				? {
+						width: thickness,
+						height: length ?? '100%',
+						marginLeft: margin,
+						marginRight: margin,
+						backgroundColor: color,
+						opacity,
+						flex: '0 0 auto',
+					}
+				: {
+						height: thickness,
+						width: length ?? '100%',
+						marginTop: margin,
+						marginBottom: margin,
+						backgroundColor: color,
+						opacity,
+						flex: '0 0 auto',
+					}
+
+		return <div style={style} />
+	}
+
+	if (node.type === 'Stack') {
+		const style: CSSProperties = {
+			display: 'flex',
+			flexDirection: node.direction === 'row' ? 'row' : 'column',
+			gap: typeof node.gap === 'number' ? node.gap : undefined,
+			padding: typeof node.padding === 'number' ? node.padding : undefined,
+			alignItems:
+				node.align === 'center'
+					? 'center'
+					: node.align === 'end'
+						? 'flex-end'
+						: node.align === 'stretch'
+							? 'stretch'
+							: 'flex-start',
+			justifyContent:
+				node.justify === 'center'
+					? 'center'
+					: node.justify === 'end'
+						? 'flex-end'
+						: node.justify === 'between'
+							? 'space-between'
+							: 'flex-start',
+		}
+
+		const children = (node.children ?? []).map((c: ThreadRenderTreeNode, idx: number) => (
+			<React.Fragment key={idx}>
+				{renderThreadTemplateNode(c, ctx)}
+			</React.Fragment>
+		))
+
+		if (opts?.isRoot) {
+			return <AbsoluteFill style={style}>{children}</AbsoluteFill>
+		}
+		return <div style={style}>{children}</div>
+	}
+
+	if (node.type === 'Box') {
+		const style: CSSProperties = {
+			padding: typeof node.padding === 'number' ? node.padding : undefined,
+			border: node.border ? '1px solid var(--tf-border)' : undefined,
+			background: node.background ?? undefined,
+			borderRadius: typeof node.radius === 'number' ? node.radius : undefined,
+			boxSizing: 'border-box',
+		}
+		const children = (node.children ?? []).map((c: ThreadRenderTreeNode, idx: number) => (
+			<React.Fragment key={idx}>
+				{renderThreadTemplateNode(c, ctx)}
+			</React.Fragment>
+		))
+		if (opts?.isRoot) {
+			return (
+				<AbsoluteFill style={{ position: 'relative', ...(style as any) }}>
+					{children}
+				</AbsoluteFill>
+			)
+		}
+		return <div style={style}>{children}</div>
+	}
+
 	return null
 }
 
@@ -672,15 +1080,21 @@ function RepliesListSlide({
 	root,
 	replies,
 	replyDurationsInFrames,
+	coverDurationInFrames,
 	assets,
 	fps,
+	rootRoot,
+	itemRoot,
 }: {
 	thread: ThreadVideoInputProps['thread']
 	root: ThreadVideoInputProps['root']
 	replies: ThreadVideoInputProps['replies']
 	replyDurationsInFrames: number[]
+	coverDurationInFrames: number
 	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
+	rootRoot?: ThreadRenderTreeNode
+	itemRoot?: ThreadRenderTreeNode
 }) {
 	const frame = useCurrentFrame()
 	const opacity = interpolate(frame, [0, Math.min(fps * 0.3, 18)], [0, 1], {
@@ -858,13 +1272,37 @@ function RepliesListSlide({
 
 			<div style={{ marginTop: 18, display: 'flex', gap: 22, height: 'calc(100% - 70px)' }}>
 				<div style={{ flex: '0 0 58%', minHeight: 0 }}>
-					<PostCard
-						post={root}
-						assets={assets}
-						title="ROOT"
-						showLikes
-						scrollProgress={rootScrollProgress}
-					/>
+					{rootRoot ? (
+						<div
+							style={{
+								border: '1px solid var(--tf-border)',
+								background: 'var(--tf-surface)',
+								padding: 28,
+								boxSizing: 'border-box',
+								height: '100%',
+								minHeight: 0,
+							}}
+						>
+							{renderThreadTemplateNode(rootRoot, {
+								thread,
+								root,
+								post: root,
+								replies,
+								assets,
+								coverDurationInFrames,
+								replyDurationsInFrames,
+								fps,
+							})}
+						</div>
+					) : (
+						<PostCard
+							post={root}
+							assets={assets}
+							title="ROOT"
+							showLikes
+							scrollProgress={rootScrollProgress}
+						/>
+					)}
 				</div>
 				<div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
 					<div
@@ -914,14 +1352,36 @@ function RepliesListSlide({
 											/>
 										)
 									})()}
-									<PostCard
-										post={reply as any}
-										assets={assets}
-										title={`REPLY ${idx + 1}`}
-										showLikes
-										bilingualPrimary="zh"
-										secondaryPlacement="above"
-									/>
+									{itemRoot ? (
+										<div
+											style={{
+												border: '1px solid var(--tf-border)',
+												background: 'var(--tf-surface)',
+												padding: 28,
+												boxSizing: 'border-box',
+											}}
+										>
+											{renderThreadTemplateNode(itemRoot, {
+												thread,
+												root,
+												post: reply,
+												replies,
+												assets,
+												coverDurationInFrames,
+												replyDurationsInFrames,
+												fps,
+											})}
+										</div>
+									) : (
+										<PostCard
+											post={reply as any}
+											assets={assets}
+											title={`REPLY ${idx + 1}`}
+											showLikes
+											bilingualPrimary="zh"
+											secondaryPlacement="above"
+										/>
+									)}
 								</div>
 							))}
 						</div>
@@ -944,6 +1404,17 @@ export function ThreadForumVideo({
 	templateConfig,
 }: ThreadVideoInputProps) {
 	const videoConfig = useVideoConfig()
+	const normalizedTemplateConfig = React.useMemo(
+		() => normalizeThreadTemplateConfig(templateConfig),
+		[templateConfig],
+	)
+	const coverRoot: ThreadRenderTreeNode =
+		normalizedTemplateConfig.scenes?.cover?.root ?? { type: 'Builtin', kind: 'cover' }
+	const postRoot: ThreadRenderTreeNode =
+		normalizedTemplateConfig.scenes?.post?.root ?? {
+			type: 'Builtin',
+			kind: 'repliesList',
+		}
 	const repliesTotalDuration = replyDurationsInFrames.reduce((sum, f) => sum + f, 0)
 	const mainDuration = Math.max(repliesTotalDuration, fps)
 
@@ -962,7 +1433,7 @@ export function ThreadForumVideo({
 	return (
 		<AbsoluteFill
 			style={{
-				...(buildCssVars(templateConfig) as any),
+				...(buildCssVars(normalizedTemplateConfig) as any),
 				background: 'var(--tf-bg)',
 			}}
 		>
@@ -986,17 +1457,28 @@ export function ThreadForumVideo({
 				</>
 			) : null}
 			<Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
-				<CoverSlide thread={thread} root={root} assets={assets} fps={fps} />
+				{renderThreadTemplateNode(coverRoot, {
+					thread,
+					root,
+					post: root,
+					replies,
+					assets,
+					coverDurationInFrames,
+					replyDurationsInFrames,
+					fps,
+				}, { isRoot: true })}
 			</Sequence>
 			<Sequence layout="none" from={coverDurationInFrames} durationInFrames={mainDuration}>
-				<RepliesListSlide
-					thread={thread}
-					root={root}
-					replies={replies}
-					replyDurationsInFrames={replyDurationsInFrames}
-					assets={assets}
-					fps={fps}
-				/>
+				{renderThreadTemplateNode(postRoot, {
+					thread,
+					root,
+					post: root,
+					replies,
+					assets,
+					coverDurationInFrames,
+					replyDurationsInFrames,
+					fps,
+				}, { isRoot: true })}
 			</Sequence>
 		</AbsoluteFill>
 	)

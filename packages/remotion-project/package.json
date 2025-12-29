@@ -20,6 +20,7 @@
 		"./entry": "./remotion/index.ts",
 		"./templates": "./remotion/templates/index.ts",
 		"./thread-templates": "./remotion/thread-templates/index.ts",
+		"./thread-template-config": "./remotion/thread-template-config.ts",
 		"./types": "./remotion/types.ts"
 	}
 }

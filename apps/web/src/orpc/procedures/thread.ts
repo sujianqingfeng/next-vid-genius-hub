@@ -3,7 +3,11 @@ import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
 import { deleteCloudArtifacts, getJobStatus } from '~/lib/cloudflare'
-import { presignGetByKey, presignPutAndGetByKey, remoteKeyExists } from '~/lib/cloudflare/storage'
+import {
+	presignGetByKey,
+	presignPutAndGetByKey,
+	remoteKeyExists,
+} from '~/lib/cloudflare/storage'
 import { getDb, schema } from '~/lib/db'
 import { enqueueCloudTask } from '~/lib/job/enqueue'
 import { TASK_KINDS } from '~/lib/job/task'
@@ -18,10 +22,13 @@ import { blocksToPlainText } from '~/lib/thread/utils/plain-text'
 import { buildThreadRenderSnapshot } from '~/lib/thread/render-snapshot'
 import {
 	DEFAULT_THREAD_TEMPLATE_ID,
-	type ThreadTemplateId,
+	THREAD_TEMPLATES,
 } from '@app/remotion-project/thread-templates'
 import { ingestThreadAssets } from '~/lib/thread/server/asset-ingest'
-import { translateAllThreadPosts, translateThreadPost } from '~/lib/thread/server/translate'
+import {
+	translateAllThreadPosts,
+	translateThreadPost,
+} from '~/lib/thread/server/translate'
 
 export const list = os.handler(async ({ context }) => {
 	const ctx = context as RequestContext
@@ -44,7 +51,10 @@ export const byId = os
 		const db = await getDb()
 
 		const thread = await db.query.threads.findFirst({
-			where: and(eq(schema.threads.id, input.id), eq(schema.threads.userId, userId)),
+			where: and(
+				eq(schema.threads.id, input.id),
+				eq(schema.threads.userId, userId),
+			),
 		})
 		if (!thread) throw new Error('Thread not found')
 
@@ -74,7 +84,7 @@ export const byId = os
 		}
 
 		const referencedAssetIds = [...assetIds]
-		const assets =
+		const assetRows =
 			referencedAssetIds.length > 0
 				? await db
 						.select()
@@ -87,7 +97,21 @@ export const byId = os
 						)
 				: []
 
-		const audioAssetId = thread.audioAssetId ? String(thread.audioAssetId) : null
+		const assets = await Promise.all(
+			assetRows.map(async (a: any) => {
+				let renderUrl: string | null = null
+				if (a?.storageKey) {
+					try {
+						renderUrl = await presignGetByKey(String(a.storageKey))
+					} catch {}
+				}
+				return { ...a, renderUrl }
+			}),
+		)
+
+		const audioAssetId = thread.audioAssetId
+			? String(thread.audioAssetId)
+			: null
 		const audioAsset = audioAssetId
 			? await db.query.threadAssets.findFirst({
 					where: and(
@@ -111,7 +135,12 @@ export const byId = os
 		const audioAssets = await db
 			.select()
 			.from(schema.threadAssets)
-			.where(and(eq(schema.threadAssets.userId, userId), eq(schema.threadAssets.kind, 'audio')))
+			.where(
+				and(
+					eq(schema.threadAssets.userId, userId),
+					eq(schema.threadAssets.kind, 'audio'),
+				),
+			)
 			.orderBy(desc(schema.threadAssets.createdAt))
 			.limit(20)
 
@@ -176,7 +205,10 @@ export const deleteById = os
 		const db = await getDb()
 
 		const thread = await db.query.threads.findFirst({
-			where: and(eq(schema.threads.id, input.id), eq(schema.threads.userId, userId)),
+			where: and(
+				eq(schema.threads.id, input.id),
+				eq(schema.threads.userId, userId),
+			),
 		})
 		if (!thread) throw new Error('Thread not found')
 
@@ -206,10 +238,15 @@ export const deleteById = os
 			}
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err)
-			logger.warn('thread', `[thread.deleteById] cloud cleanup failed (continuing): ${msg}`)
+			logger.warn(
+				'thread',
+				`[thread.deleteById] cloud cleanup failed (continuing): ${msg}`,
+			)
 		}
 
-		await db.delete(schema.threadPosts).where(eq(schema.threadPosts.threadId, thread.id))
+		await db
+			.delete(schema.threadPosts)
+			.where(eq(schema.threadPosts.threadId, thread.id))
 		await db
 			.delete(schema.threadRenders)
 			.where(eq(schema.threadRenders.threadId, thread.id))
@@ -224,7 +261,12 @@ export const deleteById = os
 			)
 		await db
 			.delete(schema.threads)
-			.where(and(eq(schema.threads.id, thread.id), eq(schema.threads.userId, userId)))
+			.where(
+				and(
+					eq(schema.threads.id, thread.id),
+					eq(schema.threads.userId, userId),
+				),
+			)
 
 		return { success: true }
 	})
@@ -308,7 +350,9 @@ export const createFromXJson = os
 
 			const CHUNK_SIZE = 20
 			for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
-				await db.insert(schema.threadAssets).values(toInsert.slice(i, i + CHUNK_SIZE))
+				await db
+					.insert(schema.threadAssets)
+					.values(toInsert.slice(i, i + CHUNK_SIZE))
 			}
 
 			const resolveBlocks = (blocks: any[]) =>
@@ -316,14 +360,17 @@ export const createFromXJson = os
 					if (!b || typeof b !== 'object') return b
 					if (b.type !== 'image' && b.type !== 'video') return b
 					const assetId = (b as any).data?.assetId
-					if (typeof assetId !== 'string' || !assetId.startsWith('ext:')) return b
+					if (typeof assetId !== 'string' || !assetId.startsWith('ext:'))
+						return b
 					const url = assetId.slice('ext:'.length).trim()
 					const resolved = assetIdByUrl.get(url)
 					if (!resolved) return b
 					return { ...b, data: { ...(b as any).data, assetId: resolved } }
 				})
 
-			draft.root.contentBlocks = resolveBlocks(draft.root.contentBlocks as any) as any
+			draft.root.contentBlocks = resolveBlocks(
+				draft.root.contentBlocks as any,
+			) as any
 			for (const r of draft.replies) {
 				r.contentBlocks = resolveBlocks(r.contentBlocks as any) as any
 			}
@@ -358,8 +405,12 @@ export const createFromXJson = os
 			const updates: Partial<typeof schema.threads.$inferInsert> = {
 				updatedAt: now,
 			}
-			if (!existing.sourceUrl && draft.sourceUrl) updates.sourceUrl = draft.sourceUrl
-			await db.update(schema.threads).set(updates).where(eq(schema.threads.id, existing.id))
+			if (!existing.sourceUrl && draft.sourceUrl)
+				updates.sourceUrl = draft.sourceUrl
+			await db
+				.update(schema.threads)
+				.set(updates)
+				.where(eq(schema.threads.id, existing.id))
 		}
 
 		const postDrafts = buildThreadPostsInsertFromDraft({ threadId, draft })
@@ -436,9 +487,12 @@ export const createFromXJson = os
 							if (!b || typeof b !== 'object') return false
 							if (b.type !== candidate?.type) return false
 							if (b.type === 'image' || b.type === 'video') {
-								return b.data?.assetId && b.data.assetId === candidate?.data?.assetId
+								return (
+									b.data?.assetId && b.data.assetId === candidate?.data?.assetId
+								)
 							}
-							if (b.type === 'link') return b.data?.url && b.data.url === candidate?.data?.url
+							if (b.type === 'link')
+								return b.data?.url && b.data.url === candidate?.data?.url
 							return b.id && b.id === candidate?.id
 						})
 
@@ -462,7 +516,9 @@ export const createFromXJson = os
 		// so chunk multi-row inserts to avoid "too many SQL variables" errors.
 		const CHUNK_SIZE = 5
 		for (let i = 0; i < postRows.length; i += CHUNK_SIZE) {
-			await db.insert(schema.threadPosts).values(postRows.slice(i, i + CHUNK_SIZE))
+			await db
+				.insert(schema.threadPosts)
+				.values(postRows.slice(i, i + CHUNK_SIZE))
 		}
 
 		return { id: threadId, existed: isExisting, repaired }
@@ -483,13 +539,19 @@ export const updatePostText = os
 		const now = new Date()
 
 		const thread = await db.query.threads.findFirst({
-			where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+			where: and(
+				eq(schema.threads.id, input.threadId),
+				eq(schema.threads.userId, userId),
+			),
 			columns: { id: true },
 		})
 		if (!thread) throw new Error('Thread not found')
 
 		const post = await db.query.threadPosts.findFirst({
-			where: and(eq(schema.threadPosts.id, input.postId), eq(schema.threadPosts.threadId, thread.id)),
+			where: and(
+				eq(schema.threadPosts.id, input.postId),
+				eq(schema.threadPosts.threadId, thread.id),
+			),
 		})
 		if (!post) throw new Error('Post not found')
 
@@ -503,7 +565,11 @@ export const updatePostText = os
 			return b
 		})
 		if (!updated) {
-			nextBlocks.unshift({ id: 'text-0', type: 'text' as const, data: { text: input.text } })
+			nextBlocks.unshift({
+				id: 'text-0',
+				type: 'text' as const,
+				data: { text: input.text },
+			})
 		}
 		await db
 			.update(schema.threadPosts)
@@ -529,40 +595,169 @@ export const ingestAssets = os
 		const ctx = context as RequestContext
 		const userId = ctx.auth.user!.id
 		const db = await getDb()
+		const now = new Date()
 
 		const thread = await db.query.threads.findFirst({
-			where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+			where: and(
+				eq(schema.threads.id, input.threadId),
+				eq(schema.threads.userId, userId),
+			),
 			columns: { id: true },
 		})
 		if (!thread) throw new Error('Thread not found')
 
 		const posts = await db
 			.select({
+				id: schema.threadPosts.id,
 				authorAvatarAssetId: schema.threadPosts.authorAvatarAssetId,
 				contentBlocks: schema.threadPosts.contentBlocks,
 			})
 			.from(schema.threadPosts)
 			.where(eq(schema.threadPosts.threadId, thread.id))
 
+		function extractExternalUrl(value: unknown): string | null {
+			if (typeof value !== 'string') return null
+			const v = value.trim()
+			if (!v) return null
+			if (v.startsWith('ext:')) {
+				const url = v.slice('ext:'.length).trim()
+				if (url.startsWith('http://') || url.startsWith('https://')) return url
+				return null
+			}
+			if (v.startsWith('http://') || v.startsWith('https://')) return v
+			return null
+		}
+
+		const ensured = new Map<string, string>()
+		async function ensureAssetForExternalUrl(
+			kind: 'image' | 'video' | 'avatar' | 'linkPreview',
+			url: string,
+		): Promise<string> {
+			const key = `${kind}|${url}`
+			const cached = ensured.get(key)
+			if (cached) return cached
+
+			const existing = await db.query.threadAssets.findFirst({
+				where: and(
+					eq(schema.threadAssets.userId, userId),
+					eq(schema.threadAssets.kind, kind),
+					eq(schema.threadAssets.sourceUrl, url),
+				),
+				columns: { id: true },
+			})
+			if (existing?.id) {
+				const id = String(existing.id)
+				ensured.set(key, id)
+				return id
+			}
+
+			const id = createId()
+			await db.insert(schema.threadAssets).values({
+				id,
+				userId,
+				kind,
+				sourceUrl: url,
+				storageKey: null,
+				contentType: null,
+				bytes: null,
+				width: null,
+				height: null,
+				durationMs: null,
+				thumbnailAssetId: null,
+				status: 'pending',
+				createdAt: now,
+				updatedAt: now,
+			})
+			ensured.set(key, id)
+			return id
+		}
+
+		const materializedAssetIds = new Set<string>()
+		for (const p of posts) {
+			let changed = false
+			let nextAuthorAvatarAssetId: string | null = p.authorAvatarAssetId
+
+			const avatarUrl = extractExternalUrl(p.authorAvatarAssetId)
+			if (avatarUrl) {
+				nextAuthorAvatarAssetId = await ensureAssetForExternalUrl(
+					'avatar',
+					avatarUrl,
+				)
+				materializedAssetIds.add(nextAuthorAvatarAssetId)
+				changed = true
+			}
+
+			const currentBlocks = (p.contentBlocks ?? []) as any[]
+			const nextBlocks: any[] = []
+			for (const b of currentBlocks) {
+				if (!b || typeof b !== 'object') {
+					nextBlocks.push(b)
+					continue
+				}
+				if (b.type === 'image' || b.type === 'video') {
+					const rawId = (b as any).data?.assetId
+					const url = extractExternalUrl(rawId)
+					if (url) {
+						const kind = b.type === 'image' ? 'image' : 'video'
+						const id = await ensureAssetForExternalUrl(kind, url)
+						materializedAssetIds.add(id)
+						nextBlocks.push({ ...b, data: { ...(b as any).data, assetId: id } })
+						changed = true
+						continue
+					}
+				}
+				if (b.type === 'link') {
+					const rawId = (b as any).data?.previewAssetId
+					const url = extractExternalUrl(rawId)
+					if (url) {
+						const id = await ensureAssetForExternalUrl('linkPreview', url)
+						materializedAssetIds.add(id)
+						nextBlocks.push({
+							...b,
+							data: { ...(b as any).data, previewAssetId: id },
+						})
+						changed = true
+						continue
+					}
+				}
+				nextBlocks.push(b)
+			}
+
+			if (!changed) continue
+
+			await db
+				.update(schema.threadPosts)
+				.set({
+					authorAvatarAssetId: nextAuthorAvatarAssetId,
+					contentBlocks: nextBlocks as any,
+					updatedAt: now,
+				})
+				.where(eq(schema.threadPosts.id, p.id))
+		}
+
 		const assetIds = new Set<string>()
 		for (const p of posts) {
-			if (p.authorAvatarAssetId) assetIds.add(p.authorAvatarAssetId)
+			if (p.authorAvatarAssetId && !extractExternalUrl(p.authorAvatarAssetId)) {
+				assetIds.add(p.authorAvatarAssetId)
+			}
 			for (const b of p.contentBlocks ?? []) {
 				if (!b || typeof b !== 'object') continue
 				if (b.type === 'image' || b.type === 'video') {
 					const id = (b as any).data?.assetId
-					if (typeof id === 'string' && id) assetIds.add(id)
+					if (typeof id === 'string' && id && !extractExternalUrl(id))
+						assetIds.add(id)
 				}
 				if (b.type === 'link') {
 					const id = (b as any).data?.previewAssetId
-					if (typeof id === 'string' && id) assetIds.add(id)
+					if (typeof id === 'string' && id && !extractExternalUrl(id))
+						assetIds.add(id)
 				}
 			}
 		}
 
 		const res = await ingestThreadAssets({
 			userId,
-			assetIds: [...assetIds],
+			assetIds: [...new Set([...assetIds, ...materializedAssetIds])],
 			maxAssetsPerRun: input.maxAssetsPerRun,
 		})
 
@@ -613,13 +808,17 @@ export const audio = os.router({
 			const db = await getDb()
 
 			const thread = await db.query.threads.findFirst({
-				where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+				where: and(
+					eq(schema.threads.id, input.threadId),
+					eq(schema.threads.userId, userId),
+				),
 				columns: { id: true },
 			})
 			if (!thread) throw new Error('Thread not found')
 
 			const contentType = normalizeContentType(input.contentType).toLowerCase()
-			if (!contentType.startsWith('audio/')) throw new Error('Unsupported audio content-type')
+			if (!contentType.startsWith('audio/'))
+				throw new Error('Unsupported audio content-type')
 			if (input.bytes > DEFAULT_MAX_THREAD_AUDIO_UPLOAD_BYTES) {
 				throw new Error(
 					`Audio too large: ${input.bytes} bytes (max ${DEFAULT_MAX_THREAD_AUDIO_UPLOAD_BYTES})`,
@@ -630,7 +829,10 @@ export const audio = os.router({
 			const ext = extForAudioContentType(contentType)
 			const storageKey = `thread-assets/${assetId}${ext}`
 
-			const { putUrl, getUrl } = await presignPutAndGetByKey(storageKey, contentType)
+			const { putUrl, getUrl } = await presignPutAndGetByKey(
+				storageKey,
+				contentType,
+			)
 
 			await db.insert(schema.threadAssets).values({
 				id: assetId,
@@ -658,7 +860,11 @@ export const audio = os.router({
 				threadId: z.string().min(1),
 				assetId: z.string().min(1),
 				bytes: z.number().int().min(1),
-				durationMs: z.number().int().min(1).max(24 * 60 * 60 * 1000),
+				durationMs: z
+					.number()
+					.int()
+					.min(1)
+					.max(24 * 60 * 60 * 1000),
 			}),
 		)
 		.handler(async ({ input, context }) => {
@@ -667,7 +873,10 @@ export const audio = os.router({
 			const db = await getDb()
 
 			const thread = await db.query.threads.findFirst({
-				where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+				where: and(
+					eq(schema.threads.id, input.threadId),
+					eq(schema.threads.userId, userId),
+				),
 				columns: { id: true },
 			})
 			if (!thread) throw new Error('Thread not found')
@@ -717,7 +926,10 @@ export const setAudioAsset = os
 		const db = await getDb()
 
 		const thread = await db.query.threads.findFirst({
-			where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+			where: and(
+				eq(schema.threads.id, input.threadId),
+				eq(schema.threads.userId, userId),
+			),
 			columns: { id: true },
 		})
 		if (!thread) throw new Error('Thread not found')
@@ -733,22 +945,30 @@ export const setAudioAsset = os
 				),
 			})
 			if (!audioAsset) throw new Error('Audio asset not found')
-			if (audioAsset.status !== 'ready') throw new Error('Audio asset is not ready yet')
+			if (audioAsset.status !== 'ready')
+				throw new Error('Audio asset is not ready yet')
 		}
 
 		await db
 			.update(schema.threads)
 			.set({ audioAssetId, updatedAt: new Date() })
-			.where(and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)))
+			.where(
+				and(
+					eq(schema.threads.id, input.threadId),
+					eq(schema.threads.userId, userId),
+				),
+			)
 
 		return { success: true }
 	})
 
-export const startCloudRender = os
+const MAX_THREAD_TEMPLATE_CONFIG_BYTES = 64 * 1024
+
+export const setTemplate = os
 	.input(
 		z.object({
 			threadId: z.string().min(1),
-			templateId: z.string().optional().default(DEFAULT_THREAD_TEMPLATE_ID),
+			templateId: z.string().optional().nullable(),
 			templateConfig: z.unknown().optional().nullable(),
 		}),
 	)
@@ -758,14 +978,99 @@ export const startCloudRender = os
 		const db = await getDb()
 
 		const thread = await db.query.threads.findFirst({
-			where: and(eq(schema.threads.id, input.threadId), eq(schema.threads.userId, userId)),
+			where: and(
+				eq(schema.threads.id, input.threadId),
+				eq(schema.threads.userId, userId),
+			),
+			columns: { id: true },
 		})
 		if (!thread) throw new Error('Thread not found')
+
+		if (input.templateId != null) {
+			const id = String(input.templateId)
+			if (!(id in THREAD_TEMPLATES))
+				throw new Error(`Unknown templateId: ${id}`)
+		}
+
+		if (input.templateConfig !== undefined && input.templateConfig !== null) {
+			let json = ''
+			try {
+				json = JSON.stringify(input.templateConfig)
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : String(e)
+				throw new Error(`Invalid templateConfig JSON: ${msg}`)
+			}
+			if (json.length > MAX_THREAD_TEMPLATE_CONFIG_BYTES) {
+				throw new Error(
+					`templateConfig too large: ${json.length} bytes (max ${MAX_THREAD_TEMPLATE_CONFIG_BYTES})`,
+				)
+			}
+		}
+
+		if (input.templateId === undefined && input.templateConfig === undefined) {
+			throw new Error('No template updates provided')
+		}
+
+		const update: Record<string, unknown> = { updatedAt: new Date() }
+		if (input.templateId !== undefined) update.templateId = input.templateId
+		if (input.templateConfig !== undefined)
+			update.templateConfig = input.templateConfig
+
+		await db
+			.update(schema.threads)
+			.set(update as any)
+			.where(
+				and(
+					eq(schema.threads.id, input.threadId),
+					eq(schema.threads.userId, userId),
+				),
+			)
+
+		return { success: true }
+	})
+
+export const startCloudRender = os
+	.input(
+		z.object({
+			threadId: z.string().min(1),
+			templateId: z.string().optional(),
+			templateConfig: z.unknown().optional().nullable(),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+
+		const thread = await db.query.threads.findFirst({
+			where: and(
+				eq(schema.threads.id, input.threadId),
+				eq(schema.threads.userId, userId),
+			),
+		})
+		if (!thread) throw new Error('Thread not found')
+
+		const templateIdCandidate =
+			(input.templateId ? String(input.templateId) : null) ??
+			(thread.templateId ? String(thread.templateId) : null) ??
+			DEFAULT_THREAD_TEMPLATE_ID
+
+		const effectiveTemplateId =
+			templateIdCandidate in THREAD_TEMPLATES
+				? templateIdCandidate
+				: DEFAULT_THREAD_TEMPLATE_ID
+
+		const effectiveTemplateConfig =
+			input.templateConfig !== undefined
+				? input.templateConfig
+				: (thread.templateConfig ?? null)
 
 		const renderId = createId()
 		const jobId = `job_${createId()}`
 
-		const audioAssetId = thread.audioAssetId ? String(thread.audioAssetId) : null
+		const audioAssetId = thread.audioAssetId
+			? String(thread.audioAssetId)
+			: null
 		const audioAsset = audioAssetId
 			? await db.query.threadAssets.findFirst({
 					where: and(
@@ -782,8 +1087,8 @@ export const startCloudRender = os
 			threadId: thread.id,
 			userId,
 			jobId,
-			templateId: input.templateId as ThreadTemplateId,
-			templateConfig: input.templateConfig ?? thread.templateConfig ?? null,
+			templateId: effectiveTemplateId,
+			templateConfig: effectiveTemplateConfig,
 		})
 
 		await db.insert(schema.threadRenders).values({
@@ -792,8 +1097,8 @@ export const startCloudRender = os
 			userId,
 			status: 'queued',
 			jobId,
-			templateId: input.templateId,
-			templateConfig: (input.templateConfig ?? thread.templateConfig ?? null) as any,
+			templateId: effectiveTemplateId,
+			templateConfig: effectiveTemplateConfig as any,
 			audioAssetId,
 			inputSnapshotKey: snapshot.key,
 			outputVideoKey: null,
@@ -816,14 +1121,17 @@ export const startCloudRender = os
 				jobId,
 				payload: {
 					threadId: thread.id,
-					templateId: input.templateId,
-					templateConfig: input.templateConfig ?? thread.templateConfig ?? null,
+					templateId: effectiveTemplateId,
+					templateConfig: effectiveTemplateConfig,
 					composeMode: 'overlay-only',
 				},
 				options: {
 					resourceType: 'thread',
-					templateId: input.templateId,
-					templateConfig: input.templateConfig ?? thread.templateConfig ?? undefined,
+					templateId: effectiveTemplateId,
+					templateConfig:
+						effectiveTemplateConfig === null
+							? undefined
+							: effectiveTemplateConfig,
 					composeMode: 'overlay-only',
 				},
 				buildManifest: ({ jobId }) => {
@@ -842,7 +1150,7 @@ export const startCloudRender = os
 						optionsSnapshot: {
 							resourceType: 'thread',
 							threadId: thread.id,
-							templateId: input.templateId,
+							templateId: effectiveTemplateId,
 							composeMode: 'overlay-only',
 						},
 					}
@@ -871,7 +1179,10 @@ export const getRenderStatus = os
 		const db = await getDb()
 
 		const render = await db.query.threadRenders.findFirst({
-			where: and(eq(schema.threadRenders.id, input.renderId), eq(schema.threadRenders.userId, userId)),
+			where: and(
+				eq(schema.threadRenders.id, input.renderId),
+				eq(schema.threadRenders.userId, userId),
+			),
 		})
 		if (!render) throw new Error('Render not found')
 		if (!render.jobId) throw new Error('Render jobId missing')
@@ -892,7 +1203,10 @@ export const getCloudRenderStatus = os
 		const db = await getDb()
 
 		const render = await db.query.threadRenders.findFirst({
-			where: and(eq(schema.threadRenders.jobId, input.jobId), eq(schema.threadRenders.userId, userId)),
+			where: and(
+				eq(schema.threadRenders.jobId, input.jobId),
+				eq(schema.threadRenders.userId, userId),
+			),
 			columns: { id: true },
 		})
 		if (!render) throw new Error('Render job not found')

@@ -28,7 +28,7 @@ export const RemotionRoot: React.FC = () => {
     thread: { title: 'Thread Title', source: 'x', sourceUrl: null },
     root: {
       id: 'root',
-      author: { name: 'Author', handle: '@author' },
+      author: { name: 'Author', handle: '@author', avatarAssetId: null },
       contentBlocks: [{ id: 'text-0', type: 'text', data: { text: 'Root post…' } }],
       plainText: 'Root post…',
       createdAt: null,
@@ -37,7 +37,7 @@ export const RemotionRoot: React.FC = () => {
     replies: [
       {
         id: 'r1',
-        author: { name: 'ReplyUser', handle: '@reply' },
+        author: { name: 'ReplyUser', handle: '@reply', avatarAssetId: null },
         contentBlocks: [{ id: 'text-0', type: 'text', data: { text: 'First reply' } }],
         plainText: 'First reply',
         createdAt: null,

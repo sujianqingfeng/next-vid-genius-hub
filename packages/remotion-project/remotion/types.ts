@@ -35,6 +35,146 @@ export type CommentsTemplateConfig = {
 	}
 }
 
+export type ThreadTemplateConfigV1 = {
+	version?: 1
+	theme?: {
+		background?: string
+		surface?: string
+		border?: string
+		textPrimary?: string
+		textSecondary?: string
+		textMuted?: string
+		accent?: string
+		accentGlow?: string
+	}
+	typography?: {
+		/**
+		 * A small, safe set of font stacks that work reliably in Remotion/Chromium.
+		 * "noto" stays close to the current defaults.
+		 */
+		fontPreset?: 'noto' | 'inter' | 'system'
+		/** Scales all font sizes in the template. */
+		fontScale?: number
+	}
+	layout?: {
+		paddingX?: number
+		paddingY?: number
+		infoPanelWidth?: number
+	}
+	brand?: {
+		showWatermark?: boolean
+		watermarkText?: string
+	}
+	motion?: {
+		enabled?: boolean
+		intensity?: 'subtle' | 'normal' | 'strong'
+	}
+	scenes?: {
+		cover?: { root?: ThreadRenderTreeNode }
+		post?: { root?: ThreadRenderTreeNode }
+	}
+}
+
+export type ThreadRenderTreeNode =
+	| {
+			type: 'Stack'
+			direction?: 'row' | 'column'
+			align?: 'start' | 'center' | 'end' | 'stretch'
+			justify?: 'start' | 'center' | 'end' | 'between'
+			gap?: number
+			padding?: number
+			children?: ThreadRenderTreeNode[]
+	  }
+	| {
+			type: 'Box'
+			padding?: number
+			border?: boolean
+			background?: string
+			radius?: number
+			children?: ThreadRenderTreeNode[]
+	  }
+	| {
+			type: 'Avatar'
+			bind?: 'root.author.avatarAssetId' | 'post.author.avatarAssetId'
+			size?: number
+			radius?: number
+			border?: boolean
+			background?: string
+	  }
+	| {
+			type: 'ContentBlocks'
+			bind?: 'root.contentBlocks' | 'post.contentBlocks'
+			gap?: number
+			maxHeight?: number
+	  }
+	| {
+			type: 'Image'
+			assetId: string
+			fit?: 'cover' | 'contain'
+			width?: number
+			height?: number
+			radius?: number
+			border?: boolean
+			background?: string
+	  }
+	| {
+			type: 'Video'
+			assetId: string
+			fit?: 'cover' | 'contain'
+			width?: number
+			height?: number
+			radius?: number
+			border?: boolean
+			background?: string
+	  }
+	| {
+			type: 'Spacer'
+			axis?: 'x' | 'y'
+			size?: number
+			width?: number
+			height?: number
+	  }
+	| {
+			type: 'Divider'
+			axis?: 'x' | 'y'
+			thickness?: number
+			length?: number
+			color?: string
+			opacity?: number
+			margin?: number
+	  }
+	| {
+			type: 'Text'
+			text?: string
+			bind?:
+				| 'thread.title'
+				| 'thread.source'
+				| 'thread.sourceUrl'
+				| 'root.author.name'
+				| 'root.author.handle'
+				| 'root.plainText'
+				| 'post.author.name'
+				| 'post.author.handle'
+				| 'post.plainText'
+			color?: 'primary' | 'muted' | 'accent'
+			align?: 'left' | 'center' | 'right'
+			size?: number
+			weight?: number
+			maxLines?: number
+	  }
+	| {
+			type: 'Builtin'
+			kind: 'cover'
+	  }
+	| {
+			type: 'Builtin'
+			kind: 'repliesList'
+			/** Optional root post override (rendered with `ctx.post = root`). */
+			rootRoot?: ThreadRenderTreeNode
+			/** Optional per-reply override (rendered with `ctx.post = reply`). */
+			itemRoot?: ThreadRenderTreeNode
+	  }
+
 export interface CommentVideoInputProps extends Record<string, unknown> {
   videoInfo: VideoInfo
   comments: Comment[]
@@ -65,7 +205,7 @@ export type ThreadContentBlock =
 
 export type ThreadPostRender = {
 	id: string
-	author: { name: string; handle?: string | null }
+	author: { name: string; handle?: string | null; avatarAssetId?: string | null }
 	contentBlocks: ThreadContentBlock[]
 	plainText: string
 	translations?: ThreadPostTranslations | null
@@ -106,7 +246,7 @@ export interface ThreadVideoInputProps extends Record<string, unknown> {
 	coverDurationInFrames: number
 	replyDurationsInFrames: number[]
 	fps: number
-	templateConfig?: CommentsTemplateConfig
+	templateConfig?: ThreadTemplateConfigV1
 }
 
 export interface TimelineDurations {
