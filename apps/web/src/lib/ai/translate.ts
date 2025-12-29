@@ -209,9 +209,10 @@ export async function translateTextsWithUsage(
 			}
 			return parseResult(res.object, usage)
 		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error)
 			logger.warn(
 				'translation',
-				'[translateTexts] Structured translation failed, falling back to JSON text mode.',
+				`[translateTexts] Structured translation failed, falling back to JSON text mode. reason=${reason}`,
 			)
 			unsupportedStructuredModels.add(modelId)
 		}

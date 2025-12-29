@@ -12,7 +12,7 @@ export async function mapWithConcurrency<TItem, TResult>(
 
 	if (items.length === 0) return []
 
-	const results = new Array<TResult>(items.length)
+	const results = Array.from({ length: items.length }) as TResult[]
 	let nextIndex = 0
 
 	const workerCount = Math.min(safeConcurrency, items.length)

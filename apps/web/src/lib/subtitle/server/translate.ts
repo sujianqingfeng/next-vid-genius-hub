@@ -89,7 +89,7 @@ async function translateBatchStructured(args: {
 	cues: StructuredTranslationCue[]
 	usage?: { inputTokens: number; outputTokens: number; totalTokens: number }
 }> {
-	const { mediaId, model, system, batch } = args
+	const { model, system, batch } = args
 
 	const prompt = `Original cues (i + timestamps + text):\n${JSON.stringify(batch)}\n\nReturn JSON with shape {"cues":[{"i":number,"zh":string}]} only.`
 

@@ -89,7 +89,7 @@ function authenticateBasicAuth(
 }
 
 export default {
-	async fetch(request: Request, env: WorkerEnv, ctx: WorkerCtx) {
+	async fetch(request: Request, env: WorkerEnv, _ctx: WorkerCtx) {
 		const auth = authenticateBasicAuth(request, env)
 		if (auth) return auth
 

@@ -32,7 +32,7 @@ function normalizeNickname(nickname?: string | null) {
 }
 
 function toPublicUser(user: User) {
-	const { passwordHash, ...rest } = user
+	const { passwordHash: _passwordHash, ...rest } = user
 	return rest
 }
 

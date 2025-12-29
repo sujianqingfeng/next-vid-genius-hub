@@ -314,6 +314,7 @@ export function ChannelsPage() {
 								<ChannelCard
 									key={ch.id}
 									ch={ch}
+									dateLocale={dateLocale}
 									proxies={proxies}
 									successProxyIds={successProxyIds}
 									hasSuccessProxy={hasSuccessProxy}
@@ -397,6 +398,7 @@ export function ChannelsPage() {
 
 function ChannelCard({
 	ch,
+	dateLocale,
 	proxies,
 	successProxyIds,
 	hasSuccessProxy,
@@ -420,6 +422,7 @@ function ChannelCard({
 		tVideos,
 }: {
 	ch: ChannelRow
+	dateLocale: string
 	proxies: ProxyOption[]
 	successProxyIds: ReadonlySet<string>
 	hasSuccessProxy: boolean

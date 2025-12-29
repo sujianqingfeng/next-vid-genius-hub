@@ -55,8 +55,10 @@ export async function translateThreadPost(input: {
 		usage,
 	}
 
-	const existing = (post.translations ?? null) as ThreadPostTranslations | null
-	const next: ThreadPostTranslations = { ...(existing ?? {}), [targetLocale]: record }
+	const existing = (post.translations ?? undefined) as
+		| ThreadPostTranslations
+		| undefined
+	const next: ThreadPostTranslations = { ...existing, [targetLocale]: record }
 
 	await db
 		.update(schema.threadPosts)
@@ -110,7 +112,9 @@ export async function translateAllThreadPosts(input: {
 		if (processed >= maxPosts) break
 		processed++
 
-		const existing = (post.translations ?? null) as ThreadPostTranslations | null
+		const existing = (post.translations ?? undefined) as
+			| ThreadPostTranslations
+			| undefined
 		const existingText = (existing as any)?.[targetLocale]?.plainText
 		if (typeof existingText === 'string' && existingText.trim()) {
 			skipped++
@@ -141,7 +145,7 @@ export async function translateAllThreadPosts(input: {
 				usage,
 			}
 
-			const next: ThreadPostTranslations = { ...(existing ?? {}), [targetLocale]: record }
+			const next: ThreadPostTranslations = { ...existing, [targetLocale]: record }
 
 			await db
 				.update(schema.threadPosts)

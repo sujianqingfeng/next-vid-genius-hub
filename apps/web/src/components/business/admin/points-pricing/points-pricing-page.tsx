@@ -5,12 +5,10 @@ import {
 } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import {
 	Dialog,
 	DialogContent,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from '~/components/ui/dialog'
@@ -547,7 +545,7 @@ export function AdminPointsPricingPage() {
 			}
 		}
 
-		const unit: 'minute' = 'minute'
+		const unit = 'minute' as const
 		const durationSeconds = Math.max(0, Math.trunc(previewMinutes)) * 60
 		const res = calculateTimePoints({
 			durationSeconds,

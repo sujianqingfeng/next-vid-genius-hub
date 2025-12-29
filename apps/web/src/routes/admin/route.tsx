@@ -3,7 +3,6 @@ import {
 	Link,
 	Outlet,
 	redirect,
-	useNavigate,
 	useRouterState,
 } from '@tanstack/react-router'
 import {
@@ -66,7 +65,6 @@ export const Route = createFileRoute('/admin')({
 
 function AdminLayoutRoute() {
 	const t = useTranslations('Admin.layout')
-	const navigate = useNavigate()
 	const pathname = useRouterState({ select: (s) => s.location.pathname })
 	const { data: me } = useAuthQuery()
 	const logoutMutation = useLogoutMutation({

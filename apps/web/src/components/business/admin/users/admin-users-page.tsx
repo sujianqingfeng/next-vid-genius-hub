@@ -3,16 +3,13 @@ import {
 	useQuery,
 	useQueryClient,
 } from '@tanstack/react-query'
-import { History, Plus, Shield, Trash2, UserCheck } from 'lucide-react'
+import { Shield } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
-import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from '~/components/ui/dialog'

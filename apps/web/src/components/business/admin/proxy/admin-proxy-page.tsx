@@ -1,7 +1,6 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Activity, Plus, RefreshCcw, Shield, Trash2 } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -11,8 +10,6 @@ import { Button } from '~/components/ui/button'
 import {
 	Dialog,
 	DialogContent,
-	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from '~/components/ui/dialog'
