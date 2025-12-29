@@ -98,6 +98,12 @@ export type ThreadRenderTreeNode =
 			padding?: number
 			paddingX?: number
 			paddingY?: number
+			border?: boolean
+			borderWidth?: number
+			borderColor?: 'border' | 'primary' | 'muted' | 'accent'
+			background?: string
+			radius?: number
+			overflow?: 'hidden'
 			width?: number
 			height?: number
 			maxWidth?: number
@@ -117,6 +123,12 @@ export type ThreadRenderTreeNode =
 			padding?: number
 			paddingX?: number
 			paddingY?: number
+			border?: boolean
+			borderWidth?: number
+			borderColor?: 'border' | 'primary' | 'muted' | 'accent'
+			background?: string
+			radius?: number
+			overflow?: 'hidden'
 			width?: number
 			height?: number
 			maxWidth?: number
@@ -129,6 +141,11 @@ export type ThreadRenderTreeNode =
 			y?: number
 			width?: number
 			height?: number
+			zIndex?: number
+			pointerEvents?: boolean
+			rotate?: number
+			scale?: number
+			origin?: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 			children?: ThreadRenderTreeNode[]
 	  }
 	| {
@@ -143,6 +160,7 @@ export type ThreadRenderTreeNode =
 			borderColor?: 'border' | 'primary' | 'muted' | 'accent'
 			background?: string
 			radius?: number
+			overflow?: 'hidden'
 			width?: number
 			height?: number
 			maxWidth?: number
@@ -167,6 +185,9 @@ export type ThreadRenderTreeNode =
 			type: 'Image'
 			assetId: string
 			fit?: 'cover' | 'contain'
+			position?: string
+			opacity?: number
+			blur?: number
 			width?: number
 			height?: number
 			radius?: number
@@ -177,6 +198,9 @@ export type ThreadRenderTreeNode =
 			type: 'Video'
 			assetId: string
 			fit?: 'cover' | 'contain'
+			position?: string
+			opacity?: number
+			blur?: number
 			width?: number
 			height?: number
 			radius?: number

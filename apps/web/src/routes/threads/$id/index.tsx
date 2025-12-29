@@ -1150,6 +1150,9 @@ function analyzeRenderTreeNode(
 				'type',
 				'assetId',
 				'fit',
+				'position',
+				'opacity',
+				'blur',
 				'width',
 				'height',
 				'radius',
@@ -1195,6 +1198,26 @@ function analyzeRenderTreeNode(
 		if (fit != null && fit !== 'cover' && fit !== 'contain') {
 			push(`${path}.fit: must be 'cover' or 'contain'; ignored.`)
 		}
+		const opacity = (rawNode as any).opacity
+		if (opacity != null) {
+			if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+				push(`${path}.opacity: must be a number; ignored.`)
+			} else if (opacity < 0 || opacity > 1) {
+				push(`${path}.opacity: must be between 0 and 1; clamped.`)
+			}
+		}
+		const blur = (rawNode as any).blur
+		if (blur != null) {
+			if (typeof blur !== 'number' || !Number.isFinite(blur)) {
+				push(`${path}.blur: must be a number; ignored.`)
+			} else if (blur < 0 || blur > 80) {
+				push(`${path}.blur: must be between 0 and 80; clamped.`)
+			}
+		}
+		const position = (rawNode as any).position
+		if (position != null && (typeof position !== 'string' || !position.trim())) {
+			push(`${path}.position: must be a non-empty string when provided; ignored.`)
+		}
 		const background = (rawNode as any).background
 		if (background != null && (typeof background !== 'string' || !background.trim())) {
 			push(`${path}.background: must be a non-empty string when provided; ignored.`)
@@ -1213,6 +1236,9 @@ function analyzeRenderTreeNode(
 				'type',
 				'assetId',
 				'fit',
+				'position',
+				'opacity',
+				'blur',
 				'width',
 				'height',
 				'radius',
@@ -1257,6 +1283,26 @@ function analyzeRenderTreeNode(
 		const fit = (rawNode as any).fit
 		if (fit != null && fit !== 'cover' && fit !== 'contain') {
 			push(`${path}.fit: must be 'cover' or 'contain'; ignored.`)
+		}
+		const opacity = (rawNode as any).opacity
+		if (opacity != null) {
+			if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+				push(`${path}.opacity: must be a number; ignored.`)
+			} else if (opacity < 0 || opacity > 1) {
+				push(`${path}.opacity: must be between 0 and 1; clamped.`)
+			}
+		}
+		const blur = (rawNode as any).blur
+		if (blur != null) {
+			if (typeof blur !== 'number' || !Number.isFinite(blur)) {
+				push(`${path}.blur: must be a number; ignored.`)
+			} else if (blur < 0 || blur > 80) {
+				push(`${path}.blur: must be between 0 and 80; clamped.`)
+			}
+		}
+		const position = (rawNode as any).position
+		if (position != null && (typeof position !== 'string' || !position.trim())) {
+			push(`${path}.position: must be a non-empty string when provided; ignored.`)
 		}
 		const background = (rawNode as any).background
 		if (background != null && (typeof background !== 'string' || !background.trim())) {
@@ -1330,6 +1376,12 @@ function analyzeRenderTreeNode(
 				'padding',
 				'paddingX',
 				'paddingY',
+				'border',
+				'borderWidth',
+				'borderColor',
+				'background',
+				'radius',
+				'overflow',
 				'width',
 				'height',
 				'maxWidth',
@@ -1344,6 +1396,54 @@ function analyzeRenderTreeNode(
 			0,
 			240,
 		)
+		const borderWidth = (rawNode as any).borderWidth
+		if (borderWidth != null) {
+			if (typeof borderWidth !== 'number' || !Number.isFinite(borderWidth)) {
+				push(`${path}.borderWidth: must be a number; ignored.`)
+			} else if (borderWidth < 1 || borderWidth > 12) {
+				push(`${path}.borderWidth: must be between 1 and 12; clamped.`)
+			}
+			if ((rawNode as any).border !== true) {
+				push(`${path}.borderWidth is ignored unless border=true.`)
+			}
+		}
+		const borderColor = (rawNode as any).borderColor
+		if (borderColor != null) {
+			if (
+				borderColor !== 'border' &&
+				borderColor !== 'primary' &&
+				borderColor !== 'muted' &&
+				borderColor !== 'accent'
+			) {
+				push(
+					`${path}.borderColor: must be 'border' | 'primary' | 'muted' | 'accent'; ignored.`,
+				)
+			}
+			if ((rawNode as any).border !== true) {
+				push(`${path}.borderColor is ignored unless border=true.`)
+			}
+		}
+		const background = (rawNode as any).background
+		if (background != null && (typeof background !== 'string' || !background.trim())) {
+			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		} else if (
+			typeof background === 'string' &&
+			containsUnsafeCssUrl(background.trim())
+		) {
+			push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
+		}
+		const radius = (rawNode as any).radius
+		if (radius != null) {
+			if (typeof radius !== 'number' || !Number.isFinite(radius)) {
+				push(`${path}.radius: must be a number; ignored.`)
+			} else if (radius < 0 || radius > 120) {
+				push(`${path}.radius: must be between 0 and 120; clamped.`)
+			}
+		}
+		const overflow = (rawNode as any).overflow
+		if (overflow != null && overflow !== 'hidden') {
+			push(`${path}.overflow: must be 'hidden' when provided; ignored.`)
+		}
 		const align = (rawNode as any).align
 		if (
 			align != null &&
@@ -1387,7 +1487,62 @@ function analyzeRenderTreeNode(
 	}
 
 	if (type === 'Absolute') {
-		warnUnknownKeys(new Set(['type', 'x', 'y', 'width', 'height', 'children']))
+		warnUnknownKeys(
+			new Set([
+				'type',
+				'x',
+				'y',
+				'width',
+				'height',
+				'zIndex',
+				'pointerEvents',
+				'rotate',
+				'scale',
+				'origin',
+				'children',
+			]),
+		)
+		const zIndex = (rawNode as any).zIndex
+		if (zIndex != null) {
+			if (typeof zIndex !== 'number' || !Number.isFinite(zIndex)) {
+				push(`${path}.zIndex: must be a number; ignored.`)
+			} else if (zIndex < -100 || zIndex > 100) {
+				push(`${path}.zIndex: must be between -100 and 100; clamped.`)
+			}
+		}
+		const pointerEvents = (rawNode as any).pointerEvents
+		if (pointerEvents != null && typeof pointerEvents !== 'boolean') {
+			push(`${path}.pointerEvents: must be boolean; ignored.`)
+		}
+		const rotate = (rawNode as any).rotate
+		if (rotate != null) {
+			if (typeof rotate !== 'number' || !Number.isFinite(rotate)) {
+				push(`${path}.rotate: must be a number; ignored.`)
+			} else if (rotate < -180 || rotate > 180) {
+				push(`${path}.rotate: must be between -180 and 180; clamped.`)
+			}
+		}
+		const scale = (rawNode as any).scale
+		if (scale != null) {
+			if (typeof scale !== 'number' || !Number.isFinite(scale)) {
+				push(`${path}.scale: must be a number; ignored.`)
+			} else if (scale < 0.1 || scale > 4) {
+				push(`${path}.scale: must be between 0.1 and 4; clamped.`)
+			}
+		}
+		const origin = (rawNode as any).origin
+		if (
+			origin != null &&
+			origin !== 'center' &&
+			origin !== 'top-left' &&
+			origin !== 'top-right' &&
+			origin !== 'bottom-left' &&
+			origin !== 'bottom-right'
+		) {
+			push(
+				`${path}.origin: must be 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'; ignored.`,
+			)
+		}
 		const children = (rawNode as any).children
 		if (children != null && !Array.isArray(children)) {
 			push(`${path}.children: must be an array; ignored.`)
@@ -1420,6 +1575,12 @@ function analyzeRenderTreeNode(
 				'padding',
 				'paddingX',
 				'paddingY',
+				'border',
+				'borderWidth',
+				'borderColor',
+				'background',
+				'radius',
+				'overflow',
 				'width',
 				'height',
 				'maxWidth',
@@ -1434,6 +1595,54 @@ function analyzeRenderTreeNode(
 			0,
 			240,
 		)
+		const borderWidth = (rawNode as any).borderWidth
+		if (borderWidth != null) {
+			if (typeof borderWidth !== 'number' || !Number.isFinite(borderWidth)) {
+				push(`${path}.borderWidth: must be a number; ignored.`)
+			} else if (borderWidth < 1 || borderWidth > 12) {
+				push(`${path}.borderWidth: must be between 1 and 12; clamped.`)
+			}
+			if ((rawNode as any).border !== true) {
+				push(`${path}.borderWidth is ignored unless border=true.`)
+			}
+		}
+		const borderColor = (rawNode as any).borderColor
+		if (borderColor != null) {
+			if (
+				borderColor !== 'border' &&
+				borderColor !== 'primary' &&
+				borderColor !== 'muted' &&
+				borderColor !== 'accent'
+			) {
+				push(
+					`${path}.borderColor: must be 'border' | 'primary' | 'muted' | 'accent'; ignored.`,
+				)
+			}
+			if ((rawNode as any).border !== true) {
+				push(`${path}.borderColor is ignored unless border=true.`)
+			}
+		}
+		const background = (rawNode as any).background
+		if (background != null && (typeof background !== 'string' || !background.trim())) {
+			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		} else if (
+			typeof background === 'string' &&
+			containsUnsafeCssUrl(background.trim())
+		) {
+			push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
+		}
+		const radius = (rawNode as any).radius
+		if (radius != null) {
+			if (typeof radius !== 'number' || !Number.isFinite(radius)) {
+				push(`${path}.radius: must be a number; ignored.`)
+			} else if (radius < 0 || radius > 120) {
+				push(`${path}.radius: must be between 0 and 120; clamped.`)
+			}
+		}
+		const overflow = (rawNode as any).overflow
+		if (overflow != null && overflow !== 'hidden') {
+			push(`${path}.overflow: must be 'hidden' when provided; ignored.`)
+		}
 		const children = (rawNode as any).children
 		if (children != null && !Array.isArray(children)) {
 			push(`${path}.children: must be an array; ignored.`)
@@ -1465,6 +1674,7 @@ function analyzeRenderTreeNode(
 				'borderColor',
 				'background',
 				'radius',
+				'overflow',
 				'width',
 				'height',
 				'maxWidth',
@@ -1510,6 +1720,18 @@ function analyzeRenderTreeNode(
 			containsUnsafeCssUrl(background.trim())
 		) {
 			push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
+		}
+		const radius = (rawNode as any).radius
+		if (radius != null) {
+			if (typeof radius !== 'number' || !Number.isFinite(radius)) {
+				push(`${path}.radius: must be a number; ignored.`)
+			} else if (radius < 0 || radius > 120) {
+				push(`${path}.radius: must be between 0 and 120; clamped.`)
+			}
+		}
+		const overflow = (rawNode as any).overflow
+		if (overflow != null && overflow !== 'hidden') {
+			push(`${path}.overflow: must be 'hidden' when provided; ignored.`)
 		}
 		const children = (rawNode as any).children
 		if (children != null && !Array.isArray(children)) {

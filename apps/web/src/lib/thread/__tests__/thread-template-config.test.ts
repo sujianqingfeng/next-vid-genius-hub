@@ -32,6 +32,12 @@ describe('normalizeThreadTemplateConfig', () => {
 						justify: 'end',
 						gap: -1,
 						padding: 999,
+						border: true,
+						borderWidth: 999,
+						borderColor: 'border',
+						background: 'rgba(255,255,255,0.05)',
+						radius: 999,
+						overflow: 'hidden',
 						children: [{ type: 'Text', text: 'x' }],
 					},
 				},
@@ -45,6 +51,12 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.justify).toBe('end')
 		expect(root.gap).toBe(0)
 		expect(root.padding).toBe(240)
+		expect(root.border).toBe(true)
+		expect(root.borderWidth).toBe(12)
+		expect(root.borderColor).toBe('border')
+		expect(root.background).toBe('rgba(255,255,255,0.05)')
+		expect(root.radius).toBe(120)
+		expect(root.overflow).toBe('hidden')
 		expect(root.children?.[0]?.type).toBe('Text')
 	})
 
@@ -56,10 +68,12 @@ describe('normalizeThreadTemplateConfig', () => {
 					root: {
 						type: 'Stack',
 						flex: 999,
+						overflow: 'hidden',
 						children: [
 							{
 								type: 'Box',
 								flex: -1,
+								overflow: 'hidden',
 								border: true,
 								borderWidth: 999,
 								borderColor: 'accent',
@@ -74,11 +88,13 @@ describe('normalizeThreadTemplateConfig', () => {
 		const root = cfg.scenes!.cover!.root as any
 		expect(root.type).toBe('Stack')
 		expect(root.flex).toBe(100)
+		expect(root.overflow).toBe('hidden')
 		expect(root.children?.[0]?.type).toBe('Box')
 		expect(root.children?.[0]?.flex).toBe(0)
 		expect(root.children?.[0]?.border).toBe(true)
 		expect(root.children?.[0]?.borderWidth).toBe(12)
 		expect(root.children?.[0]?.borderColor).toBe('accent')
+		expect(root.children?.[0]?.overflow).toBe('hidden')
 	})
 
 	it('keeps Spacer nodes (axis+size)', () => {
@@ -249,6 +265,9 @@ describe('normalizeThreadTemplateConfig', () => {
 						type: 'Image',
 						assetId: 'asset_1',
 						fit: 'stretch',
+						position: '50% 25%',
+						opacity: 999,
+						blur: 999,
 						width: 1,
 						height: 99999,
 					},
@@ -260,8 +279,29 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.type).toBe('Image')
 		expect(root.assetId).toBe('asset_1')
 		expect(root.fit).toBeUndefined()
+		expect(root.position).toBe('50% 25%')
+		expect(root.opacity).toBe(1)
+		expect(root.blur).toBe(80)
 		expect(root.width).toBe(16)
 		expect(root.height).toBe(1600)
+	})
+
+	it('clamps Image blur to 0..80', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: { root: { type: 'Image', assetId: 'asset_1', blur: -1 } },
+				post: { root: { type: 'Image', assetId: 'asset_1', blur: 999 } },
+			},
+		})
+
+		const cover = cfg.scenes?.cover?.root as any
+		expect(cover.type).toBe('Image')
+		expect(cover.blur).toBe(0)
+
+		const post = cfg.scenes?.post?.root as any
+		expect(post.type).toBe('Image')
+		expect(post.blur).toBe(80)
 	})
 
 	it('drops Image node when assetId is an external URL', () => {
@@ -289,6 +329,24 @@ describe('normalizeThreadTemplateConfig', () => {
 		})
 		const root = cfg.scenes!.cover!.root as any
 		expect(root?.type).toBe('Stack')
+	})
+
+	it('clamps Video blur to 0..80', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: { root: { type: 'Video', assetId: 'asset_1', blur: -1 } },
+				post: { root: { type: 'Video', assetId: 'asset_1', blur: 999 } },
+			},
+		})
+
+		const cover = cfg.scenes?.cover?.root as any
+		expect(cover.type).toBe('Video')
+		expect(cover.blur).toBe(0)
+
+		const post = cfg.scenes?.post?.root as any
+		expect(post.type).toBe('Video')
+		expect(post.blur).toBe(80)
 	})
 
 	it('keeps Watermark and Metrics nodes and clamps values', () => {
@@ -447,6 +505,11 @@ describe('normalizeThreadTemplateConfig', () => {
 						y: 99999,
 						width: -10,
 						height: 99999,
+						zIndex: 999,
+						pointerEvents: false,
+						rotate: 999,
+						scale: 0,
+						origin: 'top-left',
 						children: [{ type: 'Text', text: 'x' }],
 					},
 				},
@@ -459,7 +522,25 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.y).toBe(2000)
 		expect(root.width).toBe(0)
 		expect(root.height).toBe(2000)
+		expect(root.zIndex).toBe(100)
+		expect(root.pointerEvents).toBe(false)
+		expect(root.rotate).toBe(180)
+		expect(root.scale).toBe(0.1)
+		expect(root.origin).toBe('top-left')
 		expect(root.children?.[0]?.type).toBe('Text')
+	})
+
+	it('drops Absolute origin when invalid', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: { root: { type: 'Absolute', origin: 'nope', children: [] } },
+			},
+		})
+
+		const root = cfg.scenes!.cover!.root as any
+		expect(root.type).toBe('Absolute')
+		expect(root.origin).toBeUndefined()
 	})
 
 	it('clamps Stack size props', () => {
@@ -473,6 +554,11 @@ describe('normalizeThreadTemplateConfig', () => {
 						height: 99999,
 						maxWidth: 99999,
 						maxHeight: -1,
+						border: true,
+						borderWidth: 0,
+						borderColor: 'accent',
+						background: 'rgba(255,255,255,0.01)',
+						radius: 999,
 						children: [{ type: 'Text', text: 'x' }],
 					},
 				},
@@ -485,6 +571,11 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.height).toBe(2000)
 		expect(root.maxWidth).toBe(2000)
 		expect(root.maxHeight).toBe(0)
+		expect(root.border).toBe(true)
+		expect(root.borderWidth).toBe(1)
+		expect(root.borderColor).toBe('accent')
+		expect(root.background).toBe('rgba(255,255,255,0.01)')
+		expect(root.radius).toBe(120)
 	})
 
 	it('clamps Grid gapX/gapY and paddingX/paddingY', () => {
@@ -522,6 +613,8 @@ describe('normalizeThreadTemplateConfig', () => {
 						type: 'Video',
 						assetId: 'asset_2',
 						fit: 'nope',
+						position: 'left top',
+						opacity: -1,
 						width: -10,
 						height: 100000,
 					},
@@ -533,6 +626,8 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.type).toBe('Video')
 		expect(root.assetId).toBe('asset_2')
 		expect(root.fit).toBeUndefined()
+		expect(root.position).toBe('left top')
+		expect(root.opacity).toBe(0)
 		expect(root.width).toBe(16)
 		expect(root.height).toBe(1600)
 	})

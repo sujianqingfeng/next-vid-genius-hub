@@ -93,7 +93,7 @@
 - `Stack`：direction/align/justify/gap/padding
 - `Grid`：columns/gap
 - `Box`：padding/border/background/radius
-- `Absolute`：x/y/width/height（用于固定布局/安全区）
+- `Absolute`：x/y/width/height + zIndex/transform（用于固定布局/安全区/叠层）
 
 内容（数据绑定）节点：
 - `Text`：从数据源取值（thread.title、post.author、post.plainText、post.translations 等），含 maxLines、fontSize、weight、color token
@@ -207,6 +207,9 @@ V2（可视化编辑器）：
 
 - 布局/容器：`Stack`、`Grid`、`Absolute`、`Box`（容器节点支持 `flex`，用于填充剩余高度/控制左右比例）
 	- `Box`：支持 `borderWidth` / `borderColor`（配合 `border=true`）
+	- `Stack` / `Grid`：支持 `background` / `border` / `radius` / `borderWidth` / `borderColor`
+	- `Stack` / `Grid` / `Box`：支持 `overflow: 'hidden'`（用于裁剪）
+	- `Absolute`：支持 `zIndex` / `pointerEvents` / `rotate` / `scale` / `origin`（用于叠层/穿透/变换）
 - 背景：`Background`（color/assetId + opacity/blur）
 - 文本：`Text`
 	- bind：支持 `timeline.replyIndicator` / `timeline.replyIndex` / `timeline.replyCount`（用于用纯 RenderTree 自定义 header）
@@ -215,6 +218,7 @@ V2（可视化编辑器）：
 - 头像：`Avatar`
 - 内容：`ContentBlocks`
 - 媒体：`Image`、`Video`（仅允许 `assetId` → `assetsMap`，不允许外链 URL）
+	- `Image` / `Video`：支持 `opacity` / `position` / `blur`（用于蒙版/裁剪对齐/模糊）
 - 水印：`Watermark`（由 `brand.showWatermark` + `brand.watermarkText` 控制）
 - 辅助：`Spacer`、`Divider`
 - 内置：`Builtin(cover)`、`Builtin(repliesList)`

@@ -57,6 +57,23 @@ function safeBorderColorToken(value: unknown): BorderColorToken | null {
 	return value === 'border' ? value : safeColorToken(value)
 }
 
+type TransformOriginToken =
+	| 'center'
+	| 'top-left'
+	| 'top-right'
+	| 'bottom-left'
+	| 'bottom-right'
+
+function safeTransformOriginToken(value: unknown): TransformOriginToken | null {
+	return value === 'center' ||
+		value === 'top-left' ||
+		value === 'top-right' ||
+		value === 'bottom-left' ||
+		value === 'bottom-right'
+		? value
+		: null
+}
+
 const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 	cover: {
 		root: {
@@ -510,13 +527,13 @@ function normalizeRenderTreeNode(
 		return { type: 'Metrics', bind: bindAllowed, color, size, showIcon }
 	}
 
-		if (type === 'Avatar') {
-			const bind = input.bind
-			const bindAllowed =
-				bind === 'root.author.avatarAssetId' || bind === 'post.author.avatarAssetId'
-					? bind
-					: undefined
-			if (!bindAllowed) return null
+	if (type === 'Avatar') {
+		const bind = input.bind
+		const bindAllowed =
+			bind === 'root.author.avatarAssetId' || bind === 'post.author.avatarAssetId'
+				? bind
+				: undefined
+		if (!bindAllowed) return null
 
 		const size = clampInt(input.size, 24, 240) ?? undefined
 		const radius = clampInt(input.radius, 0, 999) ?? undefined
@@ -530,10 +547,8 @@ function normalizeRenderTreeNode(
 	if (type === 'ContentBlocks') {
 		const bind = input.bind
 		const bindAllowed =
-			bind === 'root.contentBlocks' || bind === 'post.contentBlocks'
-					? bind
-					: undefined
-			if (!bindAllowed) return null
+			bind === 'root.contentBlocks' || bind === 'post.contentBlocks' ? bind : undefined
+		if (!bindAllowed) return null
 		const gap = clampInt(input.gap, 0, 80) ?? undefined
 		const maxHeight = clampInt(input.maxHeight, 100, 1200) ?? undefined
 
@@ -552,6 +567,9 @@ function normalizeRenderTreeNode(
 			return null
 		}
 		const fit = input.fit === 'cover' || input.fit === 'contain' ? input.fit : undefined
+		const position = safeString(input.position, 40) ?? undefined
+		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
+		const blur = clampInt(input.blur, 0, 80) ?? undefined
 		const width = clampInt(input.width, 16, 1600) ?? undefined
 		const height = clampInt(input.height, 16, 1600) ?? undefined
 		const radius = clampInt(input.radius, 0, 999) ?? undefined
@@ -559,7 +577,19 @@ function normalizeRenderTreeNode(
 		const background = safeCssValue(input.background, 200) ?? undefined
 
 		state.nodeCount += 1
-		return { type: 'Image', assetId, fit, width, height, radius, border, background }
+		return {
+			type: 'Image',
+			assetId,
+			fit,
+			position,
+			opacity,
+			blur,
+			width,
+			height,
+			radius,
+			border,
+			background,
+		}
 	}
 
 	if (type === 'Video') {
@@ -573,6 +603,9 @@ function normalizeRenderTreeNode(
 			return null
 		}
 		const fit = input.fit === 'cover' || input.fit === 'contain' ? input.fit : undefined
+		const position = safeString(input.position, 40) ?? undefined
+		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
+		const blur = clampInt(input.blur, 0, 80) ?? undefined
 		const width = clampInt(input.width, 16, 1600) ?? undefined
 		const height = clampInt(input.height, 16, 1600) ?? undefined
 		const radius = clampInt(input.radius, 0, 999) ?? undefined
@@ -580,7 +613,19 @@ function normalizeRenderTreeNode(
 		const background = safeCssValue(input.background, 200) ?? undefined
 
 		state.nodeCount += 1
-		return { type: 'Video', assetId, fit, width, height, radius, border, background }
+		return {
+			type: 'Video',
+			assetId,
+			fit,
+			position,
+			opacity,
+			blur,
+			width,
+			height,
+			radius,
+			border,
+			background,
+		}
 	}
 
 	if (type === 'Spacer') {
@@ -623,6 +668,12 @@ function normalizeRenderTreeNode(
 			input.justify === 'stretch'
 				? input.justify
 				: undefined
+		const border = safeBoolean(input.border) ?? undefined
+		const borderWidth = clampInt(input.borderWidth, 1, 12) ?? undefined
+		const borderColor = safeBorderColorToken(input.borderColor) ?? undefined
+		const background = safeCssValue(input.background, 200) ?? undefined
+		const radius = clampInt(input.radius, 0, 120) ?? undefined
+		const overflow = input.overflow === 'hidden' ? 'hidden' : undefined
 		const gap = normalizeGap(input)
 		const padding = normalizeBoxPadding(input)
 		const size = normalizeBoxSize(input)
@@ -642,6 +693,12 @@ function normalizeRenderTreeNode(
 			...flex,
 			...gap,
 			...padding,
+			border,
+			borderWidth,
+			borderColor,
+			background,
+			radius,
+			overflow,
 			...size,
 			children: nextChildren.length ? nextChildren : undefined,
 		}
@@ -652,6 +709,11 @@ function normalizeRenderTreeNode(
 		const y = clampInt(input.y, -2000, 2000) ?? undefined
 		const width = clampInt(input.width, 0, 2000) ?? undefined
 		const height = clampInt(input.height, 0, 2000) ?? undefined
+		const zIndex = clampInt(input.zIndex, -100, 100) ?? undefined
+		const pointerEvents = safeBoolean(input.pointerEvents) ?? undefined
+		const rotate = clampNumber(input.rotate, -180, 180) ?? undefined
+		const scale = clampNumber(input.scale, 0.1, 4) ?? undefined
+		const origin = safeTransformOriginToken(input.origin) ?? undefined
 		const children = Array.isArray(input.children) ? input.children : []
 		state.nodeCount += 1
 		const nextChildren: ThreadRenderTreeNode[] = []
@@ -665,6 +727,11 @@ function normalizeRenderTreeNode(
 			y,
 			width,
 			height,
+			zIndex,
+			pointerEvents,
+			rotate,
+			scale,
+			origin,
 			children: nextChildren.length ? nextChildren : undefined,
 		}
 	}
@@ -688,6 +755,12 @@ function normalizeRenderTreeNode(
 			input.justify === 'between'
 				? input.justify
 				: undefined
+		const border = safeBoolean(input.border) ?? undefined
+		const borderWidth = clampInt(input.borderWidth, 1, 12) ?? undefined
+		const borderColor = safeBorderColorToken(input.borderColor) ?? undefined
+		const background = safeCssValue(input.background, 200) ?? undefined
+		const radius = clampInt(input.radius, 0, 120) ?? undefined
+		const overflow = input.overflow === 'hidden' ? 'hidden' : undefined
 		const gap = normalizeGap(input)
 		const padding = normalizeBoxPadding(input)
 		const size = normalizeBoxSize(input)
@@ -707,6 +780,12 @@ function normalizeRenderTreeNode(
 			...flex,
 			...gap,
 			...padding,
+			border,
+			borderWidth,
+			borderColor,
+			background,
+			radius,
+			overflow,
 			...size,
 			children: nextChildren.length ? nextChildren : undefined,
 		}
@@ -720,6 +799,7 @@ function normalizeRenderTreeNode(
 		const borderColor = safeBorderColorToken(input.borderColor) ?? undefined
 		const background = safeCssValue(input.background, 200) ?? undefined
 		const size = normalizeBoxSize(input)
+		const overflow = input.overflow === 'hidden' ? 'hidden' : undefined
 		const flex = normalizeFlex(input)
 		const children = Array.isArray(input.children) ? input.children : []
 		state.nodeCount += 1
@@ -737,6 +817,7 @@ function normalizeRenderTreeNode(
 			borderColor,
 			background,
 			radius,
+			overflow,
 			...size,
 			children: nextChildren.length ? nextChildren : undefined,
 		}
@@ -768,7 +849,7 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template normalization/compile logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 12
+export const THREAD_TEMPLATE_COMPILE_VERSION = 17
 
 export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateConfigV1 {
 	if (!isPlainObject(input)) return DEFAULT_THREAD_TEMPLATE_CONFIG

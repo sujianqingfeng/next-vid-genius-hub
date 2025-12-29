@@ -490,6 +490,10 @@ function renderThreadTemplateNode(
 	if (node.type === 'Image') {
 		const url = resolveAssetUrl(String(node.assetId), ctx.assets)
 		const fit = node.fit === 'contain' ? 'contain' : 'cover'
+		const position =
+			typeof node.position === 'string' && node.position.trim() ? node.position : undefined
+		const opacity = typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
+		const blur = typeof node.blur === 'number' ? Math.max(0, node.blur) : 0
 		const width = typeof node.width === 'number' ? node.width : undefined
 		const height = typeof node.height === 'number' ? node.height : undefined
 		const radius = typeof node.radius === 'number' ? node.radius : 0
@@ -505,9 +509,12 @@ function renderThreadTemplateNode(
 						width: width ?? '100%',
 						height: height ?? 'auto',
 						objectFit: fit,
+						objectPosition: position,
 						borderRadius: radius,
 						border,
 						background,
+						opacity,
+						filter: blur > 0 ? `blur(${blur}px)` : undefined,
 					}}
 				/>
 			)
@@ -529,6 +536,8 @@ function renderThreadTemplateNode(
 					alignItems: 'center',
 					justifyContent: 'center',
 					textAlign: 'center',
+					opacity,
+					filter: blur > 0 ? `blur(${blur}px)` : undefined,
 				}}
 			>
 				[image: {String(node.assetId)}]
@@ -539,6 +548,10 @@ function renderThreadTemplateNode(
 	if (node.type === 'Video') {
 		const url = resolveAssetUrl(String(node.assetId), ctx.assets)
 		const fit = node.fit === 'contain' ? 'contain' : 'cover'
+		const position =
+			typeof node.position === 'string' && node.position.trim() ? node.position : undefined
+		const opacity = typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
+		const blur = typeof node.blur === 'number' ? Math.max(0, node.blur) : 0
 		const width = typeof node.width === 'number' ? node.width : undefined
 		const height = typeof node.height === 'number' ? node.height : undefined
 		const radius = typeof node.radius === 'number' ? node.radius : 0
@@ -555,9 +568,12 @@ function renderThreadTemplateNode(
 						width: width ?? '100%',
 						height: height ?? 'auto',
 						objectFit: fit,
+						objectPosition: position,
 						borderRadius: radius,
 						border,
 						backgroundColor: background,
+						opacity,
+						filter: blur > 0 ? `blur(${blur}px)` : undefined,
 					}}
 				/>
 			)
@@ -579,6 +595,8 @@ function renderThreadTemplateNode(
 					alignItems: 'center',
 					justifyContent: 'center',
 					textAlign: 'center',
+					opacity,
+					filter: blur > 0 ? `blur(${blur}px)` : undefined,
 				}}
 			>
 				[video: {String(node.assetId)}]
@@ -649,6 +667,16 @@ function renderThreadTemplateNode(
 		const hasPaddingXY =
 			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
 		const flex = typeof node.flex === 'number' ? node.flex : undefined
+		const borderWidth =
+			node.border && typeof node.borderWidth === 'number' ? node.borderWidth : 1
+		const borderColor =
+			node.borderColor === 'primary'
+				? 'var(--tf-text)'
+				: node.borderColor === 'muted'
+					? 'var(--tf-muted)'
+					: node.borderColor === 'accent'
+						? 'var(--tf-accent)'
+						: 'var(--tf-border)'
 		const style: CSSProperties = {
 			position: 'relative',
 			display: 'flex',
@@ -656,6 +684,7 @@ function renderThreadTemplateNode(
 			flex,
 			minWidth: flex != null ? 0 : undefined,
 			minHeight: flex != null ? 0 : undefined,
+			overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
 			gap:
 				!hasGapXY && typeof node.gap === 'number'
 					? node.gap
@@ -706,6 +735,11 @@ function renderThreadTemplateNode(
 						? node.padding
 						: undefined
 				: undefined,
+			border: node.border
+				? `${Math.max(1, Math.round(borderWidth))}px solid ${borderColor}`
+				: undefined,
+			background: node.background ?? undefined,
+			borderRadius: typeof node.radius === 'number' ? node.radius : undefined,
 			width: typeof node.width === 'number' ? node.width : undefined,
 			height: typeof node.height === 'number' ? node.height : undefined,
 			maxWidth: typeof node.maxWidth === 'number' ? node.maxWidth : undefined,
@@ -747,6 +781,16 @@ function renderThreadTemplateNode(
 		const hasPaddingXY =
 			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
 		const flex = typeof node.flex === 'number' ? node.flex : undefined
+		const borderWidth =
+			node.border && typeof node.borderWidth === 'number' ? node.borderWidth : 1
+		const borderColor =
+			node.borderColor === 'primary'
+				? 'var(--tf-text)'
+				: node.borderColor === 'muted'
+					? 'var(--tf-muted)'
+					: node.borderColor === 'accent'
+						? 'var(--tf-accent)'
+						: 'var(--tf-border)'
 		const alignItems =
 			node.align === 'center'
 				? 'center'
@@ -769,6 +813,7 @@ function renderThreadTemplateNode(
 			flex,
 			minWidth: flex != null ? 0 : undefined,
 			minHeight: flex != null ? 0 : undefined,
+			overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
 			gridTemplateColumns: `repeat(${Math.max(1, Math.floor(columns))}, minmax(0, 1fr))`,
 			gap:
 				!hasGapXY && typeof node.gap === 'number'
@@ -820,6 +865,11 @@ function renderThreadTemplateNode(
 						? node.padding
 						: undefined
 				: undefined,
+			border: node.border
+				? `${Math.max(1, Math.round(borderWidth))}px solid ${borderColor}`
+				: undefined,
+			background: node.background ?? undefined,
+			borderRadius: typeof node.radius === 'number' ? node.radius : undefined,
 			width: typeof node.width === 'number' ? node.width : undefined,
 			height: typeof node.height === 'number' ? node.height : undefined,
 			maxWidth: typeof node.maxWidth === 'number' ? node.maxWidth : undefined,
@@ -842,12 +892,31 @@ function renderThreadTemplateNode(
 	}
 
 	if (node.type === 'Absolute') {
+		const transforms: string[] = []
+		if (typeof node.rotate === 'number') transforms.push(`rotate(${node.rotate}deg)`)
+		if (typeof node.scale === 'number') transforms.push(`scale(${node.scale})`)
+		const origin =
+			node.origin === 'top-left'
+				? 'top left'
+				: node.origin === 'top-right'
+					? 'top right'
+					: node.origin === 'bottom-left'
+						? 'bottom left'
+						: node.origin === 'bottom-right'
+							? 'bottom right'
+							: node.origin === 'center'
+								? 'center'
+								: undefined
 		const style: CSSProperties = {
 			position: 'absolute',
 			left: typeof node.x === 'number' ? node.x : undefined,
 			top: typeof node.y === 'number' ? node.y : undefined,
 			width: typeof node.width === 'number' ? node.width : undefined,
 			height: typeof node.height === 'number' ? node.height : undefined,
+			zIndex: typeof node.zIndex === 'number' ? node.zIndex : undefined,
+			pointerEvents: node.pointerEvents === false ? 'none' : undefined,
+			transform: transforms.length ? transforms.join(' ') : undefined,
+			transformOrigin: origin,
 			boxSizing: 'border-box',
 		}
 
@@ -879,6 +948,7 @@ function renderThreadTemplateNode(
 			flex,
 			minWidth: flex != null ? 0 : undefined,
 			minHeight: flex != null ? 0 : undefined,
+			overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
 			padding:
 				!hasPaddingXY && typeof node.padding === 'number'
 					? node.padding
