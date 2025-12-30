@@ -251,7 +251,7 @@ V2（可视化编辑器）：
 2) 模板里 `Image/Video.assetId` 必须填写入库后的 `thread_assets.id`（而不是 URL）。
 3) Web 端会提示：占位符未替换、assetId 不存在、status 非 ready、storageKey 缺失等问题。
 
-## 执行进度（截至 2025-12-29）
+## 执行进度（截至 2025-12-30）
 
 ### 已完成
 
@@ -262,16 +262,29 @@ V2（可视化编辑器）：
 	- 默认 `cover` 已切到纯 RenderTree（仍保留 `Builtin(cover)` 作为可选回退/自定义）
 	- 线程详情页增加：`Insert Replies Layout`（插入拆分的 repliesList 布局片段）
 	- 线程详情页增加：`Insert Header Snippet` / `Insert Highlight Snippet`
+- M3（模板库 v1 / 本地闭环）：可视化编辑器 + 模板库（版本化/回滚/复用）+ 管理页 + 自动化测试
+	- 可视化编辑器（节点树 + 属性面板 + 实时预览）：
+		- 基础节点编辑（Add/Insert/Duplicate/Wrap/Unwrap/Move/Delete）
+		- Undo/Redo + Copy/Paste + 快捷键
+		- 仍保留 JSON 高级模式，可双向 Sync
+	- 模板库（user-scoped，线程间复用）：
+		- 表：`thread_template_library` / `thread_template_versions`
+		- ORPC：create/addVersion/versions/list/applyToThread/rollback/update/deleteById
+		- Web 管理页：`/thread-templates`
+	- 本地迁移：`0029_flawless_veda.sql` 已在本地 D1 通过 `pnpm db:d1:migrate:local` 验证
+	- E2E：本地通过真实 ORPC + 本地 D1 冒烟（create → addVersion → apply → rollback → rename → delete）
+	- 测试：补充 ORPC procedure Vitest，并抽取可复用的 D1 test helper（libsql → D1 adapter）
 
 ### 未完成（明天可以做）
 
 - M2 收口
 	- 增加更丰富节点：绝对定位/对齐细节/更多样式能力（按需求逐步加）
 	- 将更多“内置布局”迁移到纯 RenderTree（减少 Builtin 依赖；时间轴仍可保留在 Builtin）
-- M3（产品化）
-	- 最小可视化编辑器（节点树 + 属性面板 + 实时预览），保留 JSON 高级模式
-	- 模板库（跨 thread 复用、版本化、回滚、共享）
-	- 更完善的验证与测试（覆盖更多节点/边界/资产状态）
+- M3（产品化）继续收口
+	- 模板库：workspace 级/共享/权限（当前为 user-scoped）
+	- 远端迁移：`pnpm db:d1:migrate:remote`（当前仅做本地迁移验证）
+	- 体验：线程页 apply 后自动同步 editor 状态（templateId/config），减少 UI 与 DB 状态不一致
+	- 更完善的验证与测试（覆盖更多节点/边界/资产状态；以及线程归属/无更新行等错误分支）
 
 ## 风险与注意事项
 
