@@ -4,12 +4,14 @@ import {
 	THREAD_TEMPLATE_COMPILE_VERSION,
 	normalizeThreadTemplateConfig,
 } from '@app/remotion-project/thread-template-config'
+import { getThreadTemplate } from '@app/remotion-project/thread-templates'
 import { bucketPaths } from '@app/media-domain'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { putObjectByKey } from '~/lib/cloudflare'
 import { presignGetByKey } from '~/lib/cloudflare/storage'
 import { getDb, schema } from '~/lib/db'
 import { blocksToPlainText } from '~/lib/thread/utils/plain-text'
+import { collectThreadTemplateAssetIds } from '~/lib/thread/template-assets'
 
 function toIso(input: unknown): string | null {
 	if (!input) return null
@@ -79,6 +81,11 @@ export async function buildThreadRenderSnapshot(input: {
 	})
 	if (!thread) throw new Error('Thread not found')
 
+	const templateConfigResolved =
+		input.templateConfig === undefined
+			? undefined
+			: normalizeThreadTemplateConfig(input.templateConfig)
+
 	let audio: ThreadVideoInputProps['audio'] | undefined = undefined
 	if (thread.audioAssetId) {
 		const audioAsset = await db.query.threadAssets.findFirst({
@@ -132,6 +139,10 @@ export async function buildThreadRenderSnapshot(input: {
 	const rootPlain = root.plainText || blocksToPlainText(rootBlocks)
 
 	const referencedAssetIds = new Set<string>()
+	for (const id of collectThreadTemplateAssetIds(templateConfigResolved)) {
+		referencedAssetIds.add(id)
+	}
+
 	for (const p of posts) {
 		if (p.authorAvatarAssetId) referencedAssetIds.add(p.authorAvatarAssetId)
 		for (const b of (p.contentBlocks ?? []) as any[]) {
@@ -180,10 +191,6 @@ export async function buildThreadRenderSnapshot(input: {
 		}
 	}
 
-	const templateConfigResolved =
-		input.templateConfig === undefined
-			? undefined
-			: normalizeThreadTemplateConfig(input.templateConfig)
 	const templateConfigJson =
 		templateConfigResolved === undefined
 			? null
@@ -237,6 +244,8 @@ export async function buildThreadRenderSnapshot(input: {
 	}
 
 	const key = bucketPaths.inputs.comments(thread.id, { title: thread.title })
+	const compileVersion =
+		getThreadTemplate(input.templateId)?.compileVersion ?? THREAD_TEMPLATE_COMPILE_VERSION
 	await putObjectByKey(
 		key,
 		'application/json',
@@ -247,7 +256,7 @@ export async function buildThreadRenderSnapshot(input: {
 			templateId: input.templateId,
 			templateConfigResolved: templateConfigResolved ?? null,
 			templateConfigHash,
-			compileVersion: THREAD_TEMPLATE_COMPILE_VERSION,
+			compileVersion,
 			inputProps,
 		}),
 	)

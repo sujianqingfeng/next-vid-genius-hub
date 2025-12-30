@@ -849,13 +849,15 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template normalization/compile logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 17
+export const THREAD_TEMPLATE_COMPILE_VERSION = 18
 
 export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateConfigV1 {
 	if (!isPlainObject(input)) return DEFAULT_THREAD_TEMPLATE_CONFIG
-	if (input.version !== 1) return DEFAULT_THREAD_TEMPLATE_CONFIG
-
-	const cfg = input
+	const cfg = input as any
+	const version = cfg.version
+	const isV1 = version === 1
+	const isLegacy = version == null || version === 0
+	if (!isV1 && !isLegacy) return DEFAULT_THREAD_TEMPLATE_CONFIG
 
 	const out: ThreadTemplateConfigV1 = {
 		version: 1,
@@ -933,19 +935,16 @@ export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateCon
 	}
 
 	const scenes = isPlainObject(cfg.scenes) ? cfg.scenes : null
-	if (scenes) {
+	const allowScenes = isV1 || (isLegacy && scenes != null)
+	if (allowScenes && scenes) {
 		const state: RenderTreeNormalizeState = { nodeCount: 0 }
 		const cover = isPlainObject(scenes.cover) ? scenes.cover : null
 		const post = isPlainObject(scenes.post) ? scenes.post : null
 
 		const coverRoot =
-			cover && 'root' in cover
-				? normalizeRenderTreeNode(cover.root, state, 0)
-				: null
+			cover && 'root' in cover ? normalizeRenderTreeNode(cover.root, state, 0) : null
 		const postRoot =
-			post && 'root' in post
-				? normalizeRenderTreeNode(post.root, state, 0)
-				: null
+			post && 'root' in post ? normalizeRenderTreeNode(post.root, state, 0) : null
 
 		out.scenes = {
 			cover: { root: coverRoot ?? DEFAULT_SCENES.cover!.root },

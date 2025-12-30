@@ -1,6 +1,11 @@
 import type { ComponentType } from 'react'
 import { ThreadForumVideo } from '../ThreadForumVideo'
-import type { ThreadVideoInputProps } from '../types'
+import type { ThreadTemplateConfigV1, ThreadVideoInputProps } from '../types'
+import {
+	DEFAULT_THREAD_TEMPLATE_CONFIG,
+	THREAD_TEMPLATE_COMPILE_VERSION,
+	normalizeThreadTemplateConfig,
+} from '../thread-template-config'
 
 export type ThreadTemplateId = 'thread-forum'
 
@@ -12,6 +17,9 @@ export interface ThreadTemplateDef {
 	compositionId: 'ThreadForumVideo'
 	compositionWidth: number
 	compositionHeight: number
+	defaultConfig: ThreadTemplateConfigV1
+	normalizeConfig: (raw: unknown) => ThreadTemplateConfigV1
+	compileVersion: number
 }
 
 export const THREAD_TEMPLATES: Record<ThreadTemplateId, ThreadTemplateDef> = {
@@ -23,6 +31,9 @@ export const THREAD_TEMPLATES: Record<ThreadTemplateId, ThreadTemplateDef> = {
 		compositionId: 'ThreadForumVideo',
 		compositionWidth: 1920,
 		compositionHeight: 1080,
+		defaultConfig: DEFAULT_THREAD_TEMPLATE_CONFIG,
+		normalizeConfig: normalizeThreadTemplateConfig,
+		compileVersion: THREAD_TEMPLATE_COMPILE_VERSION,
 	},
 }
 
@@ -37,4 +48,3 @@ export function getThreadTemplate(id?: string | null): ThreadTemplateDef {
 export function listThreadTemplates(): Array<{ id: ThreadTemplateId; name: string }> {
 	return Object.values(THREAD_TEMPLATES).map((t) => ({ id: t.id, name: t.name }))
 }
-

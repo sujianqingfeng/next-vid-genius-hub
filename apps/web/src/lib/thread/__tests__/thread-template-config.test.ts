@@ -20,6 +20,32 @@ function countNodes(node: ThreadRenderTreeNode | undefined): number {
 }
 
 describe('normalizeThreadTemplateConfig', () => {
+	it('supports legacy configs without version by mapping theme/typography/motion', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			theme: { background: '#111111' },
+			typography: { fontPreset: 'system', fontScale: 1.5 },
+			motion: { enabled: false, intensity: 'strong' },
+		})
+
+		expect(cfg.version).toBe(1)
+		expect(cfg.theme.background).toBe('#111111')
+		expect(cfg.typography.fontPreset).toBe('system')
+		expect(cfg.typography.fontScale).toBe(1.5)
+		expect(cfg.motion.enabled).toBe(false)
+		expect(cfg.motion.intensity).toBe('strong')
+		expect(cfg.scenes?.cover?.root?.type).toBeTruthy()
+	})
+
+	it('supports configs without version but with scenes', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			scenes: { cover: { root: { type: 'Text', text: 'hi' } } },
+		})
+
+		expect(cfg.version).toBe(1)
+		expect(cfg.scenes?.cover?.root?.type).toBe('Text')
+		expect((cfg.scenes?.cover?.root as any).text).toBe('hi')
+	})
+
 	it('keeps Grid nodes and clamps columns', () => {
 		const cfg = normalizeThreadTemplateConfig({
 			version: 1,

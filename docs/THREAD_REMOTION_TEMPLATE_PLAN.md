@@ -258,6 +258,7 @@ V2（可视化编辑器）：
 - M0：预览与云渲染使用 thread 粒度 template 设置；snapshot 写入 resolved/hash/version
 - M1：`thread.setTemplate` + 线程详情页 JSON 编辑/校验/保存 + 预览实时生效
 - M2（部分）：RenderTree v1（含媒体/辅助节点）+ `post.*` 绑定 + `repliesList.rootRoot/itemRoot` + 资产入库/安全限制 + 示例/插入器 + 基础测试
+	- 兼容：无 `version` 的旧配置会被映射到 v1（theme/typography/motion；可选 scenes）
 	- 默认 `cover` 已切到纯 RenderTree（仍保留 `Builtin(cover)` 作为可选回退/自定义）
 	- 线程详情页增加：`Insert Replies Layout`（插入拆分的 repliesList 布局片段）
 	- 线程详情页增加：`Insert Header Snippet` / `Insert Highlight Snippet`
