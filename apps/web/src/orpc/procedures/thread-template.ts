@@ -385,6 +385,14 @@ export const applyToThread = os
 		const userId = ctx.auth.user!.id
 		const db = await getDb()
 
+		const thread = await db.query.threads.findFirst({
+			where: and(
+				eq(schema.threads.userId, userId),
+				eq(schema.threads.id, input.threadId),
+			),
+		})
+		if (!thread) throw new Error('Thread not found')
+
 		const version = await db.query.threadTemplateVersions.findFirst({
 			where: and(
 				eq(schema.threadTemplateVersions.userId, userId),
@@ -490,7 +498,7 @@ export const deleteById = os
 		})
 		if (!lib) throw new Error('Template library not found')
 
-		await db
+		const deletedVersions = await db
 			.delete(schema.threadTemplateVersions)
 			.where(
 				and(
@@ -499,7 +507,7 @@ export const deleteById = os
 				),
 			)
 
-		await db
+		const deletedLibrary = await db
 			.delete(schema.threadTemplateLibrary)
 			.where(
 				and(
@@ -508,5 +516,5 @@ export const deleteById = os
 				),
 			)
 
-		return { ok: true }
+		return { ok: true, deletedVersions, deletedLibrary }
 	})

@@ -20,6 +20,7 @@ import { Route as AgentRouteRouteImport } from './routes/agent/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ThreadsIndexRouteImport } from './routes/threads/index'
+import { Route as ThreadTemplatesIndexRouteImport } from './routes/thread-templates/index'
 import { Route as MediaIndexRouteImport } from './routes/media/index'
 import { Route as MarketingIndexRouteImport } from './routes/marketing/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -106,6 +107,11 @@ const ThreadsIndexRoute = ThreadsIndexRouteImport.update({
 	id: '/',
 	path: '/',
 	getParentRoute: () => ThreadsRouteRoute,
+} as any)
+const ThreadTemplatesIndexRoute = ThreadTemplatesIndexRouteImport.update({
+	id: '/thread-templates/',
+	path: '/thread-templates/',
+	getParentRoute: () => rootRouteImport,
 } as any)
 const MediaIndexRoute = MediaIndexRouteImport.update({
 	id: '/',
@@ -291,6 +297,7 @@ export interface FileRoutesByFullPath {
 	'/admin/': typeof AdminIndexRoute
 	'/marketing': typeof MarketingIndexRoute
 	'/media/': typeof MediaIndexRoute
+	'/thread-templates': typeof ThreadTemplatesIndexRoute
 	'/threads/': typeof ThreadsIndexRoute
 	'/api/orpc/$': typeof ApiOrpcSplatRoute
 	'/api/proxy-check/run': typeof ApiProxyCheckRunRoute
@@ -330,6 +337,7 @@ export interface FileRoutesByTo {
 	'/admin': typeof AdminIndexRoute
 	'/marketing': typeof MarketingIndexRoute
 	'/media': typeof MediaIndexRoute
+	'/thread-templates': typeof ThreadTemplatesIndexRoute
 	'/threads': typeof ThreadsIndexRoute
 	'/api/orpc/$': typeof ApiOrpcSplatRoute
 	'/api/proxy-check/run': typeof ApiProxyCheckRunRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
 	'/admin/': typeof AdminIndexRoute
 	'/marketing/': typeof MarketingIndexRoute
 	'/media/': typeof MediaIndexRoute
+	'/thread-templates/': typeof ThreadTemplatesIndexRoute
 	'/threads/': typeof ThreadsIndexRoute
 	'/api/orpc/$': typeof ApiOrpcSplatRoute
 	'/api/proxy-check/run': typeof ApiProxyCheckRunRoute
@@ -421,6 +430,7 @@ export interface FileRouteTypes {
 		| '/admin/'
 		| '/marketing'
 		| '/media/'
+		| '/thread-templates'
 		| '/threads/'
 		| '/api/orpc/$'
 		| '/api/proxy-check/run'
@@ -460,6 +470,7 @@ export interface FileRouteTypes {
 		| '/admin'
 		| '/marketing'
 		| '/media'
+		| '/thread-templates'
 		| '/threads'
 		| '/api/orpc/$'
 		| '/api/proxy-check/run'
@@ -504,6 +515,7 @@ export interface FileRouteTypes {
 		| '/admin/'
 		| '/marketing/'
 		| '/media/'
+		| '/thread-templates/'
 		| '/threads/'
 		| '/api/orpc/$'
 		| '/api/proxy-check/run'
@@ -537,6 +549,7 @@ export interface RootRouteChildren {
 	AuthLoginRoute: typeof AuthLoginRoute
 	LegalPrivacyRoute: typeof LegalPrivacyRoute
 	MarketingIndexRoute: typeof MarketingIndexRoute
+	ThreadTemplatesIndexRoute: typeof ThreadTemplatesIndexRoute
 	ApiOrpcSplatRoute: typeof ApiOrpcSplatRoute
 	ApiProxyCheckRunRoute: typeof ApiProxyCheckRunRoute
 	ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
@@ -628,6 +641,13 @@ declare module '@tanstack/react-router' {
 			fullPath: '/threads/'
 			preLoaderRoute: typeof ThreadsIndexRouteImport
 			parentRoute: typeof ThreadsRouteRoute
+		}
+		'/thread-templates/': {
+			id: '/thread-templates/'
+			path: '/thread-templates'
+			fullPath: '/thread-templates'
+			preLoaderRoute: typeof ThreadTemplatesIndexRouteImport
+			parentRoute: typeof rootRouteImport
 		}
 		'/media/': {
 			id: '/media/'
@@ -948,6 +968,7 @@ const rootRouteChildren: RootRouteChildren = {
 	AuthLoginRoute: AuthLoginRoute,
 	LegalPrivacyRoute: LegalPrivacyRoute,
 	MarketingIndexRoute: MarketingIndexRoute,
+	ThreadTemplatesIndexRoute: ThreadTemplatesIndexRoute,
 	ApiOrpcSplatRoute: ApiOrpcSplatRoute,
 	ApiProxyCheckRunRoute: ApiProxyCheckRunRoute,
 	ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,
