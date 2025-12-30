@@ -50,6 +50,11 @@ function collectRenderTreeAssetIds(
 		return
 	}
 
+	if (node.type === 'Repeat') {
+		collectRenderTreeAssetIds(node.itemRoot, out)
+		return
+	}
+
 	if (
 		node.type === 'Stack' ||
 		node.type === 'Grid' ||

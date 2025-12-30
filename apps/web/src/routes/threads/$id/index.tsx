@@ -32,6 +32,7 @@ import {
 } from '@app/remotion-project/thread-template-config'
 import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
 import { collectThreadTemplateAssetIds } from '~/lib/thread/template-assets'
+import { migrateThreadTemplateConfigBuiltinsToRepeat } from '~/lib/thread/template-migrations'
 
 const IMAGE_ASSET_ID_PLACEHOLDER = '__IMAGE_ASSET_ID__'
 const VIDEO_ASSET_ID_PLACEHOLDER = '__VIDEO_ASSET_ID__'
@@ -494,6 +495,148 @@ function buildRepliesListHeaderSnippetExample(): Record<string, unknown> {
 	}
 }
 
+function buildRootPostSnippetExample(): Record<string, unknown> {
+	return {
+		type: 'Stack',
+		gapY: 14,
+		children: [
+			{
+				type: 'Stack',
+				direction: 'row',
+				align: 'center',
+				justify: 'between',
+				gapX: 14,
+				children: [
+					{
+						type: 'Stack',
+						direction: 'row',
+						align: 'center',
+						gapX: 12,
+						children: [
+							{
+								type: 'Avatar',
+								bind: 'root.author.avatarAssetId',
+								size: 44,
+								border: true,
+							},
+							{
+								type: 'Stack',
+								direction: 'column',
+								gapY: 2,
+								children: [
+									{
+										type: 'Text',
+										bind: 'root.author.name',
+										size: 18,
+										weight: 800,
+										maxLines: 1,
+									},
+									{
+										type: 'Text',
+										bind: 'root.author.handle',
+										color: 'muted',
+										size: 14,
+										weight: 600,
+										maxLines: 1,
+									},
+								],
+							},
+						],
+					},
+					{
+						type: 'Metrics',
+						bind: 'root.metrics.likes',
+						color: 'muted',
+						size: 14,
+						showIcon: true,
+					},
+				],
+			},
+			{ type: 'Divider', opacity: 0.6, margin: 0 },
+			{
+				type: 'ContentBlocks',
+				bind: 'root.contentBlocks',
+				gap: 12,
+				maxHeight: 900,
+			},
+		],
+	}
+}
+
+function buildReplyItemSnippetExample(): Record<string, unknown> {
+	return {
+		type: 'Stack',
+		gapY: 12,
+		children: [
+			{
+				type: 'Stack',
+				direction: 'row',
+				align: 'center',
+				justify: 'between',
+				gapX: 14,
+				children: [
+					{
+						type: 'Stack',
+						direction: 'row',
+						align: 'center',
+						gapX: 12,
+						children: [
+							{
+								type: 'Avatar',
+								bind: 'post.author.avatarAssetId',
+								size: 36,
+								border: true,
+							},
+							{
+								type: 'Text',
+								bind: 'post.author.name',
+								size: 14,
+								weight: 800,
+								maxLines: 1,
+							},
+						],
+					},
+					{
+						type: 'Metrics',
+						bind: 'post.metrics.likes',
+						color: 'muted',
+						size: 12,
+						showIcon: true,
+					},
+				],
+			},
+			{ type: 'Divider', opacity: 0.6, margin: 0 },
+			{
+				type: 'Text',
+				bind: 'post.plainText',
+				color: 'primary',
+				size: 14,
+				weight: 600,
+				lineHeight: 1.5,
+				maxLines: 10,
+			},
+		],
+	}
+}
+
+function buildRepeatRepliesSnippetExample(): Record<string, unknown> {
+	return {
+		type: 'Repeat',
+		source: 'replies',
+		maxItems: 50,
+		wrapItemRoot: true,
+		gap: 12,
+		highlight: {
+			enabled: true,
+			color: 'accent',
+			thickness: 3,
+			radius: 0,
+			opacity: 1,
+		},
+		itemRoot: buildReplyItemSnippetExample(),
+	}
+}
+
 function buildRepliesHighlightSnippetExample(): Record<string, unknown> {
 	return {
 		type: 'Builtin',
@@ -509,10 +652,61 @@ function buildRepliesHighlightSnippetExample(): Record<string, unknown> {
 	}
 }
 
-function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
+function buildActiveReplySplitLayoutExample(): ThreadTemplateConfigV1 {
 	return {
 		version: 1,
 		typography: { fontPreset: 'noto', fontScale: 1 },
+		scenes: {
+			post: {
+				root: {
+					type: 'Stack',
+					direction: 'column',
+					gapY: 18,
+					padding: 64,
+					children: [
+						buildRepliesListHeaderSnippetExample() as any,
+						{
+							type: 'Stack',
+							direction: 'row',
+							align: 'stretch',
+							gapX: 22,
+							flex: 1,
+							children: [
+								{
+									type: 'Box',
+									flex: 58,
+									border: true,
+									background: 'var(--tf-surface)',
+									padding: 28,
+									maxHeight: 2000,
+									children: [
+										buildRootPostSnippetExample() as any,
+									],
+								},
+								{
+									type: 'Box',
+									flex: 42,
+									maxHeight: 2000,
+									border: true,
+									background: 'rgba(255,255,255,0.02)',
+									padding: 18,
+									children: [
+										buildReplyItemSnippetExample() as any,
+									],
+								},
+							],
+						},
+					],
+				} as any,
+			},
+		},
+	}
+}
+
+function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
+		return {
+			version: 1,
+			typography: { fontPreset: 'noto', fontScale: 1 },
 		scenes: {
 			post: {
 				root: {
@@ -614,18 +808,196 @@ function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 					],
 				},
 			},
-		},
+			},
+		}
 	}
-}
 
-function isSupportedRenderTreeNodeType(type: unknown): boolean {
-	return (
-		type === 'Background' ||
-		type === 'Builtin' ||
-		type === 'Stack' ||
-		type === 'Grid' ||
-		type === 'Absolute' ||
-		type === 'Box' ||
+function buildRepeatRepliesSplitLayoutExample(): ThreadTemplateConfigV1 {
+		return {
+			version: 1,
+			typography: { fontPreset: 'noto', fontScale: 1 },
+			scenes: {
+				post: {
+					root: {
+						type: 'Stack',
+						gapY: 18,
+						padding: 64,
+						children: [
+							buildRepliesListHeaderSnippetExample() as any,
+							{
+								type: 'Grid',
+								columns: 2,
+								gapX: 22,
+								gapY: 16,
+								align: 'stretch',
+								justify: 'stretch',
+								children: [
+									{
+										type: 'Box',
+										border: true,
+										background: 'var(--tf-surface)',
+										padding: 28,
+										children: [
+											{
+												type: 'Stack',
+												gapY: 14,
+												children: [
+													{
+														type: 'Stack',
+														direction: 'row',
+														align: 'center',
+														justify: 'between',
+														gapX: 14,
+														children: [
+															{
+																type: 'Stack',
+																direction: 'row',
+																align: 'center',
+																gapX: 12,
+																children: [
+																	{
+																		type: 'Avatar',
+																		bind: 'root.author.avatarAssetId',
+																		size: 44,
+																		border: true,
+																	},
+																	{
+																		type: 'Stack',
+																		direction: 'column',
+																		gapY: 2,
+																		children: [
+																			{
+																				type: 'Text',
+																				bind: 'root.author.name',
+																				size: 18,
+																				weight: 800,
+																				maxLines: 1,
+																			},
+																			{
+																				type: 'Text',
+																				bind: 'root.author.handle',
+																				color: 'muted',
+																				size: 14,
+																				weight: 600,
+																				maxLines: 1,
+																			},
+																		],
+																	},
+																],
+															},
+															{
+																type: 'Metrics',
+																bind: 'root.metrics.likes',
+																color: 'muted',
+																size: 14,
+																showIcon: true,
+															},
+														],
+													},
+													{ type: 'Divider', opacity: 0.6, margin: 12 },
+													{
+														type: 'ContentBlocks',
+														bind: 'root.contentBlocks',
+														gap: 12,
+														maxHeight: 900,
+													},
+												],
+											},
+										],
+									},
+									{
+										type: 'Box',
+										border: true,
+										background: 'rgba(255,255,255,0.02)',
+										padding: 18,
+										children: [
+											{
+												type: 'Repeat',
+												source: 'replies',
+												maxItems: 50,
+												wrapItemRoot: true,
+												gap: 12,
+												highlight: {
+													enabled: true,
+													color: 'accent',
+													thickness: 3,
+													radius: 0,
+													opacity: 1,
+												},
+												itemRoot: {
+													type: 'Stack',
+													gapY: 12,
+													children: [
+														{
+															type: 'Stack',
+															direction: 'row',
+															align: 'center',
+															justify: 'between',
+															gapX: 14,
+															children: [
+																{
+																	type: 'Stack',
+																	direction: 'row',
+																	align: 'center',
+																	gapX: 12,
+																	children: [
+																		{
+																			type: 'Avatar',
+																			bind: 'post.author.avatarAssetId',
+																			size: 36,
+																			border: true,
+																		},
+																		{
+																			type: 'Text',
+																			bind: 'post.author.name',
+																			size: 14,
+																			weight: 800,
+																			maxLines: 1,
+																		},
+																	],
+																},
+																{
+																	type: 'Metrics',
+																	bind: 'post.metrics.likes',
+																	color: 'muted',
+																	size: 12,
+																	showIcon: true,
+																},
+															],
+														},
+														{ type: 'Divider', opacity: 0.6, margin: 0 },
+														{
+															type: 'Text',
+															bind: 'post.plainText',
+															color: 'primary',
+															size: 14,
+															weight: 600,
+															lineHeight: 1.5,
+															maxLines: 10,
+														},
+													],
+												},
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+				},
+			},
+		}
+	}
+
+	function isSupportedRenderTreeNodeType(type: unknown): boolean {
+		return (
+			type === 'Background' ||
+			type === 'Builtin' ||
+			type === 'Repeat' ||
+			type === 'Stack' ||
+			type === 'Grid' ||
+			type === 'Absolute' ||
+			type === 'Box' ||
 		type === 'Image' ||
 		type === 'Video' ||
 		type === 'Spacer' ||
@@ -731,11 +1103,11 @@ function analyzeRenderTreeNode(
 		}
 	}
 
-	if (type === 'Builtin') {
-		warnUnknownKeys(
-			new Set([
-				'type',
-				'kind',
+		if (type === 'Builtin') {
+			warnUnknownKeys(
+				new Set([
+					'type',
+					'kind',
 				'rootRoot',
 				'itemRoot',
 				'wrapRootRoot',
@@ -906,15 +1278,137 @@ function analyzeRenderTreeNode(
 			push(
 				`${path}.itemRoot is ignored unless kind='repliesList' or kind='repliesListReplies'.`,
 			)
+			}
+			return
 		}
-		return
-	}
 
-	if (type === 'Background') {
-		warnUnknownKeys(new Set(['type', 'color', 'assetId', 'opacity', 'blur']))
-		const color = (rawNode as any).color
-		const assetId = (rawNode as any).assetId
-		if (
+		if (type === 'Repeat') {
+			warnUnknownKeys(
+				new Set([
+					'type',
+					'source',
+					'maxItems',
+					'gap',
+					'wrapItemRoot',
+					'scroll',
+					'highlight',
+					'itemRoot',
+				]),
+			)
+
+			const source = (rawNode as any).source
+			if (source != null && source !== 'replies') {
+				push(`${path}.source: must be 'replies'; ignored.`)
+				return
+			}
+
+			const maxItems = (rawNode as any).maxItems
+			if (maxItems != null) {
+				if (typeof maxItems !== 'number' || !Number.isFinite(maxItems)) {
+					push(`${path}.maxItems: must be a number; ignored.`)
+				} else if (maxItems < 1 || maxItems > 100) {
+					push(`${path}.maxItems: must be between 1 and 100; clamped.`)
+				}
+			}
+
+			const gap = (rawNode as any).gap
+			if (gap != null) {
+				if (typeof gap !== 'number' || !Number.isFinite(gap)) {
+					push(`${path}.gap: must be a number; ignored.`)
+				} else if (gap < 0 || gap > 80) {
+					push(`${path}.gap: must be between 0 and 80; clamped.`)
+				}
+			}
+
+			for (const k of ['wrapItemRoot', 'scroll'] as const) {
+				const v = (rawNode as any)[k]
+				if (v == null) continue
+				if (typeof v !== 'boolean') push(`${path}.${k}: must be boolean; ignored.`)
+			}
+
+			const highlight = (rawNode as any).highlight
+			if (highlight != null) {
+				if (!isPlainObject(highlight)) {
+					push(`${path}.highlight: must be an object; ignored.`)
+				} else {
+					const allowed = new Set([
+						'enabled',
+						'color',
+						'thickness',
+						'radius',
+						'opacity',
+					])
+					for (const k of Object.keys(highlight)) {
+						if (!allowed.has(k)) push(`${path}.highlight: ignored field: ${k}`)
+					}
+					if (
+						'enabled' in highlight &&
+						typeof (highlight as any).enabled !== 'boolean'
+					) {
+						push(`${path}.highlight.enabled: must be boolean; ignored.`)
+					}
+					if ('color' in highlight) {
+						const v = (highlight as any).color
+						if (v != null && v !== 'primary' && v !== 'muted' && v !== 'accent') {
+							push(
+								`${path}.highlight.color: must be 'primary' | 'muted' | 'accent'; ignored.`,
+							)
+						}
+					}
+					if ('thickness' in highlight) {
+						const v = (highlight as any).thickness
+						if (v != null) {
+							if (typeof v !== 'number' || !Number.isFinite(v)) {
+								push(`${path}.highlight.thickness: must be a number; ignored.`)
+							} else if (v < 1 || v > 12) {
+								push(
+									`${path}.highlight.thickness: must be between 1 and 12; clamped.`,
+								)
+							}
+						}
+					}
+					if ('radius' in highlight) {
+						const v = (highlight as any).radius
+						if (v != null) {
+							if (typeof v !== 'number' || !Number.isFinite(v)) {
+								push(`${path}.highlight.radius: must be a number; ignored.`)
+							} else if (v < 0 || v > 48) {
+								push(
+									`${path}.highlight.radius: must be between 0 and 48; clamped.`,
+								)
+							}
+						}
+					}
+					if ('opacity' in highlight) {
+						const v = (highlight as any).opacity
+						if (v != null) {
+							if (typeof v !== 'number' || !Number.isFinite(v)) {
+								push(`${path}.highlight.opacity: must be a number; ignored.`)
+							} else if (v < 0 || v > 1) {
+								push(
+									`${path}.highlight.opacity: must be between 0 and 1; clamped.`,
+								)
+							}
+						}
+					}
+				}
+			}
+
+			analyzeRenderTreeNode(
+				(rawNode as any).itemRoot,
+				`${path}.itemRoot`,
+				state,
+				depth + 1,
+				assetsById,
+			)
+			return
+		}
+
+		if (type === 'Background') {
+			warnUnknownKeys(new Set(['type', 'color', 'assetId', 'opacity', 'blur']))
+			const color = (rawNode as any).color
+			const assetId = (rawNode as any).assetId
+			if (
 			color == null &&
 			(assetId == null || (typeof assetId === 'string' && !assetId.trim()))
 		) {
@@ -3231,55 +3725,178 @@ function ThreadDetailRoute() {
 									}}
 								>
 									Insert Cover Example
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="rounded-none font-mono text-xs uppercase"
+										disabled={!thread}
+										onClick={() => {
+											setTemplateEditorMode('json')
+											setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
+											setTemplateConfigText(
+												toPrettyJson(buildActiveReplySplitLayoutExample()),
+											)
+											toast.message(
+												'Inserted example config (active reply split layout)',
+											)
+										}}
+										>
+											Insert Active Layout
+										</Button>
+										<Button
+											type="button"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!thread}
+											onClick={() => {
+												setTemplateEditorMode('json')
+												setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
+												setTemplateConfigText(
+													toPrettyJson(buildRepeatRepliesSplitLayoutExample()),
+												)
+												toast.message(
+													'Inserted example config (replies split layout, repeat)',
+												)
+											}}
+										>
+											Insert Replies Layout
+										</Button>
+										<Button
+											type="button"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!thread}
+										onClick={() => {
+											setTemplateEditorMode('json')
+											setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
+											setTemplateConfigText(
+												toPrettyJson(buildRepliesListSplitLayoutExample()),
+											)
+											toast.message(
+												'Inserted example config (repliesList split layout, builtin)',
+											)
+										}}
+									>
+										Insert RepliesList Layout
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
-									onClick={() => {
-										setTemplateEditorMode('json')
-										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
-										setTemplateConfigText(
-											toPrettyJson(buildRepliesListSplitLayoutExample()),
-										)
-										toast.message(
-											'Inserted example config (repliesList split layout)',
-										)
-									}}
-								>
-									Insert Replies Layout
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-									onClick={() => {
-										setTemplateEditorMode('json')
-										insertTemplateText(
-											toPrettyJson(buildRepliesListHeaderSnippetExample()),
-										)
-										toast.message('Inserted snippet (replies header)')
-									}}
-								>
-									Insert Header Snippet
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-									onClick={() => {
-										setTemplateEditorMode('json')
-										insertTemplateText(
-											toPrettyJson(buildRepliesHighlightSnippetExample()),
-										)
-										toast.message('Inserted snippet (replies highlight)')
-									}}
-								>
-									Insert Highlight Snippet
-								</Button>
+										onClick={() => {
+											setTemplateEditorMode('json')
+											insertTemplateText(
+												toPrettyJson(buildRepliesListHeaderSnippetExample()),
+											)
+											toast.message('Inserted snippet (replies header)')
+										}}
+									>
+										Insert Header Snippet
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="rounded-none font-mono text-xs uppercase"
+										disabled={!thread}
+										onClick={() => {
+											setTemplateEditorMode('json')
+											insertTemplateText(toPrettyJson(buildRootPostSnippetExample()))
+											toast.message('Inserted snippet (root post)')
+										}}
+									>
+										Insert Root Snippet
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="rounded-none font-mono text-xs uppercase"
+										disabled={!thread}
+										onClick={() => {
+											setTemplateEditorMode('json')
+											insertTemplateText(toPrettyJson(buildReplyItemSnippetExample()))
+											toast.message('Inserted snippet (reply item)')
+										}}
+									>
+										Insert Reply Snippet
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="rounded-none font-mono text-xs uppercase"
+										disabled={!thread}
+										onClick={() => {
+											setTemplateEditorMode('json')
+											insertTemplateText(toPrettyJson(buildRepeatRepliesSnippetExample()))
+											toast.message('Inserted snippet (repeat replies)')
+										}}
+									>
+										Insert Repeat Snippet
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="rounded-none font-mono text-xs uppercase"
+										disabled={!thread}
+										onClick={() => {
+											setTemplateEditorMode('json')
+											insertTemplateText(
+												toPrettyJson(buildRepliesHighlightSnippetExample()),
+											)
+											toast.message('Inserted snippet (replies highlight)')
+										}}
+									>
+										Insert Builtin Highlight Snippet
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										className="rounded-none font-mono text-xs uppercase"
+										disabled={!thread}
+										onClick={() => {
+											if (templateEditorMode === 'json' && templateConfigParsed.error) {
+												toast.error(
+													`Fix JSON first: ${templateConfigParsed.error}`,
+												)
+												return
+											}
+
+											const source =
+												templateEditorMode === 'visual'
+													? (visualTemplateConfig as any)
+													: templateConfigParsed.value == null
+														? null
+														: templateConfigParsed.value
+
+											const res = migrateThreadTemplateConfigBuiltinsToRepeat(
+												source ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
+											)
+
+											if (!res.changed) {
+												toast.message('No Builtin repliesList nodes found')
+												return
+											}
+
+											const msg = `Migrated Builtins → Repeat (replies=${res.stats.builtinRepliesListReplies}, header=${res.stats.builtinRepliesListHeader}, root=${res.stats.builtinRepliesListRootPost}, repliesList=${res.stats.builtinRepliesList})`
+
+											if (templateEditorMode === 'visual') {
+												setVisualTemplateConfig(
+													normalizeThreadTemplateConfig(
+														res.value ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
+													),
+												)
+												toast.success(msg)
+												return
+											}
+
+											setTemplateEditorMode('json')
+											setTemplateConfigText(toPrettyJson(res.value))
+											toast.success(msg)
+										}}
+									>
+										Migrate Builtins → Repeat
+									</Button>
 								<Button
 									type="button"
 									variant="outline"

@@ -60,6 +60,27 @@ describe('collectThreadTemplateAssetIds', () => {
 		])
 	})
 
+	it('collects assetId references from Repeat(replies)', () => {
+		const resolved = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				post: {
+					root: {
+						type: 'Repeat',
+						itemRoot: {
+							type: 'Stack',
+							children: [{ type: 'Image', assetId: 'asset_repeat_img' }],
+						},
+					},
+				},
+			},
+		})
+
+		expect([...collectThreadTemplateAssetIds(resolved)].sort()).toEqual([
+			'asset_repeat_img',
+		])
+	})
+
 	it('ignores placeholders and external urls', () => {
 		const resolved = normalizeThreadTemplateConfig({
 			version: 1,

@@ -16,7 +16,24 @@ function countNodes(node: ThreadRenderTreeNode | undefined): number {
 	if (node.type === 'Builtin' && node.kind === 'repliesList') {
 		return 1 + countNodes(node.rootRoot) + countNodes(node.itemRoot)
 	}
+	if (node.type === 'Repeat') {
+		return 1 + countNodes(node.itemRoot)
+	}
 	return 1
+}
+
+function hasBuiltin(node: ThreadRenderTreeNode | undefined): boolean {
+	if (!node) return false
+	if (node.type === 'Builtin') return true
+	if (
+		node.type === 'Stack' ||
+		node.type === 'Box' ||
+		node.type === 'Grid' ||
+		node.type === 'Absolute'
+	) {
+		return (node.children ?? []).some((c) => hasBuiltin(c))
+	}
+	return false
 }
 
 describe('normalizeThreadTemplateConfig', () => {
@@ -34,6 +51,11 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(cfg.motion.enabled).toBe(false)
 		expect(cfg.motion.intensity).toBe('strong')
 		expect(cfg.scenes?.cover?.root?.type).toBeTruthy()
+	})
+
+	it('does not require Builtin nodes for default post layout', () => {
+		const cfg = normalizeThreadTemplateConfig(undefined)
+		expect(hasBuiltin(cfg.scenes?.post?.root)).toBe(false)
 	})
 
 	it('supports configs without version but with scenes', () => {
@@ -164,7 +186,9 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.children?.[0]?.opacity).toBe(0)
 		expect(root.children?.[0]?.children?.[0]?.type).toBe('Box')
 		expect(root.children?.[0]?.children?.[0]?.opacity).toBe(1)
-		expect(root.children?.[0]?.children?.[0]?.children?.[0]?.type).toBe('Absolute')
+		expect(root.children?.[0]?.children?.[0]?.children?.[0]?.type).toBe(
+			'Absolute',
+		)
 		expect(root.children?.[0]?.children?.[0]?.children?.[0]?.opacity).toBe(0)
 	})
 
@@ -250,7 +274,9 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root?.type).toBe('Stack')
 		expect(root.children?.[0]?.type).toBe('Stack')
 		expect(root.children?.[0]?.children?.[1]?.type).toBe('Text')
-		expect(root.children?.[0]?.children?.[1]?.bind).toBe('timeline.replyIndicator')
+		expect(root.children?.[0]?.children?.[1]?.bind).toBe(
+			'timeline.replyIndicator',
+		)
 	})
 
 	it('enforces RenderTree node limit', () => {
@@ -365,8 +391,47 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.children?.[1]?.children?.[1]?.highlight?.thickness).toBe(12)
 		expect(root.children?.[1]?.children?.[1]?.highlight?.radius).toBe(0)
 		expect(root.children?.[1]?.children?.[1]?.highlight?.opacity).toBe(1)
-		expect(root.children?.[1]?.children?.[1]?.highlight?.enabled).toBeUndefined()
+		expect(
+			root.children?.[1]?.children?.[1]?.highlight?.enabled,
+		).toBeUndefined()
 		expect(root.children?.[1]?.children?.[1]?.itemRoot?.type).toBe('Text')
+	})
+
+	it('keeps Repeat(replies) and clamps options', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				post: {
+					root: {
+						type: 'Repeat',
+						source: 'replies',
+						maxItems: 999,
+						gap: -1,
+						wrapItemRoot: true,
+						scroll: false,
+						highlight: {
+							thickness: 0,
+							radius: 999,
+							opacity: -1,
+							enabled: true,
+						},
+						itemRoot: { type: 'Text', bind: 'post.plainText' },
+					},
+				},
+			},
+		})
+
+		const root = cfg.scenes?.post?.root as any
+		expect(root.type).toBe('Repeat')
+		expect(root.source).toBe('replies')
+		expect(root.maxItems).toBe(100)
+		expect(root.gap).toBe(0)
+		expect(root.wrapItemRoot).toBe(true)
+		expect(root.scroll).toBe(false)
+		expect(root.highlight?.thickness).toBe(1)
+		expect(root.highlight?.radius).toBe(48)
+		expect(root.highlight?.opacity).toBe(0)
+		expect(root.itemRoot?.type).toBe('Text')
 	})
 
 	it('drops Image node when assetId is missing', () => {
@@ -429,7 +494,11 @@ describe('normalizeThreadTemplateConfig', () => {
 	it('drops Image node when assetId is an external URL', () => {
 		const cfg = normalizeThreadTemplateConfig({
 			version: 1,
-			scenes: { cover: { root: { type: 'Image', assetId: 'https://example.com/x.png' } } },
+			scenes: {
+				cover: {
+					root: { type: 'Image', assetId: 'https://example.com/x.png' },
+				},
+			},
 		})
 		const root = cfg.scenes!.cover!.root as any
 		expect(root?.type).toBe('Stack')
@@ -447,7 +516,11 @@ describe('normalizeThreadTemplateConfig', () => {
 	it('drops Video node when assetId is an external URL', () => {
 		const cfg = normalizeThreadTemplateConfig({
 			version: 1,
-			scenes: { cover: { root: { type: 'Video', assetId: 'ext:https://example.com/x.mp4' } } },
+			scenes: {
+				cover: {
+					root: { type: 'Video', assetId: 'ext:https://example.com/x.mp4' },
+				},
+			},
 		})
 		const root = cfg.scenes!.cover!.root as any
 		expect(root?.type).toBe('Stack')
@@ -537,6 +610,27 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.lineHeight).toBe(0.8)
 	})
 
+	it('keeps Text translation bindings', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: {
+					root: { type: 'Text', bind: 'root.translations.zh-CN.plainText' },
+				},
+				post: {
+					root: { type: 'Text', bind: 'post.translations.zh-CN.plainText' },
+				},
+			},
+		})
+
+		expect((cfg.scenes!.cover!.root as any).bind).toBe(
+			'root.translations.zh-CN.plainText',
+		)
+		expect((cfg.scenes!.post!.root as any).bind).toBe(
+			'post.translations.zh-CN.plainText',
+		)
+	})
+
 	it('keeps Background nodes with assetId and clamps opacity/blur', () => {
 		const cfg = normalizeThreadTemplateConfig({
 			version: 1,
@@ -581,7 +675,10 @@ describe('normalizeThreadTemplateConfig', () => {
 			version: 1,
 			scenes: {
 				cover: {
-					root: { type: 'Background', color: 'url(https://example.com/bg.png)' },
+					root: {
+						type: 'Background',
+						color: 'url(https://example.com/bg.png)',
+					},
 				},
 			},
 		})

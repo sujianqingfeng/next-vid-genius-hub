@@ -68,7 +68,8 @@ function summarizeNode(node: ThreadRenderTreeNode): string {
 			return `Text · "${node.text.slice(0, 24)}${node.text.length > 24 ? '…' : ''}"`
 		return 'Text'
 	}
-	if (node.type === 'Avatar') return node.bind ? `Avatar · ${node.bind}` : 'Avatar'
+	if (node.type === 'Avatar')
+		return node.bind ? `Avatar · ${node.bind}` : 'Avatar'
 	if (node.type === 'Metrics')
 		return node.bind ? `Metrics · ${node.bind}` : 'Metrics'
 	if (node.type === 'ContentBlocks')
@@ -84,6 +85,8 @@ function summarizeNode(node: ThreadRenderTreeNode): string {
 				? `Background · ${String(node.color).slice(0, 16)}`
 				: 'Background'
 	if (node.type === 'Builtin') return `Builtin · ${node.kind}`
+	if (node.type === 'Repeat')
+		return `Repeat · ${(node.source ?? 'replies') === 'replies' ? 'replies' : String(node.source)}`
 	return node.type
 }
 
@@ -113,6 +116,10 @@ function getChildEntries(
 	if (node.type === 'Builtin' && node.kind === 'repliesListReplies') {
 		if (node.itemRoot)
 			out.push({ slot: { kind: 'itemRoot' }, child: node.itemRoot })
+	}
+
+	if (node.type === 'Repeat') {
+		out.push({ slot: { kind: 'itemRoot' }, child: node.itemRoot })
 	}
 
 	return out
@@ -168,12 +175,24 @@ function updateNodeAtPath(
 	}
 
 	if (seg === 'rootRoot' || seg === 'itemRoot') {
-		if (root.type !== 'Builtin') return root
-		const child = (root as any)[seg] as ThreadRenderTreeNode | undefined
-		if (!child) return root
-		return {
-			...(root as any),
-			[seg]: updateNodeAtPath(child, path.slice(1), updater),
+		if (seg === 'rootRoot') {
+			if (root.type !== 'Builtin') return root
+			const child = (root as any)[seg] as ThreadRenderTreeNode | undefined
+			if (!child) return root
+			return {
+				...(root as any),
+				[seg]: updateNodeAtPath(child, path.slice(1), updater),
+			}
+		}
+
+		if (seg === 'itemRoot') {
+			if (root.type !== 'Builtin' && root.type !== 'Repeat') return root
+			const child = (root as any)[seg] as ThreadRenderTreeNode | undefined
+			if (!child) return root
+			return {
+				...(root as any),
+				[seg]: updateNodeAtPath(child, path.slice(1), updater),
+			}
 		}
 	}
 
@@ -199,8 +218,20 @@ function setNodeSlot(
 		children[slot.index] = nextChild as any
 		return { ...(root as any), children }
 	}
-	if (root.type !== 'Builtin') return root
-	return { ...(root as any), [slot.kind]: nextChild }
+	if (slot.kind === 'rootRoot') {
+		if (root.type !== 'Builtin') return root
+		return { ...(root as any), rootRoot: nextChild }
+	}
+	if (slot.kind === 'itemRoot') {
+		if (root.type === 'Builtin')
+			return { ...(root as any), itemRoot: nextChild }
+		if (root.type === 'Repeat') {
+			if (!nextChild) return root
+			return { ...(root as any), itemRoot: nextChild }
+		}
+		return root
+	}
+	return root
 }
 
 function removeFromParent(
@@ -291,7 +322,12 @@ function createDefaultNode(
 			background: 'rgba(255,255,255,0.04)',
 		}
 	if (type === 'Metrics')
-		return { type: 'Metrics', bind: 'post.metrics.likes', size: 14, showIcon: true }
+		return {
+			type: 'Metrics',
+			bind: 'post.metrics.likes',
+			size: 14,
+			showIcon: true,
+		}
 	if (type === 'ContentBlocks')
 		return { type: 'ContentBlocks', bind: 'post.contentBlocks', gap: 14 }
 	if (type === 'Image')
@@ -317,6 +353,22 @@ function createDefaultNode(
 	if (type === 'Spacer') return { type: 'Spacer', axis: 'y', size: 16 }
 	if (type === 'Divider')
 		return { type: 'Divider', axis: 'x', thickness: 1, opacity: 0.2 }
+	if (type === 'Repeat')
+		return {
+			type: 'Repeat',
+			source: 'replies',
+			maxItems: 50,
+			gap: 12,
+			wrapItemRoot: true,
+			highlight: {
+				enabled: true,
+				color: 'accent',
+				thickness: 3,
+				radius: 0,
+				opacity: 1,
+			},
+			itemRoot: { type: 'Text', bind: 'post.plainText', maxLines: 10 },
+		}
 	return { type: 'Builtin', kind: 'cover' }
 }
 
@@ -870,20 +922,21 @@ export function ThreadTemplateVisualEditor({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-								{(
-									[
-										'Text',
-										'Stack',
-										'Box',
-										'Grid',
-										'Absolute',
-										'Avatar',
-										'Metrics',
-										'ContentBlocks',
-										'Image',
-										'Video',
-										'Background',
-										'Spacer',
+							{(
+								[
+									'Text',
+									'Stack',
+									'Box',
+									'Grid',
+									'Absolute',
+									'Avatar',
+									'Metrics',
+									'ContentBlocks',
+									'Repeat',
+									'Image',
+									'Video',
+									'Background',
+									'Spacer',
 									'Divider',
 									'Builtin',
 								] as Array<ThreadRenderTreeNode['type']>
@@ -1057,8 +1110,8 @@ export function ThreadTemplateVisualEditor({
 								</div>
 							</div>
 
-								{selectedNode.type === 'Text' ? (
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+							{selectedNode.type === 'Text' ? (
+								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 									{textField(
 										'text',
 										selectedNode.text,
@@ -1095,9 +1148,11 @@ export function ThreadTemplateVisualEditor({
 													'root.author.name',
 													'root.author.handle',
 													'root.plainText',
+													'root.translations.zh-CN.plainText',
 													'post.author.name',
 													'post.author.handle',
 													'post.plainText',
+													'post.translations.zh-CN.plainText',
 												] as const
 											).map((b) => (
 												<SelectItem key={b} value={b}>
@@ -1113,25 +1168,25 @@ export function ThreadTemplateVisualEditor({
 										(v) => updateSelected((n) => ({ ...(n as any), size: v })),
 										{ min: 8, max: 120, step: 1 },
 									)}
-										{numberField(
-											'weight',
-											selectedNode.weight,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), weight: v })),
-											{ min: 100, max: 900, step: 100 },
-										)}
-										{numberField(
-											'opacity',
-											(selectedNode as any).opacity,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), opacity: v })),
-											{ min: 0, max: 1, step: 0.05 },
-										)}
-										{numberField(
-											'maxLines',
-											selectedNode.maxLines,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), maxLines: v })),
+									{numberField(
+										'weight',
+										selectedNode.weight,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), weight: v })),
+										{ min: 100, max: 900, step: 100 },
+									)}
+									{numberField(
+										'opacity',
+										(selectedNode as any).opacity,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), opacity: v })),
+										{ min: 0, max: 1, step: 0.05 },
+									)}
+									{numberField(
+										'maxLines',
+										selectedNode.maxLines,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), maxLines: v })),
 										{ min: 1, max: 20, step: 1 },
 									)}
 									<Select
@@ -1190,157 +1245,158 @@ export function ThreadTemplateVisualEditor({
 											})),
 										{ min: -2, max: 20, step: 0.1 },
 									)}
-										{boolField(
-											'uppercase',
-											(selectedNode as any).uppercase,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), uppercase: v })),
-										)}
-									</div>
-								) : null}
+									{boolField(
+										'uppercase',
+										(selectedNode as any).uppercase,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), uppercase: v })),
+									)}
+								</div>
+							) : null}
 
-								{selectedNode.type === 'Metrics' ? (
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{selectField(
-											'bind',
-											(selectedNode as any).bind,
-											[
-												{ value: 'post.metrics.likes' },
-												{ value: 'root.metrics.likes' },
-											],
-											(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
-										)}
-										{selectField(
-											'color',
-											(selectedNode as any).color,
-											[
-												{ value: 'primary' },
-												{ value: 'muted' },
-												{ value: 'accent' },
-											],
-											(v) => updateSelected((n) => ({ ...(n as any), color: v })),
-										)}
-										{numberField(
-											'size',
-											(selectedNode as any).size,
-											(v) => updateSelected((n) => ({ ...(n as any), size: v })),
-											{ min: 10, max: 64, step: 1 },
-										)}
-										{numberField(
-											'opacity',
-											(selectedNode as any).opacity,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), opacity: v })),
-											{ min: 0, max: 1, step: 0.05 },
-										)}
-										{boolField('showIcon', (selectedNode as any).showIcon, (v) =>
-											updateSelected((n) => ({ ...(n as any), showIcon: v })),
-										)}
-									</div>
-								) : null}
+							{selectedNode.type === 'Metrics' ? (
+								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+									{selectField(
+										'bind',
+										(selectedNode as any).bind,
+										[
+											{ value: 'post.metrics.likes' },
+											{ value: 'root.metrics.likes' },
+										],
+										(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
+									)}
+									{selectField(
+										'color',
+										(selectedNode as any).color,
+										[
+											{ value: 'primary' },
+											{ value: 'muted' },
+											{ value: 'accent' },
+										],
+										(v) => updateSelected((n) => ({ ...(n as any), color: v })),
+									)}
+									{numberField(
+										'size',
+										(selectedNode as any).size,
+										(v) => updateSelected((n) => ({ ...(n as any), size: v })),
+										{ min: 10, max: 64, step: 1 },
+									)}
+									{numberField(
+										'opacity',
+										(selectedNode as any).opacity,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), opacity: v })),
+										{ min: 0, max: 1, step: 0.05 },
+									)}
+									{boolField('showIcon', (selectedNode as any).showIcon, (v) =>
+										updateSelected((n) => ({ ...(n as any), showIcon: v })),
+									)}
+								</div>
+							) : null}
 
-								{selectedNode.type === 'Avatar' ? (
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{selectField(
-											'bind',
-											(selectedNode as any).bind,
-											[
-												{ value: 'root.author.avatarAssetId' },
-												{ value: 'post.author.avatarAssetId' },
-											],
-											(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
-										)}
-										{textField(
-											'background',
-											(selectedNode as any).background,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													background: v,
-												})),
-											{ placeholder: 'rgba(...) or var(--tf-...)' },
-										)}
-										{boolField('border', (selectedNode as any).border, (v) =>
-											updateSelected((n) => ({ ...(n as any), border: v })),
-										)}
-										{numberField(
-											'size',
-											(selectedNode as any).size,
-											(v) => updateSelected((n) => ({ ...(n as any), size: v })),
-											{ min: 24, max: 240, step: 1 },
-										)}
-										{numberField(
-											'radius',
-											(selectedNode as any).radius,
-											(v) => updateSelected((n) => ({ ...(n as any), radius: v })),
-											{ min: 0, max: 999, step: 1 },
-										)}
-										{numberField(
-											'opacity',
-											(selectedNode as any).opacity,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), opacity: v })),
-											{ min: 0, max: 1, step: 0.05 },
-										)}
-									</div>
-								) : null}
+							{selectedNode.type === 'Avatar' ? (
+								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+									{selectField(
+										'bind',
+										(selectedNode as any).bind,
+										[
+											{ value: 'root.author.avatarAssetId' },
+											{ value: 'post.author.avatarAssetId' },
+										],
+										(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
+									)}
+									{textField(
+										'background',
+										(selectedNode as any).background,
+										(v) =>
+											updateSelected((n) => ({
+												...(n as any),
+												background: v,
+											})),
+										{ placeholder: 'rgba(...) or var(--tf-...)' },
+									)}
+									{boolField('border', (selectedNode as any).border, (v) =>
+										updateSelected((n) => ({ ...(n as any), border: v })),
+									)}
+									{numberField(
+										'size',
+										(selectedNode as any).size,
+										(v) => updateSelected((n) => ({ ...(n as any), size: v })),
+										{ min: 24, max: 240, step: 1 },
+									)}
+									{numberField(
+										'radius',
+										(selectedNode as any).radius,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), radius: v })),
+										{ min: 0, max: 999, step: 1 },
+									)}
+									{numberField(
+										'opacity',
+										(selectedNode as any).opacity,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), opacity: v })),
+										{ min: 0, max: 1, step: 0.05 },
+									)}
+								</div>
+							) : null}
 
-								{selectedNode.type === 'ContentBlocks' ? (
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{selectField(
-											'bind',
-											(selectedNode as any).bind,
-											[
-												{ value: 'post.contentBlocks' },
-												{ value: 'root.contentBlocks' },
-											],
-											(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
-										)}
-										{numberField(
-											'gap',
-											(selectedNode as any).gap,
-											(v) => updateSelected((n) => ({ ...(n as any), gap: v })),
-											{ min: 0, max: 80, step: 1 },
-										)}
-										{numberField(
-											'maxHeight',
-											(selectedNode as any).maxHeight,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), maxHeight: v })),
-											{ min: 100, max: 1200, step: 1 },
-										)}
-										{numberField(
-											'opacity',
-											(selectedNode as any).opacity,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), opacity: v })),
-											{ min: 0, max: 1, step: 0.05 },
-										)}
-									</div>
-								) : null}
+							{selectedNode.type === 'ContentBlocks' ? (
+								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+									{selectField(
+										'bind',
+										(selectedNode as any).bind,
+										[
+											{ value: 'post.contentBlocks' },
+											{ value: 'root.contentBlocks' },
+										],
+										(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
+									)}
+									{numberField(
+										'gap',
+										(selectedNode as any).gap,
+										(v) => updateSelected((n) => ({ ...(n as any), gap: v })),
+										{ min: 0, max: 80, step: 1 },
+									)}
+									{numberField(
+										'maxHeight',
+										(selectedNode as any).maxHeight,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), maxHeight: v })),
+										{ min: 100, max: 1200, step: 1 },
+									)}
+									{numberField(
+										'opacity',
+										(selectedNode as any).opacity,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), opacity: v })),
+										{ min: 0, max: 1, step: 0.05 },
+									)}
+								</div>
+							) : null}
 
-								{selectedNode.type === 'Stack' ||
-								selectedNode.type === 'Box' ||
-								selectedNode.type === 'Grid' ? (
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{numberField(
-											'flex',
-											(selectedNode as any).flex,
-											(v) => updateSelected((n) => ({ ...(n as any), flex: v })),
-											{ min: 0, max: 100, step: 1 },
-										)}
-										{numberField(
-											'opacity',
-											(selectedNode as any).opacity,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), opacity: v })),
-											{ min: 0, max: 1, step: 0.05 },
-										)}
-										{numberField(
-											'gap',
-											(selectedNode as any).gap,
-											(v) => updateSelected((n) => ({ ...(n as any), gap: v })),
-											{ min: 0, max: 240, step: 1 },
+							{selectedNode.type === 'Stack' ||
+							selectedNode.type === 'Box' ||
+							selectedNode.type === 'Grid' ? (
+								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+									{numberField(
+										'flex',
+										(selectedNode as any).flex,
+										(v) => updateSelected((n) => ({ ...(n as any), flex: v })),
+										{ min: 0, max: 100, step: 1 },
+									)}
+									{numberField(
+										'opacity',
+										(selectedNode as any).opacity,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), opacity: v })),
+										{ min: 0, max: 1, step: 0.05 },
+									)}
+									{numberField(
+										'gap',
+										(selectedNode as any).gap,
+										(v) => updateSelected((n) => ({ ...(n as any), gap: v })),
+										{ min: 0, max: 240, step: 1 },
 									)}
 									{numberField(
 										'gapX',
@@ -1727,36 +1783,36 @@ export function ThreadTemplateVisualEditor({
 								</div>
 							) : null}
 
-								{selectedNode.type === 'Absolute' ? (
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{numberField('x', selectedNode.x, (v) =>
-											updateSelected((n) => ({ ...(n as any), x: v })),
-										)}
-										{numberField('y', selectedNode.y, (v) =>
-											updateSelected((n) => ({ ...(n as any), y: v })),
-										)}
-										{numberField('width', selectedNode.width, (v) =>
-											updateSelected((n) => ({ ...(n as any), width: v })),
-										)}
-										{numberField('height', selectedNode.height, (v) =>
-											updateSelected((n) => ({ ...(n as any), height: v })),
-										)}
-										{numberField('zIndex', selectedNode.zIndex, (v) =>
-											updateSelected((n) => ({ ...(n as any), zIndex: v })),
-										)}
-										{numberField(
-											'opacity',
-											(selectedNode as any).opacity,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), opacity: v })),
-											{ min: 0, max: 1, step: 0.05 },
-										)}
-										{boolField('pointerEvents', selectedNode.pointerEvents, (v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												pointerEvents: v,
-											})),
-										)}
+							{selectedNode.type === 'Absolute' ? (
+								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+									{numberField('x', selectedNode.x, (v) =>
+										updateSelected((n) => ({ ...(n as any), x: v })),
+									)}
+									{numberField('y', selectedNode.y, (v) =>
+										updateSelected((n) => ({ ...(n as any), y: v })),
+									)}
+									{numberField('width', selectedNode.width, (v) =>
+										updateSelected((n) => ({ ...(n as any), width: v })),
+									)}
+									{numberField('height', selectedNode.height, (v) =>
+										updateSelected((n) => ({ ...(n as any), height: v })),
+									)}
+									{numberField('zIndex', selectedNode.zIndex, (v) =>
+										updateSelected((n) => ({ ...(n as any), zIndex: v })),
+									)}
+									{numberField(
+										'opacity',
+										(selectedNode as any).opacity,
+										(v) =>
+											updateSelected((n) => ({ ...(n as any), opacity: v })),
+										{ min: 0, max: 1, step: 0.05 },
+									)}
+									{boolField('pointerEvents', selectedNode.pointerEvents, (v) =>
+										updateSelected((n) => ({
+											...(n as any),
+											pointerEvents: v,
+										})),
+									)}
 									{numberField('rotate', selectedNode.rotate, (v) =>
 										updateSelected((n) => ({ ...(n as any), rotate: v })),
 									)}
@@ -2014,6 +2070,134 @@ export function ThreadTemplateVisualEditor({
 									<div className="font-mono text-xs text-muted-foreground">
 										Note: rootRoot/itemRoot editing is supported by selecting
 										them in the tree.
+									</div>
+								</div>
+							) : null}
+
+							{selectedNode.type === 'Repeat' ? (
+								<div className="space-y-3">
+									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+										{numberField(
+											'maxItems',
+											(selectedNode as any).maxItems,
+											(v) =>
+												updateSelected((n) => ({ ...(n as any), maxItems: v })),
+											{ min: 1, max: 100, step: 1 },
+										)}
+										{numberField('gap', (selectedNode as any).gap, (v) =>
+											updateSelected((n) => ({ ...(n as any), gap: v })),
+										)}
+										{boolField(
+											'wrapItemRoot',
+											(selectedNode as any).wrapItemRoot,
+											(v) =>
+												updateSelected((n) => ({
+													...(n as any),
+													wrapItemRoot: v,
+												})),
+										)}
+										{boolField('scroll', (selectedNode as any).scroll, (v) =>
+											updateSelected((n) => ({ ...(n as any), scroll: v })),
+										)}
+									</div>
+
+									<div className="space-y-2">
+										<div className="flex flex-wrap items-center justify-between gap-2">
+											<div className="font-mono text-xs text-muted-foreground">
+												itemRoot
+											</div>
+											<div className="flex flex-wrap items-center gap-2">
+												<Button
+													type="button"
+													size="sm"
+													variant="outline"
+													className="rounded-none font-mono text-[10px] uppercase"
+													onClick={() =>
+														updateSelected((n) => ({
+															...(n as any),
+															itemRoot: createDefaultNode('Stack'),
+														}))
+													}
+												>
+													Replace
+												</Button>
+												<Button
+													type="button"
+													size="sm"
+													variant="outline"
+													className="rounded-none font-mono text-[10px] uppercase"
+													onClick={() => {
+														if (!selected) return
+														setSelectedKey(
+															pathKey(scene, [...selected.path, 'itemRoot']),
+														)
+													}}
+												>
+													Select
+												</Button>
+											</div>
+										</div>
+										<div className="font-mono text-xs text-muted-foreground">
+											Note: Repeat renders each reply with ctx.post = reply.
+										</div>
+									</div>
+
+									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+										{boolField(
+											'highlight.enabled',
+											(selectedNode as any).highlight?.enabled,
+											(v) =>
+												updateSelected((n) => ({
+													...(n as any),
+													highlight: v
+														? { ...(n as any).highlight, enabled: true }
+														: undefined,
+												})),
+										)}
+										{selectField(
+											'highlight.color',
+											(selectedNode as any).highlight?.color,
+											[
+												{ value: 'primary' },
+												{ value: 'muted' },
+												{ value: 'accent' },
+											],
+											(v) =>
+												updateSelected((n) => ({
+													...(n as any),
+													highlight: { ...(n as any).highlight, color: v },
+												})),
+										)}
+										{numberField(
+											'highlight.thickness',
+											(selectedNode as any).highlight?.thickness,
+											(v) =>
+												updateSelected((n) => ({
+													...(n as any),
+													highlight: { ...(n as any).highlight, thickness: v },
+												})),
+											{ min: 1, max: 12, step: 1 },
+										)}
+										{numberField(
+											'highlight.radius',
+											(selectedNode as any).highlight?.radius,
+											(v) =>
+												updateSelected((n) => ({
+													...(n as any),
+													highlight: { ...(n as any).highlight, radius: v },
+												})),
+											{ min: 0, max: 48, step: 1 },
+										)}
+										{numberField(
+											'highlight.opacity',
+											(selectedNode as any).highlight?.opacity,
+											(v) =>
+												updateSelected((n) => ({
+													...(n as any),
+													highlight: { ...(n as any).highlight, opacity: v },
+												})),
+											{ min: 0, max: 1, step: 0.05 },
+										)}
 									</div>
 								</div>
 							) : null}

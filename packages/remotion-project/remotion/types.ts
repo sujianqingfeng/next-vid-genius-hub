@@ -148,7 +148,12 @@ export type ThreadRenderTreeNode =
 			pointerEvents?: boolean
 			rotate?: number
 			scale?: number
-			origin?: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+			origin?:
+				| 'center'
+				| 'top-left'
+				| 'top-right'
+				| 'bottom-left'
+				| 'bottom-right'
 			children?: ThreadRenderTreeNode[]
 	  }
 	| {
@@ -242,9 +247,11 @@ export type ThreadRenderTreeNode =
 				| 'root.author.name'
 				| 'root.author.handle'
 				| 'root.plainText'
+				| 'root.translations.zh-CN.plainText'
 				| 'post.author.name'
 				| 'post.author.handle'
 				| 'post.plainText'
+				| 'post.translations.zh-CN.plainText'
 			color?: 'primary' | 'muted' | 'accent'
 			align?: 'left' | 'center' | 'right'
 			opacity?: number
@@ -277,6 +284,27 @@ export type ThreadRenderTreeNode =
 			opacity?: number
 			size?: number
 			showIcon?: boolean
+	  }
+	| {
+			type: 'Repeat'
+			/**
+			 * Iterates over `ctx.replies` and renders `itemRoot` with `ctx.post = reply`.
+			 * Optional scroll/highlight is time-driven by `replyDurationsInFrames`.
+			 */
+			source?: 'replies'
+			/** Limits rendered items for safety/perf (clamped in normalize). */
+			maxItems?: number
+			gap?: number
+			wrapItemRoot?: boolean
+			scroll?: boolean
+			highlight?: {
+				enabled?: boolean
+				color?: 'primary' | 'muted' | 'accent'
+				thickness?: number
+				radius?: number
+				opacity?: number
+			}
+			itemRoot: ThreadRenderTreeNode
 	  }
 	| {
 			type: 'Builtin'
@@ -356,13 +384,13 @@ export type ThreadRenderTreeNode =
 	  }
 
 export interface CommentVideoInputProps extends Record<string, unknown> {
-  videoInfo: VideoInfo
-  comments: Comment[]
-  /** Frames for the opening cover sequence */
-  coverDurationInFrames: number
-  /** Per-comment frame counts, aligned with `comments` */
-  commentDurationsInFrames: number[]
-  fps: number
+	videoInfo: VideoInfo
+	comments: Comment[]
+	/** Frames for the opening cover sequence */
+	coverDurationInFrames: number
+	/** Per-comment frame counts, aligned with `comments` */
+	commentDurationsInFrames: number[]
+	fps: number
 	templateConfig?: CommentsTemplateConfig
 }
 
@@ -385,7 +413,11 @@ export type ThreadContentBlock =
 
 export type ThreadPostRender = {
 	id: string
-	author: { name: string; handle?: string | null; avatarAssetId?: string | null }
+	author: {
+		name: string
+		handle?: string | null
+		avatarAssetId?: string | null
+	}
 	contentBlocks: ThreadContentBlock[]
 	plainText: string
 	translations?: ThreadPostTranslations | null
@@ -430,9 +462,9 @@ export interface ThreadVideoInputProps extends Record<string, unknown> {
 }
 
 export interface TimelineDurations {
-  coverDurationInFrames: number
-  commentDurationsInFrames: number[]
-  totalDurationInFrames: number
-  totalDurationSeconds: number
-  coverDurationSeconds: number
+	coverDurationInFrames: number
+	commentDurationsInFrames: number[]
+	totalDurationInFrames: number
+	totalDurationSeconds: number
+	coverDurationSeconds: number
 }

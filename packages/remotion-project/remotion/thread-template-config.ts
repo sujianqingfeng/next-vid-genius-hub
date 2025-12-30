@@ -48,7 +48,9 @@ function safeBoolean(value: unknown): boolean | null {
 type ColorToken = 'primary' | 'muted' | 'accent'
 
 function safeColorToken(value: unknown): ColorToken | null {
-	return value === 'primary' || value === 'muted' || value === 'accent' ? value : null
+	return value === 'primary' || value === 'muted' || value === 'accent'
+		? value
+		: null
 }
 
 type BorderColorToken = 'border' | ColorToken
@@ -244,7 +246,53 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 							background: 'var(--tf-surface)',
 							padding: 28,
 							maxHeight: 2000,
-							children: [{ type: 'Builtin', kind: 'repliesListRootPost' }],
+							children: [
+								{
+									type: 'Stack',
+									direction: 'row',
+									align: 'center',
+									justify: 'between',
+									gapX: 14,
+									children: [
+										{
+											type: 'Stack',
+											direction: 'row',
+											align: 'center',
+											gapX: 12,
+											children: [
+												{
+													type: 'Avatar',
+													bind: 'root.author.avatarAssetId',
+													size: 44,
+													border: true,
+													background: 'rgba(255,255,255,0.04)',
+												},
+												{
+													type: 'Text',
+													bind: 'root.author.name',
+													size: 18,
+													weight: 800,
+													maxLines: 1,
+												},
+											],
+										},
+										{
+											type: 'Metrics',
+											bind: 'root.metrics.likes',
+											color: 'muted',
+											size: 14,
+											showIcon: true,
+										},
+									],
+								},
+								{ type: 'Divider', margin: 0, opacity: 0.7 },
+								{
+									type: 'ContentBlocks',
+									bind: 'root.contentBlocks',
+									gap: 16,
+									maxHeight: 1700,
+								},
+							],
 						},
 						{
 							type: 'Box',
@@ -253,7 +301,75 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 							border: true,
 							background: 'rgba(255,255,255,0.02)',
 							padding: 18,
-							children: [{ type: 'Builtin', kind: 'repliesListReplies' }],
+							children: [
+								{
+									type: 'Repeat',
+									source: 'replies',
+									maxItems: 50,
+									wrapItemRoot: true,
+									gap: 12,
+									highlight: {
+										enabled: true,
+										color: 'accent',
+										thickness: 3,
+										radius: 0,
+										opacity: 1,
+									},
+									itemRoot: {
+										type: 'Stack',
+										gapY: 12,
+										children: [
+											{
+												type: 'Stack',
+												direction: 'row',
+												align: 'center',
+												justify: 'between',
+												gapX: 14,
+												children: [
+													{
+														type: 'Stack',
+														direction: 'row',
+														align: 'center',
+														gapX: 10,
+														children: [
+															{
+																type: 'Avatar',
+																bind: 'post.author.avatarAssetId',
+																size: 32,
+																border: true,
+																background: 'rgba(255,255,255,0.04)',
+															},
+															{
+																type: 'Text',
+																bind: 'post.author.name',
+																size: 14,
+																weight: 800,
+																maxLines: 1,
+															},
+														],
+													},
+													{
+														type: 'Metrics',
+														bind: 'post.metrics.likes',
+														color: 'muted',
+														size: 12,
+														showIcon: true,
+													},
+												],
+											},
+											{ type: 'Divider', margin: 0, opacity: 0.6 },
+											{
+												type: 'Text',
+												bind: 'post.plainText',
+												size: 14,
+												weight: 600,
+												lineHeight: 1.5,
+												maxLines: 10,
+											},
+										],
+									},
+								},
+							],
 						},
 					],
 				},
@@ -440,54 +556,60 @@ function normalizeRenderTreeNode(
 
 	if (type === 'Text') {
 		const text = safeString(input.text, 3000) ?? undefined
-			const bind = input.bind
-			const bindAllowed =
-				bind === 'thread.title' ||
-				bind === 'thread.source' ||
-				bind === 'thread.sourceUrl' ||
-				bind === 'timeline.replyIndicator' ||
-				bind === 'timeline.replyIndex' ||
-				bind === 'timeline.replyCount' ||
-				bind === 'root.author.name' ||
-				bind === 'root.author.handle' ||
-				bind === 'root.plainText' ||
-				bind === 'post.author.name' ||
-				bind === 'post.author.handle' ||
-				bind === 'post.plainText'
-					? bind
-					: undefined
+		const bind = input.bind
+		const bindAllowed =
+			bind === 'thread.title' ||
+			bind === 'thread.source' ||
+			bind === 'thread.sourceUrl' ||
+			bind === 'timeline.replyIndicator' ||
+			bind === 'timeline.replyIndex' ||
+			bind === 'timeline.replyCount' ||
+			bind === 'root.author.name' ||
+			bind === 'root.author.handle' ||
+			bind === 'root.plainText' ||
+			bind === 'root.translations.zh-CN.plainText' ||
+			bind === 'post.author.name' ||
+			bind === 'post.author.handle' ||
+			bind === 'post.plainText' ||
+			bind === 'post.translations.zh-CN.plainText'
+				? bind
+				: undefined
 
 		if (!text && !bindAllowed) return null
 
 		const color =
-			input.color === 'primary' || input.color === 'muted' || input.color === 'accent'
+			input.color === 'primary' ||
+			input.color === 'muted' ||
+			input.color === 'accent'
 				? input.color
 				: undefined
-			const align =
-				input.align === 'left' || input.align === 'center' || input.align === 'right'
-					? input.align
-					: undefined
-			const opacity = clampNumber((input as any).opacity, 0, 1) ?? undefined
-			const size = clampInt(input.size, 8, 120) ?? undefined
-			const weight = clampInt(input.weight, 200, 900) ?? undefined
-			const lineHeight = clampNumber(input.lineHeight, 0.8, 2) ?? undefined
-			const letterSpacing = clampNumber(input.letterSpacing, -0.2, 1) ?? undefined
-			const uppercase = safeBoolean(input.uppercase) ?? undefined
+		const align =
+			input.align === 'left' ||
+			input.align === 'center' ||
+			input.align === 'right'
+				? input.align
+				: undefined
+		const opacity = clampNumber((input as any).opacity, 0, 1) ?? undefined
+		const size = clampInt(input.size, 8, 120) ?? undefined
+		const weight = clampInt(input.weight, 200, 900) ?? undefined
+		const lineHeight = clampNumber(input.lineHeight, 0.8, 2) ?? undefined
+		const letterSpacing = clampNumber(input.letterSpacing, -0.2, 1) ?? undefined
+		const uppercase = safeBoolean(input.uppercase) ?? undefined
 		const maxLines = clampInt(input.maxLines, 1, 20) ?? undefined
 
 		state.nodeCount += 1
 		return {
 			type: 'Text',
 			text,
-				bind: bindAllowed,
-				color,
-				align,
-				opacity,
-				size,
-				weight,
-				lineHeight,
-				letterSpacing,
-				uppercase,
+			bind: bindAllowed,
+			color,
+			align,
+			opacity,
+			size,
+			weight,
+			lineHeight,
+			letterSpacing,
+			uppercase,
 			maxLines,
 		}
 	}
@@ -502,7 +624,9 @@ function normalizeRenderTreeNode(
 				? input.position
 				: undefined
 		const color =
-			input.color === 'primary' || input.color === 'muted' || input.color === 'accent'
+			input.color === 'primary' ||
+			input.color === 'muted' ||
+			input.color === 'accent'
 				? input.color
 				: undefined
 		const size = clampInt(input.size, 8, 64) ?? undefined
@@ -511,15 +635,28 @@ function normalizeRenderTreeNode(
 		const padding = clampInt(input.padding, 0, 120) ?? undefined
 
 		state.nodeCount += 1
-		return { type: 'Watermark', text, position, color, size, weight, opacity, padding }
+		return {
+			type: 'Watermark',
+			text,
+			position,
+			color,
+			size,
+			weight,
+			opacity,
+			padding,
+		}
 	}
 
 	if (type === 'Metrics') {
 		const bind = input.bind
 		const bindAllowed =
-			bind === 'root.metrics.likes' || bind === 'post.metrics.likes' ? bind : undefined
+			bind === 'root.metrics.likes' || bind === 'post.metrics.likes'
+				? bind
+				: undefined
 		const color =
-			input.color === 'primary' || input.color === 'muted' || input.color === 'accent'
+			input.color === 'primary' ||
+			input.color === 'muted' ||
+			input.color === 'accent'
 				? input.color
 				: undefined
 		const opacity = clampNumber((input as any).opacity, 0, 1) ?? undefined
@@ -527,13 +664,57 @@ function normalizeRenderTreeNode(
 		const showIcon = safeBoolean(input.showIcon) ?? undefined
 
 		state.nodeCount += 1
-		return { type: 'Metrics', bind: bindAllowed, color, opacity, size, showIcon }
+		return {
+			type: 'Metrics',
+			bind: bindAllowed,
+			color,
+			opacity,
+			size,
+			showIcon,
+		}
+	}
+
+	if (type === 'Repeat') {
+		const source = input.source
+		if (source !== undefined && source !== 'replies') return null
+
+		const maxItems = clampInt(input.maxItems, 1, 100) ?? undefined
+		const gap = clampInt(input.gap, 0, 80) ?? undefined
+		const wrapItemRoot = safeBoolean(input.wrapItemRoot) ?? undefined
+		const scroll = safeBoolean(input.scroll) ?? undefined
+
+		const highlightRaw = isPlainObject(input.highlight) ? input.highlight : null
+		const highlight = highlightRaw
+			? {
+					enabled: safeBoolean(highlightRaw.enabled) ?? undefined,
+					color: safeColorToken(highlightRaw.color) ?? undefined,
+					thickness: clampInt(highlightRaw.thickness, 1, 12) ?? undefined,
+					radius: clampInt(highlightRaw.radius, 0, 48) ?? undefined,
+					opacity: clampNumber(highlightRaw.opacity, 0, 1) ?? undefined,
+				}
+			: undefined
+
+		const itemRoot = normalizeRenderTreeNode(input.itemRoot, state, depth + 1)
+		if (!itemRoot) return null
+
+		state.nodeCount += 1
+		return {
+			type: 'Repeat',
+			source: 'replies',
+			maxItems,
+			gap,
+			wrapItemRoot,
+			scroll,
+			highlight,
+			itemRoot,
+		}
 	}
 
 	if (type === 'Avatar') {
 		const bind = input.bind
 		const bindAllowed =
-			bind === 'root.author.avatarAssetId' || bind === 'post.author.avatarAssetId'
+			bind === 'root.author.avatarAssetId' ||
+			bind === 'post.author.avatarAssetId'
 				? bind
 				: undefined
 		if (!bindAllowed) return null
@@ -545,13 +726,23 @@ function normalizeRenderTreeNode(
 		const background = safeCssValue(input.background, 200) ?? undefined
 
 		state.nodeCount += 1
-		return { type: 'Avatar', bind: bindAllowed, opacity, size, radius, border, background }
+		return {
+			type: 'Avatar',
+			bind: bindAllowed,
+			opacity,
+			size,
+			radius,
+			border,
+			background,
+		}
 	}
 
 	if (type === 'ContentBlocks') {
 		const bind = input.bind
 		const bindAllowed =
-			bind === 'root.contentBlocks' || bind === 'post.contentBlocks' ? bind : undefined
+			bind === 'root.contentBlocks' || bind === 'post.contentBlocks'
+				? bind
+				: undefined
 		if (!bindAllowed) return null
 		const opacity = clampNumber((input as any).opacity, 0, 1) ?? undefined
 		const gap = clampInt(input.gap, 0, 80) ?? undefined
@@ -571,7 +762,8 @@ function normalizeRenderTreeNode(
 		) {
 			return null
 		}
-		const fit = input.fit === 'cover' || input.fit === 'contain' ? input.fit : undefined
+		const fit =
+			input.fit === 'cover' || input.fit === 'contain' ? input.fit : undefined
 		const position = safeString(input.position, 40) ?? undefined
 		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
 		const blur = clampInt(input.blur, 0, 80) ?? undefined
@@ -607,7 +799,8 @@ function normalizeRenderTreeNode(
 		) {
 			return null
 		}
-		const fit = input.fit === 'cover' || input.fit === 'contain' ? input.fit : undefined
+		const fit =
+			input.fit === 'cover' || input.fit === 'contain' ? input.fit : undefined
 		const position = safeString(input.position, 40) ?? undefined
 		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
 		const blur = clampInt(input.blur, 0, 80) ?? undefined
@@ -634,7 +827,8 @@ function normalizeRenderTreeNode(
 	}
 
 	if (type === 'Spacer') {
-		const axis = input.axis === 'x' || input.axis === 'y' ? input.axis : undefined
+		const axis =
+			input.axis === 'x' || input.axis === 'y' ? input.axis : undefined
 		const size = clampInt(input.size, 0, 800) ?? undefined
 		const width = clampInt(input.width, 0, 2000) ?? undefined
 		const height = clampInt(input.height, 0, 2000) ?? undefined
@@ -646,7 +840,8 @@ function normalizeRenderTreeNode(
 	}
 
 	if (type === 'Divider') {
-		const axis = input.axis === 'x' || input.axis === 'y' ? input.axis : undefined
+		const axis =
+			input.axis === 'x' || input.axis === 'y' ? input.axis : undefined
 		const thickness = clampInt(input.thickness, 1, 20) ?? undefined
 		const length = clampInt(input.length, 8, 2000) ?? undefined
 		const margin = clampInt(input.margin, 0, 240) ?? undefined
@@ -862,9 +1057,11 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template normalization/compile logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 18
+export const THREAD_TEMPLATE_COMPILE_VERSION = 22
 
-export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateConfigV1 {
+export function normalizeThreadTemplateConfig(
+	input: unknown,
+): ThreadTemplateConfigV1 {
 	if (!isPlainObject(input)) return DEFAULT_THREAD_TEMPLATE_CONFIG
 	const cfg = input as any
 	const version = cfg.version
@@ -930,7 +1127,8 @@ export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateCon
 	const brand = isPlainObject(cfg.brand) ? cfg.brand : null
 	if (brand) {
 		const showWatermark = safeBoolean(brand.showWatermark)
-		if (showWatermark != null) out.brand = { ...(out.brand ?? {}), showWatermark }
+		if (showWatermark != null)
+			out.brand = { ...(out.brand ?? {}), showWatermark }
 		const watermarkText = safeString(brand.watermarkText, 80)
 		if (watermarkText != null) {
 			out.brand = { ...(out.brand ?? {}), watermarkText }
@@ -942,7 +1140,11 @@ export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateCon
 		const enabled = safeBoolean(motion.enabled)
 		if (enabled != null) out.motion = { ...(out.motion ?? {}), enabled }
 		const intensity = motion.intensity
-		if (intensity === 'subtle' || intensity === 'normal' || intensity === 'strong') {
+		if (
+			intensity === 'subtle' ||
+			intensity === 'normal' ||
+			intensity === 'strong'
+		) {
 			out.motion = { ...(out.motion ?? {}), intensity }
 		}
 	}
@@ -955,9 +1157,13 @@ export function normalizeThreadTemplateConfig(input: unknown): ThreadTemplateCon
 		const post = isPlainObject(scenes.post) ? scenes.post : null
 
 		const coverRoot =
-			cover && 'root' in cover ? normalizeRenderTreeNode(cover.root, state, 0) : null
+			cover && 'root' in cover
+				? normalizeRenderTreeNode(cover.root, state, 0)
+				: null
 		const postRoot =
-			post && 'root' in post ? normalizeRenderTreeNode(post.root, state, 0) : null
+			post && 'root' in post
+				? normalizeRenderTreeNode(post.root, state, 0)
+				: null
 
 		out.scenes = {
 			cover: { root: coverRoot ?? DEFAULT_SCENES.cover!.root },
