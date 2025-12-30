@@ -97,10 +97,16 @@ function ThreadTemplatesRoute() {
 
 	const createMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.create.mutationOptions({
-			onSuccess: async () => {
+			onSuccess: async (data) => {
 				await qc.invalidateQueries({
 					queryKey: queryOrpc.threadTemplate.list.key(),
 				})
+				const libraryId = (data as any)?.libraryId
+				if (libraryId) setSelectedLibraryId(String(libraryId))
+				setCreateName('')
+				setCreateDescription('')
+				setCreateNote('')
+				setCreateConfigText(toPrettyJson(DEFAULT_THREAD_TEMPLATE_CONFIG))
 			},
 		}),
 		{
@@ -123,6 +129,7 @@ function ThreadTemplatesRoute() {
 						}),
 					})
 				}
+				setRenameOpen(false)
 			},
 		}),
 		{
@@ -691,21 +698,20 @@ function ThreadTemplatesRoute() {
 						<Button
 							type="button"
 							className="rounded-none font-mono text-xs uppercase"
-							disabled={!selectedLibraryId || updateMutation.isPending}
-							onClick={() => {
-								if (!selectedLibraryId) return
-								updateMutation.mutate({
-									libraryId: selectedLibraryId,
-									name: renameName,
-									description: renameDescription.trim()
-										? renameDescription
-										: null,
-								})
-								setRenameOpen(false)
-							}}
-						>
-							Save
-						</Button>
+								disabled={!selectedLibraryId || updateMutation.isPending}
+								onClick={() => {
+									if (!selectedLibraryId) return
+									updateMutation.mutate({
+										libraryId: selectedLibraryId,
+										name: renameName,
+										description: renameDescription.trim()
+											? renameDescription
+											: null,
+									})
+								}}
+							>
+								Save
+							</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

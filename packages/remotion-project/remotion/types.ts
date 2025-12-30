@@ -89,6 +89,7 @@ export type ThreadRenderTreeNode =
 			type: 'Stack'
 			/** Flex weight when this node is a child of another Stack. */
 			flex?: number
+			opacity?: number
 			direction?: 'row' | 'column'
 			align?: 'start' | 'center' | 'end' | 'stretch'
 			justify?: 'start' | 'center' | 'end' | 'between'
@@ -114,6 +115,7 @@ export type ThreadRenderTreeNode =
 			type: 'Grid'
 			/** Flex weight when this node is a child of a Stack. */
 			flex?: number
+			opacity?: number
 			columns?: number
 			align?: 'start' | 'center' | 'end' | 'stretch'
 			justify?: 'start' | 'center' | 'end' | 'stretch'
@@ -142,6 +144,7 @@ export type ThreadRenderTreeNode =
 			width?: number
 			height?: number
 			zIndex?: number
+			opacity?: number
 			pointerEvents?: boolean
 			rotate?: number
 			scale?: number
@@ -152,6 +155,7 @@ export type ThreadRenderTreeNode =
 			type: 'Box'
 			/** Flex weight when this node is a child of a Stack. */
 			flex?: number
+			opacity?: number
 			padding?: number
 			paddingX?: number
 			paddingY?: number
@@ -170,6 +174,7 @@ export type ThreadRenderTreeNode =
 	| {
 			type: 'Avatar'
 			bind?: 'root.author.avatarAssetId' | 'post.author.avatarAssetId'
+			opacity?: number
 			size?: number
 			radius?: number
 			border?: boolean
@@ -178,6 +183,7 @@ export type ThreadRenderTreeNode =
 	| {
 			type: 'ContentBlocks'
 			bind?: 'root.contentBlocks' | 'post.contentBlocks'
+			opacity?: number
 			gap?: number
 			maxHeight?: number
 	  }
@@ -241,6 +247,7 @@ export type ThreadRenderTreeNode =
 				| 'post.plainText'
 			color?: 'primary' | 'muted' | 'accent'
 			align?: 'left' | 'center' | 'right'
+			opacity?: number
 			size?: number
 			weight?: number
 			lineHeight?: number
@@ -267,6 +274,7 @@ export type ThreadRenderTreeNode =
 			/** Defaults to post likes (ctx.post). */
 			bind?: 'root.metrics.likes' | 'post.metrics.likes'
 			color?: 'primary' | 'muted' | 'accent'
+			opacity?: number
 			size?: number
 			showIcon?: boolean
 	  }

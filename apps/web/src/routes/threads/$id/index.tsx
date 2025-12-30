@@ -979,22 +979,23 @@ function analyzeRenderTreeNode(
 		return
 	}
 
-	if (type === 'Text') {
-		warnUnknownKeys(
-			new Set([
-				'type',
-				'text',
-				'bind',
-				'color',
-				'align',
-				'size',
-				'weight',
-				'lineHeight',
-				'letterSpacing',
-				'uppercase',
-				'maxLines',
-			]),
-		)
+		if (type === 'Text') {
+			warnUnknownKeys(
+				new Set([
+					'type',
+					'text',
+					'bind',
+					'color',
+					'align',
+					'opacity',
+					'size',
+					'weight',
+					'lineHeight',
+					'letterSpacing',
+					'uppercase',
+					'maxLines',
+				]),
+			)
 		const text = (rawNode as any).text
 		const bind = (rawNode as any).bind
 		const bindAllowed =
@@ -1010,15 +1011,23 @@ function analyzeRenderTreeNode(
 			bind === 'post.author.name' ||
 			bind === 'post.author.handle' ||
 			bind === 'post.plainText'
-		if (text == null && bind == null) {
-			push(`${path}: Text node needs 'text' or 'bind'; ignored.`)
-		} else if (bind != null && !bindAllowed) {
-			push(`${path}.bind: unsupported (${String(bind)}); ignored.`)
-		}
-		const uppercase = (rawNode as any).uppercase
-		if (uppercase != null && typeof uppercase !== 'boolean') {
-			push(`${path}.uppercase: must be boolean; ignored.`)
-		}
+			if (text == null && bind == null) {
+				push(`${path}: Text node needs 'text' or 'bind'; ignored.`)
+			} else if (bind != null && !bindAllowed) {
+				push(`${path}.bind: unsupported (${String(bind)}); ignored.`)
+			}
+			const opacity = (rawNode as any).opacity
+			if (opacity != null) {
+				if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+					push(`${path}.opacity: must be a number; ignored.`)
+				} else if (opacity < 0 || opacity > 1) {
+					push(`${path}.opacity: must be between 0 and 1; clamped.`)
+				}
+			}
+			const uppercase = (rawNode as any).uppercase
+			if (uppercase != null && typeof uppercase !== 'boolean') {
+				push(`${path}.uppercase: must be boolean; ignored.`)
+			}
 		const lineHeight = (rawNode as any).lineHeight
 		if (lineHeight != null) {
 			if (typeof lineHeight !== 'number' || !Number.isFinite(lineHeight)) {
@@ -1041,26 +1050,34 @@ function analyzeRenderTreeNode(
 		return
 	}
 
-	if (type === 'Metrics') {
-		warnUnknownKeys(new Set(['type', 'bind', 'color', 'size', 'showIcon']))
-		const bind = (rawNode as any).bind
-		if (
-			bind != null &&
-			bind !== 'root.metrics.likes' &&
-			bind !== 'post.metrics.likes'
+		if (type === 'Metrics') {
+			warnUnknownKeys(new Set(['type', 'bind', 'color', 'opacity', 'size', 'showIcon']))
+			const bind = (rawNode as any).bind
+			if (
+				bind != null &&
+				bind !== 'root.metrics.likes' &&
+				bind !== 'post.metrics.likes'
 		) {
 			push(
 				`${path}.bind: must be 'root.metrics.likes' or 'post.metrics.likes'; ignored.`,
 			)
 		}
-		const showIcon = (rawNode as any).showIcon
-		if (showIcon != null && typeof showIcon !== 'boolean') {
-			push(`${path}.showIcon: must be boolean; ignored.`)
-		}
-		const size = (rawNode as any).size
-		if (size != null) {
-			if (typeof size !== 'number' || !Number.isFinite(size)) {
-				push(`${path}.size: must be a number; ignored.`)
+			const showIcon = (rawNode as any).showIcon
+			if (showIcon != null && typeof showIcon !== 'boolean') {
+				push(`${path}.showIcon: must be boolean; ignored.`)
+			}
+			const opacity = (rawNode as any).opacity
+			if (opacity != null) {
+				if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+					push(`${path}.opacity: must be a number; ignored.`)
+				} else if (opacity < 0 || opacity > 1) {
+					push(`${path}.opacity: must be between 0 and 1; clamped.`)
+				}
+			}
+			const size = (rawNode as any).size
+			if (size != null) {
+				if (typeof size !== 'number' || !Number.isFinite(size)) {
+					push(`${path}.size: must be a number; ignored.`)
 			} else if (size < 10 || size > 64) {
 				push(`${path}.size: must be between 10 and 64; clamped.`)
 			}
@@ -1132,14 +1149,14 @@ function analyzeRenderTreeNode(
 		return
 	}
 
-	if (type === 'Avatar') {
-		warnUnknownKeys(
-			new Set(['type', 'bind', 'size', 'radius', 'border', 'background']),
-		)
-		const bind = (rawNode as any).bind
-		if (
-			bind !== 'root.author.avatarAssetId' &&
-			bind !== 'post.author.avatarAssetId'
+		if (type === 'Avatar') {
+			warnUnknownKeys(
+				new Set(['type', 'bind', 'opacity', 'size', 'radius', 'border', 'background']),
+			)
+			const bind = (rawNode as any).bind
+			if (
+				bind !== 'root.author.avatarAssetId' &&
+				bind !== 'post.author.avatarAssetId'
 		) {
 			push(
 				`${path}.bind: must be 'root.author.avatarAssetId' or 'post.author.avatarAssetId'; ignored.`,
@@ -1156,22 +1173,38 @@ function analyzeRenderTreeNode(
 		} else if (
 			typeof background === 'string' &&
 			containsUnsafeCssUrl(background.trim())
-		) {
-			push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
+			) {
+				push(`${path}.background: url()/http(s)/ext: are not allowed; ignored.`)
+			}
+			const opacity = (rawNode as any).opacity
+			if (opacity != null) {
+				if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+					push(`${path}.opacity: must be a number; ignored.`)
+				} else if (opacity < 0 || opacity > 1) {
+					push(`${path}.opacity: must be between 0 and 1; clamped.`)
+				}
+			}
+			return
 		}
-		return
-	}
 
-	if (type === 'ContentBlocks') {
-		warnUnknownKeys(new Set(['type', 'bind', 'gap', 'maxHeight']))
-		const bind = (rawNode as any).bind
-		if (bind !== 'root.contentBlocks' && bind !== 'post.contentBlocks') {
-			push(
-				`${path}.bind: must be 'root.contentBlocks' or 'post.contentBlocks'; ignored.`,
-			)
+		if (type === 'ContentBlocks') {
+			warnUnknownKeys(new Set(['type', 'bind', 'opacity', 'gap', 'maxHeight']))
+			const bind = (rawNode as any).bind
+			if (bind !== 'root.contentBlocks' && bind !== 'post.contentBlocks') {
+				push(
+					`${path}.bind: must be 'root.contentBlocks' or 'post.contentBlocks'; ignored.`,
+				)
+			}
+			const opacity = (rawNode as any).opacity
+			if (opacity != null) {
+				if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+					push(`${path}.opacity: must be a number; ignored.`)
+				} else if (opacity < 0 || opacity > 1) {
+					push(`${path}.opacity: must be between 0 and 1; clamped.`)
+				}
+			}
+			return
 		}
-		return
-	}
 
 	if (type === 'Image') {
 		warnUnknownKeys(
@@ -1411,16 +1444,17 @@ function analyzeRenderTreeNode(
 		return
 	}
 
-	if (type === 'Grid') {
-		warnUnknownKeys(
-			new Set([
-				'type',
-				'flex',
-				'columns',
-				'align',
-				'justify',
-				'gap',
-				'gapX',
+		if (type === 'Grid') {
+			warnUnknownKeys(
+				new Set([
+					'type',
+					'flex',
+					'opacity',
+					'columns',
+					'align',
+					'justify',
+					'gap',
+					'gapX',
 				'gapY',
 				'padding',
 				'paddingX',
@@ -1438,12 +1472,20 @@ function analyzeRenderTreeNode(
 				'children',
 			]),
 		)
-		warnFlexProp()
-		warnSizeProps()
-		warnSpaceProps(
-			['gap', 'gapX', 'gapY', 'padding', 'paddingX', 'paddingY'],
-			0,
-			240,
+			warnFlexProp()
+			const opacity = (rawNode as any).opacity
+			if (opacity != null) {
+				if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+					push(`${path}.opacity: must be a number; ignored.`)
+				} else if (opacity < 0 || opacity > 1) {
+					push(`${path}.opacity: must be between 0 and 1; clamped.`)
+				}
+			}
+			warnSizeProps()
+			warnSpaceProps(
+				['gap', 'gapX', 'gapY', 'padding', 'paddingX', 'paddingY'],
+				0,
+				240,
 		)
 		const borderWidth = (rawNode as any).borderWidth
 		if (borderWidth != null) {
@@ -1540,26 +1582,35 @@ function analyzeRenderTreeNode(
 		return
 	}
 
-	if (type === 'Absolute') {
-		warnUnknownKeys(
-			new Set([
-				'type',
-				'x',
-				'y',
-				'width',
-				'height',
-				'zIndex',
-				'pointerEvents',
-				'rotate',
-				'scale',
-				'origin',
-				'children',
-			]),
-		)
-		const zIndex = (rawNode as any).zIndex
-		if (zIndex != null) {
-			if (typeof zIndex !== 'number' || !Number.isFinite(zIndex)) {
-				push(`${path}.zIndex: must be a number; ignored.`)
+		if (type === 'Absolute') {
+			warnUnknownKeys(
+				new Set([
+					'type',
+					'x',
+					'y',
+					'width',
+					'height',
+					'zIndex',
+					'opacity',
+					'pointerEvents',
+					'rotate',
+					'scale',
+					'origin',
+					'children',
+				]),
+			)
+			const opacity = (rawNode as any).opacity
+			if (opacity != null) {
+				if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+					push(`${path}.opacity: must be a number; ignored.`)
+				} else if (opacity < 0 || opacity > 1) {
+					push(`${path}.opacity: must be between 0 and 1; clamped.`)
+				}
+			}
+			const zIndex = (rawNode as any).zIndex
+			if (zIndex != null) {
+				if (typeof zIndex !== 'number' || !Number.isFinite(zIndex)) {
+					push(`${path}.zIndex: must be a number; ignored.`)
 			} else if (zIndex < -100 || zIndex > 100) {
 				push(`${path}.zIndex: must be between -100 and 100; clamped.`)
 			}
@@ -1615,16 +1666,17 @@ function analyzeRenderTreeNode(
 		return
 	}
 
-	if (type === 'Stack') {
-		warnUnknownKeys(
-			new Set([
-				'type',
-				'flex',
-				'direction',
-				'align',
-				'justify',
-				'gap',
-				'gapX',
+		if (type === 'Stack') {
+			warnUnknownKeys(
+				new Set([
+					'type',
+					'flex',
+					'opacity',
+					'direction',
+					'align',
+					'justify',
+					'gap',
+					'gapX',
 				'gapY',
 				'padding',
 				'paddingX',
@@ -1641,12 +1693,20 @@ function analyzeRenderTreeNode(
 				'maxHeight',
 				'children',
 			]),
-		)
-		warnFlexProp()
-		warnSizeProps()
-		warnSpaceProps(
-			['gap', 'gapX', 'gapY', 'padding', 'paddingX', 'paddingY'],
-			0,
+			)
+			warnFlexProp()
+			const opacity = (rawNode as any).opacity
+			if (opacity != null) {
+				if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+					push(`${path}.opacity: must be a number; ignored.`)
+				} else if (opacity < 0 || opacity > 1) {
+					push(`${path}.opacity: must be between 0 and 1; clamped.`)
+				}
+			}
+			warnSizeProps()
+			warnSpaceProps(
+				['gap', 'gapX', 'gapY', 'padding', 'paddingX', 'paddingY'],
+				0,
 			240,
 		)
 		const borderWidth = (rawNode as any).borderWidth
@@ -1720,15 +1780,16 @@ function analyzeRenderTreeNode(
 		return
 	}
 
-	if (type === 'Box') {
-		warnUnknownKeys(
-			new Set([
-				'type',
-				'flex',
-				'padding',
-				'paddingX',
-				'paddingY',
-				'border',
+		if (type === 'Box') {
+			warnUnknownKeys(
+				new Set([
+					'type',
+					'flex',
+					'opacity',
+					'padding',
+					'paddingX',
+					'paddingY',
+					'border',
 				'borderWidth',
 				'borderColor',
 				'background',
@@ -1740,12 +1801,20 @@ function analyzeRenderTreeNode(
 				'maxHeight',
 				'children',
 			]),
-		)
-		warnFlexProp()
-		warnSizeProps()
-		warnSpaceProps(['padding', 'paddingX', 'paddingY'], 0, 240)
-		const borderWidth = (rawNode as any).borderWidth
-		if (borderWidth != null) {
+			)
+			warnFlexProp()
+			const opacity = (rawNode as any).opacity
+			if (opacity != null) {
+				if (typeof opacity !== 'number' || !Number.isFinite(opacity)) {
+					push(`${path}.opacity: must be a number; ignored.`)
+				} else if (opacity < 0 || opacity > 1) {
+					push(`${path}.opacity: must be between 0 and 1; clamped.`)
+				}
+			}
+			warnSizeProps()
+			warnSpaceProps(['padding', 'paddingX', 'paddingY'], 0, 240)
+			const borderWidth = (rawNode as any).borderWidth
+			if (borderWidth != null) {
 			if (typeof borderWidth !== 'number' || !Number.isFinite(borderWidth)) {
 				push(`${path}.borderWidth: must be a number; ignored.`)
 			} else if (borderWidth < 1 || borderWidth > 12) {
@@ -2292,13 +2361,7 @@ function ThreadDetailRoute() {
 		queryOrpc.thread.setAudioAsset.mutationOptions(),
 	)
 	const setTemplateMutation = useEnhancedMutation(
-		queryOrpc.thread.setTemplate.mutationOptions({
-			onSuccess: async () => {
-				await qc.invalidateQueries({
-					queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
-				})
-			},
-		}),
+		queryOrpc.thread.setTemplate.mutationOptions(),
 		{
 			successToast: 'Saved template settings',
 			errorToast: ({ error }) =>
@@ -2310,6 +2373,13 @@ function ThreadDetailRoute() {
 		await qc.invalidateQueries({
 			queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
 		})
+	}
+
+	async function refreshThreadAndSyncTemplateEditor() {
+		const data = await qc.fetchQuery(
+			queryOrpc.thread.byId.queryOptions({ input: { id } }),
+		)
+		if (data?.thread) syncTemplateEditorFromThread(data.thread)
 	}
 
 	async function setThreadAudio(audioAssetId: string | null) {
@@ -2388,6 +2458,23 @@ function ThreadDetailRoute() {
 		null,
 	)
 
+	function syncTemplateEditorFromThread(nextThread: any) {
+		const nextTemplateId = nextThread?.templateId
+			? String(nextThread.templateId)
+			: TEMPLATE_DEFAULT
+		setTemplateIdDraft(nextTemplateId)
+		setTemplateConfigText(
+			nextThread?.templateConfig == null
+				? ''
+				: toPrettyJson(nextThread.templateConfig),
+		)
+		setVisualTemplateConfig(
+			normalizeThreadTemplateConfig(
+				nextThread?.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
+			),
+		)
+	}
+
 	function suggestMediaHeight(
 		kind: 'image' | 'video',
 		width: unknown,
@@ -2453,18 +2540,7 @@ function ThreadDetailRoute() {
 
 	React.useEffect(() => {
 		if (!thread) return
-		const nextTemplateId = thread.templateId
-			? String(thread.templateId)
-			: TEMPLATE_DEFAULT
-		setTemplateIdDraft(nextTemplateId)
-		setTemplateConfigText(
-			thread.templateConfig == null ? '' : toPrettyJson(thread.templateConfig),
-		)
-		setVisualTemplateConfig(
-			normalizeThreadTemplateConfig(
-				thread.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
-			),
-		)
+		syncTemplateEditorFromThread(thread)
 	}, [thread?.id])
 
 	const templateConfigParsed = React.useMemo(() => {
@@ -2662,6 +2738,7 @@ function ThreadDetailRoute() {
 			templateId,
 			templateConfig,
 		})
+		await refreshThreadAndSyncTemplateEditor()
 	}
 
 	const normalizedTemplateConfigText = React.useMemo(() => {
@@ -3248,16 +3325,7 @@ function ThreadDetailRoute() {
 									onClick={() => {
 										if (!thread) return
 										setTemplateEditorMode('json')
-										setTemplateIdDraft(
-											thread.templateId
-												? String(thread.templateId)
-												: TEMPLATE_DEFAULT,
-										)
-										setTemplateConfigText(
-											thread.templateConfig == null
-												? ''
-												: toPrettyJson(thread.templateConfig),
-										)
+										syncTemplateEditorFromThread(thread)
 									}}
 								>
 									Reset
@@ -3295,13 +3363,13 @@ function ThreadDetailRoute() {
 							<Link to="/thread-templates">Manage</Link>
 						</Button>
 					</div>
-					<ThreadTemplateLibraryCard
-						threadId={id}
-						effectiveTemplateId={effectiveTemplateIdForLibrary}
-						normalizedTemplateConfig={normalizedTemplateConfig}
-						onApplied={refreshThread}
-					/>
-				</div>
+						<ThreadTemplateLibraryCard
+							threadId={id}
+							effectiveTemplateId={effectiveTemplateIdForLibrary}
+							normalizedTemplateConfig={normalizedTemplateConfig}
+							onApplied={refreshThreadAndSyncTemplateEditor}
+						/>
+					</div>
 
 				<div className="mt-6">
 					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">

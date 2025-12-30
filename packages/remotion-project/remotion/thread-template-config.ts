@@ -463,29 +463,31 @@ function normalizeRenderTreeNode(
 			input.color === 'primary' || input.color === 'muted' || input.color === 'accent'
 				? input.color
 				: undefined
-		const align =
-			input.align === 'left' || input.align === 'center' || input.align === 'right'
-				? input.align
-				: undefined
-		const size = clampInt(input.size, 8, 120) ?? undefined
-		const weight = clampInt(input.weight, 200, 900) ?? undefined
-		const lineHeight = clampNumber(input.lineHeight, 0.8, 2) ?? undefined
-		const letterSpacing = clampNumber(input.letterSpacing, -0.2, 1) ?? undefined
-		const uppercase = safeBoolean(input.uppercase) ?? undefined
+			const align =
+				input.align === 'left' || input.align === 'center' || input.align === 'right'
+					? input.align
+					: undefined
+			const opacity = clampNumber((input as any).opacity, 0, 1) ?? undefined
+			const size = clampInt(input.size, 8, 120) ?? undefined
+			const weight = clampInt(input.weight, 200, 900) ?? undefined
+			const lineHeight = clampNumber(input.lineHeight, 0.8, 2) ?? undefined
+			const letterSpacing = clampNumber(input.letterSpacing, -0.2, 1) ?? undefined
+			const uppercase = safeBoolean(input.uppercase) ?? undefined
 		const maxLines = clampInt(input.maxLines, 1, 20) ?? undefined
 
 		state.nodeCount += 1
 		return {
 			type: 'Text',
 			text,
-			bind: bindAllowed,
-			color,
-			align,
-			size,
-			weight,
-			lineHeight,
-			letterSpacing,
-			uppercase,
+				bind: bindAllowed,
+				color,
+				align,
+				opacity,
+				size,
+				weight,
+				lineHeight,
+				letterSpacing,
+				uppercase,
 			maxLines,
 		}
 	}
@@ -520,11 +522,12 @@ function normalizeRenderTreeNode(
 			input.color === 'primary' || input.color === 'muted' || input.color === 'accent'
 				? input.color
 				: undefined
+		const opacity = clampNumber((input as any).opacity, 0, 1) ?? undefined
 		const size = clampInt(input.size, 10, 64) ?? undefined
 		const showIcon = safeBoolean(input.showIcon) ?? undefined
 
 		state.nodeCount += 1
-		return { type: 'Metrics', bind: bindAllowed, color, size, showIcon }
+		return { type: 'Metrics', bind: bindAllowed, color, opacity, size, showIcon }
 	}
 
 	if (type === 'Avatar') {
@@ -535,13 +538,14 @@ function normalizeRenderTreeNode(
 				: undefined
 		if (!bindAllowed) return null
 
+		const opacity = clampNumber((input as any).opacity, 0, 1) ?? undefined
 		const size = clampInt(input.size, 24, 240) ?? undefined
 		const radius = clampInt(input.radius, 0, 999) ?? undefined
 		const border = safeBoolean(input.border) ?? undefined
 		const background = safeCssValue(input.background, 200) ?? undefined
 
 		state.nodeCount += 1
-		return { type: 'Avatar', bind: bindAllowed, size, radius, border, background }
+		return { type: 'Avatar', bind: bindAllowed, opacity, size, radius, border, background }
 	}
 
 	if (type === 'ContentBlocks') {
@@ -549,11 +553,12 @@ function normalizeRenderTreeNode(
 		const bindAllowed =
 			bind === 'root.contentBlocks' || bind === 'post.contentBlocks' ? bind : undefined
 		if (!bindAllowed) return null
+		const opacity = clampNumber((input as any).opacity, 0, 1) ?? undefined
 		const gap = clampInt(input.gap, 0, 80) ?? undefined
 		const maxHeight = clampInt(input.maxHeight, 100, 1200) ?? undefined
 
 		state.nodeCount += 1
-		return { type: 'ContentBlocks', bind: bindAllowed, gap, maxHeight }
+		return { type: 'ContentBlocks', bind: bindAllowed, opacity, gap, maxHeight }
 	}
 
 	if (type === 'Image') {
@@ -654,6 +659,7 @@ function normalizeRenderTreeNode(
 
 	if (type === 'Grid') {
 		const columns = clampInt(input.columns, 1, 12) ?? undefined
+		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
 		const align =
 			input.align === 'start' ||
 			input.align === 'center' ||
@@ -687,6 +693,7 @@ function normalizeRenderTreeNode(
 		}
 		return {
 			type: 'Grid',
+			opacity,
 			columns,
 			align,
 			justify,
@@ -710,6 +717,7 @@ function normalizeRenderTreeNode(
 		const width = clampInt(input.width, 0, 2000) ?? undefined
 		const height = clampInt(input.height, 0, 2000) ?? undefined
 		const zIndex = clampInt(input.zIndex, -100, 100) ?? undefined
+		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
 		const pointerEvents = safeBoolean(input.pointerEvents) ?? undefined
 		const rotate = clampNumber(input.rotate, -180, 180) ?? undefined
 		const scale = clampNumber(input.scale, 0.1, 4) ?? undefined
@@ -728,6 +736,7 @@ function normalizeRenderTreeNode(
 			width,
 			height,
 			zIndex,
+			opacity,
 			pointerEvents,
 			rotate,
 			scale,
@@ -741,6 +750,7 @@ function normalizeRenderTreeNode(
 			input.direction === 'row' || input.direction === 'column'
 				? input.direction
 				: undefined
+		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
 		const align =
 			input.align === 'start' ||
 			input.align === 'center' ||
@@ -777,6 +787,7 @@ function normalizeRenderTreeNode(
 			direction,
 			align,
 			justify,
+			opacity,
 			...flex,
 			...gap,
 			...padding,
@@ -793,6 +804,7 @@ function normalizeRenderTreeNode(
 
 	if (type === 'Box') {
 		const padding = normalizeBoxPadding(input)
+		const opacity = clampNumber(input.opacity, 0, 1) ?? undefined
 		const radius = clampInt(input.radius, 0, 120) ?? undefined
 		const border = safeBoolean(input.border) ?? undefined
 		const borderWidth = clampInt(input.borderWidth, 1, 12) ?? undefined
@@ -811,6 +823,7 @@ function normalizeRenderTreeNode(
 		return {
 			type: 'Box',
 			...flex,
+			opacity,
 			...padding,
 			border,
 			borderWidth,

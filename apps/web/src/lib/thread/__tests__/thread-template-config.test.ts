@@ -41,9 +41,10 @@ describe('normalizeThreadTemplateConfig', () => {
 			scenes: { cover: { root: { type: 'Text', text: 'hi' } } },
 		})
 
+		const root = cfg.scenes!.cover!.root as any
 		expect(cfg.version).toBe(1)
-		expect(cfg.scenes?.cover?.root?.type).toBe('Text')
-		expect((cfg.scenes?.cover?.root as any).text).toBe('hi')
+		expect(root.type).toBe('Text')
+		expect(root.text).toBe('hi')
 	})
 
 	it('keeps Grid nodes and clamps columns', () => {
@@ -121,6 +122,101 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(root.children?.[0]?.borderWidth).toBe(12)
 		expect(root.children?.[0]?.borderColor).toBe('accent')
 		expect(root.children?.[0]?.overflow).toBe('hidden')
+	})
+
+	it('clamps opacity on container nodes', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: {
+					root: {
+						type: 'Stack',
+						opacity: 2,
+						children: [
+							{
+								type: 'Grid',
+								columns: 2,
+								opacity: -1,
+								children: [
+									{
+										type: 'Box',
+										opacity: 1.5,
+										children: [
+											{
+												type: 'Absolute',
+												opacity: -2,
+												children: [{ type: 'Text', text: 'x' }],
+											},
+										],
+									},
+								],
+							},
+						],
+					},
+				},
+			},
+		})
+
+		const root = cfg.scenes!.cover!.root as any
+		expect(root.type).toBe('Stack')
+		expect(root.opacity).toBe(1)
+		expect(root.children?.[0]?.type).toBe('Grid')
+		expect(root.children?.[0]?.opacity).toBe(0)
+		expect(root.children?.[0]?.children?.[0]?.type).toBe('Box')
+		expect(root.children?.[0]?.children?.[0]?.opacity).toBe(1)
+		expect(root.children?.[0]?.children?.[0]?.children?.[0]?.type).toBe('Absolute')
+		expect(root.children?.[0]?.children?.[0]?.children?.[0]?.opacity).toBe(0)
+	})
+
+	it('clamps opacity on Text nodes', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: { root: { type: 'Text', text: 'hi', opacity: -1 } },
+				post: { root: { type: 'Text', text: 'hi', opacity: 2 } },
+			},
+		})
+		expect((cfg.scenes!.cover!.root as any).opacity).toBe(0)
+		expect((cfg.scenes!.post!.root as any).opacity).toBe(1)
+	})
+
+	it('clamps opacity on Avatar/Metrics/ContentBlocks nodes', () => {
+		const cfg = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				cover: {
+					root: {
+						type: 'Stack',
+						children: [
+							{
+								type: 'Avatar',
+								bind: 'root.author.avatarAssetId',
+								opacity: -1,
+							},
+							{
+								type: 'Metrics',
+								bind: 'post.metrics.likes',
+								opacity: 2,
+							},
+							{
+								type: 'ContentBlocks',
+								bind: 'root.contentBlocks',
+								opacity: 1.5,
+							},
+						],
+					},
+				},
+			},
+		})
+
+		const root = cfg.scenes!.cover!.root as any
+		expect(root.type).toBe('Stack')
+		expect(root.children?.[0]?.type).toBe('Avatar')
+		expect(root.children?.[0]?.opacity).toBe(0)
+		expect(root.children?.[1]?.type).toBe('Metrics')
+		expect(root.children?.[1]?.opacity).toBe(1)
+		expect(root.children?.[2]?.type).toBe('ContentBlocks')
+		expect(root.children?.[2]?.opacity).toBe(1)
 	})
 
 	it('keeps Spacer nodes (axis+size)', () => {

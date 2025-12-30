@@ -206,6 +206,7 @@ V2（可视化编辑器）：
 ### RenderTree v1 节点
 
 - 布局/容器：`Stack`、`Grid`、`Absolute`、`Box`（容器节点支持 `flex`，用于填充剩余高度/控制左右比例）
+	- 容器通用：支持 `opacity`（0..1，normalize 时 clamp）
 	- `Box`：支持 `borderWidth` / `borderColor`（配合 `border=true`）
 	- `Stack` / `Grid`：支持 `background` / `border` / `radius` / `borderWidth` / `borderColor`
 	- `Stack` / `Grid` / `Box`：支持 `overflow: 'hidden'`（用于裁剪）
@@ -213,10 +214,10 @@ V2（可视化编辑器）：
 - 背景：`Background`（color/assetId + opacity/blur）
 - 文本：`Text`
 	- bind：支持 `timeline.replyIndicator` / `timeline.replyIndex` / `timeline.replyCount`（用于用纯 RenderTree 自定义 header）
-	- style：支持 `uppercase` / `letterSpacing` / `lineHeight`
-- 指标：`Metrics`（当前支持 likes）
-- 头像：`Avatar`
-- 内容：`ContentBlocks`
+	- style：支持 `opacity` / `uppercase` / `letterSpacing` / `lineHeight`
+- 指标：`Metrics`（当前支持 likes；支持 `opacity`）
+- 头像：`Avatar`（支持 `opacity`）
+- 内容：`ContentBlocks`（支持 `opacity`）
 - 媒体：`Image`、`Video`（仅允许 `assetId` → `assetsMap`，不允许外链 URL）
 	- `Image` / `Video`：支持 `opacity` / `position` / `blur`（用于蒙版/裁剪对齐/模糊）
 - 水印：`Watermark`（由 `brand.showWatermark` + `brand.watermarkText` 控制）
@@ -257,7 +258,9 @@ V2（可视化编辑器）：
 
 - M0：预览与云渲染使用 thread 粒度 template 设置；snapshot 写入 resolved/hash/version
 - M1：`thread.setTemplate` + 线程详情页 JSON 编辑/校验/保存 + 预览实时生效
+- 体验：线程页 apply 后自动同步 editor 状态（templateId/config），减少 UI 与 DB 状态不一致
 - M2（部分）：RenderTree v1（含媒体/辅助节点）+ `post.*` 绑定 + `repliesList.rootRoot/itemRoot` + 资产入库/安全限制 + 示例/插入器 + 基础测试
+	- 新增：更多节点支持 `opacity`（容器/文本/Avatar/Metrics/ContentBlocks），并贯穿 normalize + 预览/渲染 + 编辑器 + 校验 + 测试
 	- 兼容：无 `version` 的旧配置会被映射到 v1（theme/typography/motion；可选 scenes）
 	- 默认 `cover` 已切到纯 RenderTree（仍保留 `Builtin(cover)` 作为可选回退/自定义）
 	- 线程详情页增加：`Insert Replies Layout`（插入拆分的 repliesList 布局片段）
@@ -270,6 +273,7 @@ V2（可视化编辑器）：
 	- 模板库（user-scoped，线程间复用）：
 		- 表：`thread_template_library` / `thread_template_versions`
 		- ORPC：create/addVersion/versions/list/applyToThread/rollback/update/deleteById
+		- applyToThread：应用时写入 resolved config（`templateConfigResolved`，必要时 normalize 兜底），保证预览/渲染确定性
 		- Web 管理页：`/thread-templates`
 	- 本地迁移：`0029_flawless_veda.sql` 已在本地 D1 通过 `pnpm db:d1:migrate:local` 验证
 	- E2E：本地通过真实 ORPC + 本地 D1 冒烟（create → addVersion → apply → rollback → rename → delete）
@@ -281,10 +285,12 @@ V2（可视化编辑器）：
 	- 增加更丰富节点：绝对定位/对齐细节/更多样式能力（按需求逐步加）
 	- 将更多“内置布局”迁移到纯 RenderTree（减少 Builtin 依赖；时间轴仍可保留在 Builtin）
 - M3（产品化）继续收口
-	- 模板库：workspace 级/共享/权限（当前为 user-scoped）
 	- 远端迁移：`pnpm db:d1:migrate:remote`（当前仅做本地迁移验证）
-	- 体验：线程页 apply 后自动同步 editor 状态（templateId/config），减少 UI 与 DB 状态不一致
 	- 更完善的验证与测试（覆盖更多节点/边界/资产状态；以及线程归属/无更新行等错误分支）
+
+### 不在本次范围（已明确不做）
+
+- 模板库：workspace 级/共享/权限（保持 user-scoped）
 
 ## 风险与注意事项
 

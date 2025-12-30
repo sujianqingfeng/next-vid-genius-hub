@@ -409,11 +409,18 @@ export const applyToThread = os
 		})
 		if (!lib) throw new Error('Template library not found')
 
+		const templateConfigResolved =
+			version.templateConfigResolved ??
+			(version.templateConfig != null
+				? normalizeThreadTemplateConfig(version.templateConfig)
+				: null)
+
 		await db
 			.update(schema.threads)
 			.set({
 				templateId: String(lib.templateId),
-				templateConfig: version.templateConfig ?? null,
+				// Apply the normalized/resolved config to ensure preview/render determinism.
+				templateConfig: templateConfigResolved,
 				updatedAt: new Date(),
 			})
 			.where(

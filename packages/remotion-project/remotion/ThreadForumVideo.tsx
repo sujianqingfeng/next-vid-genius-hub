@@ -286,13 +286,14 @@ function renderThreadTemplateNode(
 			typeof node.lineHeight === 'number'
 				? Math.min(2, Math.max(0.8, node.lineHeight))
 				: null
-		const style: CSSProperties = {
-			margin: 0,
-			color,
-			fontWeight: weight,
-			fontSize: `calc(${sizePx}px * var(--tf-font-scale))`,
-			lineHeight: lineHeight ?? 1.25,
-			whiteSpace: 'pre-wrap',
+			const style: CSSProperties = {
+				margin: 0,
+				color,
+				opacity: typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined,
+				fontWeight: weight,
+				fontSize: `calc(${sizePx}px * var(--tf-font-scale))`,
+				lineHeight: lineHeight ?? 1.25,
+				whiteSpace: 'pre-wrap',
 			letterSpacing:
 				typeof node.letterSpacing === 'number' ? `${node.letterSpacing}em` : undefined,
 			textTransform: node.uppercase ? 'uppercase' : undefined,
@@ -314,7 +315,7 @@ function renderThreadTemplateNode(
 		return <p style={style}>{text}</p>
 	}
 
-	if (node.type === 'Metrics') {
+		if (node.type === 'Metrics') {
 		const post = ctx.post ?? ctx.root
 		const likes =
 			node.bind === 'root.metrics.likes'
@@ -332,18 +333,19 @@ function renderThreadTemplateNode(
 		const sizePx = typeof node.size === 'number' ? node.size : 14
 		const showIcon = node.showIcon !== false
 
-		return (
-			<div
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					gap: 10,
-					color,
-					fontSize: `calc(${sizePx}px * var(--tf-font-scale))`,
-					lineHeight: 1,
-					whiteSpace: 'nowrap',
-				}}
-			>
+			return (
+				<div
+					style={{
+						display: 'flex',
+						alignItems: 'center',
+						gap: 10,
+						color,
+						opacity: typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined,
+						fontSize: `calc(${sizePx}px * var(--tf-font-scale))`,
+						lineHeight: 1,
+						whiteSpace: 'nowrap',
+					}}
+				>
 				{showIcon ? (
 					<ThumbsUp
 						size={Math.max(12, Math.round(sizePx * 1.15))}
@@ -404,7 +406,7 @@ function renderThreadTemplateNode(
 		)
 	}
 
-	if (node.type === 'Avatar') {
+		if (node.type === 'Avatar') {
 		const post = ctx.post ?? ctx.root
 		const assetId =
 			node.bind === 'root.author.avatarAssetId'
@@ -412,44 +414,47 @@ function renderThreadTemplateNode(
 				: node.bind === 'post.author.avatarAssetId'
 					? post.author.avatarAssetId
 				: null
-		const url = assetId ? resolveAssetUrl(String(assetId), ctx.assets) : null
-		const size = typeof node.size === 'number' ? node.size : 96
-		const radius = typeof node.radius === 'number' ? node.radius : 999
-		const bg = node.background ?? 'rgba(255,255,255,0.06)'
-		const border = node.border ? '1px solid var(--tf-border)' : undefined
+			const url = assetId ? resolveAssetUrl(String(assetId), ctx.assets) : null
+			const size = typeof node.size === 'number' ? node.size : 96
+			const radius = typeof node.radius === 'number' ? node.radius : 999
+			const bg = node.background ?? 'rgba(255,255,255,0.06)'
+			const border = node.border ? '1px solid var(--tf-border)' : undefined
+			const opacity = typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
 
-		if (url) {
-			return (
-				<Img
-					src={url}
-					style={{
-						width: size,
-						height: size,
-						borderRadius: radius,
-						objectFit: 'cover',
-						border,
-						background: bg,
-						display: 'block',
-					}}
-				/>
-			)
+			if (url) {
+				return (
+					<Img
+						src={url}
+						style={{
+							width: size,
+							height: size,
+							borderRadius: radius,
+							objectFit: 'cover',
+							border,
+							background: bg,
+							opacity,
+							display: 'block',
+						}}
+					/>
+				)
 		}
 
 		const fallbackName =
 			node.bind === 'post.author.avatarAssetId' ? post.author.name : ctx.root.author.name
 		const fallback = resolveAvatarFallback(fallbackName)
-		return (
-			<div
-				style={{
-					width: size,
-					height: size,
-					borderRadius: radius,
-					border,
-					background: bg,
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					color: 'var(--tf-text)',
+			return (
+				<div
+					style={{
+						width: size,
+						height: size,
+						borderRadius: radius,
+						border,
+						background: bg,
+						opacity,
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						color: 'var(--tf-text)',
 					fontWeight: 800,
 					fontSize: `calc(${Math.max(14, Math.round(size / 3))}px * var(--tf-font-scale))`,
 					letterSpacing: '0.06em',
@@ -462,28 +467,30 @@ function renderThreadTemplateNode(
 		)
 	}
 
-	if (node.type === 'ContentBlocks') {
-		const blocks =
-			node.bind === 'root.contentBlocks'
-				? ctx.root.contentBlocks
-				: node.bind === 'post.contentBlocks'
-					? (ctx.post ?? ctx.root).contentBlocks
-					: []
-		const gap = typeof node.gap === 'number' ? node.gap : 14
-		const maxHeight = typeof node.maxHeight === 'number' ? node.maxHeight : undefined
+		if (node.type === 'ContentBlocks') {
+			const blocks =
+				node.bind === 'root.contentBlocks'
+					? ctx.root.contentBlocks
+					: node.bind === 'post.contentBlocks'
+						? (ctx.post ?? ctx.root).contentBlocks
+						: []
+			const gap = typeof node.gap === 'number' ? node.gap : 14
+			const maxHeight = typeof node.maxHeight === 'number' ? node.maxHeight : undefined
+			const opacity = typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
 
-		return (
-			<div
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					gap,
-					maxHeight,
-					overflow: maxHeight ? 'hidden' : undefined,
-				}}
-			>
-				{renderBlocks(blocks, ctx.assets)}
-			</div>
+			return (
+				<div
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						gap,
+						maxHeight,
+						overflow: maxHeight ? 'hidden' : undefined,
+						opacity,
+					}}
+				>
+					{renderBlocks(blocks, ctx.assets)}
+				</div>
 		)
 	}
 
@@ -662,7 +669,7 @@ function renderThreadTemplateNode(
 		return <div style={style} />
 	}
 
-	if (node.type === 'Stack') {
+		if (node.type === 'Stack') {
 		const hasGapXY = typeof node.gapX === 'number' || typeof node.gapY === 'number'
 		const hasPaddingXY =
 			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
@@ -677,16 +684,17 @@ function renderThreadTemplateNode(
 					: node.borderColor === 'accent'
 						? 'var(--tf-accent)'
 						: 'var(--tf-border)'
-		const style: CSSProperties = {
-			position: 'relative',
-			display: 'flex',
-			flexDirection: node.direction === 'row' ? 'row' : 'column',
-			flex,
-			minWidth: flex != null ? 0 : undefined,
-			minHeight: flex != null ? 0 : undefined,
-			overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
-			gap:
-				!hasGapXY && typeof node.gap === 'number'
+			const style: CSSProperties = {
+				position: 'relative',
+				display: 'flex',
+				flexDirection: node.direction === 'row' ? 'row' : 'column',
+				flex,
+				opacity: typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined,
+				minWidth: flex != null ? 0 : undefined,
+				minHeight: flex != null ? 0 : undefined,
+				overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
+				gap:
+					!hasGapXY && typeof node.gap === 'number'
 					? node.gap
 					: undefined,
 			columnGap: hasGapXY
@@ -775,7 +783,7 @@ function renderThreadTemplateNode(
 		return <div style={style}>{children}</div>
 	}
 
-	if (node.type === 'Grid') {
+		if (node.type === 'Grid') {
 		const columns = typeof node.columns === 'number' ? node.columns : 2
 		const hasGapXY = typeof node.gapX === 'number' || typeof node.gapY === 'number'
 		const hasPaddingXY =
@@ -807,14 +815,15 @@ function renderThreadTemplateNode(
 					: node.justify === 'stretch'
 						? 'stretch'
 						: 'start'
-		const style: CSSProperties = {
-			position: 'relative',
-			display: 'grid',
-			flex,
-			minWidth: flex != null ? 0 : undefined,
-			minHeight: flex != null ? 0 : undefined,
-			overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
-			gridTemplateColumns: `repeat(${Math.max(1, Math.floor(columns))}, minmax(0, 1fr))`,
+			const style: CSSProperties = {
+				position: 'relative',
+				display: 'grid',
+				flex,
+				opacity: typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined,
+				minWidth: flex != null ? 0 : undefined,
+				minHeight: flex != null ? 0 : undefined,
+				overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
+				gridTemplateColumns: `repeat(${Math.max(1, Math.floor(columns))}, minmax(0, 1fr))`,
 			gap:
 				!hasGapXY && typeof node.gap === 'number'
 					? node.gap
@@ -891,7 +900,7 @@ function renderThreadTemplateNode(
 		return <div style={style}>{children}</div>
 	}
 
-	if (node.type === 'Absolute') {
+		if (node.type === 'Absolute') {
 		const transforms: string[] = []
 		if (typeof node.rotate === 'number') transforms.push(`rotate(${node.rotate}deg)`)
 		if (typeof node.scale === 'number') transforms.push(`scale(${node.scale})`)
@@ -907,18 +916,19 @@ function renderThreadTemplateNode(
 							: node.origin === 'center'
 								? 'center'
 								: undefined
-		const style: CSSProperties = {
-			position: 'absolute',
-			left: typeof node.x === 'number' ? node.x : undefined,
-			top: typeof node.y === 'number' ? node.y : undefined,
-			width: typeof node.width === 'number' ? node.width : undefined,
-			height: typeof node.height === 'number' ? node.height : undefined,
-			zIndex: typeof node.zIndex === 'number' ? node.zIndex : undefined,
-			pointerEvents: node.pointerEvents === false ? 'none' : undefined,
-			transform: transforms.length ? transforms.join(' ') : undefined,
-			transformOrigin: origin,
-			boxSizing: 'border-box',
-		}
+			const style: CSSProperties = {
+				position: 'absolute',
+				left: typeof node.x === 'number' ? node.x : undefined,
+				top: typeof node.y === 'number' ? node.y : undefined,
+				width: typeof node.width === 'number' ? node.width : undefined,
+				height: typeof node.height === 'number' ? node.height : undefined,
+				zIndex: typeof node.zIndex === 'number' ? node.zIndex : undefined,
+				opacity: typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined,
+				pointerEvents: node.pointerEvents === false ? 'none' : undefined,
+				transform: transforms.length ? transforms.join(' ') : undefined,
+				transformOrigin: origin,
+				boxSizing: 'border-box',
+			}
 
 		const children = (node.children ?? []).map((c: ThreadRenderTreeNode, idx: number) => (
 			<React.Fragment key={idx}>
@@ -929,7 +939,7 @@ function renderThreadTemplateNode(
 		return <div style={style}>{children}</div>
 	}
 
-	if (node.type === 'Box') {
+		if (node.type === 'Box') {
 		const hasPaddingXY =
 			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
 		const flex = typeof node.flex === 'number' ? node.flex : undefined
@@ -943,14 +953,15 @@ function renderThreadTemplateNode(
 					: node.borderColor === 'accent'
 						? 'var(--tf-accent)'
 						: 'var(--tf-border)'
-		const style: CSSProperties = {
-			position: 'relative',
-			flex,
-			minWidth: flex != null ? 0 : undefined,
-			minHeight: flex != null ? 0 : undefined,
-			overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
-			padding:
-				!hasPaddingXY && typeof node.padding === 'number'
+			const style: CSSProperties = {
+				position: 'relative',
+				flex,
+				opacity: typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined,
+				minWidth: flex != null ? 0 : undefined,
+				minHeight: flex != null ? 0 : undefined,
+				overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
+				padding:
+					!hasPaddingXY && typeof node.padding === 'number'
 					? node.padding
 					: undefined,
 			paddingLeft: hasPaddingXY
