@@ -459,6 +459,62 @@ export const threadRenders = sqliteTable('thread_renders', {
 		.$defaultFn(() => new Date()),
 })
 
+export const threadTemplateLibrary = sqliteTable(
+	'thread_template_library',
+	{
+		id: text('id')
+			.unique()
+			.notNull()
+			.$defaultFn(() => createId()),
+		userId: text('user_id').notNull(),
+		name: text('name').notNull(),
+		// Remotion template id (e.g. 'thread-forum')
+		templateId: text('template_id').notNull(),
+		description: text('description'),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+		updatedAt: integer('updated_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		userNameIdx: uniqueIndex('thread_template_library_user_name_idx').on(
+			table.userId,
+			table.name,
+		),
+	}),
+)
+
+export const threadTemplateVersions = sqliteTable(
+	'thread_template_versions',
+	{
+		id: text('id')
+			.unique()
+			.notNull()
+			.$defaultFn(() => createId()),
+		userId: text('user_id').notNull(),
+		libraryId: text('library_id').notNull(),
+		version: integer('version').notNull(),
+		note: text('note'),
+		sourceThreadId: text('source_thread_id'),
+		// User-provided raw config for editing (must be v1 for now)
+		templateConfig: text('template_config', { mode: 'json' }),
+		// Normalized/resolved config used for rendering
+		templateConfigResolved: text('template_config_resolved', { mode: 'json' }),
+		templateConfigHash: text('template_config_hash'),
+		compileVersion: integer('compile_version').notNull().default(1),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		libraryVersionIdx: uniqueIndex(
+			'thread_template_versions_library_ver_idx',
+		).on(table.libraryId, table.version),
+	}),
+)
+
 export const ssrSubscriptions = sqliteTable('ssr_subscriptions', {
 	id: text('id')
 		.unique()

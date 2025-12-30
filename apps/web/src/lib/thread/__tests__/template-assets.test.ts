@@ -24,6 +24,42 @@ describe('collectThreadTemplateAssetIds', () => {
 		expect([...ids].sort()).toEqual(['asset_bg', 'asset_img', 'asset_vid'])
 	})
 
+	it('collects assetId references from Builtin(repliesListRootPost/repliesListReplies)', () => {
+		const resolved = normalizeThreadTemplateConfig({
+			version: 1,
+			scenes: {
+				post: {
+					root: {
+						type: 'Stack',
+						children: [
+							{
+								type: 'Builtin',
+								kind: 'repliesListRootPost',
+								rootRoot: {
+									type: 'Stack',
+									children: [{ type: 'Image', assetId: 'asset_root_img' }],
+								},
+							},
+							{
+								type: 'Builtin',
+								kind: 'repliesListReplies',
+								itemRoot: {
+									type: 'Stack',
+									children: [{ type: 'Video', assetId: 'asset_reply_vid' }],
+								},
+							},
+						],
+					},
+				},
+			},
+		})
+
+		expect([...collectThreadTemplateAssetIds(resolved)].sort()).toEqual([
+			'asset_reply_vid',
+			'asset_root_img',
+		])
+	})
+
 	it('ignores placeholders and external urls', () => {
 		const resolved = normalizeThreadTemplateConfig({
 			version: 1,
@@ -43,4 +79,3 @@ describe('collectThreadTemplateAssetIds', () => {
 		expect([...collectThreadTemplateAssetIds(resolved)]).toEqual([])
 	})
 })
-

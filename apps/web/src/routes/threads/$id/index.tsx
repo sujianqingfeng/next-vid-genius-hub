@@ -15,6 +15,9 @@ import {
 } from '~/components/ui/select'
 import { Textarea } from '~/components/ui/textarea'
 import { ThreadRemotionPreviewCard } from '~/components/business/threads/thread-remotion-preview-card'
+import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
+import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
@@ -28,6 +31,7 @@ import {
 	normalizeThreadTemplateConfig,
 } from '@app/remotion-project/thread-template-config'
 import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
+import { collectThreadTemplateAssetIds } from '~/lib/thread/template-assets'
 
 const IMAGE_ASSET_ID_PLACEHOLDER = '__IMAGE_ASSET_ID__'
 const VIDEO_ASSET_ID_PLACEHOLDER = '__VIDEO_ASSET_ID__'
@@ -462,7 +466,12 @@ function buildRepliesListHeaderSnippetExample(): Record<string, unknown> {
 				align: 'center',
 				gapX: 12,
 				children: [
-					{ type: 'Box', width: 10, height: 10, background: 'var(--tf-accent)' },
+					{
+						type: 'Box',
+						width: 10,
+						height: 10,
+						background: 'var(--tf-accent)',
+					},
 					{
 						type: 'Text',
 						bind: 'thread.title',
@@ -780,7 +789,10 @@ function analyzeRenderTreeNode(
 				for (const k of Object.keys(highlight)) {
 					if (!allowed.has(k)) push(`${path}.highlight: ignored field: ${k}`)
 				}
-				if ('enabled' in highlight && typeof (highlight as any).enabled !== 'boolean') {
+				if (
+					'enabled' in highlight &&
+					typeof (highlight as any).enabled !== 'boolean'
+				) {
 					push(`${path}.highlight.enabled: must be boolean; ignored.`)
 				}
 				if ('color' in highlight) {
@@ -797,7 +809,9 @@ function analyzeRenderTreeNode(
 						if (typeof v !== 'number' || !Number.isFinite(v)) {
 							push(`${path}.highlight.thickness: must be a number; ignored.`)
 						} else if (v < 1 || v > 12) {
-							push(`${path}.highlight.thickness: must be between 1 and 12; clamped.`)
+							push(
+								`${path}.highlight.thickness: must be between 1 and 12; clamped.`,
+							)
 						}
 					}
 				}
@@ -807,7 +821,9 @@ function analyzeRenderTreeNode(
 						if (typeof v !== 'number' || !Number.isFinite(v)) {
 							push(`${path}.highlight.radius: must be a number; ignored.`)
 						} else if (v < 0 || v > 48) {
-							push(`${path}.highlight.radius: must be between 0 and 48; clamped.`)
+							push(
+								`${path}.highlight.radius: must be between 0 and 48; clamped.`,
+							)
 						}
 					}
 				}
@@ -817,7 +833,9 @@ function analyzeRenderTreeNode(
 						if (typeof v !== 'number' || !Number.isFinite(v)) {
 							push(`${path}.highlight.opacity: must be a number; ignored.`)
 						} else if (v < 0 || v > 1) {
-							push(`${path}.highlight.opacity: must be between 0 and 1; clamped.`)
+							push(
+								`${path}.highlight.opacity: must be between 0 and 1; clamped.`,
+							)
 						}
 					}
 				}
@@ -905,7 +923,10 @@ function analyzeRenderTreeNode(
 		}
 		if (color != null && (typeof color !== 'string' || !color.trim())) {
 			push(`${path}.color: must be a non-empty string; ignored.`)
-		} else if (typeof color === 'string' && containsUnsafeCssUrl(color.trim())) {
+		} else if (
+			typeof color === 'string' &&
+			containsUnsafeCssUrl(color.trim())
+		) {
 			push(`${path}.color: url()/http(s)/ext: are not allowed; ignored.`)
 		}
 		if (assetId != null) {
@@ -1008,7 +1029,10 @@ function analyzeRenderTreeNode(
 		}
 		const letterSpacing = (rawNode as any).letterSpacing
 		if (letterSpacing != null) {
-			if (typeof letterSpacing !== 'number' || !Number.isFinite(letterSpacing)) {
+			if (
+				typeof letterSpacing !== 'number' ||
+				!Number.isFinite(letterSpacing)
+			) {
 				push(`${path}.letterSpacing: must be a number; ignored.`)
 			} else if (letterSpacing < -0.2 || letterSpacing > 1) {
 				push(`${path}.letterSpacing: must be between -0.2 and 1; clamped.`)
@@ -1122,8 +1146,13 @@ function analyzeRenderTreeNode(
 			)
 		}
 		const background = (rawNode as any).background
-		if (background != null && (typeof background !== 'string' || !background.trim())) {
-			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		if (
+			background != null &&
+			(typeof background !== 'string' || !background.trim())
+		) {
+			push(
+				`${path}.background: must be a non-empty string when provided; ignored.`,
+			)
 		} else if (
 			typeof background === 'string' &&
 			containsUnsafeCssUrl(background.trim())
@@ -1215,12 +1244,22 @@ function analyzeRenderTreeNode(
 			}
 		}
 		const position = (rawNode as any).position
-		if (position != null && (typeof position !== 'string' || !position.trim())) {
-			push(`${path}.position: must be a non-empty string when provided; ignored.`)
+		if (
+			position != null &&
+			(typeof position !== 'string' || !position.trim())
+		) {
+			push(
+				`${path}.position: must be a non-empty string when provided; ignored.`,
+			)
 		}
 		const background = (rawNode as any).background
-		if (background != null && (typeof background !== 'string' || !background.trim())) {
-			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		if (
+			background != null &&
+			(typeof background !== 'string' || !background.trim())
+		) {
+			push(
+				`${path}.background: must be a non-empty string when provided; ignored.`,
+			)
 		} else if (
 			typeof background === 'string' &&
 			containsUnsafeCssUrl(background.trim())
@@ -1301,12 +1340,22 @@ function analyzeRenderTreeNode(
 			}
 		}
 		const position = (rawNode as any).position
-		if (position != null && (typeof position !== 'string' || !position.trim())) {
-			push(`${path}.position: must be a non-empty string when provided; ignored.`)
+		if (
+			position != null &&
+			(typeof position !== 'string' || !position.trim())
+		) {
+			push(
+				`${path}.position: must be a non-empty string when provided; ignored.`,
+			)
 		}
 		const background = (rawNode as any).background
-		if (background != null && (typeof background !== 'string' || !background.trim())) {
-			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		if (
+			background != null &&
+			(typeof background !== 'string' || !background.trim())
+		) {
+			push(
+				`${path}.background: must be a non-empty string when provided; ignored.`,
+			)
 		} else if (
 			typeof background === 'string' &&
 			containsUnsafeCssUrl(background.trim())
@@ -1424,8 +1473,13 @@ function analyzeRenderTreeNode(
 			}
 		}
 		const background = (rawNode as any).background
-		if (background != null && (typeof background !== 'string' || !background.trim())) {
-			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		if (
+			background != null &&
+			(typeof background !== 'string' || !background.trim())
+		) {
+			push(
+				`${path}.background: must be a non-empty string when provided; ignored.`,
+			)
 		} else if (
 			typeof background === 'string' &&
 			containsUnsafeCssUrl(background.trim())
@@ -1623,8 +1677,13 @@ function analyzeRenderTreeNode(
 			}
 		}
 		const background = (rawNode as any).background
-		if (background != null && (typeof background !== 'string' || !background.trim())) {
-			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		if (
+			background != null &&
+			(typeof background !== 'string' || !background.trim())
+		) {
+			push(
+				`${path}.background: must be a non-empty string when provided; ignored.`,
+			)
 		} else if (
 			typeof background === 'string' &&
 			containsUnsafeCssUrl(background.trim())
@@ -1713,8 +1772,13 @@ function analyzeRenderTreeNode(
 			}
 		}
 		const background = (rawNode as any).background
-		if (background != null && (typeof background !== 'string' || !background.trim())) {
-			push(`${path}.background: must be a non-empty string when provided; ignored.`)
+		if (
+			background != null &&
+			(typeof background !== 'string' || !background.trim())
+		) {
+			push(
+				`${path}.background: must be a non-empty string when provided; ignored.`,
+			)
 		} else if (
 			typeof background === 'string' &&
 			containsUnsafeCssUrl(background.trim())
@@ -2311,10 +2375,15 @@ function ThreadDetailRoute() {
 	// ---------- Thread template ----------
 	const templates = React.useMemo(() => listThreadTemplates(), [])
 	const TEMPLATE_DEFAULT = '__default__'
+	const [templateEditorMode, setTemplateEditorMode] = React.useState<
+		'json' | 'visual'
+	>('json')
 
 	const [templateIdDraft, setTemplateIdDraft] =
 		React.useState<string>(TEMPLATE_DEFAULT)
 	const [templateConfigText, setTemplateConfigText] = React.useState<string>('')
+	const [visualTemplateConfig, setVisualTemplateConfig] =
+		React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
 	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(
 		null,
 	)
@@ -2391,6 +2460,11 @@ function ThreadDetailRoute() {
 		setTemplateConfigText(
 			thread.templateConfig == null ? '' : toPrettyJson(thread.templateConfig),
 		)
+		setVisualTemplateConfig(
+			normalizeThreadTemplateConfig(
+				thread.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
+			),
+		)
 	}, [thread?.id])
 
 	const templateConfigParsed = React.useMemo(() => {
@@ -2409,28 +2483,6 @@ function ThreadDetailRoute() {
 		}
 	}, [templateConfigText])
 
-	const normalizedTemplateConfig = React.useMemo(() => {
-		if (templateConfigParsed.value === undefined) return null
-		if (templateConfigParsed.value === null)
-			return DEFAULT_THREAD_TEMPLATE_CONFIG
-		return normalizeThreadTemplateConfig(templateConfigParsed.value)
-	}, [templateConfigParsed.value])
-
-	const templateConfigIssues = React.useMemo(() => {
-		if (!normalizedTemplateConfig) return []
-		if (
-			templateConfigParsed.value === undefined ||
-			templateConfigParsed.value === null
-		) {
-			return []
-		}
-		return analyzeThreadTemplateConfig(
-			templateConfigParsed.value,
-			normalizedTemplateConfig,
-			assetsById,
-		)
-	}, [assetsById, normalizedTemplateConfig, templateConfigParsed.value])
-
 	const previewTemplateId =
 		templateIdDraft === TEMPLATE_DEFAULT
 			? thread?.templateId
@@ -2443,9 +2495,131 @@ function ThreadDetailRoute() {
 			? (thread?.templateConfig as any)
 			: (templateConfigParsed.value as any)
 
+	const normalizedTemplateConfig = React.useMemo(() => {
+		if (templateEditorMode === 'visual') return visualTemplateConfig
+		if (templateConfigParsed.value === undefined) return null
+		if (templateConfigParsed.value === null)
+			return DEFAULT_THREAD_TEMPLATE_CONFIG
+		return normalizeThreadTemplateConfig(templateConfigParsed.value)
+	}, [templateConfigParsed.value, templateEditorMode, visualTemplateConfig])
+
+	const previewTemplateConfigEffective =
+		templateEditorMode === 'visual'
+			? visualTemplateConfig
+			: previewTemplateConfig
+
+	const effectiveTemplateIdForLibrary = String(
+		previewTemplateId ?? DEFAULT_THREAD_TEMPLATE_ID,
+	)
+
+	const templateAssetIdsForPreview = React.useMemo(() => {
+		const resolved = normalizeThreadTemplateConfig(
+			previewTemplateConfigEffective,
+		)
+		return [...collectThreadTemplateAssetIds(resolved)].sort()
+	}, [previewTemplateConfigEffective])
+
+	const [extraTemplateAssetsById, setExtraTemplateAssetsById] = React.useState<
+		Map<string, any>
+	>(new Map())
+	React.useEffect(() => {
+		setExtraTemplateAssetsById(new Map())
+	}, [thread?.id])
+
+	const assetsByIdForTemplateLookup = React.useMemo(() => {
+		const m = new Map<string, any>()
+		for (const [k, v] of assetsById) m.set(k, v)
+		for (const [k, v] of extraTemplateAssetsById) m.set(k, v)
+		return m
+	}, [assetsById, extraTemplateAssetsById])
+
+	const missingTemplateAssetIds = React.useMemo(() => {
+		if (!templateAssetIdsForPreview.length) return []
+		const missing: string[] = []
+		for (const id of templateAssetIdsForPreview) {
+			if (assetsByIdForTemplateLookup.has(id)) continue
+			missing.push(id)
+		}
+		return missing
+	}, [assetsByIdForTemplateLookup, templateAssetIdsForPreview])
+
+	const [
+		debouncedMissingTemplateAssetIds,
+		setDebouncedMissingTemplateAssetIds,
+	] = React.useState<string[]>([])
+	React.useEffect(() => {
+		const t = setTimeout(() => {
+			setDebouncedMissingTemplateAssetIds(missingTemplateAssetIds)
+		}, 300)
+		return () => clearTimeout(t)
+	}, [missingTemplateAssetIds.join('|')])
+
+	const missingTemplateAssetIdsToFetch = React.useMemo(() => {
+		return debouncedMissingTemplateAssetIds.slice(0, 200)
+	}, [debouncedMissingTemplateAssetIds])
+	const missingTemplateAssetIdsOverflow =
+		debouncedMissingTemplateAssetIds.length -
+		missingTemplateAssetIdsToFetch.length
+
+	const extraTemplateAssetsQuery = useQuery(
+		queryOrpc.thread.assetsByIds.queryOptions({
+			input: { ids: missingTemplateAssetIdsToFetch },
+			enabled: missingTemplateAssetIdsToFetch.length > 0,
+		}),
+	)
+
+	React.useEffect(() => {
+		const rows = extraTemplateAssetsQuery.data?.assets ?? []
+		if (rows.length === 0) return
+		setExtraTemplateAssetsById((prev) => {
+			const next = new Map(prev)
+			for (const a of rows) next.set(String((a as any).id), a)
+			return next
+		})
+	}, [extraTemplateAssetsQuery.data?.assets])
+
+	const assetsForPreview = React.useMemo(() => {
+		const out = new Map<string, any>()
+		for (const a of assets) out.set(String(a.id), a)
+		for (const a of extraTemplateAssetsById.values()) out.set(String(a.id), a)
+		return [...out.values()]
+	}, [assets, extraTemplateAssetsById])
+
+	const assetsByIdForPreview = React.useMemo(() => {
+		const m = new Map<string, any>()
+		for (const a of assetsForPreview) m.set(String(a.id), a)
+		return m
+	}, [assetsForPreview])
+
+	const templateConfigIssues = React.useMemo(() => {
+		if (!normalizedTemplateConfig) return []
+		if (templateEditorMode === 'visual') {
+			return analyzeThreadTemplateConfig(
+				normalizedTemplateConfig,
+				normalizedTemplateConfig,
+				assetsByIdForPreview,
+			)
+		}
+		if (
+			templateConfigParsed.value === undefined ||
+			templateConfigParsed.value === null
+		)
+			return []
+		return analyzeThreadTemplateConfig(
+			templateConfigParsed.value,
+			normalizedTemplateConfig,
+			assetsByIdForPreview,
+		)
+	}, [
+		assetsByIdForPreview,
+		normalizedTemplateConfig,
+		templateConfigParsed.value,
+		templateEditorMode,
+	])
+
 	async function saveTemplateSettings(mode: 'raw' | 'normalized' = 'raw') {
 		if (!thread) return
-		if (templateConfigParsed.error) {
+		if (templateEditorMode === 'json' && templateConfigParsed.error) {
 			toast.error(`Invalid JSON: ${templateConfigParsed.error}`)
 			return
 		}
@@ -2455,7 +2629,11 @@ function ThreadDetailRoute() {
 			return
 		}
 
-		if (mode === 'normalized' && !templateConfigText.trim()) {
+		if (
+			mode === 'normalized' &&
+			templateEditorMode === 'json' &&
+			!templateConfigText.trim()
+		) {
 			toast.error('Nothing to normalize: Config JSON is empty')
 			return
 		}
@@ -2465,9 +2643,11 @@ function ThreadDetailRoute() {
 		const templateConfig =
 			mode === 'normalized'
 				? normalizedTemplateConfig
-				: templateConfigParsed.value === null
-					? null
-					: templateConfigParsed.value
+				: templateEditorMode === 'visual'
+					? visualTemplateConfig
+					: templateConfigParsed.value === null
+						? null
+						: templateConfigParsed.value
 
 		if (
 			templateConfig != null &&
@@ -2492,8 +2672,10 @@ function ThreadDetailRoute() {
 	const canSaveNormalized =
 		Boolean(thread) &&
 		!setTemplateMutation.isPending &&
-		!templateConfigParsed.error &&
-		Boolean(templateConfigText.trim())
+		!(templateEditorMode === 'json' && templateConfigParsed.error) &&
+		(templateEditorMode === 'visual'
+			? true
+			: Boolean(templateConfigText.trim()))
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
@@ -2549,7 +2731,7 @@ function ThreadDetailRoute() {
 					thread={thread as any}
 					root={root as any}
 					replies={replies as any}
-					assets={assets as any}
+					assets={assetsForPreview as any}
 					audio={
 						audio?.url && audio?.asset?.durationMs
 							? {
@@ -2560,7 +2742,7 @@ function ThreadDetailRoute() {
 					}
 					isLoading={dataQuery.isLoading}
 					templateId={previewTemplateId}
-					templateConfig={previewTemplateConfig}
+					templateConfig={previewTemplateConfigEffective as any}
 				/>
 
 				<div className="mt-6">
@@ -2596,25 +2778,116 @@ function ThreadDetailRoute() {
 
 								<div className="space-y-2">
 									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Config JSON
+										Editor
 									</Label>
-									<Textarea
-										ref={templateConfigTextAreaRef}
-										value={templateConfigText}
-										onChange={(e) => setTemplateConfigText(e.target.value)}
-										placeholder="{}"
-										className="min-h-[120px] rounded-none font-mono text-xs"
-									/>
-									{templateConfigParsed.error ? (
-										<div className="font-mono text-xs text-destructive">
-											Invalid JSON: {templateConfigParsed.error}
-										</div>
-									) : (
-										<div className="font-mono text-xs text-muted-foreground">
-											Empty = use defaults
-										</div>
-									)}
-									{!templateConfigParsed.error &&
+									<Tabs
+										value={templateEditorMode}
+										onValueChange={(v) => {
+											const next = v === 'visual' ? 'visual' : 'json'
+											if (next === 'visual') {
+												if (templateConfigParsed.error) {
+													toast.error(
+														`Fix JSON first: ${templateConfigParsed.error}`,
+													)
+													return
+												}
+												setVisualTemplateConfig(
+													normalizeThreadTemplateConfig(previewTemplateConfig),
+												)
+											}
+											setTemplateEditorMode(next)
+										}}
+										className="gap-3"
+									>
+										<TabsList className="rounded-none w-full">
+											<TabsTrigger value="visual" className="rounded-none">
+												Visual
+											</TabsTrigger>
+											<TabsTrigger value="json" className="rounded-none">
+												JSON
+											</TabsTrigger>
+										</TabsList>
+
+										<TabsContent value="visual" className="space-y-3">
+											<div className="flex flex-wrap items-center justify-between gap-2">
+												<div className="font-mono text-xs text-muted-foreground">
+													Edit layout safely (no code execution).
+												</div>
+												<div className="flex flex-wrap items-center gap-2">
+													<Button
+														type="button"
+														size="sm"
+														variant="outline"
+														className="rounded-none font-mono text-[10px] uppercase"
+														disabled={Boolean(templateConfigParsed.error)}
+														onClick={() => {
+															if (templateConfigParsed.error) {
+																toast.error(
+																	`Fix JSON first: ${templateConfigParsed.error}`,
+																)
+																return
+															}
+															setVisualTemplateConfig(
+																normalizeThreadTemplateConfig(
+																	previewTemplateConfig,
+																),
+															)
+															toast.message('Synced from JSON')
+														}}
+													>
+														Sync From JSON
+													</Button>
+													<Button
+														type="button"
+														size="sm"
+														variant="outline"
+														className="rounded-none font-mono text-[10px] uppercase"
+														onClick={() => {
+															setTemplateConfigText(
+																toPrettyJson(visualTemplateConfig),
+															)
+															setTemplateEditorMode('json')
+															toast.message('Copied to JSON')
+														}}
+													>
+														Copy To JSON
+													</Button>
+												</div>
+											</div>
+
+											<ThreadTemplateVisualEditor
+												value={visualTemplateConfig}
+												onChange={(next) =>
+													setVisualTemplateConfig(
+														normalizeThreadTemplateConfig(next),
+													)
+												}
+												assets={assetsForPreview as any}
+											/>
+										</TabsContent>
+
+										<TabsContent value="json" className="space-y-2">
+											<Textarea
+												ref={templateConfigTextAreaRef}
+												value={templateConfigText}
+												onChange={(e) => setTemplateConfigText(e.target.value)}
+												placeholder="{}"
+												className="min-h-[120px] rounded-none font-mono text-xs"
+											/>
+											{templateConfigParsed.error ? (
+												<div className="font-mono text-xs text-destructive">
+													Invalid JSON: {templateConfigParsed.error}
+												</div>
+											) : (
+												<div className="font-mono text-xs text-muted-foreground">
+													Empty = use defaults
+												</div>
+											)}
+										</TabsContent>
+									</Tabs>
+
+									{(templateEditorMode === 'visual' ||
+										!templateConfigParsed.error) &&
 									templateConfigIssues.length > 0 ? (
 										<div className="space-y-1">
 											<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -2639,14 +2912,55 @@ function ThreadDetailRoute() {
 								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 									Assets (insert)
 								</Label>
+								{templateAssetIdsForPreview.length > 0 ? (
+									<div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-muted-foreground">
+										<div>
+											Template refs: {templateAssetIdsForPreview.length}
+											{missingTemplateAssetIds.length > 0
+												? ` · Missing: ${missingTemplateAssetIds.length}`
+												: ' · All resolved'}
+											{missingTemplateAssetIdsOverflow > 0
+												? ` · +${missingTemplateAssetIdsOverflow} not fetched`
+												: null}
+											{extraTemplateAssetsQuery.isFetching
+												? ' · Loading…'
+												: null}
+											{extraTemplateAssetsQuery.isError
+												? ' · Load failed'
+												: null}
+										</div>
+										{missingTemplateAssetIds.length > 0 ? (
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase"
+												onClick={() => {
+													void navigator.clipboard
+														.writeText(missingTemplateAssetIds.join('\n'))
+														.then(() =>
+															toast.message('Copied missing asset ids'),
+														)
+														.catch(() =>
+															toast.message(
+																'Copy failed (clipboard not available)',
+															),
+														)
+												}}
+											>
+												Copy Missing IDs
+											</Button>
+										) : null}
+									</div>
+								) : null}
 								<div className="rounded-none border border-border bg-card">
-									{assets.length === 0 ? (
+									{assetsForPreview.length === 0 ? (
 										<div className="px-3 py-3 font-mono text-xs text-muted-foreground">
 											No referenced assets in this thread yet.
 										</div>
 									) : (
 										<div className="max-h-[260px] overflow-auto">
-											{assets
+											{assetsForPreview
 												.slice()
 												.sort((a: any, b: any) => {
 													const ka = String(a?.kind ?? '')
@@ -2785,7 +3099,8 @@ function ThreadDetailRoute() {
 								</div>
 							</div>
 
-							{!templateConfigParsed.error ? (
+							{templateEditorMode === 'visual' ||
+							!templateConfigParsed.error ? (
 								<div className="space-y-2">
 									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 										Normalized (preview)
@@ -2816,6 +3131,7 @@ function ThreadDetailRoute() {
 									className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
 									onClick={() => {
+										setTemplateEditorMode('json')
 										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
 										setTemplateConfigText(
 											toPrettyJson(buildRepliesListItemRootExample()),
@@ -2831,6 +3147,7 @@ function ThreadDetailRoute() {
 									className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
 									onClick={() => {
+										setTemplateEditorMode('json')
 										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
 										setTemplateConfigText(toPrettyJson(buildCoverRootExample()))
 										toast.message('Inserted example config (cover root)')
@@ -2844,6 +3161,7 @@ function ThreadDetailRoute() {
 									className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
 									onClick={() => {
+										setTemplateEditorMode('json')
 										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
 										setTemplateConfigText(
 											toPrettyJson(buildRepliesListSplitLayoutExample()),
@@ -2861,6 +3179,7 @@ function ThreadDetailRoute() {
 									className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
 									onClick={() => {
+										setTemplateEditorMode('json')
 										insertTemplateText(
 											toPrettyJson(buildRepliesListHeaderSnippetExample()),
 										)
@@ -2875,6 +3194,7 @@ function ThreadDetailRoute() {
 									className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
 									onClick={() => {
+										setTemplateEditorMode('json')
 										insertTemplateText(
 											toPrettyJson(buildRepliesHighlightSnippetExample()),
 										)
@@ -2889,6 +3209,7 @@ function ThreadDetailRoute() {
 									className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
 									onClick={() => {
+										setTemplateEditorMode('json')
 										insertTemplateText(toPrettyJson(buildGridSnippetExample()))
 										toast.message('Inserted snippet (Grid)')
 									}}
@@ -2901,6 +3222,7 @@ function ThreadDetailRoute() {
 									className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
 									onClick={() => {
+										setTemplateEditorMode('json')
 										insertTemplateText(
 											toPrettyJson(buildAbsoluteSnippetExample()),
 										)
@@ -2925,6 +3247,7 @@ function ThreadDetailRoute() {
 									disabled={!thread}
 									onClick={() => {
 										if (!thread) return
+										setTemplateEditorMode('json')
 										setTemplateIdDraft(
 											thread.templateId
 												? String(thread.templateId)
@@ -2944,13 +3267,40 @@ function ThreadDetailRoute() {
 									variant="outline"
 									className="rounded-none font-mono text-xs uppercase"
 									disabled={!thread}
-									onClick={() => setTemplateConfigText('')}
+									onClick={() => {
+										setTemplateEditorMode('json')
+										setVisualTemplateConfig(DEFAULT_THREAD_TEMPLATE_CONFIG)
+										setTemplateConfigText('')
+									}}
 								>
 									Clear Config
 								</Button>
 							</div>
 						</CardContent>
 					</Card>
+				</div>
+
+				<div className="mt-6">
+					<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+						<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+							Template Library
+						</div>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							className="rounded-none font-mono text-[10px] uppercase"
+							asChild
+						>
+							<Link to="/thread-templates">Manage</Link>
+						</Button>
+					</div>
+					<ThreadTemplateLibraryCard
+						threadId={id}
+						effectiveTemplateId={effectiveTemplateIdForLibrary}
+						normalizedTemplateConfig={normalizedTemplateConfig}
+						onApplied={refreshThread}
+					/>
 				</div>
 
 				<div className="mt-6">

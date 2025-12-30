@@ -11,6 +11,7 @@ import * as proxy from './procedures/proxy'
 import * as subtitle from './procedures/subtitle'
 import * as task from './procedures/task'
 import * as thread from './procedures/thread'
+import * as threadTemplate from './procedures/thread-template'
 
 // Public vs authenticated sub-routers:
 // - auth: signup/login/logout/me 等接口需要在未登录状态也可访问
@@ -28,6 +29,7 @@ export const appRouter = os.router({
 	proxy: authed.router(proxy),
 	ai: authed.router(ai),
 	thread: authed.router(thread),
+	threadTemplate: authed.router(threadTemplate),
 	admin: adminOnly.router(admin),
 })
 

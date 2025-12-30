@@ -1,4 +1,7 @@
-import type { ThreadRenderTreeNode, ThreadTemplateConfigV1 } from '@app/remotion-project/types'
+import type {
+	ThreadRenderTreeNode,
+	ThreadTemplateConfigV1,
+} from '@app/remotion-project/types'
 
 function addAssetId(out: Set<string>, assetId: unknown) {
 	if (typeof assetId !== 'string') return
@@ -37,6 +40,16 @@ function collectRenderTreeAssetIds(
 		return
 	}
 
+	if (node.type === 'Builtin' && node.kind === 'repliesListRootPost') {
+		collectRenderTreeAssetIds(node.rootRoot, out)
+		return
+	}
+
+	if (node.type === 'Builtin' && node.kind === 'repliesListReplies') {
+		collectRenderTreeAssetIds(node.itemRoot, out)
+		return
+	}
+
 	if (
 		node.type === 'Stack' ||
 		node.type === 'Grid' ||
@@ -57,4 +70,3 @@ export function collectThreadTemplateAssetIds(
 	collectRenderTreeAssetIds(templateConfigResolved.scenes.post?.root, out)
 	return out
 }
-

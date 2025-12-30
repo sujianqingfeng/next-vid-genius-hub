@@ -24,11 +24,13 @@ import {
 	DEFAULT_THREAD_TEMPLATE_ID,
 	THREAD_TEMPLATES,
 } from '@app/remotion-project/thread-templates'
+import { normalizeThreadTemplateConfig } from '@app/remotion-project/thread-template-config'
 import { ingestThreadAssets } from '~/lib/thread/server/asset-ingest'
 import {
 	translateAllThreadPosts,
 	translateThreadPost,
 } from '~/lib/thread/server/translate'
+import { collectThreadTemplateAssetIds } from '~/lib/thread/template-assets'
 
 export const list = os.handler(async ({ context }) => {
 	const ctx = context as RequestContext
@@ -81,6 +83,11 @@ export const byId = os
 					if (typeof id === 'string' && id) assetIds.add(id)
 				}
 			}
+		}
+
+		if (thread.templateConfig != null) {
+			const resolved = normalizeThreadTemplateConfig(thread.templateConfig)
+			for (const id of collectThreadTemplateAssetIds(resolved)) assetIds.add(id)
 		}
 
 		const referencedAssetIds = [...assetIds]
@@ -157,6 +164,49 @@ export const byId = os
 				: null,
 			audioAssets,
 		}
+	})
+
+const MAX_THREAD_ASSET_IDS_QUERY = 200
+
+export const assetsByIds = os
+	.input(
+		z.object({
+			ids: z.array(z.string().min(1)).min(1).max(MAX_THREAD_ASSET_IDS_QUERY),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+
+		const ids = [
+			...new Set(input.ids.map((x) => String(x).trim()).filter(Boolean)),
+		]
+		if (ids.length === 0) return { assets: [] as any[] }
+
+		const assetRows = await db
+			.select()
+			.from(schema.threadAssets)
+			.where(
+				and(
+					eq(schema.threadAssets.userId, userId),
+					inArray(schema.threadAssets.id, ids),
+				),
+			)
+
+		const assets = await Promise.all(
+			assetRows.map(async (a: any) => {
+				let renderUrl: string | null = null
+				if (a?.storageKey) {
+					try {
+						renderUrl = await presignGetByKey(String(a.storageKey))
+					} catch {}
+				}
+				return { ...a, renderUrl }
+			}),
+		)
+
+		return { assets }
 	})
 
 export const translatePost = os
