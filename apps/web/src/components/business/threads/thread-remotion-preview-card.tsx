@@ -85,6 +85,17 @@ function toNumberInputValue(v: unknown): string {
 	return n == null ? '' : String(n)
 }
 
+function computeBoxForElRaw(wrapper: HTMLElement, el: HTMLElement) {
+	const wRect = wrapper.getBoundingClientRect()
+	const r = el.getBoundingClientRect()
+	return {
+		x: r.left - wRect.left,
+		y: r.top - wRect.top,
+		w: r.width,
+		h: r.height,
+	}
+}
+
 function buildTemplateNodeKey(scene: SceneKey, path: NodePath): string {
 	return `${scene}:${JSON.stringify(path)}`
 }
@@ -807,9 +818,9 @@ export function ThreadRemotionPreviewCard({
 				}
 			}
 			primaryElementRef.current = el
-			setPrimaryBox(el ? computeBoxForEl(wrapper, el) : null)
+			setPrimaryBox(el ? computeBoxForElRaw(wrapper, el) : null)
 		},
-		[computeBoxForEl, selectedKeys],
+		[computeBoxForElRaw, selectedKeys],
 	)
 
 	const selectedAbsoluteKeys = React.useMemo(() => {
