@@ -386,6 +386,13 @@ export function ThreadRemotionPreviewCard({
 	const previewWrapperRef = React.useRef<HTMLDivElement | null>(null)
 
 	type Box = { x: number; y: number; w: number; h: number }
+	type SnapGuide = { pos: number; label: string }
+	type SnapTarget = {
+		pos: number
+		key: string
+		type: string | null
+		line: 'left' | 'right' | 'center' | 'top' | 'bottom' | 'middle'
+	}
 
 	const [selectedKeys, setSelectedKeys] = React.useState<string[]>([])
 	const [primaryKey, setPrimaryKey] = React.useState<string | null>(null)
@@ -410,8 +417,8 @@ export function ThreadRemotionPreviewCard({
 	const [isDragging, setIsDragging] = React.useState(false)
 	const [snapEnabled, setSnapEnabled] = React.useState(true)
 	const [snapGuides, setSnapGuides] = React.useState<{
-		v: number[]
-		h: number[]
+		v: SnapGuide[]
+		h: SnapGuide[]
 	} | null>(null)
 	const [canvasScale, setCanvasScale] = React.useState(1)
 	const [viewTool, setViewTool] = React.useState<'select' | 'pan'>('select')
@@ -497,8 +504,9 @@ export function ThreadRemotionPreviewCard({
 				keys: string[]
 				startRectsByKey: Record<string, { x: number; y: number; w: number; h: number }>
 				groupStart: { x: number; y: number; w: number; h: number }
-				targetsV: number[]
-				targetsH: number[]
+				targetsV: SnapTarget[]
+				targetsH: SnapTarget[]
+				axisLock: 'x' | 'y' | null
 				startClientX: number
 				startClientY: number
 				scale: number
@@ -507,8 +515,8 @@ export function ThreadRemotionPreviewCard({
 		| {
 				kind: 'resize'
 				key: string
-				targetsV: number[]
-				targetsH: number[]
+				targetsV: SnapTarget[]
+				targetsH: SnapTarget[]
 				handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 				startClientX: number
 				startClientY: number
@@ -917,31 +925,52 @@ export function ThreadRemotionPreviewCard({
 			h: number
 			canvasW: number
 			canvasH: number
-			targetsV: number[]
-			targetsH: number[]
+			targetsV: SnapTarget[]
+			targetsH: SnapTarget[]
 			enabled: boolean
 		}) => {
 			if (!input.enabled) return { x: input.x, y: input.y, guides: { v: [], h: [] } }
 
 			const threshold = 6
-			const linesV = Array.from(
-				new Set<number>([0, input.canvasW / 2, input.canvasW, ...input.targetsV]),
-			)
-			const linesH = Array.from(
-				new Set<number>([0, input.canvasH / 2, input.canvasH, ...input.targetsH]),
-			)
+			const canvasTargetsV: SnapTarget[] = [
+				{ pos: 0, key: 'canvas', type: 'Canvas', line: 'left' },
+				{ pos: input.canvasW / 2, key: 'canvas', type: 'Canvas', line: 'center' },
+				{ pos: input.canvasW, key: 'canvas', type: 'Canvas', line: 'right' },
+			]
+			const canvasTargetsH: SnapTarget[] = [
+				{ pos: 0, key: 'canvas', type: 'Canvas', line: 'top' },
+				{ pos: input.canvasH / 2, key: 'canvas', type: 'Canvas', line: 'middle' },
+				{ pos: input.canvasH, key: 'canvas', type: 'Canvas', line: 'bottom' },
+			]
 
-			const candidatesV: Array<{ line: number; delta: number }> = []
-			for (const line of linesV) {
-				candidatesV.push({ line, delta: line - input.x }) // left
-				candidatesV.push({ line, delta: line - (input.x + input.w) }) // right
-				candidatesV.push({ line, delta: line - (input.x + input.w / 2) }) // center
+			const describeTarget = (t: SnapTarget) => {
+				if (t.key === 'canvas') return `canvas:${t.line}`
+				const shortKey =
+					t.key.length > 26 ? `${t.key.slice(0, 10)}…${t.key.slice(-12)}` : t.key
+				return `${t.type ?? 'node'}:${t.line} ${shortKey}`
 			}
-			const candidatesH: Array<{ line: number; delta: number }> = []
-			for (const line of linesH) {
-				candidatesH.push({ line, delta: line - input.y }) // top
-				candidatesH.push({ line, delta: line - (input.y + input.h) }) // bottom
-				candidatesH.push({ line, delta: line - (input.y + input.h / 2) }) // center
+
+			const candidatesV: Array<{
+				target: SnapTarget
+				delta: number
+				edge: 'L' | 'R' | 'C'
+			}> = []
+			for (const target of [...canvasTargetsV, ...input.targetsV]) {
+				const line = target.pos
+				candidatesV.push({ target, delta: line - input.x, edge: 'L' }) // left
+				candidatesV.push({ target, delta: line - (input.x + input.w), edge: 'R' }) // right
+				candidatesV.push({ target, delta: line - (input.x + input.w / 2), edge: 'C' }) // center
+			}
+			const candidatesH: Array<{
+				target: SnapTarget
+				delta: number
+				edge: 'T' | 'B' | 'M'
+			}> = []
+			for (const target of [...canvasTargetsH, ...input.targetsH]) {
+				const line = target.pos
+				candidatesH.push({ target, delta: line - input.y, edge: 'T' }) // top
+				candidatesH.push({ target, delta: line - (input.y + input.h), edge: 'B' }) // bottom
+				candidatesH.push({ target, delta: line - (input.y + input.h / 2), edge: 'M' }) // middle
 			}
 
 			const bestV = candidatesV
@@ -951,11 +980,19 @@ export function ThreadRemotionPreviewCard({
 				.filter((c) => Math.abs(c.delta) <= threshold)
 				.sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))[0]
 
-			const guides = { v: [] as number[], h: [] as number[] }
+			const guides = { v: [] as SnapGuide[], h: [] as SnapGuide[] }
 			const x = input.x + (bestV ? bestV.delta : 0)
 			const y = input.y + (bestH ? bestH.delta : 0)
-			if (bestV) guides.v.push(bestV.line)
-			if (bestH) guides.h.push(bestH.line)
+			if (bestV)
+				guides.v.push({
+					pos: bestV.target.pos,
+					label: `${bestV.edge}=${describeTarget(bestV.target)}`,
+				})
+			if (bestH)
+				guides.h.push({
+					pos: bestH.target.pos,
+					label: `${bestH.edge}=${describeTarget(bestH.target)}`,
+				})
 			return { x, y, guides }
 		},
 		[],
@@ -969,8 +1006,8 @@ export function ThreadRemotionPreviewCard({
 			h: number
 			canvasW: number
 			canvasH: number
-			targetsV: number[]
-			targetsH: number[]
+			targetsV: SnapTarget[]
+			targetsH: SnapTarget[]
 			handle: 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 			enabled: boolean
 		}) => {
@@ -982,19 +1019,33 @@ export function ThreadRemotionPreviewCard({
 			let y = input.y
 			let w = input.w
 			let h = input.h
-			const guides = { v: [] as number[], h: [] as number[] }
+			const guides = { v: [] as SnapGuide[], h: [] as SnapGuide[] }
 
-			const xs = Array.from(
-				new Set<number>([0, input.canvasW / 2, input.canvasW, ...input.targetsV]),
-			)
-			const ys = Array.from(
-				new Set<number>([0, input.canvasH / 2, input.canvasH, ...input.targetsH]),
-			)
+			const canvasTargetsV: SnapTarget[] = [
+				{ pos: 0, key: 'canvas', type: 'Canvas', line: 'left' },
+				{ pos: input.canvasW / 2, key: 'canvas', type: 'Canvas', line: 'center' },
+				{ pos: input.canvasW, key: 'canvas', type: 'Canvas', line: 'right' },
+			]
+			const canvasTargetsH: SnapTarget[] = [
+				{ pos: 0, key: 'canvas', type: 'Canvas', line: 'top' },
+				{ pos: input.canvasH / 2, key: 'canvas', type: 'Canvas', line: 'middle' },
+				{ pos: input.canvasH, key: 'canvas', type: 'Canvas', line: 'bottom' },
+			]
+
+			const describeTarget = (t: SnapTarget) => {
+				if (t.key === 'canvas') return `canvas:${t.line}`
+				const shortKey =
+					t.key.length > 26 ? `${t.key.slice(0, 10)}…${t.key.slice(-12)}` : t.key
+				return `${t.type ?? 'node'}:${t.line} ${shortKey}`
+			}
+
+			const targetsV = [...canvasTargetsV, ...input.targetsV]
+			const targetsH = [...canvasTargetsH, ...input.targetsH]
 
 			const snapEdgeX = (edge: 'left' | 'right') => {
 				const pos = edge === 'left' ? x : x + w
-				const best = xs
-					.map((t) => ({ t, delta: t - pos }))
+				const best = targetsV
+					.map((t) => ({ t, delta: t.pos - pos }))
 					.filter((c) => Math.abs(c.delta) <= threshold)
 					.sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))[0]
 				if (!best) return
@@ -1004,13 +1055,16 @@ export function ThreadRemotionPreviewCard({
 					x = x + best.delta
 					w = Math.max(1, w - best.delta)
 				}
-				guides.v.push(best.t)
+				guides.v.push({
+					pos: best.t.pos,
+					label: `${edge === 'left' ? 'L' : 'R'}=${describeTarget(best.t)}`,
+				})
 			}
 
 			const snapEdgeY = (edge: 'top' | 'bottom') => {
 				const pos = edge === 'top' ? y : y + h
-				const best = ys
-					.map((t) => ({ t, delta: t - pos }))
+				const best = targetsH
+					.map((t) => ({ t, delta: t.pos - pos }))
 					.filter((c) => Math.abs(c.delta) <= threshold)
 					.sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))[0]
 				if (!best) return
@@ -1020,7 +1074,10 @@ export function ThreadRemotionPreviewCard({
 					y = y + best.delta
 					h = Math.max(1, h - best.delta)
 				}
-				guides.h.push(best.t)
+				guides.h.push({
+					pos: best.t.pos,
+					label: `${edge === 'top' ? 'T' : 'B'}=${describeTarget(best.t)}`,
+				})
 			}
 
 			if (input.handle.includes('e')) snapEdgeX('right')
@@ -1038,18 +1095,20 @@ export function ThreadRemotionPreviewCard({
 			const wrapper = previewWrapperRef.current
 			const scale = getCanvasScale()
 			if (!wrapper || !Number.isFinite(scale) || scale <= 0)
-				return { v: [] as number[], h: [] as number[] }
+				return { v: [] as SnapTarget[], h: [] as SnapTarget[] }
 
 			const wrapperRect = wrapper.getBoundingClientRect()
 			const pan = viewPanRef.current
-			const v = new Set<number>()
-			const h = new Set<number>()
+			const v: SnapTarget[] = []
+			const h: SnapTarget[] = []
 
 			const nodes = wrapper.querySelectorAll<HTMLElement>('[data-tt-key]')
 			for (const el of nodes) {
 				const key = el.getAttribute('data-tt-key')
 				if (!key) continue
 				if (excludeKeys.has(key)) continue
+				if (hiddenKeySet.has(key) || lockedKeySet.has(key)) continue
+				const type = el.getAttribute('data-tt-type')
 				const r = el.getBoundingClientRect()
 				if (r.width < 2 || r.height < 2) continue
 				const areaRatio = (r.width * r.height) / (wrapperRect.width * wrapperRect.height)
@@ -1064,17 +1123,17 @@ export function ThreadRemotionPreviewCard({
 				const top = Math.round(y)
 				const bottom = Math.round(y + hh)
 				const cy = Math.round(y + hh / 2)
-				v.add(left)
-				v.add(right)
-				v.add(cx)
-				h.add(top)
-				h.add(bottom)
-				h.add(cy)
+				v.push({ pos: left, key, type, line: 'left' })
+				v.push({ pos: right, key, type, line: 'right' })
+				v.push({ pos: cx, key, type, line: 'center' })
+				h.push({ pos: top, key, type, line: 'top' })
+				h.push({ pos: bottom, key, type, line: 'bottom' })
+				h.push({ pos: cy, key, type, line: 'middle' })
 			}
 
-			return { v: Array.from(v), h: Array.from(h) }
+			return { v, h }
 		},
-		[getCanvasScale],
+		[getCanvasScale, hiddenKeySet, lockedKeySet],
 	)
 
 	const computeAbsoluteRectsForKeys = React.useCallback(
@@ -2141,6 +2200,7 @@ export function ThreadRemotionPreviewCard({
 												groupStart,
 												targetsV: buildSnapTargets(new Set(moveKeys)).v,
 												targetsH: buildSnapTargets(new Set(moveKeys)).h,
+												axisLock: null,
 												startClientX: e.clientX,
 												startClientY: e.clientY,
 												scale: safeScale,
@@ -2214,14 +2274,28 @@ export function ThreadRemotionPreviewCard({
 
 											const dx = (e.clientX - d.startClientX) / d.scale
 											const dy = (e.clientY - d.startClientY) / d.scale
+											let ndx = dx
+											let ndy = dy
 
 											const snapActive = snapEnabled && e.altKey !== true
 											const canvasW = template.compositionWidth
 											const canvasH = template.compositionHeight
 
 											if (d.kind === 'move') {
-												const rawX = Math.round(d.groupStart.x + dx)
-												const rawY = Math.round(d.groupStart.y + dy)
+												if (e.shiftKey) {
+													if (!d.axisLock) {
+														if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > 0)
+															d.axisLock = 'x'
+														else if (Math.abs(dy) > 0) d.axisLock = 'y'
+													}
+													if (d.axisLock === 'x') ndy = 0
+													if (d.axisLock === 'y') ndx = 0
+												} else {
+													d.axisLock = null
+												}
+
+												const rawX = Math.round(d.groupStart.x + ndx)
+												const rawY = Math.round(d.groupStart.y + ndy)
 												const w = d.groupStart.w
 												const h = d.groupStart.h
 												const snapped = applySnapMove({
@@ -2247,8 +2321,8 @@ export function ThreadRemotionPreviewCard({
 													const start = d.startRectsByKey[k]
 													if (!start) continue
 													nextCfg = setAbsolutePositionByKey(nextCfg, k, {
-														x: Math.round(start.x + dx + deltaX),
-														y: Math.round(start.y + dy + deltaY),
+														x: Math.round(start.x + ndx + deltaX),
+														y: Math.round(start.y + ndy + deltaY),
 													})
 												}
 												onEditCanvasConfigChange(nextCfg)
@@ -2545,12 +2619,12 @@ export function ThreadRemotionPreviewCard({
 												className="pointer-events-none"
 												style={{ position: 'absolute', inset: 0 }}
 											>
-												{snapGuides.v.map((x, idx) => (
+												{snapGuides.v.map((g, idx) => (
 													<div
 														key={`v-${idx}`}
 														style={{
 															position: 'absolute',
-															left: viewPan.x + x * canvasScale,
+															left: viewPan.x + g.pos * canvasScale,
 															top: 0,
 															bottom: 0,
 															width: 1,
@@ -2558,18 +2632,66 @@ export function ThreadRemotionPreviewCard({
 														}}
 													/>
 												))}
-												{snapGuides.h.map((y, idx) => (
+												{snapGuides.v.map((g, idx) => (
+													<div
+														key={`v-label-${idx}`}
+														style={{
+															position: 'absolute',
+															left: viewPan.x + g.pos * canvasScale + 6,
+															top: 6,
+															padding: '2px 6px',
+															background: 'rgba(2,6,23,0.75)',
+															border: '1px solid rgba(34,197,94,0.35)',
+															color: 'rgba(226,232,240,0.95)',
+															fontFamily:
+																'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+															fontSize: 10,
+															lineHeight: 1.2,
+															maxWidth: 260,
+															whiteSpace: 'nowrap',
+															overflow: 'hidden',
+															textOverflow: 'ellipsis',
+														}}
+													>
+														{g.label}
+													</div>
+												))}
+												{snapGuides.h.map((g, idx) => (
 													<div
 														key={`h-${idx}`}
 														style={{
 															position: 'absolute',
-															top: viewPan.y + y * canvasScale,
+															top: viewPan.y + g.pos * canvasScale,
 															left: 0,
 															right: 0,
 															height: 1,
 															background: 'rgba(34,197,94,0.65)',
 														}}
 													/>
+												))}
+												{snapGuides.h.map((g, idx) => (
+													<div
+														key={`h-label-${idx}`}
+														style={{
+															position: 'absolute',
+															top: viewPan.y + g.pos * canvasScale + 6,
+															left: 6,
+															padding: '2px 6px',
+															background: 'rgba(2,6,23,0.75)',
+															border: '1px solid rgba(34,197,94,0.35)',
+															color: 'rgba(226,232,240,0.95)',
+															fontFamily:
+																'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+															fontSize: 10,
+															lineHeight: 1.2,
+															maxWidth: 260,
+															whiteSpace: 'nowrap',
+															overflow: 'hidden',
+															textOverflow: 'ellipsis',
+														}}
+													>
+														{g.label}
+													</div>
 												))}
 											</div>
 										) : null}
