@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { Button } from '~/components/ui/button'
@@ -340,6 +341,21 @@ export function ThreadTemplateLibraryCard({
 							}}
 						>
 							{applyMutation.isPending ? 'Applying…' : 'Apply'}
+						</Button>
+						<Button
+							type="button"
+							variant="outline"
+							className="rounded-none font-mono text-xs uppercase"
+							disabled={!applyLibraryId || !applyVersionId}
+							asChild
+						>
+							<Link
+								to="/thread-templates/$libraryId/versions/$versionId/editor"
+								params={{ libraryId: applyLibraryId, versionId: applyVersionId }}
+								search={{ previewThreadId: threadId }}
+							>
+								Open Editor
+							</Link>
 						</Button>
 						<Button
 							type="button"

@@ -258,6 +258,7 @@ export function ThreadRemotionPreviewCard({
 	templateId,
 	templateConfig,
 	defaultMode = 'play',
+	allowEdit = true,
 	editCanvasConfig = null,
 	onEditCanvasConfigChange,
 	onEditCanvasTransaction,
@@ -280,6 +281,7 @@ export function ThreadRemotionPreviewCard({
 	templateId?: ThreadTemplateId
 	templateConfig?: ThreadVideoInputProps['templateConfig'] | null
 	defaultMode?: 'edit' | 'play'
+	allowEdit?: boolean
 	editCanvasConfig?: ThreadTemplateConfigV1 | null
 	onEditCanvasConfigChange?: (next: ThreadTemplateConfigV1) => void
 	onEditCanvasTransaction?: (phase: 'start' | 'end') => void
@@ -292,6 +294,10 @@ export function ThreadRemotionPreviewCard({
 
 	const [mode, setMode] = React.useState<'edit' | 'play'>(defaultMode)
 	const [editFrame, setEditFrame] = React.useState(0)
+
+	React.useEffect(() => {
+		if (!allowEdit && mode !== 'play') setMode('play')
+	}, [allowEdit, mode])
 
 	const timeline = React.useMemo(() => {
 		const commentsForTiming = replies.map((r) => ({
@@ -1498,17 +1504,19 @@ export function ThreadRemotionPreviewCard({
 						</div>
 					) : inputProps ? (
 						<div className="space-y-3">
-							<div className="flex flex-wrap items-center justify-between gap-2">
-								<div className="flex items-center gap-2">
-									<Button
-										type="button"
-										size="sm"
-										variant={mode === 'edit' ? 'default' : 'outline'}
-										className="rounded-none font-mono text-[10px] uppercase"
-										onClick={() => setMode('edit')}
-									>
-										Edit
-									</Button>
+								<div className="flex flex-wrap items-center justify-between gap-2">
+									<div className="flex items-center gap-2">
+									{allowEdit ? (
+										<Button
+											type="button"
+											size="sm"
+											variant={mode === 'edit' ? 'default' : 'outline'}
+											className="rounded-none font-mono text-[10px] uppercase"
+											onClick={() => setMode('edit')}
+										>
+											Edit
+										</Button>
+									) : null}
 									<Button
 										type="button"
 										size="sm"

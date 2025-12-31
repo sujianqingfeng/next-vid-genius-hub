@@ -52,6 +52,7 @@ import { Route as ApiMediaIdRenderedRouteImport } from './routes/api/media/$id/r
 import { Route as ApiMediaIdDownloadedRouteImport } from './routes/api/media/$id/downloaded'
 import { Route as ApiMediaIdCommentsDataRouteImport } from './routes/api/media/$id/comments-data'
 import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api/internal/ai/asr-provider'
+import { Route as ThreadTemplatesLibraryIdVersionsVersionIdEditorRouteImport } from './routes/thread-templates/$libraryId/versions/$versionId/editor'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -269,6 +270,12 @@ const ApiInternalAiAsrProviderRoute =
     path: '/api/internal/ai/asr-provider',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute =
+  ThreadTemplatesLibraryIdVersionsVersionIdEditorRouteImport.update({
+    id: '/thread-templates/$libraryId/versions/$versionId/editor',
+    path: '/thread-templates/$libraryId/versions/$versionId/editor',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
   '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
   '/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  '/thread-templates/$libraryId/versions/$versionId/editor': typeof ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -354,6 +362,7 @@ export interface FileRoutesByTo {
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
   '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
   '/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  '/thread-templates/$libraryId/versions/$versionId/editor': typeof ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -400,6 +409,7 @@ export interface FileRoutesById {
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
   '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
   '/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  '/thread-templates/$libraryId/versions/$versionId/editor': typeof ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -447,6 +457,7 @@ export interface FileRouteTypes {
     | '/api/media/$id/rendered'
     | '/api/media/$id/rendered-info'
     | '/api/media/$id/source'
+    | '/thread-templates/$libraryId/versions/$versionId/editor'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -487,6 +498,7 @@ export interface FileRouteTypes {
     | '/api/media/$id/rendered'
     | '/api/media/$id/rendered-info'
     | '/api/media/$id/source'
+    | '/thread-templates/$libraryId/versions/$versionId/editor'
   id:
     | '__root__'
     | '/'
@@ -532,6 +544,7 @@ export interface FileRouteTypes {
     | '/api/media/$id/rendered'
     | '/api/media/$id/rendered-info'
     | '/api/media/$id/source'
+    | '/thread-templates/$libraryId/versions/$versionId/editor'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -561,6 +574,7 @@ export interface RootRouteChildren {
   ApiMediaIdRenderedRoute: typeof ApiMediaIdRenderedRoute
   ApiMediaIdRenderedInfoRoute: typeof ApiMediaIdRenderedInfoRoute
   ApiMediaIdSourceRoute: typeof ApiMediaIdSourceRoute
+  ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute: typeof ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -866,6 +880,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalAiAsrProviderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/thread-templates/$libraryId/versions/$versionId/editor': {
+      id: '/thread-templates/$libraryId/versions/$versionId/editor'
+      path: '/thread-templates/$libraryId/versions/$versionId/editor'
+      fullPath: '/thread-templates/$libraryId/versions/$versionId/editor'
+      preLoaderRoute: typeof ThreadTemplatesLibraryIdVersionsVersionIdEditorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -980,6 +1001,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMediaIdRenderedRoute: ApiMediaIdRenderedRoute,
   ApiMediaIdRenderedInfoRoute: ApiMediaIdRenderedInfoRoute,
   ApiMediaIdSourceRoute: ApiMediaIdSourceRoute,
+  ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute:
+    ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

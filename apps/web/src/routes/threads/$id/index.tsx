@@ -6,36 +6,20 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Label } from '~/components/ui/label'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '~/components/ui/select'
 import { Textarea } from '~/components/ui/textarea'
 import { ThreadRemotionPreviewCard } from '~/components/business/threads/thread-remotion-preview-card'
-import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 import {
 	DEFAULT_THREAD_TEMPLATE_ID,
-	listThreadTemplates,
 } from '@app/remotion-project/thread-templates'
 import {
 	DEFAULT_THREAD_TEMPLATE_CONFIG,
 	normalizeThreadTemplateConfig,
 } from '@app/remotion-project/thread-template-config'
-import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
-import { collectThreadTemplateAssetIds } from '~/lib/thread/template-assets'
-import { migrateThreadTemplateConfigBuiltinsToRepeat } from '~/lib/thread/template-migrations'
-
-const IMAGE_ASSET_ID_PLACEHOLDER = '__IMAGE_ASSET_ID__'
-const VIDEO_ASSET_ID_PLACEHOLDER = '__VIDEO_ASSET_ID__'
 
 export const Route = createFileRoute('/threads/$id/')({
 	component: ThreadDetailRoute,
@@ -58,6 +42,10 @@ function firstTextBlockText(blocks: any[] | null | undefined): string {
 	if (!b) return ''
 	return String(b.data?.text ?? '')
 }
+
+/*
+Legacy thread template editor helpers (examples + config analyzer).
+Editing is now done in the dedicated template library editor page.
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -2600,6 +2588,8 @@ function analyzeThreadTemplateConfig(
 	return issues
 }
 
+*/
+
 function guessAudioContentType(file: File): string {
 	if (file.type) return file.type
 	const name = file.name.toLowerCase()
@@ -2854,26 +2844,11 @@ function ThreadDetailRoute() {
 	const setAudioAssetMutation = useEnhancedMutation(
 		queryOrpc.thread.setAudioAsset.mutationOptions(),
 	)
-	const setTemplateMutation = useEnhancedMutation(
-		queryOrpc.thread.setTemplate.mutationOptions(),
-		{
-			successToast: 'Saved template settings',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
 
 	async function refreshThread() {
 		await qc.invalidateQueries({
 			queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
 		})
-	}
-
-	async function refreshThreadAndSyncTemplateEditor() {
-		const data = await qc.fetchQuery(
-			queryOrpc.thread.byId.queryOptions({ input: { id } }),
-		)
-		if (data?.thread) syncTemplateEditorFromThread(data.thread)
 	}
 
 	async function setThreadAudio(audioAssetId: string | null) {
@@ -2936,389 +2911,23 @@ function ThreadDetailRoute() {
 		}
 	}
 
-	// ---------- Thread template ----------
-	const templates = React.useMemo(() => listThreadTemplates(), [])
-	const TEMPLATE_DEFAULT = '__default__'
-	const [templateEditorMode, setTemplateEditorMode] = React.useState<
-		'json' | 'visual'
-	>('json')
-
-	const [templateIdDraft, setTemplateIdDraft] =
-		React.useState<string>(TEMPLATE_DEFAULT)
-	const [templateConfigText, setTemplateConfigText] = React.useState<string>('')
-		const [visualTemplateConfig, setVisualTemplateConfig] =
-			React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
-		const [visualTemplateHistory, setVisualTemplateHistory] = React.useState<{
-			past: ThreadTemplateConfigV1[]
-			future: ThreadTemplateConfigV1[]
-		}>({ past: [], future: [] })
-		const visualTxnRef = React.useRef<{ base: ThreadTemplateConfigV1 } | null>(null)
-		const visualTemplateConfigRef = React.useRef<ThreadTemplateConfigV1>(
-			DEFAULT_THREAD_TEMPLATE_CONFIG,
-		)
-		const visualTemplateHistoryRef = React.useRef<{
-			past: ThreadTemplateConfigV1[]
-			future: ThreadTemplateConfigV1[]
-		}>({ past: [], future: [] })
-		React.useEffect(() => {
-			visualTemplateConfigRef.current = visualTemplateConfig
-		}, [visualTemplateConfig])
-		React.useEffect(() => {
-			visualTemplateHistoryRef.current = visualTemplateHistory
-		}, [visualTemplateHistory])
-	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(
-		null,
-	)
-
-		function syncTemplateEditorFromThread(nextThread: any) {
-		const nextTemplateId = nextThread?.templateId
-			? String(nextThread.templateId)
-			: TEMPLATE_DEFAULT
-		setTemplateIdDraft(nextTemplateId)
-		setTemplateConfigText(
-			nextThread?.templateConfig == null
-				? ''
-				: toPrettyJson(nextThread.templateConfig),
-		)
-			setVisualTemplateConfig(
-				normalizeThreadTemplateConfig(
-					nextThread?.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
-				),
-			)
-			setVisualTemplateHistory({ past: [], future: [] })
-			visualTxnRef.current = null
-		}
-
-	function suggestMediaHeight(
-		kind: 'image' | 'video',
-		width: unknown,
-		height: unknown,
-	) {
-		const w = typeof width === 'number' && Number.isFinite(width) ? width : null
-		const h =
-			typeof height === 'number' && Number.isFinite(height) ? height : null
-		if (!w || !h) return kind === 'video' ? 360 : 320
-		const ratio = w / h
-		if (kind === 'video') {
-			if (ratio >= 1.6) return 260
-			if (ratio <= 0.8) return 420
-			return 360
-		}
-		if (ratio >= 1.6) return 220
-		if (ratio <= 0.8) return 420
-		return 320
-	}
-
-	function insertTemplateText(snippet: string) {
-		const el = templateConfigTextAreaRef.current
-		const text = templateConfigText
-
-		if (!el) {
-			setTemplateConfigText(text ? `${text}\n${snippet}` : snippet)
-			return
-		}
-
-		const start =
-			typeof el.selectionStart === 'number' ? el.selectionStart : text.length
-		const end =
-			typeof el.selectionEnd === 'number' ? el.selectionEnd : text.length
-		const next = `${text.slice(0, start)}${snippet}${text.slice(end)}`
-
-		setTemplateConfigText(next)
-		requestAnimationFrame(() => {
-			el.focus()
-			const pos = start + snippet.length
-			el.selectionStart = pos
-			el.selectionEnd = pos
-		})
-	}
-
-	function replaceAssetIdPlaceholder(
-		assetId: string,
-		kind?: 'image' | 'video' | null,
-	): boolean {
-		const order =
-			kind === 'image'
-				? [IMAGE_ASSET_ID_PLACEHOLDER, VIDEO_ASSET_ID_PLACEHOLDER]
-				: kind === 'video'
-					? [VIDEO_ASSET_ID_PLACEHOLDER, IMAGE_ASSET_ID_PLACEHOLDER]
-					: [IMAGE_ASSET_ID_PLACEHOLDER, VIDEO_ASSET_ID_PLACEHOLDER]
-
-		for (const placeholder of order) {
-			if (!templateConfigText.includes(placeholder)) continue
-			setTemplateConfigText(templateConfigText.replace(placeholder, assetId))
-			return true
-		}
-		return false
-	}
-
-		React.useEffect(() => {
-			if (!thread) return
-			syncTemplateEditorFromThread(thread)
-		}, [thread?.id])
-
-		function applyVisualTemplateConfigExternal(next: ThreadTemplateConfigV1) {
-			setVisualTemplateConfig((prev) => {
-				const normalized = normalizeThreadTemplateConfig(next)
-				const txn = visualTxnRef.current
-				if (!txn) {
-					setVisualTemplateHistory((h) => ({ past: [...h.past, prev], future: [] }))
-				}
-				return normalized
-			})
-		}
-
-		function beginVisualTemplateTxn() {
-			if (visualTxnRef.current) return
-			visualTxnRef.current = { base: visualTemplateConfig }
-		}
-
-		function endVisualTemplateTxn() {
-			const txn = visualTxnRef.current
-			visualTxnRef.current = null
-			if (!txn) return
-			const before = JSON.stringify(txn.base)
-			const after = JSON.stringify(visualTemplateConfig)
-			if (before === after) return
-			setVisualTemplateHistory((h) => ({ past: [...h.past, txn.base], future: [] }))
-		}
-
-		function undoVisualTemplate() {
-			visualTxnRef.current = null
-			const h = visualTemplateHistoryRef.current
-			if (h.past.length === 0) return
-			const prev = h.past[h.past.length - 1]!
-			const cur = visualTemplateConfigRef.current
-			setVisualTemplateHistory({
-				past: h.past.slice(0, -1),
-				future: [...h.future, cur],
-			})
-			setVisualTemplateConfig(prev)
-		}
-
-		function redoVisualTemplate() {
-			visualTxnRef.current = null
-			const h = visualTemplateHistoryRef.current
-			if (h.future.length === 0) return
-			const next = h.future[h.future.length - 1]!
-			const cur = visualTemplateConfigRef.current
-			setVisualTemplateHistory({
-				past: [...h.past, cur],
-				future: h.future.slice(0, -1),
-			})
-			setVisualTemplateConfig(next)
-		}
-
-	const templateConfigParsed = React.useMemo(() => {
-		const text = templateConfigText.trim()
-		if (!text) return { value: null as unknown, error: null as string | null }
-		try {
-			return {
-				value: JSON.parse(text) as unknown,
-				error: null as string | null,
-			}
-		} catch (e) {
-			return {
-				value: undefined,
-				error: e instanceof Error ? e.message : String(e),
-			}
-		}
-	}, [templateConfigText])
-
-	const previewTemplateId =
-		templateIdDraft === TEMPLATE_DEFAULT
-			? thread?.templateId
-				? (String(thread.templateId) as any)
-				: undefined
-			: (templateIdDraft as any)
-
-	const previewTemplateConfig =
-		templateConfigParsed.value === undefined
-			? (thread?.templateConfig as any)
-			: (templateConfigParsed.value as any)
+	// ---------- Thread template (read-only) ----------
+	const effectiveTemplateIdForLibrary = React.useMemo(() => {
+		return thread?.templateId
+			? String(thread.templateId)
+			: DEFAULT_THREAD_TEMPLATE_ID
+	}, [thread?.templateId])
 
 	const normalizedTemplateConfig = React.useMemo(() => {
-		if (templateEditorMode === 'visual') return visualTemplateConfig
-		if (templateConfigParsed.value === undefined) return null
-		if (templateConfigParsed.value === null)
-			return DEFAULT_THREAD_TEMPLATE_CONFIG
-		return normalizeThreadTemplateConfig(templateConfigParsed.value)
-	}, [templateConfigParsed.value, templateEditorMode, visualTemplateConfig])
-
-	const previewTemplateConfigEffective =
-		templateEditorMode === 'visual'
-			? visualTemplateConfig
-			: previewTemplateConfig
-
-	const effectiveTemplateIdForLibrary = String(
-		previewTemplateId ?? DEFAULT_THREAD_TEMPLATE_ID,
-	)
-
-	const templateAssetIdsForPreview = React.useMemo(() => {
-		const resolved = normalizeThreadTemplateConfig(
-			previewTemplateConfigEffective,
-		)
-		return [...collectThreadTemplateAssetIds(resolved)].sort()
-	}, [previewTemplateConfigEffective])
-
-	const [extraTemplateAssetsById, setExtraTemplateAssetsById] = React.useState<
-		Map<string, any>
-	>(new Map())
-	React.useEffect(() => {
-		setExtraTemplateAssetsById(new Map())
-	}, [thread?.id])
-
-	const assetsByIdForTemplateLookup = React.useMemo(() => {
-		const m = new Map<string, any>()
-		for (const [k, v] of assetsById) m.set(k, v)
-		for (const [k, v] of extraTemplateAssetsById) m.set(k, v)
-		return m
-	}, [assetsById, extraTemplateAssetsById])
-
-	const missingTemplateAssetIds = React.useMemo(() => {
-		if (!templateAssetIdsForPreview.length) return []
-		const missing: string[] = []
-		for (const id of templateAssetIdsForPreview) {
-			if (assetsByIdForTemplateLookup.has(id)) continue
-			missing.push(id)
-		}
-		return missing
-	}, [assetsByIdForTemplateLookup, templateAssetIdsForPreview])
-
-	const [
-		debouncedMissingTemplateAssetIds,
-		setDebouncedMissingTemplateAssetIds,
-	] = React.useState<string[]>([])
-	React.useEffect(() => {
-		const t = setTimeout(() => {
-			setDebouncedMissingTemplateAssetIds(missingTemplateAssetIds)
-		}, 300)
-		return () => clearTimeout(t)
-	}, [missingTemplateAssetIds.join('|')])
-
-	const missingTemplateAssetIdsToFetch = React.useMemo(() => {
-		return debouncedMissingTemplateAssetIds.slice(0, 200)
-	}, [debouncedMissingTemplateAssetIds])
-	const missingTemplateAssetIdsOverflow =
-		debouncedMissingTemplateAssetIds.length -
-		missingTemplateAssetIdsToFetch.length
-
-	const extraTemplateAssetsQuery = useQuery(
-		queryOrpc.thread.assetsByIds.queryOptions({
-			input: { ids: missingTemplateAssetIdsToFetch },
-			enabled: missingTemplateAssetIdsToFetch.length > 0,
-		}),
-	)
-
-	React.useEffect(() => {
-		const rows = extraTemplateAssetsQuery.data?.assets ?? []
-		if (rows.length === 0) return
-		setExtraTemplateAssetsById((prev) => {
-			const next = new Map(prev)
-			for (const a of rows) next.set(String((a as any).id), a)
-			return next
-		})
-	}, [extraTemplateAssetsQuery.data?.assets])
-
-	const assetsForPreview = React.useMemo(() => {
-		const out = new Map<string, any>()
-		for (const a of assets) out.set(String(a.id), a)
-		for (const a of extraTemplateAssetsById.values()) out.set(String(a.id), a)
-		return [...out.values()]
-	}, [assets, extraTemplateAssetsById])
-
-	const assetsByIdForPreview = React.useMemo(() => {
-		const m = new Map<string, any>()
-		for (const a of assetsForPreview) m.set(String(a.id), a)
-		return m
-	}, [assetsForPreview])
-
-	const templateConfigIssues = React.useMemo(() => {
-		if (!normalizedTemplateConfig) return []
-		if (templateEditorMode === 'visual') {
-			return analyzeThreadTemplateConfig(
-				normalizedTemplateConfig,
-				normalizedTemplateConfig,
-				assetsByIdForPreview,
+		if (!thread) return null
+		try {
+			return normalizeThreadTemplateConfig(
+				thread.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
 			)
+		} catch {
+			return DEFAULT_THREAD_TEMPLATE_CONFIG
 		}
-		if (
-			templateConfigParsed.value === undefined ||
-			templateConfigParsed.value === null
-		)
-			return []
-		return analyzeThreadTemplateConfig(
-			templateConfigParsed.value,
-			normalizedTemplateConfig,
-			assetsByIdForPreview,
-		)
-	}, [
-		assetsByIdForPreview,
-		normalizedTemplateConfig,
-		templateConfigParsed.value,
-		templateEditorMode,
-	])
-
-	async function saveTemplateSettings(mode: 'raw' | 'normalized' = 'raw') {
-		if (!thread) return
-		if (templateEditorMode === 'json' && templateConfigParsed.error) {
-			toast.error(`Invalid JSON: ${templateConfigParsed.error}`)
-			return
-		}
-
-		if (mode === 'normalized' && !normalizedTemplateConfig) {
-			toast.error('Normalized config is not available')
-			return
-		}
-
-		if (
-			mode === 'normalized' &&
-			templateEditorMode === 'json' &&
-			!templateConfigText.trim()
-		) {
-			toast.error('Nothing to normalize: Config JSON is empty')
-			return
-		}
-
-		const templateId =
-			templateIdDraft === TEMPLATE_DEFAULT ? null : String(templateIdDraft)
-		const templateConfig =
-			mode === 'normalized'
-				? normalizedTemplateConfig
-				: templateEditorMode === 'visual'
-					? visualTemplateConfig
-					: templateConfigParsed.value === null
-						? null
-						: templateConfigParsed.value
-
-		if (
-			templateConfig != null &&
-			(!isPlainObject(templateConfig) || (templateConfig as any).version !== 1)
-		) {
-			toast.error('templateConfig must include "version": 1 (v1 only)')
-			return
-		}
-
-		await setTemplateMutation.mutateAsync({
-			threadId: thread.id,
-			templateId,
-			templateConfig,
-		})
-		await refreshThreadAndSyncTemplateEditor()
-	}
-
-	const normalizedTemplateConfigText = React.useMemo(() => {
-		if (!normalizedTemplateConfig) return ''
-		return toPrettyJson(normalizedTemplateConfig)
-	}, [normalizedTemplateConfig])
-
-	const canSaveNormalized =
-		Boolean(thread) &&
-		!setTemplateMutation.isPending &&
-		!(templateEditorMode === 'json' && templateConfigParsed.error) &&
-		(templateEditorMode === 'visual'
-			? true
-			: Boolean(templateConfigText.trim()))
+	}, [thread?.id, thread?.templateConfig])
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
@@ -3370,11 +2979,11 @@ function ThreadDetailRoute() {
 				<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 					{t('sections.preview')}
 				</div>
-					<ThreadRemotionPreviewCard
-						thread={thread as any}
-						root={root as any}
-						replies={replies as any}
-						assets={assetsForPreview as any}
+				<ThreadRemotionPreviewCard
+					thread={thread as any}
+					root={root as any}
+					replies={replies as any}
+					assets={assets as any}
 					audio={
 						audio?.url && audio?.asset?.durationMs
 							? {
@@ -3382,36 +2991,18 @@ function ThreadDetailRoute() {
 									durationMs: Number(audio.asset.durationMs),
 								}
 							: null
-						}
-						isLoading={dataQuery.isLoading}
-						templateId={previewTemplateId}
-						templateConfig={previewTemplateConfigEffective as any}
-						defaultMode="edit"
-						editCanvasConfig={
-							templateEditorMode === 'visual' ? (visualTemplateConfig as any) : null
-						}
-						canEditUndo={visualTemplateHistory.past.length > 0}
-						canEditRedo={visualTemplateHistory.future.length > 0}
-						onEditUndo={() => {
-							if (templateEditorMode !== 'visual') return
-							undoVisualTemplate()
-						}}
-						onEditRedo={() => {
-							if (templateEditorMode !== 'visual') return
-							redoVisualTemplate()
-						}}
-						onEditCanvasConfigChange={(next) => {
-							if (templateEditorMode !== 'visual') return
-							applyVisualTemplateConfigExternal(next)
-						}}
-						onEditCanvasTransaction={(phase) => {
-							if (templateEditorMode !== 'visual') return
-							if (phase === 'start') beginVisualTemplateTxn()
-							else endVisualTemplateTxn()
-						}}
-					/>
+					}
+					isLoading={dataQuery.isLoading}
+					templateId={effectiveTemplateIdForLibrary as any}
+					templateConfig={
+						(normalizedTemplateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG) as any
+					}
+					defaultMode="play"
+					allowEdit={false}
+				/>
 
-				<div className="mt-6">
+				{/* Legacy per-thread template editor removed; use Template Library → Open Editor instead.
+					<div className="mt-6">
 					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 						Template
 					</div>
@@ -4059,7 +3650,8 @@ function ThreadDetailRoute() {
 							</div>
 						</CardContent>
 					</Card>
-				</div>
+					</div>
+				*/}
 
 				<div className="mt-6">
 					<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -4080,7 +3672,7 @@ function ThreadDetailRoute() {
 							threadId={id}
 							effectiveTemplateId={effectiveTemplateIdForLibrary}
 							normalizedTemplateConfig={normalizedTemplateConfig}
-							onApplied={refreshThreadAndSyncTemplateEditor}
+							onApplied={refreshThread}
 						/>
 					</div>
 

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
@@ -32,6 +32,15 @@ import {
 } from '@app/remotion-project/thread-template-config'
 
 export const Route = createFileRoute('/thread-templates/')({
+	loader: async ({ context, location }) => {
+		const me = await context.queryClient.ensureQueryData(
+			queryOrpc.auth.me.queryOptions(),
+		)
+		if (!me.user) {
+			const next = location.href
+			throw redirect({ to: '/login', search: { next } })
+		}
+	},
 	component: ThreadTemplatesRoute,
 })
 
@@ -594,6 +603,23 @@ function ThreadTemplatesRoute() {
 																</span>
 															</div>
 															<div className="flex flex-wrap items-center gap-2">
+																<Button
+																	type="button"
+																	size="sm"
+																	variant="outline"
+																	className="rounded-none font-mono text-[10px] uppercase"
+																	asChild
+																>
+																	<Link
+																		to="/thread-templates/$libraryId/versions/$versionId/editor"
+																		params={{
+																			libraryId: selectedLibraryId,
+																			versionId: String(v.id),
+																		}}
+																	>
+																		Open Editor
+																	</Link>
+																</Button>
 																<Button
 																	type="button"
 																	size="sm"
