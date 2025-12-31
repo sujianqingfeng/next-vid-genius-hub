@@ -339,7 +339,7 @@ V2（可视化编辑器）：
   - resize handles 仅对 primary 选中的 `Absolute` 生效
 - 画布导航（View）：
   - `Tool: Select/Pan`（Pan 支持拖拽平移）
-  - `Zoom: - / Fit / +`（Pan 模式下可滚轮缩放；或 `Ctrl/Meta + Wheel`）
+  - `Zoom: 50 / 100 / 200 / - / Fit / Sel / +`（Pan 模式下可滚轮缩放；或 `Ctrl/Meta + Wheel`）
 - 对齐/分布：
   - `Align`：L / HC / R / T / VC / B（按选中集合外接框对齐）
   - `Distribute`：H / V（按间距分布，需 ≥3 个 `Absolute`）

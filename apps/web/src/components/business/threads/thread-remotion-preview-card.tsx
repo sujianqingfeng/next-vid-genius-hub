@@ -878,6 +878,37 @@ export function ThreadRemotionPreviewCard({
 		setViewPan({ x: 0, y: 0 })
 	}, [])
 
+	const fitSelection = React.useCallback(() => {
+		const wrapper = previewWrapperRef.current
+		if (!wrapper) return
+		const box = groupBox ?? primaryBox
+		if (!box) return
+
+		const rect = wrapper.getBoundingClientRect()
+		const pad = 24
+		const prevScale = viewScaleRef.current
+		const prevPan = viewPanRef.current
+		if (!Number.isFinite(prevScale) || prevScale <= 0) return
+
+		const contentX = (box.x - prevPan.x) / prevScale
+		const contentY = (box.y - prevPan.y) / prevScale
+		const contentW = Math.max(1, box.w / prevScale)
+		const contentH = Math.max(1, box.h / prevScale)
+
+		const availW = Math.max(1, rect.width - pad * 2)
+		const availH = Math.max(1, rect.height - pad * 2)
+		const nextScaleRaw = Math.min(availW / contentW, availH / contentH)
+		const nextScale = Math.max(0.25, Math.min(4, nextScaleRaw))
+
+		const targetX = (rect.width - contentW * nextScale) / 2
+		const targetY = (rect.height - contentH * nextScale) / 2
+		const nextPanX = targetX - contentX * nextScale
+		const nextPanY = targetY - contentY * nextScale
+
+		setViewScale(nextScale)
+		setViewPan({ x: Math.round(nextPanX), y: Math.round(nextPanY) })
+	}, [groupBox, primaryBox])
+
 	const applySnapMove = React.useCallback(
 		(input: {
 			x: number
@@ -1528,6 +1559,24 @@ export function ThreadRemotionPreviewCard({
 											size="sm"
 											variant="outline"
 											className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+											onClick={() => setViewScaleWithAnchor(0.5)}
+										>
+											50
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+											onClick={() => setViewScaleWithAnchor(2)}
+										>
+											200
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
 											onClick={() => setViewScaleWithAnchor(viewScale / 1.1)}
 										>
 											-
@@ -1537,9 +1586,31 @@ export function ThreadRemotionPreviewCard({
 											size="sm"
 											variant="outline"
 											className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+											onClick={() => {
+												setViewScaleWithAnchor(1)
+												setViewPan({ x: 0, y: 0 })
+											}}
+										>
+											100
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
 											onClick={resetView}
 										>
 											Fit
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+											disabled={(!groupBox && !primaryBox) || selectedKeys.length === 0}
+											onClick={fitSelection}
+										>
+											Sel
 										</Button>
 										<Button
 											type="button"
