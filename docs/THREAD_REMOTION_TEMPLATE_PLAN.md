@@ -188,6 +188,88 @@ V2（可视化编辑器）：
 - 右侧属性面板（gap/padding/colors/fontScale…）
 - 实时 Player 预览（本地 state 直接喂 Player，不必每次保存）
 
+## V2.5（推荐）：Edit 画布（Thumbnail）+ Play 预览（Player）
+
+背景：当前预览用 `@remotion/player` 的 `Player`，天然是“播放器”，会带来 click-to-play/空格快捷键/控件遮挡等交互冲突；而布局编辑更像“画布”操作（点选、拖拽、对齐、精调），更适合用静态帧渲染。
+
+目标：在 thread 模板编辑页面实现两种预览模式：
+
+- `Edit`：用 `@remotion/player` 的 `Thumbnail` 渲染单帧静态画布，支持：
+  - 选择场景（Cover/Post）
+  - 拖动 frame 滑条选择任意帧（冻结画面）
+  - 点选节点（后续：仅 `Absolute` 支持拖拽移动）
+- `Play`：用 `Player` 进行播放检查（动效/节奏/时长），编辑交互在该模式下关闭或弱化。
+
+### 关键设计点
+
+1. **单帧画布**：Edit 模式用 `Thumbnail` 的 `frameToDisplay` 冻结画面，避免每帧变化导致编辑反馈不稳定。
+2. **Frame 滑条**：Edit 模式提供 `frame` slider（范围 `0..durationInFrames-1`）。
+   - 支持快捷跳转：Cover 起始帧、Post 起始帧。
+   - 可选：显示当前帧对应的 scene（Cover/Post）提示。
+3. **scene 与 frame 的关系**：
+   - 最小实现：`scene` 仅用于“节点选择/编辑器状态”（比如选中 cover/post 树），`frame` 仅用于画布展示。
+   - 推荐实现：`scene` 与 `frame` 双向绑定：
+     - 切换 `scene=cover` 自动跳 `frame=0`
+     - 切换 `scene=post` 自动跳 `frame=coverDurationInFrames`（或 `+1`）
+     - 拖动 `frame` 时可推断当前 scene（`frame < coverDuration` → cover，否则 post），并更新 `scene`（但要避免来回抖动：可加阈值或只在用户拖动时更新）。
+4. **坐标换算**（为 Absolute 拖拽做准备）：
+   - 通过 `Thumbnail` ref 的 `getScale()`（或容器尺寸/compositionWidth 的比值）把屏幕像素 delta 转换为 composition 坐标 delta。
+5. **节点可选中标记**：
+   - 在 Remotion 模板渲染时给每个节点可点击 DOM 打 `data-tt-key`（包含 `scene + path`）和 `data-tt-type`（节点类型），Edit 画布用 `closest('[data-tt-key]')` 定位选中节点。
+   - Repeat/Builtin：第一版先按“模板节点”维度选中（不区分每个重复实例）；后续再扩展“实例选择”（instance index）。
+
+### 文件与改动点（第一版）
+
+- 预览组件：
+  - `apps/web/src/components/business/threads/thread-remotion-preview-card.tsx`
+    - 新增 `mode: 'edit' | 'play'`
+    - `edit`：渲染 `Thumbnail`（frameToDisplay 可控）
+    - `play`：保留 `Player`（controls/loop 仅在 play 开启）
+    - 新增 `frame`、`scene` 状态（或由外部传入），以及 UI（slider + scene buttons）
+    - 暴露 `onSceneChange/onFrameChange`（可选），为路由页联动提供接口
+- 线程详情页：
+  - `apps/web/src/routes/threads/$id/index.tsx`
+    - 在 Preview 区块增加 `Edit/Play` 切换
+    - Edit 默认；Play 仅用于检查
+    - 把 `scene/frame/mode` 状态传给 `ThreadRemotionPreviewCard`
+- Remotion 模板打标记：
+  - `packages/remotion-project/remotion/ThreadForumVideo.tsx`
+    - 在 `renderThreadTemplateNode()` 渲染每个节点时，给对应 DOM 根元素附加：
+      - `data-tt-key`：建议形如 `cover:children.0.children.2`（与 Web 端 pathKey 一致）
+      - `data-tt-type`：如 `Absolute/Text/Image`
+      - 可选：`data-tt-scene`（cover/post）
+
+### 交互实现步骤（MVP → 可用）
+
+1. **引入 Thumbnail 并切模式**
+   - Edit 模式：静态画布（Thumbnail）
+   - Play 模式：播放器（Player）
+2. **Frame 滑条**
+   - slider：`min=0`、`max=durationInFrames-1`、`value=frame`
+   - 显示：`frame / duration`（可选：显示时间 `frame/fps`）
+3. **Scene 切换**
+   - buttons：Cover/Post
+   - 点击时更新 scene，并（推荐）跳转到对应起始 frame
+4. **点选节点（先不拖拽）**
+   - Edit 画布外层加 overlay 捕获 pointer 事件
+   - `event.target.closest('[data-tt-key]')` → setSelectedKey
+   - 选中后在画布绘制高亮框（读取目标元素 `getBoundingClientRect()` 转成 overlay 坐标）
+5. **拖拽 Absolute（第二小步）**
+   - 仅当选中节点 `data-tt-type==='Absolute'` 时启用拖拽
+   - 拖拽结束一次性提交到 `visualTemplateConfig`（避免每像素都写 history）
+   - 更新 config：通过 `scene + path` 找到节点并修改 `x/y`
+
+### 验收标准
+
+- Edit 模式：
+  - slider 拖动时画布稳定刷新到对应帧，无播放控件干扰。
+  - Cover/Post 切换可用，且能快速跳到对应段落。
+- Play 模式：
+  - 仍可播放预览，不影响现有渲染逻辑。
+- 点选（与后续拖拽）：
+  - 点击画面元素能选中对应节点，并在画布显示高亮框。
+  - 仅 Absolute 节点支持拖拽移动，拖拽后预览立刻更新，保存后刷新仍生效。
+
 ## ORPC 接口（建议补齐）
 
 - `thread.setTemplate`：
@@ -236,6 +318,36 @@ V2（可视化编辑器）：
 - 内容：`ContentBlocks`（支持 `opacity`）
 - 媒体：`Image`、`Video`（仅允许 `assetId` → `assetsMap`，不允许外链 URL）
   - `Image` / `Video`：支持 `opacity` / `position` / `blur`（用于蒙版/裁剪对齐/模糊）
+
+### Edit 画布（Thumbnail）交互
+
+- `Edit/Play` 双模式：
+  - `Edit`：`Thumbnail` 单帧画布（`frameToDisplay`）
+  - `Play`：`Player` 播放检查（带 controls）
+- 帧选择：`frame` slider（支持快速跳转 `Cover` / `Post` 起始帧）
+- 画布点选/悬停：
+  - Remotion 侧为节点打 `data-tt-key` / `data-tt-type`，Web 侧用 `closest('[data-tt-key]')` 选中
+  - hover/selection 都会绘制 overlay 高亮框
+- 多选（Figma 风格基础版）：
+  - `Shift+Click`：切换选中
+  - 画布空白处拖拽：框选（`Shift` 为 additive）
+- 选择体验增强：
+  - 框选命中：与框相交即可命中（不再依赖中心点）
+  - 重叠元素点选：连续点击同一位置会循环选中（click-through）
+- 拖拽/缩放：
+  - 多选时拖拽会移动所有选中的 `Absolute`（统一 delta）
+  - resize handles 仅对 primary 选中的 `Absolute` 生效
+- 画布导航（View）：
+  - `Tool: Select/Pan`（Pan 支持拖拽平移）
+  - `Zoom: - / Fit / +`（Pan 模式下可滚轮缩放；或 `Ctrl/Meta + Wheel`）
+- 对齐/分布：
+  - `Align`：L / HC / R / T / VC / B（按选中集合外接框对齐）
+  - `Distribute`：H / V（按间距分布，需 ≥3 个 `Absolute`）
+- Snap：
+  - 支持对齐到画布边/中心与其他元素参考线
+  - `Alt` 临时禁用 snapping；同时提供开关
+- Undo/Redo：
+  - 预览画布与 Visual 编辑器共用同一份 history（拖拽/缩放一次只入栈一次）
 - 水印：`Watermark`（由 `brand.showWatermark` + `brand.watermarkText` 控制）
 - 辅助：`Spacer`、`Divider`
 - 内置：`Builtin(cover)`、`Builtin(repliesList)`

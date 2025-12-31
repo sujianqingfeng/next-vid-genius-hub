@@ -2946,13 +2946,31 @@ function ThreadDetailRoute() {
 	const [templateIdDraft, setTemplateIdDraft] =
 		React.useState<string>(TEMPLATE_DEFAULT)
 	const [templateConfigText, setTemplateConfigText] = React.useState<string>('')
-	const [visualTemplateConfig, setVisualTemplateConfig] =
-		React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
+		const [visualTemplateConfig, setVisualTemplateConfig] =
+			React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
+		const [visualTemplateHistory, setVisualTemplateHistory] = React.useState<{
+			past: ThreadTemplateConfigV1[]
+			future: ThreadTemplateConfigV1[]
+		}>({ past: [], future: [] })
+		const visualTxnRef = React.useRef<{ base: ThreadTemplateConfigV1 } | null>(null)
+		const visualTemplateConfigRef = React.useRef<ThreadTemplateConfigV1>(
+			DEFAULT_THREAD_TEMPLATE_CONFIG,
+		)
+		const visualTemplateHistoryRef = React.useRef<{
+			past: ThreadTemplateConfigV1[]
+			future: ThreadTemplateConfigV1[]
+		}>({ past: [], future: [] })
+		React.useEffect(() => {
+			visualTemplateConfigRef.current = visualTemplateConfig
+		}, [visualTemplateConfig])
+		React.useEffect(() => {
+			visualTemplateHistoryRef.current = visualTemplateHistory
+		}, [visualTemplateHistory])
 	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(
 		null,
 	)
 
-	function syncTemplateEditorFromThread(nextThread: any) {
+		function syncTemplateEditorFromThread(nextThread: any) {
 		const nextTemplateId = nextThread?.templateId
 			? String(nextThread.templateId)
 			: TEMPLATE_DEFAULT
@@ -2962,12 +2980,14 @@ function ThreadDetailRoute() {
 				? ''
 				: toPrettyJson(nextThread.templateConfig),
 		)
-		setVisualTemplateConfig(
-			normalizeThreadTemplateConfig(
-				nextThread?.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
-			),
-		)
-	}
+			setVisualTemplateConfig(
+				normalizeThreadTemplateConfig(
+					nextThread?.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
+				),
+			)
+			setVisualTemplateHistory({ past: [], future: [] })
+			visualTxnRef.current = null
+		}
 
 	function suggestMediaHeight(
 		kind: 'image' | 'video',
@@ -3032,10 +3052,62 @@ function ThreadDetailRoute() {
 		return false
 	}
 
-	React.useEffect(() => {
-		if (!thread) return
-		syncTemplateEditorFromThread(thread)
-	}, [thread?.id])
+		React.useEffect(() => {
+			if (!thread) return
+			syncTemplateEditorFromThread(thread)
+		}, [thread?.id])
+
+		function applyVisualTemplateConfigExternal(next: ThreadTemplateConfigV1) {
+			setVisualTemplateConfig((prev) => {
+				const normalized = normalizeThreadTemplateConfig(next)
+				const txn = visualTxnRef.current
+				if (!txn) {
+					setVisualTemplateHistory((h) => ({ past: [...h.past, prev], future: [] }))
+				}
+				return normalized
+			})
+		}
+
+		function beginVisualTemplateTxn() {
+			if (visualTxnRef.current) return
+			visualTxnRef.current = { base: visualTemplateConfig }
+		}
+
+		function endVisualTemplateTxn() {
+			const txn = visualTxnRef.current
+			visualTxnRef.current = null
+			if (!txn) return
+			const before = JSON.stringify(txn.base)
+			const after = JSON.stringify(visualTemplateConfig)
+			if (before === after) return
+			setVisualTemplateHistory((h) => ({ past: [...h.past, txn.base], future: [] }))
+		}
+
+		function undoVisualTemplate() {
+			visualTxnRef.current = null
+			const h = visualTemplateHistoryRef.current
+			if (h.past.length === 0) return
+			const prev = h.past[h.past.length - 1]!
+			const cur = visualTemplateConfigRef.current
+			setVisualTemplateHistory({
+				past: h.past.slice(0, -1),
+				future: [...h.future, cur],
+			})
+			setVisualTemplateConfig(prev)
+		}
+
+		function redoVisualTemplate() {
+			visualTxnRef.current = null
+			const h = visualTemplateHistoryRef.current
+			if (h.future.length === 0) return
+			const next = h.future[h.future.length - 1]!
+			const cur = visualTemplateConfigRef.current
+			setVisualTemplateHistory({
+				past: [...h.past, cur],
+				future: h.future.slice(0, -1),
+			})
+			setVisualTemplateConfig(next)
+		}
 
 	const templateConfigParsed = React.useMemo(() => {
 		const text = templateConfigText.trim()
@@ -3298,11 +3370,11 @@ function ThreadDetailRoute() {
 				<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 					{t('sections.preview')}
 				</div>
-				<ThreadRemotionPreviewCard
-					thread={thread as any}
-					root={root as any}
-					replies={replies as any}
-					assets={assetsForPreview as any}
+					<ThreadRemotionPreviewCard
+						thread={thread as any}
+						root={root as any}
+						replies={replies as any}
+						assets={assetsForPreview as any}
 					audio={
 						audio?.url && audio?.asset?.durationMs
 							? {
@@ -3310,11 +3382,34 @@ function ThreadDetailRoute() {
 									durationMs: Number(audio.asset.durationMs),
 								}
 							: null
-					}
-					isLoading={dataQuery.isLoading}
-					templateId={previewTemplateId}
-					templateConfig={previewTemplateConfigEffective as any}
-				/>
+						}
+						isLoading={dataQuery.isLoading}
+						templateId={previewTemplateId}
+						templateConfig={previewTemplateConfigEffective as any}
+						defaultMode="edit"
+						editCanvasConfig={
+							templateEditorMode === 'visual' ? (visualTemplateConfig as any) : null
+						}
+						canEditUndo={visualTemplateHistory.past.length > 0}
+						canEditRedo={visualTemplateHistory.future.length > 0}
+						onEditUndo={() => {
+							if (templateEditorMode !== 'visual') return
+							undoVisualTemplate()
+						}}
+						onEditRedo={() => {
+							if (templateEditorMode !== 'visual') return
+							redoVisualTemplate()
+						}}
+						onEditCanvasConfigChange={(next) => {
+							if (templateEditorMode !== 'visual') return
+							applyVisualTemplateConfigExternal(next)
+						}}
+						onEditCanvasTransaction={(phase) => {
+							if (templateEditorMode !== 'visual') return
+							if (phase === 'start') beginVisualTemplateTxn()
+							else endVisualTemplateTxn()
+						}}
+					/>
 
 				<div className="mt-6">
 					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -3426,15 +3521,16 @@ function ThreadDetailRoute() {
 												</div>
 											</div>
 
-											<ThreadTemplateVisualEditor
-												value={visualTemplateConfig}
-												onChange={(next) =>
-													setVisualTemplateConfig(
-														normalizeThreadTemplateConfig(next),
-													)
-												}
-												assets={assetsForPreview as any}
-											/>
+										<ThreadTemplateVisualEditor
+											value={visualTemplateConfig}
+											onChange={(next) =>
+												setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
+											}
+											assets={assetsForPreview as any}
+											historyState={visualTemplateHistory}
+											setHistoryState={setVisualTemplateHistory}
+											resetKey={String(thread?.id ?? '')}
+										/>
 										</TabsContent>
 
 										<TabsContent value="json" className="space-y-2">

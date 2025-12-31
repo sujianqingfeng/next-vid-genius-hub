@@ -112,9 +112,14 @@ function renderThreadTemplateNode(
 		replyDurationsInFrames: number[]
 		fps: number
 	},
-	opts?: { isRoot?: boolean },
+	opts?: { isRoot?: boolean; path?: Array<string | number> },
 ): React.ReactNode {
 	if (!node) return null
+	const path = opts?.path ?? []
+	const key =
+		ctx.scene && (ctx.scene === 'cover' || ctx.scene === 'post')
+			? `${ctx.scene}:${JSON.stringify(path)}`
+			: undefined
 
 	if (node.type === 'Background') {
 		const url = node.assetId
@@ -180,8 +185,10 @@ function renderThreadTemplateNode(
 					assets={ctx.assets}
 					fps={ctx.fps}
 					rootRoot={node.rootRoot}
+					rootRootPath={[...path, 'rootRoot']}
 					wrapRootRoot={node.wrapRootRoot}
 					itemRoot={node.itemRoot}
+					itemRootPath={[...path, 'itemRoot']}
 					wrapItemRoot={node.wrapItemRoot}
 					repliesGap={node.gap}
 					repliesHighlight={node.highlight}
@@ -211,6 +218,7 @@ function renderThreadTemplateNode(
 					assets={ctx.assets}
 					fps={ctx.fps}
 					rootRoot={node.rootRoot}
+					rootRootPath={[...path, 'rootRoot']}
 					wrapRootRoot={node.wrapRootRoot ?? false}
 				/>
 			)
@@ -227,6 +235,7 @@ function renderThreadTemplateNode(
 					assets={ctx.assets}
 					fps={ctx.fps}
 					itemRoot={node.itemRoot}
+					itemRootPath={[...path, 'itemRoot']}
 					wrapItemRoot={node.wrapItemRoot ?? false}
 					gap={node.gap}
 					highlight={node.highlight}
@@ -252,6 +261,7 @@ function renderThreadTemplateNode(
 				assets={ctx.assets}
 				fps={ctx.fps}
 				itemRoot={node.itemRoot}
+				itemRootPath={[...path, 'itemRoot']}
 				wrapItemRoot={node.wrapItemRoot}
 				gap={node.gap}
 				scroll={node.scroll}
@@ -356,7 +366,11 @@ function renderThreadTemplateNode(
 			style.overflow = 'hidden'
 		}
 
-		return <p style={style}>{text}</p>
+		return (
+			<p data-tt-key={key} data-tt-type="Text" style={style}>
+				{text}
+			</p>
+		)
 	}
 
 	if (node.type === 'Metrics') {
@@ -379,6 +393,8 @@ function renderThreadTemplateNode(
 
 		return (
 			<div
+				data-tt-key={key}
+				data-tt-type="Metrics"
 				style={{
 					display: 'flex',
 					alignItems: 'center',
@@ -436,6 +452,8 @@ function renderThreadTemplateNode(
 
 		return (
 			<div
+				data-tt-key={key}
+				data-tt-type="Watermark"
 				style={{
 					position: 'absolute',
 					...placement,
@@ -474,6 +492,8 @@ function renderThreadTemplateNode(
 			return (
 				<Img
 					src={url}
+					data-tt-key={key}
+					data-tt-type="Avatar"
 					style={{
 						width: size,
 						height: size,
@@ -495,6 +515,8 @@ function renderThreadTemplateNode(
 		const fallback = resolveAvatarFallback(fallbackName)
 		return (
 			<div
+				data-tt-key={key}
+				data-tt-type="Avatar"
 				style={{
 					width: size,
 					height: size,
@@ -533,6 +555,8 @@ function renderThreadTemplateNode(
 
 		return (
 			<div
+				data-tt-key={key}
+				data-tt-type="ContentBlocks"
 				style={{
 					display: 'flex',
 					flexDirection: 'column',
@@ -567,6 +591,8 @@ function renderThreadTemplateNode(
 			return (
 				<Img
 					src={url}
+					data-tt-key={key}
+					data-tt-type="Image"
 					style={{
 						display: 'block',
 						width: width ?? '100%',
@@ -585,6 +611,8 @@ function renderThreadTemplateNode(
 
 		return (
 			<div
+				data-tt-key={key}
+				data-tt-type="Image"
 				style={{
 					border: border ?? '1px dashed var(--tf-border)',
 					background,
@@ -629,6 +657,8 @@ function renderThreadTemplateNode(
 				<Video
 					src={url}
 					muted
+					data-tt-key={key}
+					data-tt-type="Video"
 					style={{
 						display: 'block',
 						width: width ?? '100%',
@@ -647,6 +677,8 @@ function renderThreadTemplateNode(
 
 		return (
 			<div
+				data-tt-key={key}
+				data-tt-type="Video"
 				style={{
 					border: border ?? '1px dashed var(--tf-border)',
 					background: 'rgba(255,255,255,0.02)',
@@ -687,6 +719,8 @@ function renderThreadTemplateNode(
 
 		return (
 			<div
+				data-tt-key={key}
+				data-tt-type="Spacer"
 				style={{
 					width,
 					height,
@@ -725,7 +759,7 @@ function renderThreadTemplateNode(
 						flex: '0 0 auto',
 					}
 
-		return <div style={style} />
+		return <div data-tt-key={key} data-tt-type="Divider" style={style} />
 	}
 
 	if (node.type === 'Stack') {
@@ -833,15 +867,25 @@ function renderThreadTemplateNode(
 		const children = (node.children ?? []).map(
 			(c: ThreadRenderTreeNode, idx: number) => (
 				<React.Fragment key={idx}>
-					{renderThreadTemplateNode(c, ctx)}
+					{renderThreadTemplateNode(c, ctx, {
+						path: [...path, 'children', idx],
+					})}
 				</React.Fragment>
 			),
 		)
 
 		if (opts?.isRoot) {
-			return <AbsoluteFill style={style}>{children}</AbsoluteFill>
+			return (
+				<AbsoluteFill data-tt-key={key} data-tt-type="Stack" style={style}>
+					{children}
+				</AbsoluteFill>
+			)
 		}
-		return <div style={style}>{children}</div>
+		return (
+			<div data-tt-key={key} data-tt-type="Stack" style={style}>
+				{children}
+			</div>
+		)
 	}
 
 	if (node.type === 'Grid') {
@@ -952,15 +996,25 @@ function renderThreadTemplateNode(
 		const children = (node.children ?? []).map(
 			(c: ThreadRenderTreeNode, idx: number) => (
 				<React.Fragment key={idx}>
-					{renderThreadTemplateNode(c, ctx)}
+					{renderThreadTemplateNode(c, ctx, {
+						path: [...path, 'children', idx],
+					})}
 				</React.Fragment>
 			),
 		)
 
 		if (opts?.isRoot) {
-			return <AbsoluteFill style={style}>{children}</AbsoluteFill>
+			return (
+				<AbsoluteFill data-tt-key={key} data-tt-type="Grid" style={style}>
+					{children}
+				</AbsoluteFill>
+			)
 		}
-		return <div style={style}>{children}</div>
+		return (
+			<div data-tt-key={key} data-tt-type="Grid" style={style}>
+				{children}
+			</div>
+		)
 	}
 
 	if (node.type === 'Absolute') {
@@ -998,12 +1052,18 @@ function renderThreadTemplateNode(
 		const children = (node.children ?? []).map(
 			(c: ThreadRenderTreeNode, idx: number) => (
 				<React.Fragment key={idx}>
-					{renderThreadTemplateNode(c, ctx)}
+					{renderThreadTemplateNode(c, ctx, {
+						path: [...path, 'children', idx],
+					})}
 				</React.Fragment>
 			),
 		)
 
-		return <div style={style}>{children}</div>
+		return (
+			<div data-tt-key={key} data-tt-type="Absolute" style={style}>
+				{children}
+			</div>
+		)
 	}
 
 	if (node.type === 'Box') {
@@ -1075,13 +1135,23 @@ function renderThreadTemplateNode(
 		const children = (node.children ?? []).map(
 			(c: ThreadRenderTreeNode, idx: number) => (
 				<React.Fragment key={idx}>
-					{renderThreadTemplateNode(c, ctx)}
+					{renderThreadTemplateNode(c, ctx, {
+						path: [...path, 'children', idx],
+					})}
 				</React.Fragment>
 			),
 		)
 		if (opts?.isRoot)
-			return <AbsoluteFill style={style}>{children}</AbsoluteFill>
-		return <div style={style}>{children}</div>
+			return (
+				<AbsoluteFill data-tt-key={key} data-tt-type="Box" style={style}>
+					{children}
+				</AbsoluteFill>
+			)
+		return (
+			<div data-tt-key={key} data-tt-type="Box" style={style}>
+				{children}
+			</div>
+		)
 	}
 
 	return null
@@ -1591,6 +1661,7 @@ function RepliesListRootPost({
 	assets,
 	fps,
 	rootRoot,
+	rootRootPath,
 	wrapRootRoot,
 }: {
 	templateConfig: ThreadVideoInputProps['templateConfig'] | undefined
@@ -1603,6 +1674,7 @@ function RepliesListRootPost({
 	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
 	rootRoot?: ThreadRenderTreeNode
+	rootRootPath?: Array<string | number>
 	wrapRootRoot?: boolean
 }) {
 	const frame = useCurrentFrame()
@@ -1616,17 +1688,23 @@ function RepliesListRootPost({
 	if (rootRoot) {
 		const inner = (
 			<>
-				{renderThreadTemplateNode(rootRoot, {
-					templateConfig,
-					thread,
-					root,
-					post: root,
-					replies,
-					assets,
-					coverDurationInFrames,
-					replyDurationsInFrames,
-					fps,
-				})}
+				{renderThreadTemplateNode(
+					rootRoot,
+					{
+						templateConfig,
+						scene: 'post',
+						frame,
+						thread,
+						root,
+						post: root,
+						replies,
+						assets,
+						coverDurationInFrames,
+						replyDurationsInFrames,
+						fps,
+					},
+					{ path: rootRootPath },
+				)}
 			</>
 		)
 
@@ -1670,6 +1748,7 @@ function RepliesListReplies({
 	assets,
 	fps,
 	itemRoot,
+	itemRootPath,
 	wrapItemRoot,
 	gap,
 	highlight,
@@ -1683,6 +1762,7 @@ function RepliesListReplies({
 	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
 	itemRoot?: ThreadRenderTreeNode
+	itemRootPath?: Array<string | number>
 	wrapItemRoot?: boolean
 	gap?: number
 	highlight?: {
@@ -1849,44 +1929,54 @@ function RepliesListReplies({
 								/>
 							)
 						})()}
-						{itemRoot ? (
-							wrapItemRoot ? (
-								<div
+							{itemRoot ? (
+								wrapItemRoot ? (
+									<div
 									style={{
 										border: '1px solid var(--tf-border)',
 										background: 'var(--tf-surface)',
 										padding: 28,
 										boxSizing: 'border-box',
 									}}
-								>
-									{renderThreadTemplateNode(itemRoot, {
-										templateConfig,
-										thread,
-										root,
-										post: reply,
-										replies,
-										assets,
-										coverDurationInFrames,
-										replyDurationsInFrames,
-										fps,
-									})}
-								</div>
+									>
+										{renderThreadTemplateNode(
+											itemRoot,
+											{
+												templateConfig,
+												scene: 'post',
+												thread,
+												root,
+												post: reply,
+												replies,
+												assets,
+												coverDurationInFrames,
+												replyDurationsInFrames,
+												fps,
+											},
+											{ path: itemRootPath },
+										)}
+									</div>
+								) : (
+									<>
+										{renderThreadTemplateNode(
+											itemRoot,
+											{
+												templateConfig,
+												scene: 'post',
+												thread,
+												root,
+												post: reply,
+												replies,
+												assets,
+												coverDurationInFrames,
+												replyDurationsInFrames,
+												fps,
+											},
+											{ path: itemRootPath },
+										)}
+									</>
+								)
 							) : (
-								<>
-									{renderThreadTemplateNode(itemRoot, {
-										templateConfig,
-										thread,
-										root,
-										post: reply,
-										replies,
-										assets,
-										coverDurationInFrames,
-										replyDurationsInFrames,
-										fps,
-									})}
-								</>
-							)
-						) : (
 							<PostCard
 								post={reply as any}
 								assets={assets}
@@ -1916,6 +2006,7 @@ function RepliesRepeat({
 	assets,
 	fps,
 	itemRoot,
+	itemRootPath,
 	wrapItemRoot,
 	gap,
 	scroll,
@@ -1933,6 +2024,7 @@ function RepliesRepeat({
 	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
 	itemRoot: ThreadRenderTreeNode
+	itemRootPath?: Array<string | number>
 	wrapItemRoot?: boolean
 	gap?: number
 	scroll?: boolean
@@ -2126,39 +2218,47 @@ function RepliesRepeat({
 								/>
 							)
 						})()}
-						{chrome ? (
-							<div style={chrome}>
-								{renderThreadTemplateNode(itemRoot, {
-									templateConfig,
-									scene: 'post',
-									frame,
-									thread,
-									root,
-									post: reply,
-									replies,
-									assets,
-									coverDurationInFrames,
-									replyDurationsInFrames,
-									fps,
-								})}
-							</div>
-						) : (
-							<>
-								{renderThreadTemplateNode(itemRoot, {
-									templateConfig,
-									scene: 'post',
-									frame,
-									thread,
-									root,
-									post: reply,
-									replies,
-									assets,
-									coverDurationInFrames,
-									replyDurationsInFrames,
-									fps,
-								})}
-							</>
-						)}
+							{chrome ? (
+								<div style={chrome}>
+									{renderThreadTemplateNode(
+										itemRoot,
+										{
+											templateConfig,
+											scene: 'post',
+											frame,
+											thread,
+											root,
+											post: reply,
+											replies,
+											assets,
+											coverDurationInFrames,
+											replyDurationsInFrames,
+											fps,
+										},
+										{ path: itemRootPath },
+									)}
+								</div>
+							) : (
+								<>
+									{renderThreadTemplateNode(
+										itemRoot,
+										{
+											templateConfig,
+											scene: 'post',
+											frame,
+											thread,
+											root,
+											post: reply,
+											replies,
+											assets,
+											coverDurationInFrames,
+											replyDurationsInFrames,
+											fps,
+										},
+										{ path: itemRootPath },
+									)}
+								</>
+							)}
 					</div>
 				))}
 			</div>
@@ -2386,8 +2486,10 @@ function RepliesListSlide({
 	assets,
 	fps,
 	rootRoot,
+	rootRootPath,
 	wrapRootRoot,
 	itemRoot,
+	itemRootPath,
 	wrapItemRoot,
 	repliesGap,
 	repliesHighlight,
@@ -2401,8 +2503,10 @@ function RepliesListSlide({
 	assets: ThreadVideoInputProps['assets'] | undefined
 	fps: number
 	rootRoot?: ThreadRenderTreeNode
+	rootRootPath?: Array<string | number>
 	wrapRootRoot?: boolean
 	itemRoot?: ThreadRenderTreeNode
+	itemRootPath?: Array<string | number>
 	wrapItemRoot?: boolean
 	repliesGap?: number
 	repliesHighlight?: {
@@ -2446,18 +2550,19 @@ function RepliesListSlide({
 				}}
 			>
 				<div style={{ flex: '0 0 58%', minHeight: 0 }}>
-					<RepliesListRootPost
-						templateConfig={templateConfig}
-						thread={thread}
-						root={root}
+						<RepliesListRootPost
+							templateConfig={templateConfig}
+							thread={thread}
+							root={root}
 						replies={replies}
 						replyDurationsInFrames={replyDurationsInFrames}
 						coverDurationInFrames={coverDurationInFrames}
-						assets={assets}
-						fps={fps}
-						rootRoot={rootRoot}
-						wrapRootRoot={wrapRootRoot ?? Boolean(rootRoot)}
-					/>
+							assets={assets}
+							fps={fps}
+							rootRoot={rootRoot}
+							rootRootPath={rootRootPath}
+							wrapRootRoot={wrapRootRoot ?? Boolean(rootRoot)}
+						/>
 				</div>
 				<div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
 					<div
@@ -2471,20 +2576,21 @@ function RepliesListSlide({
 							boxSizing: 'border-box',
 						}}
 					>
-						<RepliesListReplies
-							templateConfig={templateConfig}
-							thread={thread}
-							root={root}
+							<RepliesListReplies
+								templateConfig={templateConfig}
+								thread={thread}
+								root={root}
 							replies={replies}
 							replyDurationsInFrames={replyDurationsInFrames}
 							coverDurationInFrames={coverDurationInFrames}
-							assets={assets}
-							fps={fps}
-							itemRoot={itemRoot}
-							wrapItemRoot={wrapItemRoot ?? Boolean(itemRoot)}
-							gap={repliesGap}
-							highlight={repliesHighlight}
-						/>
+								assets={assets}
+								fps={fps}
+								itemRoot={itemRoot}
+								itemRootPath={itemRootPath}
+								wrapItemRoot={wrapItemRoot ?? Boolean(itemRoot)}
+								gap={repliesGap}
+								highlight={repliesHighlight}
+							/>
 					</div>
 				</div>
 			</div>

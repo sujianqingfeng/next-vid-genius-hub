@@ -54,942 +54,942 @@ import { Route as ApiMediaIdCommentsDataRouteImport } from './routes/api/media/$
 import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api/internal/ai/asr-provider'
 
 const LoginRoute = LoginRouteImport.update({
-	id: '/login',
-	path: '/login',
-	getParentRoute: () => rootRouteImport,
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ThreadsRouteRoute = ThreadsRouteRouteImport.update({
-	id: '/threads',
-	path: '/threads',
-	getParentRoute: () => rootRouteImport,
+  id: '/threads',
+  path: '/threads',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const TasksRouteRoute = TasksRouteRouteImport.update({
-	id: '/tasks',
-	path: '/tasks',
-	getParentRoute: () => rootRouteImport,
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ProxyRouteRoute = ProxyRouteRouteImport.update({
-	id: '/proxy',
-	path: '/proxy',
-	getParentRoute: () => rootRouteImport,
+  id: '/proxy',
+  path: '/proxy',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PointsRouteRoute = PointsRouteRouteImport.update({
-	id: '/points',
-	path: '/points',
-	getParentRoute: () => rootRouteImport,
+  id: '/points',
+  path: '/points',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MediaRouteRoute = MediaRouteRouteImport.update({
-	id: '/media',
-	path: '/media',
-	getParentRoute: () => rootRouteImport,
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ChannelsRouteRoute = ChannelsRouteRouteImport.update({
-	id: '/channels',
-	path: '/channels',
-	getParentRoute: () => rootRouteImport,
+  id: '/channels',
+  path: '/channels',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AgentRouteRoute = AgentRouteRouteImport.update({
-	id: '/agent',
-	path: '/agent',
-	getParentRoute: () => rootRouteImport,
+  id: '/agent',
+  path: '/agent',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRouteRoute = AdminRouteRouteImport.update({
-	id: '/admin',
-	path: '/admin',
-	getParentRoute: () => rootRouteImport,
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-	id: '/',
-	path: '/',
-	getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ThreadsIndexRoute = ThreadsIndexRouteImport.update({
-	id: '/',
-	path: '/',
-	getParentRoute: () => ThreadsRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => ThreadsRouteRoute,
 } as any)
 const ThreadTemplatesIndexRoute = ThreadTemplatesIndexRouteImport.update({
-	id: '/thread-templates/',
-	path: '/thread-templates/',
-	getParentRoute: () => rootRouteImport,
+  id: '/thread-templates/',
+  path: '/thread-templates/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MediaIndexRoute = MediaIndexRouteImport.update({
-	id: '/',
-	path: '/',
-	getParentRoute: () => MediaRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => MediaRouteRoute,
 } as any)
 const MarketingIndexRoute = MarketingIndexRouteImport.update({
-	id: '/marketing/',
-	path: '/marketing/',
-	getParentRoute: () => rootRouteImport,
+  id: '/marketing/',
+  path: '/marketing/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
-	id: '/',
-	path: '/',
-	getParentRoute: () => AdminRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const ThreadsNewRoute = ThreadsNewRouteImport.update({
-	id: '/new',
-	path: '/new',
-	getParentRoute: () => ThreadsRouteRoute,
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ThreadsRouteRoute,
 } as any)
 const MediaDownloadRoute = MediaDownloadRouteImport.update({
-	id: '/download',
-	path: '/download',
-	getParentRoute: () => MediaRouteRoute,
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => MediaRouteRoute,
 } as any)
 const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
-	id: '/legal/privacy',
-	path: '/legal/privacy',
-	getParentRoute: () => rootRouteImport,
+  id: '/legal/privacy',
+  path: '/legal/privacy',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
-	id: '/auth/login',
-	path: '/auth/login',
-	getParentRoute: () => rootRouteImport,
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOpenapiRoute = ApiOpenapiRouteImport.update({
-	id: '/api/openapi',
-	path: '/api/openapi',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/openapi',
+  path: '/api/openapi',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
-	id: '/users',
-	path: '/users',
-	getParentRoute: () => AdminRouteRoute,
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminProxyRoute = AdminProxyRouteImport.update({
-	id: '/proxy',
-	path: '/proxy',
-	getParentRoute: () => AdminRouteRoute,
+  id: '/proxy',
+  path: '/proxy',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminPointsPricingRoute = AdminPointsPricingRouteImport.update({
-	id: '/points-pricing',
-	path: '/points-pricing',
-	getParentRoute: () => AdminRouteRoute,
+  id: '/points-pricing',
+  path: '/points-pricing',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminJobEventsRoute = AdminJobEventsRouteImport.update({
-	id: '/job-events',
-	path: '/job-events',
-	getParentRoute: () => AdminRouteRoute,
+  id: '/job-events',
+  path: '/job-events',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAiProvidersRoute = AdminAiProvidersRouteImport.update({
-	id: '/ai-providers',
-	path: '/ai-providers',
-	getParentRoute: () => AdminRouteRoute,
+  id: '/ai-providers',
+  path: '/ai-providers',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAiModelsRoute = AdminAiModelsRouteImport.update({
-	id: '/ai-models',
-	path: '/ai-models',
-	getParentRoute: () => AdminRouteRoute,
+  id: '/ai-models',
+  path: '/ai-models',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const ThreadsIdRouteRoute = ThreadsIdRouteRouteImport.update({
-	id: '/$id',
-	path: '/$id',
-	getParentRoute: () => ThreadsRouteRoute,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ThreadsRouteRoute,
 } as any)
 const MediaIdRouteRoute = MediaIdRouteRouteImport.update({
-	id: '/$id',
-	path: '/$id',
-	getParentRoute: () => MediaRouteRoute,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => MediaRouteRoute,
 } as any)
 const ThreadsIdIndexRoute = ThreadsIdIndexRouteImport.update({
-	id: '/',
-	path: '/',
-	getParentRoute: () => ThreadsIdRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => ThreadsIdRouteRoute,
 } as any)
 const MediaIdIndexRoute = MediaIdIndexRouteImport.update({
-	id: '/',
-	path: '/',
-	getParentRoute: () => MediaIdRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => MediaIdRouteRoute,
 } as any)
 const MediaIdSubtitlesRoute = MediaIdSubtitlesRouteImport.update({
-	id: '/subtitles',
-	path: '/subtitles',
-	getParentRoute: () => MediaIdRouteRoute,
+  id: '/subtitles',
+  path: '/subtitles',
+  getParentRoute: () => MediaIdRouteRoute,
 } as any)
 const MediaIdCommentsRoute = MediaIdCommentsRouteImport.update({
-	id: '/comments',
-	path: '/comments',
-	getParentRoute: () => MediaIdRouteRoute,
+  id: '/comments',
+  path: '/comments',
+  getParentRoute: () => MediaIdRouteRoute,
 } as any)
 const ApiThreadsRenderedRoute = ApiThreadsRenderedRouteImport.update({
-	id: '/api/threads/rendered',
-	path: '/api/threads/rendered',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/threads/rendered',
+  path: '/api/threads/rendered',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRenderCfCallbackRoute = ApiRenderCfCallbackRouteImport.update({
-	id: '/api/render/cf-callback',
-	path: '/api/render/cf-callback',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/render/cf-callback',
+  path: '/api/render/cf-callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiProxyCheckRunOneRoute = ApiProxyCheckRunOneRouteImport.update({
-	id: '/api/proxy-check/run-one',
-	path: '/api/proxy-check/run-one',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/proxy-check/run-one',
+  path: '/api/proxy-check/run-one',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiProxyCheckRunRoute = ApiProxyCheckRunRouteImport.update({
-	id: '/api/proxy-check/run',
-	path: '/api/proxy-check/run',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/proxy-check/run',
+  path: '/api/proxy-check/run',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOrpcSplatRoute = ApiOrpcSplatRouteImport.update({
-	id: '/api/orpc/$',
-	path: '/api/orpc/$',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/orpc/$',
+  path: '/api/orpc/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMediaIdSourceRoute = ApiMediaIdSourceRouteImport.update({
-	id: '/api/media/$id/source',
-	path: '/api/media/$id/source',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/media/$id/source',
+  path: '/api/media/$id/source',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMediaIdRenderedInfoRoute = ApiMediaIdRenderedInfoRouteImport.update({
-	id: '/api/media/$id/rendered-info',
-	path: '/api/media/$id/rendered-info',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/media/$id/rendered-info',
+  path: '/api/media/$id/rendered-info',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMediaIdRenderedRoute = ApiMediaIdRenderedRouteImport.update({
-	id: '/api/media/$id/rendered',
-	path: '/api/media/$id/rendered',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/media/$id/rendered',
+  path: '/api/media/$id/rendered',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMediaIdDownloadedRoute = ApiMediaIdDownloadedRouteImport.update({
-	id: '/api/media/$id/downloaded',
-	path: '/api/media/$id/downloaded',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/media/$id/downloaded',
+  path: '/api/media/$id/downloaded',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMediaIdCommentsDataRoute = ApiMediaIdCommentsDataRouteImport.update({
-	id: '/api/media/$id/comments-data',
-	path: '/api/media/$id/comments-data',
-	getParentRoute: () => rootRouteImport,
+  id: '/api/media/$id/comments-data',
+  path: '/api/media/$id/comments-data',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInternalAiAsrProviderRoute =
-	ApiInternalAiAsrProviderRouteImport.update({
-		id: '/api/internal/ai/asr-provider',
-		path: '/api/internal/ai/asr-provider',
-		getParentRoute: () => rootRouteImport,
-	} as any)
+  ApiInternalAiAsrProviderRouteImport.update({
+    id: '/api/internal/ai/asr-provider',
+    path: '/api/internal/ai/asr-provider',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
-	'/': typeof IndexRoute
-	'/admin': typeof AdminRouteRouteWithChildren
-	'/agent': typeof AgentRouteRoute
-	'/channels': typeof ChannelsRouteRoute
-	'/media': typeof MediaRouteRouteWithChildren
-	'/points': typeof PointsRouteRoute
-	'/proxy': typeof ProxyRouteRoute
-	'/tasks': typeof TasksRouteRoute
-	'/threads': typeof ThreadsRouteRouteWithChildren
-	'/login': typeof LoginRoute
-	'/media/$id': typeof MediaIdRouteRouteWithChildren
-	'/threads/$id': typeof ThreadsIdRouteRouteWithChildren
-	'/admin/ai-models': typeof AdminAiModelsRoute
-	'/admin/ai-providers': typeof AdminAiProvidersRoute
-	'/admin/job-events': typeof AdminJobEventsRoute
-	'/admin/points-pricing': typeof AdminPointsPricingRoute
-	'/admin/proxy': typeof AdminProxyRoute
-	'/admin/users': typeof AdminUsersRoute
-	'/api/openapi': typeof ApiOpenapiRoute
-	'/auth/login': typeof AuthLoginRoute
-	'/legal/privacy': typeof LegalPrivacyRoute
-	'/media/download': typeof MediaDownloadRoute
-	'/threads/new': typeof ThreadsNewRoute
-	'/admin/': typeof AdminIndexRoute
-	'/marketing': typeof MarketingIndexRoute
-	'/media/': typeof MediaIndexRoute
-	'/thread-templates': typeof ThreadTemplatesIndexRoute
-	'/threads/': typeof ThreadsIndexRoute
-	'/api/orpc/$': typeof ApiOrpcSplatRoute
-	'/api/proxy-check/run': typeof ApiProxyCheckRunRoute
-	'/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
-	'/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
-	'/api/threads/rendered': typeof ApiThreadsRenderedRoute
-	'/media/$id/comments': typeof MediaIdCommentsRoute
-	'/media/$id/subtitles': typeof MediaIdSubtitlesRoute
-	'/media/$id/': typeof MediaIdIndexRoute
-	'/threads/$id/': typeof ThreadsIdIndexRoute
-	'/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
-	'/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
-	'/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
-	'/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
-	'/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
-	'/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/agent': typeof AgentRouteRoute
+  '/channels': typeof ChannelsRouteRoute
+  '/media': typeof MediaRouteRouteWithChildren
+  '/points': typeof PointsRouteRoute
+  '/proxy': typeof ProxyRouteRoute
+  '/tasks': typeof TasksRouteRoute
+  '/threads': typeof ThreadsRouteRouteWithChildren
+  '/login': typeof LoginRoute
+  '/media/$id': typeof MediaIdRouteRouteWithChildren
+  '/threads/$id': typeof ThreadsIdRouteRouteWithChildren
+  '/admin/ai-models': typeof AdminAiModelsRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/job-events': typeof AdminJobEventsRoute
+  '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/proxy': typeof AdminProxyRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/openapi': typeof ApiOpenapiRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/media/download': typeof MediaDownloadRoute
+  '/threads/new': typeof ThreadsNewRoute
+  '/admin/': typeof AdminIndexRoute
+  '/marketing': typeof MarketingIndexRoute
+  '/media/': typeof MediaIndexRoute
+  '/thread-templates': typeof ThreadTemplatesIndexRoute
+  '/threads/': typeof ThreadsIndexRoute
+  '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
+  '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
+  '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
+  '/api/threads/rendered': typeof ApiThreadsRenderedRoute
+  '/media/$id/comments': typeof MediaIdCommentsRoute
+  '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
+  '/media/$id/': typeof MediaIdIndexRoute
+  '/threads/$id/': typeof ThreadsIdIndexRoute
+  '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
+  '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
+  '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
+  '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
+  '/api/media/$id/source': typeof ApiMediaIdSourceRoute
 }
 export interface FileRoutesByTo {
-	'/': typeof IndexRoute
-	'/agent': typeof AgentRouteRoute
-	'/channels': typeof ChannelsRouteRoute
-	'/points': typeof PointsRouteRoute
-	'/proxy': typeof ProxyRouteRoute
-	'/tasks': typeof TasksRouteRoute
-	'/login': typeof LoginRoute
-	'/admin/ai-models': typeof AdminAiModelsRoute
-	'/admin/ai-providers': typeof AdminAiProvidersRoute
-	'/admin/job-events': typeof AdminJobEventsRoute
-	'/admin/points-pricing': typeof AdminPointsPricingRoute
-	'/admin/proxy': typeof AdminProxyRoute
-	'/admin/users': typeof AdminUsersRoute
-	'/api/openapi': typeof ApiOpenapiRoute
-	'/auth/login': typeof AuthLoginRoute
-	'/legal/privacy': typeof LegalPrivacyRoute
-	'/media/download': typeof MediaDownloadRoute
-	'/threads/new': typeof ThreadsNewRoute
-	'/admin': typeof AdminIndexRoute
-	'/marketing': typeof MarketingIndexRoute
-	'/media': typeof MediaIndexRoute
-	'/thread-templates': typeof ThreadTemplatesIndexRoute
-	'/threads': typeof ThreadsIndexRoute
-	'/api/orpc/$': typeof ApiOrpcSplatRoute
-	'/api/proxy-check/run': typeof ApiProxyCheckRunRoute
-	'/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
-	'/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
-	'/api/threads/rendered': typeof ApiThreadsRenderedRoute
-	'/media/$id/comments': typeof MediaIdCommentsRoute
-	'/media/$id/subtitles': typeof MediaIdSubtitlesRoute
-	'/media/$id': typeof MediaIdIndexRoute
-	'/threads/$id': typeof ThreadsIdIndexRoute
-	'/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
-	'/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
-	'/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
-	'/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
-	'/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
-	'/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  '/': typeof IndexRoute
+  '/agent': typeof AgentRouteRoute
+  '/channels': typeof ChannelsRouteRoute
+  '/points': typeof PointsRouteRoute
+  '/proxy': typeof ProxyRouteRoute
+  '/tasks': typeof TasksRouteRoute
+  '/login': typeof LoginRoute
+  '/admin/ai-models': typeof AdminAiModelsRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/job-events': typeof AdminJobEventsRoute
+  '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/proxy': typeof AdminProxyRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/openapi': typeof ApiOpenapiRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/media/download': typeof MediaDownloadRoute
+  '/threads/new': typeof ThreadsNewRoute
+  '/admin': typeof AdminIndexRoute
+  '/marketing': typeof MarketingIndexRoute
+  '/media': typeof MediaIndexRoute
+  '/thread-templates': typeof ThreadTemplatesIndexRoute
+  '/threads': typeof ThreadsIndexRoute
+  '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
+  '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
+  '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
+  '/api/threads/rendered': typeof ApiThreadsRenderedRoute
+  '/media/$id/comments': typeof MediaIdCommentsRoute
+  '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
+  '/media/$id': typeof MediaIdIndexRoute
+  '/threads/$id': typeof ThreadsIdIndexRoute
+  '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
+  '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
+  '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
+  '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
+  '/api/media/$id/source': typeof ApiMediaIdSourceRoute
 }
 export interface FileRoutesById {
-	__root__: typeof rootRouteImport
-	'/': typeof IndexRoute
-	'/admin': typeof AdminRouteRouteWithChildren
-	'/agent': typeof AgentRouteRoute
-	'/channels': typeof ChannelsRouteRoute
-	'/media': typeof MediaRouteRouteWithChildren
-	'/points': typeof PointsRouteRoute
-	'/proxy': typeof ProxyRouteRoute
-	'/tasks': typeof TasksRouteRoute
-	'/threads': typeof ThreadsRouteRouteWithChildren
-	'/login': typeof LoginRoute
-	'/media/$id': typeof MediaIdRouteRouteWithChildren
-	'/threads/$id': typeof ThreadsIdRouteRouteWithChildren
-	'/admin/ai-models': typeof AdminAiModelsRoute
-	'/admin/ai-providers': typeof AdminAiProvidersRoute
-	'/admin/job-events': typeof AdminJobEventsRoute
-	'/admin/points-pricing': typeof AdminPointsPricingRoute
-	'/admin/proxy': typeof AdminProxyRoute
-	'/admin/users': typeof AdminUsersRoute
-	'/api/openapi': typeof ApiOpenapiRoute
-	'/auth/login': typeof AuthLoginRoute
-	'/legal/privacy': typeof LegalPrivacyRoute
-	'/media/download': typeof MediaDownloadRoute
-	'/threads/new': typeof ThreadsNewRoute
-	'/admin/': typeof AdminIndexRoute
-	'/marketing/': typeof MarketingIndexRoute
-	'/media/': typeof MediaIndexRoute
-	'/thread-templates/': typeof ThreadTemplatesIndexRoute
-	'/threads/': typeof ThreadsIndexRoute
-	'/api/orpc/$': typeof ApiOrpcSplatRoute
-	'/api/proxy-check/run': typeof ApiProxyCheckRunRoute
-	'/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
-	'/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
-	'/api/threads/rendered': typeof ApiThreadsRenderedRoute
-	'/media/$id/comments': typeof MediaIdCommentsRoute
-	'/media/$id/subtitles': typeof MediaIdSubtitlesRoute
-	'/media/$id/': typeof MediaIdIndexRoute
-	'/threads/$id/': typeof ThreadsIdIndexRoute
-	'/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
-	'/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
-	'/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
-	'/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
-	'/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
-	'/api/media/$id/source': typeof ApiMediaIdSourceRoute
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/agent': typeof AgentRouteRoute
+  '/channels': typeof ChannelsRouteRoute
+  '/media': typeof MediaRouteRouteWithChildren
+  '/points': typeof PointsRouteRoute
+  '/proxy': typeof ProxyRouteRoute
+  '/tasks': typeof TasksRouteRoute
+  '/threads': typeof ThreadsRouteRouteWithChildren
+  '/login': typeof LoginRoute
+  '/media/$id': typeof MediaIdRouteRouteWithChildren
+  '/threads/$id': typeof ThreadsIdRouteRouteWithChildren
+  '/admin/ai-models': typeof AdminAiModelsRoute
+  '/admin/ai-providers': typeof AdminAiProvidersRoute
+  '/admin/job-events': typeof AdminJobEventsRoute
+  '/admin/points-pricing': typeof AdminPointsPricingRoute
+  '/admin/proxy': typeof AdminProxyRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/openapi': typeof ApiOpenapiRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/legal/privacy': typeof LegalPrivacyRoute
+  '/media/download': typeof MediaDownloadRoute
+  '/threads/new': typeof ThreadsNewRoute
+  '/admin/': typeof AdminIndexRoute
+  '/marketing/': typeof MarketingIndexRoute
+  '/media/': typeof MediaIndexRoute
+  '/thread-templates/': typeof ThreadTemplatesIndexRoute
+  '/threads/': typeof ThreadsIndexRoute
+  '/api/orpc/$': typeof ApiOrpcSplatRoute
+  '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
+  '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
+  '/api/render/cf-callback': typeof ApiRenderCfCallbackRoute
+  '/api/threads/rendered': typeof ApiThreadsRenderedRoute
+  '/media/$id/comments': typeof MediaIdCommentsRoute
+  '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
+  '/media/$id/': typeof MediaIdIndexRoute
+  '/threads/$id/': typeof ThreadsIdIndexRoute
+  '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
+  '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
+  '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
+  '/api/media/$id/rendered-info': typeof ApiMediaIdRenderedInfoRoute
+  '/api/media/$id/source': typeof ApiMediaIdSourceRoute
 }
 export interface FileRouteTypes {
-	fileRoutesByFullPath: FileRoutesByFullPath
-	fullPaths:
-		| '/'
-		| '/admin'
-		| '/agent'
-		| '/channels'
-		| '/media'
-		| '/points'
-		| '/proxy'
-		| '/tasks'
-		| '/threads'
-		| '/login'
-		| '/media/$id'
-		| '/threads/$id'
-		| '/admin/ai-models'
-		| '/admin/ai-providers'
-		| '/admin/job-events'
-		| '/admin/points-pricing'
-		| '/admin/proxy'
-		| '/admin/users'
-		| '/api/openapi'
-		| '/auth/login'
-		| '/legal/privacy'
-		| '/media/download'
-		| '/threads/new'
-		| '/admin/'
-		| '/marketing'
-		| '/media/'
-		| '/thread-templates'
-		| '/threads/'
-		| '/api/orpc/$'
-		| '/api/proxy-check/run'
-		| '/api/proxy-check/run-one'
-		| '/api/render/cf-callback'
-		| '/api/threads/rendered'
-		| '/media/$id/comments'
-		| '/media/$id/subtitles'
-		| '/media/$id/'
-		| '/threads/$id/'
-		| '/api/internal/ai/asr-provider'
-		| '/api/media/$id/comments-data'
-		| '/api/media/$id/downloaded'
-		| '/api/media/$id/rendered'
-		| '/api/media/$id/rendered-info'
-		| '/api/media/$id/source'
-	fileRoutesByTo: FileRoutesByTo
-	to:
-		| '/'
-		| '/agent'
-		| '/channels'
-		| '/points'
-		| '/proxy'
-		| '/tasks'
-		| '/login'
-		| '/admin/ai-models'
-		| '/admin/ai-providers'
-		| '/admin/job-events'
-		| '/admin/points-pricing'
-		| '/admin/proxy'
-		| '/admin/users'
-		| '/api/openapi'
-		| '/auth/login'
-		| '/legal/privacy'
-		| '/media/download'
-		| '/threads/new'
-		| '/admin'
-		| '/marketing'
-		| '/media'
-		| '/thread-templates'
-		| '/threads'
-		| '/api/orpc/$'
-		| '/api/proxy-check/run'
-		| '/api/proxy-check/run-one'
-		| '/api/render/cf-callback'
-		| '/api/threads/rendered'
-		| '/media/$id/comments'
-		| '/media/$id/subtitles'
-		| '/media/$id'
-		| '/threads/$id'
-		| '/api/internal/ai/asr-provider'
-		| '/api/media/$id/comments-data'
-		| '/api/media/$id/downloaded'
-		| '/api/media/$id/rendered'
-		| '/api/media/$id/rendered-info'
-		| '/api/media/$id/source'
-	id:
-		| '__root__'
-		| '/'
-		| '/admin'
-		| '/agent'
-		| '/channels'
-		| '/media'
-		| '/points'
-		| '/proxy'
-		| '/tasks'
-		| '/threads'
-		| '/login'
-		| '/media/$id'
-		| '/threads/$id'
-		| '/admin/ai-models'
-		| '/admin/ai-providers'
-		| '/admin/job-events'
-		| '/admin/points-pricing'
-		| '/admin/proxy'
-		| '/admin/users'
-		| '/api/openapi'
-		| '/auth/login'
-		| '/legal/privacy'
-		| '/media/download'
-		| '/threads/new'
-		| '/admin/'
-		| '/marketing/'
-		| '/media/'
-		| '/thread-templates/'
-		| '/threads/'
-		| '/api/orpc/$'
-		| '/api/proxy-check/run'
-		| '/api/proxy-check/run-one'
-		| '/api/render/cf-callback'
-		| '/api/threads/rendered'
-		| '/media/$id/comments'
-		| '/media/$id/subtitles'
-		| '/media/$id/'
-		| '/threads/$id/'
-		| '/api/internal/ai/asr-provider'
-		| '/api/media/$id/comments-data'
-		| '/api/media/$id/downloaded'
-		| '/api/media/$id/rendered'
-		| '/api/media/$id/rendered-info'
-		| '/api/media/$id/source'
-	fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/agent'
+    | '/channels'
+    | '/media'
+    | '/points'
+    | '/proxy'
+    | '/tasks'
+    | '/threads'
+    | '/login'
+    | '/media/$id'
+    | '/threads/$id'
+    | '/admin/ai-models'
+    | '/admin/ai-providers'
+    | '/admin/job-events'
+    | '/admin/points-pricing'
+    | '/admin/proxy'
+    | '/admin/users'
+    | '/api/openapi'
+    | '/auth/login'
+    | '/legal/privacy'
+    | '/media/download'
+    | '/threads/new'
+    | '/admin/'
+    | '/marketing'
+    | '/media/'
+    | '/thread-templates'
+    | '/threads/'
+    | '/api/orpc/$'
+    | '/api/proxy-check/run'
+    | '/api/proxy-check/run-one'
+    | '/api/render/cf-callback'
+    | '/api/threads/rendered'
+    | '/media/$id/comments'
+    | '/media/$id/subtitles'
+    | '/media/$id/'
+    | '/threads/$id/'
+    | '/api/internal/ai/asr-provider'
+    | '/api/media/$id/comments-data'
+    | '/api/media/$id/downloaded'
+    | '/api/media/$id/rendered'
+    | '/api/media/$id/rendered-info'
+    | '/api/media/$id/source'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/agent'
+    | '/channels'
+    | '/points'
+    | '/proxy'
+    | '/tasks'
+    | '/login'
+    | '/admin/ai-models'
+    | '/admin/ai-providers'
+    | '/admin/job-events'
+    | '/admin/points-pricing'
+    | '/admin/proxy'
+    | '/admin/users'
+    | '/api/openapi'
+    | '/auth/login'
+    | '/legal/privacy'
+    | '/media/download'
+    | '/threads/new'
+    | '/admin'
+    | '/marketing'
+    | '/media'
+    | '/thread-templates'
+    | '/threads'
+    | '/api/orpc/$'
+    | '/api/proxy-check/run'
+    | '/api/proxy-check/run-one'
+    | '/api/render/cf-callback'
+    | '/api/threads/rendered'
+    | '/media/$id/comments'
+    | '/media/$id/subtitles'
+    | '/media/$id'
+    | '/threads/$id'
+    | '/api/internal/ai/asr-provider'
+    | '/api/media/$id/comments-data'
+    | '/api/media/$id/downloaded'
+    | '/api/media/$id/rendered'
+    | '/api/media/$id/rendered-info'
+    | '/api/media/$id/source'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/agent'
+    | '/channels'
+    | '/media'
+    | '/points'
+    | '/proxy'
+    | '/tasks'
+    | '/threads'
+    | '/login'
+    | '/media/$id'
+    | '/threads/$id'
+    | '/admin/ai-models'
+    | '/admin/ai-providers'
+    | '/admin/job-events'
+    | '/admin/points-pricing'
+    | '/admin/proxy'
+    | '/admin/users'
+    | '/api/openapi'
+    | '/auth/login'
+    | '/legal/privacy'
+    | '/media/download'
+    | '/threads/new'
+    | '/admin/'
+    | '/marketing/'
+    | '/media/'
+    | '/thread-templates/'
+    | '/threads/'
+    | '/api/orpc/$'
+    | '/api/proxy-check/run'
+    | '/api/proxy-check/run-one'
+    | '/api/render/cf-callback'
+    | '/api/threads/rendered'
+    | '/media/$id/comments'
+    | '/media/$id/subtitles'
+    | '/media/$id/'
+    | '/threads/$id/'
+    | '/api/internal/ai/asr-provider'
+    | '/api/media/$id/comments-data'
+    | '/api/media/$id/downloaded'
+    | '/api/media/$id/rendered'
+    | '/api/media/$id/rendered-info'
+    | '/api/media/$id/source'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-	IndexRoute: typeof IndexRoute
-	AdminRouteRoute: typeof AdminRouteRouteWithChildren
-	AgentRouteRoute: typeof AgentRouteRoute
-	ChannelsRouteRoute: typeof ChannelsRouteRoute
-	MediaRouteRoute: typeof MediaRouteRouteWithChildren
-	PointsRouteRoute: typeof PointsRouteRoute
-	ProxyRouteRoute: typeof ProxyRouteRoute
-	TasksRouteRoute: typeof TasksRouteRoute
-	ThreadsRouteRoute: typeof ThreadsRouteRouteWithChildren
-	LoginRoute: typeof LoginRoute
-	ApiOpenapiRoute: typeof ApiOpenapiRoute
-	AuthLoginRoute: typeof AuthLoginRoute
-	LegalPrivacyRoute: typeof LegalPrivacyRoute
-	MarketingIndexRoute: typeof MarketingIndexRoute
-	ThreadTemplatesIndexRoute: typeof ThreadTemplatesIndexRoute
-	ApiOrpcSplatRoute: typeof ApiOrpcSplatRoute
-	ApiProxyCheckRunRoute: typeof ApiProxyCheckRunRoute
-	ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
-	ApiRenderCfCallbackRoute: typeof ApiRenderCfCallbackRoute
-	ApiThreadsRenderedRoute: typeof ApiThreadsRenderedRoute
-	ApiInternalAiAsrProviderRoute: typeof ApiInternalAiAsrProviderRoute
-	ApiMediaIdCommentsDataRoute: typeof ApiMediaIdCommentsDataRoute
-	ApiMediaIdDownloadedRoute: typeof ApiMediaIdDownloadedRoute
-	ApiMediaIdRenderedRoute: typeof ApiMediaIdRenderedRoute
-	ApiMediaIdRenderedInfoRoute: typeof ApiMediaIdRenderedInfoRoute
-	ApiMediaIdSourceRoute: typeof ApiMediaIdSourceRoute
+  IndexRoute: typeof IndexRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  AgentRouteRoute: typeof AgentRouteRoute
+  ChannelsRouteRoute: typeof ChannelsRouteRoute
+  MediaRouteRoute: typeof MediaRouteRouteWithChildren
+  PointsRouteRoute: typeof PointsRouteRoute
+  ProxyRouteRoute: typeof ProxyRouteRoute
+  TasksRouteRoute: typeof TasksRouteRoute
+  ThreadsRouteRoute: typeof ThreadsRouteRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  ApiOpenapiRoute: typeof ApiOpenapiRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  LegalPrivacyRoute: typeof LegalPrivacyRoute
+  MarketingIndexRoute: typeof MarketingIndexRoute
+  ThreadTemplatesIndexRoute: typeof ThreadTemplatesIndexRoute
+  ApiOrpcSplatRoute: typeof ApiOrpcSplatRoute
+  ApiProxyCheckRunRoute: typeof ApiProxyCheckRunRoute
+  ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
+  ApiRenderCfCallbackRoute: typeof ApiRenderCfCallbackRoute
+  ApiThreadsRenderedRoute: typeof ApiThreadsRenderedRoute
+  ApiInternalAiAsrProviderRoute: typeof ApiInternalAiAsrProviderRoute
+  ApiMediaIdCommentsDataRoute: typeof ApiMediaIdCommentsDataRoute
+  ApiMediaIdDownloadedRoute: typeof ApiMediaIdDownloadedRoute
+  ApiMediaIdRenderedRoute: typeof ApiMediaIdRenderedRoute
+  ApiMediaIdRenderedInfoRoute: typeof ApiMediaIdRenderedInfoRoute
+  ApiMediaIdSourceRoute: typeof ApiMediaIdSourceRoute
 }
 
 declare module '@tanstack/react-router' {
-	interface FileRoutesByPath {
-		'/login': {
-			id: '/login'
-			path: '/login'
-			fullPath: '/login'
-			preLoaderRoute: typeof LoginRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/threads': {
-			id: '/threads'
-			path: '/threads'
-			fullPath: '/threads'
-			preLoaderRoute: typeof ThreadsRouteRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/tasks': {
-			id: '/tasks'
-			path: '/tasks'
-			fullPath: '/tasks'
-			preLoaderRoute: typeof TasksRouteRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/proxy': {
-			id: '/proxy'
-			path: '/proxy'
-			fullPath: '/proxy'
-			preLoaderRoute: typeof ProxyRouteRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/points': {
-			id: '/points'
-			path: '/points'
-			fullPath: '/points'
-			preLoaderRoute: typeof PointsRouteRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/media': {
-			id: '/media'
-			path: '/media'
-			fullPath: '/media'
-			preLoaderRoute: typeof MediaRouteRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/channels': {
-			id: '/channels'
-			path: '/channels'
-			fullPath: '/channels'
-			preLoaderRoute: typeof ChannelsRouteRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/agent': {
-			id: '/agent'
-			path: '/agent'
-			fullPath: '/agent'
-			preLoaderRoute: typeof AgentRouteRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/admin': {
-			id: '/admin'
-			path: '/admin'
-			fullPath: '/admin'
-			preLoaderRoute: typeof AdminRouteRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/': {
-			id: '/'
-			path: '/'
-			fullPath: '/'
-			preLoaderRoute: typeof IndexRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/threads/': {
-			id: '/threads/'
-			path: '/'
-			fullPath: '/threads/'
-			preLoaderRoute: typeof ThreadsIndexRouteImport
-			parentRoute: typeof ThreadsRouteRoute
-		}
-		'/thread-templates/': {
-			id: '/thread-templates/'
-			path: '/thread-templates'
-			fullPath: '/thread-templates'
-			preLoaderRoute: typeof ThreadTemplatesIndexRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/media/': {
-			id: '/media/'
-			path: '/'
-			fullPath: '/media/'
-			preLoaderRoute: typeof MediaIndexRouteImport
-			parentRoute: typeof MediaRouteRoute
-		}
-		'/marketing/': {
-			id: '/marketing/'
-			path: '/marketing'
-			fullPath: '/marketing'
-			preLoaderRoute: typeof MarketingIndexRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/admin/': {
-			id: '/admin/'
-			path: '/'
-			fullPath: '/admin/'
-			preLoaderRoute: typeof AdminIndexRouteImport
-			parentRoute: typeof AdminRouteRoute
-		}
-		'/threads/new': {
-			id: '/threads/new'
-			path: '/new'
-			fullPath: '/threads/new'
-			preLoaderRoute: typeof ThreadsNewRouteImport
-			parentRoute: typeof ThreadsRouteRoute
-		}
-		'/media/download': {
-			id: '/media/download'
-			path: '/download'
-			fullPath: '/media/download'
-			preLoaderRoute: typeof MediaDownloadRouteImport
-			parentRoute: typeof MediaRouteRoute
-		}
-		'/legal/privacy': {
-			id: '/legal/privacy'
-			path: '/legal/privacy'
-			fullPath: '/legal/privacy'
-			preLoaderRoute: typeof LegalPrivacyRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/auth/login': {
-			id: '/auth/login'
-			path: '/auth/login'
-			fullPath: '/auth/login'
-			preLoaderRoute: typeof AuthLoginRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/openapi': {
-			id: '/api/openapi'
-			path: '/api/openapi'
-			fullPath: '/api/openapi'
-			preLoaderRoute: typeof ApiOpenapiRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/admin/users': {
-			id: '/admin/users'
-			path: '/users'
-			fullPath: '/admin/users'
-			preLoaderRoute: typeof AdminUsersRouteImport
-			parentRoute: typeof AdminRouteRoute
-		}
-		'/admin/proxy': {
-			id: '/admin/proxy'
-			path: '/proxy'
-			fullPath: '/admin/proxy'
-			preLoaderRoute: typeof AdminProxyRouteImport
-			parentRoute: typeof AdminRouteRoute
-		}
-		'/admin/points-pricing': {
-			id: '/admin/points-pricing'
-			path: '/points-pricing'
-			fullPath: '/admin/points-pricing'
-			preLoaderRoute: typeof AdminPointsPricingRouteImport
-			parentRoute: typeof AdminRouteRoute
-		}
-		'/admin/job-events': {
-			id: '/admin/job-events'
-			path: '/job-events'
-			fullPath: '/admin/job-events'
-			preLoaderRoute: typeof AdminJobEventsRouteImport
-			parentRoute: typeof AdminRouteRoute
-		}
-		'/admin/ai-providers': {
-			id: '/admin/ai-providers'
-			path: '/ai-providers'
-			fullPath: '/admin/ai-providers'
-			preLoaderRoute: typeof AdminAiProvidersRouteImport
-			parentRoute: typeof AdminRouteRoute
-		}
-		'/admin/ai-models': {
-			id: '/admin/ai-models'
-			path: '/ai-models'
-			fullPath: '/admin/ai-models'
-			preLoaderRoute: typeof AdminAiModelsRouteImport
-			parentRoute: typeof AdminRouteRoute
-		}
-		'/threads/$id': {
-			id: '/threads/$id'
-			path: '/$id'
-			fullPath: '/threads/$id'
-			preLoaderRoute: typeof ThreadsIdRouteRouteImport
-			parentRoute: typeof ThreadsRouteRoute
-		}
-		'/media/$id': {
-			id: '/media/$id'
-			path: '/$id'
-			fullPath: '/media/$id'
-			preLoaderRoute: typeof MediaIdRouteRouteImport
-			parentRoute: typeof MediaRouteRoute
-		}
-		'/threads/$id/': {
-			id: '/threads/$id/'
-			path: '/'
-			fullPath: '/threads/$id/'
-			preLoaderRoute: typeof ThreadsIdIndexRouteImport
-			parentRoute: typeof ThreadsIdRouteRoute
-		}
-		'/media/$id/': {
-			id: '/media/$id/'
-			path: '/'
-			fullPath: '/media/$id/'
-			preLoaderRoute: typeof MediaIdIndexRouteImport
-			parentRoute: typeof MediaIdRouteRoute
-		}
-		'/media/$id/subtitles': {
-			id: '/media/$id/subtitles'
-			path: '/subtitles'
-			fullPath: '/media/$id/subtitles'
-			preLoaderRoute: typeof MediaIdSubtitlesRouteImport
-			parentRoute: typeof MediaIdRouteRoute
-		}
-		'/media/$id/comments': {
-			id: '/media/$id/comments'
-			path: '/comments'
-			fullPath: '/media/$id/comments'
-			preLoaderRoute: typeof MediaIdCommentsRouteImport
-			parentRoute: typeof MediaIdRouteRoute
-		}
-		'/api/threads/rendered': {
-			id: '/api/threads/rendered'
-			path: '/api/threads/rendered'
-			fullPath: '/api/threads/rendered'
-			preLoaderRoute: typeof ApiThreadsRenderedRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/render/cf-callback': {
-			id: '/api/render/cf-callback'
-			path: '/api/render/cf-callback'
-			fullPath: '/api/render/cf-callback'
-			preLoaderRoute: typeof ApiRenderCfCallbackRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/proxy-check/run-one': {
-			id: '/api/proxy-check/run-one'
-			path: '/api/proxy-check/run-one'
-			fullPath: '/api/proxy-check/run-one'
-			preLoaderRoute: typeof ApiProxyCheckRunOneRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/proxy-check/run': {
-			id: '/api/proxy-check/run'
-			path: '/api/proxy-check/run'
-			fullPath: '/api/proxy-check/run'
-			preLoaderRoute: typeof ApiProxyCheckRunRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/orpc/$': {
-			id: '/api/orpc/$'
-			path: '/api/orpc/$'
-			fullPath: '/api/orpc/$'
-			preLoaderRoute: typeof ApiOrpcSplatRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/media/$id/source': {
-			id: '/api/media/$id/source'
-			path: '/api/media/$id/source'
-			fullPath: '/api/media/$id/source'
-			preLoaderRoute: typeof ApiMediaIdSourceRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/media/$id/rendered-info': {
-			id: '/api/media/$id/rendered-info'
-			path: '/api/media/$id/rendered-info'
-			fullPath: '/api/media/$id/rendered-info'
-			preLoaderRoute: typeof ApiMediaIdRenderedInfoRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/media/$id/rendered': {
-			id: '/api/media/$id/rendered'
-			path: '/api/media/$id/rendered'
-			fullPath: '/api/media/$id/rendered'
-			preLoaderRoute: typeof ApiMediaIdRenderedRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/media/$id/downloaded': {
-			id: '/api/media/$id/downloaded'
-			path: '/api/media/$id/downloaded'
-			fullPath: '/api/media/$id/downloaded'
-			preLoaderRoute: typeof ApiMediaIdDownloadedRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/media/$id/comments-data': {
-			id: '/api/media/$id/comments-data'
-			path: '/api/media/$id/comments-data'
-			fullPath: '/api/media/$id/comments-data'
-			preLoaderRoute: typeof ApiMediaIdCommentsDataRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-		'/api/internal/ai/asr-provider': {
-			id: '/api/internal/ai/asr-provider'
-			path: '/api/internal/ai/asr-provider'
-			fullPath: '/api/internal/ai/asr-provider'
-			preLoaderRoute: typeof ApiInternalAiAsrProviderRouteImport
-			parentRoute: typeof rootRouteImport
-		}
-	}
+  interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/threads': {
+      id: '/threads'
+      path: '/threads'
+      fullPath: '/threads'
+      preLoaderRoute: typeof ThreadsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proxy': {
+      id: '/proxy'
+      path: '/proxy'
+      fullPath: '/proxy'
+      preLoaderRoute: typeof ProxyRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/points': {
+      id: '/points'
+      path: '/points'
+      fullPath: '/points'
+      preLoaderRoute: typeof PointsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/channels': {
+      id: '/channels'
+      path: '/channels'
+      fullPath: '/channels'
+      preLoaderRoute: typeof ChannelsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/threads/': {
+      id: '/threads/'
+      path: '/'
+      fullPath: '/threads/'
+      preLoaderRoute: typeof ThreadsIndexRouteImport
+      parentRoute: typeof ThreadsRouteRoute
+    }
+    '/thread-templates/': {
+      id: '/thread-templates/'
+      path: '/thread-templates'
+      fullPath: '/thread-templates'
+      preLoaderRoute: typeof ThreadTemplatesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media/': {
+      id: '/media/'
+      path: '/'
+      fullPath: '/media/'
+      preLoaderRoute: typeof MediaIndexRouteImport
+      parentRoute: typeof MediaRouteRoute
+    }
+    '/marketing/': {
+      id: '/marketing/'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof MarketingIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/threads/new': {
+      id: '/threads/new'
+      path: '/new'
+      fullPath: '/threads/new'
+      preLoaderRoute: typeof ThreadsNewRouteImport
+      parentRoute: typeof ThreadsRouteRoute
+    }
+    '/media/download': {
+      id: '/media/download'
+      path: '/download'
+      fullPath: '/media/download'
+      preLoaderRoute: typeof MediaDownloadRouteImport
+      parentRoute: typeof MediaRouteRoute
+    }
+    '/legal/privacy': {
+      id: '/legal/privacy'
+      path: '/legal/privacy'
+      fullPath: '/legal/privacy'
+      preLoaderRoute: typeof LegalPrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/openapi': {
+      id: '/api/openapi'
+      path: '/api/openapi'
+      fullPath: '/api/openapi'
+      preLoaderRoute: typeof ApiOpenapiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/proxy': {
+      id: '/admin/proxy'
+      path: '/proxy'
+      fullPath: '/admin/proxy'
+      preLoaderRoute: typeof AdminProxyRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/points-pricing': {
+      id: '/admin/points-pricing'
+      path: '/points-pricing'
+      fullPath: '/admin/points-pricing'
+      preLoaderRoute: typeof AdminPointsPricingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/job-events': {
+      id: '/admin/job-events'
+      path: '/job-events'
+      fullPath: '/admin/job-events'
+      preLoaderRoute: typeof AdminJobEventsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/ai-providers': {
+      id: '/admin/ai-providers'
+      path: '/ai-providers'
+      fullPath: '/admin/ai-providers'
+      preLoaderRoute: typeof AdminAiProvidersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/ai-models': {
+      id: '/admin/ai-models'
+      path: '/ai-models'
+      fullPath: '/admin/ai-models'
+      preLoaderRoute: typeof AdminAiModelsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/threads/$id': {
+      id: '/threads/$id'
+      path: '/$id'
+      fullPath: '/threads/$id'
+      preLoaderRoute: typeof ThreadsIdRouteRouteImport
+      parentRoute: typeof ThreadsRouteRoute
+    }
+    '/media/$id': {
+      id: '/media/$id'
+      path: '/$id'
+      fullPath: '/media/$id'
+      preLoaderRoute: typeof MediaIdRouteRouteImport
+      parentRoute: typeof MediaRouteRoute
+    }
+    '/threads/$id/': {
+      id: '/threads/$id/'
+      path: '/'
+      fullPath: '/threads/$id/'
+      preLoaderRoute: typeof ThreadsIdIndexRouteImport
+      parentRoute: typeof ThreadsIdRouteRoute
+    }
+    '/media/$id/': {
+      id: '/media/$id/'
+      path: '/'
+      fullPath: '/media/$id/'
+      preLoaderRoute: typeof MediaIdIndexRouteImport
+      parentRoute: typeof MediaIdRouteRoute
+    }
+    '/media/$id/subtitles': {
+      id: '/media/$id/subtitles'
+      path: '/subtitles'
+      fullPath: '/media/$id/subtitles'
+      preLoaderRoute: typeof MediaIdSubtitlesRouteImport
+      parentRoute: typeof MediaIdRouteRoute
+    }
+    '/media/$id/comments': {
+      id: '/media/$id/comments'
+      path: '/comments'
+      fullPath: '/media/$id/comments'
+      preLoaderRoute: typeof MediaIdCommentsRouteImport
+      parentRoute: typeof MediaIdRouteRoute
+    }
+    '/api/threads/rendered': {
+      id: '/api/threads/rendered'
+      path: '/api/threads/rendered'
+      fullPath: '/api/threads/rendered'
+      preLoaderRoute: typeof ApiThreadsRenderedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/render/cf-callback': {
+      id: '/api/render/cf-callback'
+      path: '/api/render/cf-callback'
+      fullPath: '/api/render/cf-callback'
+      preLoaderRoute: typeof ApiRenderCfCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proxy-check/run-one': {
+      id: '/api/proxy-check/run-one'
+      path: '/api/proxy-check/run-one'
+      fullPath: '/api/proxy-check/run-one'
+      preLoaderRoute: typeof ApiProxyCheckRunOneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/proxy-check/run': {
+      id: '/api/proxy-check/run'
+      path: '/api/proxy-check/run'
+      fullPath: '/api/proxy-check/run'
+      preLoaderRoute: typeof ApiProxyCheckRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/orpc/$': {
+      id: '/api/orpc/$'
+      path: '/api/orpc/$'
+      fullPath: '/api/orpc/$'
+      preLoaderRoute: typeof ApiOrpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/source': {
+      id: '/api/media/$id/source'
+      path: '/api/media/$id/source'
+      fullPath: '/api/media/$id/source'
+      preLoaderRoute: typeof ApiMediaIdSourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/rendered-info': {
+      id: '/api/media/$id/rendered-info'
+      path: '/api/media/$id/rendered-info'
+      fullPath: '/api/media/$id/rendered-info'
+      preLoaderRoute: typeof ApiMediaIdRenderedInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/rendered': {
+      id: '/api/media/$id/rendered'
+      path: '/api/media/$id/rendered'
+      fullPath: '/api/media/$id/rendered'
+      preLoaderRoute: typeof ApiMediaIdRenderedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/downloaded': {
+      id: '/api/media/$id/downloaded'
+      path: '/api/media/$id/downloaded'
+      fullPath: '/api/media/$id/downloaded'
+      preLoaderRoute: typeof ApiMediaIdDownloadedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/$id/comments-data': {
+      id: '/api/media/$id/comments-data'
+      path: '/api/media/$id/comments-data'
+      fullPath: '/api/media/$id/comments-data'
+      preLoaderRoute: typeof ApiMediaIdCommentsDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/internal/ai/asr-provider': {
+      id: '/api/internal/ai/asr-provider'
+      path: '/api/internal/ai/asr-provider'
+      fullPath: '/api/internal/ai/asr-provider'
+      preLoaderRoute: typeof ApiInternalAiAsrProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
 interface AdminRouteRouteChildren {
-	AdminAiModelsRoute: typeof AdminAiModelsRoute
-	AdminAiProvidersRoute: typeof AdminAiProvidersRoute
-	AdminJobEventsRoute: typeof AdminJobEventsRoute
-	AdminPointsPricingRoute: typeof AdminPointsPricingRoute
-	AdminProxyRoute: typeof AdminProxyRoute
-	AdminUsersRoute: typeof AdminUsersRoute
-	AdminIndexRoute: typeof AdminIndexRoute
+  AdminAiModelsRoute: typeof AdminAiModelsRoute
+  AdminAiProvidersRoute: typeof AdminAiProvidersRoute
+  AdminJobEventsRoute: typeof AdminJobEventsRoute
+  AdminPointsPricingRoute: typeof AdminPointsPricingRoute
+  AdminProxyRoute: typeof AdminProxyRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
-	AdminAiModelsRoute: AdminAiModelsRoute,
-	AdminAiProvidersRoute: AdminAiProvidersRoute,
-	AdminJobEventsRoute: AdminJobEventsRoute,
-	AdminPointsPricingRoute: AdminPointsPricingRoute,
-	AdminProxyRoute: AdminProxyRoute,
-	AdminUsersRoute: AdminUsersRoute,
-	AdminIndexRoute: AdminIndexRoute,
+  AdminAiModelsRoute: AdminAiModelsRoute,
+  AdminAiProvidersRoute: AdminAiProvidersRoute,
+  AdminJobEventsRoute: AdminJobEventsRoute,
+  AdminPointsPricingRoute: AdminPointsPricingRoute,
+  AdminProxyRoute: AdminProxyRoute,
+  AdminUsersRoute: AdminUsersRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
-	AdminRouteRouteChildren,
+  AdminRouteRouteChildren,
 )
 
 interface MediaIdRouteRouteChildren {
-	MediaIdCommentsRoute: typeof MediaIdCommentsRoute
-	MediaIdSubtitlesRoute: typeof MediaIdSubtitlesRoute
-	MediaIdIndexRoute: typeof MediaIdIndexRoute
+  MediaIdCommentsRoute: typeof MediaIdCommentsRoute
+  MediaIdSubtitlesRoute: typeof MediaIdSubtitlesRoute
+  MediaIdIndexRoute: typeof MediaIdIndexRoute
 }
 
 const MediaIdRouteRouteChildren: MediaIdRouteRouteChildren = {
-	MediaIdCommentsRoute: MediaIdCommentsRoute,
-	MediaIdSubtitlesRoute: MediaIdSubtitlesRoute,
-	MediaIdIndexRoute: MediaIdIndexRoute,
+  MediaIdCommentsRoute: MediaIdCommentsRoute,
+  MediaIdSubtitlesRoute: MediaIdSubtitlesRoute,
+  MediaIdIndexRoute: MediaIdIndexRoute,
 }
 
 const MediaIdRouteRouteWithChildren = MediaIdRouteRoute._addFileChildren(
-	MediaIdRouteRouteChildren,
+  MediaIdRouteRouteChildren,
 )
 
 interface MediaRouteRouteChildren {
-	MediaIdRouteRoute: typeof MediaIdRouteRouteWithChildren
-	MediaDownloadRoute: typeof MediaDownloadRoute
-	MediaIndexRoute: typeof MediaIndexRoute
+  MediaIdRouteRoute: typeof MediaIdRouteRouteWithChildren
+  MediaDownloadRoute: typeof MediaDownloadRoute
+  MediaIndexRoute: typeof MediaIndexRoute
 }
 
 const MediaRouteRouteChildren: MediaRouteRouteChildren = {
-	MediaIdRouteRoute: MediaIdRouteRouteWithChildren,
-	MediaDownloadRoute: MediaDownloadRoute,
-	MediaIndexRoute: MediaIndexRoute,
+  MediaIdRouteRoute: MediaIdRouteRouteWithChildren,
+  MediaDownloadRoute: MediaDownloadRoute,
+  MediaIndexRoute: MediaIndexRoute,
 }
 
 const MediaRouteRouteWithChildren = MediaRouteRoute._addFileChildren(
-	MediaRouteRouteChildren,
+  MediaRouteRouteChildren,
 )
 
 interface ThreadsIdRouteRouteChildren {
-	ThreadsIdIndexRoute: typeof ThreadsIdIndexRoute
+  ThreadsIdIndexRoute: typeof ThreadsIdIndexRoute
 }
 
 const ThreadsIdRouteRouteChildren: ThreadsIdRouteRouteChildren = {
-	ThreadsIdIndexRoute: ThreadsIdIndexRoute,
+  ThreadsIdIndexRoute: ThreadsIdIndexRoute,
 }
 
 const ThreadsIdRouteRouteWithChildren = ThreadsIdRouteRoute._addFileChildren(
-	ThreadsIdRouteRouteChildren,
+  ThreadsIdRouteRouteChildren,
 )
 
 interface ThreadsRouteRouteChildren {
-	ThreadsIdRouteRoute: typeof ThreadsIdRouteRouteWithChildren
-	ThreadsNewRoute: typeof ThreadsNewRoute
-	ThreadsIndexRoute: typeof ThreadsIndexRoute
+  ThreadsIdRouteRoute: typeof ThreadsIdRouteRouteWithChildren
+  ThreadsNewRoute: typeof ThreadsNewRoute
+  ThreadsIndexRoute: typeof ThreadsIndexRoute
 }
 
 const ThreadsRouteRouteChildren: ThreadsRouteRouteChildren = {
-	ThreadsIdRouteRoute: ThreadsIdRouteRouteWithChildren,
-	ThreadsNewRoute: ThreadsNewRoute,
-	ThreadsIndexRoute: ThreadsIndexRoute,
+  ThreadsIdRouteRoute: ThreadsIdRouteRouteWithChildren,
+  ThreadsNewRoute: ThreadsNewRoute,
+  ThreadsIndexRoute: ThreadsIndexRoute,
 }
 
 const ThreadsRouteRouteWithChildren = ThreadsRouteRoute._addFileChildren(
-	ThreadsRouteRouteChildren,
+  ThreadsRouteRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
-	IndexRoute: IndexRoute,
-	AdminRouteRoute: AdminRouteRouteWithChildren,
-	AgentRouteRoute: AgentRouteRoute,
-	ChannelsRouteRoute: ChannelsRouteRoute,
-	MediaRouteRoute: MediaRouteRouteWithChildren,
-	PointsRouteRoute: PointsRouteRoute,
-	ProxyRouteRoute: ProxyRouteRoute,
-	TasksRouteRoute: TasksRouteRoute,
-	ThreadsRouteRoute: ThreadsRouteRouteWithChildren,
-	LoginRoute: LoginRoute,
-	ApiOpenapiRoute: ApiOpenapiRoute,
-	AuthLoginRoute: AuthLoginRoute,
-	LegalPrivacyRoute: LegalPrivacyRoute,
-	MarketingIndexRoute: MarketingIndexRoute,
-	ThreadTemplatesIndexRoute: ThreadTemplatesIndexRoute,
-	ApiOrpcSplatRoute: ApiOrpcSplatRoute,
-	ApiProxyCheckRunRoute: ApiProxyCheckRunRoute,
-	ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,
-	ApiRenderCfCallbackRoute: ApiRenderCfCallbackRoute,
-	ApiThreadsRenderedRoute: ApiThreadsRenderedRoute,
-	ApiInternalAiAsrProviderRoute: ApiInternalAiAsrProviderRoute,
-	ApiMediaIdCommentsDataRoute: ApiMediaIdCommentsDataRoute,
-	ApiMediaIdDownloadedRoute: ApiMediaIdDownloadedRoute,
-	ApiMediaIdRenderedRoute: ApiMediaIdRenderedRoute,
-	ApiMediaIdRenderedInfoRoute: ApiMediaIdRenderedInfoRoute,
-	ApiMediaIdSourceRoute: ApiMediaIdSourceRoute,
+  IndexRoute: IndexRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  AgentRouteRoute: AgentRouteRoute,
+  ChannelsRouteRoute: ChannelsRouteRoute,
+  MediaRouteRoute: MediaRouteRouteWithChildren,
+  PointsRouteRoute: PointsRouteRoute,
+  ProxyRouteRoute: ProxyRouteRoute,
+  TasksRouteRoute: TasksRouteRoute,
+  ThreadsRouteRoute: ThreadsRouteRouteWithChildren,
+  LoginRoute: LoginRoute,
+  ApiOpenapiRoute: ApiOpenapiRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  LegalPrivacyRoute: LegalPrivacyRoute,
+  MarketingIndexRoute: MarketingIndexRoute,
+  ThreadTemplatesIndexRoute: ThreadTemplatesIndexRoute,
+  ApiOrpcSplatRoute: ApiOrpcSplatRoute,
+  ApiProxyCheckRunRoute: ApiProxyCheckRunRoute,
+  ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,
+  ApiRenderCfCallbackRoute: ApiRenderCfCallbackRoute,
+  ApiThreadsRenderedRoute: ApiThreadsRenderedRoute,
+  ApiInternalAiAsrProviderRoute: ApiInternalAiAsrProviderRoute,
+  ApiMediaIdCommentsDataRoute: ApiMediaIdCommentsDataRoute,
+  ApiMediaIdDownloadedRoute: ApiMediaIdDownloadedRoute,
+  ApiMediaIdRenderedRoute: ApiMediaIdRenderedRoute,
+  ApiMediaIdRenderedInfoRoute: ApiMediaIdRenderedInfoRoute,
+  ApiMediaIdSourceRoute: ApiMediaIdSourceRoute,
 }
 export const routeTree = rootRouteImport
-	._addFileChildren(rootRouteChildren)
-	._addFileTypes<FileRouteTypes>()
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
 import type { createStart } from '@tanstack/react-start'
 declare module '@tanstack/react-start' {
-	interface Register {
-		ssr: true
-		router: Awaited<ReturnType<typeof getRouter>>
-	}
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }

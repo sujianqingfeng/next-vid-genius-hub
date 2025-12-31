@@ -406,16 +406,32 @@ export function ThreadTemplateVisualEditor({
 	value,
 	onChange,
 	assets = [],
+	historyState,
+	setHistoryState,
+	resetKey,
 }: {
 	value: ThreadTemplateConfigV1
 	onChange: (next: ThreadTemplateConfigV1) => void
 	assets?: AssetRow[]
+	historyState?: {
+		past: ThreadTemplateConfigV1[]
+		future: ThreadTemplateConfigV1[]
+	}
+	setHistoryState?: React.Dispatch<
+		React.SetStateAction<{
+			past: ThreadTemplateConfigV1[]
+			future: ThreadTemplateConfigV1[]
+		}>
+	>
+	resetKey?: string
 }) {
 	const skipNextValueResetRef = React.useRef(false)
-	const [history, setHistory] = React.useState<{
+	const [internalHistory, setInternalHistory] = React.useState<{
 		past: ThreadTemplateConfigV1[]
 		future: ThreadTemplateConfigV1[]
 	}>({ past: [], future: [] })
+	const history = historyState ?? internalHistory
+	const setHistory = setHistoryState ?? setInternalHistory
 	const [scene, setScene] = React.useState<SceneKey>('cover')
 	const [selectedKey, setSelectedKey] = React.useState<string>(() =>
 		pathKey('cover', []),
@@ -430,13 +446,20 @@ export function ThreadTemplateVisualEditor({
 		null) as ThreadRenderTreeNode | null
 
 	React.useEffect(() => {
+		if (resetKey !== undefined) return
 		if (skipNextValueResetRef.current) {
 			skipNextValueResetRef.current = false
 			return
 		}
 		setHistory({ past: [], future: [] })
 		setCopiedNode(null)
-	}, [value])
+	}, [value, resetKey, setHistory])
+
+	React.useEffect(() => {
+		if (resetKey === undefined) return
+		setHistory({ past: [], future: [] })
+		setCopiedNode(null)
+	}, [resetKey, setHistory])
 
 	const tree = React.useMemo(() => {
 		if (!sceneRoot) return [] as TreeItem[]
