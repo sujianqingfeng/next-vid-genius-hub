@@ -24,8 +24,8 @@
 		"remotion:ensure": "pnpm exec remotion browser ensure --log=info"
 	},
 	"dependencies": {
-		"@ai-sdk/deepseek": "^1.0.10",
-		"@ai-sdk/openai": "^2.0.80",
+		"@ai-sdk/deepseek": "^2.0.1",
+		"@ai-sdk/openai": "^3.0.1",
 		"@app/job-callbacks": "workspace:*",
 		"@app/media-comments": "workspace:*",
 		"@app/media-core": "workspace:*",
@@ -60,7 +60,7 @@
 		"@tanstack/react-router-ssr-query": "^1.131.7",
 		"@tanstack/react-start": "^1.132.0",
 		"@tanstack/router-plugin": "^1.132.0",
-		"ai": "^5.0.108",
+		"ai": "^6.0.3",
 		"bcryptjs": "^3.0.3",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
