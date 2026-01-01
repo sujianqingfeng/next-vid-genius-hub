@@ -133,6 +133,14 @@ function ThreadTemplateVersionEditorRoute() {
 		},
 	)
 
+	React.useEffect(() => {
+		// Always start with all panels expanded when entering the editor.
+		setLayout((prev) => {
+			if (!prev.leftCollapsed && !prev.rightCollapsed) return prev
+			return { ...prev, leftCollapsed: false, rightCollapsed: false }
+		})
+	}, [setLayout])
+
 	const containerRef = React.useRef<HTMLDivElement | null>(null)
 	const dragRef = React.useRef<{
 		kind: 'left' | 'right'

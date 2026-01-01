@@ -570,19 +570,39 @@ export function ThreadRemotionEditorCard({
 		editCanvasConfigRef.current = editCanvasConfig
 	}, [editCanvasConfig])
 
+	const selectionStateRef = React.useRef<{
+		selectedKeys: string[]
+		primaryKey: string | null
+		primaryType: string | null
+	}>({ selectedKeys: [], primaryKey: null, primaryType: null })
+	React.useEffect(() => {
+		selectionStateRef.current = { selectedKeys, primaryKey, primaryType }
+	}, [primaryKey, primaryType, selectedKeys])
+
+	const isSyncingExternalSelectionRef = React.useRef(false)
 	React.useEffect(() => {
 		if (externalPrimaryKey === undefined) return
 
+		const { selectedKeys: curKeys, primaryKey: curPrimaryKey } =
+			selectionStateRef.current
+
 		if (!externalPrimaryKey) {
-			if (selectedKeys.length === 0 && primaryKey == null) return
+			if (curKeys.length === 0 && curPrimaryKey == null) return
+			isSyncingExternalSelectionRef.current = true
 			setSelectedKeys([])
 			setPrimaryKey(null)
 			setPrimaryType(null)
 			return
 		}
 
-		if (primaryKey === externalPrimaryKey) return
+		if (
+			curPrimaryKey === externalPrimaryKey &&
+			curKeys.length === 1 &&
+			curKeys[0] === externalPrimaryKey
+		)
+			return
 
+		isSyncingExternalSelectionRef.current = true
 		setSelectedKeys([externalPrimaryKey])
 		setPrimaryKey(externalPrimaryKey)
 
@@ -601,18 +621,42 @@ export function ThreadRemotionEditorCard({
 			const max = Math.max(0, timeline.totalDurationInFrames - 1)
 			return Math.min(nextFrame, max)
 		})
-	}, [
-		externalPrimaryKey,
-		primaryKey,
-		selectedKeys.length,
-		timeline.coverDurationInFrames,
-		timeline.totalDurationInFrames,
-	])
+	}, [externalPrimaryKey, timeline.coverDurationInFrames, timeline.totalDurationInFrames])
+
+	const onSelectionChangeRef = React.useRef(onSelectionChange)
+	React.useEffect(() => {
+		onSelectionChangeRef.current = onSelectionChange
+	}, [onSelectionChange])
+
+	const lastSelectionSnapshotRef = React.useRef<{
+		keys: string[]
+		primaryKey: string | null
+		primaryType: string | null
+	} | null>(null)
 
 	React.useEffect(() => {
-		if (!onSelectionChange) return
-		onSelectionChange({ keys: selectedKeys, primaryKey, primaryType })
-	}, [onSelectionChange, primaryKey, primaryType, selectedKeys])
+		const cb = onSelectionChangeRef.current
+		if (!cb) return
+
+		const next = { keys: selectedKeys, primaryKey, primaryType }
+		if (isSyncingExternalSelectionRef.current) {
+			isSyncingExternalSelectionRef.current = false
+			lastSelectionSnapshotRef.current = next
+			return
+		}
+
+		const prev = lastSelectionSnapshotRef.current
+		if (
+			prev &&
+			prev.primaryKey === next.primaryKey &&
+			prev.primaryType === next.primaryType &&
+			prev.keys.length === next.keys.length &&
+			prev.keys.every((k, i) => k === next.keys[i])
+		)
+			return
+		lastSelectionSnapshotRef.current = next
+		cb(next)
+	}, [primaryKey, primaryType, selectedKeys])
 
 	React.useEffect(() => {
 		const wrapper = previewWrapperRef.current
@@ -2805,7 +2849,7 @@ export function ThreadRemotionEditorCard({
 											// ignore
 										}
 									}}
-									onPointerLeaveCapture={() => {
+									onPointerLeave={() => {
 										if (dragRef.current) return
 										hoverElementRef.current = null
 										setHoverNodeKey(null)
