@@ -261,6 +261,10 @@ export function ThreadRemotionEditorCard({
 	canEditRedo,
 	onEditUndo,
 	onEditRedo,
+	showLayers = true,
+	showInspector = true,
+	externalPrimaryKey,
+	onSelectionChange,
 }: {
 	thread: DbThread | null
 	root: DbThreadPost | null
@@ -282,6 +286,14 @@ export function ThreadRemotionEditorCard({
 	canEditRedo?: boolean
 	onEditUndo?: () => void
 	onEditRedo?: () => void
+	showLayers?: boolean
+	showInspector?: boolean
+	externalPrimaryKey?: string | null
+	onSelectionChange?: (next: {
+		keys: string[]
+		primaryKey: string | null
+		primaryType: string | null
+	}) => void
 }) {
 	const isClient = typeof window !== 'undefined'
 
@@ -557,6 +569,50 @@ export function ThreadRemotionEditorCard({
 	React.useEffect(() => {
 		editCanvasConfigRef.current = editCanvasConfig
 	}, [editCanvasConfig])
+
+	React.useEffect(() => {
+		if (externalPrimaryKey === undefined) return
+
+		if (!externalPrimaryKey) {
+			if (selectedKeys.length === 0 && primaryKey == null) return
+			setSelectedKeys([])
+			setPrimaryKey(null)
+			setPrimaryType(null)
+			return
+		}
+
+		if (primaryKey === externalPrimaryKey) return
+
+		setSelectedKeys([externalPrimaryKey])
+		setPrimaryKey(externalPrimaryKey)
+
+		const cfg = editCanvasConfigRef.current
+		const res = cfg ? getNodeByKey(cfg, externalPrimaryKey) : null
+		setPrimaryType((res?.node as any)?.type ?? null)
+
+		const parsed = parseTemplateNodeKey(externalPrimaryKey)
+		if (!parsed) return
+		setEditFrame((prev) => {
+			const nextFrame =
+				parsed.scene === 'cover'
+					? 0
+					: Math.max(0, timeline.coverDurationInFrames)
+			if (nextFrame === prev) return prev
+			const max = Math.max(0, timeline.totalDurationInFrames - 1)
+			return Math.min(nextFrame, max)
+		})
+	}, [
+		externalPrimaryKey,
+		primaryKey,
+		selectedKeys.length,
+		timeline.coverDurationInFrames,
+		timeline.totalDurationInFrames,
+	])
+
+	React.useEffect(() => {
+		if (!onSelectionChange) return
+		onSelectionChange({ keys: selectedKeys, primaryKey, primaryType })
+	}, [onSelectionChange, primaryKey, primaryType, selectedKeys])
 
 	React.useEffect(() => {
 		const wrapper = previewWrapperRef.current
@@ -1905,7 +1961,8 @@ export function ThreadRemotionEditorCard({
 						) : null}
 
 						{mode === 'edit' ? (
-							<div className="rounded-none border border-border bg-card p-4 space-y-3">
+							showLayers ? (
+								<div className="rounded-none border border-border bg-card p-4 space-y-3">
 								<div className="flex items-center justify-between gap-3">
 									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 										Layers
@@ -2038,6 +2095,7 @@ export function ThreadRemotionEditorCard({
 
 								<style>{`[data-tt-editor-hidden="1"]{opacity:0!important}`}</style>
 							</div>
+							) : null
 						) : null}
 
 						{(() => {
@@ -3124,7 +3182,8 @@ export function ThreadRemotionEditorCard({
 						) : null}
 
 						{mode === 'edit' ? (
-							<div className="rounded-none border border-border bg-card p-4 space-y-4">
+							showInspector ? (
+								<div className="rounded-none border border-border bg-card p-4 space-y-4">
 								<div className="flex items-center justify-between gap-3">
 									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 										Inspector
@@ -3303,6 +3362,7 @@ export function ThreadRemotionEditorCard({
 									)
 								})()}
 							</div>
+							) : null
 						) : null}
 					</div>
 				) : null}

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -9,7 +9,6 @@ import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
-import { Label } from '~/components/ui/label'
 import {
 	Select,
 	SelectContent,
@@ -119,6 +118,10 @@ function ThreadTemplateVersionEditorRoute() {
 
 	const [note, setNote] = React.useState('')
 
+	const [editorScene, setEditorScene] = React.useState<'cover' | 'post'>('cover')
+	const [editorSelectedKey, setEditorSelectedKey] =
+		React.useState<string>('cover:[]')
+
 	const [previewMode, setPreviewMode] = React.useState<'edit' | 'play'>('edit')
 	const [showAdvanced, setShowAdvanced] = React.useState(false)
 	const [visualTemplateConfig, setVisualTemplateConfig] =
@@ -155,9 +158,46 @@ function ThreadTemplateVersionEditorRoute() {
 		if (!selectedVersion) return
 		syncEditorFromVersion(selectedVersion)
 		setNote('')
+		setEditorScene('cover')
+		setEditorSelectedKey('cover:[]')
 	}, [selectedVersion?.id])
 
 	const normalizedTemplateConfig = visualTemplateConfig
+
+	const selectedVersionConfig = React.useMemo(() => {
+		if (!selectedVersion) return null
+		return toConfigFromVersionRow(selectedVersion) ?? DEFAULT_THREAD_TEMPLATE_CONFIG
+	}, [selectedVersion?.id])
+
+	const isDirty = React.useMemo(() => {
+		if (!selectedVersionConfig) return false
+		return (
+			JSON.stringify(selectedVersionConfig) !== JSON.stringify(visualTemplateConfig)
+		)
+	}, [selectedVersionConfig, visualTemplateConfig])
+
+	React.useEffect(() => {
+		if (!isDirty) return
+		const handler = (e: BeforeUnloadEvent) => {
+			e.preventDefault()
+			e.returnValue = ''
+		}
+		window.addEventListener('beforeunload', handler)
+		return () => window.removeEventListener('beforeunload', handler)
+	}, [isDirty])
+
+	function sceneFromNodeKey(key: string): 'cover' | 'post' | null {
+		if (key.startsWith('cover:')) return 'cover'
+		if (key.startsWith('post:')) return 'post'
+		return null
+	}
+
+	function confirmDiscardChanges(action: string) {
+		if (!isDirty) return true
+		return window.confirm(
+			`You have unpublished changes. Discard them and ${action}?`,
+		)
+	}
 
 	function applyVisualTemplateConfigExternal(next: ThreadTemplateConfigV1) {
 		setVisualTemplateConfig((prev) => {
@@ -246,316 +286,329 @@ function ThreadTemplateVersionEditorRoute() {
 		},
 	)
 
+	const publishDisabledReason = !library
+		? 'Loading template…'
+		: publishMutation.isPending
+			? 'Publishing…'
+			: !previewThreadId
+				? 'Pick a preview thread first'
+				: null
+
 	const canPublish =
-		Boolean(library) &&
-		!publishMutation.isPending &&
-		Boolean(normalizedTemplateConfig) &&
-		Boolean(previewThreadId)
+		!publishDisabledReason && Boolean(normalizedTemplateConfig) && Boolean(library)
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
-			<div className="border-b border-border bg-card">
-				<div className="mx-auto max-w-[1800px] px-4 py-4 sm:px-6 lg:px-8">
-					<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-						<div className="space-y-1">
-								<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-									Template Editor
-								</div>
-								<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
+			<div className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+				<div className="mx-auto max-w-[1800px] px-4 py-3 sm:px-6 lg:px-8">
+					<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+						<div className="min-w-0 space-y-1">
+							<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+								Template Editor
+							</div>
+							<div className="flex flex-wrap items-center gap-2">
+								<h1 className="min-w-0 truncate font-mono text-xl font-bold uppercase tracking-tight">
 									{library ? String((library as any).name) : '…'}
 								</h1>
-								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									{selectedVersion
-										? `Version v${Number((selectedVersion as any).version)}`
-										: 'Version …'}
-									{library ? ` · templateId=${String((library as any).templateId)}` : ''}
-								</div>
+								{isDirty ? (
+									<div className="rounded-none border border-border bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-foreground">
+										Unpublished changes
+									</div>
+								) : null}
+							</div>
+							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+								{selectedVersion
+									? `Version v${Number((selectedVersion as any).version)}`
+									: 'Version …'}
+								{library
+									? ` · templateId=${String((library as any).templateId)}`
+									: ''}
+							</div>
 						</div>
+
 						<div className="flex flex-wrap items-center gap-2">
+							<Select
+								value={String(versionId)}
+								disabled={versionsQuery.isLoading || versions.length === 0}
+								onValueChange={(v) => {
+									if (String(v) === String(versionId)) return
+									if (!confirmDiscardChanges('switch versions')) return
+									void navigate({
+										to: '/thread-templates/$libraryId/versions/$versionId/editor',
+										params: { libraryId, versionId: v },
+										search: { previewThreadId },
+									})
+								}}
+							>
+								<SelectTrigger className="rounded-none font-mono text-xs h-9 w-[190px]">
+									<SelectValue placeholder="Version" />
+								</SelectTrigger>
+								<SelectContent>
+									{versions.map((v: any) => (
+										<SelectItem key={String(v.id)} value={String(v.id)}>
+											v{Number(v.version)} · {String(v.id).slice(0, 10)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+
+							<Select
+								value={previewThreadId || ''}
+								onValueChange={(v) => {
+									void navigate({ search: { previewThreadId: v } })
+								}}
+							>
+								<SelectTrigger className="rounded-none font-mono text-xs h-9 w-[260px]">
+									<SelectValue placeholder="Preview thread" />
+								</SelectTrigger>
+								<SelectContent>
+									{threads.map((t: any) => (
+										<SelectItem key={String(t.id)} value={String(t.id)}>
+											{String(t.title || t.id).slice(0, 40)} ·{' '}
+											{String(t.id).slice(0, 10)}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+
+							<Input
+								value={note}
+								onChange={(e) => setNote(e.target.value)}
+								placeholder="Publish note…"
+								className="rounded-none font-mono text-xs h-9 w-[240px]"
+							/>
+
 							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={visualTemplateHistory.past.length === 0}
+								onClick={() => undoVisualTemplate()}
+							>
+								Undo
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={visualTemplateHistory.future.length === 0}
+								onClick={() => redoVisualTemplate()}
+							>
+								Redo
+							</Button>
+
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!selectedVersion}
+								onClick={() => {
+									if (!selectedVersion) return
+									if (isDirty && !confirmDiscardChanges('reset')) return
+									syncEditorFromVersion(selectedVersion)
+									setNote('')
+									setEditorScene('cover')
+									setEditorSelectedKey('cover:[]')
+									toast.message('Reset to version')
+								}}
+							>
+								Reset
+							</Button>
+
+							<Button
+								type="button"
+								size="sm"
+								variant={previewMode === 'edit' ? 'default' : 'outline'}
+								className="rounded-none font-mono text-xs uppercase"
+								onClick={() => setPreviewMode('edit')}
+							>
+								Edit
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant={previewMode === 'play' ? 'default' : 'outline'}
+								className="rounded-none font-mono text-xs uppercase"
+								onClick={() => setPreviewMode('play')}
+							>
+								Play
+							</Button>
+
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								onClick={() => setShowAdvanced((v) => !v)}
+							>
+								{showAdvanced ? 'Hide JSON' : 'JSON'}
+							</Button>
+
+							<Button
+								type="button"
+								size="sm"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canPublish}
+								title={publishDisabledReason ?? undefined}
+								onClick={() => {
+									if (!library) return
+									if (!previewThreadId) {
+										toast.error('Pick a preview thread first')
+										return
+									}
+									publishMutation.mutate({
+										libraryId,
+										templateConfig: normalizedTemplateConfig,
+										note: note.trim() || undefined,
+										sourceThreadId: previewThreadId,
+									})
+								}}
+							>
+								{publishMutation.isPending ? 'Publishing…' : 'Publish'}
+							</Button>
+
+							<Button
+								type="button"
 								variant="outline"
 								size="sm"
 								className="rounded-none font-mono text-xs uppercase tracking-wider"
-								asChild
+								onClick={() => {
+									if (!confirmDiscardChanges('leave')) return
+									void navigate({ to: '/thread-templates' })
+								}}
 							>
-								<Link to="/thread-templates">Back</Link>
+								Back
 							</Button>
 						</div>
 					</div>
+
+					{publishDisabledReason ? (
+						<div className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+							Publish disabled: {publishDisabledReason}
+						</div>
+					) : null}
 				</div>
 			</div>
 
 			<div className="mx-auto max-w-[1800px] px-4 py-6 sm:px-6 lg:px-8">
-				<div className="grid grid-cols-1 gap-6 lg:grid-cols-[520px_1fr]">
-					<div className="space-y-6">
-						<Card className="rounded-none">
+				<div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_1fr_420px]">
+					<ThreadTemplateVisualEditor
+						layout="panels"
+						structureClassName="order-1 lg:order-none lg:col-start-1 lg:col-end-2 lg:row-start-1"
+						propertiesClassName="order-3 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1"
+						value={visualTemplateConfig}
+						onChange={(next) =>
+							setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
+						}
+						assets={previewAssets as any}
+						historyState={visualTemplateHistory}
+						setHistoryState={setVisualTemplateHistory}
+						resetKey={String(selectedVersion?.id ?? '')}
+						scene={editorScene}
+						onSceneChange={(s) => setEditorScene(s)}
+						selectedKey={editorSelectedKey}
+						onSelectedKeyChange={(key) => {
+							setEditorSelectedKey(key)
+							const s = sceneFromNodeKey(key)
+							if (s) setEditorScene((prev) => (prev === s ? prev : s))
+						}}
+					/>
+
+					<div className="order-2 space-y-4 lg:order-none lg:col-start-2 lg:col-end-3 lg:row-start-1">
+						<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+							Preview
+						</div>
+
+						{previewMode === 'edit' ? (
+							<ThreadRemotionEditorCard
+								thread={previewThread as any}
+								root={previewRoot as any}
+								replies={previewReplies as any}
+								assets={previewAssets as any}
+								audio={
+									previewAudio?.url && previewAudio?.asset?.durationMs
+										? {
+												url: String(previewAudio.url),
+												durationMs: Number(previewAudio.asset.durationMs),
+											}
+										: null
+								}
+								isLoading={previewThreadQuery.isLoading}
+								templateId={(library as any)?.templateId as any}
+								templateConfig={normalizedTemplateConfig as any}
+								editCanvasConfig={visualTemplateConfig as any}
+								onEditCanvasConfigChange={(next) => {
+									applyVisualTemplateConfigExternal(next)
+								}}
+								onEditCanvasTransaction={(phase) => {
+									if (phase === 'start') beginVisualTemplateTxn()
+									else endVisualTemplateTxn()
+								}}
+								showLayers={false}
+								showInspector={false}
+								externalPrimaryKey={editorSelectedKey}
+								onSelectionChange={({ primaryKey }) => {
+									if (!primaryKey) return
+									setEditorSelectedKey(primaryKey)
+									const s = sceneFromNodeKey(primaryKey)
+									if (s) setEditorScene((prev) => (prev === s ? prev : s))
+								}}
+							/>
+						) : (
+							<ThreadRemotionPlayerCard
+								thread={previewThread as any}
+								root={previewRoot as any}
+								replies={previewReplies as any}
+								assets={previewAssets as any}
+								audio={
+									previewAudio?.url && previewAudio?.asset?.durationMs
+										? {
+												url: String(previewAudio.url),
+												durationMs: Number(previewAudio.asset.durationMs),
+											}
+										: null
+								}
+								isLoading={previewThreadQuery.isLoading}
+								templateId={(library as any)?.templateId as any}
+								templateConfig={normalizedTemplateConfig as any}
+							/>
+						)}
+
+						{previewThreadId && previewThreadQuery.isError ? (
+							<div className="font-mono text-xs text-destructive">
+								Failed to load preview thread.
+							</div>
+						) : null}
+
+						{previewThreadId && !previewRoot && !previewThreadQuery.isLoading ? (
+							<div className="font-mono text-xs text-muted-foreground">
+								Preview thread has no root post (or failed to load).
+							</div>
+						) : null}
+					</div>
+
+					{showAdvanced ? (
+						<Card className="order-4 rounded-none lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-2">
 							<CardHeader>
 								<CardTitle className="font-mono text-sm uppercase tracking-widest">
-									Context
+									Config (read-only JSON)
 								</CardTitle>
 							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="grid grid-cols-1 gap-4">
-									<div className="space-y-2">
-										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Version
-										</Label>
-										<Select
-											value={String(versionId)}
-											disabled={
-												versionsQuery.isLoading || versions.length === 0
-											}
-											onValueChange={(v) => {
-												void navigate({
-													to: '/thread-templates/$libraryId/versions/$versionId/editor',
-													params: { libraryId, versionId: v },
-													search: { previewThreadId },
-												})
-											}}
-										>
-											<SelectTrigger className="rounded-none font-mono text-xs h-9">
-												<SelectValue placeholder="Select version" />
-											</SelectTrigger>
-											<SelectContent>
-												{versions.map((v: any) => (
-													<SelectItem key={String(v.id)} value={String(v.id)}>
-														v{Number(v.version)} · {String(v.id).slice(0, 12)}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
-
-										<div className="space-y-2">
-											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												Preview With
-											</Label>
-											<Select
-												value={previewThreadId || ''}
-												onValueChange={(v) => {
-													void navigate({ search: { previewThreadId: v } })
-											}}
-										>
-											<SelectTrigger className="rounded-none font-mono text-xs h-9">
-												<SelectValue placeholder="Pick a recent thread" />
-											</SelectTrigger>
-											<SelectContent>
-												{threads.map((t: any) => (
-													<SelectItem key={String(t.id)} value={String(t.id)}>
-														{String(t.title || t.id).slice(0, 40)} ·{' '}
-														{String(t.id).slice(0, 10)}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-
-										{previewThreadId && previewThreadQuery.isError ? (
-											<div className="font-mono text-xs text-destructive">
-												Failed to load preview thread.
-											</div>
-										) : null}
-											{!previewThreadId ? (
-												<div className="font-mono text-xs text-muted-foreground">
-													Choose a thread so you can preview and publish changes.
-												</div>
-											) : null}
-										</div>
-
-									<div className="space-y-2">
-										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Publish Note (optional)
-										</Label>
-										<Input
-											value={note}
-											onChange={(e) => setNote(e.target.value)}
-											placeholder="e.g. tweak cover typography"
-											className="rounded-none font-mono text-xs h-9"
-										/>
-									</div>
-								</div>
-
-								<div className="flex flex-wrap items-center justify-between gap-2">
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-none font-mono text-xs uppercase"
-										disabled={!selectedVersion}
-										onClick={() => {
-											if (!selectedVersion) return
-											syncEditorFromVersion(selectedVersion)
-											toast.message('Reset to version')
-										}}
-									>
-										Reset
-									</Button>
-										<Button
-											type="button"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canPublish}
-											onClick={() => {
-												if (!library) return
-												if (!previewThreadId) {
-													toast.error('Pick a preview thread first')
-													return
-												}
-												publishMutation.mutate({
-													libraryId,
-													templateConfig: normalizedTemplateConfig,
-													note: note.trim() || undefined,
-												sourceThreadId: previewThreadId,
-											})
-										}}
-									>
-										{publishMutation.isPending
-											? 'Publishing…'
-											: 'Publish Version'}
-									</Button>
+							<CardContent className="space-y-2">
+								<Textarea
+									value={toPrettyJson(visualTemplateConfig)}
+									readOnly
+									className="min-h-[260px] rounded-none font-mono text-xs"
+								/>
+								<div className="font-mono text-xs text-muted-foreground">
+									This is the normalized config used for preview/publish.
 								</div>
 							</CardContent>
 						</Card>
-
-							<Card className="rounded-none">
-								<CardHeader>
-									<CardTitle className="font-mono text-sm uppercase tracking-widest">
-										Layout
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="flex flex-wrap items-center justify-between gap-2">
-										<div className="font-mono text-xs text-muted-foreground">
-											Edit visually. You can publish a new version when ready.
-										</div>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-[10px] uppercase"
-											onClick={() => setShowAdvanced((v) => !v)}
-										>
-											{showAdvanced ? 'Hide advanced' : 'Advanced'}
-										</Button>
-									</div>
-
-									<ThreadTemplateVisualEditor
-										value={visualTemplateConfig}
-										onChange={(next) =>
-											setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
-										}
-										assets={previewAssets as any}
-										historyState={visualTemplateHistory}
-										setHistoryState={setVisualTemplateHistory}
-										resetKey={String(selectedVersion?.id ?? '')}
-									/>
-
-									{showAdvanced ? (
-										<div className="space-y-2">
-											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												Config (read-only JSON)
-											</Label>
-											<Textarea
-												value={toPrettyJson(visualTemplateConfig)}
-												readOnly
-												className="min-h-[180px] rounded-none font-mono text-xs"
-											/>
-											<div className="font-mono text-xs text-muted-foreground">
-												This is the normalized config used for preview/publish.
-											</div>
-										</div>
-									) : null}
-								</CardContent>
-							</Card>
-					</div>
-
-					<div className="space-y-6">
-						<div>
-							<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Preview
-								</div>
-								<div className="flex items-center gap-2">
-									<Button
-										type="button"
-										size="sm"
-										variant={previewMode === 'edit' ? 'default' : 'outline'}
-										className="rounded-none font-mono text-[10px] uppercase"
-										onClick={() => setPreviewMode('edit')}
-									>
-										Edit
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant={previewMode === 'play' ? 'default' : 'outline'}
-										className="rounded-none font-mono text-[10px] uppercase"
-										onClick={() => setPreviewMode('play')}
-									>
-										Play
-									</Button>
-								</div>
-							</div>
-
-							{previewMode === 'edit' ? (
-								<ThreadRemotionEditorCard
-									thread={previewThread as any}
-									root={previewRoot as any}
-									replies={previewReplies as any}
-									assets={previewAssets as any}
-									audio={
-										previewAudio?.url && previewAudio?.asset?.durationMs
-											? {
-													url: String(previewAudio.url),
-													durationMs: Number(previewAudio.asset.durationMs),
-												}
-											: null
-									}
-										isLoading={previewThreadQuery.isLoading}
-										templateId={(library as any)?.templateId as any}
-										templateConfig={normalizedTemplateConfig as any}
-										editCanvasConfig={visualTemplateConfig as any}
-										canEditUndo={visualTemplateHistory.past.length > 0}
-										canEditRedo={visualTemplateHistory.future.length > 0}
-										onEditUndo={() => {
-											undoVisualTemplate()
-										}}
-										onEditRedo={() => {
-											redoVisualTemplate()
-										}}
-										onEditCanvasConfigChange={(next) => {
-											applyVisualTemplateConfigExternal(next)
-										}}
-										onEditCanvasTransaction={(phase) => {
-											if (phase === 'start') beginVisualTemplateTxn()
-											else endVisualTemplateTxn()
-										}}
-									/>
-							) : (
-								<ThreadRemotionPlayerCard
-									thread={previewThread as any}
-									root={previewRoot as any}
-									replies={previewReplies as any}
-									assets={previewAssets as any}
-									audio={
-										previewAudio?.url && previewAudio?.asset?.durationMs
-											? {
-													url: String(previewAudio.url),
-													durationMs: Number(previewAudio.asset.durationMs),
-												}
-											: null
-									}
-									isLoading={previewThreadQuery.isLoading}
-									templateId={(library as any)?.templateId as any}
-									templateConfig={normalizedTemplateConfig as any}
-								/>
-							)}
-							{previewThreadId &&
-							!previewRoot &&
-							!previewThreadQuery.isLoading ? (
-								<div className="mt-3 font-mono text-xs text-muted-foreground">
-									Preview thread has no root post (or failed to load).
-								</div>
-							) : null}
-						</div>
-					</div>
+					) : null}
 				</div>
 			</div>
 		</div>

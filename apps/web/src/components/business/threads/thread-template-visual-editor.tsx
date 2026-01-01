@@ -409,6 +409,13 @@ export function ThreadTemplateVisualEditor({
 	historyState,
 	setHistoryState,
 	resetKey,
+	layout = 'split',
+	structureClassName,
+	propertiesClassName,
+	scene: controlledScene,
+	onSceneChange,
+	selectedKey: controlledSelectedKey,
+	onSelectedKeyChange,
 }: {
 	value: ThreadTemplateConfigV1
 	onChange: (next: ThreadTemplateConfigV1) => void
@@ -424,18 +431,30 @@ export function ThreadTemplateVisualEditor({
 		}>
 	>
 	resetKey?: string
+	layout?: 'split' | 'panels'
+	structureClassName?: string
+	propertiesClassName?: string
+	scene?: SceneKey
+	onSceneChange?: (scene: SceneKey) => void
+	selectedKey?: string
+	onSelectedKeyChange?: (key: string) => void
 }) {
 	const skipNextValueResetRef = React.useRef(false)
+	const txnRef = React.useRef<{ base: ThreadTemplateConfigV1 } | null>(null)
 	const [internalHistory, setInternalHistory] = React.useState<{
 		past: ThreadTemplateConfigV1[]
 		future: ThreadTemplateConfigV1[]
 	}>({ past: [], future: [] })
 	const history = historyState ?? internalHistory
 	const setHistory = setHistoryState ?? setInternalHistory
-	const [scene, setScene] = React.useState<SceneKey>('cover')
-	const [selectedKey, setSelectedKey] = React.useState<string>(() =>
+	const [internalScene, setInternalScene] = React.useState<SceneKey>('cover')
+	const scene = controlledScene ?? internalScene
+	const setScene = onSceneChange ?? setInternalScene
+	const [internalSelectedKey, setInternalSelectedKey] = React.useState<string>(() =>
 		pathKey('cover', []),
 	)
+	const selectedKey = controlledSelectedKey ?? internalSelectedKey
+	const setSelectedKey = onSelectedKeyChange ?? setInternalSelectedKey
 	const [addType, setAddType] =
 		React.useState<ThreadRenderTreeNode['type']>('Text')
 	const [wrapType, setWrapType] = React.useState<'Stack' | 'Box'>('Box')
@@ -453,18 +472,31 @@ export function ThreadTemplateVisualEditor({
 		}
 		setHistory({ past: [], future: [] })
 		setCopiedNode(null)
+		txnRef.current = null
 	}, [value, resetKey, setHistory])
 
 	React.useEffect(() => {
 		if (resetKey === undefined) return
 		setHistory({ past: [], future: [] })
 		setCopiedNode(null)
+		txnRef.current = null
 	}, [resetKey, setHistory])
 
 	const tree = React.useMemo(() => {
 		if (!sceneRoot) return [] as TreeItem[]
 		return buildTree(scene, sceneRoot)
 	}, [scene, sceneRoot])
+
+	const [treeFilter, setTreeFilter] = React.useState('')
+	const visibleTree = React.useMemo(() => {
+		const q = treeFilter.trim().toLowerCase()
+		if (!q) return tree
+		return tree.filter((it) => {
+			const label = it.label.toLowerCase()
+			const key = it.key.toLowerCase()
+			return label.includes(q) || key.includes(q)
+		})
+	}, [tree, treeFilter])
 
 	const itemByKey = React.useMemo(() => {
 		const m = new Map<string, TreeItem>()
@@ -527,8 +559,13 @@ export function ThreadTemplateVisualEditor({
 		if (!next.scenes) next.scenes = {}
 		if (!next.scenes[scene]) next.scenes[scene] = {}
 		next.scenes[scene]!.root = nextRoot
-		const prev = cloneJson(value) as ThreadTemplateConfigV1
-		setHistory((h) => ({ past: [...h.past, prev], future: [] }))
+		if (!txnRef.current) {
+			const prev = cloneJson(value) as ThreadTemplateConfigV1
+			setHistory((h) => ({
+				past: [...h.past.slice(-199), prev],
+				future: [],
+			}))
+		}
 		skipNextValueResetRef.current = true
 		onChange(next)
 	}
@@ -541,6 +578,7 @@ export function ThreadTemplateVisualEditor({
 	}
 
 	function undo() {
+		txnRef.current = null
 		if (history.past.length === 0) return
 		const prev = history.past[history.past.length - 1]
 		if (!prev) return
@@ -554,6 +592,7 @@ export function ThreadTemplateVisualEditor({
 	}
 
 	function redo() {
+		txnRef.current = null
 		if (history.future.length === 0) return
 		const next = history.future[history.future.length - 1]
 		if (!next) return
@@ -564,6 +603,26 @@ export function ThreadTemplateVisualEditor({
 		})
 		skipNextValueResetRef.current = true
 		onChange(next)
+	}
+
+	function beginTxn() {
+		if (txnRef.current) return
+		txnRef.current = { base: cloneJson(value) as ThreadTemplateConfigV1 }
+	}
+
+	function endTxn() {
+		const txn = txnRef.current
+		txnRef.current = null
+		if (!txn) return
+
+		const before = JSON.stringify(txn.base)
+		const after = JSON.stringify(value)
+		if (before === after) return
+
+		setHistory((h) => ({
+			past: [...h.past.slice(-199), txn.base],
+			future: [],
+		}))
 	}
 
 	async function copySelected() {
@@ -733,17 +792,22 @@ export function ThreadTemplateVisualEditor({
 				<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 					{label}
 				</Label>
-				<Input
-					type="number"
-					inputMode="numeric"
-					min={opts?.min}
-					max={opts?.max}
-					step={opts?.step}
-					value={v}
-					onChange={(e) => {
-						const t = e.target.value.trim()
-						if (!t) return onCommit(undefined)
-						const n = Number(t)
+					<Input
+						type="number"
+						inputMode="numeric"
+						min={opts?.min}
+						max={opts?.max}
+						step={opts?.step}
+						value={v}
+						onFocus={() => beginTxn()}
+						onBlur={() => endTxn()}
+						onKeyDown={(e) => {
+							if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+						}}
+						onChange={(e) => {
+							const t = e.target.value.trim()
+							if (!t) return onCommit(undefined)
+							const n = Number(t)
 						onCommit(Number.isFinite(n) ? n : undefined)
 					}}
 					className="rounded-none font-mono text-xs h-8"
@@ -764,13 +828,18 @@ export function ThreadTemplateVisualEditor({
 				<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 					{label}
 				</Label>
-				<Input
-					value={v}
-					placeholder={opts?.placeholder}
-					onChange={(e) => {
-						const t = e.target.value
-						onCommit(t.trim() ? t : undefined)
-					}}
+					<Input
+						value={v}
+						placeholder={opts?.placeholder}
+						onFocus={() => beginTxn()}
+						onBlur={() => endTxn()}
+						onKeyDown={(e) => {
+							if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+						}}
+						onChange={(e) => {
+							const t = e.target.value
+							onCommit(t.trim() ? t : undefined)
+						}}
 					className="rounded-none font-mono text-xs h-8"
 				/>
 			</div>
@@ -843,7 +912,11 @@ export function ThreadTemplateVisualEditor({
 
 	return (
 		<div
-			className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]"
+			className={
+				layout === 'panels'
+					? 'contents'
+					: 'grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]'
+			}
 			onKeyDownCapture={(e) => {
 				if (isTypingTarget(e.target)) return
 				const key = e.key.toLowerCase()
@@ -882,7 +955,9 @@ export function ThreadTemplateVisualEditor({
 				}
 			}}
 		>
-			<div className="space-y-3">
+			<div
+				className={['space-y-3', structureClassName].filter(Boolean).join(' ')}
+			>
 				<div className="flex items-center justify-between gap-2">
 					<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 						Scene
@@ -915,9 +990,16 @@ export function ThreadTemplateVisualEditor({
 					</div>
 				</div>
 
+				<Input
+					placeholder="Search nodes…"
+					value={treeFilter}
+					onChange={(e) => setTreeFilter(e.target.value)}
+					className="rounded-none font-mono text-xs h-8"
+				/>
+
 				<div className="rounded-none border border-border bg-card">
 					<div className="max-h-[420px] overflow-auto py-2">
-						{tree.map((it) => {
+						{visibleTree.map((it) => {
 							const active = it.key === selectedKey
 							return (
 								<button
@@ -1112,7 +1194,9 @@ export function ThreadTemplateVisualEditor({
 				</div>
 			</div>
 
-			<div className="space-y-3">
+			<div
+				className={['space-y-3', propertiesClassName].filter(Boolean).join(' ')}
+			>
 				<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 					Properties
 				</div>
