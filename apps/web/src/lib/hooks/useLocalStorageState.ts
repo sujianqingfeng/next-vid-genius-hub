@@ -58,23 +58,20 @@ export function useLocalStorageState<T>(
 		deserialize?: (raw: string) => unknown
 	},
 ) {
-	const {
-		defaultValue,
-		version,
-		migrate,
-		serialize = defaultSerialize,
-		deserialize = defaultDeserialize,
-	} = options
-
-	const defaultValueRef = React.useRef(defaultValue)
-	defaultValueRef.current = defaultValue
+	const optionsRef = React.useRef(options)
+	optionsRef.current = options
 
 	const read = React.useCallback((): T => {
+		const {
+			defaultValue,
+			version,
+			migrate,
+			deserialize = defaultDeserialize,
+		} = optionsRef.current
+
 		const raw = readLocalStorage(key)
 		const fallback =
-			typeof defaultValueRef.current === 'function'
-				? (defaultValueRef.current as () => T)()
-				: defaultValueRef.current
+			typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue
 
 		if (!raw) return fallback
 
@@ -100,34 +97,34 @@ export function useLocalStorageState<T>(
 		}
 
 		return fallback
-	}, [deserialize, key, migrate, version])
+	}, [key])
 
 	const [state, setState] = React.useState<T>(() => read())
 
 	React.useEffect(() => {
 		setState(read())
-	}, [read])
+	}, [key, read])
 
 	const set = React.useCallback(
 		(value: Setter<T>) => {
 			setState((prev) => {
 				const next = resolveSetter(value, prev)
+				const { version, serialize = defaultSerialize } = optionsRef.current
 				const env: Envelope<T> = { v: version, value: next }
 				writeLocalStorage(key, serialize(env))
 				return next
 			})
 		},
-		[key, serialize, version],
+		[key],
 	)
 
 	const remove = React.useCallback(() => {
 		writeLocalStorage(key, null)
 		setState(() => {
-			const fallback =
-				typeof defaultValueRef.current === 'function'
-					? (defaultValueRef.current as () => T)()
-					: defaultValueRef.current
-			return fallback
+			const { defaultValue } = optionsRef.current
+			return typeof defaultValue === 'function'
+				? (defaultValue as () => T)()
+				: defaultValue
 		})
 	}, [key])
 
