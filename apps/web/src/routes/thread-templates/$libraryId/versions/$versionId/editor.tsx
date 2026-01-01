@@ -3,7 +3,8 @@ import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { ThreadRemotionPreviewCard } from '~/components/business/threads/thread-remotion-preview-card'
+import { ThreadRemotionEditorCard } from '~/components/business/threads/thread-remotion-editor-card'
+import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -75,7 +76,9 @@ function coerceJsonValue(value: unknown): unknown {
 }
 
 function toConfigFromVersionRow(row: any): ThreadTemplateConfigV1 | null {
-	const raw = coerceJsonValue(row?.templateConfigResolved ?? row?.templateConfig)
+	const raw = coerceJsonValue(
+		row?.templateConfigResolved ?? row?.templateConfig,
+	)
 	if (!isPlainObject(raw) || (raw as any).version !== 1) return null
 	try {
 		return normalizeThreadTemplateConfig(raw) as ThreadTemplateConfigV1
@@ -123,7 +126,10 @@ function ThreadTemplateVersionEditorRoute() {
 
 	const [note, setNote] = React.useState('')
 
-	const [editorMode, setEditorMode] = React.useState<'visual' | 'json'>('visual')
+	const [editorMode, setEditorMode] = React.useState<'visual' | 'json'>(
+		'visual',
+	)
+	const [previewMode, setPreviewMode] = React.useState<'edit' | 'play'>('edit')
 	const [templateConfigText, setTemplateConfigText] = React.useState('')
 	const [visualTemplateConfig, setVisualTemplateConfig] =
 		React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
@@ -131,7 +137,9 @@ function ThreadTemplateVersionEditorRoute() {
 		past: ThreadTemplateConfigV1[]
 		future: ThreadTemplateConfigV1[]
 	}>({ past: [], future: [] })
-	const visualTxnRef = React.useRef<{ base: ThreadTemplateConfigV1 } | null>(null)
+	const visualTxnRef = React.useRef<{ base: ThreadTemplateConfigV1 } | null>(
+		null,
+	)
 	const visualTemplateConfigRef = React.useRef<ThreadTemplateConfigV1>(
 		DEFAULT_THREAD_TEMPLATE_CONFIG,
 	)
@@ -146,7 +154,9 @@ function ThreadTemplateVersionEditorRoute() {
 		visualTemplateHistoryRef.current = visualTemplateHistory
 	}, [visualTemplateHistory])
 
-	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(null)
+	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(
+		null,
+	)
 
 	function syncEditorFromVersion(next: any) {
 		const base = toConfigFromVersionRow(next) ?? DEFAULT_THREAD_TEMPLATE_CONFIG
@@ -167,15 +177,24 @@ function ThreadTemplateVersionEditorRoute() {
 		const text = templateConfigText.trim()
 		if (!text) return { value: null as unknown, error: null as string | null }
 		try {
-			return { value: JSON.parse(text) as unknown, error: null as string | null }
+			return {
+				value: JSON.parse(text) as unknown,
+				error: null as string | null,
+			}
 		} catch (e) {
-			return { value: undefined, error: e instanceof Error ? e.message : String(e) }
+			return {
+				value: undefined,
+				error: e instanceof Error ? e.message : String(e),
+			}
 		}
 	}, [templateConfigText])
 
 	const normalizedTemplateConfig = React.useMemo(() => {
 		if (editorMode === 'visual') return visualTemplateConfig
-		if (templateConfigParsed.value === undefined || templateConfigParsed.value === null)
+		if (
+			templateConfigParsed.value === undefined ||
+			templateConfigParsed.value === null
+		)
 			return null
 		try {
 			return normalizeThreadTemplateConfig(
@@ -196,7 +215,10 @@ function ThreadTemplateVersionEditorRoute() {
 			const normalized = normalizeThreadTemplateConfig(next)
 			const txn = visualTxnRef.current
 			if (!txn) {
-				setVisualTemplateHistory((h) => ({ past: [...h.past, prev], future: [] }))
+				setVisualTemplateHistory((h) => ({
+					past: [...h.past, prev],
+					future: [],
+				}))
 			}
 			return normalized
 		})
@@ -214,7 +236,10 @@ function ThreadTemplateVersionEditorRoute() {
 		const before = JSON.stringify(txn.base)
 		const after = JSON.stringify(visualTemplateConfig)
 		if (before === after) return
-		setVisualTemplateHistory((h) => ({ past: [...h.past, txn.base], future: [] }))
+		setVisualTemplateHistory((h) => ({
+			past: [...h.past, txn.base],
+			future: [],
+		}))
 	}
 
 	function undoVisualTemplate() {
@@ -292,7 +317,9 @@ function ThreadTemplateVersionEditorRoute() {
 							</h1>
 							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 								library={libraryId} · version={String(versionId).slice(0, 12)}
-								{library ? ` · templateId=${String((library as any).templateId)}` : ''}
+								{library
+									? ` · templateId=${String((library as any).templateId)}`
+									: ''}
 							</div>
 						</div>
 						<div className="flex flex-wrap items-center gap-2">
@@ -326,7 +353,9 @@ function ThreadTemplateVersionEditorRoute() {
 										</Label>
 										<Select
 											value={String(versionId)}
-											disabled={versionsQuery.isLoading || versions.length === 0}
+											disabled={
+												versionsQuery.isLoading || versions.length === 0
+											}
 											onValueChange={(v) => {
 												void navigate({
 													to: '/thread-templates/$libraryId/versions/$versionId/editor',
@@ -443,7 +472,9 @@ function ThreadTemplateVersionEditorRoute() {
 												return
 											}
 											if (editorMode === 'json' && templateConfigParsed.error) {
-												toast.error(`Fix JSON first: ${templateConfigParsed.error}`)
+												toast.error(
+													`Fix JSON first: ${templateConfigParsed.error}`,
+												)
 												return
 											}
 											if (!normalizedTemplateConfig) {
@@ -458,7 +489,9 @@ function ThreadTemplateVersionEditorRoute() {
 											})
 										}}
 									>
-										{publishMutation.isPending ? 'Publishing…' : 'Publish Version'}
+										{publishMutation.isPending
+											? 'Publishing…'
+											: 'Publish Version'}
 									</Button>
 								</div>
 							</CardContent>
@@ -481,7 +514,9 @@ function ThreadTemplateVersionEditorRoute() {
 											const next = v === 'json' ? 'json' : 'visual'
 											if (next === 'visual') {
 												if (templateConfigParsed.error) {
-													toast.error(`Fix JSON first: ${templateConfigParsed.error}`)
+													toast.error(
+														`Fix JSON first: ${templateConfigParsed.error}`,
+													)
 													return
 												}
 												const jsonValue =
@@ -610,50 +645,96 @@ function ThreadTemplateVersionEditorRoute() {
 
 					<div className="space-y-6">
 						<div>
-							<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Preview
+							<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									Preview
+								</div>
+								<div className="flex items-center gap-2">
+									<Button
+										type="button"
+										size="sm"
+										variant={previewMode === 'edit' ? 'default' : 'outline'}
+										className="rounded-none font-mono text-[10px] uppercase"
+										onClick={() => setPreviewMode('edit')}
+									>
+										Edit
+									</Button>
+									<Button
+										type="button"
+										size="sm"
+										variant={previewMode === 'play' ? 'default' : 'outline'}
+										className="rounded-none font-mono text-[10px] uppercase"
+										onClick={() => setPreviewMode('play')}
+									>
+										Play
+									</Button>
+								</div>
 							</div>
-							<ThreadRemotionPreviewCard
-								thread={previewThread as any}
-								root={previewRoot as any}
-								replies={previewReplies as any}
-								assets={previewAssets as any}
-								audio={
-									previewAudio?.url && previewAudio?.asset?.durationMs
-										? {
-												url: String(previewAudio.url),
-												durationMs: Number(previewAudio.asset.durationMs),
-											}
-										: null
-								}
-								isLoading={previewThreadQuery.isLoading}
-								templateId={(library as any)?.templateId as any}
-								templateConfig={normalizedTemplateConfig as any}
-								defaultMode="edit"
-								editCanvasConfig={
-									editorMode === 'visual' ? (visualTemplateConfig as any) : null
-								}
-								canEditUndo={visualTemplateHistory.past.length > 0}
-								canEditRedo={visualTemplateHistory.future.length > 0}
-								onEditUndo={() => {
-									if (editorMode !== 'visual') return
-									undoVisualTemplate()
-								}}
-								onEditRedo={() => {
-									if (editorMode !== 'visual') return
-									redoVisualTemplate()
-								}}
-								onEditCanvasConfigChange={(next) => {
-									if (editorMode !== 'visual') return
-									applyVisualTemplateConfigExternal(next)
-								}}
-								onEditCanvasTransaction={(phase) => {
-									if (editorMode !== 'visual') return
-									if (phase === 'start') beginVisualTemplateTxn()
-									else endVisualTemplateTxn()
-								}}
-							/>
-							{previewThreadId && !previewRoot && !previewThreadQuery.isLoading ? (
+
+							{previewMode === 'edit' ? (
+								<ThreadRemotionEditorCard
+									thread={previewThread as any}
+									root={previewRoot as any}
+									replies={previewReplies as any}
+									assets={previewAssets as any}
+									audio={
+										previewAudio?.url && previewAudio?.asset?.durationMs
+											? {
+													url: String(previewAudio.url),
+													durationMs: Number(previewAudio.asset.durationMs),
+												}
+											: null
+									}
+									isLoading={previewThreadQuery.isLoading}
+									templateId={(library as any)?.templateId as any}
+									templateConfig={normalizedTemplateConfig as any}
+									editCanvasConfig={
+										editorMode === 'visual'
+											? (visualTemplateConfig as any)
+											: null
+									}
+									canEditUndo={visualTemplateHistory.past.length > 0}
+									canEditRedo={visualTemplateHistory.future.length > 0}
+									onEditUndo={() => {
+										if (editorMode !== 'visual') return
+										undoVisualTemplate()
+									}}
+									onEditRedo={() => {
+										if (editorMode !== 'visual') return
+										redoVisualTemplate()
+									}}
+									onEditCanvasConfigChange={(next) => {
+										if (editorMode !== 'visual') return
+										applyVisualTemplateConfigExternal(next)
+									}}
+									onEditCanvasTransaction={(phase) => {
+										if (editorMode !== 'visual') return
+										if (phase === 'start') beginVisualTemplateTxn()
+										else endVisualTemplateTxn()
+									}}
+								/>
+							) : (
+								<ThreadRemotionPlayerCard
+									thread={previewThread as any}
+									root={previewRoot as any}
+									replies={previewReplies as any}
+									assets={previewAssets as any}
+									audio={
+										previewAudio?.url && previewAudio?.asset?.durationMs
+											? {
+													url: String(previewAudio.url),
+													durationMs: Number(previewAudio.asset.durationMs),
+												}
+											: null
+									}
+									isLoading={previewThreadQuery.isLoading}
+									templateId={(library as any)?.templateId as any}
+									templateConfig={normalizedTemplateConfig as any}
+								/>
+							)}
+							{previewThreadId &&
+							!previewRoot &&
+							!previewThreadQuery.isLoading ? (
 								<div className="mt-3 font-mono text-xs text-muted-foreground">
 									Preview thread has no root post (or failed to load).
 								</div>
@@ -665,4 +746,3 @@ function ThreadTemplateVersionEditorRoute() {
 		</div>
 	)
 }
-

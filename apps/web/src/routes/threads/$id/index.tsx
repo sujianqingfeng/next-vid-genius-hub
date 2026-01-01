@@ -7,15 +7,13 @@ import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Label } from '~/components/ui/label'
 import { Textarea } from '~/components/ui/textarea'
-import { ThreadRemotionPreviewCard } from '~/components/business/threads/thread-remotion-preview-card'
+import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
 import { useCloudJob } from '~/lib/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
-import {
-	DEFAULT_THREAD_TEMPLATE_ID,
-} from '@app/remotion-project/thread-templates'
+import { DEFAULT_THREAD_TEMPLATE_ID } from '@app/remotion-project/thread-templates'
 import {
 	DEFAULT_THREAD_TEMPLATE_CONFIG,
 	normalizeThreadTemplateConfig,
@@ -2979,7 +2977,7 @@ function ThreadDetailRoute() {
 				<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 					{t('sections.preview')}
 				</div>
-				<ThreadRemotionPreviewCard
+				<ThreadRemotionPlayerCard
 					thread={thread as any}
 					root={root as any}
 					replies={replies as any}
@@ -2997,8 +2995,6 @@ function ThreadDetailRoute() {
 					templateConfig={
 						(normalizedTemplateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG) as any
 					}
-					defaultMode="play"
-					allowEdit={false}
 				/>
 
 				{/* Legacy per-thread template editor removed; use Template Library → Open Editor instead.
@@ -3668,13 +3664,13 @@ function ThreadDetailRoute() {
 							<Link to="/thread-templates">Manage</Link>
 						</Button>
 					</div>
-						<ThreadTemplateLibraryCard
-							threadId={id}
-							effectiveTemplateId={effectiveTemplateIdForLibrary}
-							normalizedTemplateConfig={normalizedTemplateConfig}
-							onApplied={refreshThread}
-						/>
-					</div>
+					<ThreadTemplateLibraryCard
+						threadId={id}
+						effectiveTemplateId={effectiveTemplateIdForLibrary}
+						normalizedTemplateConfig={normalizedTemplateConfig}
+						onApplied={refreshThread}
+					/>
+				</div>
 
 				<div className="mt-6">
 					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
