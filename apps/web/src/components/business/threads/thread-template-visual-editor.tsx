@@ -17,6 +17,7 @@ import {
 } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
 import { ChevronRight } from 'lucide-react'
+import { useTranslations } from '~/lib/i18n'
 
 type NodePath = Array<string | number>
 
@@ -448,6 +449,7 @@ function TreeView({
 	filterText,
 	state,
 	onStateChange,
+	t,
 }: {
 	items: TreeItem[]
 	childrenByKey: Map<string, string[]>
@@ -459,6 +461,7 @@ function TreeView({
 	onStateChange: React.Dispatch<
 		React.SetStateAction<Record<string, TreeNodeState>>
 	>
+	t?: (key: string, params?: Record<string, unknown>) => string
 }) {
 	const itemByKey = React.useMemo(() => {
 		const m = new Map<string, TreeItem>()
@@ -543,7 +546,7 @@ function TreeView({
 	if (items.length === 0) {
 		return (
 			<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
-				No nodes.
+				{t?.('structure.noNodes') ?? 'No nodes.'}
 			</div>
 		)
 	}
@@ -618,55 +621,56 @@ function TreeView({
 	)
 }
 
-export function ThreadTemplateVisualEditor({
-	value,
-	onChange,
-	baselineValue,
-	assets = [],
-	historyState,
-	setHistoryState,
-	resetKey,
-	layout = 'split',
-	structureClassName,
-	propertiesClassName,
-	structureCollapsed,
-	onStructureCollapsedChange,
-	propertiesCollapsed,
-	onPropertiesCollapsedChange,
-	hotkeysEnabled = true,
-	scene: controlledScene,
-	onSceneChange,
-	selectedKey: controlledSelectedKey,
-	onSelectedKeyChange,
-}: {
-	value: ThreadTemplateConfigV1
-	onChange: (next: ThreadTemplateConfigV1) => void
-	baselineValue?: ThreadTemplateConfigV1
-	assets?: AssetRow[]
-	historyState?: {
-		past: ThreadTemplateConfigV1[]
-		future: ThreadTemplateConfigV1[]
-	}
-	setHistoryState?: React.Dispatch<
-		React.SetStateAction<{
+	export function ThreadTemplateVisualEditor({
+		value,
+		onChange,
+		baselineValue,
+		assets = [],
+		historyState,
+		setHistoryState,
+		resetKey,
+		layout = 'split',
+		structureClassName,
+		propertiesClassName,
+		structureCollapsed,
+		onStructureCollapsedChange,
+		propertiesCollapsed,
+		onPropertiesCollapsedChange,
+		hotkeysEnabled = true,
+		scene: controlledScene,
+		onSceneChange,
+		selectedKey: controlledSelectedKey,
+		onSelectedKeyChange,
+	}: {
+		value: ThreadTemplateConfigV1
+		onChange: (next: ThreadTemplateConfigV1) => void
+		baselineValue?: ThreadTemplateConfigV1
+		assets?: AssetRow[]
+		historyState?: {
 			past: ThreadTemplateConfigV1[]
 			future: ThreadTemplateConfigV1[]
-		}>
-	>
-	resetKey?: string
-	layout?: 'split' | 'panels'
-	structureClassName?: string
-	propertiesClassName?: string
-	structureCollapsed?: boolean
-	onStructureCollapsedChange?: (collapsed: boolean) => void
-	propertiesCollapsed?: boolean
-	onPropertiesCollapsedChange?: (collapsed: boolean) => void
-	hotkeysEnabled?: boolean
-	scene?: SceneKey
-	onSceneChange?: (scene: SceneKey) => void
-	selectedKey?: string
-	onSelectedKeyChange?: (key: string) => void
-}) {
+		}
+		setHistoryState?: React.Dispatch<
+			React.SetStateAction<{
+				past: ThreadTemplateConfigV1[]
+				future: ThreadTemplateConfigV1[]
+			}>
+		>
+		resetKey?: string
+		layout?: 'split' | 'panels'
+		structureClassName?: string
+		propertiesClassName?: string
+		structureCollapsed?: boolean
+		onStructureCollapsedChange?: (collapsed: boolean) => void
+		propertiesCollapsed?: boolean
+		onPropertiesCollapsedChange?: (collapsed: boolean) => void
+		hotkeysEnabled?: boolean
+		scene?: SceneKey
+		onSceneChange?: (scene: SceneKey) => void
+		selectedKey?: string
+		onSelectedKeyChange?: (key: string) => void
+	}) {
+		const t = useTranslations('ThreadTemplates.visualEditor')
 	const skipNextValueResetRef = React.useRef(false)
 	const txnRef = React.useRef<{ base: ThreadTemplateConfigV1 } | null>(null)
 	const [internalHistory, setInternalHistory] = React.useState<{
@@ -1222,13 +1226,13 @@ export function ThreadTemplateVisualEditor({
 							className="rounded-none font-mono text-[10px] uppercase"
 							onClick={() => onStructureCollapsedChange?.(false)}
 						>
-							Expand
+							{t('structure.expand')}
 						</Button>
 						<div
 							className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
 							style={{ writingMode: 'vertical-rl' }}
 						>
-							Structure
+							{t('structure.title')}
 						</div>
 					</div>
 				) : (
@@ -1236,7 +1240,7 @@ export function ThreadTemplateVisualEditor({
 						<div className="flex items-center justify-between gap-2">
 							<div className="flex items-center gap-2">
 								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Structure
+									{t('structure.title')}
 								</div>
 								{canCollapseStructure ? (
 									<Button
@@ -1246,7 +1250,7 @@ export function ThreadTemplateVisualEditor({
 										className="rounded-none font-mono text-[10px] uppercase"
 										onClick={() => onStructureCollapsedChange?.(true)}
 									>
-										Collapse
+										{t('structure.collapse')}
 									</Button>
 								) : null}
 							</div>
@@ -1261,7 +1265,7 @@ export function ThreadTemplateVisualEditor({
 										setSelectedKey(pathKey('cover', []))
 									}}
 								>
-									Cover
+									{t('structure.cover')}
 								</Button>
 								<Button
 									type="button"
@@ -1273,17 +1277,17 @@ export function ThreadTemplateVisualEditor({
 										setSelectedKey(pathKey('post', []))
 									}}
 								>
-									Post
+									{t('structure.post')}
 								</Button>
 							</div>
 						</div>
 
-						<Input
-							placeholder="Search nodes…"
-							value={treeFilter}
-							onChange={(e) => setTreeFilter(e.target.value)}
-							className="rounded-none font-mono text-xs h-8"
-						/>
+							<Input
+								placeholder={t('structure.searchPlaceholder')}
+								value={treeFilter}
+								onChange={(e) => setTreeFilter(e.target.value)}
+								className="rounded-none font-mono text-xs h-8"
+							/>
 
 						<div className="rounded-none border border-border bg-card">
 							<div className="max-h-[420px] overflow-auto py-2">
@@ -1296,6 +1300,7 @@ export function ThreadTemplateVisualEditor({
 									filterText={treeFilter}
 									state={treeState}
 									onStateChange={setTreeState}
+									t={t}
 								/>
 							</div>
 						</div>
@@ -1343,7 +1348,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canUndo}
 								onClick={undo}
 							>
-								Undo
+								{t('structure.undo')}
 							</Button>
 							<Button
 								type="button"
@@ -1353,7 +1358,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canRedo}
 								onClick={redo}
 							>
-								Redo
+								{t('structure.redo')}
 							</Button>
 							<Button
 								type="button"
@@ -1363,7 +1368,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!selectedNode}
 								onClick={() => void copySelected()}
 							>
-								Copy
+								{t('structure.copy')}
 							</Button>
 							<Button
 								type="button"
@@ -1373,7 +1378,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!selectedNode || !copiedNode}
 								onClick={pasteCopied}
 							>
-								Paste
+								{t('structure.paste')}
 							</Button>
 							<Button
 								type="button"
@@ -1382,7 +1387,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canAddChild}
 								onClick={addChild}
 							>
-								Add Child
+								{t('structure.addChild')}
 							</Button>
 							<Button
 								type="button"
@@ -1392,7 +1397,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canInsertSibling}
 								onClick={() => insertSibling('before')}
 							>
-								Insert ↑
+								{t('structure.insertBefore')}
 							</Button>
 							<Button
 								type="button"
@@ -1402,7 +1407,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canInsertSibling}
 								onClick={() => insertSibling('after')}
 							>
-								Insert ↓
+								{t('structure.insertAfter')}
 							</Button>
 							<Button
 								type="button"
@@ -1412,7 +1417,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canInsertSibling}
 								onClick={duplicateSelected}
 							>
-								Duplicate
+								{t('structure.duplicate')}
 							</Button>
 							<Button
 								type="button"
@@ -1422,7 +1427,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canMoveUp}
 								onClick={() => moveSelected('up')}
 							>
-								Up
+								{t('structure.moveUp')}
 							</Button>
 							<Button
 								type="button"
@@ -1432,7 +1437,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canMoveDown}
 								onClick={() => moveSelected('down')}
 							>
-								Down
+								{t('structure.moveDown')}
 							</Button>
 							<Select
 								value={wrapType}
@@ -1442,8 +1447,8 @@ export function ThreadTemplateVisualEditor({
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="Box">Wrap: Box</SelectItem>
-									<SelectItem value="Stack">Wrap: Stack</SelectItem>
+									<SelectItem value="Box">{t('structure.wrapBox')}</SelectItem>
+									<SelectItem value="Stack">{t('structure.wrapStack')}</SelectItem>
 								</SelectContent>
 							</Select>
 							<Button
@@ -1454,7 +1459,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!selectedNode}
 								onClick={wrapSelected}
 							>
-								Wrap
+								{t('structure.wrap')}
 							</Button>
 							<Button
 								type="button"
@@ -1464,7 +1469,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!canUnwrap}
 								onClick={unwrapSelected}
 							>
-								Unwrap
+								{t('structure.unwrap')}
 							</Button>
 							<Button
 								type="button"
@@ -1474,7 +1479,7 @@ export function ThreadTemplateVisualEditor({
 								disabled={!selected?.parentKey}
 								onClick={removeSelected}
 							>
-								Delete
+								{t('structure.delete')}
 							</Button>
 						</div>
 					</>
@@ -1498,22 +1503,22 @@ export function ThreadTemplateVisualEditor({
 							className="rounded-none font-mono text-[10px] uppercase"
 							onClick={() => onPropertiesCollapsedChange?.(false)}
 						>
-							Expand
+							{t('inspector.expand')}
 						</Button>
 						<div
 							className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
 							style={{ writingMode: 'vertical-rl' }}
 						>
-							Inspector
+							{t('inspector.title')}
 						</div>
 					</div>
 				) : (
 					<>
 						<div className="flex items-center justify-between gap-2">
-							<div className="flex items-center gap-2">
-								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Inspector
-								</div>
+						<div className="flex items-center gap-2">
+							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+ 								{t('inspector.title')}
+							</div>
 								{canCollapseInspector ? (
 									<Button
 										type="button"
@@ -1522,7 +1527,7 @@ export function ThreadTemplateVisualEditor({
 										className="rounded-none font-mono text-[10px] uppercase"
 										onClick={() => onPropertiesCollapsedChange?.(true)}
 									>
-										Collapse
+										{t('inspector.collapse')}
 									</Button>
 								) : null}
 							</div>
@@ -1531,7 +1536,7 @@ export function ThreadTemplateVisualEditor({
 						<div className="rounded-none border border-border bg-card p-4 space-y-4">
 							{!selectedNode ? (
 								<div className="font-mono text-xs text-muted-foreground">
-									Select a node to edit.
+ 									{t('inspector.selectNodeHint')}
 								</div>
 							) : (
 								<>
@@ -1542,7 +1547,7 @@ export function ThreadTemplateVisualEditor({
 											</div>
 											{baselineValue && canResetSelectedToBaseline ? (
 												<div className="rounded-none border border-border bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-foreground">
-													Modified
+													{t('inspector.modified')}
 												</div>
 											) : null}
 										</div>
@@ -1554,7 +1559,7 @@ export function ThreadTemplateVisualEditor({
 													variant="outline"
 													className="rounded-none font-mono text-[10px] uppercase"
 													disabled={!canResetSelectedToBaseline}
-													title="Reset selection to current version baseline"
+													title={t('inspector.resetToBaselineTitle')}
 													onClick={() => {
 														if (!baselineSelectedNode) return
 														updateSelected(() =>
@@ -1562,7 +1567,7 @@ export function ThreadTemplateVisualEditor({
 														)
 													}}
 												>
-													Reset
+													{t('inspector.reset')}
 												</Button>
 											) : null}
 											<div className="font-mono text-[10px] text-muted-foreground">
@@ -1574,156 +1579,156 @@ export function ThreadTemplateVisualEditor({
 									{selectedNode.type === 'Text' ? (
 										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 											{textField(
-												'text',
-												selectedNode.text,
-												(v) =>
-													updateSelected((n) => ({ ...(n as any), text: v })),
-												{ placeholder: 'Text…' },
-											)}
+ 												t('fields.text'),
+ 												selectedNode.text,
+ 												(v) =>
+ 													updateSelected((n) => ({ ...(n as any), text: v })),
+ 												{ placeholder: t('placeholders.text') },
+ 											)}
 											<Select
-												value={selectedNode.bind ?? '__none__'}
-												onValueChange={(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														bind: v === '__none__' ? undefined : v,
-													}))
-												}
-											>
-												<div className="space-y-1">
-													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-														bind
-													</Label>
-													<SelectTrigger className="rounded-none font-mono text-xs h-8">
-														<SelectValue />
-													</SelectTrigger>
-												</div>
-												<SelectContent>
-													<SelectItem value="__none__">none</SelectItem>
-													{(
-														[
-															'thread.title',
-															'thread.source',
-															'thread.sourceUrl',
-															'timeline.replyIndicator',
-															'timeline.replyIndex',
-															'timeline.replyCount',
-															'root.author.name',
-															'root.author.handle',
-															'root.plainText',
-															'root.translations.zh-CN.plainText',
-															'post.author.name',
-															'post.author.handle',
-															'post.plainText',
-															'post.translations.zh-CN.plainText',
-														] as const
-													).map((b) => (
-														<SelectItem key={b} value={b}>
-															{b}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
+ 												value={selectedNode.bind ?? '__none__'}
+ 												onValueChange={(v) =>
+ 													updateSelected((n) => ({
+ 														...(n as any),
+ 														bind: v === '__none__' ? undefined : v,
+ 													}))
+ 												}
+ 											>
+ 												<div className="space-y-1">
+ 													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+ 														{t('fields.bind')}
+ 													</Label>
+ 													<SelectTrigger className="rounded-none font-mono text-xs h-8">
+ 														<SelectValue />
+ 													</SelectTrigger>
+ 												</div>
+ 												<SelectContent>
+ 													<SelectItem value="__none__">{t('options.none')}</SelectItem>
+ 													{(
+ 														[
+ 															'thread.title',
+ 															'thread.source',
+ 															'thread.sourceUrl',
+ 															'timeline.replyIndicator',
+ 															'timeline.replyIndex',
+ 															'timeline.replyCount',
+ 															'root.author.name',
+ 															'root.author.handle',
+ 															'root.plainText',
+ 															'root.translations.zh-CN.plainText',
+ 															'post.author.name',
+ 															'post.author.handle',
+ 															'post.plainText',
+ 															'post.translations.zh-CN.plainText',
+ 														] as const
+ 													).map((b) => (
+ 														<SelectItem key={b} value={b}>
+ 															{b}
+ 														</SelectItem>
+ 													))}
+ 												</SelectContent>
+ 											</Select>
 
-											{numberField(
-												'size',
-												selectedNode.size,
-												(v) =>
-													updateSelected((n) => ({ ...(n as any), size: v })),
-												{ min: 8, max: 120, step: 1 },
-											)}
-											{numberField(
-												'weight',
-												selectedNode.weight,
-												(v) =>
-													updateSelected((n) => ({ ...(n as any), weight: v })),
-												{ min: 100, max: 900, step: 100 },
-											)}
-											{numberField(
-												'opacity',
-												(selectedNode as any).opacity,
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														opacity: v,
-													})),
-												{ min: 0, max: 1, step: 0.05 },
-											)}
-											{numberField(
-												'maxLines',
-												selectedNode.maxLines,
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														maxLines: v,
-													})),
-												{ min: 1, max: 20, step: 1 },
-											)}
-											<Select
-												value={selectedNode.align ?? '__none__'}
-												onValueChange={(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														align: v === '__none__' ? undefined : v,
-													}))
-												}
-											>
-												<div className="space-y-1">
-													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-														align
-													</Label>
-													<SelectTrigger className="rounded-none font-mono text-xs h-8">
-														<SelectValue />
-													</SelectTrigger>
-												</div>
-												<SelectContent>
-													<SelectItem value="__none__">none</SelectItem>
-													{(['left', 'center', 'right'] as const).map((a) => (
-														<SelectItem key={a} value={a}>
-															{a}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-											{selectField(
-												'color',
-												(selectedNode as any).color,
-												[
-													{ value: 'primary' },
-													{ value: 'muted' },
-													{ value: 'accent' },
-												],
-												(v) =>
-													updateSelected((n) => ({ ...(n as any), color: v })),
-											)}
-											{numberField(
-												'lineHeight',
-												(selectedNode as any).lineHeight,
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														lineHeight: v,
-													})),
-												{ min: 0.8, max: 3, step: 0.05 },
-											)}
-											{numberField(
-												'letterSpacing',
-												(selectedNode as any).letterSpacing,
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														letterSpacing: v,
-													})),
-												{ min: -2, max: 20, step: 0.1 },
-											)}
-											{boolField(
-												'uppercase',
-												(selectedNode as any).uppercase,
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														uppercase: v,
-													})),
-											)}
+ 											{numberField(
+ 												t('fields.size'),
+ 												selectedNode.size,
+ 												(v) =>
+ 													updateSelected((n) => ({ ...(n as any), size: v })),
+ 												{ min: 8, max: 120, step: 1 },
+ 											)}
+ 											{numberField(
+ 												t('fields.weight'),
+ 												selectedNode.weight,
+ 												(v) =>
+ 													updateSelected((n) => ({ ...(n as any), weight: v })),
+ 												{ min: 100, max: 900, step: 100 },
+ 											)}
+ 											{numberField(
+ 												t('fields.opacity'),
+ 												(selectedNode as any).opacity,
+ 												(v) =>
+ 													updateSelected((n) => ({
+ 														...(n as any),
+ 														opacity: v,
+ 													})),
+ 												{ min: 0, max: 1, step: 0.05 },
+ 											)}
+ 											{numberField(
+ 												t('fields.maxLines'),
+ 												selectedNode.maxLines,
+ 												(v) =>
+ 													updateSelected((n) => ({
+ 														...(n as any),
+ 														maxLines: v,
+ 													})),
+ 												{ min: 1, max: 20, step: 1 },
+ 											)}
+ 											<Select
+ 												value={selectedNode.align ?? '__none__'}
+ 												onValueChange={(v) =>
+ 													updateSelected((n) => ({
+ 														...(n as any),
+ 														align: v === '__none__' ? undefined : v,
+ 													}))
+ 												}
+ 											>
+ 												<div className="space-y-1">
+ 													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+ 														{t('fields.align')}
+ 													</Label>
+ 													<SelectTrigger className="rounded-none font-mono text-xs h-8">
+ 														<SelectValue />
+ 													</SelectTrigger>
+ 												</div>
+ 												<SelectContent>
+ 													<SelectItem value="__none__">{t('options.none')}</SelectItem>
+ 													{(['left', 'center', 'right'] as const).map((a) => (
+ 														<SelectItem key={a} value={a}>
+ 															{t(`options.${a}`)}
+ 														</SelectItem>
+ 													))}
+ 												</SelectContent>
+ 											</Select>
+ 											{selectField(
+ 												t('fields.color'),
+ 												(selectedNode as any).color,
+ 												[
+ 													{ value: 'primary' },
+ 													{ value: 'muted' },
+ 													{ value: 'accent' },
+ 												],
+ 												(v) =>
+ 													updateSelected((n) => ({ ...(n as any), color: v })),
+ 											)}
+ 											{numberField(
+ 												t('fields.lineHeight'),
+ 												(selectedNode as any).lineHeight,
+ 												(v) =>
+ 													updateSelected((n) => ({
+ 														...(n as any),
+ 														lineHeight: v,
+ 													})),
+ 												{ min: 0.8, max: 3, step: 0.05 },
+ 											)}
+ 											{numberField(
+ 												t('fields.letterSpacing'),
+ 												(selectedNode as any).letterSpacing,
+ 												(v) =>
+ 													updateSelected((n) => ({
+ 														...(n as any),
+ 														letterSpacing: v,
+ 													})),
+ 												{ min: -2, max: 20, step: 0.1 },
+ 											)}
+ 											{boolField(
+ 												t('fields.uppercase'),
+ 												(selectedNode as any).uppercase,
+ 												(v) =>
+ 													updateSelected((n) => ({
+ 														...(n as any),
+ 														uppercase: v,
+ 													})),
+ 											)}
 										</div>
 									) : null}
 
@@ -2141,11 +2146,11 @@ export function ThreadTemplateVisualEditor({
 															Pick Asset
 														</Label>
 														<SelectTrigger className="rounded-none font-mono text-xs h-8">
-															<SelectValue placeholder="Select…" />
+														<SelectValue placeholder={t('placeholders.select')} />
 														</SelectTrigger>
 													</div>
 													<SelectContent>
-														<SelectItem value="__pick__">Select…</SelectItem>
+															<SelectItem value="__pick__">{t('placeholders.select')}</SelectItem>
 														{pickableAssets
 															.filter((a) =>
 																selectedNode.type === 'Image'
@@ -2208,14 +2213,14 @@ export function ThreadTemplateVisualEditor({
 													{ min: 0, max: 80, step: 1 },
 												)}
 												{textField(
-													'background',
+													t('fields.background'),
 													(selectedNode as any).background,
 													(v) =>
 														updateSelected((n) => ({
 															...(n as any),
 															background: v,
 														})),
-													{ placeholder: 'rgba(...) or var(--tf-...)' },
+													{ placeholder: t('placeholders.color') },
 												)}
 												{numberField(
 													'radius',
@@ -2292,7 +2297,7 @@ export function ThreadTemplateVisualEditor({
 											>
 												<div className="space-y-1">
 													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-														Pick Asset
+														{t('fields.pickAsset')}
 													</Label>
 													<SelectTrigger className="rounded-none font-mono text-xs h-8">
 														<SelectValue placeholder="Select…" />
@@ -2440,7 +2445,7 @@ export function ThreadTemplateVisualEditor({
 																	}))
 																}
 															>
-																Add
+																{t('actions.add')}
 															</Button>
 															<Button
 																type="button"
@@ -2460,7 +2465,7 @@ export function ThreadTemplateVisualEditor({
 																	)
 																}}
 															>
-																Select
+																{t('actions.select')}
 															</Button>
 															<Button
 																type="button"
@@ -2477,7 +2482,7 @@ export function ThreadTemplateVisualEditor({
 																	}))
 																}
 															>
-																Clear
+																{t('actions.clear')}
 															</Button>
 														</div>
 													</div>
@@ -2645,8 +2650,7 @@ export function ThreadTemplateVisualEditor({
 												</div>
 											) : null}
 											<div className="font-mono text-xs text-muted-foreground">
-												Note: rootRoot/itemRoot editing is supported by
-												selecting them in the tree.
+												{t('notes.treeEditNote')}
 											</div>
 										</div>
 									) : null}
@@ -2727,7 +2731,7 @@ export function ThreadTemplateVisualEditor({
 													</div>
 												</div>
 												<div className="font-mono text-xs text-muted-foreground">
-													Note: Repeat renders each reply with ctx.post = reply.
+													{t('notes.repeatNote')}
 												</div>
 											</div>
 
