@@ -199,7 +199,9 @@
 				"translatedAll": "翻译完成：处理={processed} 已翻译={translated} 跳过={skipped} 失败={failed}",
 				"translationApplied": "已将翻译应用到编辑器",
 				"mediaIngest": "媒体下载：处理={processed} 成功={ok} 失败={failed}",
-				"renderQueued": "已加入渲染队列"
+				"renderQueued": "已加入渲染队列",
+				"syncedFromJson": "已从 JSON 同步",
+				"copiedToJson": "已复制到 JSON"
 			},
 			"translation": {
 				"empty": "还没有翻译内容。"
@@ -217,7 +219,15 @@
 				}
 			},
 			"editor": {
-				"textLabel": "文本（MVP：单个文本块）"
+				"textLabel": "文本（MVP：单个文本块）",
+				"safeEditHint": "安全编辑布局（不会执行代码）。",
+				"actions": {
+					"syncFromJson": "从 JSON 同步",
+					"copyToJson": "复制到 JSON"
+				},
+				"errors": {
+					"fixJsonFirst": "请先修复 JSON：{error}"
+				}
 			},
 			"debug": {
 				"selectedPostRow": "选中帖子行",
@@ -250,6 +260,129 @@
 					"cleared": "已清除音频",
 					"unknownType": "未知音频类型"
 				}
+			}
+		}
+		,
+		"remotionEditor": {
+			"states": {
+				"loading": "加载中…",
+				"dataRequired": "需要帖子数据才能生成预览。"
+			},
+			"labels": {
+				"snap": "吸附",
+				"tool": "工具",
+				"zoom": "缩放",
+				"align": "对齐",
+				"distribute": "分布",
+				"layers": "图层",
+				"inspector": "检查器",
+				"nodes": "{count} 个节点",
+				"node": "节点"
+			},
+			"buttons": {
+				"undo": "撤销",
+				"redo": "重做",
+				"cover": "封面",
+				"post": "帖子",
+				"select": "选择",
+				"pan": "平移",
+				"fit": "适配",
+				"fitSelection": "选中",
+				"copyKey": "复制 Key",
+				"clear": "清除",
+				"show": "显示",
+				"hide": "隐藏",
+				"unlock": "解锁",
+				"lock": "锁定"
+			},
+			"layers": {
+				"filterPlaceholder": "筛选（type/key）…"
+			},
+			"status": {
+				"line": "场景：{scene} · 帧：{frame} · {seconds}秒",
+				"hover": "悬停：{type}",
+				"selected": "已选：{type}",
+				"switchToVisualToDrag": "（将模板编辑器切换到 Visual 才能拖动）",
+				"tip": "提示：单击选择；Shift+单击或拖拽多选；拖动 Absolute 节点。"
+			},
+			"inspector": {
+				"empty": "请在画布上选择一个节点。",
+				"noEditCanvasConfig": "将模板编辑器切换到 Visual 以编辑数值。",
+				"nodeNotFound": "模板配置中找不到该节点。"
+			}
+		}
+	},
+	"ThreadTemplates": {
+		"editor": {
+			"shortcuts": {
+				"title": "快捷键",
+				"description": "按 Shift + / 再次打开。",
+				"rows": {
+					"undo": "撤销",
+					"redo": "重做",
+					"toggleStructure": "切换结构面板",
+					"publish": "发布"
+				}
+			},
+			"header": {
+				"systemLabel": "模板编辑器",
+				"unpublishedChanges": "未发布的更改",
+				"version": "版本 v{version}",
+				"versionUnknown": "版本 …",
+				"templateId": "templateId={templateId}",
+				"publishDisabled": "发布被禁用：{reason}"
+			},
+			"confirm": {
+				"discard": "你有未发布的更改。要丢弃并{action}吗？",
+				"actions": {
+					"switchVersions": "切换版本",
+					"reset": "重置",
+					"leave": "离开"
+				}
+			},
+			"controls": {
+				"versionPlaceholder": "版本",
+				"previewThreadPlaceholder": "预览帖子",
+				"publishNotePlaceholder": "发布备注…"
+			},
+			"buttons": {
+				"undo": "撤销",
+				"redo": "重做",
+				"reset": "重置",
+				"edit": "编辑",
+				"play": "播放",
+				"json": "JSON",
+				"hideJson": "隐藏 JSON",
+				"publish": "发布",
+				"publishing": "发布中…",
+				"back": "返回"
+			},
+			"tooltips": {
+				"undo": "撤销（Ctrl/Cmd+Z）",
+				"redo": "重做（Ctrl/Cmd+Shift+Z 或 Ctrl/Cmd+Y）",
+				"reset": "重置到当前版本基线",
+				"toggleJson": "切换 JSON 面板",
+				"shortcuts": "快捷键（Shift+/）",
+				"publish": "发布（Ctrl/Cmd+Enter）",
+				"publishDisabled": "发布被禁用：{reason}"
+			},
+			"toasts": {
+				"publishedNewVersion": "已发布新版本",
+				"resetToVersion": "已重置到版本",
+				"pickPreviewThreadFirst": "请先选择一个预览帖子"
+			},
+			"states": {
+				"loadingTemplate": "模板加载中…",
+				"publishing": "发布中…",
+				"previewThreadRequired": "请先选择一个预览帖子"
+			},
+			"panels": {
+				"resizeTitle": "拖动调整大小（双击重置）",
+				"previewTitle": "预览",
+				"previewLoadFailed": "预览帖子加载失败。",
+				"previewNoRoot": "预览帖子没有根帖（或加载失败）。",
+				"configTitle": "配置（只读 JSON）",
+				"configHint": "这是用于预览/发布的规范化配置。"
 			}
 		}
 	},

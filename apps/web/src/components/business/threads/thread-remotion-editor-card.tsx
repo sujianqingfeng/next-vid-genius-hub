@@ -20,6 +20,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
 import { Skeleton } from '~/components/ui/skeleton'
+import { useTranslations } from '~/lib/i18n'
 
 const LazyThumbnail = React.lazy(async () => {
 	const mod = await import('@remotion/player')
@@ -296,6 +297,7 @@ export function ThreadRemotionEditorCard({
 	}) => void
 }) {
 	const isClient = typeof window !== 'undefined'
+	const t = useTranslations('Threads.remotionEditor')
 
 	const mode = 'edit' as const
 	const [editFrame, setEditFrame] = React.useState(0)
@@ -1708,14 +1710,14 @@ export function ThreadRemotionEditorCard({
 						<Skeleton className="h-[240px] w-full rounded-none" />
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<Loader2 className="h-4 w-4 animate-spin" />
-							Loading…
+							{t('states.loading')}
 						</div>
 					</div>
 				) : !thread || !root ? (
 					<div className="flex flex-col items-center justify-center gap-3 rounded-none border border-dashed border-border/60 bg-muted/20 p-8 text-center">
 						<AlertCircle className="h-6 w-6 text-muted-foreground" />
 						<p className="text-sm text-muted-foreground">
-							Thread data is required to generate a preview.
+							{t('states.dataRequired')}
 						</p>
 					</div>
 				) : !isClient ? (
@@ -1734,7 +1736,7 @@ export function ThreadRemotionEditorCard({
 									disabled={!onEditUndo || !canEditUndo}
 									onClick={() => onEditUndo?.()}
 								>
-									Undo
+									{t('buttons.undo')}
 								</Button>
 								<Button
 									type="button"
@@ -1744,7 +1746,7 @@ export function ThreadRemotionEditorCard({
 									disabled={!onEditRedo || !canEditRedo}
 									onClick={() => onEditRedo?.()}
 								>
-									Redo
+									{t('buttons.redo')}
 								</Button>
 							</div>
 							<div className="font-mono text-[10px] text-muted-foreground">
@@ -1762,7 +1764,7 @@ export function ThreadRemotionEditorCard({
 									className="rounded-none font-mono text-[10px] uppercase"
 									onClick={() => setEditFrame(0)}
 								>
-									Cover
+									{t('buttons.cover')}
 								</Button>
 								<Button
 									type="button"
@@ -1775,7 +1777,7 @@ export function ThreadRemotionEditorCard({
 										setEditFrame(Math.min(f, max))
 									}}
 								>
-									Post
+									{t('buttons.post')}
 								</Button>
 								<div className="flex flex-1 items-center gap-2 min-w-[240px]">
 									<input
@@ -1793,7 +1795,7 @@ export function ThreadRemotionEditorCard({
 								</div>
 								<div className="flex items-center gap-2">
 									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Snap
+										{t('labels.snap')}
 									</Label>
 									<Switch
 										checked={snapEnabled}
@@ -1807,7 +1809,7 @@ export function ThreadRemotionEditorCard({
 							<div className="flex flex-wrap items-center gap-2">
 								<div className="flex items-center gap-2">
 									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Tool
+										{t('labels.tool')}
 									</Label>
 									<Button
 										type="button"
@@ -1816,7 +1818,7 @@ export function ThreadRemotionEditorCard({
 										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
 										onClick={() => setViewTool('select')}
 									>
-										Select
+										{t('buttons.select')}
 									</Button>
 									<Button
 										type="button"
@@ -1825,12 +1827,12 @@ export function ThreadRemotionEditorCard({
 										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
 										onClick={() => setViewTool('pan')}
 									>
-										Pan
+										{t('buttons.pan')}
 									</Button>
 								</div>
 								<div className="flex items-center gap-2">
 									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Zoom
+										{t('labels.zoom')}
 									</Label>
 									<Button
 										type="button"
@@ -1878,7 +1880,7 @@ export function ThreadRemotionEditorCard({
 										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
 										onClick={resetView}
 									>
-										Fit
+										{t('buttons.fit')}
 									</Button>
 									<Button
 										type="button"
@@ -1890,7 +1892,7 @@ export function ThreadRemotionEditorCard({
 										}
 										onClick={fitSelection}
 									>
-										Sel
+										{t('buttons.fitSelection')}
 									</Button>
 									<Button
 										type="button"
@@ -1912,7 +1914,7 @@ export function ThreadRemotionEditorCard({
 							<div className="flex flex-wrap items-center gap-2">
 								<div className="flex flex-wrap items-center gap-2">
 									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Align
+										{t('labels.align')}
 									</Label>
 									<Button
 										type="button"
@@ -1978,7 +1980,7 @@ export function ThreadRemotionEditorCard({
 
 								<div className="flex flex-wrap items-center gap-2">
 									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Distribute
+										{t('labels.distribute')}
 									</Label>
 									<Button
 										type="button"
@@ -2009,15 +2011,15 @@ export function ThreadRemotionEditorCard({
 								<div className="rounded-none border border-border bg-card p-4 space-y-3">
 									<div className="flex items-center justify-between gap-3">
 										<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Layers
+											{t('labels.layers')}
 										</div>
 										<div className="font-mono text-[10px] text-muted-foreground">
-											{layerNodesByKey.size} nodes
+											{t('labels.nodes', { count: layerNodesByKey.size })}
 										</div>
 									</div>
 
 									<Input
-										placeholder="Filter (type/key)…"
+										placeholder={t('layers.filterPlaceholder')}
 										value={layersFilter}
 										onChange={(e) => setLayersFilter(e.target.value)}
 										className="rounded-none font-mono text-xs h-8"
@@ -2033,7 +2035,8 @@ export function ThreadRemotionEditorCard({
 													scene === 'cover'
 														? layerRootsByScene.cover
 														: layerRootsByScene.post
-												const title = scene === 'cover' ? 'Cover' : 'Post'
+												const title =
+													scene === 'cover' ? t('buttons.cover') : t('buttons.post')
 
 												const renderNode = (key: string): React.ReactNode => {
 													const n = layerNodesByKey.get(key)
@@ -2094,7 +2097,7 @@ export function ThreadRemotionEditorCard({
 																			: undefined,
 																	}}
 																>
-																	{n.type ?? 'node'}{' '}
+																	{n.type ?? t('labels.node')}{' '}
 																	<span className="text-muted-foreground">
 																		{key}
 																	</span>
@@ -2107,7 +2110,7 @@ export function ThreadRemotionEditorCard({
 																	className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
 																	onClick={() => toggleHiddenSubtree(key)}
 																>
-																	{isHidden ? 'Show' : 'Hide'}
+																	{isHidden ? t('buttons.show') : t('buttons.hide')}
 																</Button>
 																<Button
 																	type="button"
@@ -2116,7 +2119,9 @@ export function ThreadRemotionEditorCard({
 																	className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
 																	onClick={() => toggleLockedSubtree(key)}
 																>
-																	{isLocked ? 'Unlock' : 'Lock'}
+																	{isLocked
+																		? t('buttons.unlock')
+																		: t('buttons.lock')}
 																</Button>
 															</div>
 															{!isCollapsed && canCollapse ? (
@@ -3168,18 +3173,27 @@ export function ThreadRemotionEditorCard({
 						{mode === 'edit' ? (
 							<div className="flex flex-wrap items-center justify-between gap-2">
 								<div className="font-mono text-[10px] text-muted-foreground">
-									Scene: {editScene} · Frame: {editFrame} ·{' '}
-									{(editFrame / REMOTION_FPS).toFixed(2)}s
+									{t('status.line', {
+										scene: editScene,
+										frame: editFrame,
+										seconds: (editFrame / REMOTION_FPS).toFixed(2),
+									})}
 								</div>
 								<div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-muted-foreground">
 									{hoverNodeKey &&
 									(!primaryKey || hoverNodeKey !== primaryKey) ? (
-										<span>Hover: {hoverNodeType ?? 'node'}</span>
+										<span>
+											{t('status.hover', {
+												type: hoverNodeType ?? t('labels.node'),
+											})}
+										</span>
 									) : null}
 									{primaryKey ? (
 										<>
 											<span className="text-foreground">
-												Selected: {primaryType ?? 'node'}
+												{t('status.selected', {
+													type: primaryType ?? t('labels.node'),
+												})}
 												{selectedKeys.length > 1
 													? ` ×${selectedKeys.length}`
 													: ''}
@@ -3188,7 +3202,7 @@ export function ThreadRemotionEditorCard({
 												{primaryKey}
 											</span>
 											{primaryType === 'Absolute' && !canEditCanvas ? (
-												<span>(switch Template editor to Visual to drag)</span>
+												<span>{t('status.switchToVisualToDrag')}</span>
 											) : null}
 											<Button
 												type="button"
@@ -3201,7 +3215,7 @@ export function ThreadRemotionEditorCard({
 														.catch(() => {})
 												}}
 											>
-												Copy Key
+												{t('buttons.copyKey')}
 											</Button>
 											<Button
 												type="button"
@@ -3217,14 +3231,11 @@ export function ThreadRemotionEditorCard({
 													setSelectedBoxesByKey(new Map())
 												}}
 											>
-												Clear
+												{t('buttons.clear')}
 											</Button>
 										</>
 									) : (
-										<span>
-											Tip: click to select; shift-click or drag to multi-select;
-											drag Absolute nodes.
-										</span>
+										<span>{t('status.tip')}</span>
 									)}
 								</div>
 							</div>
@@ -3235,7 +3246,7 @@ export function ThreadRemotionEditorCard({
 								<div className="rounded-none border border-border bg-card p-4 space-y-4">
 									<div className="flex items-center justify-between gap-3">
 										<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Inspector
+											{t('labels.inspector')}
 										</div>
 										{primaryType ? (
 											<div className="font-mono text-[10px] text-muted-foreground">
@@ -3251,7 +3262,7 @@ export function ThreadRemotionEditorCard({
 										if (!primaryKey || !primaryType)
 											return (
 												<div className="font-mono text-xs text-muted-foreground">
-													Select a node on the canvas.
+													{t('inspector.empty')}
 												</div>
 											)
 
@@ -3259,7 +3270,7 @@ export function ThreadRemotionEditorCard({
 										if (!cfg)
 											return (
 												<div className="font-mono text-xs text-muted-foreground">
-													Switch Template editor to Visual to edit values.
+													{t('inspector.noEditCanvasConfig')}
 												</div>
 											)
 
@@ -3267,7 +3278,7 @@ export function ThreadRemotionEditorCard({
 										if (!res)
 											return (
 												<div className="font-mono text-xs text-muted-foreground">
-													Node not found in template config.
+													{t('inspector.nodeNotFound')}
 												</div>
 											)
 

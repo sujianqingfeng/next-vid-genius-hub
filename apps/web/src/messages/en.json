@@ -199,7 +199,9 @@
 				"translatedAll": "Translated: processed={processed} translated={translated} skipped={skipped} failed={failed}",
 				"translationApplied": "Applied translation to editor",
 				"mediaIngest": "Media ingest: processed={processed} ok={ok} failed={failed}",
-				"renderQueued": "Render queued"
+				"renderQueued": "Render queued",
+				"syncedFromJson": "Synced from JSON",
+				"copiedToJson": "Copied to JSON"
 			},
 			"translation": {
 				"empty": "No translation yet."
@@ -217,7 +219,15 @@
 				}
 			},
 			"editor": {
-				"textLabel": "Text (MVP: single text block)"
+				"textLabel": "Text (MVP: single text block)",
+				"safeEditHint": "Edit layout safely (no code execution).",
+				"actions": {
+					"syncFromJson": "Sync From JSON",
+					"copyToJson": "Copy To JSON"
+				},
+				"errors": {
+					"fixJsonFirst": "Fix JSON first: {error}"
+				}
 			},
 			"debug": {
 				"selectedPostRow": "Selected post row",
@@ -250,6 +260,129 @@
 					"cleared": "Audio cleared",
 					"unknownType": "Unknown audio type"
 				}
+			}
+		}
+		,
+		"remotionEditor": {
+			"states": {
+				"loading": "Loading…",
+				"dataRequired": "Thread data is required to generate a preview."
+			},
+			"labels": {
+				"snap": "Snap",
+				"tool": "Tool",
+				"zoom": "Zoom",
+				"align": "Align",
+				"distribute": "Distribute",
+				"layers": "Layers",
+				"inspector": "Inspector",
+				"nodes": "{count} nodes",
+				"node": "node"
+			},
+			"buttons": {
+				"undo": "Undo",
+				"redo": "Redo",
+				"cover": "Cover",
+				"post": "Post",
+				"select": "Select",
+				"pan": "Pan",
+				"fit": "Fit",
+				"fitSelection": "Sel",
+				"copyKey": "Copy Key",
+				"clear": "Clear",
+				"show": "Show",
+				"hide": "Hide",
+				"unlock": "Unlock",
+				"lock": "Lock"
+			},
+			"layers": {
+				"filterPlaceholder": "Filter (type/key)…"
+			},
+			"status": {
+				"line": "Scene: {scene} · Frame: {frame} · {seconds}s",
+				"hover": "Hover: {type}",
+				"selected": "Selected: {type}",
+				"switchToVisualToDrag": "(switch Template editor to Visual to drag)",
+				"tip": "Tip: click to select; shift-click or drag to multi-select; drag Absolute nodes."
+			},
+			"inspector": {
+				"empty": "Select a node on the canvas.",
+				"noEditCanvasConfig": "Switch Template editor to Visual to edit values.",
+				"nodeNotFound": "Node not found in template config."
+			}
+		}
+	},
+	"ThreadTemplates": {
+		"editor": {
+			"shortcuts": {
+				"title": "Shortcuts",
+				"description": "Press Shift + / to open this again.",
+				"rows": {
+					"undo": "Undo",
+					"redo": "Redo",
+					"toggleStructure": "Toggle Structure",
+					"publish": "Publish"
+				}
+			},
+			"header": {
+				"systemLabel": "Template Editor",
+				"unpublishedChanges": "Unpublished changes",
+				"version": "Version v{version}",
+				"versionUnknown": "Version …",
+				"templateId": "templateId={templateId}",
+				"publishDisabled": "Publish disabled: {reason}"
+			},
+			"confirm": {
+				"discard": "You have unpublished changes. Discard them and {action}?",
+				"actions": {
+					"switchVersions": "switch versions",
+					"reset": "reset",
+					"leave": "leave"
+				}
+			},
+			"controls": {
+				"versionPlaceholder": "Version",
+				"previewThreadPlaceholder": "Preview thread",
+				"publishNotePlaceholder": "Publish note…"
+			},
+			"buttons": {
+				"undo": "Undo",
+				"redo": "Redo",
+				"reset": "Reset",
+				"edit": "Edit",
+				"play": "Play",
+				"json": "JSON",
+				"hideJson": "Hide JSON",
+				"publish": "Publish",
+				"publishing": "Publishing…",
+				"back": "Back"
+			},
+			"tooltips": {
+				"undo": "Undo (Ctrl/Cmd+Z)",
+				"redo": "Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)",
+				"reset": "Reset to current version baseline",
+				"toggleJson": "Toggle JSON panel",
+				"shortcuts": "Shortcuts (Shift+/)",
+				"publish": "Publish (Ctrl/Cmd+Enter)",
+				"publishDisabled": "Publish disabled: {reason}"
+			},
+			"toasts": {
+				"publishedNewVersion": "Published new version",
+				"resetToVersion": "Reset to version",
+				"pickPreviewThreadFirst": "Pick a preview thread first"
+			},
+			"states": {
+				"loadingTemplate": "Loading template…",
+				"publishing": "Publishing…",
+				"previewThreadRequired": "Pick a preview thread first"
+			},
+			"panels": {
+				"resizeTitle": "Drag to resize (double-click to reset)",
+				"previewTitle": "Preview",
+				"previewLoadFailed": "Failed to load preview thread.",
+				"previewNoRoot": "Preview thread has no root post (or failed to load).",
+				"configTitle": "Config (read-only JSON)",
+				"configHint": "This is the normalized config used for preview/publish."
 			}
 		}
 	},

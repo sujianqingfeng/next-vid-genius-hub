@@ -26,6 +26,7 @@ import {
 import { Textarea } from '~/components/ui/textarea'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
+import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 import {
 	DEFAULT_THREAD_TEMPLATE_CONFIG,
@@ -98,6 +99,7 @@ function ThreadTemplateVersionEditorRoute() {
 	const { previewThreadId } = Route.useSearch()
 	const navigate = Route.useNavigate()
 	const qc = useQueryClient()
+	const t = useTranslations('ThreadTemplates.editor')
 
 	type EditorLayoutState = {
 		leftPx: number
@@ -258,11 +260,10 @@ function ThreadTemplateVersionEditorRoute() {
 		return null
 	}
 
-	function confirmDiscardChanges(action: string) {
+	function confirmDiscardChanges(action: 'switchVersions' | 'reset' | 'leave') {
 		if (!isDirty) return true
-		return window.confirm(
-			`You have unpublished changes. Discard them and ${action}?`,
-		)
+		const actionLabel = t(`confirm.actions.${action}`)
+		return window.confirm(t('confirm.discard', { action: actionLabel }))
 	}
 
 	function applyVisualTemplateConfigExternal(next: ThreadTemplateConfigV1) {
@@ -346,18 +347,18 @@ function ThreadTemplateVersionEditorRoute() {
 			},
 		}),
 		{
-			successToast: 'Published new version',
+			successToast: t('toasts.publishedNewVersion'),
 			errorToast: ({ error }) =>
 				error instanceof Error ? error.message : String(error),
 		},
 	)
 
 	const publishDisabledReason = !library
-		? 'Loading template…'
+		? t('states.loadingTemplate')
 		: publishMutation.isPending
-			? 'Publishing…'
+			? t('states.publishing')
 			: !previewThreadId
-				? 'Pick a preview thread first'
+				? t('states.previewThreadRequired')
 				: null
 
 	const canPublish =
@@ -555,30 +556,29 @@ function ThreadTemplateVersionEditorRoute() {
 				<DialogContent className="rounded-none sm:max-w-xl">
 					<DialogHeader>
 						<DialogTitle className="font-mono uppercase tracking-widest text-sm">
-							Shortcuts
+							{t('shortcuts.title')}
 						</DialogTitle>
 						<DialogDescription className="font-mono text-xs">
-							Press <span className="font-semibold">Shift + /</span> to open
-							this again.
+							{t('shortcuts.description')}
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="space-y-2">
 						<div className="grid grid-cols-1 gap-2">
 							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-								<div>Undo</div>
+								<div>{t('shortcuts.rows.undo')}</div>
 								<div>Ctrl/Cmd + Z</div>
 							</div>
 							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-								<div>Redo</div>
+								<div>{t('shortcuts.rows.redo')}</div>
 								<div>Ctrl/Cmd + Shift + Z · Ctrl/Cmd + Y</div>
 							</div>
 							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-								<div>Toggle Structure</div>
+								<div>{t('shortcuts.rows.toggleStructure')}</div>
 								<div>Ctrl/Cmd + \\</div>
 							</div>
 							<div className="flex items-center justify-between font-mono text-xs">
-								<div>Publish</div>
+								<div>{t('shortcuts.rows.publish')}</div>
 								<div>Ctrl/Cmd + Enter</div>
 							</div>
 						</div>
@@ -591,7 +591,7 @@ function ThreadTemplateVersionEditorRoute() {
 					<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 						<div className="min-w-0 space-y-1">
 							<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-								Template Editor
+								{t('header.systemLabel')}
 							</div>
 							<div className="flex flex-wrap items-center gap-2">
 								<h1 className="min-w-0 truncate font-mono text-xl font-bold uppercase tracking-tight">
@@ -599,16 +599,20 @@ function ThreadTemplateVersionEditorRoute() {
 								</h1>
 								{isDirty ? (
 									<div className="rounded-none border border-border bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-foreground">
-										Unpublished changes
+										{t('header.unpublishedChanges')}
 									</div>
 								) : null}
 							</div>
 							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 								{selectedVersion
-									? `Version v${Number((selectedVersion as any).version)}`
-									: 'Version …'}
+									? t('header.version', {
+											version: Number((selectedVersion as any).version),
+										})
+									: t('header.versionUnknown')}
 								{library
-									? ` · templateId=${String((library as any).templateId)}`
+									? ` · ${t('header.templateId', {
+											templateId: String((library as any).templateId),
+										})}`
 									: ''}
 							</div>
 						</div>
@@ -619,7 +623,7 @@ function ThreadTemplateVersionEditorRoute() {
 								disabled={versionsQuery.isLoading || versions.length === 0}
 								onValueChange={(v) => {
 									if (String(v) === String(versionId)) return
-									if (!confirmDiscardChanges('switch versions')) return
+									if (!confirmDiscardChanges('switchVersions')) return
 									void navigate({
 										to: '/thread-templates/$libraryId/versions/$versionId/editor',
 										params: { libraryId, versionId: v },
@@ -627,9 +631,9 @@ function ThreadTemplateVersionEditorRoute() {
 									})
 								}}
 							>
-								<SelectTrigger className="rounded-none font-mono text-xs h-9 w-[190px]">
-									<SelectValue placeholder="Version" />
-								</SelectTrigger>
+							<SelectTrigger className="rounded-none font-mono text-xs h-9 w-[190px]">
+									<SelectValue placeholder={t('controls.versionPlaceholder')} />
+							</SelectTrigger>
 								<SelectContent>
 									{versions.map((v: any) => (
 										<SelectItem key={String(v.id)} value={String(v.id)}>
@@ -645,9 +649,11 @@ function ThreadTemplateVersionEditorRoute() {
 									void navigate({ search: { previewThreadId: v } })
 								}}
 							>
-								<SelectTrigger className="rounded-none font-mono text-xs h-9 w-[260px]">
-									<SelectValue placeholder="Preview thread" />
-								</SelectTrigger>
+							<SelectTrigger className="rounded-none font-mono text-xs h-9 w-[260px]">
+									<SelectValue
+										placeholder={t('controls.previewThreadPlaceholder')}
+									/>
+							</SelectTrigger>
 								<SelectContent>
 									{threads.map((t: any) => (
 										<SelectItem key={String(t.id)} value={String(t.id)}>
@@ -661,7 +667,7 @@ function ThreadTemplateVersionEditorRoute() {
 							<Input
 								value={note}
 								onChange={(e) => setNote(e.target.value)}
-								placeholder="Publish note…"
+								placeholder={t('controls.publishNotePlaceholder')}
 								className="rounded-none font-mono text-xs h-9 w-[240px]"
 							/>
 
@@ -671,10 +677,10 @@ function ThreadTemplateVersionEditorRoute() {
 								size="sm"
 								className="rounded-none font-mono text-xs uppercase"
 								disabled={visualTemplateHistory.past.length === 0}
-								title="Undo (Ctrl/Cmd+Z)"
+								title={t('tooltips.undo')}
 								onClick={() => undoVisualTemplate()}
 							>
-								Undo
+								{t('buttons.undo')}
 							</Button>
 							<Button
 								type="button"
@@ -682,10 +688,10 @@ function ThreadTemplateVersionEditorRoute() {
 								size="sm"
 								className="rounded-none font-mono text-xs uppercase"
 								disabled={visualTemplateHistory.future.length === 0}
-								title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)"
+								title={t('tooltips.redo')}
 								onClick={() => redoVisualTemplate()}
 							>
-								Redo
+								{t('buttons.redo')}
 							</Button>
 
 							<Button
@@ -694,7 +700,7 @@ function ThreadTemplateVersionEditorRoute() {
 								size="sm"
 								className="rounded-none font-mono text-xs uppercase"
 								disabled={!selectedVersion}
-								title="Reset to current version baseline"
+								title={t('tooltips.reset')}
 								onClick={() => {
 									if (!selectedVersion) return
 									if (isDirty && !confirmDiscardChanges('reset')) return
@@ -702,10 +708,10 @@ function ThreadTemplateVersionEditorRoute() {
 									setNote('')
 									setEditorScene('cover')
 									setEditorSelectedKey('cover:[]')
-									toast.message('Reset to version')
+									toast.message(t('toasts.resetToVersion'))
 								}}
 							>
-								Reset
+								{t('buttons.reset')}
 							</Button>
 
 							<Button
@@ -715,7 +721,7 @@ function ThreadTemplateVersionEditorRoute() {
 								className="rounded-none font-mono text-xs uppercase"
 								onClick={() => setPreviewMode('edit')}
 							>
-								Edit
+								{t('buttons.edit')}
 							</Button>
 							<Button
 								type="button"
@@ -724,7 +730,7 @@ function ThreadTemplateVersionEditorRoute() {
 								className="rounded-none font-mono text-xs uppercase"
 								onClick={() => setPreviewMode('play')}
 							>
-								Play
+								{t('buttons.play')}
 							</Button>
 
 							<Button
@@ -737,9 +743,9 @@ function ThreadTemplateVersionEditorRoute() {
 									if (next && layout.rightCollapsed) setRightCollapsed(false)
 									setShowAdvanced(next)
 								}}
-								title="Toggle JSON panel"
+								title={t('tooltips.toggleJson')}
 							>
-								{showAdvanced ? 'Hide JSON' : 'JSON'}
+								{showAdvanced ? t('buttons.hideJson') : t('buttons.json')}
 							</Button>
 
 							<Button
@@ -747,7 +753,7 @@ function ThreadTemplateVersionEditorRoute() {
 								size="sm"
 								variant="outline"
 								className="rounded-none font-mono text-xs uppercase"
-								title="Shortcuts (Shift+/)"
+								title={t('tooltips.shortcuts')}
 								onClick={() => setShortcutsOpen(true)}
 							>
 								?
@@ -760,13 +766,15 @@ function ThreadTemplateVersionEditorRoute() {
 								disabled={!canPublish}
 								title={
 									publishDisabledReason
-										? `Publish disabled: ${publishDisabledReason}`
-										: 'Publish (Ctrl/Cmd+Enter)'
+										? t('tooltips.publishDisabled', {
+												reason: publishDisabledReason,
+											})
+										: t('tooltips.publish')
 								}
 								onClick={() => {
 									if (!library) return
 									if (!previewThreadId) {
-										toast.error('Pick a preview thread first')
+										toast.error(t('toasts.pickPreviewThreadFirst'))
 										return
 									}
 									publishMutation.mutate({
@@ -777,7 +785,9 @@ function ThreadTemplateVersionEditorRoute() {
 									})
 								}}
 							>
-								{publishMutation.isPending ? 'Publishing…' : 'Publish'}
+								{publishMutation.isPending
+									? t('buttons.publishing')
+									: t('buttons.publish')}
 							</Button>
 
 							<Button
@@ -790,14 +800,14 @@ function ThreadTemplateVersionEditorRoute() {
 									void navigate({ to: '/thread-templates' })
 								}}
 							>
-								Back
+								{t('buttons.back')}
 							</Button>
 						</div>
 					</div>
 
 					{publishDisabledReason ? (
 						<div className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-							Publish disabled: {publishDisabledReason}
+							{t('header.publishDisabled', { reason: publishDisabledReason })}
 						</div>
 					) : null}
 				</div>
@@ -851,14 +861,14 @@ function ThreadTemplateVersionEditorRoute() {
 								leftCollapsed: false,
 							}))
 						}}
-						title="Drag to resize (double-click to reset)"
+						title={t('panels.resizeTitle')}
 					>
 						<div className="w-full bg-border/60 hover:bg-border" />
 					</div>
 
-					<div className="order-2 space-y-4 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1">
+						<div className="order-2 space-y-4 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1">
 						<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-							Preview
+							{t('panels.previewTitle')}
 						</div>
 
 						{previewMode === 'edit' ? (
@@ -918,7 +928,7 @@ function ThreadTemplateVersionEditorRoute() {
 
 						{previewThreadId && previewThreadQuery.isError ? (
 							<div className="font-mono text-xs text-destructive">
-								Failed to load preview thread.
+								{t('panels.previewLoadFailed')}
 							</div>
 						) : null}
 
@@ -926,7 +936,7 @@ function ThreadTemplateVersionEditorRoute() {
 						!previewRoot &&
 						!previewThreadQuery.isLoading ? (
 							<div className="font-mono text-xs text-muted-foreground">
-								Preview thread has no root post (or failed to load).
+								{t('panels.previewNoRoot')}
 							</div>
 						) : null}
 					</div>
@@ -941,7 +951,7 @@ function ThreadTemplateVersionEditorRoute() {
 								rightCollapsed: false,
 							}))
 						}}
-						title="Drag to resize (double-click to reset)"
+						title={t('panels.resizeTitle')}
 					>
 						<div className="w-full bg-border/60 hover:bg-border" />
 					</div>
@@ -950,7 +960,7 @@ function ThreadTemplateVersionEditorRoute() {
 						<Card className="order-4 rounded-none lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-2">
 							<CardHeader>
 								<CardTitle className="font-mono text-sm uppercase tracking-widest">
-									Config (read-only JSON)
+									{t('panels.configTitle')}
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="space-y-2">
@@ -960,7 +970,7 @@ function ThreadTemplateVersionEditorRoute() {
 									className="min-h-[260px] rounded-none font-mono text-xs"
 								/>
 								<div className="font-mono text-xs text-muted-foreground">
-									This is the normalized config used for preview/publish.
+									{t('panels.configHint')}
 								</div>
 							</CardContent>
 						</Card>
