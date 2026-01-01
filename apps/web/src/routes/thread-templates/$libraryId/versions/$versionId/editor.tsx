@@ -8,6 +8,13 @@ import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-r
 import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '~/components/ui/dialog'
 import { Input } from '~/components/ui/input'
 import {
 	Select,
@@ -18,6 +25,7 @@ import {
 } from '~/components/ui/select'
 import { Textarea } from '~/components/ui/textarea'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
 import { queryOrpc } from '~/lib/orpc/client'
 import {
 	DEFAULT_THREAD_TEMPLATE_CONFIG,
@@ -91,6 +99,51 @@ function ThreadTemplateVersionEditorRoute() {
 	const navigate = Route.useNavigate()
 	const qc = useQueryClient()
 
+	type EditorLayoutState = {
+		leftPx: number
+		rightPx: number
+		leftCollapsed: boolean
+		rightCollapsed: boolean
+	}
+
+	const [layout, setLayout] = useLocalStorageState<EditorLayoutState>(
+		'vg.threadTemplateEditor.layout.v1',
+		{
+			version: 1,
+			defaultValue: {
+				leftPx: 360,
+				rightPx: 420,
+				leftCollapsed: false,
+				rightCollapsed: false,
+			},
+			migrate: (stored) => {
+				if (!stored || typeof stored !== 'object') return null
+				const leftPx = Number((stored as any).leftPx)
+				const rightPx = Number((stored as any).rightPx)
+				const leftCollapsed = Boolean((stored as any).leftCollapsed)
+				const rightCollapsed = Boolean((stored as any).rightCollapsed)
+				if (!Number.isFinite(leftPx) || !Number.isFinite(rightPx)) return null
+				return {
+					leftPx,
+					rightPx,
+					leftCollapsed,
+					rightCollapsed,
+				}
+			},
+		},
+	)
+
+	const containerRef = React.useRef<HTMLDivElement | null>(null)
+	const dragRef = React.useRef<{
+		kind: 'left' | 'right'
+		startX: number
+		startLeft: number
+		startRight: number
+		rect: DOMRect
+	} | null>(null)
+
+	const [shortcutsOpen, setShortcutsOpen] = React.useState(false)
+
 	const versionsQuery = useQuery(
 		queryOrpc.threadTemplate.versions.queryOptions({
 			input: { libraryId, limit: 100 },
@@ -118,7 +171,9 @@ function ThreadTemplateVersionEditorRoute() {
 
 	const [note, setNote] = React.useState('')
 
-	const [editorScene, setEditorScene] = React.useState<'cover' | 'post'>('cover')
+	const [editorScene, setEditorScene] = React.useState<'cover' | 'post'>(
+		'cover',
+	)
 	const [editorSelectedKey, setEditorSelectedKey] =
 		React.useState<string>('cover:[]')
 
@@ -166,13 +221,16 @@ function ThreadTemplateVersionEditorRoute() {
 
 	const selectedVersionConfig = React.useMemo(() => {
 		if (!selectedVersion) return null
-		return toConfigFromVersionRow(selectedVersion) ?? DEFAULT_THREAD_TEMPLATE_CONFIG
+		return (
+			toConfigFromVersionRow(selectedVersion) ?? DEFAULT_THREAD_TEMPLATE_CONFIG
+		)
 	}, [selectedVersion?.id])
 
 	const isDirty = React.useMemo(() => {
 		if (!selectedVersionConfig) return false
 		return (
-			JSON.stringify(selectedVersionConfig) !== JSON.stringify(visualTemplateConfig)
+			JSON.stringify(selectedVersionConfig) !==
+			JSON.stringify(visualTemplateConfig)
 		)
 	}, [selectedVersionConfig, visualTemplateConfig])
 
@@ -231,7 +289,7 @@ function ThreadTemplateVersionEditorRoute() {
 		}))
 	}
 
-	function undoVisualTemplate() {
+	const undoVisualTemplate = React.useCallback(() => {
 		visualTxnRef.current = null
 		const h = visualTemplateHistoryRef.current
 		if (h.past.length === 0) return
@@ -242,9 +300,9 @@ function ThreadTemplateVersionEditorRoute() {
 			future: [...h.future, cur],
 		})
 		setVisualTemplateConfig(prev)
-	}
+	}, [])
 
-	function redoVisualTemplate() {
+	const redoVisualTemplate = React.useCallback(() => {
 		visualTxnRef.current = null
 		const h = visualTemplateHistoryRef.current
 		if (h.future.length === 0) return
@@ -255,7 +313,7 @@ function ThreadTemplateVersionEditorRoute() {
 			future: h.future.slice(0, -1),
 		})
 		setVisualTemplateConfig(next)
-	}
+	}, [])
 
 	const publishMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.addVersion.mutationOptions({
@@ -295,10 +353,231 @@ function ThreadTemplateVersionEditorRoute() {
 				: null
 
 	const canPublish =
-		!publishDisabledReason && Boolean(normalizedTemplateConfig) && Boolean(library)
+		!publishDisabledReason &&
+		Boolean(normalizedTemplateConfig) &&
+		Boolean(library)
+
+	const canPublishRef = React.useRef(canPublish)
+	React.useEffect(() => {
+		canPublishRef.current = canPublish
+	}, [canPublish])
+
+	const libraryRef = React.useRef(library)
+	React.useEffect(() => {
+		libraryRef.current = library
+	}, [library])
+
+	const previewThreadIdRef = React.useRef(previewThreadId)
+	React.useEffect(() => {
+		previewThreadIdRef.current = previewThreadId
+	}, [previewThreadId])
+
+	const noteRef = React.useRef(note)
+	React.useEffect(() => {
+		noteRef.current = note
+	}, [note])
+
+	const leftRailPx = 44
+	const rightRailPx = 44
+	const leftColPx = layout.leftCollapsed ? leftRailPx : layout.leftPx
+	const rightColPx = layout.rightCollapsed ? rightRailPx : layout.rightPx
+
+	function setLeftCollapsed(collapsed: boolean) {
+		setLayout((prev) => ({ ...prev, leftCollapsed: collapsed }))
+	}
+
+	function setRightCollapsed(collapsed: boolean) {
+		if (collapsed) setShowAdvanced(false)
+		setLayout((prev) => ({ ...prev, rightCollapsed: collapsed }))
+	}
+
+	function isTypingTarget(target: EventTarget | null) {
+		if (!target || !(target as any).tagName) return false
+		const el = target as HTMLElement
+		const tag = el.tagName
+		return (
+			tag === 'INPUT' ||
+			tag === 'TEXTAREA' ||
+			tag === 'SELECT' ||
+			el.isContentEditable
+		)
+	}
+
+	React.useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (isTypingTarget(e.target)) return
+
+			if (e.key === '?' && e.shiftKey) {
+				e.preventDefault()
+				e.stopPropagation()
+				setShortcutsOpen(true)
+				return
+			}
+
+			const mod = e.metaKey || e.ctrlKey
+			if (!mod) return
+
+			const key = e.key.toLowerCase()
+			if (key === 'z' && !e.shiftKey) {
+				e.preventDefault()
+				e.stopPropagation()
+				undoVisualTemplate()
+				return
+			}
+			if (key === 'z' && e.shiftKey) {
+				e.preventDefault()
+				e.stopPropagation()
+				redoVisualTemplate()
+				return
+			}
+			if (key === 'y') {
+				e.preventDefault()
+				e.stopPropagation()
+				redoVisualTemplate()
+				return
+			}
+			if (e.key === '\\') {
+				e.preventDefault()
+				e.stopPropagation()
+				setLayout((prev) => ({ ...prev, leftCollapsed: !prev.leftCollapsed }))
+				return
+			}
+			if (e.key === 'Enter') {
+				if (!canPublishRef.current) return
+				e.preventDefault()
+				e.stopPropagation()
+				if (!libraryRef.current) return
+				if (!previewThreadIdRef.current) return
+				publishMutation.mutate({
+					libraryId,
+					templateConfig: visualTemplateConfigRef.current,
+					note: noteRef.current.trim() || undefined,
+					sourceThreadId: previewThreadIdRef.current,
+				})
+			}
+		}
+
+		window.addEventListener('keydown', onKeyDown, true)
+		return () => window.removeEventListener('keydown', onKeyDown, true)
+	}, [
+		libraryId,
+		publishMutation,
+		redoVisualTemplate,
+		setLayout,
+		undoVisualTemplate,
+	])
+
+	function startResize(kind: 'left' | 'right', e: React.PointerEvent) {
+		if (e.button !== 0) return
+		e.preventDefault()
+		const container = containerRef.current
+		if (!container) return
+
+		const rect = container.getBoundingClientRect()
+		dragRef.current = {
+			kind,
+			startX: e.clientX,
+			startLeft: layout.leftPx,
+			startRight: layout.rightPx,
+			rect,
+		}
+
+		if (kind === 'left' && layout.leftCollapsed) setLeftCollapsed(false)
+		if (kind === 'right' && layout.rightCollapsed) setRightCollapsed(false)
+
+		const onMove = (ev: PointerEvent) => {
+			const drag = dragRef.current
+			if (!drag) return
+
+			const dx = ev.clientX - drag.startX
+			const width = drag.rect.width
+
+			const minLeft = 240
+			const minRight = 280
+			const minCenter = 520
+			const handles = 16
+
+			if (drag.kind === 'left') {
+				const currentRight = layout.rightCollapsed
+					? rightRailPx
+					: drag.startRight
+				const maxLeft = Math.max(
+					minLeft,
+					width - currentRight - handles - minCenter,
+				)
+				const nextLeft = Math.round(
+					Math.min(maxLeft, Math.max(minLeft, drag.startLeft + dx)),
+				)
+				setLayout((prev) => {
+					if (prev.leftPx === nextLeft && prev.leftCollapsed === false)
+						return prev
+					return { ...prev, leftPx: nextLeft, leftCollapsed: false }
+				})
+				return
+			}
+
+			const currentLeft = layout.leftCollapsed ? leftRailPx : drag.startLeft
+			const maxRight = Math.max(
+				minRight,
+				width - currentLeft - handles - minCenter,
+			)
+			const nextRight = Math.round(
+				Math.min(maxRight, Math.max(minRight, drag.startRight - dx)),
+			)
+			setLayout((prev) => {
+				if (prev.rightPx === nextRight && prev.rightCollapsed === false)
+					return prev
+				return { ...prev, rightPx: nextRight, rightCollapsed: false }
+			})
+		}
+
+		const onUp = () => {
+			dragRef.current = null
+			window.removeEventListener('pointermove', onMove)
+			window.removeEventListener('pointerup', onUp)
+		}
+
+		window.addEventListener('pointermove', onMove)
+		window.addEventListener('pointerup', onUp)
+	}
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
+			<Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+				<DialogContent className="rounded-none sm:max-w-xl">
+					<DialogHeader>
+						<DialogTitle className="font-mono uppercase tracking-widest text-sm">
+							Shortcuts
+						</DialogTitle>
+						<DialogDescription className="font-mono text-xs">
+							Press <span className="font-semibold">Shift + /</span> to open
+							this again.
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-2">
+						<div className="grid grid-cols-1 gap-2">
+							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
+								<div>Undo</div>
+								<div>Ctrl/Cmd + Z</div>
+							</div>
+							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
+								<div>Redo</div>
+								<div>Ctrl/Cmd + Shift + Z · Ctrl/Cmd + Y</div>
+							</div>
+							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
+								<div>Toggle Structure</div>
+								<div>Ctrl/Cmd + \\</div>
+							</div>
+							<div className="flex items-center justify-between font-mono text-xs">
+								<div>Publish</div>
+								<div>Ctrl/Cmd + Enter</div>
+							</div>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
+
 			<div className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70">
 				<div className="mx-auto max-w-[1800px] px-4 py-3 sm:px-6 lg:px-8">
 					<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -384,6 +663,7 @@ function ThreadTemplateVersionEditorRoute() {
 								size="sm"
 								className="rounded-none font-mono text-xs uppercase"
 								disabled={visualTemplateHistory.past.length === 0}
+								title="Undo (Ctrl/Cmd+Z)"
 								onClick={() => undoVisualTemplate()}
 							>
 								Undo
@@ -394,6 +674,7 @@ function ThreadTemplateVersionEditorRoute() {
 								size="sm"
 								className="rounded-none font-mono text-xs uppercase"
 								disabled={visualTemplateHistory.future.length === 0}
+								title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)"
 								onClick={() => redoVisualTemplate()}
 							>
 								Redo
@@ -405,6 +686,7 @@ function ThreadTemplateVersionEditorRoute() {
 								size="sm"
 								className="rounded-none font-mono text-xs uppercase"
 								disabled={!selectedVersion}
+								title="Reset to current version baseline"
 								onClick={() => {
 									if (!selectedVersion) return
 									if (isDirty && !confirmDiscardChanges('reset')) return
@@ -442,7 +724,12 @@ function ThreadTemplateVersionEditorRoute() {
 								size="sm"
 								variant="outline"
 								className="rounded-none font-mono text-xs uppercase"
-								onClick={() => setShowAdvanced((v) => !v)}
+								onClick={() => {
+									const next = !showAdvanced
+									if (next && layout.rightCollapsed) setRightCollapsed(false)
+									setShowAdvanced(next)
+								}}
+								title="Toggle JSON panel"
 							>
 								{showAdvanced ? 'Hide JSON' : 'JSON'}
 							</Button>
@@ -450,9 +737,24 @@ function ThreadTemplateVersionEditorRoute() {
 							<Button
 								type="button"
 								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								title="Shortcuts (Shift+/)"
+								onClick={() => setShortcutsOpen(true)}
+							>
+								?
+							</Button>
+
+							<Button
+								type="button"
+								size="sm"
 								className="rounded-none font-mono text-xs uppercase"
 								disabled={!canPublish}
-								title={publishDisabledReason ?? undefined}
+								title={
+									publishDisabledReason
+										? `Publish disabled: ${publishDisabledReason}`
+										: 'Publish (Ctrl/Cmd+Enter)'
+								}
 								onClick={() => {
 									if (!library) return
 									if (!previewThreadId) {
@@ -494,12 +796,26 @@ function ThreadTemplateVersionEditorRoute() {
 			</div>
 
 			<div className="mx-auto max-w-[1800px] px-4 py-6 sm:px-6 lg:px-8">
-				<div className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_1fr_420px]">
+				<div
+					ref={containerRef}
+					className="grid grid-cols-1 gap-x-6 gap-y-6 lg:gap-x-0 lg:grid-cols-[var(--tte-left)_8px_1fr_8px_var(--tte-right)]"
+					style={
+						{
+							'--tte-left': `${leftColPx}px`,
+							'--tte-right': `${rightColPx}px`,
+						} as React.CSSProperties
+					}
+				>
 					<ThreadTemplateVisualEditor
 						layout="panels"
 						structureClassName="order-1 lg:order-none lg:col-start-1 lg:col-end-2 lg:row-start-1"
-						propertiesClassName="order-3 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1"
+						propertiesClassName="order-3 lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-1"
+						structureCollapsed={layout.leftCollapsed}
+						onStructureCollapsedChange={setLeftCollapsed}
+						propertiesCollapsed={layout.rightCollapsed}
+						onPropertiesCollapsedChange={setRightCollapsed}
 						value={visualTemplateConfig}
+						baselineValue={selectedVersionConfig ?? undefined}
 						onChange={(next) =>
 							setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
 						}
@@ -517,7 +833,22 @@ function ThreadTemplateVersionEditorRoute() {
 						}}
 					/>
 
-					<div className="order-2 space-y-4 lg:order-none lg:col-start-2 lg:col-end-3 lg:row-start-1">
+					<div
+						className="hidden lg:flex lg:col-start-2 lg:col-end-3 lg:row-start-1 cursor-col-resize items-stretch justify-center select-none touch-none"
+						onPointerDown={(e) => startResize('left', e)}
+						onDoubleClick={() => {
+							setLayout((prev) => ({
+								...prev,
+								leftPx: 360,
+								leftCollapsed: false,
+							}))
+						}}
+						title="Drag to resize (double-click to reset)"
+					>
+						<div className="w-full bg-border/60 hover:bg-border" />
+					</div>
+
+					<div className="order-2 space-y-4 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1">
 						<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 							Preview
 						</div>
@@ -583,15 +914,32 @@ function ThreadTemplateVersionEditorRoute() {
 							</div>
 						) : null}
 
-						{previewThreadId && !previewRoot && !previewThreadQuery.isLoading ? (
+						{previewThreadId &&
+						!previewRoot &&
+						!previewThreadQuery.isLoading ? (
 							<div className="font-mono text-xs text-muted-foreground">
 								Preview thread has no root post (or failed to load).
 							</div>
 						) : null}
 					</div>
 
+					<div
+						className="hidden lg:flex lg:col-start-4 lg:col-end-5 lg:row-start-1 cursor-col-resize items-stretch justify-center select-none touch-none"
+						onPointerDown={(e) => startResize('right', e)}
+						onDoubleClick={() => {
+							setLayout((prev) => ({
+								...prev,
+								rightPx: 420,
+								rightCollapsed: false,
+							}))
+						}}
+						title="Drag to resize (double-click to reset)"
+					>
+						<div className="w-full bg-border/60 hover:bg-border" />
+					</div>
+
 					{showAdvanced ? (
-						<Card className="order-4 rounded-none lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-2">
+						<Card className="order-4 rounded-none lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-2">
 							<CardHeader>
 								<CardTitle className="font-mono text-sm uppercase tracking-widest">
 									Config (read-only JSON)

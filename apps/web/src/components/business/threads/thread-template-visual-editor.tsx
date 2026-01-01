@@ -16,6 +16,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
+import { ChevronRight } from 'lucide-react'
 
 type NodePath = Array<string | number>
 
@@ -402,9 +403,225 @@ function buildTree(scene: SceneKey, root: ThreadRenderTreeNode): TreeItem[] {
 	return out
 }
 
+type TreeNodeState = {
+	collapsed: boolean
+}
+
+function buildChildrenMap(items: TreeItem[]) {
+	const childrenByKey = new Map<string, string[]>()
+	for (const it of items) {
+		if (!it.parentKey) continue
+		const list = childrenByKey.get(it.parentKey) ?? []
+		list.push(it.key)
+		childrenByKey.set(it.parentKey, list)
+	}
+	return childrenByKey
+}
+
+function buildAncestorsMap(items: TreeItem[]) {
+	const parentByKey = new Map<string, string | null>()
+	for (const it of items) parentByKey.set(it.key, it.parentKey)
+	return parentByKey
+}
+
+function collectAncestors(
+	key: string,
+	parentByKey: Map<string, string | null>,
+) {
+	const out: string[] = []
+	let cur: string | null | undefined = key
+	while (cur) {
+		const parent = parentByKey.get(cur)
+		if (!parent) break
+		out.push(parent)
+		cur = parent
+	}
+	return out
+}
+
+function TreeView({
+	items,
+	childrenByKey,
+	parentByKey,
+	selectedKey,
+	onSelectedKeyChange,
+	filterText,
+	state,
+	onStateChange,
+}: {
+	items: TreeItem[]
+	childrenByKey: Map<string, string[]>
+	parentByKey: Map<string, string | null>
+	selectedKey: string
+	onSelectedKeyChange: (key: string) => void
+	filterText: string
+	state: Record<string, TreeNodeState>
+	onStateChange: React.Dispatch<
+		React.SetStateAction<Record<string, TreeNodeState>>
+	>
+}) {
+	const itemByKey = React.useMemo(() => {
+		const m = new Map<string, TreeItem>()
+		for (const it of items) m.set(it.key, it)
+		return m
+	}, [items])
+
+	const selectedElRef = React.useRef<HTMLButtonElement | null>(null)
+	React.useEffect(() => {
+		selectedElRef.current?.scrollIntoView({ block: 'nearest' })
+	}, [selectedKey])
+
+	const q = filterText.trim().toLowerCase()
+	const { visibleKeys, forcedOpenKeys } = React.useMemo(() => {
+		if (!q)
+			return {
+				visibleKeys: null as Set<string> | null,
+				forcedOpenKeys: null as Set<string> | null,
+			}
+
+		const matched = new Set<string>()
+		for (const it of items) {
+			const label = it.label.toLowerCase()
+			const key = it.key.toLowerCase()
+			if (label.includes(q) || key.includes(q)) matched.add(it.key)
+		}
+
+		const visible = new Set<string>()
+		const forcedOpen = new Set<string>()
+		for (const key of matched) {
+			visible.add(key)
+			for (const a of collectAncestors(key, parentByKey)) {
+				visible.add(a)
+				forcedOpen.add(a)
+			}
+		}
+
+		return { visibleKeys: visible, forcedOpenKeys: forcedOpen }
+	}, [items, parentByKey, q])
+
+	const roots = React.useMemo(() => {
+		const out: string[] = []
+		for (const it of items) {
+			if (!it.parentKey) out.push(it.key)
+		}
+		return out
+	}, [items])
+
+	const visibleItems = React.useMemo(() => {
+		const out: TreeItem[] = []
+		const walk = (key: string) => {
+			const it = itemByKey.get(key)
+			if (!it) return
+			if (visibleKeys && !visibleKeys.has(key)) return
+
+			out.push(it)
+
+			const children = childrenByKey.get(key) ?? []
+			if (children.length === 0) return
+
+			const collapsed = state[key]?.collapsed ?? false
+			if (!q) {
+				if (collapsed) return
+			} else {
+				if (collapsed && !(forcedOpenKeys?.has(key) ?? false)) return
+			}
+
+			for (const childKey of children) walk(childKey)
+		}
+
+		for (const rootKey of roots) walk(rootKey)
+		return out
+	}, [childrenByKey, forcedOpenKeys, itemByKey, q, roots, state, visibleKeys])
+
+	function toggleCollapsed(key: string) {
+		onStateChange((prev) => {
+			const cur = prev[key]?.collapsed ?? false
+			return { ...prev, [key]: { collapsed: !cur } }
+		})
+	}
+
+	if (items.length === 0) {
+		return (
+			<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
+				No nodes.
+			</div>
+		)
+	}
+
+	return (
+		<div className="space-y-0.5">
+			{visibleItems.map((it) => {
+				const active = it.key === selectedKey
+				const children = childrenByKey.get(it.key) ?? []
+				const hasChildren = children.length > 0
+				const collapsed = state[it.key]?.collapsed ?? false
+
+				return (
+					<div
+						key={it.key}
+						className={[
+							'flex items-center gap-1 px-1',
+							active ? 'bg-muted' : 'hover:bg-muted/40',
+						].join(' ')}
+					>
+						<div
+							className="flex items-center"
+							style={{ paddingLeft: it.depth * 12 }}
+						>
+							<button
+								type="button"
+								disabled={!hasChildren}
+								onClick={(e) => {
+									e.stopPropagation()
+									if (!hasChildren) return
+									toggleCollapsed(it.key)
+								}}
+								className={[
+									'flex size-6 items-center justify-center text-muted-foreground',
+									hasChildren ? 'hover:text-foreground' : 'opacity-40',
+								].join(' ')}
+								aria-label={
+									hasChildren
+										? collapsed
+											? 'Expand'
+											: 'Collapse'
+										: 'Leaf node'
+								}
+							>
+								<ChevronRight
+									className={[
+										'size-3 transition-transform',
+										hasChildren && !collapsed ? 'rotate-90' : '',
+									].join(' ')}
+								/>
+							</button>
+						</div>
+
+						<button
+							ref={active ? selectedElRef : null}
+							type="button"
+							onClick={() => onSelectedKeyChange(it.key)}
+							className={[
+								'flex-1 truncate py-1.5 text-left font-mono text-xs',
+								active
+									? 'text-foreground'
+									: 'text-muted-foreground hover:text-foreground',
+							].join(' ')}
+							title={it.key}
+						>
+							{it.label}
+						</button>
+					</div>
+				)
+			})}
+		</div>
+	)
+}
+
 export function ThreadTemplateVisualEditor({
 	value,
 	onChange,
+	baselineValue,
 	assets = [],
 	historyState,
 	setHistoryState,
@@ -412,6 +629,11 @@ export function ThreadTemplateVisualEditor({
 	layout = 'split',
 	structureClassName,
 	propertiesClassName,
+	structureCollapsed,
+	onStructureCollapsedChange,
+	propertiesCollapsed,
+	onPropertiesCollapsedChange,
+	hotkeysEnabled = true,
 	scene: controlledScene,
 	onSceneChange,
 	selectedKey: controlledSelectedKey,
@@ -419,6 +641,7 @@ export function ThreadTemplateVisualEditor({
 }: {
 	value: ThreadTemplateConfigV1
 	onChange: (next: ThreadTemplateConfigV1) => void
+	baselineValue?: ThreadTemplateConfigV1
 	assets?: AssetRow[]
 	historyState?: {
 		past: ThreadTemplateConfigV1[]
@@ -434,6 +657,11 @@ export function ThreadTemplateVisualEditor({
 	layout?: 'split' | 'panels'
 	structureClassName?: string
 	propertiesClassName?: string
+	structureCollapsed?: boolean
+	onStructureCollapsedChange?: (collapsed: boolean) => void
+	propertiesCollapsed?: boolean
+	onPropertiesCollapsedChange?: (collapsed: boolean) => void
+	hotkeysEnabled?: boolean
 	scene?: SceneKey
 	onSceneChange?: (scene: SceneKey) => void
 	selectedKey?: string
@@ -450,8 +678,8 @@ export function ThreadTemplateVisualEditor({
 	const [internalScene, setInternalScene] = React.useState<SceneKey>('cover')
 	const scene = controlledScene ?? internalScene
 	const setScene = onSceneChange ?? setInternalScene
-	const [internalSelectedKey, setInternalSelectedKey] = React.useState<string>(() =>
-		pathKey('cover', []),
+	const [internalSelectedKey, setInternalSelectedKey] = React.useState<string>(
+		() => pathKey('cover', []),
 	)
 	const selectedKey = controlledSelectedKey ?? internalSelectedKey
 	const setSelectedKey = onSelectedKeyChange ?? setInternalSelectedKey
@@ -462,6 +690,9 @@ export function ThreadTemplateVisualEditor({
 		React.useState<ThreadRenderTreeNode | null>(null)
 
 	const sceneRoot = (value.scenes?.[scene]?.root ??
+		null) as ThreadRenderTreeNode | null
+
+	const baselineSceneRoot = (baselineValue?.scenes?.[scene]?.root ??
 		null) as ThreadRenderTreeNode | null
 
 	React.useEffect(() => {
@@ -488,21 +719,23 @@ export function ThreadTemplateVisualEditor({
 	}, [scene, sceneRoot])
 
 	const [treeFilter, setTreeFilter] = React.useState('')
-	const visibleTree = React.useMemo(() => {
-		const q = treeFilter.trim().toLowerCase()
-		if (!q) return tree
-		return tree.filter((it) => {
-			const label = it.label.toLowerCase()
-			const key = it.key.toLowerCase()
-			return label.includes(q) || key.includes(q)
-		})
-	}, [tree, treeFilter])
 
 	const itemByKey = React.useMemo(() => {
 		const m = new Map<string, TreeItem>()
 		for (const it of tree) m.set(it.key, it)
 		return m
 	}, [tree])
+
+	const childrenByKey = React.useMemo(() => buildChildrenMap(tree), [tree])
+	const parentByKey = React.useMemo(() => buildAncestorsMap(tree), [tree])
+
+	const [treeState, setTreeState] = React.useState<
+		Record<string, TreeNodeState>
+	>({})
+
+	React.useEffect(() => {
+		setTreeState({})
+	}, [resetKey, scene])
 
 	React.useEffect(() => {
 		const rootKey = pathKey(scene, [])
@@ -792,22 +1025,22 @@ export function ThreadTemplateVisualEditor({
 				<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 					{label}
 				</Label>
-					<Input
-						type="number"
-						inputMode="numeric"
-						min={opts?.min}
-						max={opts?.max}
-						step={opts?.step}
-						value={v}
-						onFocus={() => beginTxn()}
-						onBlur={() => endTxn()}
-						onKeyDown={(e) => {
-							if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
-						}}
-						onChange={(e) => {
-							const t = e.target.value.trim()
-							if (!t) return onCommit(undefined)
-							const n = Number(t)
+				<Input
+					type="number"
+					inputMode="numeric"
+					min={opts?.min}
+					max={opts?.max}
+					step={opts?.step}
+					value={v}
+					onFocus={() => beginTxn()}
+					onBlur={() => endTxn()}
+					onKeyDown={(e) => {
+						if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+					}}
+					onChange={(e) => {
+						const t = e.target.value.trim()
+						if (!t) return onCommit(undefined)
+						const n = Number(t)
 						onCommit(Number.isFinite(n) ? n : undefined)
 					}}
 					className="rounded-none font-mono text-xs h-8"
@@ -828,18 +1061,18 @@ export function ThreadTemplateVisualEditor({
 				<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 					{label}
 				</Label>
-					<Input
-						value={v}
-						placeholder={opts?.placeholder}
-						onFocus={() => beginTxn()}
-						onBlur={() => endTxn()}
-						onKeyDown={(e) => {
-							if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
-						}}
-						onChange={(e) => {
-							const t = e.target.value
-							onCommit(t.trim() ? t : undefined)
-						}}
+				<Input
+					value={v}
+					placeholder={opts?.placeholder}
+					onFocus={() => beginTxn()}
+					onBlur={() => endTxn()}
+					onKeyDown={(e) => {
+						if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+					}}
+					onChange={(e) => {
+						const t = e.target.value
+						onCommit(t.trim() ? t : undefined)
+					}}
 					className="rounded-none font-mono text-xs h-8"
 				/>
 			</div>
@@ -895,6 +1128,15 @@ export function ThreadTemplateVisualEditor({
 	}
 
 	const selectedNode = selected?.node ?? null
+	const baselineSelectedNode =
+		selected && baselineSceneRoot
+			? getNodeAtPath(baselineSceneRoot, selected.path)
+			: null
+
+	const canResetSelectedToBaseline = React.useMemo(() => {
+		if (!baselineSelectedNode || !selectedNode) return false
+		return JSON.stringify(baselineSelectedNode) !== JSON.stringify(selectedNode)
+	}, [baselineSelectedNode, selectedNode])
 	const canUndo = history.past.length > 0
 	const canRedo = history.future.length > 0
 
@@ -910,6 +1152,13 @@ export function ThreadTemplateVisualEditor({
 		)
 	}
 
+	const canCollapseStructure = Boolean(onStructureCollapsedChange)
+	const canCollapseInspector = Boolean(onPropertiesCollapsedChange)
+	const isStructureCollapsed =
+		Boolean(structureCollapsed) && canCollapseStructure
+	const isPropertiesCollapsed =
+		Boolean(propertiesCollapsed) && canCollapseInspector
+
 	return (
 		<div
 			className={
@@ -918,6 +1167,7 @@ export function ThreadTemplateVisualEditor({
 					: 'grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]'
 			}
 			onKeyDownCapture={(e) => {
+				if (!hotkeysEnabled) return
 				if (isTypingTarget(e.target)) return
 				const key = e.key.toLowerCase()
 				const mod = e.metaKey || e.ctrlKey
@@ -956,1361 +1206,1601 @@ export function ThreadTemplateVisualEditor({
 			}}
 		>
 			<div
-				className={['space-y-3', structureClassName].filter(Boolean).join(' ')}
+				className={[
+					isStructureCollapsed ? 'h-full' : 'space-y-3',
+					structureClassName,
+				]
+					.filter(Boolean)
+					.join(' ')}
 			>
-				<div className="flex items-center justify-between gap-2">
-					<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-						Scene
-					</div>
-					<div className="flex items-center gap-2">
+				{isStructureCollapsed ? (
+					<div className="flex h-full flex-col items-center justify-start gap-3 rounded-none border border-border bg-card py-3">
 						<Button
 							type="button"
 							size="sm"
-							variant={scene === 'cover' ? 'default' : 'outline'}
+							variant="outline"
 							className="rounded-none font-mono text-[10px] uppercase"
-							onClick={() => {
-								setScene('cover')
-								setSelectedKey(pathKey('cover', []))
-							}}
+							onClick={() => onStructureCollapsedChange?.(false)}
 						>
-							Cover
+							Expand
 						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant={scene === 'post' ? 'default' : 'outline'}
-							className="rounded-none font-mono text-[10px] uppercase"
-							onClick={() => {
-								setScene('post')
-								setSelectedKey(pathKey('post', []))
-							}}
+						<div
+							className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+							style={{ writingMode: 'vertical-rl' }}
 						>
-							Post
-						</Button>
+							Structure
+						</div>
 					</div>
-				</div>
-
-				<Input
-					placeholder="Search nodes…"
-					value={treeFilter}
-					onChange={(e) => setTreeFilter(e.target.value)}
-					className="rounded-none font-mono text-xs h-8"
-				/>
-
-				<div className="rounded-none border border-border bg-card">
-					<div className="max-h-[420px] overflow-auto py-2">
-						{visibleTree.map((it) => {
-							const active = it.key === selectedKey
-							return (
-								<button
-									key={it.key}
+				) : (
+					<>
+						<div className="flex items-center justify-between gap-2">
+							<div className="flex items-center gap-2">
+								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									Structure
+								</div>
+								{canCollapseStructure ? (
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										className="rounded-none font-mono text-[10px] uppercase"
+										onClick={() => onStructureCollapsedChange?.(true)}
+									>
+										Collapse
+									</Button>
+								) : null}
+							</div>
+							<div className="flex items-center gap-2">
+								<Button
 									type="button"
-									onClick={() => setSelectedKey(it.key)}
-									className={[
-										'flex w-full items-center gap-2 px-3 py-1.5 text-left font-mono text-xs',
-										active
-											? 'bg-muted text-foreground'
-											: 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-									].join(' ')}
+									size="sm"
+									variant={scene === 'cover' ? 'default' : 'outline'}
+									className="rounded-none font-mono text-[10px] uppercase"
+									onClick={() => {
+										setScene('cover')
+										setSelectedKey(pathKey('cover', []))
+									}}
 								>
-									<span style={{ width: it.depth * 12 }} />
-									<span className="truncate">{it.label}</span>
-								</button>
-							)
-						})}
-					</div>
-				</div>
+									Cover
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant={scene === 'post' ? 'default' : 'outline'}
+									className="rounded-none font-mono text-[10px] uppercase"
+									onClick={() => {
+										setScene('post')
+										setSelectedKey(pathKey('post', []))
+									}}
+								>
+									Post
+								</Button>
+							</div>
+						</div>
 
-				<div className="flex flex-wrap items-center gap-2">
-					<Select value={addType} onValueChange={(v) => setAddType(v as any)}>
-						<SelectTrigger className="rounded-none font-mono text-xs h-9">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							{(
-								[
-									'Text',
-									'Stack',
-									'Box',
-									'Grid',
-									'Absolute',
-									'Avatar',
-									'Metrics',
-									'ContentBlocks',
-									'Repeat',
-									'Image',
-									'Video',
-									'Background',
-									'Spacer',
-									'Divider',
-									'Builtin',
-								] as Array<ThreadRenderTreeNode['type']>
-							).map((t) => (
-								<SelectItem key={t} value={t}>
-									{t}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+						<Input
+							placeholder="Search nodes…"
+							value={treeFilter}
+							onChange={(e) => setTreeFilter(e.target.value)}
+							className="rounded-none font-mono text-xs h-8"
+						/>
 
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canUndo}
-						onClick={undo}
-					>
-						Undo
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canRedo}
-						onClick={redo}
-					>
-						Redo
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!selectedNode}
-						onClick={() => void copySelected()}
-					>
-						Copy
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!selectedNode || !copiedNode}
-						onClick={pasteCopied}
-					>
-						Paste
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canAddChild}
-						onClick={addChild}
-					>
-						Add Child
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canInsertSibling}
-						onClick={() => insertSibling('before')}
-					>
-						Insert ↑
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canInsertSibling}
-						onClick={() => insertSibling('after')}
-					>
-						Insert ↓
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canInsertSibling}
-						onClick={duplicateSelected}
-					>
-						Duplicate
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canMoveUp}
-						onClick={() => moveSelected('up')}
-					>
-						Up
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canMoveDown}
-						onClick={() => moveSelected('down')}
-					>
-						Down
-					</Button>
-					<Select value={wrapType} onValueChange={(v) => setWrapType(v as any)}>
-						<SelectTrigger className="rounded-none font-mono text-xs h-9">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="Box">Wrap: Box</SelectItem>
-							<SelectItem value="Stack">Wrap: Stack</SelectItem>
-						</SelectContent>
-					</Select>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!selectedNode}
-						onClick={wrapSelected}
-					>
-						Wrap
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!canUnwrap}
-						onClick={unwrapSelected}
-					>
-						Unwrap
-					</Button>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="rounded-none font-mono text-xs uppercase"
-						disabled={!selected?.parentKey}
-						onClick={removeSelected}
-					>
-						Delete
-					</Button>
-				</div>
+						<div className="rounded-none border border-border bg-card">
+							<div className="max-h-[420px] overflow-auto py-2">
+								<TreeView
+									items={tree}
+									childrenByKey={childrenByKey}
+									parentByKey={parentByKey}
+									selectedKey={selectedKey}
+									onSelectedKeyChange={setSelectedKey}
+									filterText={treeFilter}
+									state={treeState}
+									onStateChange={setTreeState}
+								/>
+							</div>
+						</div>
+
+						<div className="flex flex-wrap items-center gap-2">
+							<Select
+								value={addType}
+								onValueChange={(v) => setAddType(v as any)}
+							>
+								<SelectTrigger className="rounded-none font-mono text-xs h-9">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{(
+										[
+											'Text',
+											'Stack',
+											'Box',
+											'Grid',
+											'Absolute',
+											'Avatar',
+											'Metrics',
+											'ContentBlocks',
+											'Repeat',
+											'Image',
+											'Video',
+											'Background',
+											'Spacer',
+											'Divider',
+											'Builtin',
+										] as Array<ThreadRenderTreeNode['type']>
+									).map((t) => (
+										<SelectItem key={t} value={t}>
+											{t}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canUndo}
+								onClick={undo}
+							>
+								Undo
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canRedo}
+								onClick={redo}
+							>
+								Redo
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!selectedNode}
+								onClick={() => void copySelected()}
+							>
+								Copy
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!selectedNode || !copiedNode}
+								onClick={pasteCopied}
+							>
+								Paste
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canAddChild}
+								onClick={addChild}
+							>
+								Add Child
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canInsertSibling}
+								onClick={() => insertSibling('before')}
+							>
+								Insert ↑
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canInsertSibling}
+								onClick={() => insertSibling('after')}
+							>
+								Insert ↓
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canInsertSibling}
+								onClick={duplicateSelected}
+							>
+								Duplicate
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canMoveUp}
+								onClick={() => moveSelected('up')}
+							>
+								Up
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canMoveDown}
+								onClick={() => moveSelected('down')}
+							>
+								Down
+							</Button>
+							<Select
+								value={wrapType}
+								onValueChange={(v) => setWrapType(v as any)}
+							>
+								<SelectTrigger className="rounded-none font-mono text-xs h-9">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="Box">Wrap: Box</SelectItem>
+									<SelectItem value="Stack">Wrap: Stack</SelectItem>
+								</SelectContent>
+							</Select>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!selectedNode}
+								onClick={wrapSelected}
+							>
+								Wrap
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!canUnwrap}
+								onClick={unwrapSelected}
+							>
+								Unwrap
+							</Button>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!selected?.parentKey}
+								onClick={removeSelected}
+							>
+								Delete
+							</Button>
+						</div>
+					</>
+				)}
 			</div>
 
 			<div
-				className={['space-y-3', propertiesClassName].filter(Boolean).join(' ')}
+				className={[
+					isPropertiesCollapsed ? 'h-full' : 'space-y-3',
+					propertiesClassName,
+				]
+					.filter(Boolean)
+					.join(' ')}
 			>
-				<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-					Properties
-				</div>
-
-				<div className="rounded-none border border-border bg-card p-4 space-y-4">
-					{!selectedNode ? (
-						<div className="font-mono text-xs text-muted-foreground">
-							Select a node to edit.
+				{isPropertiesCollapsed ? (
+					<div className="flex h-full flex-col items-center justify-start gap-3 rounded-none border border-border bg-card py-3">
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							className="rounded-none font-mono text-[10px] uppercase"
+							onClick={() => onPropertiesCollapsedChange?.(false)}
+						>
+							Expand
+						</Button>
+						<div
+							className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+							style={{ writingMode: 'vertical-rl' }}
+						>
+							Inspector
 						</div>
-					) : (
-						<>
-							<div className="flex items-center justify-between gap-3">
-								<div className="font-mono text-xs text-foreground">
-									{selectedNode.type}
+					</div>
+				) : (
+					<>
+						<div className="flex items-center justify-between gap-2">
+							<div className="flex items-center gap-2">
+								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									Inspector
 								</div>
-								<div className="font-mono text-[10px] text-muted-foreground">
-									{scene}
-								</div>
+								{canCollapseInspector ? (
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										className="rounded-none font-mono text-[10px] uppercase"
+										onClick={() => onPropertiesCollapsedChange?.(true)}
+									>
+										Collapse
+									</Button>
+								) : null}
 							</div>
+						</div>
 
-							{selectedNode.type === 'Text' ? (
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-									{textField(
-										'text',
-										selectedNode.text,
-										(v) => updateSelected((n) => ({ ...(n as any), text: v })),
-										{ placeholder: 'Text…' },
-									)}
-									<Select
-										value={selectedNode.bind ?? '__none__'}
-										onValueChange={(v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												bind: v === '__none__' ? undefined : v,
-											}))
-										}
-									>
-										<div className="space-y-1">
-											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												bind
-											</Label>
-											<SelectTrigger className="rounded-none font-mono text-xs h-8">
-												<SelectValue />
-											</SelectTrigger>
-										</div>
-										<SelectContent>
-											<SelectItem value="__none__">none</SelectItem>
-											{(
-												[
-													'thread.title',
-													'thread.source',
-													'thread.sourceUrl',
-													'timeline.replyIndicator',
-													'timeline.replyIndex',
-													'timeline.replyCount',
-													'root.author.name',
-													'root.author.handle',
-													'root.plainText',
-													'root.translations.zh-CN.plainText',
-													'post.author.name',
-													'post.author.handle',
-													'post.plainText',
-													'post.translations.zh-CN.plainText',
-												] as const
-											).map((b) => (
-												<SelectItem key={b} value={b}>
-													{b}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-
-									{numberField(
-										'size',
-										selectedNode.size,
-										(v) => updateSelected((n) => ({ ...(n as any), size: v })),
-										{ min: 8, max: 120, step: 1 },
-									)}
-									{numberField(
-										'weight',
-										selectedNode.weight,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), weight: v })),
-										{ min: 100, max: 900, step: 100 },
-									)}
-									{numberField(
-										'opacity',
-										(selectedNode as any).opacity,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), opacity: v })),
-										{ min: 0, max: 1, step: 0.05 },
-									)}
-									{numberField(
-										'maxLines',
-										selectedNode.maxLines,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), maxLines: v })),
-										{ min: 1, max: 20, step: 1 },
-									)}
-									<Select
-										value={selectedNode.align ?? '__none__'}
-										onValueChange={(v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												align: v === '__none__' ? undefined : v,
-											}))
-										}
-									>
-										<div className="space-y-1">
-											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												align
-											</Label>
-											<SelectTrigger className="rounded-none font-mono text-xs h-8">
-												<SelectValue />
-											</SelectTrigger>
-										</div>
-										<SelectContent>
-											<SelectItem value="__none__">none</SelectItem>
-											{(['left', 'center', 'right'] as const).map((a) => (
-												<SelectItem key={a} value={a}>
-													{a}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									{selectField(
-										'color',
-										(selectedNode as any).color,
-										[
-											{ value: 'primary' },
-											{ value: 'muted' },
-											{ value: 'accent' },
-										],
-										(v) => updateSelected((n) => ({ ...(n as any), color: v })),
-									)}
-									{numberField(
-										'lineHeight',
-										(selectedNode as any).lineHeight,
-										(v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												lineHeight: v,
-											})),
-										{ min: 0.8, max: 3, step: 0.05 },
-									)}
-									{numberField(
-										'letterSpacing',
-										(selectedNode as any).letterSpacing,
-										(v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												letterSpacing: v,
-											})),
-										{ min: -2, max: 20, step: 0.1 },
-									)}
-									{boolField(
-										'uppercase',
-										(selectedNode as any).uppercase,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), uppercase: v })),
-									)}
+						<div className="rounded-none border border-border bg-card p-4 space-y-4">
+							{!selectedNode ? (
+								<div className="font-mono text-xs text-muted-foreground">
+									Select a node to edit.
 								</div>
-							) : null}
-
-							{selectedNode.type === 'Metrics' ? (
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-									{selectField(
-										'bind',
-										(selectedNode as any).bind,
-										[
-											{ value: 'post.metrics.likes' },
-											{ value: 'root.metrics.likes' },
-										],
-										(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
-									)}
-									{selectField(
-										'color',
-										(selectedNode as any).color,
-										[
-											{ value: 'primary' },
-											{ value: 'muted' },
-											{ value: 'accent' },
-										],
-										(v) => updateSelected((n) => ({ ...(n as any), color: v })),
-									)}
-									{numberField(
-										'size',
-										(selectedNode as any).size,
-										(v) => updateSelected((n) => ({ ...(n as any), size: v })),
-										{ min: 10, max: 64, step: 1 },
-									)}
-									{numberField(
-										'opacity',
-										(selectedNode as any).opacity,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), opacity: v })),
-										{ min: 0, max: 1, step: 0.05 },
-									)}
-									{boolField('showIcon', (selectedNode as any).showIcon, (v) =>
-										updateSelected((n) => ({ ...(n as any), showIcon: v })),
-									)}
-								</div>
-							) : null}
-
-							{selectedNode.type === 'Avatar' ? (
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-									{selectField(
-										'bind',
-										(selectedNode as any).bind,
-										[
-											{ value: 'root.author.avatarAssetId' },
-											{ value: 'post.author.avatarAssetId' },
-										],
-										(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
-									)}
-									{textField(
-										'background',
-										(selectedNode as any).background,
-										(v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												background: v,
-											})),
-										{ placeholder: 'rgba(...) or var(--tf-...)' },
-									)}
-									{boolField('border', (selectedNode as any).border, (v) =>
-										updateSelected((n) => ({ ...(n as any), border: v })),
-									)}
-									{numberField(
-										'size',
-										(selectedNode as any).size,
-										(v) => updateSelected((n) => ({ ...(n as any), size: v })),
-										{ min: 24, max: 240, step: 1 },
-									)}
-									{numberField(
-										'radius',
-										(selectedNode as any).radius,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), radius: v })),
-										{ min: 0, max: 999, step: 1 },
-									)}
-									{numberField(
-										'opacity',
-										(selectedNode as any).opacity,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), opacity: v })),
-										{ min: 0, max: 1, step: 0.05 },
-									)}
-								</div>
-							) : null}
-
-							{selectedNode.type === 'ContentBlocks' ? (
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-									{selectField(
-										'bind',
-										(selectedNode as any).bind,
-										[
-											{ value: 'post.contentBlocks' },
-											{ value: 'root.contentBlocks' },
-										],
-										(v) => updateSelected((n) => ({ ...(n as any), bind: v })),
-									)}
-									{numberField(
-										'gap',
-										(selectedNode as any).gap,
-										(v) => updateSelected((n) => ({ ...(n as any), gap: v })),
-										{ min: 0, max: 80, step: 1 },
-									)}
-									{numberField(
-										'maxHeight',
-										(selectedNode as any).maxHeight,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), maxHeight: v })),
-										{ min: 100, max: 1200, step: 1 },
-									)}
-									{numberField(
-										'opacity',
-										(selectedNode as any).opacity,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), opacity: v })),
-										{ min: 0, max: 1, step: 0.05 },
-									)}
-								</div>
-							) : null}
-
-							{selectedNode.type === 'Stack' ||
-							selectedNode.type === 'Box' ||
-							selectedNode.type === 'Grid' ? (
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-									{numberField(
-										'flex',
-										(selectedNode as any).flex,
-										(v) => updateSelected((n) => ({ ...(n as any), flex: v })),
-										{ min: 0, max: 100, step: 1 },
-									)}
-									{numberField(
-										'opacity',
-										(selectedNode as any).opacity,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), opacity: v })),
-										{ min: 0, max: 1, step: 0.05 },
-									)}
-									{numberField(
-										'gap',
-										(selectedNode as any).gap,
-										(v) => updateSelected((n) => ({ ...(n as any), gap: v })),
-										{ min: 0, max: 240, step: 1 },
-									)}
-									{numberField(
-										'gapX',
-										(selectedNode as any).gapX,
-										(v) => updateSelected((n) => ({ ...(n as any), gapX: v })),
-										{ min: 0, max: 240, step: 1 },
-									)}
-									{numberField(
-										'gapY',
-										(selectedNode as any).gapY,
-										(v) => updateSelected((n) => ({ ...(n as any), gapY: v })),
-										{ min: 0, max: 240, step: 1 },
-									)}
-									{numberField(
-										'padding',
-										(selectedNode as any).padding,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), padding: v })),
-										{ min: 0, max: 240, step: 1 },
-									)}
-									{numberField(
-										'paddingX',
-										(selectedNode as any).paddingX,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), paddingX: v })),
-										{ min: 0, max: 240, step: 1 },
-									)}
-									{numberField(
-										'paddingY',
-										(selectedNode as any).paddingY,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), paddingY: v })),
-										{ min: 0, max: 240, step: 1 },
-									)}
-									{textField(
-										'background',
-										(selectedNode as any).background,
-										(v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												background: v,
-											})),
-										{ placeholder: 'rgba(...) or var(--tf-...)' },
-									)}
-									{numberField(
-										'radius',
-										(selectedNode as any).radius,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), radius: v })),
-										{ min: 0, max: 120, step: 1 },
-									)}
-									{boolField('border', (selectedNode as any).border, (v) =>
-										updateSelected((n) => ({ ...(n as any), border: v })),
-									)}
-									{selectField(
-										'overflow',
-										(selectedNode as any).overflow,
-										[{ value: 'hidden' }],
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), overflow: v })),
-									)}
-									{numberField(
-										'width',
-										(selectedNode as any).width,
-										(v) => updateSelected((n) => ({ ...(n as any), width: v })),
-										{ min: 0, max: 2000, step: 1 },
-									)}
-									{numberField(
-										'height',
-										(selectedNode as any).height,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), height: v })),
-										{ min: 0, max: 2000, step: 1 },
-									)}
-									{numberField(
-										'maxWidth',
-										(selectedNode as any).maxWidth,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), maxWidth: v })),
-										{ min: 0, max: 2000, step: 1 },
-									)}
-									{numberField(
-										'maxHeight',
-										(selectedNode as any).maxHeight,
-										(v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												maxHeight: v,
-											})),
-										{ min: 0, max: 2000, step: 1 },
-									)}
-									{selectedNode.type === 'Grid'
-										? numberField(
-												'columns',
-												(selectedNode as any).columns,
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														columns: v,
-													})),
-												{ min: 1, max: 12, step: 1 },
-											)
-										: null}
-									{selectedNode.type === 'Stack' ? (
-										<Select
-											value={(selectedNode as any).direction ?? 'column'}
-											onValueChange={(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													direction: v,
-												}))
-											}
-										>
-											<div className="space-y-1">
-												<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-													direction
-												</Label>
-												<SelectTrigger className="rounded-none font-mono text-xs h-8">
-													<SelectValue />
-												</SelectTrigger>
+							) : (
+								<>
+									<div className="flex items-center justify-between gap-3">
+										<div className="flex items-center gap-2">
+											<div className="font-mono text-xs text-foreground">
+												{selectedNode.type}
 											</div>
-											<SelectContent>
-												<SelectItem value="column">column</SelectItem>
-												<SelectItem value="row">row</SelectItem>
-											</SelectContent>
-										</Select>
-									) : null}
-									{selectedNode.type === 'Stack'
-										? selectField(
-												'align',
-												(selectedNode as any).align,
-												[
-													{ value: 'start' },
-													{ value: 'center' },
-													{ value: 'end' },
-													{ value: 'stretch' },
-												],
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														align: v,
-													})),
-											)
-										: null}
-									{selectedNode.type === 'Stack'
-										? selectField(
-												'justify',
-												(selectedNode as any).justify,
-												[
-													{ value: 'start' },
-													{ value: 'center' },
-													{ value: 'end' },
-													{ value: 'between' },
-												],
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														justify: v,
-													})),
-											)
-										: null}
-									{selectedNode.type === 'Grid'
-										? selectField(
-												'align',
-												(selectedNode as any).align,
-												[
-													{ value: 'start' },
-													{ value: 'center' },
-													{ value: 'end' },
-													{ value: 'stretch' },
-												],
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														align: v,
-													})),
-											)
-										: null}
-									{selectedNode.type === 'Grid'
-										? selectField(
-												'justify',
-												(selectedNode as any).justify,
-												[
-													{ value: 'start' },
-													{ value: 'center' },
-													{ value: 'end' },
-													{ value: 'stretch' },
-												],
-												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														justify: v,
-													})),
-											)
-										: null}
-								</div>
-							) : null}
-
-							{selectedNode.type === 'Image' ||
-							selectedNode.type === 'Video' ? (
-								<div className="space-y-3">
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{textField('assetId', selectedNode.assetId, (v) =>
-											updateSelected((n) => ({
-												...(n as any),
-												assetId: v ?? '',
-											})),
-										)}
-										<Select
-											value="__pick__"
-											onValueChange={(v) => {
-												if (!v || v === '__pick__') return
-												updateSelected((n) => ({ ...(n as any), assetId: v }))
-											}}
-										>
-											<div className="space-y-1">
-												<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-													Pick Asset
-												</Label>
-												<SelectTrigger className="rounded-none font-mono text-xs h-8">
-													<SelectValue placeholder="Select…" />
-												</SelectTrigger>
+											{baselineValue && canResetSelectedToBaseline ? (
+												<div className="rounded-none border border-border bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-foreground">
+													Modified
+												</div>
+											) : null}
+										</div>
+										<div className="flex items-center gap-2">
+											{baselineValue ? (
+												<Button
+													type="button"
+													size="sm"
+													variant="outline"
+													className="rounded-none font-mono text-[10px] uppercase"
+													disabled={!canResetSelectedToBaseline}
+													title="Reset selection to current version baseline"
+													onClick={() => {
+														if (!baselineSelectedNode) return
+														updateSelected(() =>
+															cloneJson(baselineSelectedNode),
+														)
+													}}
+												>
+													Reset
+												</Button>
+											) : null}
+											<div className="font-mono text-[10px] text-muted-foreground">
+												{scene}
 											</div>
-											<SelectContent>
-												<SelectItem value="__pick__">Select…</SelectItem>
-												{pickableAssets
-													.filter((a) =>
-														selectedNode.type === 'Image'
-															? a.kind === 'image'
-															: a.kind === 'video',
-													)
-													.slice(0, 50)
-													.map((a) => (
-														<SelectItem key={a.id} value={a.id}>
-															{a.id}
+										</div>
+									</div>
+
+									{selectedNode.type === 'Text' ? (
+										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+											{textField(
+												'text',
+												selectedNode.text,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), text: v })),
+												{ placeholder: 'Text…' },
+											)}
+											<Select
+												value={selectedNode.bind ?? '__none__'}
+												onValueChange={(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														bind: v === '__none__' ? undefined : v,
+													}))
+												}
+											>
+												<div className="space-y-1">
+													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														bind
+													</Label>
+													<SelectTrigger className="rounded-none font-mono text-xs h-8">
+														<SelectValue />
+													</SelectTrigger>
+												</div>
+												<SelectContent>
+													<SelectItem value="__none__">none</SelectItem>
+													{(
+														[
+															'thread.title',
+															'thread.source',
+															'thread.sourceUrl',
+															'timeline.replyIndicator',
+															'timeline.replyIndex',
+															'timeline.replyCount',
+															'root.author.name',
+															'root.author.handle',
+															'root.plainText',
+															'root.translations.zh-CN.plainText',
+															'post.author.name',
+															'post.author.handle',
+															'post.plainText',
+															'post.translations.zh-CN.plainText',
+														] as const
+													).map((b) => (
+														<SelectItem key={b} value={b}>
+															{b}
 														</SelectItem>
 													))}
-											</SelectContent>
-										</Select>
-									</div>
+												</SelectContent>
+											</Select>
 
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{selectField(
-											'fit',
-											(selectedNode as any).fit,
-											[{ value: 'cover' }, { value: 'contain' }],
-											(v) => updateSelected((n) => ({ ...(n as any), fit: v })),
-										)}
-										{textField(
-											'position',
-											(selectedNode as any).position,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													position: v,
-												})),
-											{ placeholder: 'e.g. 50% 50%' },
-										)}
-										{numberField(
-											'width',
-											(selectedNode as any).width,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), width: v })),
-											{ min: 16, max: 1600, step: 1 },
-										)}
-										{numberField(
-											'height',
-											(selectedNode as any).height,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), height: v })),
-											{ min: 16, max: 1600, step: 1 },
-										)}
-										{numberField(
-											'blur',
-											(selectedNode as any).blur,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), blur: v })),
-											{ min: 0, max: 80, step: 1 },
-										)}
-										{textField(
-											'background',
-											(selectedNode as any).background,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													background: v,
-												})),
-											{ placeholder: 'rgba(...) or var(--tf-...)' },
-										)}
-										{numberField(
-											'radius',
-											(selectedNode as any).radius,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), radius: v })),
-											{ min: 0, max: 120, step: 1 },
-										)}
-										{numberField(
-											'borderWidth',
-											(selectedNode as any).borderWidth,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													borderWidth: v,
-												})),
-											{ min: 0, max: 24, step: 1 },
-										)}
-										{selectField(
-											'borderColor',
-											(selectedNode as any).borderColor,
-											[
-												{ value: 'border' },
-												{ value: 'primary' },
-												{ value: 'muted' },
-												{ value: 'accent' },
-											],
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													borderColor: v,
-												})),
-										)}
-										{boolField('border', (selectedNode as any).border, (v) =>
-											updateSelected((n) => ({ ...(n as any), border: v })),
-										)}
-										{numberField(
-											'opacity',
-											(selectedNode as any).opacity,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													opacity: v,
-												})),
-											{ min: 0, max: 1, step: 0.05 },
-										)}
-									</div>
-								</div>
-							) : null}
-
-							{selectedNode.type === 'Background' ? (
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-									{textField('color', selectedNode.color, (v) =>
-										updateSelected((n) => ({ ...(n as any), color: v })),
-									)}
-									{textField('assetId', selectedNode.assetId, (v) =>
-										updateSelected((n) => ({ ...(n as any), assetId: v })),
-									)}
-									<Select
-										value="__pick__"
-										onValueChange={(v) => {
-											if (!v || v === '__pick__') return
-											updateSelected((n) => ({ ...(n as any), assetId: v }))
-										}}
-									>
-										<div className="space-y-1">
-											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												Pick Asset
-											</Label>
-											<SelectTrigger className="rounded-none font-mono text-xs h-8">
-												<SelectValue placeholder="Select…" />
-											</SelectTrigger>
-										</div>
-										<SelectContent>
-											<SelectItem value="__pick__">Select…</SelectItem>
-											{pickableImageAssets.slice(0, 50).map((a) => (
-												<SelectItem key={a.id} value={a.id}>
-													{a.id}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									{numberField(
-										'opacity',
-										selectedNode.opacity,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), opacity: v })),
-										{ min: 0, max: 1, step: 0.05 },
-									)}
-									{numberField(
-										'blur',
-										selectedNode.blur,
-										(v) => updateSelected((n) => ({ ...(n as any), blur: v })),
-										{ min: 0, max: 80, step: 1 },
-									)}
-								</div>
-							) : null}
-
-							{selectedNode.type === 'Absolute' ? (
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-									{numberField('x', selectedNode.x, (v) =>
-										updateSelected((n) => ({ ...(n as any), x: v })),
-									)}
-									{numberField('y', selectedNode.y, (v) =>
-										updateSelected((n) => ({ ...(n as any), y: v })),
-									)}
-									{numberField('width', selectedNode.width, (v) =>
-										updateSelected((n) => ({ ...(n as any), width: v })),
-									)}
-									{numberField('height', selectedNode.height, (v) =>
-										updateSelected((n) => ({ ...(n as any), height: v })),
-									)}
-									{numberField('zIndex', selectedNode.zIndex, (v) =>
-										updateSelected((n) => ({ ...(n as any), zIndex: v })),
-									)}
-									{numberField(
-										'opacity',
-										(selectedNode as any).opacity,
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), opacity: v })),
-										{ min: 0, max: 1, step: 0.05 },
-									)}
-									{boolField('pointerEvents', selectedNode.pointerEvents, (v) =>
-										updateSelected((n) => ({
-											...(n as any),
-											pointerEvents: v,
-										})),
-									)}
-									{numberField('rotate', selectedNode.rotate, (v) =>
-										updateSelected((n) => ({ ...(n as any), rotate: v })),
-									)}
-									{numberField('scale', selectedNode.scale, (v) =>
-										updateSelected((n) => ({ ...(n as any), scale: v })),
-									)}
-									{selectField(
-										'origin',
-										selectedNode.origin,
-										[
-											{ value: 'center' },
-											{ value: 'top-left' },
-											{ value: 'top-right' },
-											{ value: 'bottom-left' },
-											{ value: 'bottom-right' },
-										],
-										(v) =>
-											updateSelected((n) => ({ ...(n as any), origin: v })),
-									)}
-								</div>
-							) : null}
-
-							{selectedNode.type === 'Builtin' ? (
-								<div className="space-y-3">
-									<Select
-										value={selectedNode.kind}
-										onValueChange={(v) =>
-											updateSelected((n) => ({ ...(n as any), kind: v }))
-										}
-									>
-										<div className="space-y-1">
-											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												kind
-											</Label>
-											<SelectTrigger className="rounded-none font-mono text-xs h-8">
-												<SelectValue />
-											</SelectTrigger>
-										</div>
-										<SelectContent>
-											{(
-												[
-													'cover',
-													'repliesList',
-													'repliesListHeader',
-													'repliesListRootPost',
-													'repliesListReplies',
-												] as const
-											).map((k) => (
-												<SelectItem key={k} value={k}>
-													{k}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									{selectedNode.kind === 'repliesList' ||
-									selectedNode.kind === 'repliesListRootPost' ? (
-										<div className="space-y-2">
-											<div className="flex flex-wrap items-center justify-between gap-2">
-												<div className="font-mono text-xs text-muted-foreground">
-													rootRoot
-												</div>
-												<div className="flex flex-wrap items-center gap-2">
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														disabled={(selectedNode as any).rootRoot != null}
-														onClick={() =>
-															updateSelected((n) => ({
-																...(n as any),
-																rootRoot: createDefaultNode('Stack'),
-															}))
-														}
-													>
-														Add
-													</Button>
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														disabled={(selectedNode as any).rootRoot == null}
-														onClick={() => {
-															if (!selected) return
-															setSelectedKey(
-																pathKey(scene, [...selected.path, 'rootRoot']),
-															)
-														}}
-													>
-														Select
-													</Button>
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														disabled={(selectedNode as any).rootRoot == null}
-														onClick={() =>
-															updateSelected((n) => ({
-																...(n as any),
-																rootRoot: undefined,
-															}))
-														}
-													>
-														Clear
-													</Button>
-												</div>
-											</div>
-											{boolField(
-												'wrapRootRoot',
-												(selectedNode as any).wrapRootRoot,
+											{numberField(
+												'size',
+												selectedNode.size,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), size: v })),
+												{ min: 8, max: 120, step: 1 },
+											)}
+											{numberField(
+												'weight',
+												selectedNode.weight,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), weight: v })),
+												{ min: 100, max: 900, step: 100 },
+											)}
+											{numberField(
+												'opacity',
+												(selectedNode as any).opacity,
 												(v) =>
 													updateSelected((n) => ({
 														...(n as any),
-														wrapRootRoot: v,
+														opacity: v,
 													})),
+												{ min: 0, max: 1, step: 0.05 },
 											)}
-										</div>
-									) : null}
-
-									{selectedNode.kind === 'repliesList' ||
-									selectedNode.kind === 'repliesListReplies' ? (
-										<div className="space-y-2">
-											<div className="flex flex-wrap items-center justify-between gap-2">
-												<div className="font-mono text-xs text-muted-foreground">
-													itemRoot
-												</div>
-												<div className="flex flex-wrap items-center gap-2">
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														disabled={(selectedNode as any).itemRoot != null}
-														onClick={() =>
-															updateSelected((n) => ({
-																...(n as any),
-																itemRoot: createDefaultNode('Stack'),
-															}))
-														}
-													>
-														Add
-													</Button>
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														disabled={(selectedNode as any).itemRoot == null}
-														onClick={() => {
-															if (!selected) return
-															setSelectedKey(
-																pathKey(scene, [...selected.path, 'itemRoot']),
-															)
-														}}
-													>
-														Select
-													</Button>
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														disabled={(selectedNode as any).itemRoot == null}
-														onClick={() =>
-															updateSelected((n) => ({
-																...(n as any),
-																itemRoot: undefined,
-															}))
-														}
-													>
-														Clear
-													</Button>
-												</div>
-											</div>
-											{boolField(
-												'wrapItemRoot',
-												(selectedNode as any).wrapItemRoot,
+											{numberField(
+												'maxLines',
+												selectedNode.maxLines,
 												(v) =>
 													updateSelected((n) => ({
 														...(n as any),
-														wrapItemRoot: v,
+														maxLines: v,
 													})),
+												{ min: 1, max: 20, step: 1 },
 											)}
-										</div>
-									) : null}
-
-									{selectedNode.kind === 'repliesList' ||
-									selectedNode.kind === 'repliesListReplies' ? (
-										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-											{numberField('gap', (selectedNode as any).gap, (v) =>
-												updateSelected((n) => ({ ...(n as any), gap: v })),
-											)}
-											{boolField(
-												'highlight.enabled',
-												(selectedNode as any).highlight?.enabled,
-												(v) =>
+											<Select
+												value={selectedNode.align ?? '__none__'}
+												onValueChange={(v) =>
 													updateSelected((n) => ({
 														...(n as any),
-														highlight: v
-															? { ...(n as any).highlight, enabled: true }
-															: undefined,
-													})),
-											)}
+														align: v === '__none__' ? undefined : v,
+													}))
+												}
+											>
+												<div className="space-y-1">
+													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														align
+													</Label>
+													<SelectTrigger className="rounded-none font-mono text-xs h-8">
+														<SelectValue />
+													</SelectTrigger>
+												</div>
+												<SelectContent>
+													<SelectItem value="__none__">none</SelectItem>
+													{(['left', 'center', 'right'] as const).map((a) => (
+														<SelectItem key={a} value={a}>
+															{a}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
 											{selectField(
-												'highlight.color',
-												(selectedNode as any).highlight?.color,
+												'color',
+												(selectedNode as any).color,
 												[
 													{ value: 'primary' },
 													{ value: 'muted' },
 													{ value: 'accent' },
 												],
 												(v) =>
-													updateSelected((n) => ({
-														...(n as any),
-														highlight: { ...(n as any).highlight, color: v },
-													})),
+													updateSelected((n) => ({ ...(n as any), color: v })),
 											)}
 											{numberField(
-												'highlight.thickness',
-												(selectedNode as any).highlight?.thickness,
+												'lineHeight',
+												(selectedNode as any).lineHeight,
 												(v) =>
 													updateSelected((n) => ({
 														...(n as any),
-														highlight: {
-															...(n as any).highlight,
-															thickness: v,
-														},
+														lineHeight: v,
 													})),
-												{ min: 1, max: 12, step: 1 },
+												{ min: 0.8, max: 3, step: 0.05 },
 											)}
 											{numberField(
-												'highlight.radius',
-												(selectedNode as any).highlight?.radius,
+												'letterSpacing',
+												(selectedNode as any).letterSpacing,
 												(v) =>
 													updateSelected((n) => ({
 														...(n as any),
-														highlight: { ...(n as any).highlight, radius: v },
+														letterSpacing: v,
 													})),
-												{ min: 0, max: 48, step: 1 },
+												{ min: -2, max: 20, step: 0.1 },
 											)}
-											{numberField(
-												'highlight.opacity',
-												(selectedNode as any).highlight?.opacity,
+											{boolField(
+												'uppercase',
+												(selectedNode as any).uppercase,
 												(v) =>
 													updateSelected((n) => ({
 														...(n as any),
-														highlight: { ...(n as any).highlight, opacity: v },
+														uppercase: v,
+													})),
+											)}
+										</div>
+									) : null}
+
+									{selectedNode.type === 'Metrics' ? (
+										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+											{selectField(
+												'bind',
+												(selectedNode as any).bind,
+												[
+													{ value: 'post.metrics.likes' },
+													{ value: 'root.metrics.likes' },
+												],
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), bind: v })),
+											)}
+											{selectField(
+												'color',
+												(selectedNode as any).color,
+												[
+													{ value: 'primary' },
+													{ value: 'muted' },
+													{ value: 'accent' },
+												],
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), color: v })),
+											)}
+											{numberField(
+												'size',
+												(selectedNode as any).size,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), size: v })),
+												{ min: 10, max: 64, step: 1 },
+											)}
+											{numberField(
+												'opacity',
+												(selectedNode as any).opacity,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														opacity: v,
+													})),
+												{ min: 0, max: 1, step: 0.05 },
+											)}
+											{boolField(
+												'showIcon',
+												(selectedNode as any).showIcon,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														showIcon: v,
+													})),
+											)}
+										</div>
+									) : null}
+
+									{selectedNode.type === 'Avatar' ? (
+										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+											{selectField(
+												'bind',
+												(selectedNode as any).bind,
+												[
+													{ value: 'root.author.avatarAssetId' },
+													{ value: 'post.author.avatarAssetId' },
+												],
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), bind: v })),
+											)}
+											{textField(
+												'background',
+												(selectedNode as any).background,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														background: v,
+													})),
+												{ placeholder: 'rgba(...) or var(--tf-...)' },
+											)}
+											{boolField('border', (selectedNode as any).border, (v) =>
+												updateSelected((n) => ({ ...(n as any), border: v })),
+											)}
+											{numberField(
+												'size',
+												(selectedNode as any).size,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), size: v })),
+												{ min: 24, max: 240, step: 1 },
+											)}
+											{numberField(
+												'radius',
+												(selectedNode as any).radius,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), radius: v })),
+												{ min: 0, max: 999, step: 1 },
+											)}
+											{numberField(
+												'opacity',
+												(selectedNode as any).opacity,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														opacity: v,
 													})),
 												{ min: 0, max: 1, step: 0.05 },
 											)}
 										</div>
 									) : null}
-									<div className="font-mono text-xs text-muted-foreground">
-										Note: rootRoot/itemRoot editing is supported by selecting
-										them in the tree.
-									</div>
-								</div>
-							) : null}
 
-							{selectedNode.type === 'Repeat' ? (
-								<div className="space-y-3">
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{numberField(
-											'maxItems',
-											(selectedNode as any).maxItems,
-											(v) =>
-												updateSelected((n) => ({ ...(n as any), maxItems: v })),
-											{ min: 1, max: 100, step: 1 },
-										)}
-										{numberField('gap', (selectedNode as any).gap, (v) =>
-											updateSelected((n) => ({ ...(n as any), gap: v })),
-										)}
-										{boolField(
-											'wrapItemRoot',
-											(selectedNode as any).wrapItemRoot,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													wrapItemRoot: v,
-												})),
-										)}
-										{boolField('scroll', (selectedNode as any).scroll, (v) =>
-											updateSelected((n) => ({ ...(n as any), scroll: v })),
-										)}
-									</div>
+									{selectedNode.type === 'ContentBlocks' ? (
+										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+											{selectField(
+												'bind',
+												(selectedNode as any).bind,
+												[
+													{ value: 'post.contentBlocks' },
+													{ value: 'root.contentBlocks' },
+												],
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), bind: v })),
+											)}
+											{numberField(
+												'gap',
+												(selectedNode as any).gap,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), gap: v })),
+												{ min: 0, max: 80, step: 1 },
+											)}
+											{numberField(
+												'maxHeight',
+												(selectedNode as any).maxHeight,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														maxHeight: v,
+													})),
+												{ min: 100, max: 1200, step: 1 },
+											)}
+											{numberField(
+												'opacity',
+												(selectedNode as any).opacity,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														opacity: v,
+													})),
+												{ min: 0, max: 1, step: 0.05 },
+											)}
+										</div>
+									) : null}
 
-									<div className="space-y-2">
-										<div className="flex flex-wrap items-center justify-between gap-2">
-											<div className="font-mono text-xs text-muted-foreground">
-												itemRoot
-											</div>
-											<div className="flex flex-wrap items-center gap-2">
-												<Button
-													type="button"
-													size="sm"
-													variant="outline"
-													className="rounded-none font-mono text-[10px] uppercase"
-													onClick={() =>
+									{selectedNode.type === 'Stack' ||
+									selectedNode.type === 'Box' ||
+									selectedNode.type === 'Grid' ? (
+										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+											{numberField(
+												'flex',
+												(selectedNode as any).flex,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), flex: v })),
+												{ min: 0, max: 100, step: 1 },
+											)}
+											{numberField(
+												'opacity',
+												(selectedNode as any).opacity,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														opacity: v,
+													})),
+												{ min: 0, max: 1, step: 0.05 },
+											)}
+											{numberField(
+												'gap',
+												(selectedNode as any).gap,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), gap: v })),
+												{ min: 0, max: 240, step: 1 },
+											)}
+											{numberField(
+												'gapX',
+												(selectedNode as any).gapX,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), gapX: v })),
+												{ min: 0, max: 240, step: 1 },
+											)}
+											{numberField(
+												'gapY',
+												(selectedNode as any).gapY,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), gapY: v })),
+												{ min: 0, max: 240, step: 1 },
+											)}
+											{numberField(
+												'padding',
+												(selectedNode as any).padding,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														padding: v,
+													})),
+												{ min: 0, max: 240, step: 1 },
+											)}
+											{numberField(
+												'paddingX',
+												(selectedNode as any).paddingX,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														paddingX: v,
+													})),
+												{ min: 0, max: 240, step: 1 },
+											)}
+											{numberField(
+												'paddingY',
+												(selectedNode as any).paddingY,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														paddingY: v,
+													})),
+												{ min: 0, max: 240, step: 1 },
+											)}
+											{textField(
+												'background',
+												(selectedNode as any).background,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														background: v,
+													})),
+												{ placeholder: 'rgba(...) or var(--tf-...)' },
+											)}
+											{numberField(
+												'radius',
+												(selectedNode as any).radius,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), radius: v })),
+												{ min: 0, max: 120, step: 1 },
+											)}
+											{boolField('border', (selectedNode as any).border, (v) =>
+												updateSelected((n) => ({ ...(n as any), border: v })),
+											)}
+											{selectField(
+												'overflow',
+												(selectedNode as any).overflow,
+												[{ value: 'hidden' }],
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														overflow: v,
+													})),
+											)}
+											{numberField(
+												'width',
+												(selectedNode as any).width,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), width: v })),
+												{ min: 0, max: 2000, step: 1 },
+											)}
+											{numberField(
+												'height',
+												(selectedNode as any).height,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), height: v })),
+												{ min: 0, max: 2000, step: 1 },
+											)}
+											{numberField(
+												'maxWidth',
+												(selectedNode as any).maxWidth,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														maxWidth: v,
+													})),
+												{ min: 0, max: 2000, step: 1 },
+											)}
+											{numberField(
+												'maxHeight',
+												(selectedNode as any).maxHeight,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														maxHeight: v,
+													})),
+												{ min: 0, max: 2000, step: 1 },
+											)}
+											{selectedNode.type === 'Grid'
+												? numberField(
+														'columns',
+														(selectedNode as any).columns,
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																columns: v,
+															})),
+														{ min: 1, max: 12, step: 1 },
+													)
+												: null}
+											{selectedNode.type === 'Stack' ? (
+												<Select
+													value={(selectedNode as any).direction ?? 'column'}
+													onValueChange={(v) =>
 														updateSelected((n) => ({
 															...(n as any),
-															itemRoot: createDefaultNode('Stack'),
+															direction: v,
 														}))
 													}
 												>
-													Replace
-												</Button>
-												<Button
-													type="button"
-													size="sm"
-													variant="outline"
-													className="rounded-none font-mono text-[10px] uppercase"
-													onClick={() => {
-														if (!selected) return
-														setSelectedKey(
-															pathKey(scene, [...selected.path, 'itemRoot']),
-														)
+													<div className="space-y-1">
+														<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+															direction
+														</Label>
+														<SelectTrigger className="rounded-none font-mono text-xs h-8">
+															<SelectValue />
+														</SelectTrigger>
+													</div>
+													<SelectContent>
+														<SelectItem value="column">column</SelectItem>
+														<SelectItem value="row">row</SelectItem>
+													</SelectContent>
+												</Select>
+											) : null}
+											{selectedNode.type === 'Stack'
+												? selectField(
+														'align',
+														(selectedNode as any).align,
+														[
+															{ value: 'start' },
+															{ value: 'center' },
+															{ value: 'end' },
+															{ value: 'stretch' },
+														],
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																align: v,
+															})),
+													)
+												: null}
+											{selectedNode.type === 'Stack'
+												? selectField(
+														'justify',
+														(selectedNode as any).justify,
+														[
+															{ value: 'start' },
+															{ value: 'center' },
+															{ value: 'end' },
+															{ value: 'between' },
+														],
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																justify: v,
+															})),
+													)
+												: null}
+											{selectedNode.type === 'Grid'
+												? selectField(
+														'align',
+														(selectedNode as any).align,
+														[
+															{ value: 'start' },
+															{ value: 'center' },
+															{ value: 'end' },
+															{ value: 'stretch' },
+														],
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																align: v,
+															})),
+													)
+												: null}
+											{selectedNode.type === 'Grid'
+												? selectField(
+														'justify',
+														(selectedNode as any).justify,
+														[
+															{ value: 'start' },
+															{ value: 'center' },
+															{ value: 'end' },
+															{ value: 'stretch' },
+														],
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																justify: v,
+															})),
+													)
+												: null}
+										</div>
+									) : null}
+
+									{selectedNode.type === 'Image' ||
+									selectedNode.type === 'Video' ? (
+										<div className="space-y-3">
+											<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+												{textField('assetId', selectedNode.assetId, (v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														assetId: v ?? '',
+													})),
+												)}
+												<Select
+													value="__pick__"
+													onValueChange={(v) => {
+														if (!v || v === '__pick__') return
+														updateSelected((n) => ({
+															...(n as any),
+															assetId: v,
+														}))
 													}}
 												>
-													Select
-												</Button>
+													<div className="space-y-1">
+														<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+															Pick Asset
+														</Label>
+														<SelectTrigger className="rounded-none font-mono text-xs h-8">
+															<SelectValue placeholder="Select…" />
+														</SelectTrigger>
+													</div>
+													<SelectContent>
+														<SelectItem value="__pick__">Select…</SelectItem>
+														{pickableAssets
+															.filter((a) =>
+																selectedNode.type === 'Image'
+																	? a.kind === 'image'
+																	: a.kind === 'video',
+															)
+															.slice(0, 50)
+															.map((a) => (
+																<SelectItem key={a.id} value={a.id}>
+																	{a.id}
+																</SelectItem>
+															))}
+													</SelectContent>
+												</Select>
+											</div>
+
+											<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+												{selectField(
+													'fit',
+													(selectedNode as any).fit,
+													[{ value: 'cover' }, { value: 'contain' }],
+													(v) =>
+														updateSelected((n) => ({ ...(n as any), fit: v })),
+												)}
+												{textField(
+													'position',
+													(selectedNode as any).position,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															position: v,
+														})),
+													{ placeholder: 'e.g. 50% 50%' },
+												)}
+												{numberField(
+													'width',
+													(selectedNode as any).width,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															width: v,
+														})),
+													{ min: 16, max: 1600, step: 1 },
+												)}
+												{numberField(
+													'height',
+													(selectedNode as any).height,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															height: v,
+														})),
+													{ min: 16, max: 1600, step: 1 },
+												)}
+												{numberField(
+													'blur',
+													(selectedNode as any).blur,
+													(v) =>
+														updateSelected((n) => ({ ...(n as any), blur: v })),
+													{ min: 0, max: 80, step: 1 },
+												)}
+												{textField(
+													'background',
+													(selectedNode as any).background,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															background: v,
+														})),
+													{ placeholder: 'rgba(...) or var(--tf-...)' },
+												)}
+												{numberField(
+													'radius',
+													(selectedNode as any).radius,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															radius: v,
+														})),
+													{ min: 0, max: 120, step: 1 },
+												)}
+												{numberField(
+													'borderWidth',
+													(selectedNode as any).borderWidth,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															borderWidth: v,
+														})),
+													{ min: 0, max: 24, step: 1 },
+												)}
+												{selectField(
+													'borderColor',
+													(selectedNode as any).borderColor,
+													[
+														{ value: 'border' },
+														{ value: 'primary' },
+														{ value: 'muted' },
+														{ value: 'accent' },
+													],
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															borderColor: v,
+														})),
+												)}
+												{boolField(
+													'border',
+													(selectedNode as any).border,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															border: v,
+														})),
+												)}
+												{numberField(
+													'opacity',
+													(selectedNode as any).opacity,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															opacity: v,
+														})),
+													{ min: 0, max: 1, step: 0.05 },
+												)}
 											</div>
 										</div>
-										<div className="font-mono text-xs text-muted-foreground">
-											Note: Repeat renders each reply with ctx.post = reply.
-										</div>
-									</div>
+									) : null}
 
-									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-										{boolField(
-											'highlight.enabled',
-											(selectedNode as any).highlight?.enabled,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													highlight: v
-														? { ...(n as any).highlight, enabled: true }
-														: undefined,
-												})),
-										)}
-										{selectField(
-											'highlight.color',
-											(selectedNode as any).highlight?.color,
-											[
-												{ value: 'primary' },
-												{ value: 'muted' },
-												{ value: 'accent' },
-											],
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													highlight: { ...(n as any).highlight, color: v },
-												})),
-										)}
-										{numberField(
-											'highlight.thickness',
-											(selectedNode as any).highlight?.thickness,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													highlight: { ...(n as any).highlight, thickness: v },
-												})),
-											{ min: 1, max: 12, step: 1 },
-										)}
-										{numberField(
-											'highlight.radius',
-											(selectedNode as any).highlight?.radius,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													highlight: { ...(n as any).highlight, radius: v },
-												})),
-											{ min: 0, max: 48, step: 1 },
-										)}
-										{numberField(
-											'highlight.opacity',
-											(selectedNode as any).highlight?.opacity,
-											(v) =>
-												updateSelected((n) => ({
-													...(n as any),
-													highlight: { ...(n as any).highlight, opacity: v },
-												})),
-											{ min: 0, max: 1, step: 0.05 },
-										)}
-									</div>
-								</div>
-							) : null}
-						</>
-					)}
-				</div>
+									{selectedNode.type === 'Background' ? (
+										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+											{textField('color', selectedNode.color, (v) =>
+												updateSelected((n) => ({ ...(n as any), color: v })),
+											)}
+											{textField('assetId', selectedNode.assetId, (v) =>
+												updateSelected((n) => ({ ...(n as any), assetId: v })),
+											)}
+											<Select
+												value="__pick__"
+												onValueChange={(v) => {
+													if (!v || v === '__pick__') return
+													updateSelected((n) => ({ ...(n as any), assetId: v }))
+												}}
+											>
+												<div className="space-y-1">
+													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														Pick Asset
+													</Label>
+													<SelectTrigger className="rounded-none font-mono text-xs h-8">
+														<SelectValue placeholder="Select…" />
+													</SelectTrigger>
+												</div>
+												<SelectContent>
+													<SelectItem value="__pick__">Select…</SelectItem>
+													{pickableImageAssets.slice(0, 50).map((a) => (
+														<SelectItem key={a.id} value={a.id}>
+															{a.id}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											{numberField(
+												'opacity',
+												selectedNode.opacity,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														opacity: v,
+													})),
+												{ min: 0, max: 1, step: 0.05 },
+											)}
+											{numberField(
+												'blur',
+												selectedNode.blur,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), blur: v })),
+												{ min: 0, max: 80, step: 1 },
+											)}
+										</div>
+									) : null}
+
+									{selectedNode.type === 'Absolute' ? (
+										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+											{numberField('x', selectedNode.x, (v) =>
+												updateSelected((n) => ({ ...(n as any), x: v })),
+											)}
+											{numberField('y', selectedNode.y, (v) =>
+												updateSelected((n) => ({ ...(n as any), y: v })),
+											)}
+											{numberField('width', selectedNode.width, (v) =>
+												updateSelected((n) => ({ ...(n as any), width: v })),
+											)}
+											{numberField('height', selectedNode.height, (v) =>
+												updateSelected((n) => ({ ...(n as any), height: v })),
+											)}
+											{numberField('zIndex', selectedNode.zIndex, (v) =>
+												updateSelected((n) => ({ ...(n as any), zIndex: v })),
+											)}
+											{numberField(
+												'opacity',
+												(selectedNode as any).opacity,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														opacity: v,
+													})),
+												{ min: 0, max: 1, step: 0.05 },
+											)}
+											{boolField(
+												'pointerEvents',
+												selectedNode.pointerEvents,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														pointerEvents: v,
+													})),
+											)}
+											{numberField('rotate', selectedNode.rotate, (v) =>
+												updateSelected((n) => ({ ...(n as any), rotate: v })),
+											)}
+											{numberField('scale', selectedNode.scale, (v) =>
+												updateSelected((n) => ({ ...(n as any), scale: v })),
+											)}
+											{selectField(
+												'origin',
+												selectedNode.origin,
+												[
+													{ value: 'center' },
+													{ value: 'top-left' },
+													{ value: 'top-right' },
+													{ value: 'bottom-left' },
+													{ value: 'bottom-right' },
+												],
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), origin: v })),
+											)}
+										</div>
+									) : null}
+
+									{selectedNode.type === 'Builtin' ? (
+										<div className="space-y-3">
+											<Select
+												value={selectedNode.kind}
+												onValueChange={(v) =>
+													updateSelected((n) => ({ ...(n as any), kind: v }))
+												}
+											>
+												<div className="space-y-1">
+													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														kind
+													</Label>
+													<SelectTrigger className="rounded-none font-mono text-xs h-8">
+														<SelectValue />
+													</SelectTrigger>
+												</div>
+												<SelectContent>
+													{(
+														[
+															'cover',
+															'repliesList',
+															'repliesListHeader',
+															'repliesListRootPost',
+															'repliesListReplies',
+														] as const
+													).map((k) => (
+														<SelectItem key={k} value={k}>
+															{k}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											{selectedNode.kind === 'repliesList' ||
+											selectedNode.kind === 'repliesListRootPost' ? (
+												<div className="space-y-2">
+													<div className="flex flex-wrap items-center justify-between gap-2">
+														<div className="font-mono text-xs text-muted-foreground">
+															rootRoot
+														</div>
+														<div className="flex flex-wrap items-center gap-2">
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase"
+																disabled={
+																	(selectedNode as any).rootRoot != null
+																}
+																onClick={() =>
+																	updateSelected((n) => ({
+																		...(n as any),
+																		rootRoot: createDefaultNode('Stack'),
+																	}))
+																}
+															>
+																Add
+															</Button>
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase"
+																disabled={
+																	(selectedNode as any).rootRoot == null
+																}
+																onClick={() => {
+																	if (!selected) return
+																	setSelectedKey(
+																		pathKey(scene, [
+																			...selected.path,
+																			'rootRoot',
+																		]),
+																	)
+																}}
+															>
+																Select
+															</Button>
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase"
+																disabled={
+																	(selectedNode as any).rootRoot == null
+																}
+																onClick={() =>
+																	updateSelected((n) => ({
+																		...(n as any),
+																		rootRoot: undefined,
+																	}))
+																}
+															>
+																Clear
+															</Button>
+														</div>
+													</div>
+													{boolField(
+														'wrapRootRoot',
+														(selectedNode as any).wrapRootRoot,
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																wrapRootRoot: v,
+															})),
+													)}
+												</div>
+											) : null}
+
+											{selectedNode.kind === 'repliesList' ||
+											selectedNode.kind === 'repliesListReplies' ? (
+												<div className="space-y-2">
+													<div className="flex flex-wrap items-center justify-between gap-2">
+														<div className="font-mono text-xs text-muted-foreground">
+															itemRoot
+														</div>
+														<div className="flex flex-wrap items-center gap-2">
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase"
+																disabled={
+																	(selectedNode as any).itemRoot != null
+																}
+																onClick={() =>
+																	updateSelected((n) => ({
+																		...(n as any),
+																		itemRoot: createDefaultNode('Stack'),
+																	}))
+																}
+															>
+																Add
+															</Button>
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase"
+																disabled={
+																	(selectedNode as any).itemRoot == null
+																}
+																onClick={() => {
+																	if (!selected) return
+																	setSelectedKey(
+																		pathKey(scene, [
+																			...selected.path,
+																			'itemRoot',
+																		]),
+																	)
+																}}
+															>
+																Select
+															</Button>
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase"
+																disabled={
+																	(selectedNode as any).itemRoot == null
+																}
+																onClick={() =>
+																	updateSelected((n) => ({
+																		...(n as any),
+																		itemRoot: undefined,
+																	}))
+																}
+															>
+																Clear
+															</Button>
+														</div>
+													</div>
+													{boolField(
+														'wrapItemRoot',
+														(selectedNode as any).wrapItemRoot,
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																wrapItemRoot: v,
+															})),
+													)}
+												</div>
+											) : null}
+
+											{selectedNode.kind === 'repliesList' ||
+											selectedNode.kind === 'repliesListReplies' ? (
+												<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+													{numberField('gap', (selectedNode as any).gap, (v) =>
+														updateSelected((n) => ({ ...(n as any), gap: v })),
+													)}
+													{boolField(
+														'highlight.enabled',
+														(selectedNode as any).highlight?.enabled,
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																highlight: v
+																	? { ...(n as any).highlight, enabled: true }
+																	: undefined,
+															})),
+													)}
+													{selectField(
+														'highlight.color',
+														(selectedNode as any).highlight?.color,
+														[
+															{ value: 'primary' },
+															{ value: 'muted' },
+															{ value: 'accent' },
+														],
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																highlight: {
+																	...(n as any).highlight,
+																	color: v,
+																},
+															})),
+													)}
+													{numberField(
+														'highlight.thickness',
+														(selectedNode as any).highlight?.thickness,
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																highlight: {
+																	...(n as any).highlight,
+																	thickness: v,
+																},
+															})),
+														{ min: 1, max: 12, step: 1 },
+													)}
+													{numberField(
+														'highlight.radius',
+														(selectedNode as any).highlight?.radius,
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																highlight: {
+																	...(n as any).highlight,
+																	radius: v,
+																},
+															})),
+														{ min: 0, max: 48, step: 1 },
+													)}
+													{numberField(
+														'highlight.opacity',
+														(selectedNode as any).highlight?.opacity,
+														(v) =>
+															updateSelected((n) => ({
+																...(n as any),
+																highlight: {
+																	...(n as any).highlight,
+																	opacity: v,
+																},
+															})),
+														{ min: 0, max: 1, step: 0.05 },
+													)}
+												</div>
+											) : null}
+											<div className="font-mono text-xs text-muted-foreground">
+												Note: rootRoot/itemRoot editing is supported by
+												selecting them in the tree.
+											</div>
+										</div>
+									) : null}
+
+									{selectedNode.type === 'Repeat' ? (
+										<div className="space-y-3">
+											<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+												{numberField(
+													'maxItems',
+													(selectedNode as any).maxItems,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															maxItems: v,
+														})),
+													{ min: 1, max: 100, step: 1 },
+												)}
+												{numberField('gap', (selectedNode as any).gap, (v) =>
+													updateSelected((n) => ({ ...(n as any), gap: v })),
+												)}
+												{boolField(
+													'wrapItemRoot',
+													(selectedNode as any).wrapItemRoot,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															wrapItemRoot: v,
+														})),
+												)}
+												{boolField(
+													'scroll',
+													(selectedNode as any).scroll,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															scroll: v,
+														})),
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<div className="flex flex-wrap items-center justify-between gap-2">
+													<div className="font-mono text-xs text-muted-foreground">
+														itemRoot
+													</div>
+													<div className="flex flex-wrap items-center gap-2">
+														<Button
+															type="button"
+															size="sm"
+															variant="outline"
+															className="rounded-none font-mono text-[10px] uppercase"
+															onClick={() =>
+																updateSelected((n) => ({
+																	...(n as any),
+																	itemRoot: createDefaultNode('Stack'),
+																}))
+															}
+														>
+															Replace
+														</Button>
+														<Button
+															type="button"
+															size="sm"
+															variant="outline"
+															className="rounded-none font-mono text-[10px] uppercase"
+															onClick={() => {
+																if (!selected) return
+																setSelectedKey(
+																	pathKey(scene, [
+																		...selected.path,
+																		'itemRoot',
+																	]),
+																)
+															}}
+														>
+															Select
+														</Button>
+													</div>
+												</div>
+												<div className="font-mono text-xs text-muted-foreground">
+													Note: Repeat renders each reply with ctx.post = reply.
+												</div>
+											</div>
+
+											<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+												{boolField(
+													'highlight.enabled',
+													(selectedNode as any).highlight?.enabled,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															highlight: v
+																? { ...(n as any).highlight, enabled: true }
+																: undefined,
+														})),
+												)}
+												{selectField(
+													'highlight.color',
+													(selectedNode as any).highlight?.color,
+													[
+														{ value: 'primary' },
+														{ value: 'muted' },
+														{ value: 'accent' },
+													],
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															highlight: { ...(n as any).highlight, color: v },
+														})),
+												)}
+												{numberField(
+													'highlight.thickness',
+													(selectedNode as any).highlight?.thickness,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															highlight: {
+																...(n as any).highlight,
+																thickness: v,
+															},
+														})),
+													{ min: 1, max: 12, step: 1 },
+												)}
+												{numberField(
+													'highlight.radius',
+													(selectedNode as any).highlight?.radius,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															highlight: { ...(n as any).highlight, radius: v },
+														})),
+													{ min: 0, max: 48, step: 1 },
+												)}
+												{numberField(
+													'highlight.opacity',
+													(selectedNode as any).highlight?.opacity,
+													(v) =>
+														updateSelected((n) => ({
+															...(n as any),
+															highlight: {
+																...(n as any).highlight,
+																opacity: v,
+															},
+														})),
+													{ min: 0, max: 1, step: 0.05 },
+												)}
+											</div>
+										</div>
+									) : null}
+								</>
+							)}
+						</div>
+					</>
+				)}
 			</div>
 		</div>
 	)

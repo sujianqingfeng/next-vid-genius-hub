@@ -1963,138 +1963,143 @@ export function ThreadRemotionEditorCard({
 						{mode === 'edit' ? (
 							showLayers ? (
 								<div className="rounded-none border border-border bg-card p-4 space-y-3">
-								<div className="flex items-center justify-between gap-3">
-									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Layers
+									<div className="flex items-center justify-between gap-3">
+										<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+											Layers
+										</div>
+										<div className="font-mono text-[10px] text-muted-foreground">
+											{layerNodesByKey.size} nodes
+										</div>
 									</div>
-									<div className="font-mono text-[10px] text-muted-foreground">
-										{layerNodesByKey.size} nodes
-									</div>
-								</div>
 
-								<Input
-									placeholder="Filter (type/key)…"
-									value={layersFilter}
-									onChange={(e) => setLayersFilter(e.target.value)}
-									className="rounded-none font-mono text-xs h-8"
-								/>
+									<Input
+										placeholder="Filter (type/key)…"
+										value={layersFilter}
+										onChange={(e) => setLayersFilter(e.target.value)}
+										className="rounded-none font-mono text-xs h-8"
+									/>
 
-								<div
-									className="rounded-none border border-border bg-muted/10"
-									style={{ maxHeight: 300, overflow: 'auto' }}
-								>
-									<div className="p-2 space-y-3">
-										{(['cover', 'post'] as const).map((scene) => {
-											const roots =
-												scene === 'cover'
-													? layerRootsByScene.cover
-													: layerRootsByScene.post
-											const title = scene === 'cover' ? 'Cover' : 'Post'
+									<div
+										className="rounded-none border border-border bg-muted/10"
+										style={{ maxHeight: 300, overflow: 'auto' }}
+									>
+										<div className="p-2 space-y-3">
+											{(['cover', 'post'] as const).map((scene) => {
+												const roots =
+													scene === 'cover'
+														? layerRootsByScene.cover
+														: layerRootsByScene.post
+												const title = scene === 'cover' ? 'Cover' : 'Post'
 
-											const renderNode = (key: string): React.ReactNode => {
-												const n = layerNodesByKey.get(key)
-												if (!n) return null
-												if (layerVisibleKeySet && !layerVisibleKeySet.has(key))
-													return null
+												const renderNode = (key: string): React.ReactNode => {
+													const n = layerNodesByKey.get(key)
+													if (!n) return null
+													if (
+														layerVisibleKeySet &&
+														!layerVisibleKeySet.has(key)
+													)
+														return null
 
-												const isCollapsed = collapsedKeySet.has(key)
-												const isSelected = selectedKeys.includes(key)
-												const isPrimary = primaryKey === key
-												const isHidden = hiddenKeySet.has(key)
-												const isLocked = lockedKeySet.has(key)
+													const isCollapsed = collapsedKeySet.has(key)
+													const isSelected = selectedKeys.includes(key)
+													const isPrimary = primaryKey === key
+													const isHidden = hiddenKeySet.has(key)
+													const isLocked = lockedKeySet.has(key)
 
-												const canCollapse = n.children.length > 0
+													const canCollapse = n.children.length > 0
+
+													return (
+														<div key={key}>
+															<div
+																className="flex items-center gap-2 rounded-none px-2 py-1"
+																style={{
+																	background: isPrimary
+																		? 'rgba(34,197,94,0.12)'
+																		: isSelected
+																			? 'rgba(34,197,94,0.06)'
+																			: 'transparent',
+																}}
+															>
+																<button
+																	type="button"
+																	onClick={() => {
+																		if (!canCollapse) return
+																		toggleCollapsed(key)
+																	}}
+																	className="font-mono text-[10px] text-muted-foreground"
+																	style={{
+																		width: 18,
+																		opacity: canCollapse ? 1 : 0,
+																		cursor: canCollapse ? 'pointer' : 'default',
+																	}}
+																>
+																	{isCollapsed ? '▸' : '▾'}
+																</button>
+
+																<button
+																	type="button"
+																	onClick={(e) =>
+																		selectFromLayers(key, n.type, e)
+																	}
+																	className="flex-1 text-left font-mono text-[11px]"
+																	style={{
+																		paddingLeft: Math.min(180, n.depth * 10),
+																		opacity: isHidden ? 0.55 : 1,
+																		textDecoration: isHidden
+																			? 'line-through'
+																			: undefined,
+																	}}
+																>
+																	{n.type ?? 'node'}{' '}
+																	<span className="text-muted-foreground">
+																		{key}
+																	</span>
+																</button>
+
+																<Button
+																	type="button"
+																	size="sm"
+																	variant="outline"
+																	className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+																	onClick={() => toggleHiddenSubtree(key)}
+																>
+																	{isHidden ? 'Show' : 'Hide'}
+																</Button>
+																<Button
+																	type="button"
+																	size="sm"
+																	variant="outline"
+																	className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+																	onClick={() => toggleLockedSubtree(key)}
+																>
+																	{isLocked ? 'Unlock' : 'Lock'}
+																</Button>
+															</div>
+															{!isCollapsed && canCollapse ? (
+																<div>
+																	{n.children.map((c) => renderNode(c))}
+																</div>
+															) : null}
+														</div>
+													)
+												}
 
 												return (
-													<div key={key}>
-														<div
-															className="flex items-center gap-2 rounded-none px-2 py-1"
-															style={{
-																background: isPrimary
-																	? 'rgba(34,197,94,0.12)'
-																	: isSelected
-																		? 'rgba(34,197,94,0.06)'
-																		: 'transparent',
-															}}
-														>
-															<button
-																type="button"
-																onClick={() => {
-																	if (!canCollapse) return
-																	toggleCollapsed(key)
-																}}
-																className="font-mono text-[10px] text-muted-foreground"
-																style={{
-																	width: 18,
-																	opacity: canCollapse ? 1 : 0,
-																	cursor: canCollapse ? 'pointer' : 'default',
-																}}
-															>
-																{isCollapsed ? '▸' : '▾'}
-															</button>
-
-															<button
-																type="button"
-																onClick={(e) =>
-																	selectFromLayers(key, n.type, e)
-																}
-																className="flex-1 text-left font-mono text-[11px]"
-																style={{
-																	paddingLeft: Math.min(180, n.depth * 10),
-																	opacity: isHidden ? 0.55 : 1,
-																	textDecoration: isHidden
-																		? 'line-through'
-																		: undefined,
-																}}
-															>
-																{n.type ?? 'node'}{' '}
-																<span className="text-muted-foreground">
-																	{key}
-																</span>
-															</button>
-
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-																onClick={() => toggleHiddenSubtree(key)}
-															>
-																{isHidden ? 'Show' : 'Hide'}
-															</Button>
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-																onClick={() => toggleLockedSubtree(key)}
-															>
-																{isLocked ? 'Unlock' : 'Lock'}
-															</Button>
+													<div key={scene} className="space-y-2">
+														<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+															{title}
 														</div>
-														{!isCollapsed && canCollapse ? (
-															<div>{n.children.map((c) => renderNode(c))}</div>
-														) : null}
+														<div className="space-y-1">
+															{roots.map((k) => renderNode(k))}
+														</div>
 													</div>
 												)
-											}
-
-											return (
-												<div key={scene} className="space-y-2">
-													<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-														{title}
-													</div>
-													<div className="space-y-1">
-														{roots.map((k) => renderNode(k))}
-													</div>
-												</div>
-											)
-										})}
+											})}
+										</div>
 									</div>
-								</div>
 
-								<style>{`[data-tt-editor-hidden="1"]{opacity:0!important}`}</style>
-							</div>
+									<style>{`[data-tt-editor-hidden="1"]{opacity:0!important}`}</style>
+								</div>
 							) : null
 						) : null}
 
@@ -3184,184 +3189,189 @@ export function ThreadRemotionEditorCard({
 						{mode === 'edit' ? (
 							showInspector ? (
 								<div className="rounded-none border border-border bg-card p-4 space-y-4">
-								<div className="flex items-center justify-between gap-3">
-									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Inspector
+									<div className="flex items-center justify-between gap-3">
+										<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+											Inspector
+										</div>
+										{primaryType ? (
+											<div className="font-mono text-[10px] text-muted-foreground">
+												{primaryType}
+												{selectedKeys.length > 1
+													? ` ×${selectedKeys.length}`
+													: ''}
+											</div>
+										) : null}
 									</div>
-									{primaryType ? (
-										<div className="font-mono text-[10px] text-muted-foreground">
-											{primaryType}
-											{selectedKeys.length > 1
-												? ` ×${selectedKeys.length}`
-												: ''}
-										</div>
-									) : null}
-								</div>
 
-								{(() => {
-									if (!primaryKey || !primaryType)
-										return (
-											<div className="font-mono text-xs text-muted-foreground">
-												Select a node on the canvas.
-											</div>
-										)
-
-									const cfg = editCanvasConfigRef.current
-									if (!cfg)
-										return (
-											<div className="font-mono text-xs text-muted-foreground">
-												Switch Template editor to Visual to edit values.
-											</div>
-										)
-
-									const res = getNodeByKey(cfg, primaryKey)
-									if (!res)
-										return (
-											<div className="font-mono text-xs text-muted-foreground">
-												Node not found in template config.
-											</div>
-										)
-
-									const node = res.node as any
-
-									const commit = (updater: (n: any) => any) => {
-										if (!onEditCanvasConfigChange) return
-										onEditCanvasConfigChange(
-											updateNodeByKey(cfg, primaryKey, updater),
-										)
-									}
-
-									const numberField = (
-										label: string,
-										value: unknown,
-										onCommit: (n: number | undefined) => void,
-										opts?: { step?: number },
-									) => {
-										return (
-											<div className="space-y-1">
-												<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-													{label}
-												</Label>
-												<Input
-													type="number"
-													inputMode="numeric"
-													step={opts?.step ?? 1}
-													value={toNumberInputValue(value)}
-													onChange={(e) => {
-														const t = e.target.value.trim()
-														if (!t) return onCommit(undefined)
-														const n = Number(t)
-														onCommit(Number.isFinite(n) ? n : undefined)
-													}}
-													className="rounded-none font-mono text-xs h-8"
-												/>
-											</div>
-										)
-									}
-
-									const boolField = (
-										label: string,
-										value: unknown,
-										onCommit: (b: boolean) => void,
-									) => {
-										const checked = value === true
-										return (
-											<div className="flex items-center justify-between gap-3 rounded-none border border-border px-3 py-2">
-												<div className="font-mono text-xs text-foreground">
-													{label}
+									{(() => {
+										if (!primaryKey || !primaryType)
+											return (
+												<div className="font-mono text-xs text-muted-foreground">
+													Select a node on the canvas.
 												</div>
-												<Switch checked={checked} onCheckedChange={onCommit} />
+											)
+
+										const cfg = editCanvasConfigRef.current
+										if (!cfg)
+											return (
+												<div className="font-mono text-xs text-muted-foreground">
+													Switch Template editor to Visual to edit values.
+												</div>
+											)
+
+										const res = getNodeByKey(cfg, primaryKey)
+										if (!res)
+											return (
+												<div className="font-mono text-xs text-muted-foreground">
+													Node not found in template config.
+												</div>
+											)
+
+										const node = res.node as any
+
+										const commit = (updater: (n: any) => any) => {
+											if (!onEditCanvasConfigChange) return
+											onEditCanvasConfigChange(
+												updateNodeByKey(cfg, primaryKey, updater),
+											)
+										}
+
+										const numberField = (
+											label: string,
+											value: unknown,
+											onCommit: (n: number | undefined) => void,
+											opts?: { step?: number },
+										) => {
+											return (
+												<div className="space-y-1">
+													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														{label}
+													</Label>
+													<Input
+														type="number"
+														inputMode="numeric"
+														step={opts?.step ?? 1}
+														value={toNumberInputValue(value)}
+														onChange={(e) => {
+															const t = e.target.value.trim()
+															if (!t) return onCommit(undefined)
+															const n = Number(t)
+															onCommit(Number.isFinite(n) ? n : undefined)
+														}}
+														className="rounded-none font-mono text-xs h-8"
+													/>
+												</div>
+											)
+										}
+
+										const boolField = (
+											label: string,
+											value: unknown,
+											onCommit: (b: boolean) => void,
+										) => {
+											const checked = value === true
+											return (
+												<div className="flex items-center justify-between gap-3 rounded-none border border-border px-3 py-2">
+													<div className="font-mono text-xs text-foreground">
+														{label}
+													</div>
+													<Switch
+														checked={checked}
+														onCheckedChange={onCommit}
+													/>
+												</div>
+											)
+										}
+
+										return (
+											<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+												{numberField(
+													'opacity',
+													node.opacity,
+													(v) =>
+														commit((n) => ({
+															...n,
+															opacity:
+																v == null
+																	? undefined
+																	: (clamp01(v) ?? undefined),
+														})),
+													{ step: 0.05 },
+												)}
+
+												{primaryType === 'Absolute' ? (
+													<>
+														{numberField('x', node.x, (v) =>
+															commit((n) => ({
+																...n,
+																x: v == null ? undefined : Math.round(v),
+															})),
+														)}
+														{numberField('y', node.y, (v) =>
+															commit((n) => ({
+																...n,
+																y: v == null ? undefined : Math.round(v),
+															})),
+														)}
+														{numberField('width', node.width, (v) =>
+															commit((n) => ({
+																...n,
+																width:
+																	v == null
+																		? undefined
+																		: Math.max(1, Math.round(v)),
+															})),
+														)}
+														{numberField('height', node.height, (v) =>
+															commit((n) => ({
+																...n,
+																height:
+																	v == null
+																		? undefined
+																		: Math.max(1, Math.round(v)),
+															})),
+														)}
+														{numberField('zIndex', node.zIndex, (v) =>
+															commit((n) => ({
+																...n,
+																zIndex: v == null ? undefined : Math.round(v),
+															})),
+														)}
+														{numberField(
+															'rotate',
+															node.rotate,
+															(v) =>
+																commit((n) => ({
+																	...n,
+																	rotate: v == null ? undefined : v,
+																})),
+															{ step: 1 },
+														)}
+														{numberField(
+															'scale',
+															node.scale,
+															(v) =>
+																commit((n) => ({
+																	...n,
+																	scale: v == null ? undefined : v,
+																})),
+															{ step: 0.05 },
+														)}
+														{boolField(
+															'pointerEvents',
+															node.pointerEvents !== false,
+															(v) =>
+																commit((n) => ({
+																	...n,
+																	pointerEvents: v ? undefined : false,
+																})),
+														)}
+													</>
+												) : null}
 											</div>
 										)
-									}
-
-									return (
-										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-											{numberField(
-												'opacity',
-												node.opacity,
-												(v) =>
-													commit((n) => ({
-														...n,
-														opacity:
-															v == null ? undefined : (clamp01(v) ?? undefined),
-													})),
-												{ step: 0.05 },
-											)}
-
-											{primaryType === 'Absolute' ? (
-												<>
-													{numberField('x', node.x, (v) =>
-														commit((n) => ({
-															...n,
-															x: v == null ? undefined : Math.round(v),
-														})),
-													)}
-													{numberField('y', node.y, (v) =>
-														commit((n) => ({
-															...n,
-															y: v == null ? undefined : Math.round(v),
-														})),
-													)}
-													{numberField('width', node.width, (v) =>
-														commit((n) => ({
-															...n,
-															width:
-																v == null
-																	? undefined
-																	: Math.max(1, Math.round(v)),
-														})),
-													)}
-													{numberField('height', node.height, (v) =>
-														commit((n) => ({
-															...n,
-															height:
-																v == null
-																	? undefined
-																	: Math.max(1, Math.round(v)),
-														})),
-													)}
-													{numberField('zIndex', node.zIndex, (v) =>
-														commit((n) => ({
-															...n,
-															zIndex: v == null ? undefined : Math.round(v),
-														})),
-													)}
-													{numberField(
-														'rotate',
-														node.rotate,
-														(v) =>
-															commit((n) => ({
-																...n,
-																rotate: v == null ? undefined : v,
-															})),
-														{ step: 1 },
-													)}
-													{numberField(
-														'scale',
-														node.scale,
-														(v) =>
-															commit((n) => ({
-																...n,
-																scale: v == null ? undefined : v,
-															})),
-														{ step: 0.05 },
-													)}
-													{boolField(
-														'pointerEvents',
-														node.pointerEvents !== false,
-														(v) =>
-															commit((n) => ({
-																...n,
-																pointerEvents: v ? undefined : false,
-															})),
-													)}
-												</>
-											) : null}
-										</div>
-									)
-								})()}
-							</div>
+									})()}
+								</div>
 							) : null
 						) : null}
 					</div>

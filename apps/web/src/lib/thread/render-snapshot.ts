@@ -245,7 +245,8 @@ export async function buildThreadRenderSnapshot(input: {
 
 	const key = bucketPaths.inputs.comments(thread.id, { title: thread.title })
 	const compileVersion =
-		getThreadTemplate(input.templateId)?.compileVersion ?? THREAD_TEMPLATE_COMPILE_VERSION
+		getThreadTemplate(input.templateId)?.compileVersion ??
+		THREAD_TEMPLATE_COMPILE_VERSION
 	await putObjectByKey(
 		key,
 		'application/json',
