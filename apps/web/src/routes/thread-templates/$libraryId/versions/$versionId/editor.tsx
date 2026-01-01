@@ -17,7 +17,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/client'
@@ -118,19 +117,10 @@ function ThreadTemplateVersionEditorRoute() {
 	const threadsQuery = useQuery(queryOrpc.thread.list.queryOptions())
 	const threads = threadsQuery.data?.items ?? []
 
-	const [previewThreadDraft, setPreviewThreadDraft] =
-		React.useState(previewThreadId)
-	React.useEffect(() => {
-		setPreviewThreadDraft(previewThreadId)
-	}, [previewThreadId])
-
 	const [note, setNote] = React.useState('')
 
-	const [editorMode, setEditorMode] = React.useState<'visual' | 'json'>(
-		'visual',
-	)
 	const [previewMode, setPreviewMode] = React.useState<'edit' | 'play'>('edit')
-	const [templateConfigText, setTemplateConfigText] = React.useState('')
+	const [showAdvanced, setShowAdvanced] = React.useState(false)
 	const [visualTemplateConfig, setVisualTemplateConfig] =
 		React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
 	const [visualTemplateHistory, setVisualTemplateHistory] = React.useState<{
@@ -154,13 +144,8 @@ function ThreadTemplateVersionEditorRoute() {
 		visualTemplateHistoryRef.current = visualTemplateHistory
 	}, [visualTemplateHistory])
 
-	const templateConfigTextAreaRef = React.useRef<HTMLTextAreaElement | null>(
-		null,
-	)
-
 	function syncEditorFromVersion(next: any) {
 		const base = toConfigFromVersionRow(next) ?? DEFAULT_THREAD_TEMPLATE_CONFIG
-		setTemplateConfigText(toPrettyJson(base))
 		setVisualTemplateConfig(base)
 		setVisualTemplateHistory({ past: [], future: [] })
 		visualTxnRef.current = null
@@ -169,46 +154,10 @@ function ThreadTemplateVersionEditorRoute() {
 	React.useEffect(() => {
 		if (!selectedVersion) return
 		syncEditorFromVersion(selectedVersion)
-		setEditorMode('visual')
 		setNote('')
 	}, [selectedVersion?.id])
 
-	const templateConfigParsed = React.useMemo(() => {
-		const text = templateConfigText.trim()
-		if (!text) return { value: null as unknown, error: null as string | null }
-		try {
-			return {
-				value: JSON.parse(text) as unknown,
-				error: null as string | null,
-			}
-		} catch (e) {
-			return {
-				value: undefined,
-				error: e instanceof Error ? e.message : String(e),
-			}
-		}
-	}, [templateConfigText])
-
-	const normalizedTemplateConfig = React.useMemo(() => {
-		if (editorMode === 'visual') return visualTemplateConfig
-		if (
-			templateConfigParsed.value === undefined ||
-			templateConfigParsed.value === null
-		)
-			return null
-		try {
-			return normalizeThreadTemplateConfig(
-				templateConfigParsed.value,
-			) as ThreadTemplateConfigV1
-		} catch {
-			return null
-		}
-	}, [editorMode, templateConfigParsed.value, visualTemplateConfig])
-
-	const normalizedTemplateConfigText = React.useMemo(() => {
-		if (!normalizedTemplateConfig) return ''
-		return toPrettyJson(normalizedTemplateConfig)
-	}, [normalizedTemplateConfig])
+	const normalizedTemplateConfig = visualTemplateConfig
 
 	function applyVisualTemplateConfigExternal(next: ThreadTemplateConfigV1) {
 		setVisualTemplateConfig((prev) => {
@@ -309,18 +258,18 @@ function ThreadTemplateVersionEditorRoute() {
 				<div className="mx-auto max-w-[1800px] px-4 py-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 						<div className="space-y-1">
-							<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-								Templates / Versions / Editor
-							</div>
-							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
-								{library ? String((library as any).name) : '…'}
-							</h1>
-							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								library={libraryId} · version={String(versionId).slice(0, 12)}
-								{library
-									? ` · templateId=${String((library as any).templateId)}`
-									: ''}
-							</div>
+								<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+									Template Editor
+								</div>
+								<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
+									{library ? String((library as any).name) : '…'}
+								</h1>
+								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{selectedVersion
+										? `Version v${Number((selectedVersion as any).version)}`
+										: 'Version …'}
+									{library ? ` · templateId=${String((library as any).templateId)}` : ''}
+								</div>
 						</div>
 						<div className="flex flex-wrap items-center gap-2">
 							<Button
@@ -377,36 +326,14 @@ function ThreadTemplateVersionEditorRoute() {
 										</Select>
 									</div>
 
-									<div className="space-y-2">
-										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Preview Thread
-										</Label>
-										<div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
-											<Input
-												value={previewThreadDraft}
-												onChange={(e) => setPreviewThreadDraft(e.target.value)}
-												placeholder="thread id (required for preview)"
-												className="rounded-none font-mono text-xs h-9"
-											/>
-											<Button
-												type="button"
-												variant="outline"
-												className="rounded-none font-mono text-xs uppercase"
-												onClick={() => {
-													const nextId = previewThreadDraft.trim()
-													void navigate({
-														search: { previewThreadId: nextId },
-													})
-												}}
-											>
-												Load
-											</Button>
-										</div>
-
-										<Select
-											value={previewThreadId || ''}
-											onValueChange={(v) => {
-												void navigate({ search: { previewThreadId: v } })
+										<div className="space-y-2">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												Preview With
+											</Label>
+											<Select
+												value={previewThreadId || ''}
+												onValueChange={(v) => {
+													void navigate({ search: { previewThreadId: v } })
 											}}
 										>
 											<SelectTrigger className="rounded-none font-mono text-xs h-9">
@@ -427,12 +354,12 @@ function ThreadTemplateVersionEditorRoute() {
 												Failed to load preview thread.
 											</div>
 										) : null}
-										{!previewThreadId ? (
-											<div className="font-mono text-xs text-muted-foreground">
-												Required: set a preview thread to render and publish.
-											</div>
-										) : null}
-									</div>
+											{!previewThreadId ? (
+												<div className="font-mono text-xs text-muted-foreground">
+													Choose a thread so you can preview and publish changes.
+												</div>
+											) : null}
+										</div>
 
 									<div className="space-y-2">
 										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -461,30 +388,20 @@ function ThreadTemplateVersionEditorRoute() {
 									>
 										Reset
 									</Button>
-									<Button
-										type="button"
-										className="rounded-none font-mono text-xs uppercase"
-										disabled={!canPublish}
-										onClick={() => {
-											if (!library) return
-											if (!previewThreadId) {
-												toast.error('previewThreadId is required')
-												return
-											}
-											if (editorMode === 'json' && templateConfigParsed.error) {
-												toast.error(
-													`Fix JSON first: ${templateConfigParsed.error}`,
-												)
-												return
-											}
-											if (!normalizedTemplateConfig) {
-												toast.error('Normalized config is not available')
-												return
-											}
-											publishMutation.mutate({
-												libraryId,
-												templateConfig: normalizedTemplateConfig,
-												note: note.trim() || undefined,
+										<Button
+											type="button"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canPublish}
+											onClick={() => {
+												if (!library) return
+												if (!previewThreadId) {
+													toast.error('Pick a preview thread first')
+													return
+												}
+												publishMutation.mutate({
+													libraryId,
+													templateConfig: normalizedTemplateConfig,
+													note: note.trim() || undefined,
 												sourceThreadId: previewThreadId,
 											})
 										}}
@@ -497,150 +414,56 @@ function ThreadTemplateVersionEditorRoute() {
 							</CardContent>
 						</Card>
 
-						<Card className="rounded-none">
-							<CardHeader>
-								<CardTitle className="font-mono text-sm uppercase tracking-widest">
-									Template Config
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="space-y-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Editor
-									</Label>
-									<Tabs
-										value={editorMode}
-										onValueChange={(v) => {
-											const next = v === 'json' ? 'json' : 'visual'
-											if (next === 'visual') {
-												if (templateConfigParsed.error) {
-													toast.error(
-														`Fix JSON first: ${templateConfigParsed.error}`,
-													)
-													return
-												}
-												const jsonValue =
-													templateConfigParsed.value == null
-														? DEFAULT_THREAD_TEMPLATE_CONFIG
-														: templateConfigParsed.value
-												setVisualTemplateConfig(
-													normalizeThreadTemplateConfig(jsonValue),
-												)
-											}
-											setEditorMode(next)
-										}}
-										className="gap-3"
-									>
-										<TabsList className="rounded-none w-full">
-											<TabsTrigger value="visual" className="rounded-none">
-												Visual
-											</TabsTrigger>
-											<TabsTrigger value="json" className="rounded-none">
-												JSON
-											</TabsTrigger>
-										</TabsList>
+							<Card className="rounded-none">
+								<CardHeader>
+									<CardTitle className="font-mono text-sm uppercase tracking-widest">
+										Layout
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="flex flex-wrap items-center justify-between gap-2">
+										<div className="font-mono text-xs text-muted-foreground">
+											Edit visually. You can publish a new version when ready.
+										</div>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-[10px] uppercase"
+											onClick={() => setShowAdvanced((v) => !v)}
+										>
+											{showAdvanced ? 'Hide advanced' : 'Advanced'}
+										</Button>
+									</div>
 
-										<TabsContent value="visual" className="space-y-3">
-											<div className="flex flex-wrap items-center justify-between gap-2">
-												<div className="font-mono text-xs text-muted-foreground">
-													Edit layout safely (no code execution).
-												</div>
-												<div className="flex flex-wrap items-center gap-2">
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														disabled={Boolean(templateConfigParsed.error)}
-														onClick={() => {
-															if (templateConfigParsed.error) {
-																toast.error(
-																	`Fix JSON first: ${templateConfigParsed.error}`,
-																)
-																return
-															}
-															const jsonValue =
-																templateConfigParsed.value == null
-																	? DEFAULT_THREAD_TEMPLATE_CONFIG
-																	: templateConfigParsed.value
-															setVisualTemplateConfig(
-																normalizeThreadTemplateConfig(jsonValue),
-															)
-															toast.message('Synced from JSON')
-														}}
-													>
-														Sync From JSON
-													</Button>
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														onClick={() => {
-															setTemplateConfigText(
-																toPrettyJson(visualTemplateConfig),
-															)
-															setEditorMode('json')
-															toast.message('Copied to JSON')
-														}}
-													>
-														Copy To JSON
-													</Button>
-												</div>
-											</div>
-
-											<ThreadTemplateVisualEditor
-												value={visualTemplateConfig}
-												onChange={(next) =>
-													setVisualTemplateConfig(
-														normalizeThreadTemplateConfig(next),
-													)
-												}
-												assets={previewAssets as any}
-												historyState={visualTemplateHistory}
-												setHistoryState={setVisualTemplateHistory}
-												resetKey={String(selectedVersion?.id ?? '')}
-											/>
-										</TabsContent>
-
-										<TabsContent value="json" className="space-y-2">
-											<Textarea
-												ref={templateConfigTextAreaRef}
-												value={templateConfigText}
-												onChange={(e) => setTemplateConfigText(e.target.value)}
-												placeholder='{"version":1,...}'
-												className="min-h-[220px] rounded-none font-mono text-xs"
-											/>
-											{templateConfigParsed.error ? (
-												<div className="font-mono text-xs text-destructive">
-													Invalid JSON: {templateConfigParsed.error}
-												</div>
-											) : null}
-										</TabsContent>
-									</Tabs>
-								</div>
-
-								<div className="space-y-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Normalized (preview)
-									</Label>
-									<Textarea
-										value={normalizedTemplateConfigText}
-										readOnly
-										className="min-h-[160px] rounded-none font-mono text-xs"
+									<ThreadTemplateVisualEditor
+										value={visualTemplateConfig}
+										onChange={(next) =>
+											setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
+										}
+										assets={previewAssets as any}
+										historyState={visualTemplateHistory}
+										setHistoryState={setVisualTemplateHistory}
+										resetKey={String(selectedVersion?.id ?? '')}
 									/>
-									{!normalizedTemplateConfig ? (
-										<div className="font-mono text-xs text-muted-foreground">
-											Normalized config unavailable (invalid / empty).
+
+									{showAdvanced ? (
+										<div className="space-y-2">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												Config (read-only JSON)
+											</Label>
+											<Textarea
+												value={toPrettyJson(visualTemplateConfig)}
+												readOnly
+												className="min-h-[180px] rounded-none font-mono text-xs"
+											/>
+											<div className="font-mono text-xs text-muted-foreground">
+												This is the normalized config used for preview/publish.
+											</div>
 										</div>
-									) : (
-										<div className="font-mono text-xs text-muted-foreground">
-											Preview/publish uses the normalized config.
-										</div>
-									)}
-								</div>
-							</CardContent>
-						</Card>
+									) : null}
+								</CardContent>
+							</Card>
 					</div>
 
 					<div className="space-y-6">
@@ -685,34 +508,26 @@ function ThreadTemplateVersionEditorRoute() {
 												}
 											: null
 									}
-									isLoading={previewThreadQuery.isLoading}
-									templateId={(library as any)?.templateId as any}
-									templateConfig={normalizedTemplateConfig as any}
-									editCanvasConfig={
-										editorMode === 'visual'
-											? (visualTemplateConfig as any)
-											: null
-									}
-									canEditUndo={visualTemplateHistory.past.length > 0}
-									canEditRedo={visualTemplateHistory.future.length > 0}
-									onEditUndo={() => {
-										if (editorMode !== 'visual') return
-										undoVisualTemplate()
-									}}
-									onEditRedo={() => {
-										if (editorMode !== 'visual') return
-										redoVisualTemplate()
-									}}
-									onEditCanvasConfigChange={(next) => {
-										if (editorMode !== 'visual') return
-										applyVisualTemplateConfigExternal(next)
-									}}
-									onEditCanvasTransaction={(phase) => {
-										if (editorMode !== 'visual') return
-										if (phase === 'start') beginVisualTemplateTxn()
-										else endVisualTemplateTxn()
-									}}
-								/>
+										isLoading={previewThreadQuery.isLoading}
+										templateId={(library as any)?.templateId as any}
+										templateConfig={normalizedTemplateConfig as any}
+										editCanvasConfig={visualTemplateConfig as any}
+										canEditUndo={visualTemplateHistory.past.length > 0}
+										canEditRedo={visualTemplateHistory.future.length > 0}
+										onEditUndo={() => {
+											undoVisualTemplate()
+										}}
+										onEditRedo={() => {
+											redoVisualTemplate()
+										}}
+										onEditCanvasConfigChange={(next) => {
+											applyVisualTemplateConfigExternal(next)
+										}}
+										onEditCanvasTransaction={(phase) => {
+											if (phase === 'start') beginVisualTemplateTxn()
+											else endVisualTemplateTxn()
+										}}
+									/>
 							) : (
 								<ThreadRemotionPlayerCard
 									thread={previewThread as any}

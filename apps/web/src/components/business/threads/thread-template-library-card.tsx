@@ -35,6 +35,8 @@ export function ThreadTemplateLibraryCard({
 	const listQuery = useQuery(queryOrpc.threadTemplate.list.queryOptions())
 	const libraries = listQuery.data?.libraries ?? []
 
+	const [showAdvanced, setShowAdvanced] = React.useState(false)
+
 	const saveTargetLibraries = React.useMemo(() => {
 		return libraries.filter(
 			(l: any) => String(l.templateId) === effectiveTemplateId,
@@ -54,6 +56,16 @@ export function ThreadTemplateLibraryCard({
 			null
 		)
 	}, [applyLibraryId, libraries])
+
+	React.useEffect(() => {
+		if (applyLibraryId) return
+		const sameKind = libraries.filter(
+			(l: any) => String(l.templateId) === effectiveTemplateId,
+		)
+		const first = sameKind[0] ?? libraries[0]
+		if (first?.id) setApplyLibraryId(String(first.id))
+	}, [applyLibraryId, effectiveTemplateId, libraries])
+
 	const versionsQuery = useQuery(
 		queryOrpc.threadTemplate.versions.queryOptions({
 			input: { libraryId: applyLibraryId, limit: 50 },
@@ -158,132 +170,23 @@ export function ThreadTemplateLibraryCard({
 	return (
 		<Card className="rounded-none">
 			<CardContent className="py-5 space-y-5">
-				<div className="font-mono text-xs text-muted-foreground">
-					Template library is user-scoped, versioned, and can be applied to any
-					thread.
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					<div className="font-mono text-xs text-muted-foreground">
+						Current template: {effectiveTemplateId}
+					</div>
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
+						className="rounded-none font-mono text-[10px] uppercase"
+						onClick={() => setShowAdvanced((v) => !v)}
+					>
+						{showAdvanced ? 'Hide advanced' : 'Advanced'}
+					</Button>
 				</div>
 
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-					<div className="space-y-3">
-						<div className="font-mono text-xs uppercase tracking-widest">
-							Save new template
-						</div>
-						<div className="grid grid-cols-1 gap-3">
-							<div className="space-y-1">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Name
-								</Label>
-								<Input
-									value={newName}
-									onChange={(e) => setNewName(e.target.value)}
-									placeholder="e.g. My Forum Layout"
-									className="rounded-none font-mono text-xs h-9"
-								/>
-							</div>
-							<div className="space-y-1">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Description (optional)
-								</Label>
-								<Input
-									value={newDescription}
-									onChange={(e) => setNewDescription(e.target.value)}
-									placeholder="What is this template for?"
-									className="rounded-none font-mono text-xs h-9"
-								/>
-							</div>
-							<div className="space-y-1">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Note (optional)
-								</Label>
-								<Input
-									value={note}
-									onChange={(e) => setNote(e.target.value)}
-									placeholder="e.g. initial version"
-									className="rounded-none font-mono text-xs h-9"
-								/>
-							</div>
-							<Button
-								type="button"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canSave || !newName.trim()}
-								onClick={() => {
-									if (!normalizedTemplateConfig) {
-										toast.error('Nothing to save: normalized config is empty')
-										return
-									}
-									createMutation.mutate({
-										name: newName.trim(),
-										description: newDescription.trim() || undefined,
-										templateId: effectiveTemplateId,
-										templateConfig: normalizedTemplateConfig,
-										note: note.trim() || undefined,
-										sourceThreadId: threadId,
-									})
-								}}
-							>
-								{createMutation.isPending ? 'Saving…' : 'Save New'}
-							</Button>
-						</div>
-					</div>
-
-					<div className="space-y-3">
-						<div className="font-mono text-xs uppercase tracking-widest">
-							Save as new version
-						</div>
-						<div className="grid grid-cols-1 gap-3">
-							<div className="space-y-1">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Library template
-								</Label>
-								<Select
-									value={saveToLibraryId}
-									onValueChange={(v) => setSaveToLibraryId(v)}
-								>
-									<SelectTrigger className="rounded-none font-mono text-xs h-9">
-										<SelectValue placeholder="Select a saved template" />
-									</SelectTrigger>
-									<SelectContent>
-										{saveTargetLibraries.map((l: any) => (
-											<SelectItem key={String(l.id)} value={String(l.id)}>
-												{String(l.name)} (v{l.latestVersion ?? '—'})
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								{saveTargetLibraries.length === 0 ? (
-									<div className="font-mono text-xs text-muted-foreground">
-										No saved templates for templateId={effectiveTemplateId}.
-									</div>
-								) : null}
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canSave || !saveToLibraryId}
-								onClick={() => {
-									if (!normalizedTemplateConfig) {
-										toast.error('Nothing to save: normalized config is empty')
-										return
-									}
-									addVersionMutation.mutate({
-										libraryId: saveToLibraryId,
-										templateConfig: normalizedTemplateConfig,
-										note: note.trim() || undefined,
-										sourceThreadId: threadId,
-									})
-								}}
-							>
-								{addVersionMutation.isPending ? 'Saving…' : 'Save Version'}
-							</Button>
-						</div>
-					</div>
-				</div>
-
-				<div className="border-t border-border pt-5 space-y-3">
-					<div className="font-mono text-xs uppercase tracking-widest">
-						Apply
-					</div>
+				<div className="space-y-3">
+					<div className="font-mono text-xs uppercase tracking-widest">Use</div>
 					<div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto_auto] items-end">
 						<div className="space-y-1">
 							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -351,23 +254,14 @@ export function ThreadTemplateLibraryCard({
 						>
 							<Link
 								to="/thread-templates/$libraryId/versions/$versionId/editor"
-								params={{ libraryId: applyLibraryId, versionId: applyVersionId }}
+								params={{
+									libraryId: applyLibraryId,
+									versionId: applyVersionId,
+								}}
 								search={{ previewThreadId: threadId }}
 							>
 								Open Editor
 							</Link>
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							className="rounded-none font-mono text-xs uppercase"
-							disabled={!applyVersionId || rollbackMutation.isPending}
-							onClick={() => {
-								if (!applyVersionId) return
-								rollbackMutation.mutate({ versionId: applyVersionId })
-							}}
-						>
-							{rollbackMutation.isPending ? 'Rolling back…' : 'Rollback'}
 						</Button>
 					</div>
 					{willChangeTemplateId ? (
@@ -382,6 +276,156 @@ export function ThreadTemplateLibraryCard({
 						</div>
 					) : null}
 				</div>
+
+				{showAdvanced ? (
+					<div className="border-t border-border pt-5 space-y-5">
+						<div className="font-mono text-xs uppercase tracking-widest">
+							Advanced
+						</div>
+
+						<div className="space-y-1">
+							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+								Note (optional)
+							</Label>
+							<Input
+								value={note}
+								onChange={(e) => setNote(e.target.value)}
+								placeholder="e.g. tweak cover typography"
+								className="rounded-none font-mono text-xs h-9"
+							/>
+						</div>
+
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<div className="space-y-3">
+								<div className="font-mono text-xs uppercase tracking-widest">
+									Save as new template
+								</div>
+								<div className="grid grid-cols-1 gap-3">
+									<div className="space-y-1">
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+											Name
+										</Label>
+										<Input
+											value={newName}
+											onChange={(e) => setNewName(e.target.value)}
+											placeholder="e.g. My Forum Layout"
+											className="rounded-none font-mono text-xs h-9"
+										/>
+									</div>
+									<div className="space-y-1">
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+											Description (optional)
+										</Label>
+										<Input
+											value={newDescription}
+											onChange={(e) => setNewDescription(e.target.value)}
+											placeholder="What is this template for?"
+											className="rounded-none font-mono text-xs h-9"
+										/>
+									</div>
+									<Button
+										type="button"
+										className="rounded-none font-mono text-xs uppercase"
+										disabled={!canSave || !newName.trim()}
+										onClick={() => {
+											if (!normalizedTemplateConfig) {
+												toast.error(
+													'Nothing to save: normalized config is empty',
+												)
+												return
+											}
+											createMutation.mutate({
+												name: newName.trim(),
+												description: newDescription.trim() || undefined,
+												templateId: effectiveTemplateId,
+												templateConfig: normalizedTemplateConfig,
+												note: note.trim() || undefined,
+												sourceThreadId: threadId,
+											})
+										}}
+									>
+										{createMutation.isPending ? 'Saving…' : 'Save New'}
+									</Button>
+								</div>
+							</div>
+
+							<div className="space-y-3">
+								<div className="font-mono text-xs uppercase tracking-widest">
+									Save as new version
+								</div>
+								<div className="grid grid-cols-1 gap-3">
+									<div className="space-y-1">
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+											Library template
+										</Label>
+										<Select
+											value={saveToLibraryId}
+											onValueChange={(v) => setSaveToLibraryId(v)}
+										>
+											<SelectTrigger className="rounded-none font-mono text-xs h-9">
+												<SelectValue placeholder="Select a saved template" />
+											</SelectTrigger>
+											<SelectContent>
+												{saveTargetLibraries.map((l: any) => (
+													<SelectItem key={String(l.id)} value={String(l.id)}>
+														{String(l.name)} (v{l.latestVersion ?? '—'})
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										{saveTargetLibraries.length === 0 ? (
+											<div className="font-mono text-xs text-muted-foreground">
+												No saved templates for templateId={effectiveTemplateId}.
+											</div>
+										) : null}
+									</div>
+									<Button
+										type="button"
+										variant="outline"
+										className="rounded-none font-mono text-xs uppercase"
+										disabled={!canSave || !saveToLibraryId}
+										onClick={() => {
+											if (!normalizedTemplateConfig) {
+												toast.error(
+													'Nothing to save: normalized config is empty',
+												)
+												return
+											}
+											addVersionMutation.mutate({
+												libraryId: saveToLibraryId,
+												templateConfig: normalizedTemplateConfig,
+												note: note.trim() || undefined,
+												sourceThreadId: threadId,
+											})
+										}}
+									>
+										{addVersionMutation.isPending ? 'Saving…' : 'Save Version'}
+									</Button>
+								</div>
+							</div>
+						</div>
+
+						<div className="space-y-2">
+							<div className="font-mono text-xs uppercase tracking-widest">
+								Danger zone
+							</div>
+							<Button
+								type="button"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!applyVersionId || rollbackMutation.isPending}
+								onClick={() => {
+									if (!applyVersionId) return
+									rollbackMutation.mutate({ versionId: applyVersionId })
+								}}
+							>
+								{rollbackMutation.isPending
+									? 'Rolling back…'
+									: 'Rollback version'}
+							</Button>
+						</div>
+					</div>
+				) : null}
 			</CardContent>
 		</Card>
 	)

@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import * as React from 'react'
-import { toast } from 'sonner'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
@@ -22,14 +21,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { Textarea } from '~/components/ui/textarea'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { queryOrpc } from '~/lib/orpc/client'
 import { listThreadTemplates } from '@app/remotion-project/thread-templates'
-import {
-	DEFAULT_THREAD_TEMPLATE_CONFIG,
-	normalizeThreadTemplateConfig,
-} from '@app/remotion-project/thread-template-config'
+import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
 
 export const Route = createFileRoute('/thread-templates/')({
 	loader: async ({ context, location }) => {
@@ -44,15 +39,8 @@ export const Route = createFileRoute('/thread-templates/')({
 	component: ThreadTemplatesRoute,
 })
 
-function toPrettyJson(value: unknown): string {
-	try {
-		return JSON.stringify(value, null, 2)
-	} catch (e) {
-		return e instanceof Error ? e.message : String(e)
-	}
-}
-
 function ThreadTemplatesRoute() {
+	const navigate = Route.useNavigate()
 	const qc = useQueryClient()
 	const confirmDialog = useConfirmDialog()
 
@@ -83,26 +71,6 @@ function ThreadTemplatesRoute() {
 		return first ? String(first) : 'thread-forum'
 	})
 	const [createDescription, setCreateDescription] = React.useState('')
-	const [createNote, setCreateNote] = React.useState('')
-	const [createConfigText, setCreateConfigText] = React.useState(() =>
-		toPrettyJson(DEFAULT_THREAD_TEMPLATE_CONFIG),
-	)
-
-	const createConfigParsed = React.useMemo(() => {
-		const text = createConfigText.trim()
-		if (!text) return { value: null as unknown, error: null as string | null }
-		try {
-			return {
-				value: JSON.parse(text) as unknown,
-				error: null as string | null,
-			}
-		} catch (e) {
-			return {
-				value: undefined,
-				error: e instanceof Error ? e.message : String(e),
-			}
-		}
-	}, [createConfigText])
 
 	const createMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.create.mutationOptions({
@@ -110,12 +78,18 @@ function ThreadTemplatesRoute() {
 				await qc.invalidateQueries({
 					queryKey: queryOrpc.threadTemplate.list.key(),
 				})
-				const libraryId = (data as any)?.libraryId
-				if (libraryId) setSelectedLibraryId(String(libraryId))
+				const libraryId = String((data as any)?.libraryId ?? '')
+				const versionId = String((data as any)?.versionId ?? '')
+				if (libraryId) setSelectedLibraryId(libraryId)
 				setCreateName('')
 				setCreateDescription('')
-				setCreateNote('')
-				setCreateConfigText(toPrettyJson(DEFAULT_THREAD_TEMPLATE_CONFIG))
+				if (libraryId && versionId) {
+					await navigate({
+						to: '/thread-templates/$libraryId/versions/$versionId/editor',
+						params: { libraryId, versionId },
+						search: { previewThreadId: '' },
+					})
+				}
 			},
 		}),
 		{
@@ -164,28 +138,6 @@ function ThreadTemplatesRoute() {
 		},
 	)
 
-	const addVersionMutation = useEnhancedMutation(
-		queryOrpc.threadTemplate.addVersion.mutationOptions({
-			onSuccess: async () => {
-				await qc.invalidateQueries({
-					queryKey: queryOrpc.threadTemplate.list.key(),
-				})
-				if (selectedLibraryId) {
-					await qc.invalidateQueries({
-						queryKey: queryOrpc.threadTemplate.versions.queryKey({
-							input: { libraryId: selectedLibraryId, limit: 50 },
-						}),
-					})
-				}
-			},
-		}),
-		{
-			successToast: 'Saved new version',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
-
 	const rollbackMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.rollback.mutationOptions({
 			onSuccess: async () => {
@@ -211,43 +163,13 @@ function ThreadTemplatesRoute() {
 	const [renameOpen, setRenameOpen] = React.useState(false)
 	const [renameName, setRenameName] = React.useState('')
 	const [renameDescription, setRenameDescription] = React.useState('')
-
-	const [newVersionNote, setNewVersionNote] = React.useState('')
-	const [newVersionConfigText, setNewVersionConfigText] = React.useState('')
-	const newVersionConfigParsed = React.useMemo(() => {
-		const text = newVersionConfigText.trim()
-		if (!text) return { value: null as unknown, error: null as string | null }
-		try {
-			return {
-				value: JSON.parse(text) as unknown,
-				error: null as string | null,
-			}
-		} catch (e) {
-			return {
-				value: undefined,
-				error: e instanceof Error ? e.message : String(e),
-			}
-		}
-	}, [newVersionConfigText])
+	const [showVersionsAdvanced, setShowVersionsAdvanced] = React.useState(false)
 
 	React.useEffect(() => {
 		if (!selectedLibrary) return
 		setRenameName(String((selectedLibrary as any).name ?? ''))
 		setRenameDescription(String((selectedLibrary as any).description ?? ''))
 	}, [selectedLibrary?.id])
-
-	React.useEffect(() => {
-		if (!selectedLibraryId) {
-			setNewVersionConfigText('')
-			return
-		}
-		const latest = versions[0]
-		if (!latest) return
-		if (!latest.templateConfigResolved && !latest.templateConfig) return
-		setNewVersionConfigText(
-			toPrettyJson(latest.templateConfigResolved ?? latest.templateConfig),
-		)
-	}, [selectedLibraryId, versions])
 
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground">
@@ -328,80 +250,22 @@ function ThreadTemplatesRoute() {
 									className="rounded-none font-mono text-xs h-9"
 								/>
 							</div>
-							<div className="space-y-2">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Note (optional)
-								</Label>
-								<Input
-									value={createNote}
-									onChange={(e) => setCreateNote(e.target.value)}
-									placeholder="e.g. initial version"
-									className="rounded-none font-mono text-xs h-9"
-								/>
-							</div>
-						</div>
-
-						<div className="space-y-2">
-							<div className="flex flex-wrap items-center justify-between gap-2">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Config JSON (v1)
-								</Label>
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
-									className="rounded-none font-mono text-[10px] uppercase"
-									onClick={() => {
-										setCreateConfigText(
-											toPrettyJson(
-												normalizeThreadTemplateConfig(
-													DEFAULT_THREAD_TEMPLATE_CONFIG,
-												),
-											),
-										)
-										toast.message('Reset to default config')
-									}}
-								>
-									Use Default
-								</Button>
-							</div>
-							<Textarea
-								value={createConfigText}
-								onChange={(e) => setCreateConfigText(e.target.value)}
-								className="min-h-[160px] rounded-none font-mono text-xs"
-								placeholder='{"version":1,...}'
-							/>
-							{createConfigParsed.error ? (
-								<div className="font-mono text-xs text-destructive">
-									JSON error: {createConfigParsed.error}
-								</div>
-							) : null}
 							<div className="font-mono text-xs text-muted-foreground">
-								Must include <span className="font-mono">"version": 1</span>.
+								You can customize layout in the editor after creation.
 							</div>
 						</div>
 
 						<Button
 							type="button"
 							className="rounded-none font-mono text-xs uppercase"
-							disabled={
-								createMutation.isPending ||
-								!createName.trim() ||
-								Boolean(createConfigParsed.error) ||
-								createConfigParsed.value == null
-							}
+							disabled={createMutation.isPending || !createName.trim()}
 							onClick={() => {
-								if (createConfigParsed.error) return
-								if (createConfigParsed.value == null) {
-									toast.error('Config JSON is empty')
-									return
-								}
 								createMutation.mutate({
 									name: createName.trim(),
 									templateId: createTemplateId,
 									description: createDescription.trim() || undefined,
-									note: createNote.trim() || undefined,
-									templateConfig: createConfigParsed.value,
+									note: 'Initial version',
+									templateConfig: DEFAULT_THREAD_TEMPLATE_CONFIG,
 								})
 							}}
 						>
@@ -502,145 +366,77 @@ function ThreadTemplatesRoute() {
 											{String((selectedLibrary as any).name)} · templateId=
 											{String((selectedLibrary as any).templateId)}
 										</div>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-[10px] uppercase"
-											disabled={!selectedLibraryId}
-											onClick={() => {
-												const latest = versions[0]
-												if (!latest?.templateConfig) {
-													toast.error('No templateConfig in latest version')
-													return
-												}
-												addVersionMutation.mutate({
-													libraryId: selectedLibraryId,
-													templateConfig: latest.templateConfig,
-													note: 'Copy latest',
-												})
-											}}
-										>
-											Copy Latest → New Version
-										</Button>
-									</div>
-
-									<div className="grid grid-cols-1 gap-3">
-										<div className="space-y-2">
-											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												Add version from JSON
-											</Label>
-											<Textarea
-												value={newVersionConfigText}
-												onChange={(e) =>
-													setNewVersionConfigText(e.target.value)
-												}
-												className="min-h-[120px] rounded-none font-mono text-xs"
-												placeholder='{"version":1,...}'
-											/>
-											<div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-												<Input
-													value={newVersionNote}
-													onChange={(e) => setNewVersionNote(e.target.value)}
-													placeholder="note (optional)"
-													className="rounded-none font-mono text-xs h-9"
-												/>
-												<div />
-											</div>
+										<div className="flex items-center gap-2">
 											<Button
 												type="button"
 												size="sm"
 												variant="outline"
 												className="rounded-none font-mono text-[10px] uppercase"
-												disabled={
-													!selectedLibraryId ||
-													Boolean(newVersionConfigParsed.error) ||
-													newVersionConfigParsed.value == null ||
-													addVersionMutation.isPending
-												}
-												onClick={() => {
-													if (!selectedLibraryId) return
-													if (newVersionConfigParsed.error) {
-														toast.error(
-															`JSON error: ${newVersionConfigParsed.error}`,
-														)
-														return
-													}
-													if (newVersionConfigParsed.value == null) {
-														toast.error('Config JSON is empty')
-														return
-													}
-													addVersionMutation.mutate({
-														libraryId: selectedLibraryId,
-														templateConfig: newVersionConfigParsed.value,
-														note: newVersionNote.trim() || undefined,
-													})
-												}}
+												disabled={!versions[0]?.id}
+												asChild
 											>
-												{addVersionMutation.isPending
-													? 'Saving…'
-													: 'Save Version'}
+												<Link
+													to="/thread-templates/$libraryId/versions/$versionId/editor"
+													params={{
+														libraryId: selectedLibraryId,
+														versionId: String(versions[0]?.id ?? ''),
+													}}
+												>
+													Edit Latest
+												</Link>
 											</Button>
-											{newVersionConfigParsed.error ? (
-												<div className="font-mono text-xs text-destructive">
-													JSON error: {newVersionConfigParsed.error}
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase"
+												onClick={() => setShowVersionsAdvanced((v) => !v)}
+											>
+												{showVersionsAdvanced ? 'Hide advanced' : 'Advanced'}
+											</Button>
+										</div>
+									</div>
+
+									<div className="rounded-none border border-border">
+										<div className="max-h-[520px] overflow-auto">
+											{versions.length === 0 ? (
+												<div className="p-3 font-mono text-xs text-muted-foreground">
+													No versions yet.
 												</div>
 											) : null}
-										</div>
 
-										<div className="rounded-none border border-border">
-											<div className="max-h-[420px] overflow-auto">
-												{versions.map((v: any) => (
-													<div
-														key={String(v.id)}
-														className="border-b border-border p-3 last:border-b-0 space-y-2"
-													>
-														<div className="flex flex-wrap items-center justify-between gap-2">
-															<div className="font-mono text-xs">
-																v{Number(v.version)} ·{' '}
-																<span className="text-muted-foreground">
-																	{String(v.id).slice(0, 12)}
-																</span>
-															</div>
-															<div className="flex flex-wrap items-center gap-2">
-																<Button
-																	type="button"
-																	size="sm"
-																	variant="outline"
-																	className="rounded-none font-mono text-[10px] uppercase"
-																	asChild
-																>
-																	<Link
-																		to="/thread-templates/$libraryId/versions/$versionId/editor"
-																		params={{
-																			libraryId: selectedLibraryId,
-																			versionId: String(v.id),
-																		}}
-																	>
-																		Open Editor
-																	</Link>
-																</Button>
-																<Button
-																	type="button"
-																	size="sm"
-																	variant="outline"
-																	className="rounded-none font-mono text-[10px] uppercase"
-																	onClick={() => {
-																		try {
-																			void navigator.clipboard?.writeText(
-																				toPrettyJson(
-																					v.templateConfigResolved ??
-																						v.templateConfig,
-																				),
-																			)
-																			toast.message('Copied JSON')
-																		} catch {
-																			toast.error('Copy failed')
-																		}
+											{versions.map((v: any) => (
+												<div
+													key={String(v.id)}
+													className="border-b border-border p-3 last:border-b-0 space-y-2"
+												>
+													<div className="flex flex-wrap items-center justify-between gap-2">
+														<div className="font-mono text-xs">
+															v{Number(v.version)} ·{' '}
+															<span className="text-muted-foreground">
+																{String(v.id).slice(0, 12)}
+															</span>
+														</div>
+														<div className="flex flex-wrap items-center gap-2">
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-none font-mono text-[10px] uppercase"
+																asChild
+															>
+																<Link
+																	to="/thread-templates/$libraryId/versions/$versionId/editor"
+																	params={{
+																		libraryId: selectedLibraryId,
+																		versionId: String(v.id),
 																	}}
 																>
-																	Copy JSON
-																</Button>
+																	Open Editor
+																</Link>
+															</Button>
+
+															{showVersionsAdvanced ? (
 																<Button
 																	type="button"
 																	size="sm"
@@ -648,29 +444,34 @@ function ThreadTemplatesRoute() {
 																	className="rounded-none font-mono text-[10px] uppercase"
 																	disabled={rollbackMutation.isPending}
 																	onClick={() => {
-																		rollbackMutation.mutate({
-																			versionId: String(v.id),
-																		})
+																		void (async () => {
+																			const ok = await confirmDialog({
+																				title: 'Rollback version?',
+																				description:
+																					'This creates a new version that matches the selected one.',
+																				confirmText: 'Rollback',
+																				variant: 'destructive',
+																			})
+																			if (!ok) return
+																			rollbackMutation.mutate({
+																				versionId: String(v.id),
+																			})
+																		})()
 																	}}
 																>
 																	Rollback
 																</Button>
-															</div>
-														</div>
-														{v.note ? (
-															<div className="font-mono text-xs text-muted-foreground">
-																{String(v.note)}
-															</div>
-														) : null}
-														<div className="font-mono text-[10px] text-muted-foreground">
-															hash=
-															{String(v.templateConfigHash ?? '—').slice(0, 16)}
-															{' · '}compileVersion=
-															{String(v.compileVersion ?? '—')}
+															) : null}
 														</div>
 													</div>
-												))}
-											</div>
+
+													{v.note ? (
+														<div className="font-mono text-xs text-muted-foreground">
+															{String(v.note)}
+														</div>
+													) : null}
+												</div>
+											))}
 										</div>
 									</div>
 								</>
@@ -724,20 +525,20 @@ function ThreadTemplatesRoute() {
 						<Button
 							type="button"
 							className="rounded-none font-mono text-xs uppercase"
-								disabled={!selectedLibraryId || updateMutation.isPending}
-								onClick={() => {
-									if (!selectedLibraryId) return
-									updateMutation.mutate({
-										libraryId: selectedLibraryId,
-										name: renameName,
-										description: renameDescription.trim()
-											? renameDescription
-											: null,
-									})
-								}}
-							>
-								Save
-							</Button>
+							disabled={!selectedLibraryId || updateMutation.isPending}
+							onClick={() => {
+								if (!selectedLibraryId) return
+								updateMutation.mutate({
+									libraryId: selectedLibraryId,
+									name: renameName,
+									description: renameDescription.trim()
+										? renameDescription
+										: null,
+								})
+							}}
+						>
+							Save
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
