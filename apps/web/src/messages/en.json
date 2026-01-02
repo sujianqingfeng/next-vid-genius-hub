@@ -142,6 +142,28 @@
 			"pointsSuffix": "pts"
 		}
 	},
+	"Agent": {
+		"header": {
+			"breadcrumb": "Workspace / Agent",
+			"title": "Agent Chat"
+		},
+		"empty": "Send a message to start chatting.",
+		"status": {
+			"thinking": "Thinking..."
+		},
+		"input": {
+			"placeholder": "Message the agent...",
+			"hint": "Enter to send · Shift+Enter for newline"
+		},
+		"actions": {
+			"send": "Send",
+			"clear": "Clear"
+		},
+		"errors": {
+			"emptyResponse": "No response generated.",
+			"failedPrefix": "Request failed: "
+		}
+	},
 	"Threads": {
 		"list": {
 			"header": {

@@ -159,3 +159,38 @@ export async function applyThreadTemplateLibrarySchema(d1: D1Database) {
 		].join('\n'),
 	])
 }
+
+export async function applyMinimalAiSchema(d1: D1Database) {
+	await execStatements(d1, [
+		[
+			`CREATE TABLE IF NOT EXISTS ai_providers (`,
+			`  id TEXT NOT NULL,`,
+			`  slug TEXT NOT NULL,`,
+			`  name TEXT NOT NULL,`,
+			`  kind TEXT NOT NULL,`,
+			`  type TEXT NOT NULL,`,
+			`  base_url TEXT,`,
+			`  api_key TEXT,`,
+			`  enabled INTEGER NOT NULL DEFAULT 1,`,
+			`  metadata TEXT,`,
+			`  created_at INTEGER NOT NULL,`,
+			`  updated_at INTEGER NOT NULL`,
+			`);`,
+		].join('\n'),
+		[
+			`CREATE TABLE IF NOT EXISTS ai_models (`,
+			`  id TEXT NOT NULL,`,
+			`  provider_id TEXT NOT NULL,`,
+			`  kind TEXT NOT NULL,`,
+			`  remote_model_id TEXT NOT NULL,`,
+			`  label TEXT NOT NULL,`,
+			`  description TEXT,`,
+			`  enabled INTEGER NOT NULL DEFAULT 1,`,
+			`  is_default INTEGER NOT NULL DEFAULT 0,`,
+			`  capabilities TEXT,`,
+			`  created_at INTEGER NOT NULL,`,
+			`  updated_at INTEGER NOT NULL`,
+			`);`,
+		].join('\n'),
+	])
+}

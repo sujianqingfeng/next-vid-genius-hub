@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
+import { AgentChatPage } from '~/components/business/agent/agent-chat-page'
 import { queryOrpc } from '~/lib/orpc/client'
 
 export const Route = createFileRoute('/agent')({
@@ -16,7 +17,5 @@ export const Route = createFileRoute('/agent')({
 })
 
 function AgentRoute() {
-	return (
-		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground" />
-	)
+	return <AgentChatPage />
 }

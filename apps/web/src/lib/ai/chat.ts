@@ -4,6 +4,7 @@ import {
 	streamObject as streamObjectFromAI,
 	streamText as streamTextFromAI,
 } from 'ai'
+import type { ModelMessage } from 'ai'
 import { z } from 'zod'
 import { getAiModelConfig } from './config/service'
 import { getProviderClient } from './provider-factory'
@@ -25,6 +26,25 @@ async function getModel(modelId: string) {
 
 	const providerClient = getProviderClient(cfg.provider)
 	return providerClient(cfg.remoteModelId)
+}
+
+function normalizeUsage(result: unknown) {
+	const usageUnknown = (result as { usage?: unknown }).usage
+	const usageRaw: Record<string, unknown> =
+		usageUnknown && typeof usageUnknown === 'object'
+			? (usageUnknown as Record<string, unknown>)
+			: {}
+	const inputTokens = Number(usageRaw.promptTokens ?? usageRaw.inputTokens ?? 0)
+	const outputTokens = Number(
+		usageRaw.completionTokens ?? usageRaw.outputTokens ?? 0,
+	)
+	const normalizedInputTokens = Number.isFinite(inputTokens) ? inputTokens : 0
+	const normalizedOutputTokens = Number.isFinite(outputTokens) ? outputTokens : 0
+	return {
+		inputTokens: normalizedInputTokens,
+		outputTokens: normalizedOutputTokens,
+		totalTokens: normalizedInputTokens + normalizedOutputTokens,
+	}
 }
 
 export async function generateText(options: {
@@ -70,22 +90,9 @@ export async function generateTextWithUsage(options: {
 	temperature?: number
 }) {
 	const result = await generateText(options)
-	const usageUnknown = (result as { usage?: unknown }).usage
-	const usageRaw: Record<string, unknown> =
-		usageUnknown && typeof usageUnknown === 'object'
-			? (usageUnknown as Record<string, unknown>)
-			: {}
-	const inputTokens = Number(usageRaw.promptTokens ?? usageRaw.inputTokens ?? 0)
-	const outputTokens = Number(
-		usageRaw.completionTokens ?? usageRaw.outputTokens ?? 0,
-	)
 	return {
 		...result,
-		usage: {
-			inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0,
-			outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
-			totalTokens: inputTokens + outputTokens,
-		},
+		usage: normalizeUsage(result),
 	}
 }
 
@@ -98,22 +105,30 @@ export async function generateObjectWithUsage<T>(options: {
 	temperature?: number
 }) {
 	const result = await generateObject<T>(options)
-	const usageUnknown = (result as { usage?: unknown }).usage
-	const usageRaw: Record<string, unknown> =
-		usageUnknown && typeof usageUnknown === 'object'
-			? (usageUnknown as Record<string, unknown>)
-			: {}
-	const inputTokens = Number(usageRaw.promptTokens ?? usageRaw.inputTokens ?? 0)
-	const outputTokens = Number(
-		usageRaw.completionTokens ?? usageRaw.outputTokens ?? 0,
-	)
 	return {
 		...result,
-		usage: {
-			inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0,
-			outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
-			totalTokens: inputTokens + outputTokens,
-		},
+		usage: normalizeUsage(result),
+	}
+}
+
+export async function generateMessagesWithUsage(options: {
+	model: string
+	system: string
+	messages: ModelMessage[]
+	maxTokens?: number
+	temperature?: number
+}) {
+	const { model: modelId, ...rest } = options
+	const model = await getModel(modelId)
+
+	const result = await generateTextFromAI({
+		...rest,
+		model,
+	})
+
+	return {
+		...result,
+		usage: normalizeUsage(result),
 	}
 }
 

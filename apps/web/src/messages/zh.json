@@ -142,6 +142,28 @@
 			"pointsSuffix": "分"
 		}
 	},
+	"Agent": {
+		"header": {
+			"breadcrumb": "工作区 / Agent",
+			"title": "Agent 对话"
+		},
+		"empty": "发送一条消息开始对话。",
+		"status": {
+			"thinking": "思考中..."
+		},
+		"input": {
+			"placeholder": "和 Agent 聊点什么...",
+			"hint": "Enter 发送 · Shift+Enter 换行"
+		},
+		"actions": {
+			"send": "发送",
+			"clear": "清空"
+		},
+		"errors": {
+			"emptyResponse": "未生成有效回复。",
+			"failedPrefix": "请求失败："
+		}
+	},
 	"Threads": {
 		"list": {
 			"header": {
