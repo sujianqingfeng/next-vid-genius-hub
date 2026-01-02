@@ -42,12 +42,14 @@ const config = defineConfig(({ mode }) => {
 			allowedHosts: [
 				'code.temp-drop-files.store',
 				'vid-dev.temp-drop-files.store',
+				'vid-dev-1.temp-drop-files.store',
 			],
 		},
 		preview: {
 			allowedHosts: [
 				'code.temp-drop-files.store',
 				'vid-dev.temp-drop-files.store',
+				'vid-dev-1.temp-drop-files.store',
 			],
 		},
 		optimizeDeps: {
