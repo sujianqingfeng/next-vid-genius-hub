@@ -6,6 +6,13 @@ import type {
 	ThreadTemplateConfigV1,
 } from '@app/remotion-project/types'
 import { Button } from '~/components/ui/button'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '~/components/ui/dialog'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import {
@@ -16,7 +23,7 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Copy, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react'
 import { useTranslations } from '~/lib/i18n'
 
 type NodePath = Array<string | number>
@@ -44,6 +51,24 @@ type TreeItem = {
 	parentKey: string | null
 	parentSlot: ParentSlot | null
 }
+
+const ADD_NODE_TYPES: Array<ThreadRenderTreeNode['type']> = [
+	'Text',
+	'Stack',
+	'Box',
+	'Grid',
+	'Absolute',
+	'Avatar',
+	'Metrics',
+	'ContentBlocks',
+	'Repeat',
+	'Image',
+	'Video',
+	'Background',
+	'Spacer',
+	'Divider',
+	'Builtin',
+]
 
 function pathKey(scene: SceneKey, path: NodePath): string {
 	return `${scene}:${JSON.stringify(path)}`
@@ -440,6 +465,105 @@ function collectAncestors(
 	return out
 }
 
+type TreeFilterTermKind =
+	| 'text'
+	| 'type'
+	| 'bind'
+	| 'kind'
+	| 'asset'
+	| 'scene'
+	| 'key'
+
+type TreeFilterTerm = { kind: TreeFilterTermKind; value: string }
+
+function parseTreeFilterTerms(filterText: string): TreeFilterTerm[] {
+	const raw = filterText.trim()
+	if (!raw) return []
+
+	const parts = raw.split(/\s+/g).filter(Boolean)
+	const out: TreeFilterTerm[] = []
+
+	for (const part of parts) {
+		const idx = part.indexOf(':')
+		if (idx <= 0) {
+			const value = part.trim().toLowerCase()
+			if (value) out.push({ kind: 'text', value })
+			continue
+		}
+
+		const kindRaw = part.slice(0, idx).trim().toLowerCase()
+		const value = part.slice(idx + 1).trim().toLowerCase()
+		if (!value) continue
+
+		const kind = (
+			kindRaw === 'type' ||
+			kindRaw === 'bind' ||
+			kindRaw === 'kind' ||
+			kindRaw === 'asset' ||
+			kindRaw === 'scene' ||
+			kindRaw === 'key'
+				? kindRaw
+				: 'text'
+		) as TreeFilterTermKind
+
+		out.push({ kind, value })
+	}
+
+	return out
+}
+
+function getTreeItemSearchFields(it: TreeItem) {
+	const node: any = it.node as any
+	const type = String(node?.type ?? '').toLowerCase()
+	const bind = typeof node?.bind === 'string' ? node.bind.toLowerCase() : ''
+	const kind =
+		type === 'builtin' ? String(node?.kind ?? '').toLowerCase() : ''
+	const assetId =
+		typeof node?.assetId === 'string' || typeof node?.assetId === 'number'
+			? String(node.assetId).toLowerCase()
+			: ''
+
+	return {
+		label: it.label.toLowerCase(),
+		key: it.key.toLowerCase(),
+		scene: it.scene.toLowerCase(),
+		type,
+		bind,
+		kind,
+		assetId,
+	}
+}
+
+function matchesTreeFilter(it: TreeItem, terms: TreeFilterTerm[]): boolean {
+	if (terms.length === 0) return true
+	const f = getTreeItemSearchFields(it)
+
+	for (const term of terms) {
+		const v = term.value
+		if (!v) continue
+
+		if (term.kind === 'type' && !f.type.includes(v)) return false
+		if (term.kind === 'bind' && !f.bind.includes(v)) return false
+		if (term.kind === 'kind' && !f.kind.includes(v)) return false
+		if (term.kind === 'asset' && !f.assetId.includes(v)) return false
+		if (term.kind === 'scene' && !f.scene.includes(v)) return false
+		if (term.kind === 'key' && !f.key.includes(v)) return false
+		if (term.kind === 'text') {
+			const ok =
+				f.label.includes(v) ||
+				f.key.includes(v) ||
+				f.type.includes(v) ||
+				f.bind.includes(v) ||
+				f.kind.includes(v) ||
+				f.assetId.includes(v) ||
+				f.scene.includes(v)
+			if (!ok) return false
+		}
+	}
+
+	return true
+}
+
 function TreeView({
 	items,
 	childrenByKey,
@@ -449,6 +573,10 @@ function TreeView({
 	filterText,
 	state,
 	onStateChange,
+	onQuickAddChild,
+	onQuickDuplicate,
+	onQuickDelete,
+	onOpenActions,
 	t,
 }: {
 	items: TreeItem[]
@@ -461,6 +589,10 @@ function TreeView({
 	onStateChange: React.Dispatch<
 		React.SetStateAction<Record<string, TreeNodeState>>
 	>
+	onQuickAddChild?: (key: string) => void
+	onQuickDuplicate?: (key: string) => void
+	onQuickDelete?: (key: string) => void
+	onOpenActions?: (key: string) => void
 	t?: (key: string, params?: Record<string, unknown>) => string
 }) {
 	const itemByKey = React.useMemo(() => {
@@ -474,9 +606,9 @@ function TreeView({
 		selectedElRef.current?.scrollIntoView({ block: 'nearest' })
 	}, [selectedKey])
 
-	const q = filterText.trim().toLowerCase()
+	const terms = React.useMemo(() => parseTreeFilterTerms(filterText), [filterText])
 	const { visibleKeys, forcedOpenKeys } = React.useMemo(() => {
-		if (!q)
+		if (terms.length === 0)
 			return {
 				visibleKeys: null as Set<string> | null,
 				forcedOpenKeys: null as Set<string> | null,
@@ -484,9 +616,7 @@ function TreeView({
 
 		const matched = new Set<string>()
 		for (const it of items) {
-			const label = it.label.toLowerCase()
-			const key = it.key.toLowerCase()
-			if (label.includes(q) || key.includes(q)) matched.add(it.key)
+			if (matchesTreeFilter(it, terms)) matched.add(it.key)
 		}
 
 		const visible = new Set<string>()
@@ -500,7 +630,7 @@ function TreeView({
 		}
 
 		return { visibleKeys: visible, forcedOpenKeys: forcedOpen }
-	}, [items, parentByKey, q])
+	}, [items, parentByKey, terms])
 
 	const roots = React.useMemo(() => {
 		const out: string[] = []
@@ -510,31 +640,31 @@ function TreeView({
 		return out
 	}, [items])
 
-	const visibleItems = React.useMemo(() => {
-		const out: TreeItem[] = []
-		const walk = (key: string) => {
-			const it = itemByKey.get(key)
+		const visibleItems = React.useMemo(() => {
+			const out: TreeItem[] = []
+			const walk = (key: string) => {
+				const it = itemByKey.get(key)
 			if (!it) return
 			if (visibleKeys && !visibleKeys.has(key)) return
 
 			out.push(it)
 
-			const children = childrenByKey.get(key) ?? []
-			if (children.length === 0) return
+				const children = childrenByKey.get(key) ?? []
+				if (children.length === 0) return
 
-			const collapsed = state[key]?.collapsed ?? false
-			if (!q) {
-				if (collapsed) return
-			} else {
-				if (collapsed && !(forcedOpenKeys?.has(key) ?? false)) return
-			}
+				const collapsed = state[key]?.collapsed ?? false
+				if (terms.length === 0) {
+					if (collapsed) return
+				} else {
+					if (collapsed && !(forcedOpenKeys?.has(key) ?? false)) return
+				}
 
 			for (const childKey of children) walk(childKey)
 		}
 
-		for (const rootKey of roots) walk(rootKey)
-		return out
-	}, [childrenByKey, forcedOpenKeys, itemByKey, q, roots, state, visibleKeys])
+			for (const rootKey of roots) walk(rootKey)
+			return out
+		}, [childrenByKey, forcedOpenKeys, itemByKey, roots, state, terms.length, visibleKeys])
 
 	function toggleCollapsed(key: string) {
 		onStateChange((prev) => {
@@ -553,20 +683,30 @@ function TreeView({
 
 	return (
 		<div className="space-y-0.5">
-			{visibleItems.map((it) => {
-				const active = it.key === selectedKey
-				const children = childrenByKey.get(it.key) ?? []
-				const hasChildren = children.length > 0
-				const collapsed = state[it.key]?.collapsed ?? false
+				{visibleItems.map((it) => {
+					const active = it.key === selectedKey
+					const children = childrenByKey.get(it.key) ?? []
+					const hasChildren = children.length > 0
+					const collapsed = state[it.key]?.collapsed ?? false
+					const canQuickAddChild = Boolean(
+						onQuickAddChild && isContainerNode(it.node),
+					)
+					const canQuickDuplicate = Boolean(
+						onQuickDuplicate && it.parentSlot?.kind === 'children',
+					)
+					const canQuickDelete = Boolean(
+						onQuickDelete && it.parentSlot?.kind === 'children',
+					)
+					const canOpenActions = Boolean(onOpenActions)
 
-				return (
-					<div
-						key={it.key}
-						className={[
-							'flex items-center gap-1 px-1',
-							active ? 'bg-muted' : 'hover:bg-muted/40',
-						].join(' ')}
-					>
+					return (
+						<div
+							key={it.key}
+							className={[
+								'group flex items-center gap-1 px-1',
+								active ? 'bg-muted' : 'hover:bg-muted/40',
+							].join(' ')}
+						>
 						<div
 							className="flex items-center"
 							style={{ paddingLeft: it.depth * 12 }}
@@ -582,15 +722,15 @@ function TreeView({
 								className={[
 									'flex size-6 items-center justify-center text-muted-foreground',
 									hasChildren ? 'hover:text-foreground' : 'opacity-40',
-								].join(' ')}
-								aria-label={
-									hasChildren
-										? collapsed
-											? 'Expand'
-											: 'Collapse'
-										: 'Leaf node'
-								}
-							>
+									].join(' ')}
+									aria-label={
+										hasChildren
+											? collapsed
+												? (t?.('structure.expandAria') ?? 'Expand')
+												: (t?.('structure.collapseAria') ?? 'Collapse')
+											: (t?.('structure.leafNode') ?? 'Leaf node')
+									}
+								>
 								<ChevronRight
 									className={[
 										'size-3 transition-transform',
@@ -612,12 +752,83 @@ function TreeView({
 							].join(' ')}
 							title={it.key}
 						>
-							{it.label}
-						</button>
-					</div>
-				)
-			})}
-		</div>
+								{it.label}
+							</button>
+
+							{canQuickAddChild ||
+							canQuickDuplicate ||
+							canQuickDelete ||
+							canOpenActions ? (
+								<div className="flex shrink-0 items-center gap-0.5 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+									{canQuickAddChild ? (
+										<button
+											type="button"
+											className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+											title={t?.('structure.addChild') ?? 'Add Child'}
+											aria-label={t?.('structure.addChild') ?? 'Add Child'}
+											onClick={(e) => {
+												e.preventDefault()
+												e.stopPropagation()
+												onQuickAddChild?.(it.key)
+											}}
+										>
+											<Plus className="size-3" />
+										</button>
+									) : null}
+
+									{canQuickDuplicate ? (
+										<button
+											type="button"
+											className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+											title={t?.('structure.duplicate') ?? 'Duplicate'}
+											aria-label={t?.('structure.duplicate') ?? 'Duplicate'}
+											onClick={(e) => {
+												e.preventDefault()
+												e.stopPropagation()
+												onQuickDuplicate?.(it.key)
+											}}
+										>
+											<Copy className="size-3" />
+										</button>
+									) : null}
+
+									{canQuickDelete ? (
+										<button
+											type="button"
+											className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+											title={t?.('structure.delete') ?? 'Delete'}
+											aria-label={t?.('structure.delete') ?? 'Delete'}
+											onClick={(e) => {
+												e.preventDefault()
+												e.stopPropagation()
+												onQuickDelete?.(it.key)
+											}}
+										>
+											<Trash2 className="size-3" />
+										</button>
+									) : null}
+
+									{canOpenActions ? (
+										<button
+											type="button"
+											className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+											title={t?.('structure.actionsTitle') ?? 'Actions'}
+											aria-label={t?.('structure.actionsTitle') ?? 'Actions'}
+											onClick={(e) => {
+												e.preventDefault()
+												e.stopPropagation()
+												onOpenActions?.(it.key)
+											}}
+										>
+											<MoreHorizontal className="size-3" />
+										</button>
+									) : null}
+								</div>
+							) : null}
+						</div>
+					)
+				})}
+			</div>
 	)
 }
 
@@ -689,11 +900,16 @@ function TreeView({
 	const setSelectedKey = onSelectedKeyChange ?? setInternalSelectedKey
 	const [addType, setAddType] =
 		React.useState<ThreadRenderTreeNode['type']>('Text')
-	const [wrapType, setWrapType] = React.useState<'Stack' | 'Box'>('Box')
 	const [copiedNode, setCopiedNode] =
 		React.useState<ThreadRenderTreeNode | null>(null)
 
 	const sceneRoot = (value.scenes?.[scene]?.root ??
+		null) as ThreadRenderTreeNode | null
+
+	const coverSceneRoot = (value.scenes?.cover?.root ??
+		null) as ThreadRenderTreeNode | null
+
+	const postSceneRoot = (value.scenes?.post?.root ??
 		null) as ThreadRenderTreeNode | null
 
 	const baselineSceneRoot = (baselineValue?.scenes?.[scene]?.root ??
@@ -723,12 +939,58 @@ function TreeView({
 	}, [scene, sceneRoot])
 
 	const [treeFilter, setTreeFilter] = React.useState('')
+	const treeFilterInputRef = React.useRef<HTMLInputElement | null>(null)
+	const [actionsKey, setActionsKey] = React.useState<string | null>(null)
+
+	const [jumpOpen, setJumpOpen] = React.useState(false)
+	const [jumpQuery, setJumpQuery] = React.useState('')
+	const jumpInputRef = React.useRef<HTMLInputElement | null>(null)
+
+	const jumpCandidates = React.useMemo(() => {
+		const out: TreeItem[] = []
+		if (coverSceneRoot) out.push(...buildTree('cover', coverSceneRoot))
+		if (postSceneRoot) out.push(...buildTree('post', postSceneRoot))
+		return out
+	}, [coverSceneRoot, postSceneRoot])
+
+	const jumpTerms = React.useMemo(
+		() => parseTreeFilterTerms(jumpQuery),
+		[jumpQuery],
+	)
+	const jumpResults = React.useMemo(() => {
+		if (jumpTerms.length === 0) return [] as TreeItem[]
+		return jumpCandidates
+			.filter((it) => matchesTreeFilter(it, jumpTerms))
+			.slice(0, 120)
+	}, [jumpCandidates, jumpTerms])
+
+	React.useEffect(() => {
+		if (!jumpOpen) return
+		const id = window.setTimeout(() => {
+			jumpInputRef.current?.focus()
+			jumpInputRef.current?.select()
+		}, 0)
+		return () => window.clearTimeout(id)
+	}, [jumpOpen])
+
+	function selectJumpResult(it: TreeItem) {
+		setScene(it.scene)
+		setSelectedKey(it.key)
+		setJumpOpen(false)
+		setJumpQuery('')
+		setTreeFilter('')
+	}
 
 	const itemByKey = React.useMemo(() => {
 		const m = new Map<string, TreeItem>()
 		for (const it of tree) m.set(it.key, it)
 		return m
 	}, [tree])
+
+	const actionsItem = actionsKey ? (itemByKey.get(actionsKey) ?? null) : null
+	React.useEffect(() => {
+		if (actionsKey && !actionsItem) setActionsKey(null)
+	}, [actionsItem, actionsKey])
 
 	const childrenByKey = React.useMemo(() => buildChildrenMap(tree), [tree])
 	const parentByKey = React.useMemo(() => buildAncestorsMap(tree), [tree])
@@ -748,29 +1010,6 @@ function TreeView({
 	}, [itemByKey, scene, selectedKey])
 
 	const selected = itemByKey.get(selectedKey) ?? null
-
-	const parentInfo =
-		selected && selected.parentKey
-			? (itemByKey.get(selected.parentKey) ?? null)
-			: null
-
-	const canMoveUp =
-		Boolean(selected?.parentSlot?.kind === 'children') &&
-		Boolean(
-			selected?.parentSlot?.kind === 'children' &&
-			selected.parentSlot.index > 0,
-		)
-	const canMoveDown =
-		Boolean(selected?.parentSlot?.kind === 'children') &&
-		Boolean(
-			selected?.parentSlot?.kind === 'children' &&
-			parentInfo &&
-			isContainerNode(parentInfo.node) &&
-			selected.parentSlot.index < (parentInfo.node.children?.length ?? 0) - 1,
-		)
-
-	const canInsertSibling =
-		selected?.parentSlot?.kind === 'children' && parentInfo
 
 	const pickableAssets = React.useMemo(() => {
 		return assets
@@ -914,33 +1153,174 @@ function TreeView({
 		updateSelected(() => node)
 	}
 
-	function addChild() {
-		if (!sceneRoot || !selected) return
-		const node = getNodeAtPath(sceneRoot, selected.path)
+	function quickAddChildByKey(key: string) {
+		if (!sceneRoot) return
+		const it = itemByKey.get(key)
+		if (!it) return
+		const node = getNodeAtPath(sceneRoot, it.path)
 		if (!node || !isContainerNode(node)) return
+		const idx = node.children?.length ?? 0
 		const child = createNodeToAdd()
-		updateSceneRoot(appendChild(sceneRoot, selected.path, child))
+		const next = appendChild(sceneRoot, it.path, child)
+		updateSceneRoot(next)
+		setSelectedKey(
+			pathKey(scene, pathForSlot(it.path, { kind: 'children', index: idx })),
+		)
 	}
 
-	function insertSibling(where: 'before' | 'after') {
-		if (!sceneRoot || !selected) return
-		if (selected.parentSlot?.kind !== 'children') return
-		if (!selected.parentKey) return
-		const parent = itemByKey.get(selected.parentKey)
+	function quickDuplicateByKey(key: string) {
+		if (!sceneRoot) return
+		const it = itemByKey.get(key)
+		if (!it) return
+		if (it.parentSlot?.kind !== 'children') return
+		if (!it.parentKey) return
+		const parent = itemByKey.get(it.parentKey)
 		if (!parent) return
-		const idx =
-			where === 'before'
-				? selected.parentSlot.index
-				: selected.parentSlot.index + 1
+		const idx = it.parentSlot.index + 1
+		const dup = cloneJson(it.node) as ThreadRenderTreeNode
+		const next = insertChildAt(sceneRoot, parent.path, idx, dup)
+		updateSceneRoot(next)
+		setSelectedKey(
+			pathKey(scene, pathForSlot(parent.path, { kind: 'children', index: idx })),
+		)
+	}
+
+	function quickDeleteByKey(key: string) {
+		if (!sceneRoot) return
+		const it = itemByKey.get(key)
+		if (!it) return
+		if (!it.parentKey || !it.parentSlot) return
+		const parent = itemByKey.get(it.parentKey)
+		if (!parent) return
+		const next = removeFromParent(sceneRoot, parent.path, it.parentSlot)
+		updateSceneRoot(next)
+		setSelectedKey(pathKey(scene, parent.path))
+	}
+
+	function quickInsertSiblingByKey(
+		key: string,
+		where: 'before' | 'after',
+	) {
+		if (!sceneRoot) return
+		const it = itemByKey.get(key)
+		if (!it) return
+		if (it.parentSlot?.kind !== 'children') return
+		if (!it.parentKey) return
+		const parent = itemByKey.get(it.parentKey)
+		if (!parent) return
+		const idx = where === 'before' ? it.parentSlot.index : it.parentSlot.index + 1
 		const child = createNodeToAdd()
 		const next = insertChildAt(sceneRoot, parent.path, idx, child)
 		updateSceneRoot(next)
 		setSelectedKey(
-			pathKey(
-				scene,
-				pathForSlot(parent.path, { kind: 'children', index: idx }),
-			),
+			pathKey(scene, pathForSlot(parent.path, { kind: 'children', index: idx })),
 		)
+	}
+
+	function quickMoveByKey(key: string, dir: 'up' | 'down') {
+		if (!sceneRoot) return
+		const it = itemByKey.get(key)
+		if (!it) return
+		if (it.parentSlot?.kind !== 'children') return
+		if (!it.parentKey) return
+		const parent = itemByKey.get(it.parentKey)
+		if (!parent || !isContainerNode(parent.node)) return
+		const a = it.parentSlot.index
+		const b = dir === 'up' ? a - 1 : a + 1
+		if (b < 0) return
+		if (b > (parent.node.children?.length ?? 0) - 1) return
+		const next = swapSiblings(sceneRoot, parent.path, a, b)
+		updateSceneRoot(next)
+		setSelectedKey(
+			pathKey(scene, pathForSlot(parent.path, { kind: 'children', index: b })),
+		)
+	}
+
+	async function copyByKey(key: string) {
+		const it = itemByKey.get(key)
+		if (!it) return
+		const node = cloneJson(it.node) as ThreadRenderTreeNode
+		setCopiedNode(node)
+		try {
+			await navigator.clipboard?.writeText(JSON.stringify(node))
+		} catch {
+			// ignore
+		}
+	}
+
+	function pasteByKey(key: string) {
+		if (!sceneRoot) return
+		const it = itemByKey.get(key)
+		if (!it) return
+		const node = copiedNode
+			? (cloneJson(copiedNode) as ThreadRenderTreeNode)
+			: null
+		if (!node) return
+
+		const targetNow = getNodeAtPath(sceneRoot, it.path)
+		if (!targetNow) return
+
+		if (isContainerNode(targetNow)) {
+			const idx = targetNow.children?.length ?? 0
+			const next = appendChild(sceneRoot, it.path, node)
+			updateSceneRoot(next)
+			setSelectedKey(
+				pathKey(scene, pathForSlot(it.path, { kind: 'children', index: idx })),
+			)
+			return
+		}
+
+		if (it.parentSlot?.kind === 'children' && it.parentKey) {
+			const parent = itemByKey.get(it.parentKey)
+			if (!parent) return
+			const idx = it.parentSlot.index + 1
+			const next = insertChildAt(sceneRoot, parent.path, idx, node)
+			updateSceneRoot(next)
+			setSelectedKey(
+				pathKey(
+					scene,
+					pathForSlot(parent.path, { kind: 'children', index: idx }),
+				),
+			)
+			return
+		}
+
+		const next = updateNodeAtPath(sceneRoot, it.path, () => node)
+		updateSceneRoot(next)
+		setSelectedKey(it.key)
+	}
+
+	function wrapByKey(key: string, wrap: 'Box' | 'Stack') {
+		if (!sceneRoot) return
+		const it = itemByKey.get(key)
+		if (!it) return
+		const next = updateNodeAtPath(sceneRoot, it.path, (n) => {
+			if (wrap === 'Stack')
+				return {
+					type: 'Stack',
+					direction: 'column',
+					gap: 12,
+					children: [n],
+				}
+			return { type: 'Box', padding: 12, children: [n] }
+		})
+		updateSceneRoot(next)
+		setSelectedKey(it.key)
+	}
+
+	function unwrapByKey(key: string) {
+		if (!sceneRoot) return
+		const it = itemByKey.get(key)
+		if (!it) return
+		const node = getNodeAtPath(sceneRoot, it.path)
+		if (!node || !isContainerNode(node)) return
+		const children = node.children ?? []
+		if (children.length !== 1) return
+		const only = children[0]
+		if (!only) return
+		const next = updateNodeAtPath(sceneRoot, it.path, () => only)
+		updateSceneRoot(next)
+		setSelectedKey(it.key)
 	}
 
 	function duplicateSelected() {
@@ -961,41 +1341,6 @@ function TreeView({
 		)
 	}
 
-	function wrapSelected() {
-		if (!sceneRoot || !selected) return
-		updateSelected((n) => {
-			if (wrapType === 'Stack')
-				return {
-					type: 'Stack',
-					direction: 'column',
-					gap: 12,
-					children: [n],
-				}
-			return { type: 'Box', padding: 12, children: [n] }
-		})
-	}
-
-	function unwrapSelected() {
-		if (!sceneRoot || !selected) return
-		const node = getNodeAtPath(sceneRoot, selected.path)
-		if (!node || !isContainerNode(node)) return
-		const children = node.children ?? []
-		if (children.length !== 1) return
-		const only = children[0]
-		if (!only) return
-		updateSelected(() => only)
-	}
-
-	function removeSelected() {
-		if (!sceneRoot || !selected) return
-		if (!selected.parentKey || !selected.parentSlot) return
-		const parent = itemByKey.get(selected.parentKey)
-		if (!parent) return
-		const next = removeFromParent(sceneRoot, parent.path, selected.parentSlot)
-		updateSceneRoot(next)
-		setSelectedKey(pathKey(scene, parent.path))
-	}
-
 	function moveSelected(dir: 'up' | 'down') {
 		if (!sceneRoot || !selected) return
 		if (selected.parentSlot?.kind !== 'children') return
@@ -1010,11 +1355,6 @@ function TreeView({
 			pathKey(scene, pathForSlot(parent.path, { kind: 'children', index: b })),
 		)
 	}
-
-	const canAddChild = Boolean(selected && isContainerNode(selected.node))
-	const canUnwrap =
-		Boolean(selected && isContainerNode(selected.node)) &&
-		Boolean((selected.node as any).children?.length === 1)
 
 	const numberField = (
 		label: string,
@@ -1144,6 +1484,33 @@ function TreeView({
 	const canUndo = history.past.length > 0
 	const canRedo = history.future.length > 0
 
+	const actionsParent = actionsItem?.parentKey
+		? (itemByKey.get(actionsItem.parentKey) ?? null)
+		: null
+	const canActionsAddChild = Boolean(actionsItem && isContainerNode(actionsItem.node))
+	const canActionsInsertSibling = Boolean(
+		actionsItem?.parentSlot?.kind === 'children' && actionsParent,
+	)
+	const canActionsDuplicate = Boolean(actionsItem?.parentSlot?.kind === 'children')
+	const canActionsDelete = Boolean(actionsItem?.parentKey && actionsItem?.parentSlot)
+	const canActionsMoveUp = Boolean(
+		actionsItem?.parentSlot?.kind === 'children' &&
+			(actionsItem.parentSlot?.index ?? 0) > 0,
+	)
+	const canActionsMoveDown = Boolean(
+		actionsItem?.parentSlot?.kind === 'children' &&
+			actionsParent &&
+			isContainerNode(actionsParent.node) &&
+			(actionsItem.parentSlot?.index ?? 0) <
+				(actionsParent.node.children?.length ?? 0) - 1,
+	)
+	const canActionsUnwrap = Boolean(
+		actionsItem &&
+			isContainerNode(actionsItem.node) &&
+			(actionsItem.node.children?.length ?? 0) === 1,
+	)
+	const canActionsPaste = Boolean(actionsItem && copiedNode)
+
 	function isTypingTarget(target: EventTarget | null) {
 		if (!target || !(target as any).tagName) return false
 		const el = target as HTMLElement
@@ -1169,13 +1536,25 @@ function TreeView({
 				layout === 'panels'
 					? 'contents'
 					: 'grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]'
-			}
-			onKeyDownCapture={(e) => {
-				if (!hotkeysEnabled) return
-				if (isTypingTarget(e.target)) return
-				const key = e.key.toLowerCase()
-				const mod = e.metaKey || e.ctrlKey
-				if (!mod) return
+				}
+				onKeyDownCapture={(e) => {
+					if (!hotkeysEnabled) return
+					if (isTypingTarget(e.target)) return
+
+					if (e.altKey && e.key === 'ArrowUp') {
+						e.preventDefault()
+						moveSelected('up')
+						return
+					}
+					if (e.altKey && e.key === 'ArrowDown') {
+						e.preventDefault()
+						moveSelected('down')
+						return
+					}
+
+					const key = e.key.toLowerCase()
+					const mod = e.metaKey || e.ctrlKey
+					if (!mod) return
 
 				if (key === 'z' && !e.shiftKey) {
 					e.preventDefault()
@@ -1202,17 +1581,324 @@ function TreeView({
 					pasteCopied()
 					return
 				}
-				if (key === 'd') {
-					e.preventDefault()
-					duplicateSelected()
-					return
-				}
-			}}
-		>
-			<div
-				className={[
-					isStructureCollapsed ? 'h-full' : 'space-y-3',
-					structureClassName,
+					if (key === 'd') {
+						e.preventDefault()
+						duplicateSelected()
+						return
+					}
+					if (key === 'f') {
+						e.preventDefault()
+						treeFilterInputRef.current?.focus()
+						treeFilterInputRef.current?.select()
+						return
+					}
+					if (key === 'k') {
+						e.preventDefault()
+						setJumpOpen(true)
+						return
+					}
+				}}
+			>
+				<Dialog
+					open={jumpOpen}
+					onOpenChange={(open) => {
+						setJumpOpen(open)
+						if (!open) setJumpQuery('')
+					}}
+				>
+					<DialogContent className="rounded-none sm:max-w-xl">
+						<DialogHeader>
+							<DialogTitle className="font-mono uppercase tracking-widest text-sm">
+								{t('structure.jumpDialogTitle')}
+							</DialogTitle>
+							<DialogDescription className="font-mono text-xs">
+								{t('structure.jumpDialogDescription')}
+							</DialogDescription>
+						</DialogHeader>
+
+						<div className="space-y-2">
+							<Input
+								ref={jumpInputRef}
+								value={jumpQuery}
+								onChange={(e) => setJumpQuery(e.target.value)}
+								placeholder={t('structure.jumpDialogPlaceholder')}
+								className="rounded-none font-mono text-xs h-9"
+								onKeyDown={(e) => {
+									if (e.key === 'Escape') {
+										e.preventDefault()
+										setJumpOpen(false)
+										return
+									}
+									if (e.key === 'Enter') {
+										const first = jumpResults[0]
+										if (!first) return
+										e.preventDefault()
+										selectJumpResult(first)
+									}
+								}}
+							/>
+
+							<div className="rounded-none border border-border bg-card">
+								<div className="max-h-[340px] overflow-auto py-1">
+									{jumpQuery.trim() ? (
+										jumpResults.length > 0 ? (
+											jumpResults.map((it) => (
+												<button
+													key={it.key}
+													type="button"
+													className="flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-xs hover:bg-muted"
+													title={it.key}
+													onClick={() => selectJumpResult(it)}
+												>
+													<span className="shrink-0 text-muted-foreground">
+														{it.scene === 'cover'
+															? t('structure.cover')
+															: t('structure.post')}
+													</span>
+													<span className="min-w-0 flex-1 truncate text-foreground">
+														{it.label}
+													</span>
+													<span className="shrink-0 text-muted-foreground">
+														{it.key.slice(0, 12)}
+													</span>
+												</button>
+											))
+										) : (
+											<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
+												{t('structure.jumpDialogNoResults')}
+											</div>
+										)
+									) : (
+										<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
+											{t('structure.jumpDialogTypeToSearch')}
+										</div>
+									)}
+								</div>
+							</div>
+						</div>
+					</DialogContent>
+					</Dialog>
+					<Dialog
+						open={Boolean(actionsItem)}
+						onOpenChange={(open) => {
+							if (open) return
+							setActionsKey(null)
+						}}
+					>
+						<DialogContent className="rounded-none sm:max-w-xl">
+							<DialogHeader>
+								<DialogTitle className="font-mono uppercase tracking-widest text-sm">
+									{t('structure.actionsDialogTitle')}
+								</DialogTitle>
+								<DialogDescription className="font-mono text-xs">
+									{t('structure.actionsDialogDescription')}
+								</DialogDescription>
+							</DialogHeader>
+
+							{actionsItem ? (
+								<div className="space-y-3">
+									<div className="rounded-none border border-border bg-card px-3 py-2">
+										<div className="font-mono text-xs text-foreground">
+											{actionsItem.label}
+										</div>
+										<div className="font-mono text-[10px] text-muted-foreground">
+											{actionsItem.key}
+										</div>
+									</div>
+
+									<div className="space-y-1">
+										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+											{t('structure.newNodeType')}
+										</Label>
+										<Select
+											value={addType}
+											onValueChange={(v) =>
+												setAddType(v as ThreadRenderTreeNode['type'])
+											}
+										>
+											<SelectTrigger className="rounded-none font-mono text-xs h-9">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												{ADD_NODE_TYPES.map((t) => (
+													<SelectItem key={t} value={t}>
+														{t}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
+									<div className="flex flex-wrap items-center gap-2">
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsAddChild}
+											onClick={() => {
+												quickAddChildByKey(actionsItem.key)
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.addChild')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsInsertSibling}
+											onClick={() => {
+												quickInsertSiblingByKey(actionsItem.key, 'before')
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.insertBefore')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsInsertSibling}
+											onClick={() => {
+												quickInsertSiblingByKey(actionsItem.key, 'after')
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.insertAfter')}
+										</Button>
+									</div>
+
+									<div className="flex flex-wrap items-center gap-2">
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											onClick={() => void copyByKey(actionsItem.key)}
+										>
+											{t('structure.copy')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsPaste}
+											onClick={() => {
+												pasteByKey(actionsItem.key)
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.paste')}
+										</Button>
+									</div>
+
+									<div className="flex flex-wrap items-center gap-2">
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsMoveUp}
+											onClick={() => {
+												quickMoveByKey(actionsItem.key, 'up')
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.moveUp')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsMoveDown}
+											onClick={() => {
+												quickMoveByKey(actionsItem.key, 'down')
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.moveDown')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsDuplicate}
+											onClick={() => {
+												quickDuplicateByKey(actionsItem.key)
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.duplicate')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="destructive"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsDelete}
+											onClick={() => {
+												quickDeleteByKey(actionsItem.key)
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.delete')}
+										</Button>
+									</div>
+
+									<div className="flex flex-wrap items-center gap-2">
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											onClick={() => {
+												wrapByKey(actionsItem.key, 'Box')
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.wrapBox')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											onClick={() => {
+												wrapByKey(actionsItem.key, 'Stack')
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.wrapStack')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-xs uppercase"
+											disabled={!canActionsUnwrap}
+											onClick={() => {
+												unwrapByKey(actionsItem.key)
+												setActionsKey(null)
+											}}
+										>
+											{t('structure.unwrap')}
+										</Button>
+									</div>
+								</div>
+							) : null}
+						</DialogContent>
+					</Dialog>
+
+					<div
+						className={[
+							isStructureCollapsed ? 'h-full' : 'space-y-3',
+							structureClassName,
 				]
 					.filter(Boolean)
 					.join(' ')}
@@ -1280,59 +1966,63 @@ function TreeView({
 									{t('structure.post')}
 								</Button>
 							</div>
-						</div>
-
-							<Input
-								placeholder={t('structure.searchPlaceholder')}
-								value={treeFilter}
-								onChange={(e) => setTreeFilter(e.target.value)}
-								className="rounded-none font-mono text-xs h-8"
-							/>
-
-						<div className="rounded-none border border-border bg-card">
-							<div className="max-h-[420px] overflow-auto py-2">
-								<TreeView
-									items={tree}
-									childrenByKey={childrenByKey}
-									parentByKey={parentByKey}
-									selectedKey={selectedKey}
-									onSelectedKeyChange={setSelectedKey}
-									filterText={treeFilter}
-									state={treeState}
-									onStateChange={setTreeState}
-									t={t}
-								/>
 							</div>
-						</div>
+
+							<div className="flex items-center gap-2">
+								<Input
+									ref={treeFilterInputRef}
+									placeholder={t('structure.searchPlaceholder')}
+									value={treeFilter}
+									onChange={(e) => setTreeFilter(e.target.value)}
+									className="rounded-none font-mono text-xs h-8"
+								/>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs h-8 px-2"
+									title={t('structure.jumpTitle')}
+									onClick={() => setJumpOpen(true)}
+								>
+									<Search className="size-3" />
+									<span className="ml-1">{t('structure.jump')}</span>
+								</Button>
+							</div>
+
+							<div className="font-mono text-[10px] text-muted-foreground">
+								{t('structure.searchHint')}
+							</div>
+
+							<div className="rounded-none border border-border bg-card">
+								<div className="max-h-[420px] overflow-auto py-2">
+									<TreeView
+										items={tree}
+										childrenByKey={childrenByKey}
+										parentByKey={parentByKey}
+										selectedKey={selectedKey}
+										onSelectedKeyChange={setSelectedKey}
+										filterText={treeFilter}
+										state={treeState}
+										onStateChange={setTreeState}
+										onQuickAddChild={quickAddChildByKey}
+										onQuickDuplicate={quickDuplicateByKey}
+										onQuickDelete={quickDeleteByKey}
+										onOpenActions={(key) => {
+											setSelectedKey(key)
+											setActionsKey(key)
+										}}
+										t={t}
+									/>
+								</div>
+							</div>
 
 						<div className="flex flex-wrap items-center gap-2">
-							<Select
-								value={addType}
-								onValueChange={(v) => setAddType(v as any)}
-							>
+							<Select value={addType} onValueChange={(v) => setAddType(v as any)}>
 								<SelectTrigger className="rounded-none font-mono text-xs h-9">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									{(
-										[
-											'Text',
-											'Stack',
-											'Box',
-											'Grid',
-											'Absolute',
-											'Avatar',
-											'Metrics',
-											'ContentBlocks',
-											'Repeat',
-											'Image',
-											'Video',
-											'Background',
-											'Spacer',
-											'Divider',
-											'Builtin',
-										] as Array<ThreadRenderTreeNode['type']>
-									).map((t) => (
+									{ADD_NODE_TYPES.map((t) => (
 										<SelectItem key={t} value={t}>
 											{t}
 										</SelectItem>
@@ -1360,131 +2050,10 @@ function TreeView({
 							>
 								{t('structure.redo')}
 							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!selectedNode}
-								onClick={() => void copySelected()}
-							>
-								{t('structure.copy')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!selectedNode || !copiedNode}
-								onClick={pasteCopied}
-							>
-								{t('structure.paste')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canAddChild}
-								onClick={addChild}
-							>
-								{t('structure.addChild')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canInsertSibling}
-								onClick={() => insertSibling('before')}
-							>
-								{t('structure.insertBefore')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canInsertSibling}
-								onClick={() => insertSibling('after')}
-							>
-								{t('structure.insertAfter')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canInsertSibling}
-								onClick={duplicateSelected}
-							>
-								{t('structure.duplicate')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canMoveUp}
-								onClick={() => moveSelected('up')}
-							>
-								{t('structure.moveUp')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canMoveDown}
-								onClick={() => moveSelected('down')}
-							>
-								{t('structure.moveDown')}
-							</Button>
-							<Select
-								value={wrapType}
-								onValueChange={(v) => setWrapType(v as any)}
-							>
-								<SelectTrigger className="rounded-none font-mono text-xs h-9">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="Box">{t('structure.wrapBox')}</SelectItem>
-									<SelectItem value="Stack">{t('structure.wrapStack')}</SelectItem>
-								</SelectContent>
-							</Select>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!selectedNode}
-								onClick={wrapSelected}
-							>
-								{t('structure.wrap')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!canUnwrap}
-								onClick={unwrapSelected}
-							>
-								{t('structure.unwrap')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!selected?.parentKey}
-								onClick={removeSelected}
-							>
-								{t('structure.delete')}
-							</Button>
 						</div>
-					</>
-				)}
-			</div>
+						</>
+					)}
+				</div>
 
 			<div
 				className={[
