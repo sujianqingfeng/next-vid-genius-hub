@@ -20,7 +20,7 @@ import {
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { ThreadRemotionEditorCard } from '~/components/business/threads/thread-remotion-editor-card'
+import { ThreadRemotionEditorSurface } from '~/components/business/threads/thread-remotion-editor-surface'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { Button } from '~/components/ui/button'
@@ -115,6 +115,161 @@ function toConfigFromVersionRow(row: any): ThreadTemplateConfigV1 | null {
 	} catch {
 		return null
 	}
+}
+
+type ThreadTemplateCanvasToolbarProps = {
+	t: (key: string, vars?: Record<string, unknown>) => string
+	editorScene: 'cover' | 'post'
+	onEditorSceneChange: (scene: 'cover' | 'post') => void
+	previewMode: 'edit' | 'play'
+	onPreviewModeChange: (mode: 'edit' | 'play') => void
+	zoom: number
+	onZoomChange: (next: number) => void
+	focusMode: boolean
+	onToggleFocusMode: () => void
+}
+
+function ThreadTemplateCanvasToolbar({
+	t,
+	editorScene,
+	onEditorSceneChange,
+	previewMode,
+	onPreviewModeChange,
+	zoom,
+	onZoomChange,
+	focusMode,
+	onToggleFocusMode,
+}: ThreadTemplateCanvasToolbarProps) {
+	return (
+		<div className="shrink-0 border-b border-border bg-card/70 backdrop-blur px-3 py-2">
+			<div className="flex items-center justify-between gap-3">
+				<div className="flex items-center gap-3">
+					<div className="flex items-center p-1 rounded-full bg-background/80 border border-border/40 shadow-sm">
+						<button
+							type="button"
+							onClick={() => onEditorSceneChange('cover')}
+							className={[
+								'px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
+								editorScene === 'cover'
+									? 'bg-foreground text-background font-bold shadow-sm'
+									: 'text-muted-foreground hover:text-foreground',
+							].join(' ')}
+						>
+							{t('structure.cover')}
+						</button>
+						<button
+							type="button"
+							onClick={() => onEditorSceneChange('post')}
+							className={[
+								'px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
+								editorScene === 'post'
+									? 'bg-foreground text-background font-bold shadow-sm'
+									: 'text-muted-foreground hover:text-foreground',
+							].join(' ')}
+						>
+							{t('structure.post')}
+						</button>
+					</div>
+
+					<Separator orientation="vertical" className="h-5" />
+
+					<div className="flex items-center px-1">
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant={previewMode === 'edit' ? 'secondary' : 'ghost'}
+									size="icon"
+									className="size-8 rounded-full"
+									onClick={() => onPreviewModeChange('edit')}
+								>
+									<MousePointer2 className="size-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent
+								side="bottom"
+								className="font-mono text-[10px] uppercase"
+							>
+								{t('buttons.edit')}
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant={previewMode === 'play' ? 'secondary' : 'ghost'}
+									size="icon"
+									className="size-8 rounded-full"
+									onClick={() => onPreviewModeChange('play')}
+								>
+									<Play className="size-4" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent
+								side="bottom"
+								className="font-mono text-[10px] uppercase"
+							>
+								{t('buttons.play')}
+							</TooltipContent>
+						</Tooltip>
+					</div>
+				</div>
+
+				<div className="flex items-center gap-2">
+					<div className="flex items-center px-1">
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-8 rounded-full"
+							onClick={() => onZoomChange(Math.max(0.1, zoom - 0.1))}
+							title={t('tooltips.zoomOut')}
+						>
+							<Minus className="size-4" />
+						</Button>
+						<span className="w-10 text-center text-[10px] font-mono text-muted-foreground select-none">
+							{Math.round(zoom * 100)}%
+						</span>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-8 rounded-full"
+							onClick={() => onZoomChange(Math.min(3, zoom + 0.1))}
+							title={t('tooltips.zoomIn')}
+						>
+							<Plus className="size-4" />
+						</Button>
+					</div>
+
+					<Separator orientation="vertical" className="h-5" />
+
+					<span className="text-[10px] font-mono text-muted-foreground opacity-50 select-none">
+						1080×1920
+					</span>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								variant={focusMode ? 'secondary' : 'ghost'}
+								size="icon"
+								className="size-8 rounded-full"
+								onClick={onToggleFocusMode}
+							>
+								{focusMode ? (
+									<Minimize className="size-4" />
+								) : (
+									<Maximize className="size-4" />
+								)}
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent
+							side="bottom"
+							className="font-mono text-[10px] uppercase"
+						>
+							{focusMode ? 'Exit Focus Mode' : 'Focus Mode'}
+						</TooltipContent>
+					</Tooltip>
+				</div>
+			</div>
+		</div>
+	)
 }
 
 function ThreadTemplateVersionEditorRoute() {
@@ -898,126 +1053,129 @@ function ThreadTemplateVersionEditorRoute() {
 						</div>
 
 						{/* CENTER CANVAS */}
-						<div className="order-2 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1 h-full overflow-hidden flex flex-col relative bg-muted/5 group">
-							{/* Canvas Background Pattern */}
-							<div
-								className="absolute inset-0 opacity-[0.03] pointer-events-none"
-								style={{
-									backgroundImage:
-										'radial-gradient(circle, currentColor 1px, transparent 1px)',
-									backgroundSize: '20px 20px',
+						<div className="order-2 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1 h-full overflow-hidden flex flex-col min-h-0 bg-muted/5">
+							<ThreadTemplateCanvasToolbar
+									t={t}
+									editorScene={editorScene}
+									onEditorSceneChange={(s) => {
+										setEditorScene(s)
+										setEditorSelectedKey(`${s}:[]`)
+									}}
+									previewMode={previewMode}
+									onPreviewModeChange={(m) => setPreviewMode(m)}
+								zoom={zoom}
+								onZoomChange={(next) => setZoom(next)}
+								focusMode={layout.leftCollapsed && layout.rightCollapsed}
+								onToggleFocusMode={() => {
+									const isFocused = layout.leftCollapsed && layout.rightCollapsed
+									if (isFocused) {
+										setLayout((prev) => ({
+											...prev,
+											leftCollapsed: false,
+											rightCollapsed: false,
+										}))
+										return
+									}
+									setLayout((prev) => ({
+										...prev,
+										leftCollapsed: true,
+										rightCollapsed: true,
+									}))
 								}}
 							/>
 
-							{/* TOP FLOATING: Scene Switcher */}
-							<div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 transition-all duration-200">
-								<div className="flex items-center p-1 rounded-full bg-background/80 backdrop-blur border border-border/40 shadow-sm hover:shadow-md transition-all">
-									<button
-										type="button"
-										onClick={() => setEditorScene('cover')}
-										className={[
-											'px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
-											editorScene === 'cover'
-												? 'bg-foreground text-background font-bold shadow-sm'
-												: 'text-muted-foreground hover:text-foreground',
-										].join(' ')}
-									>
-										{t('structure.cover')}
-									</button>
-									<button
-										type="button"
-										onClick={() => setEditorScene('post')}
-										className={[
-											'px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
-											editorScene === 'post'
-												? 'bg-foreground text-background font-bold shadow-sm'
-												: 'text-muted-foreground hover:text-foreground',
-										].join(' ')}
-									>
-										{t('structure.post')}
-									</button>
-								</div>
-							</div>
-
-							{/* MAIN CONTENT AREA with Zoom */}
-							<div className="flex-1 flex items-center justify-center overflow-auto p-8 relative">
+							<div className="flex-1 min-h-0 relative overflow-hidden">
+								{/* Canvas Background Pattern */}
 								<div
+									className="absolute inset-0 opacity-[0.03] pointer-events-none"
 									style={{
-										transform: `scale(${zoom})`,
-										transition: 'transform 0.1s ease-out',
+										backgroundImage:
+											'radial-gradient(circle, currentColor 1px, transparent 1px)',
+										backgroundSize: '20px 20px',
 									}}
-									className="origin-center flex flex-col items-center justify-center"
-								>
-									{/* The Video "Artboard" - Clean, minimal borders */}
-									<div className="relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] bg-black rounded-sm overflow-hidden ring-1 ring-black/5">
-										{previewMode === 'edit' ? (
-											<ThreadRemotionEditorCard
-												thread={previewThread as any}
-												root={previewRoot as any}
-												replies={previewReplies as any}
-												assets={previewAssets as any}
-												audio={
-													previewAudio?.url &&
-													previewAudio?.asset?.durationMs
-														? {
-																url: String(previewAudio.url),
-																durationMs: Number(
-																	previewAudio.asset.durationMs,
-																),
-															}
-														: null
-												}
-												isLoading={previewThreadQuery.isLoading}
-												templateId={(library as any)?.templateId as any}
-												templateConfig={normalizedTemplateConfig as any}
-												editCanvasConfig={visualTemplateConfig as any}
-												onEditCanvasConfigChange={(next) => {
-													applyVisualTemplateConfigExternal(next)
+								/>
+
+								<div className="h-full overflow-auto">
+									<div className="min-h-full flex items-center justify-center p-8 relative">
+											<div
+												style={{
+													transform: `scale(${zoom})`,
+													transition: 'transform 0.1s ease-out',
 												}}
-												onEditCanvasTransaction={(phase) => {
-													if (phase === 'start') beginVisualTemplateTxn()
-													else endVisualTemplateTxn()
-												}}
-												showLayers={false}
-												showInspector={false}
-												externalPrimaryKey={editorSelectedKey}
-												onSelectionChange={({ primaryKey }) => {
-													if (!primaryKey) return
-													setEditorSelectedKey(primaryKey)
-													const s = sceneFromNodeKey(primaryKey)
-													if (s)
-														setEditorScene((prev) =>
-															prev === s ? prev : s,
-														)
-												}}
-											/>
-										) : (
-											<ThreadRemotionPlayerCard
-												thread={previewThread as any}
-												root={previewRoot as any}
-												replies={previewReplies as any}
-												assets={previewAssets as any}
-												audio={
-													previewAudio?.url &&
-													previewAudio?.asset?.durationMs
-														? {
-																url: String(previewAudio.url),
-																durationMs: Number(
-																	previewAudio.asset.durationMs,
-																),
-															}
-														: null
-												}
-												isLoading={previewThreadQuery.isLoading}
-												templateId={(library as any)?.templateId as any}
-												templateConfig={normalizedTemplateConfig as any}
-											/>
-										)}
+												className="origin-center w-full max-w-[560px] flex flex-col items-center justify-center"
+											>
+												<div className="relative w-full shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] bg-black rounded-sm overflow-hidden ring-1 ring-black/5">
+													{previewMode === 'edit' ? (
+														<ThreadRemotionEditorSurface
+															thread={previewThread as any}
+															root={previewRoot as any}
+															replies={previewReplies as any}
+															scene={editorScene}
+															assets={previewAssets as any}
+															audio={
+																previewAudio?.url &&
+																previewAudio?.asset?.durationMs
+																? {
+																		url: String(previewAudio.url),
+																		durationMs: Number(
+																			previewAudio.asset.durationMs,
+																		),
+																	}
+																: null
+														}
+														isLoading={previewThreadQuery.isLoading}
+														templateId={(library as any)?.templateId as any}
+														templateConfig={normalizedTemplateConfig as any}
+														editCanvasConfig={visualTemplateConfig as any}
+														onEditCanvasConfigChange={(next) => {
+															applyVisualTemplateConfigExternal(next)
+														}}
+														onEditCanvasTransaction={(phase) => {
+															if (phase === 'start') beginVisualTemplateTxn()
+															else endVisualTemplateTxn()
+														}}
+														showLayers={false}
+														showInspector={false}
+														externalPrimaryKey={editorSelectedKey}
+															onSelectionChange={({ primaryKey }) => {
+																if (!primaryKey) return
+																setEditorSelectedKey(primaryKey)
+																const s = sceneFromNodeKey(primaryKey)
+																if (s)
+																	setEditorScene((prev) =>
+																		prev === s ? prev : s,
+																	)
+															}}
+														/>
+												) : (
+													<ThreadRemotionPlayerCard
+														thread={previewThread as any}
+														root={previewRoot as any}
+														replies={previewReplies as any}
+														assets={previewAssets as any}
+														audio={
+															previewAudio?.url &&
+															previewAudio?.asset?.durationMs
+																? {
+																		url: String(previewAudio.url),
+																		durationMs: Number(
+																			previewAudio.asset.durationMs,
+																		),
+																	}
+																: null
+														}
+														isLoading={previewThreadQuery.isLoading}
+														templateId={(library as any)?.templateId as any}
+														templateConfig={normalizedTemplateConfig as any}
+													/>
+												)}
+											</div>
+										</div>
 									</div>
 								</div>
 
-								{/* Canvas Messages (Floating) */}
-								<div className="absolute top-20 left-1/2 -translate-x-1/2 pointer-events-none opacity-80 flex flex-col items-center gap-2 z-10">
+								{/* Canvas Messages */}
+								<div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none opacity-80 flex flex-col items-center gap-2 z-10">
 									{previewThreadId && previewThreadQuery.isError ? (
 										<div className="font-mono text-xs text-destructive bg-destructive/10 backdrop-blur px-2 py-1 rounded shadow-sm border border-destructive/20">
 											{t('panels.previewLoadFailed')}
@@ -1031,136 +1189,6 @@ function ThreadTemplateVersionEditorRoute() {
 											{t('panels.previewNoRoot')}
 										</div>
 									) : null}
-								</div>
-							</div>
-
-							{/* BOTTOM FLOATING: Unified Action Bar */}
-							<div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
-								<div className="flex items-center gap-1 p-1 rounded-full bg-background/80 backdrop-blur border border-border/40 shadow-lg hover:shadow-xl transition-all">
-									{/* Mode Switcher */}
-									<div className="flex items-center px-1">
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<Button
-													variant={
-														previewMode === 'edit' ? 'secondary' : 'ghost'
-													}
-													size="icon"
-													className="size-8 rounded-full"
-													onClick={() => setPreviewMode('edit')}
-												>
-													<MousePointer2 className="size-4" />
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent
-												side="bottom"
-												className="font-mono text-[10px] uppercase"
-											>
-												{t('buttons.edit')}
-											</TooltipContent>
-										</Tooltip>
-
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<Button
-													variant={
-														previewMode === 'play' ? 'secondary' : 'ghost'
-													}
-													size="icon"
-													className="size-8 rounded-full"
-													onClick={() => setPreviewMode('play')}
-												>
-													<Play className="size-4" />
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent
-												side="bottom"
-												className="font-mono text-[10px] uppercase"
-											>
-												{t('buttons.play')}
-											</TooltipContent>
-										</Tooltip>
-									</div>
-
-									<Separator orientation="vertical" className="h-5" />
-
-									{/* Zoom Controls */}
-									<div className="flex items-center px-1">
-										<Button
-											variant="ghost"
-											size="icon"
-											className="size-8 rounded-full"
-											onClick={() => setZoom((z) => Math.max(0.1, z - 0.1))}
-											title={t('tooltips.zoomOut')}
-										>
-											<Minus className="size-4" />
-										</Button>
-										<span className="w-10 text-center text-[10px] font-mono text-muted-foreground select-none">
-											{Math.round(zoom * 100)}%
-										</span>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="size-8 rounded-full"
-											onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
-											title={t('tooltips.zoomIn')}
-										>
-											<Plus className="size-4" />
-										</Button>
-									</div>
-
-									<Separator orientation="vertical" className="h-5" />
-
-									{/* Meta & Focus */}
-									<div className="flex items-center gap-2 pl-2 pr-1">
-										<span className="text-[10px] font-mono text-muted-foreground opacity-50 select-none">
-											1080×1920
-										</span>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<Button
-													variant={
-														layout.leftCollapsed && layout.rightCollapsed
-															? 'secondary'
-															: 'ghost'
-													}
-													size="icon"
-													className="size-8 rounded-full"
-													onClick={() => {
-														const isFocused =
-															layout.leftCollapsed && layout.rightCollapsed
-														if (isFocused) {
-															setLayout((prev) => ({
-																...prev,
-																leftCollapsed: false,
-																rightCollapsed: false,
-															}))
-														} else {
-															setLayout((prev) => ({
-																...prev,
-																leftCollapsed: true,
-																rightCollapsed: true,
-															}))
-														}
-													}}
-												>
-													{layout.leftCollapsed && layout.rightCollapsed ? (
-														<Minimize className="size-4" />
-													) : (
-														<Maximize className="size-4" />
-													)}
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent
-												side="bottom"
-												className="font-mono text-[10px] uppercase"
-											>
-												{layout.leftCollapsed && layout.rightCollapsed
-													? 'Exit Focus Mode'
-													: 'Focus Mode'}
-											</TooltipContent>
-										</Tooltip>
-									</div>
 								</div>
 							</div>
 						</div>
