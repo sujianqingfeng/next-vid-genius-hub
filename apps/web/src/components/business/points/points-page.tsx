@@ -30,6 +30,18 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 		abs: Math.abs(tx.delta),
 	}))
 
+	const getTxRemark = (tx: (typeof grouped)[number]) => {
+		if (tx.remark) {
+			if (tx.remark === '任务扣费') return t('txRemarks.task_cost')
+			if (tx.remark === '管理员加分') return t('txRemarks.manual_adjust')
+			return tx.remark
+		}
+
+		const byType = t(`txRemarks.${tx.type}`)
+		if (byType && byType !== `Points.txRemarks.${tx.type}`) return byType
+		return tx.refType || '-'
+	}
+
 	return (
 		<div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
 			{/* Header Section */}
@@ -125,7 +137,7 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 									{t('table.title')}
 								</h3>
 								<div className="font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground opacity-50">
-									Buffer_Size: {transactions.length} | Page_Offset: 0
+									{t('table.meta', { count: transactions.length, offset: 0 })}
 								</div>
 							</div>
 						</div>
@@ -170,7 +182,7 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 												</td>
 												<td className="px-4 py-3">
 													<span className="bg-primary/5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border border-primary/10">
-														{String(item.type).replace('_', ' ')}
+														{t(`txTypes.${item.type}`)}
 													</span>
 												</td>
 												<td
@@ -183,7 +195,7 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 													{item.balanceAfter.toLocaleString(dateLocale)}
 												</td>
 												<td className="px-4 py-3 text-[10px] uppercase text-muted-foreground max-w-[300px] truncate">
-													{item.remark || item.refType || '-'}
+													{getTxRemark(item)}
 												</td>
 											</tr>
 										))
@@ -194,7 +206,7 @@ export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 
 						<div className="border-t border-border bg-muted/5 px-4 py-2">
 							<div className="font-mono text-[8px] uppercase tracking-[0.3em] text-muted-foreground text-right">
-								Stream_Terminal_Status: Ready
+								{t('table.footer', { status: t('table.status.ready') })}
 							</div>
 						</div>
 					</div>

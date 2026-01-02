@@ -1,7 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { getRequestHeaders } from '@tanstack/react-start/server'
 import { eq } from 'drizzle-orm'
 
 import { getDb, schema } from '~/lib/db'
+import {
+	createTranslator,
+	getLocaleFromCookieHeader,
+	getMessages,
+} from '~/lib/i18n'
 import { logger } from '~/lib/logger'
 
 export const Route = createFileRoute('/api/media/$id/comments-data')({
@@ -9,6 +15,14 @@ export const Route = createFileRoute('/api/media/$id/comments-data')({
 		handlers: {
 			GET: async ({ params }) => {
 				try {
+					const cookieHeader = getRequestHeaders().get('cookie')
+					const locale = getLocaleFromCookieHeader(cookieHeader)
+					const t = createTranslator({
+						locale,
+						messages: getMessages(locale),
+						namespace: 'MediaComments',
+					})
+
 					const mediaId = params.id
 					const db = await getDb()
 					const media = await db.query.media.findFirst({
@@ -32,7 +46,7 @@ export const Route = createFileRoute('/api/media/$id/comments-data')({
 						viewCount: media.viewCount ?? 0,
 						author: media.author || undefined,
 						thumbnail: media.thumbnail || undefined,
-						series: '外网真实评论',
+						series: t('series.externalRealComments'),
 					}
 
 					const body = JSON.stringify({

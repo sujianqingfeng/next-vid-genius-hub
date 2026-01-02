@@ -46,6 +46,34 @@
 				"system": "System Theme",
 				"dark": "Dark Theme"
 			}
+		},
+		"cloudJobProgress": {
+			"idle": "Idle",
+			"labels": {
+				"status": "Status",
+				"progress": "Progress",
+				"phase": "Phase",
+				"jobId": "Job ID",
+				"mediaId": "Media ID"
+			},
+			"status": {
+				"queued": "Queued",
+				"fetching_metadata": "Fetching metadata",
+				"preparing": "Preparing",
+				"running": "Processing",
+				"downloading": "Downloading",
+				"extracting_audio": "Extracting audio",
+				"uploading": "Uploading",
+				"completed": "Completed",
+				"failed": "Failed",
+				"canceled": "Canceled"
+			},
+			"phase": {
+				"fetching_metadata": "Fetching metadata",
+				"preparing": "Preparing",
+				"running": "Processing",
+				"uploading": "Uploading artifacts"
+			}
 		}
 	},
 	"Errors": {
@@ -898,8 +926,33 @@
 				"four": "Payments will be linked here when available."
 			}
 		},
+		"txTypes": {
+			"signup_bonus": "Signup bonus",
+			"task_cost": "Task cost",
+			"manual_adjust": "Manual adjustment",
+			"recharge": "Recharge",
+			"refund": "Refund",
+			"ai_usage": "AI usage",
+			"asr_usage": "ASR usage",
+			"download_usage": "Download usage"
+		},
+		"txRemarks": {
+			"signup_bonus": "Signup bonus",
+			"task_cost": "Task charge",
+			"manual_adjust": "Admin adjustment",
+			"recharge": "Recharge",
+			"refund": "Refund",
+			"ai_usage": "AI usage",
+			"asr_usage": "ASR usage",
+			"download_usage": "Download usage"
+		},
 		"table": {
 			"title": "Transactions",
+			"meta": "Buffer_Size: {count} | Page_Offset: {offset}",
+			"footer": "Stream_Terminal_Status: {status}",
+			"status": {
+				"ready": "Ready"
+			},
 			"headers": {
 				"time": "Time",
 				"type": "Type",
@@ -1068,7 +1121,22 @@
 			"start": "Start transcription",
 			"starting": "Starting…",
 			"started": "Transcription started",
-			"output": "Transcription"
+			"output": "Transcription",
+			"noHint": "No hint",
+			"languages": {
+				"auto": "Auto detect",
+				"zh": "Chinese (Mandarin)",
+				"yue": "Chinese (Cantonese)",
+				"en": "English",
+				"ja": "Japanese",
+				"ko": "Korean",
+				"es": "Spanish",
+				"fr": "French",
+				"de": "German",
+				"pt": "Portuguese",
+				"hi": "Hindi",
+				"id": "Indonesian"
+			}
 		},
 		"optimize": {
 			"title": "Optimize",
@@ -1097,9 +1165,26 @@
 			"desc": "Burn subtitles into the video via cloud rendering.",
 			"start": "Start render",
 			"starting": "Rendering…",
-			"started": "Render started"
+			"started": "Render started",
+			"badges": {
+				"ready": "Ready",
+				"needTranslation": "Need translation"
+			},
+			"progressLabels": {
+				"status": "Render",
+				"phase": "Phase"
+			},
+			"errorTitle": "Rendering error"
 		},
 		"ui": {
+			"toasts": {
+				"saved": "Saved",
+				"failed": "Failed"
+			},
+			"status": {
+				"loadingMediaData": "Loading media data...",
+				"errorLoadingMedia": "Error loading media"
+			},
 			"actions": {
 				"save": "Save",
 				"reset": "Reset"
@@ -1125,6 +1210,9 @@
 			"videoPreview": {
 				"title": "Video Preview",
 				"videoUnsupported": "Your browser does not support the video tag.",
+				"badges": {
+					"rendered": "Rendered"
+				},
 				"messages": {
 					"previewDisabledDuringRendering": "Preview disabled during rendering",
 					"translationRequiredForPreview": "Translation required for preview",
@@ -1140,6 +1228,24 @@
 				"tabs": {
 					"presets": "Presets",
 					"manual": "Manual"
+				},
+				"presets": {
+					"default": {
+						"label": "Default",
+						"description": "White subtitles with 65% black background."
+					},
+					"contrast": {
+						"label": "High Contrast",
+						"description": "Golden subtitles with 80% dark background."
+					},
+					"minimal": {
+						"label": "Minimal",
+						"description": "Transparent background with white text."
+					},
+					"bold": {
+						"label": "Large",
+						"description": "28px font size with 70% background opacity."
+					}
 				},
 				"fields": {
 					"fontSize": "Font Size",
@@ -1161,6 +1267,7 @@
 				"enabledLabel": "Enable hint text",
 				"contentLabel": "Hint Text Content",
 				"contentPlaceholder": "Enter hint text to display during black screen...",
+				"defaultText": "Please wait...",
 				"fontSize": "Font Size",
 				"position": {
 					"label": "Position",
@@ -1234,6 +1341,9 @@
 		}
 	},
 	"MediaComments": {
+		"series": {
+			"externalRealComments": "Real comments"
+		},
 		"page": {
 			"header": {
 				"back": "Back",
@@ -1245,10 +1355,27 @@
 					"system": "Media System",
 					"section": "Comments Manager"
 				},
+				"actions": {
+					"refresh": "Refresh"
+				},
+				"status": {
+					"loading": "System loading...",
+					"errorSync": "Error: Failed to synchronize media data."
+				},
 				"placeholders": {
 					"selectEngine": "Select model",
 					"selectGateway": "Select proxy",
 					"autoDiscovery": "Auto select"
+				}
+			},
+			"preview": {
+				"loading": "Loading…",
+				"empty": {
+					"mediaMissing": "Media details are required to generate a preview.",
+					"noComments": {
+						"title": "No comments to preview yet",
+						"body": "Download or translate comments to unlock the Remotion preview."
+					}
 				}
 			},
 			"editDialog": {

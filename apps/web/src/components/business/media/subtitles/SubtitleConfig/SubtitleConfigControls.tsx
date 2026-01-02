@@ -81,13 +81,13 @@ export function SubtitleConfigControls({
 								onClick={() => onPresetClick(preset)}
 								className="text-xs"
 							>
-								{preset.label}
+								{t(`presets.${preset.id}.label`)}
 							</Button>
 						))}
 					</div>
 					{selectedPreset && (
 						<p className="text-xs text-muted-foreground">
-							{selectedPreset.description}
+							{t(`presets.${selectedPreset.id}.description`)}
 						</p>
 					)}
 				</TabsContent>

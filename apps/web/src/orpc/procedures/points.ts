@@ -44,14 +44,14 @@ export const spendForTask = os
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
 		try {
-			const balance = await spendPoints({
-				userId: ctx.auth.user!.id,
-				amount: input.amount,
-				type: 'task_cost',
-				refType: input.refType ?? 'task',
-				refId: input.refId ?? null,
-				remark: input.remark ?? '任务扣费',
-			})
+				const balance = await spendPoints({
+					userId: ctx.auth.user!.id,
+					amount: input.amount,
+					type: 'task_cost',
+					refType: input.refType ?? 'task',
+					refId: input.refId ?? null,
+					remark: input.remark,
+				})
 			return { balance }
 		} catch (error) {
 			if (error instanceof InsufficientPointsError) {

@@ -164,7 +164,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 		{
 			successToast: t('transcribe.started'),
 			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
+				error instanceof Error ? error.message : t('ui.toasts.failed'),
 		},
 	)
 
@@ -180,7 +180,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 		{
 			successToast: t('translate.completed'),
 			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
+				error instanceof Error ? error.message : t('ui.toasts.failed'),
 		},
 	)
 
@@ -192,7 +192,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 		}),
 		{
 			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
+				error instanceof Error ? error.message : t('ui.toasts.failed'),
 		},
 	)
 
@@ -205,9 +205,9 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 			},
 		}),
 		{
-			successToast: 'Saved',
+			successToast: t('ui.toasts.saved'),
 			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
+				error instanceof Error ? error.message : t('ui.toasts.failed'),
 		},
 	)
 
@@ -222,7 +222,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 		{
 			successToast: t('optimize.completed'),
 			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
+				error instanceof Error ? error.message : t('ui.toasts.failed'),
 		},
 	)
 
@@ -237,7 +237,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 		{
 			successToast: t('optimize.restored'),
 			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
+				error instanceof Error ? error.message : t('ui.toasts.failed'),
 		},
 	)
 
@@ -277,7 +277,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 		{
 			successToast: t('render.started'),
 			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : 'Failed',
+				error instanceof Error ? error.message : t('ui.toasts.failed'),
 		},
 	)
 
@@ -319,7 +319,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 						<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
 					</div>
 					<div className="text-sm font-mono uppercase tracking-wide text-muted-foreground">
-						Loading Media Data...
+						{t('ui.status.loadingMediaData')}
 					</div>
 				</div>
 			</div>
@@ -334,7 +334,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 						<Terminal className="h-8 w-8 text-destructive" />
 					</div>
 					<div className="text-lg font-bold uppercase tracking-wide text-destructive mb-2">
-						Error Loading Media
+						{t('ui.status.errorLoadingMedia')}
 					</div>
 					<div className="flex justify-center gap-4 mt-8">
 						<Button
@@ -530,7 +530,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 											</div>
 											{!supportsLanguageHint ? (
 												<span className="border border-border px-1.5 py-0.5 text-[10px] font-mono uppercase text-muted-foreground">
-													No hint
+													{t('transcribe.noHint')}
 												</span>
 											) : null}
 										</div>
@@ -545,7 +545,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 											<SelectContent>
 												{TRANSCRIPTION_LANGUAGE_OPTIONS.map((opt) => (
 													<SelectItem key={opt.value} value={opt.value}>
-														{opt.label}
+														{t(`transcribe.languages.${opt.value}`)}
 													</SelectItem>
 												))}
 											</SelectContent>

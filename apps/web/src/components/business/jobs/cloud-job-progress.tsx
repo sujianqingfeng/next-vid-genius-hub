@@ -7,6 +7,7 @@ import {
 	TooltipTrigger,
 } from '~/components/ui/tooltip'
 import { PHASE_LABELS, STATUS_LABELS } from '~/lib/config/media-status'
+import { useTranslations } from '~/lib/i18n'
 import { cn } from '~/lib/utils'
 
 type CloudJobProgressLabels = {
@@ -68,7 +69,7 @@ export function CloudJobProgress({
 	jobId,
 	mediaId,
 	jobActive,
-	idleLabel = 'Idle',
+	idleLabel,
 	showPhase = true,
 	showIds = true,
 	showCompactLabel = true,
@@ -76,14 +77,21 @@ export function CloudJobProgress({
 	labels,
 	className,
 }: CloudJobProgressProps) {
-	const resolvedStatusLabel = status
-		? (STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status)
-		: idleLabel
+	const t = useTranslations('Common.cloudJobProgress')
 
-	const resolvedPhaseLabel =
-		phase && (PHASE_LABELS as Record<string, string>)[phase]
-			? (PHASE_LABELS as Record<string, string>)[phase]
-			: phase
+	const resolvedStatusLabel = (() => {
+		if (!status) return idleLabel ?? t('idle')
+		const translated = t(`status.${status}`)
+		if (translated !== `Common.cloudJobProgress.status.${status}`) return translated
+		return (STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status) as string
+	})()
+
+	const resolvedPhaseLabel = (() => {
+		if (!phase) return phase
+		const translated = t(`phase.${phase}`)
+		if (translated !== `Common.cloudJobProgress.phase.${phase}`) return translated
+		return (PHASE_LABELS as Record<string, string>)[phase] ?? phase
+	})()
 
 	let pct: number | undefined
 	if (typeof progress === 'number') {
@@ -129,7 +137,7 @@ export function CloudJobProgress({
 	const tooltipDetails = (
 		<div className="space-y-2 min-w-[200px]">
 			<div className="flex items-center justify-between gap-3">
-				<span className="font-medium">{labels?.status ?? 'Status'}</span>
+				<span className="font-medium">{labels?.status ?? t('labels.status')}</span>
 				<span
 					className={cn(
 						'rounded-full px-2 py-0.5 text-[11px] font-semibold',
@@ -140,12 +148,12 @@ export function CloudJobProgress({
 				</span>
 			</div>
 			<div className="flex items-center justify-between gap-3 text-[11px] opacity-90">
-				<span>{labels?.progress ?? 'Progress'}</span>
+				<span>{labels?.progress ?? t('labels.progress')}</span>
 				<span className="font-medium">{pctText}</span>
 			</div>
 			{showPhase && resolvedPhaseLabel && (
 				<div className="flex items-center justify-between gap-3 text-[11px] opacity-90">
-					<span>{labels?.phase ?? 'Phase'}</span>
+					<span>{labels?.phase ?? t('labels.phase')}</span>
 					<span className="font-medium">{resolvedPhaseLabel}</span>
 				</div>
 			)}
@@ -153,13 +161,13 @@ export function CloudJobProgress({
 				<div className="space-y-1 border-t border-background/20 pt-2 text-[11px] opacity-90">
 					{jobId && (
 						<div className="flex items-center justify-between gap-3">
-							<span>{labels?.jobId ?? 'Job ID'}</span>
+							<span>{labels?.jobId ?? t('labels.jobId')}</span>
 							<span className="font-mono">{jobId}</span>
 						</div>
 					)}
 					{mediaId && (
 						<div className="flex items-center justify-between gap-3">
-							<span>{labels?.mediaId ?? 'Media ID'}</span>
+							<span>{labels?.mediaId ?? t('labels.mediaId')}</span>
 							<span className="font-mono">{mediaId}</span>
 						</div>
 					)}

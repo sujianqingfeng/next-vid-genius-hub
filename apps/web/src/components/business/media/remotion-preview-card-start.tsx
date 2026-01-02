@@ -15,6 +15,7 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 import * as React from 'react'
 import { Card, CardContent } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
+import { useTranslations } from '~/lib/i18n'
 import type { Comment, VideoInfo } from '~/lib/media/types'
 
 const LazyPlayer = React.lazy(async () => {
@@ -54,6 +55,7 @@ export function RemotionPreviewCardStart({
 	templateId = DEFAULT_TEMPLATE_ID,
 	templateConfig,
 }: RemotionPreviewCardStartProps) {
+	const t = useTranslations('MediaComments.page.preview')
 	const isClient = typeof window !== 'undefined'
 	const mediaInfo = React.useMemo(() => mapVideoInfo(videoInfo), [videoInfo])
 	const timeline = React.useMemo(
@@ -84,21 +86,21 @@ export function RemotionPreviewCardStart({
 						<Skeleton className="h-[240px] w-full rounded-lg" />
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<Loader2 className="h-4 w-4 animate-spin" />
-							Loading…
+							{t('loading')}
 						</div>
 					</div>
 				) : !mediaInfo ? (
 					<div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/60 bg-muted/20 p-8 text-center">
 						<AlertCircle className="h-6 w-6 text-muted-foreground" />
 						<p className="text-sm text-muted-foreground">
-							Media details are required to generate a preview.
+							{t('empty.mediaMissing')}
 						</p>
 					</div>
 				) : comments.length === 0 ? (
 					<div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/60 bg-muted/10 p-8 text-center">
-						<p className="text-sm font-medium">No comments to preview yet</p>
+						<p className="text-sm font-medium">{t('empty.noComments.title')}</p>
 						<p className="text-xs text-muted-foreground">
-							Download or translate comments to unlock the Remotion preview.
+							{t('empty.noComments.body')}
 						</p>
 					</div>
 				) : !isClient ? (

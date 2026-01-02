@@ -8,7 +8,7 @@ type DbClient = Awaited<ReturnType<typeof getDb>>
 
 export class InsufficientPointsError extends Error {
 	constructor() {
-		super('积分不足')
+		super('INSUFFICIENT_POINTS')
 		this.name = 'InsufficientPointsError'
 	}
 }

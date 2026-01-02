@@ -34,7 +34,11 @@ export function HintTextConfigControls({
 	onChange,
 }: HintTextConfigControlsProps) {
 	const t = useTranslations('Subtitles.ui.hintTextConfig')
-	const hintConfig = config || DEFAULT_SUBTITLE_RENDER_CONFIG.hintTextConfig!
+	const defaultHintConfig = DEFAULT_SUBTITLE_RENDER_CONFIG.hintTextConfig!
+	const hintConfig = config || {
+		...defaultHintConfig,
+		text: defaultHintConfig.text || t('defaultText'),
+	}
 
 	return (
 		<div className="space-y-4">

@@ -22,7 +22,7 @@ export const DEFAULT_SUBTITLE_RENDER_CONFIG: SubtitleRenderConfig = {
 	timeSegmentEffects: [],
 	hintTextConfig: {
 		enabled: false,
-		text: 'Please wait...',
+		text: '',
 		fontSize: 24,
 		textColor: COLOR_CONSTANTS.DEFAULT_TEXT_COLOR,
 		backgroundColor: COLOR_CONSTANTS.DEFAULT_BACKGROUND_COLOR,
@@ -39,8 +39,8 @@ export const DEFAULT_SUBTITLE_RENDER_CONFIG: SubtitleRenderConfig = {
 export const SUBTITLE_RENDER_PRESETS: readonly SubtitleRenderPreset[] = [
 	{
 		id: 'default',
-		label: '标准',
-		description: '白色字幕，65% 黑底，通用场景。',
+		label: 'Default',
+		description: 'White subtitles with 65% black background.',
 		config: {
 			...DEFAULT_SUBTITLE_RENDER_CONFIG,
 			fontSize: 18,
@@ -53,8 +53,8 @@ export const SUBTITLE_RENDER_PRESETS: readonly SubtitleRenderPreset[] = [
 	},
 	{
 		id: 'contrast',
-		label: '高对比',
-		description: '金黄色字幕 + 80% 深色底，适合复杂背景。',
+		label: 'High Contrast',
+		description: 'Golden subtitles with 80% dark background.',
 		config: {
 			...DEFAULT_SUBTITLE_RENDER_CONFIG,
 			fontSize: 20,
@@ -67,8 +67,8 @@ export const SUBTITLE_RENDER_PRESETS: readonly SubtitleRenderPreset[] = [
 	},
 	{
 		id: 'minimal',
-		label: '轻量',
-		description: '透明底 + 白色文字，适合简洁风格。',
+		label: 'Minimal',
+		description: 'Transparent background with white text.',
 		config: {
 			...DEFAULT_SUBTITLE_RENDER_CONFIG,
 			fontSize: 18,
@@ -81,8 +81,8 @@ export const SUBTITLE_RENDER_PRESETS: readonly SubtitleRenderPreset[] = [
 	},
 	{
 		id: 'bold',
-		label: '大字幕',
-		description: '28px 字号 + 70% 底色，移动端更清晰。',
+		label: 'Large',
+		description: '28px font size with 70% background opacity.',
 		config: {
 			...DEFAULT_SUBTITLE_RENDER_CONFIG,
 			fontSize: 28,

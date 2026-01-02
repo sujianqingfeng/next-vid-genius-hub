@@ -46,6 +46,34 @@
 				"system": "系统主题",
 				"dark": "深色主题"
 			}
+		},
+		"cloudJobProgress": {
+			"idle": "空闲",
+			"labels": {
+				"status": "状态",
+				"progress": "进度",
+				"phase": "阶段",
+				"jobId": "任务 ID",
+				"mediaId": "媒体 ID"
+			},
+			"status": {
+				"queued": "排队中",
+				"fetching_metadata": "获取元数据",
+				"preparing": "准备中",
+				"running": "处理中",
+				"downloading": "下载中",
+				"extracting_audio": "提取音频",
+				"uploading": "上传中",
+				"completed": "已完成",
+				"failed": "失败",
+				"canceled": "已取消"
+			},
+			"phase": {
+				"fetching_metadata": "获取元数据",
+				"preparing": "准备中",
+				"running": "处理中",
+				"uploading": "上传产物"
+			}
 		}
 	},
 	"Errors": {
@@ -898,8 +926,33 @@
 				"four": "接入支付后可在此跳转充值。"
 			}
 		},
+		"txTypes": {
+			"signup_bonus": "注册赠送",
+			"task_cost": "任务扣费",
+			"manual_adjust": "手动调整",
+			"recharge": "充值",
+			"refund": "返还",
+			"ai_usage": "AI 使用",
+			"asr_usage": "ASR 使用",
+			"download_usage": "下载使用"
+		},
+		"txRemarks": {
+			"signup_bonus": "注册赠送",
+			"task_cost": "任务扣费",
+			"manual_adjust": "管理员调整",
+			"recharge": "充值",
+			"refund": "返还",
+			"ai_usage": "AI 使用",
+			"asr_usage": "ASR 使用",
+			"download_usage": "下载使用"
+		},
 		"table": {
 			"title": "积分流水",
+			"meta": "缓冲区大小：{count} | 页偏移：{offset}",
+			"footer": "终端状态：{status}",
+			"status": {
+				"ready": "就绪"
+			},
 			"headers": {
 				"time": "时间",
 				"type": "类型",
@@ -1068,7 +1121,22 @@
 			"start": "开始转录",
 			"starting": "开始中…",
 			"started": "已开始转录",
-			"output": "转录结果"
+			"output": "转录结果",
+			"noHint": "不支持提示",
+			"languages": {
+				"auto": "自动检测",
+				"zh": "中文（普通话）",
+				"yue": "中文（粤语）",
+				"en": "英文",
+				"ja": "日语",
+				"ko": "韩语",
+				"es": "西班牙语",
+				"fr": "法语",
+				"de": "德语",
+				"pt": "葡萄牙语",
+				"hi": "印地语",
+				"id": "印尼语"
+			}
 		},
 		"optimize": {
 			"title": "优化",
@@ -1097,9 +1165,26 @@
 			"desc": "在云端将字幕烧录到视频中。",
 			"start": "开始渲染",
 			"starting": "渲染中…",
-			"started": "已开始渲染"
+			"started": "已开始渲染",
+			"badges": {
+				"ready": "就绪",
+				"needTranslation": "需要翻译"
+			},
+			"progressLabels": {
+				"status": "渲染",
+				"phase": "阶段"
+			},
+			"errorTitle": "渲染错误"
 		},
 		"ui": {
+			"toasts": {
+				"saved": "已保存",
+				"failed": "失败"
+			},
+			"status": {
+				"loadingMediaData": "加载媒体数据中...",
+				"errorLoadingMedia": "加载媒体失败"
+			},
 			"actions": {
 				"save": "保存",
 				"reset": "重置"
@@ -1125,6 +1210,9 @@
 			"videoPreview": {
 				"title": "视频预览",
 				"videoUnsupported": "你的浏览器不支持 video 标签。",
+				"badges": {
+					"rendered": "已渲染"
+				},
 				"messages": {
 					"previewDisabledDuringRendering": "渲染期间禁用预览",
 					"translationRequiredForPreview": "预览需要译文",
@@ -1140,6 +1228,24 @@
 				"tabs": {
 					"presets": "预设",
 					"manual": "手动"
+				},
+				"presets": {
+					"default": {
+						"label": "标准",
+						"description": "白色字幕，65% 黑底，通用场景。"
+					},
+					"contrast": {
+						"label": "高对比",
+						"description": "金黄色字幕 + 80% 深色底，适合复杂背景。"
+					},
+					"minimal": {
+						"label": "轻量",
+						"description": "透明底 + 白色文字，适合简洁风格。"
+					},
+					"bold": {
+						"label": "大字幕",
+						"description": "28px 字体大小 + 70% 底色，移动端更清晰。"
+					}
 				},
 				"fields": {
 					"fontSize": "字体大小",
@@ -1161,6 +1267,7 @@
 				"enabledLabel": "启用提示文本",
 				"contentLabel": "提示文本内容",
 				"contentPlaceholder": "输入黑屏时显示的提示文本…",
+				"defaultText": "请稍候...",
 				"fontSize": "字体大小",
 				"position": {
 					"label": "位置",
@@ -1234,6 +1341,9 @@
 		}
 	},
 	"MediaComments": {
+		"series": {
+			"externalRealComments": "外网真实评论"
+		},
 		"page": {
 			"header": {
 				"back": "返回",
@@ -1245,10 +1355,27 @@
 					"system": "媒体系统",
 					"section": "评论管理"
 				},
+				"actions": {
+					"refresh": "刷新"
+				},
+				"status": {
+					"loading": "系统加载中...",
+					"errorSync": "错误：同步媒体数据失败。"
+				},
 				"placeholders": {
 					"selectEngine": "选择模型",
 					"selectGateway": "选择代理",
 					"autoDiscovery": "自动选择"
+				}
+			},
+			"preview": {
+				"loading": "加载中…",
+				"empty": {
+					"mediaMissing": "生成预览需要媒体信息。",
+					"noComments": {
+						"title": "暂无可预览的评论",
+						"body": "先下载或翻译评论以启用 Remotion 预览。"
+					}
 				}
 			},
 			"editDialog": {

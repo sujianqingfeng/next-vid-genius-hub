@@ -4,6 +4,7 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 import { type ChangeEvent, useEffect, useState } from 'react'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
 import { Button } from '~/components/ui/button'
+import { useTranslations } from '~/lib/i18n'
 import { COLOR_CONSTANTS } from '~/lib/subtitle/config/constants'
 import {
 	DEFAULT_SUBTITLE_RENDER_CONFIG,
@@ -44,6 +45,8 @@ interface Step3RenderProps {
  * Redesigned Step3Render component
  */
 export function Step3Render(props: Step3RenderProps) {
+	const t = useTranslations('Subtitles')
+	const tHintText = useTranslations('Subtitles.ui.hintTextConfig')
 	const {
 		isRendering,
 		onStart,
@@ -122,8 +125,11 @@ export function Step3Render(props: Step3RenderProps) {
 		field: keyof HintTextConfig,
 		value: string | number | boolean,
 	) => {
-		const currentConfig =
-			config.hintTextConfig || DEFAULT_SUBTITLE_RENDER_CONFIG.hintTextConfig!
+		const defaultHintConfig = DEFAULT_SUBTITLE_RENDER_CONFIG.hintTextConfig!
+		const currentConfig = config.hintTextConfig || {
+			...defaultHintConfig,
+			text: defaultHintConfig.text || tHintText('defaultText'),
+		}
 
 		let hintTextConfig: HintTextConfig
 		if (field === 'position') {
@@ -137,7 +143,15 @@ export function Step3Render(props: Step3RenderProps) {
 				[field]: value as 'fade-in' | 'slide-up' | 'none' | undefined,
 			}
 		} else if (field === 'enabled') {
-			hintTextConfig = { ...currentConfig, [field]: value as boolean }
+			const nextEnabled = value as boolean
+			hintTextConfig = {
+				...currentConfig,
+				[field]: nextEnabled,
+				text:
+					nextEnabled && !currentConfig.text
+						? tHintText('defaultText')
+						: currentConfig.text,
+			}
 		} else if (field === 'fontSize' || field === 'backgroundOpacity') {
 			hintTextConfig = { ...currentConfig, [field]: value as number }
 		} else {
@@ -163,10 +177,10 @@ export function Step3Render(props: Step3RenderProps) {
 			<div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between border-b border-border pb-6">
 				<div className="space-y-1">
 					<h3 className="text-base font-bold uppercase tracking-wide text-foreground">
-						Render Video
+						{t('render.title')}
 					</h3>
 					<p className="text-xs font-mono text-muted-foreground">
-						Adjust subtitle styles, time effects, and start rendering.
+						{t('render.desc')}
 					</p>
 				</div>
 				<div className="flex items-center gap-3">
@@ -177,7 +191,9 @@ export function Step3Render(props: Step3RenderProps) {
 								: 'border-amber-500/50 text-amber-600 bg-amber-500/10'
 						}`}
 					>
-						{translationAvailable ? 'Ready' : 'Need Translation'}
+						{translationAvailable
+							? t('render.badges.ready')
+							: t('render.badges.needTranslation')}
 					</span>
 					{(cloudStatus?.status ||
 						typeof cloudStatus?.progress === 'number') && (
@@ -193,7 +209,10 @@ export function Step3Render(props: Step3RenderProps) {
 							showPhase={Boolean(cloudStatus?.phase)}
 							showIds={Boolean(cloudStatus?.jobId)}
 							showCompactLabel={false}
-							labels={{ status: 'Render', phase: 'Phase' }}
+							labels={{
+								status: t('render.progressLabels.status'),
+								phase: t('render.progressLabels.phase'),
+							}}
 						/>
 					)}
 					<Button
@@ -205,7 +224,7 @@ export function Step3Render(props: Step3RenderProps) {
 						{isRendering && (
 							<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
 						)}
-						{isRendering ? 'Rendering...' : 'Render Video with Subtitles'}
+						{isRendering ? t('render.starting') : t('render.start')}
 					</Button>
 				</div>
 			</div>
@@ -215,9 +234,6 @@ export function Step3Render(props: Step3RenderProps) {
 				{/* Left Column: Basic Config */}
 				<div className="space-y-6">
 					<div className="border border-border bg-background p-4">
-						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">
-							Quick Presets
-						</h3>
 						<SubtitleConfigControls
 							presets={SUBTITLE_RENDER_PRESETS}
 							selectedPresetId={selectedPresetId}
@@ -238,9 +254,6 @@ export function Step3Render(props: Step3RenderProps) {
 					</div>
 
 					<div className="border border-border bg-background p-4">
-						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">
-							Hint Text
-						</h3>
 						<HintTextConfigControls
 							config={config.hintTextConfig}
 							onChange={handleHintTextChange}
@@ -251,9 +264,6 @@ export function Step3Render(props: Step3RenderProps) {
 				{/* Right Column: Advanced Config */}
 				<div className="space-y-6">
 					<div className="border border-border bg-background p-4">
-						<h3 className="text-xs font-bold uppercase tracking-wide mb-4">
-							Time Effects
-						</h3>
 						<TimeSegmentEffectsManager
 							effects={config.timeSegmentEffects}
 							onChange={handleTimeSegmentEffectsChange}
@@ -271,7 +281,7 @@ export function Step3Render(props: Step3RenderProps) {
 					<AlertCircle className="h-5 w-5 flex-shrink-0 text-destructive" />
 					<div>
 						<h3 className="text-sm font-bold uppercase tracking-wide text-destructive">
-							Rendering Error
+							{t('render.errorTitle')}
 						</h3>
 						<p className="text-xs font-mono text-destructive/80 mt-1">
 							{errorMessage}

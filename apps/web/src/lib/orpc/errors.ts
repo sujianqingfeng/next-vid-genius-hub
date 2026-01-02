@@ -28,7 +28,7 @@ export function throwInsufficientPointsError(message?: string): never {
 export function throwAsrTimeoutError(message?: string): never {
 	throw new ORPCError(ASR_TIMEOUT_CODE, {
 		status: 504,
-		message: message ?? 'Cloud transcription is still running',
+		message: message ?? ASR_TIMEOUT_CODE,
 		data: { reason: ASR_TIMEOUT_CODE },
 	})
 }
@@ -36,7 +36,7 @@ export function throwAsrTimeoutError(message?: string): never {
 export function throwNoSuccessProxyError(message?: string): never {
 	throw new ORPCError(NO_SUCCESS_PROXY_CODE, {
 		status: 503,
-		message: message ?? 'No success proxy available',
+		message: message ?? NO_SUCCESS_PROXY_CODE,
 		data: { reason: NO_SUCCESS_PROXY_CODE },
 	})
 }
@@ -44,7 +44,7 @@ export function throwNoSuccessProxyError(message?: string): never {
 export function throwProxyNotSuccessError(message?: string): never {
 	throw new ORPCError(PROXY_NOT_SUCCESS_CODE, {
 		status: 400,
-		message: message ?? 'Proxy is not in success state',
+		message: message ?? PROXY_NOT_SUCCESS_CODE,
 		data: { reason: PROXY_NOT_SUCCESS_CODE },
 	})
 }

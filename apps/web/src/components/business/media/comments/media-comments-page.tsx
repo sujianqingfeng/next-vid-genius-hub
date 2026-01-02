@@ -903,7 +903,7 @@ export function MediaCommentsPage({
 								disabled={mediaQuery.isLoading}
 								onClick={() => mediaQuery.refetch()}
 							>
-								Refresh
+								{t('ui.actions.refresh')}
 							</Button>
 						</div>
 					</div>
@@ -915,13 +915,13 @@ export function MediaCommentsPage({
 					{mediaQuery.isLoading ? (
 						<div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
 							<Loader2 className="h-3 w-3 animate-spin" />
-							System Loading...
+							{t('ui.status.loading')}
 						</div>
 					) : null}
 
 					{mediaQuery.isError || !mediaQuery.data ? (
 						<div className="border border-destructive/50 bg-destructive/5 p-4 font-mono text-xs uppercase tracking-wider text-destructive">
-							Error: Failed to synchronize media data.
+							{t('ui.status.errorSync')}
 						</div>
 					) : (
 						<div className="grid gap-8 lg:grid-cols-12">

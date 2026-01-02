@@ -3,6 +3,7 @@
 import { Film, Video } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { STATUS_LABELS } from '~/lib/config/media-status'
+import { useTranslations } from '~/lib/i18n'
 import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
 import { parseVttTimestamp } from '~/lib/subtitle/utils/time'
 import { parseVttCues } from '~/lib/subtitle/utils/vtt'
@@ -24,6 +25,8 @@ interface PreviewPaneProps {
 }
 
 export function PreviewPane(props: PreviewPaneProps) {
+	const t = useTranslations('Subtitles')
+	const tJob = useTranslations('Common.cloudJobProgress')
 	const {
 		mediaId,
 		translation,
@@ -49,11 +52,15 @@ export function PreviewPane(props: PreviewPaneProps) {
 
 	const statusLabel = useMemo(() => {
 		const s = cloudStatus?.status
-		if (!s) return isRendering ? 'Rendering…' : null
+		if (!s) return isRendering ? t('render.starting') : null
+
+		const translated = tJob(`status.${s}`)
+		if (translated !== `Common.cloudJobProgress.status.${s}`) return translated
+
 		return s in STATUS_LABELS
 			? STATUS_LABELS[s as keyof typeof STATUS_LABELS]
 			: s
-	}, [cloudStatus?.status, isRendering])
+	}, [cloudStatus?.status, isRendering, t, tJob])
 
 	const progressPct =
 		typeof cloudStatus?.progress === 'number'
@@ -129,18 +136,18 @@ export function PreviewPane(props: PreviewPaneProps) {
 						<Video className="h-3 w-3" />
 					</div>
 					<h3 className="text-base font-bold uppercase tracking-wide">
-						Preview
+						{t('ui.videoPreview.title')}
 					</h3>
 					{hasRenderedVideo && (
 						<span className="ml-2 border border-border bg-secondary/20 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-foreground">
-							Rendered
+							{t('ui.videoPreview.badges.rendered')}
 						</span>
 					)}
 				</div>
 				{(isRendering || cloudStatus?.status) && (
 					<div className="hidden sm:flex items-center gap-2 text-xs font-mono text-muted-foreground uppercase">
 						<Film className="h-3 w-3" />
-						<span>{statusLabel ?? 'Rendering…'}</span>
+						<span>{statusLabel ?? t('render.starting')}</span>
 						{typeof progressPct === 'number' && (
 							<span className="tabular-nums border-l border-border pl-2 ml-1">
 								{progressPct}%
