@@ -168,7 +168,7 @@ export function ThreadTemplateLibraryCard({
 		!addVersionMutation.isPending
 
 	return (
-		<Card className="rounded-none">
+		<Card className="rounded-none shadow-none">
 			<CardContent className="py-5 space-y-5">
 				<div className="flex flex-wrap items-center justify-between gap-2">
 					<div className="font-mono text-xs text-muted-foreground">

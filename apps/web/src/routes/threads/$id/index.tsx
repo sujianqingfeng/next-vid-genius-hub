@@ -2928,15 +2928,24 @@ function ThreadDetailRoute() {
 	}, [thread?.id, thread?.templateConfig])
 
 	return (
-		<div className="min-h-screen bg-background font-sans text-foreground">
+		<div className="min-h-screen bg-background font-sans text-foreground flex flex-col">
 			<div className="border-b border-border bg-card">
-				<div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
+				<div className="w-full px-4 py-3 sm:px-6 lg:px-8">
 					<div className="flex items-center justify-between gap-4">
-						<div className="space-y-1">
-							<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-								{t('header.breadcrumb')}
+						<div className="space-y-0.5">
+							<div className="flex items-center gap-2">
+								<Link
+									to="/threads"
+									className="text-[10px] font-sans uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+								>
+									{t('header.breadcrumb')}
+								</Link>
+								<span className="text-[10px] text-muted-foreground">/</span>
+								<span className="text-[10px] font-mono text-muted-foreground uppercase">
+									{id.slice(0, 8)}
+								</span>
 							</div>
-							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
+							<h1 className="font-sans text-lg font-bold uppercase tracking-tight">
 								{thread?.title ?? '…'}
 							</h1>
 						</div>
@@ -2945,7 +2954,7 @@ function ThreadDetailRoute() {
 								type="button"
 								variant="outline"
 								size="sm"
-								className="rounded-none font-mono text-xs uppercase tracking-wider"
+								className="rounded-[2px] shadow-none font-sans text-xs uppercase tracking-wider h-8"
 								disabled={translateAllMutation.isPending || !thread?.id}
 								onClick={() => {
 									if (!thread?.id) return
@@ -2960,725 +2969,136 @@ function ThreadDetailRoute() {
 									? t('actions.translatingAll')
 									: t('actions.translateAllToZh')}
 							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase tracking-wider"
-								asChild
-							>
-								<Link to="/threads">{t('actions.back')}</Link>
-							</Button>
 						</div>
 					</div>
 				</div>
 			</div>
 
-			<div className="mx-auto max-w-6xl px-4 pt-8 pb-6 sm:px-6 lg:px-8">
-				<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-					{t('sections.preview')}
-				</div>
-				<ThreadRemotionPlayerCard
-					thread={thread as any}
-					root={root as any}
-					replies={replies as any}
-					assets={assets as any}
-					audio={
-						audio?.url && audio?.asset?.durationMs
-							? {
-									url: String(audio.url),
-									durationMs: Number(audio.asset.durationMs),
-								}
-							: null
-					}
-					isLoading={dataQuery.isLoading}
-					templateId={effectiveTemplateIdForLibrary as any}
-					templateConfig={
-						(normalizedTemplateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG) as any
-					}
-				/>
-
-				{/* Legacy per-thread template editor removed; use Template Library → Open Editor instead.
-					<div className="mt-6">
-					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-						Template
-					</div>
-					<Card className="rounded-none">
-						<CardContent className="py-5 space-y-4">
-							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-								<div className="space-y-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Template ID
-									</Label>
-									<Select
-										value={templateIdDraft}
-										onValueChange={(v) => setTemplateIdDraft(v)}
-									>
-										<SelectTrigger className="w-full rounded-none font-mono text-xs">
-											<SelectValue placeholder="Select template" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value={TEMPLATE_DEFAULT}>
-												Default ({DEFAULT_THREAD_TEMPLATE_ID})
-											</SelectItem>
-											{templates.map((tpl) => (
-												<SelectItem key={tpl.id} value={tpl.id}>
-													{tpl.name} ({tpl.id})
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-
-								<div className="space-y-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Editor
-									</Label>
-									<Tabs
-										value={templateEditorMode}
-										onValueChange={(v) => {
-											const next = v === 'visual' ? 'visual' : 'json'
-											if (next === 'visual') {
-												if (templateConfigParsed.error) {
-													toast.error(
-														`Fix JSON first: ${templateConfigParsed.error}`,
-													)
-													return
-												}
-												setVisualTemplateConfig(
-													normalizeThreadTemplateConfig(previewTemplateConfig),
-												)
-											}
-											setTemplateEditorMode(next)
-										}}
-										className="gap-3"
-									>
-										<TabsList className="rounded-none w-full">
-											<TabsTrigger value="visual" className="rounded-none">
-												Visual
-											</TabsTrigger>
-											<TabsTrigger value="json" className="rounded-none">
-												JSON
-											</TabsTrigger>
-										</TabsList>
-
-										<TabsContent value="visual" className="space-y-3">
-											<div className="flex flex-wrap items-center justify-between gap-2">
-												<div className="font-mono text-xs text-muted-foreground">
-													Edit layout safely (no code execution).
-												</div>
-												<div className="flex flex-wrap items-center gap-2">
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														disabled={Boolean(templateConfigParsed.error)}
-														onClick={() => {
-															if (templateConfigParsed.error) {
-																toast.error(
-																	`Fix JSON first: ${templateConfigParsed.error}`,
-																)
-																return
-															}
-															setVisualTemplateConfig(
-																normalizeThreadTemplateConfig(
-																	previewTemplateConfig,
-																),
-															)
-															toast.message('Synced from JSON')
-														}}
-													>
-														Sync From JSON
-													</Button>
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-none font-mono text-[10px] uppercase"
-														onClick={() => {
-															setTemplateConfigText(
-																toPrettyJson(visualTemplateConfig),
-															)
-															setTemplateEditorMode('json')
-															toast.message('Copied to JSON')
-														}}
-													>
-														Copy To JSON
-													</Button>
-												</div>
-											</div>
-
-										<ThreadTemplateVisualEditor
-											value={visualTemplateConfig}
-											onChange={(next) =>
-												setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
-											}
-											assets={assetsForPreview as any}
-											historyState={visualTemplateHistory}
-											setHistoryState={setVisualTemplateHistory}
-											resetKey={String(thread?.id ?? '')}
-										/>
-										</TabsContent>
-
-										<TabsContent value="json" className="space-y-2">
-											<Textarea
-												ref={templateConfigTextAreaRef}
-												value={templateConfigText}
-												onChange={(e) => setTemplateConfigText(e.target.value)}
-												placeholder="{}"
-												className="min-h-[120px] rounded-none font-mono text-xs"
-											/>
-											{templateConfigParsed.error ? (
-												<div className="font-mono text-xs text-destructive">
-													Invalid JSON: {templateConfigParsed.error}
-												</div>
-											) : (
-												<div className="font-mono text-xs text-muted-foreground">
-													Empty = use defaults
-												</div>
-											)}
-										</TabsContent>
-									</Tabs>
-
-									{(templateEditorMode === 'visual' ||
-										!templateConfigParsed.error) &&
-									templateConfigIssues.length > 0 ? (
-										<div className="space-y-1">
-											<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												Normalization
-											</div>
-											<ul className="space-y-0.5 font-mono text-xs text-muted-foreground">
-												{templateConfigIssues.slice(0, 12).map((msg, idx) => (
-													<li key={idx}>- {msg}</li>
-												))}
-												{templateConfigIssues.length > 12 ? (
-													<li>
-														- …and {templateConfigIssues.length - 12} more
-													</li>
-												) : null}
-											</ul>
-										</div>
-									) : null}
-								</div>
+			<div className="w-full max-w-[1800px] mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+				{/* Left Column: Preview & Library (Flexible width, maybe 7 cols) */}
+				<div className="lg:col-span-7 space-y-6">
+					{/* Preview Section */}
+					<div className="space-y-2">
+						<div className="flex items-center justify-between">
+							<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+								{t('sections.preview')}
 							</div>
+							{/* Render Status / Action could go here or bottom */}
+						</div>
 
-							<div className="space-y-2">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Assets (insert)
-								</Label>
-								{templateAssetIdsForPreview.length > 0 ? (
-									<div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-muted-foreground">
-										<div>
-											Template refs: {templateAssetIdsForPreview.length}
-											{missingTemplateAssetIds.length > 0
-												? ` · Missing: ${missingTemplateAssetIds.length}`
-												: ' · All resolved'}
-											{missingTemplateAssetIdsOverflow > 0
-												? ` · +${missingTemplateAssetIdsOverflow} not fetched`
-												: null}
-											{extraTemplateAssetsQuery.isFetching
-												? ' · Loading…'
-												: null}
-											{extraTemplateAssetsQuery.isError
-												? ' · Load failed'
-												: null}
-										</div>
-										{missingTemplateAssetIds.length > 0 ? (
-											<Button
-												type="button"
-												size="sm"
-												variant="outline"
-												className="rounded-none font-mono text-[10px] uppercase"
-												onClick={() => {
-													void navigator.clipboard
-														.writeText(missingTemplateAssetIds.join('\n'))
-														.then(() =>
-															toast.message('Copied missing asset ids'),
-														)
-														.catch(() =>
-															toast.message(
-																'Copy failed (clipboard not available)',
-															),
-														)
-												}}
-											>
-												Copy Missing IDs
-											</Button>
-										) : null}
+						<div className="border border-border bg-card">
+							<ThreadRemotionPlayerCard
+								thread={thread as any}
+								root={root as any}
+								replies={replies as any}
+								assets={assets as any}
+								audio={
+									audio?.url && audio?.asset?.durationMs
+										? {
+												url: String(audio.url),
+												durationMs: Number(audio.asset.durationMs),
+											}
+										: null
+								}
+								isLoading={dataQuery.isLoading}
+								templateId={effectiveTemplateIdForLibrary as any}
+								templateConfig={
+									(normalizedTemplateConfig ??
+										DEFAULT_THREAD_TEMPLATE_CONFIG) as any
+								}
+							/>
+						</div>
+					</div>
+
+					{/* Template Library */}
+					<div className="space-y-2">
+						<div className="flex items-center justify-between">
+							<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+								Template Library
+							</div>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-7"
+								asChild
+							>
+								<Link to="/thread-templates">Manage</Link>
+							</Button>
+						</div>
+						<div className="border border-border bg-card">
+							<ThreadTemplateLibraryCard
+								threadId={id}
+								effectiveTemplateId={effectiveTemplateIdForLibrary}
+								normalizedTemplateConfig={normalizedTemplateConfig}
+								onApplied={refreshThread}
+							/>
+						</div>
+					</div>
+
+					{/* Render Section (Moved up or kept here) */}
+					<div className="space-y-2">
+						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+							{t('sections.render')}
+						</div>
+						<div className="border border-border bg-card p-4">
+							<div className="flex flex-wrap items-center gap-3">
+								<Button
+									className="rounded-[2px] shadow-none font-sans text-xs uppercase"
+									disabled={startRenderMutation.isPending || !thread || !root}
+									onClick={() => {
+										startRenderMutation.mutate({ threadId: id })
+									}}
+								>
+									{t('actions.startRender')}
+								</Button>
+								{renderJobId ? (
+									<div className="font-mono text-xs text-muted-foreground">
+										{t('render.jobId', { jobId: renderJobId })}
 									</div>
 								) : null}
-								<div className="rounded-none border border-border bg-card">
-									{assetsForPreview.length === 0 ? (
-										<div className="px-3 py-3 font-mono text-xs text-muted-foreground">
-											No referenced assets in this thread yet.
-										</div>
-									) : (
-										<div className="max-h-[260px] overflow-auto">
-											{assetsForPreview
-												.slice()
-												.sort((a: any, b: any) => {
-													const ka = String(a?.kind ?? '')
-													const kb = String(b?.kind ?? '')
-													if (ka !== kb) return ka.localeCompare(kb)
-													return String(a?.id ?? '').localeCompare(
-														String(b?.id ?? ''),
-													)
-												})
-												.map((a: any) => (
-													<div
-														key={String(a.id)}
-														className="flex items-start justify-between gap-3 px-3 py-2 border-t border-border first:border-t-0"
-													>
-														<div className="min-w-0">
-															<div className="font-mono text-xs text-foreground">
-																{String(a.kind)}{' '}
-																<span className="text-muted-foreground">
-																	({String(a.status ?? 'unknown')})
-																</span>
-															</div>
-															<div className="font-mono text-[10px] text-muted-foreground break-all">
-																{String(a.id)}
-															</div>
-														</div>
-														<div className="flex flex-wrap items-center justify-end gap-2">
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase"
-																onClick={() => {
-																	const id = String(a.id)
-																	void navigator.clipboard
-																		.writeText(id)
-																		.then(() =>
-																			toast.message('Copied asset id'),
-																		)
-																		.catch(() =>
-																			toast.message(
-																				'Copy failed (clipboard not available)',
-																			),
-																		)
-
-																	const kind =
-																		a.kind === 'image' || a.kind === 'video'
-																			? (a.kind as 'image' | 'video')
-																			: null
-																	if (replaceAssetIdPlaceholder(id, kind)) {
-																		toast.message('Replaced placeholder')
-																		return
-																	}
-																	insertTemplateText(JSON.stringify(id))
-																}}
-															>
-																Insert ID
-															</Button>
-															{a.kind === 'image' ? (
-																<Button
-																	type="button"
-																	size="sm"
-																	variant="outline"
-																	className="rounded-none font-mono text-[10px] uppercase"
-																	onClick={() => {
-																		const id = String(a.id)
-																		if (
-																			replaceAssetIdPlaceholder(id, 'image')
-																		) {
-																			toast.message('Replaced placeholder')
-																			return
-																		}
-																		const height = suggestMediaHeight(
-																			'image',
-																			a.width,
-																			a.height,
-																		)
-																		insertTemplateText(
-																			toPrettyJson({
-																				type: 'Image',
-																				assetId: id,
-																				fit: 'cover',
-																				height,
-																				radius: 12,
-																				border: true,
-																			}),
-																		)
-																	}}
-																>
-																	Insert Image
-																</Button>
-															) : null}
-															{a.kind === 'video' ? (
-																<Button
-																	type="button"
-																	size="sm"
-																	variant="outline"
-																	className="rounded-none font-mono text-[10px] uppercase"
-																	onClick={() => {
-																		const id = String(a.id)
-																		if (
-																			replaceAssetIdPlaceholder(id, 'video')
-																		) {
-																			toast.message('Replaced placeholder')
-																			return
-																		}
-																		const height = suggestMediaHeight(
-																			'video',
-																			a.width,
-																			a.height,
-																		)
-																		insertTemplateText(
-																			toPrettyJson({
-																				type: 'Video',
-																				assetId: id,
-																				fit: 'cover',
-																				height,
-																				radius: 12,
-																				border: true,
-																			}),
-																		)
-																	}}
-																>
-																	Insert Video
-																</Button>
-															) : null}
-														</div>
-													</div>
-												))}
-										</div>
-									)}
-								</div>
-								<div className="font-mono text-xs text-muted-foreground">
-									Tip: `Image/Video.assetId` must be a `thread_assets.id`. Use
-									`Download/ingest` first for external media. Placeholders:
-									{` ${IMAGE_ASSET_ID_PLACEHOLDER}, ${VIDEO_ASSET_ID_PLACEHOLDER}`}
-								</div>
 							</div>
-
-							{templateEditorMode === 'visual' ||
-							!templateConfigParsed.error ? (
-								<div className="space-y-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										Normalized (preview)
-									</Label>
-									<Textarea
-										value={normalizedTemplateConfigText}
-										readOnly
-										className="min-h-[120px] rounded-none font-mono text-xs"
-									/>
-									<div className="font-mono text-xs text-muted-foreground">
-										Preview/render uses the normalized config.
+							{renderJobId ? (
+								<div className="mt-3 font-mono text-xs text-muted-foreground space-y-1 border-t border-border pt-3">
+									<div className="flex items-center gap-2">
+										<div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+										{t('render.status', {
+											status: renderStatusQuery.data?.status ?? '...',
+										})}
 									</div>
+									{typeof renderStatusQuery.data?.progress === 'number' ? (
+										<div>
+											{t('render.progress', {
+												progress: Math.round(
+													renderStatusQuery.data.progress * 100,
+												),
+											})}
+										</div>
+									) : null}
+									{renderStatusQuery.data?.status === 'completed' &&
+									renderedDownloadUrl ? (
+										<a
+											className="underline hover:text-foreground"
+											href={renderedDownloadUrl}
+										>
+											{t('render.downloadMp4')}
+										</a>
+									) : null}
 								</div>
 							) : null}
-
-							<div className="flex flex-wrap items-center gap-3">
-								<Button
-									type="button"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={setTemplateMutation.isPending || !thread}
-									onClick={() => void saveTemplateSettings('raw')}
-								>
-									{setTemplateMutation.isPending ? 'Saving…' : 'Save'}
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-									onClick={() => {
-										setTemplateEditorMode('json')
-										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
-										setTemplateConfigText(
-											toPrettyJson(buildRepliesListItemRootExample()),
-										)
-										toast.message('Inserted example config (replies itemRoot)')
-									}}
-								>
-									Insert Example
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-									onClick={() => {
-										setTemplateEditorMode('json')
-										setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
-										setTemplateConfigText(toPrettyJson(buildCoverRootExample()))
-										toast.message('Inserted example config (cover root)')
-									}}
-								>
-									Insert Cover Example
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-none font-mono text-xs uppercase"
-										disabled={!thread}
-										onClick={() => {
-											setTemplateEditorMode('json')
-											setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
-											setTemplateConfigText(
-												toPrettyJson(buildActiveReplySplitLayoutExample()),
-											)
-											toast.message(
-												'Inserted example config (active reply split layout)',
-											)
-										}}
-										>
-											Insert Active Layout
-										</Button>
-										<Button
-											type="button"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!thread}
-											onClick={() => {
-												setTemplateEditorMode('json')
-												setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
-												setTemplateConfigText(
-													toPrettyJson(buildRepeatRepliesSplitLayoutExample()),
-												)
-												toast.message(
-													'Inserted example config (replies split layout, repeat)',
-												)
-											}}
-										>
-											Insert Replies Layout
-										</Button>
-										<Button
-											type="button"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!thread}
-										onClick={() => {
-											setTemplateEditorMode('json')
-											setTemplateIdDraft(DEFAULT_THREAD_TEMPLATE_ID)
-											setTemplateConfigText(
-												toPrettyJson(buildRepliesListSplitLayoutExample()),
-											)
-											toast.message(
-												'Inserted example config (repliesList split layout, builtin)',
-											)
-										}}
-									>
-										Insert RepliesList Layout
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-										onClick={() => {
-											setTemplateEditorMode('json')
-											insertTemplateText(
-												toPrettyJson(buildRepliesListHeaderSnippetExample()),
-											)
-											toast.message('Inserted snippet (replies header)')
-										}}
-									>
-										Insert Header Snippet
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-none font-mono text-xs uppercase"
-										disabled={!thread}
-										onClick={() => {
-											setTemplateEditorMode('json')
-											insertTemplateText(toPrettyJson(buildRootPostSnippetExample()))
-											toast.message('Inserted snippet (root post)')
-										}}
-									>
-										Insert Root Snippet
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-none font-mono text-xs uppercase"
-										disabled={!thread}
-										onClick={() => {
-											setTemplateEditorMode('json')
-											insertTemplateText(toPrettyJson(buildReplyItemSnippetExample()))
-											toast.message('Inserted snippet (reply item)')
-										}}
-									>
-										Insert Reply Snippet
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-none font-mono text-xs uppercase"
-										disabled={!thread}
-										onClick={() => {
-											setTemplateEditorMode('json')
-											insertTemplateText(toPrettyJson(buildRepeatRepliesSnippetExample()))
-											toast.message('Inserted snippet (repeat replies)')
-										}}
-									>
-										Insert Repeat Snippet
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-none font-mono text-xs uppercase"
-										disabled={!thread}
-										onClick={() => {
-											setTemplateEditorMode('json')
-											insertTemplateText(
-												toPrettyJson(buildRepliesHighlightSnippetExample()),
-											)
-											toast.message('Inserted snippet (replies highlight)')
-										}}
-									>
-										Insert Builtin Highlight Snippet
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										className="rounded-none font-mono text-xs uppercase"
-										disabled={!thread}
-										onClick={() => {
-											if (templateEditorMode === 'json' && templateConfigParsed.error) {
-												toast.error(
-													`Fix JSON first: ${templateConfigParsed.error}`,
-												)
-												return
-											}
-
-											const source =
-												templateEditorMode === 'visual'
-													? (visualTemplateConfig as any)
-													: templateConfigParsed.value == null
-														? null
-														: templateConfigParsed.value
-
-											const res = migrateThreadTemplateConfigBuiltinsToRepeat(
-												source ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
-											)
-
-											if (!res.changed) {
-												toast.message('No Builtin repliesList nodes found')
-												return
-											}
-
-											const msg = `Migrated Builtins → Repeat (replies=${res.stats.builtinRepliesListReplies}, header=${res.stats.builtinRepliesListHeader}, root=${res.stats.builtinRepliesListRootPost}, repliesList=${res.stats.builtinRepliesList})`
-
-											if (templateEditorMode === 'visual') {
-												setVisualTemplateConfig(
-													normalizeThreadTemplateConfig(
-														res.value ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
-													),
-												)
-												toast.success(msg)
-												return
-											}
-
-											setTemplateEditorMode('json')
-											setTemplateConfigText(toPrettyJson(res.value))
-											toast.success(msg)
-										}}
-									>
-										Migrate Builtins → Repeat
-									</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-									onClick={() => {
-										setTemplateEditorMode('json')
-										insertTemplateText(toPrettyJson(buildGridSnippetExample()))
-										toast.message('Inserted snippet (Grid)')
-									}}
-								>
-									Insert Grid Snippet
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-									onClick={() => {
-										setTemplateEditorMode('json')
-										insertTemplateText(
-											toPrettyJson(buildAbsoluteSnippetExample()),
-										)
-										toast.message('Inserted snippet (Absolute)')
-									}}
-								>
-									Insert Absolute Snippet
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!canSaveNormalized}
-									onClick={() => void saveTemplateSettings('normalized')}
-								>
-									Save Normalized
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-									onClick={() => {
-										if (!thread) return
-										setTemplateEditorMode('json')
-										syncTemplateEditorFromThread(thread)
-									}}
-								>
-									Reset
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={!thread}
-									onClick={() => {
-										setTemplateEditorMode('json')
-										setVisualTemplateConfig(DEFAULT_THREAD_TEMPLATE_CONFIG)
-										setTemplateConfigText('')
-									}}
-								>
-									Clear Config
-								</Button>
-							</div>
-						</CardContent>
-					</Card>
-					</div>
-				*/}
-
-				<div className="mt-6">
-					<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-						<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-							Template Library
 						</div>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							className="rounded-none font-mono text-[10px] uppercase"
-							asChild
-						>
-							<Link to="/thread-templates">Manage</Link>
-						</Button>
 					</div>
-					<ThreadTemplateLibraryCard
-						threadId={id}
-						effectiveTemplateId={effectiveTemplateIdForLibrary}
-						normalizedTemplateConfig={normalizedTemplateConfig}
-						onApplied={refreshThread}
-					/>
 				</div>
 
-				<div className="mt-6">
-					<div className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-						{t('sections.audio')}
-					</div>
-					<Card className="rounded-none">
-						<CardContent className="py-5 space-y-4">
-							<div className="flex flex-wrap items-center gap-3">
+				{/* Right Column: Editor & Assets (5 cols) */}
+				<div className="lg:col-span-5 space-y-6">
+					{/* Audio Section */}
+					<div className="space-y-2">
+						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+							{t('sections.audio')}
+						</div>
+						<div className="border border-border bg-card p-4 space-y-4">
+							<div className="flex flex-wrap items-center gap-2">
 								<input
 									ref={audioFileInputRef}
 									type="file"
@@ -3692,7 +3112,8 @@ function ThreadDetailRoute() {
 								/>
 								<Button
 									type="button"
-									className="rounded-none font-mono text-xs uppercase"
+									variant="outline"
+									className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8"
 									disabled={isUploadingAudio}
 									onClick={() => audioFileInputRef.current?.click()}
 								>
@@ -3700,42 +3121,33 @@ function ThreadDetailRoute() {
 										? t('audio.actions.uploading')
 										: t('audio.actions.upload')}
 								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-none font-mono text-xs uppercase"
-									disabled={
-										setAudioAssetMutation.isPending || !thread?.audioAssetId
-									}
-									onClick={() => void setThreadAudio(null)}
-								>
-									{t('audio.actions.clear')}
-								</Button>
-								{audio?.asset?.id ? (
-									<div className="font-mono text-xs text-muted-foreground">
-										{t('audio.labels.current', { id: String(audio.asset.id) })}
-									</div>
-								) : (
-									<div className="font-mono text-xs text-muted-foreground">
-										{t('audio.labels.none')}
-									</div>
-								)}
+								{thread?.audioAssetId ? (
+									<Button
+										type="button"
+										variant="ghost"
+										className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8 hover:bg-destructive/10 hover:text-destructive"
+										disabled={setAudioAssetMutation.isPending}
+										onClick={() => void setThreadAudio(null)}
+									>
+										{t('audio.actions.clear')}
+									</Button>
+								) : null}
 							</div>
-
 							{audio?.url ? (
-								<audio controls src={String(audio.url)} className="w-full" />
-							) : audio?.asset ? (
-								<div className="font-mono text-xs text-muted-foreground">
-									{t('audio.labels.urlMissing')}
-								</div>
+								<audio
+									controls
+									src={String(audio.url)}
+									className="w-full h-8"
+								/>
 							) : null}
 
+							{/* Audio Library List (Simplified) */}
 							{audioAssets.length > 0 ? (
-								<div className="space-y-2">
-									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+								<div className="space-y-2 border-t border-border pt-3">
+									<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
 										{t('audio.labels.library')}
 									</div>
-									<div className="grid grid-cols-1 gap-2">
+									<div className="max-h-[150px] overflow-y-auto space-y-1 pr-1">
 										{audioAssets.map((a: any) => {
 											const isCurrent =
 												thread?.audioAssetId &&
@@ -3743,309 +3155,118 @@ function ThreadDetailRoute() {
 											return (
 												<div
 													key={String(a.id)}
-													className={`border px-3 py-2 font-mono text-xs ${
+													className={`group flex items-center justify-between border px-2 py-1.5 font-mono text-[10px] ${
 														isCurrent
 															? 'border-primary bg-primary/5'
-															: 'border-border bg-muted/30'
+															: 'border-border bg-background hover:bg-muted/50'
 													}`}
 												>
-													<div className="flex flex-wrap items-center justify-between gap-3">
-														<div className="truncate">
-															{String(a.id)}
-															{typeof a.durationMs === 'number'
-																? ` · ${Math.round(a.durationMs / 1000)}s`
-																: ''}
-															{typeof a.bytes === 'number'
-																? ` · ${Math.round(a.bytes / 1024)}KB`
-																: ''}
-															{a.status ? ` · ${String(a.status)}` : ''}
-														</div>
-														<Button
+													<div className="truncate flex-1">
+														{String(a.id).slice(0, 8)}...
+														{typeof a.durationMs === 'number'
+															? ` · ${Math.round(a.durationMs / 1000)}s`
+															: ''}
+													</div>
+													{!isCurrent && (
+														<button
 															type="button"
-															size="sm"
-															variant="outline"
-															className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+															className="opacity-0 group-hover:opacity-100 uppercase tracking-wider hover:underline"
 															disabled={
 																setAudioAssetMutation.isPending ||
 																String(a.status) !== 'ready'
 															}
 															onClick={() => void setThreadAudio(String(a.id))}
 														>
-															{t('audio.actions.use')}
-														</Button>
-													</div>
+															Use
+														</button>
+													)}
 												</div>
 											)
 										})}
 									</div>
-								</div>
-							) : (
-								<div className="font-mono text-xs text-muted-foreground">
-									{t('audio.labels.libraryEmpty')}
-								</div>
-							)}
-						</CardContent>
-					</Card>
-				</div>
-			</div>
-
-			<div className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8 grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
-				<Card className="rounded-none">
-					<CardHeader>
-						<CardTitle className="font-mono text-sm uppercase tracking-widest">
-							{t('sections.posts')}
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-2">
-						{root ? (
-							<button
-								type="button"
-								onClick={() => setSelectedPostId(root.id)}
-								className={`w-full text-left border px-3 py-2 font-mono text-xs ${
-									selectedPostId === root.id
-										? 'border-primary bg-primary/5'
-										: 'border-border hover:bg-muted/30'
-								}`}
-							>
-								<div className="uppercase tracking-widest text-[10px] text-muted-foreground">
-									{t('labels.root')}
-								</div>
-								<div className="truncate">{root.authorName}</div>
-							</button>
-						) : null}
-
-						<div className="pt-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-							{t('labels.replies', { count: replies.length })}
-						</div>
-						<div className="space-y-2">
-							{replies.map((p) => (
-								<button
-									key={p.id}
-									type="button"
-									onClick={() => setSelectedPostId(p.id)}
-									className={`w-full text-left border px-3 py-2 font-mono text-xs ${
-										selectedPostId === p.id
-											? 'border-primary bg-primary/5'
-											: 'border-border hover:bg-muted/30'
-									}`}
-								>
-									<div className="truncate">{p.authorName}</div>
-									<div className="truncate text-[10px] text-muted-foreground">
-										{p.plainText || t('labels.emptyText')}
-									</div>
-								</button>
-							))}
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="rounded-none">
-					<CardHeader>
-						<CardTitle className="font-mono text-sm uppercase tracking-widest">
-							{t('sections.editor')}
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="space-y-2">
-							<div className="flex items-center justify-between gap-3">
-								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									{t('sections.media')}
-								</div>
-								{canIngestAssets ? (
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase tracking-widest"
-										disabled={ingestAssetsMutation.isPending}
-										onClick={() =>
-											ingestAssetsMutation.mutate({ threadId: id })
-										}
-									>
-										{ingestAssetsMutation.isPending
-											? t('actions.downloading')
-											: t('actions.download')}
-									</Button>
-								) : null}
-							</div>
-
-							{selectedPost?.authorAvatarAssetId ? (
-								<div className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs space-y-1">
-									<div>avatarAssetId: {selectedPost.authorAvatarAssetId}</div>
-									{assetsById.get(selectedPost.authorAvatarAssetId) ? (
-										<div className="text-muted-foreground">
-											asset:{' '}
-											{assetsById.get(selectedPost.authorAvatarAssetId).kind}{' '}
-											{assetsById.get(selectedPost.authorAvatarAssetId)
-												.sourceUrl
-												? `url=${assetsById.get(selectedPost.authorAvatarAssetId).sourceUrl}`
-												: assetsById.get(selectedPost.authorAvatarAssetId)
-															.storageKey
-													? `storageKey=${assetsById.get(selectedPost.authorAvatarAssetId).storageKey}`
-													: '(no url)'}
-											{assetsById.get(selectedPost.authorAvatarAssetId).status
-												? ` status=${assetsById.get(selectedPost.authorAvatarAssetId).status}`
-												: null}
-										</div>
-									) : (
-										<div className="text-muted-foreground">
-											{t('media.assetRowMissing')}
-										</div>
-									)}
 								</div>
 							) : null}
-
-							{(selectedPost?.contentBlocks ?? []).filter(
-								(b: any) => b?.type !== 'text',
-							).length === 0 ? (
-								<div className="font-mono text-xs text-muted-foreground">
-									{t('media.noBlocks')}
-								</div>
-							) : (
-								<div className="space-y-2">
-									{(selectedPost?.contentBlocks ?? [])
-										.filter((b: any) => b?.type && b.type !== 'text')
-										.map((b: any) => {
-											if (b.type === 'image' || b.type === 'video') {
-												const assetId = String(b.data?.assetId ?? '')
-												const asset = assetId ? assetsById.get(assetId) : null
-												const url = asset?.sourceUrl || null
-
-												return (
-													<div
-														key={String(b.id)}
-														className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs space-y-1"
-													>
-														<div>
-															{b.type} assetId={assetId || '(missing)'}
-														</div>
-														{b.type === 'image' && b.data?.caption ? (
-															<div className="text-muted-foreground">
-																caption: {String(b.data.caption)}
-															</div>
-														) : null}
-														{b.type === 'video' && b.data?.title ? (
-															<div className="text-muted-foreground">
-																title: {String(b.data.title)}
-															</div>
-														) : null}
-														{asset ? (
-															<div className="text-muted-foreground">
-																asset: kind={asset.kind} bytes=
-																{asset.bytes ?? '-'}{' '}
-																{asset.width && asset.height
-																	? `dim=${asset.width}x${asset.height}`
-																	: null}{' '}
-																status={asset.status}{' '}
-																{asset.storageKey
-																	? `storageKey=${asset.storageKey}`
-																	: null}
-															</div>
-														) : (
-															<div className="text-muted-foreground">
-																{t('media.assetRowMissing')}
-															</div>
-														)}
-														{asset?.sourceUrl ? (
-															<a
-																className="underline"
-																href={asset.sourceUrl}
-																target="_blank"
-																rel="noreferrer"
-															>
-																{t('media.openSourceUrl')}
-															</a>
-														) : null}
-														{b.type === 'image' && url ? (
-															<img
-																alt=""
-																src={url}
-																className="mt-2 max-h-[220px] w-full rounded-none border border-border object-contain bg-background"
-															/>
-														) : null}
-														{b.type === 'video' && url ? (
-															<video
-																controls
-																src={url}
-																className="mt-2 max-h-[260px] w-full rounded-none border border-border bg-background"
-															/>
-														) : null}
-													</div>
-												)
-											}
-
-											if (b.type === 'link') {
-												const previewAssetId = b.data?.previewAssetId
-													? String(b.data.previewAssetId)
-													: null
-												const previewAsset = previewAssetId
-													? assetsById.get(previewAssetId)
-													: null
-
-												return (
-													<div
-														key={String(b.id)}
-														className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs space-y-1"
-													>
-														<div>
-															{t('media.labels.link')}:{' '}
-															{String(b.data?.url ?? '')}
-														</div>
-														{b.data?.title ? (
-															<div className="text-muted-foreground">
-																{t('media.labels.title')}:{' '}
-																{String(b.data.title)}
-															</div>
-														) : null}
-														{b.data?.description ? (
-															<div className="text-muted-foreground">
-																{t('media.labels.description')}:{' '}
-																{String(b.data.description)}
-															</div>
-														) : null}
-														{previewAssetId ? (
-															<div className="text-muted-foreground">
-																{t('media.labels.previewAssetId')}:{' '}
-																{previewAssetId}{' '}
-																{previewAsset?.sourceUrl
-																	? `url=${previewAsset.sourceUrl}`
-																	: null}
-															</div>
-														) : (
-															<div className="text-muted-foreground">
-																{t('media.labels.previewAssetId')}: -
-															</div>
-														)}
-													</div>
-												)
-											}
-
-											return (
-												<div
-													key={String(b.id)}
-													className="border border-border bg-muted/30 px-3 py-2 font-mono text-xs"
-												>
-													{t('media.unknownBlockType', {
-														type: String(b.type),
-													})}
-												</div>
-											)
-										})}
-								</div>
-							)}
 						</div>
+					</div>
 
-						<div className="space-y-2">
-							<div className="flex items-center justify-between gap-3">
-								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									{t('sections.translation')}
+					{/* Posts & Editor */}
+					<div className="space-y-2">
+						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+							{t('sections.posts')}
+						</div>
+						<div className="border border-border bg-card flex flex-col max-h-[800px]">
+							{/* Post List */}
+							<div className="flex-1 overflow-y-auto min-h-[150px] max-h-[300px] border-b border-border">
+								{root ? (
+									<button
+										type="button"
+										onClick={() => setSelectedPostId(root.id)}
+										className={`w-full text-left border-b border-border px-4 py-3 font-mono text-xs transition-colors ${
+											selectedPostId === root.id
+												? 'bg-primary/5'
+												: 'hover:bg-muted/30'
+										}`}
+									>
+										<div className="flex items-center gap-2 mb-1">
+											<span className="uppercase tracking-widest text-[10px] text-muted-foreground font-bold border border-border px-1 rounded-[2px]">
+												{t('labels.root')}
+											</span>
+											<span className="font-bold">{root.authorName}</span>
+										</div>
+									</button>
+								) : null}
+								{replies.map((p) => (
+									<button
+										key={p.id}
+										type="button"
+										onClick={() => setSelectedPostId(p.id)}
+										className={`w-full text-left border-b border-border last:border-0 px-4 py-3 font-mono text-xs transition-colors ${
+											selectedPostId === p.id
+												? 'bg-primary/5'
+												: 'hover:bg-muted/30'
+										}`}
+									>
+										<div className="font-bold mb-1">{p.authorName}</div>
+										<div className="truncate text-muted-foreground opacity-80">
+											{p.plainText || t('labels.emptyText')}
+										</div>
+									</button>
+								))}
+							</div>
+
+							{/* Editor Area */}
+							<div className="p-4 space-y-4 bg-muted/10">
+								<div className="flex items-center justify-between">
+									<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+										Editor
+									</div>
+									<div className="flex items-center gap-2">
+										{canIngestAssets ? (
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-6"
+												disabled={ingestAssetsMutation.isPending}
+												onClick={() =>
+													ingestAssetsMutation.mutate({ threadId: id })
+												}
+											>
+												{ingestAssetsMutation.isPending
+													? 'DL...'
+													: 'Download Media'}
+											</Button>
+										) : null}
+									</div>
 								</div>
-								<div className="flex items-center gap-2">
+
+								{/* Translation Controls */}
+								<div className="flex items-center gap-2 border-b border-border pb-3">
 									<Button
 										type="button"
 										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+										variant="ghost"
+										className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-6 px-2 border border-border"
 										disabled={
 											translateMutation.isPending ||
 											!thread?.id ||
@@ -4061,165 +3282,123 @@ function ThreadDetailRoute() {
 										}}
 									>
 										{translateMutation.isPending ? (
-											<>
-												<Loader2 className="h-3 w-3 animate-spin" />
-												{t('actions.translating')}
-											</>
+											<Loader2 className="h-3 w-3 animate-spin" />
 										) : (
-											t('actions.translateToZh')
+											'Translate to ZH'
 										)}
 									</Button>
-
 									{selectedZhTranslation ? (
 										<Button
 											type="button"
 											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-[10px] uppercase tracking-widest"
+											variant="ghost"
+											className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-6 px-2 border border-border hover:bg-accent"
 											onClick={() => {
 												setDraftText(selectedZhTranslation)
 												toast.message(t('toasts.translationApplied'))
 											}}
 										>
-											{t('actions.useTranslation')}
+											Use Translation
 										</Button>
 									) : null}
 								</div>
-							</div>
 
-							{selectedZhTranslation ? (
-								<Textarea
-									value={selectedZhTranslation}
-									readOnly
-									className="rounded-none font-mono text-xs min-h-[140px]"
-								/>
-							) : (
-								<div className="font-mono text-xs text-muted-foreground">
-									{t('translation.empty')}
-								</div>
-							)}
-						</div>
-
-						<div className="space-y-2">
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								{t('editor.textLabel')}
-							</Label>
-							<Textarea
-								value={draftText}
-								onChange={(e) => setDraftText(e.target.value)}
-								className="rounded-none font-mono text-xs min-h-[240px]"
-							/>
-						</div>
-
-						<div className="flex items-center gap-3">
-							<Button
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={
-									updateMutation.isPending || !selectedPost?.id || !thread?.id
-								}
-								onClick={() => {
-									if (!thread?.id || !selectedPost?.id) return
-									updateMutation.mutate({
-										threadId: thread.id,
-										postId: selectedPost.id,
-										text: draftText,
-									})
-								}}
-							>
-								{t('actions.save')}
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								onClick={() => {
-									setDraftText(
-										firstTextBlockText(selectedPost?.contentBlocks) || '',
-									)
-									toast.message(t('toasts.reset'))
-								}}
-							>
-								{t('actions.reset')}
-							</Button>
-						</div>
-
-						<details className="border border-border rounded-none">
-							<summary className="cursor-pointer select-none px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								{t('sections.debug')}
-							</summary>
-							<div className="px-3 pb-3 space-y-3">
-								<div className="space-y-2">
-									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										{t('debug.selectedPostRow')}
+								{selectedZhTranslation ? (
+									<div className="bg-muted/30 border border-border p-2">
+										<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+											Translation
+										</div>
+										<div className="font-mono text-xs whitespace-pre-wrap">
+											{selectedZhTranslation}
+										</div>
 									</div>
-									<pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted/30 p-3 font-mono text-xs">
-										{selectedPostJson || t('debug.none')}
-									</pre>
-								</div>
-								<div className="space-y-2">
-									<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										{t('debug.threadRow')}
-									</div>
-									<pre className="max-h-[320px] overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted/30 p-3 font-mono text-xs">
-										{threadJson || t('debug.none')}
-									</pre>
-								</div>
-							</div>
-						</details>
-					</CardContent>
-				</Card>
-			</div>
+								) : null}
 
-			<div className="mx-auto max-w-6xl px-4 pb-12 sm:px-6 lg:px-8 space-y-3">
-				<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-					{t('sections.render')}
+								<div className="space-y-2">
+									<Textarea
+										value={draftText}
+										onChange={(e) => setDraftText(e.target.value)}
+										className="rounded-[2px] border-border focus:ring-1 focus:ring-ring shadow-none font-mono text-xs min-h-[200px] resize-y bg-background"
+										placeholder="Post content..."
+									/>
+									<div className="flex items-center justify-between">
+										<Button
+											type="button"
+											variant="ghost"
+											className="rounded-[2px] font-sans text-xs uppercase h-7 text-muted-foreground hover:text-foreground"
+											onClick={() => {
+												setDraftText(
+													firstTextBlockText(selectedPost?.contentBlocks) || '',
+												)
+												toast.message(t('toasts.reset'))
+											}}
+										>
+											{t('actions.reset')}
+										</Button>
+										<Button
+											className="rounded-[2px] shadow-none font-sans text-xs uppercase h-7"
+											disabled={
+												updateMutation.isPending ||
+												!selectedPost?.id ||
+												!thread?.id
+											}
+											onClick={() => {
+												if (!thread?.id || !selectedPost?.id) return
+												updateMutation.mutate({
+													threadId: thread.id,
+													postId: selectedPost.id,
+													text: draftText,
+												})
+											}}
+										>
+											{t('actions.save')}
+										</Button>
+									</div>
+								</div>
+
+								{/* Debug / Media Details */}
+								<details className="group">
+									<summary className="cursor-pointer select-none py-2 font-sans text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
+										Debug & Media Data
+									</summary>
+									<div className="space-y-3 pt-2">
+										{/* Media List in Editor */}
+										{(selectedPost?.contentBlocks ?? []).filter(
+											(b: any) => b?.type !== 'text',
+										).length > 0 ? (
+											<div className="space-y-1">
+												{(selectedPost?.contentBlocks ?? [])
+													.filter((b: any) => b?.type && b.type !== 'text')
+													.map((b: any) => {
+														const assetId =
+															b.data?.assetId || b.data?.previewAssetId
+														return (
+															<div
+																key={String(b.id)}
+																className="font-mono text-[10px] border border-border p-1.5 bg-background truncate"
+															>
+																<span className="text-muted-foreground uppercase mr-1">
+																	{b.type}
+																</span>
+																{assetId || 'no-id'}
+															</div>
+														)
+													})}
+											</div>
+										) : null}
+
+										<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+											Raw Post
+										</div>
+										<pre className="max-h-[200px] overflow-auto whitespace-pre-wrap break-words border border-border bg-background p-2 font-mono text-[10px]">
+											{selectedPostJson || t('debug.none')}
+										</pre>
+									</div>
+								</details>
+							</div>
+						</div>
+					</div>
 				</div>
-				<Card className="rounded-none">
-					<CardContent className="py-5 space-y-3">
-						<div className="flex flex-wrap items-center gap-3">
-							<Button
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={startRenderMutation.isPending || !thread || !root}
-								onClick={() => {
-									startRenderMutation.mutate({ threadId: id })
-								}}
-							>
-								{t('actions.startRender')}
-							</Button>
-							{renderJobId ? (
-								<div className="font-mono text-xs text-muted-foreground">
-									{t('render.jobId', { jobId: renderJobId })}
-								</div>
-							) : null}
-						</div>
-
-						{renderJobId ? (
-							<div className="font-mono text-xs text-muted-foreground space-y-1">
-								<div>
-									{t('render.status', {
-										status: renderStatusQuery.data?.status ?? '...',
-									})}
-								</div>
-								{typeof renderStatusQuery.data?.progress === 'number' ? (
-									<div>
-										{t('render.progress', {
-											progress: Math.round(
-												renderStatusQuery.data.progress * 100,
-											),
-										})}
-									</div>
-								) : null}
-								{renderStatusQuery.data?.status === 'completed' &&
-								renderedDownloadUrl ? (
-									<a className="underline" href={renderedDownloadUrl}>
-										{t('render.downloadMp4')}
-									</a>
-								) : null}
-							</div>
-						) : null}
-					</CardContent>
-				</Card>
 			</div>
 		</div>
-	)
-}
+	)}

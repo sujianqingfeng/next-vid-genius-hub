@@ -167,7 +167,7 @@ export function ThreadRemotionPlayerCard({
 	const TemplateComponent = template.component
 
 	return (
-		<Card className="shadow-sm rounded-none">
+		<Card className="rounded-none shadow-none border border-border">
 			<CardContent className="space-y-4">
 				{isLoading ? (
 					<div className="space-y-3">
