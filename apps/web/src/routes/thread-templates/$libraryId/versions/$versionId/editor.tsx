@@ -1,5 +1,22 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import {
+	ArrowLeft,
+	Code2,
+	History,
+	Keyboard,
+	Maximize,
+	Minimize,
+	Minus,
+	MonitorPlay,
+	MousePointer2,
+	Play,
+	Plus,
+	Redo2,
+	Save,
+	Undo2,
+	X,
+} from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -7,7 +24,6 @@ import { ThreadRemotionEditorCard } from '~/components/business/threads/thread-r
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -23,6 +39,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
+import { Separator } from '~/components/ui/separator'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '~/components/ui/tooltip'
 import { Textarea } from '~/components/ui/textarea'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
@@ -113,8 +136,8 @@ function ThreadTemplateVersionEditorRoute() {
 		{
 			version: 1,
 			defaultValue: {
-				leftPx: 360,
-				rightPx: 420,
+				leftPx: 320,
+				rightPx: 360,
 				leftCollapsed: false,
 				rightCollapsed: false,
 			},
@@ -136,7 +159,6 @@ function ThreadTemplateVersionEditorRoute() {
 	)
 
 	React.useEffect(() => {
-		// Always start with all panels expanded when entering the editor.
 		setLayout((prev) => {
 			if (!prev.leftCollapsed && !prev.rightCollapsed) return prev
 			return { ...prev, leftCollapsed: false, rightCollapsed: false }
@@ -180,6 +202,7 @@ function ThreadTemplateVersionEditorRoute() {
 	const threads = threadsQuery.data?.items ?? []
 
 	const [note, setNote] = React.useState('')
+	const [zoom, setZoom] = React.useState(1.0)
 
 	const [editorScene, setEditorScene] = React.useState<'cover' | 'post'>(
 		'cover',
@@ -386,8 +409,8 @@ function ThreadTemplateVersionEditorRoute() {
 		noteRef.current = note
 	}, [note])
 
-	const leftRailPx = 44
-	const rightRailPx = 44
+	const leftRailPx = 40
+	const rightRailPx = 40
 	const leftColPx = layout.leftCollapsed ? leftRailPx : layout.leftPx
 	const rightColPx = layout.rightCollapsed ? rightRailPx : layout.rightPx
 
@@ -501,9 +524,9 @@ function ThreadTemplateVersionEditorRoute() {
 			const dx = ev.clientX - drag.startX
 			const width = drag.rect.width
 
-			const minLeft = 240
+			const minLeft = 260
 			const minRight = 280
-			const minCenter = 520
+			const minCenter = 400
 			const handles = 16
 
 			if (drag.kind === 'left') {
@@ -551,226 +574,249 @@ function ThreadTemplateVersionEditorRoute() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background font-sans text-foreground">
-			<Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
-				<DialogContent className="rounded-none sm:max-w-xl">
-					<DialogHeader>
-						<DialogTitle className="font-mono uppercase tracking-widest text-sm">
-							{t('shortcuts.title')}
-						</DialogTitle>
-						<DialogDescription className="font-mono text-xs">
-							{t('shortcuts.description')}
-						</DialogDescription>
-					</DialogHeader>
+		<TooltipProvider delayDuration={300}>
+			<div className="flex h-screen flex-col bg-background font-sans text-foreground overflow-hidden">
+				<Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+					<DialogContent className="rounded-none sm:max-w-xl">
+						<DialogHeader>
+							<DialogTitle className="font-mono uppercase tracking-widest text-sm">
+								{t('shortcuts.title')}
+							</DialogTitle>
+							<DialogDescription className="font-mono text-xs">
+								{t('shortcuts.description')}
+							</DialogDescription>
+						</DialogHeader>
 
-					<div className="space-y-2">
-						<div className="grid grid-cols-1 gap-2">
-							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-								<div>{t('shortcuts.rows.undo')}</div>
-								<div>Ctrl/Cmd + Z</div>
-							</div>
-							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-								<div>{t('shortcuts.rows.redo')}</div>
-								<div>Ctrl/Cmd + Shift + Z · Ctrl/Cmd + Y</div>
-							</div>
-							<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-								<div>{t('shortcuts.rows.toggleStructure')}</div>
-								<div>Ctrl/Cmd + \\</div>
-							</div>
-							<div className="flex items-center justify-between font-mono text-xs">
-								<div>{t('shortcuts.rows.publish')}</div>
-								<div>Ctrl/Cmd + Enter</div>
+						<div className="space-y-2">
+							<div className="grid grid-cols-1 gap-2">
+								<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
+									<div>{t('shortcuts.rows.undo')}</div>
+									<div>Ctrl/Cmd + Z</div>
+								</div>
+								<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
+									<div>{t('shortcuts.rows.redo')}</div>
+									<div>Ctrl/Cmd + Shift + Z · Ctrl/Cmd + Y</div>
+								</div>
+								<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
+									<div>{t('shortcuts.rows.toggleStructure')}</div>
+									<div>Ctrl/Cmd + \\</div>
+								</div>
+								<div className="flex items-center justify-between font-mono text-xs">
+									<div>{t('shortcuts.rows.publish')}</div>
+									<div>Ctrl/Cmd + Enter</div>
+								</div>
 							</div>
 						</div>
-					</div>
-				</DialogContent>
-			</Dialog>
+					</DialogContent>
+				</Dialog>
 
-			<div className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/70">
-				<div className="mx-auto max-w-[1800px] px-4 py-3 sm:px-6 lg:px-8">
-					<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-						<div className="min-w-0 space-y-1">
-							<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-								{t('header.systemLabel')}
-							</div>
-							<div className="flex flex-wrap items-center gap-2">
-								<h1 className="min-w-0 truncate font-mono text-xl font-bold uppercase tracking-tight">
+				{/* HEADER */}
+				<header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-3 z-30 relative">
+					{/* LEFT: Context */}
+					<div className="flex items-center gap-4">
+						<div className="flex items-center gap-2">
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon"
+								className="size-8 rounded-none text-muted-foreground hover:text-foreground"
+								onClick={() => {
+									if (!confirmDiscardChanges('leave')) return
+									void navigate({ to: '/thread-templates' })
+								}}
+								title={t('buttons.back')}
+							>
+								<ArrowLeft className="size-4" />
+							</Button>
+							<div className="flex flex-col">
+								<h1 className="font-mono text-sm font-bold uppercase tracking-tight truncate max-w-[200px]">
 									{library ? String((library as any).name) : '…'}
 								</h1>
-								{isDirty ? (
-									<div className="rounded-none border border-border bg-muted px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-foreground">
-										{t('header.unpublishedChanges')}
-									</div>
-								) : null}
-							</div>
-							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								{selectedVersion
-									? t('header.version', {
-											version: Number((selectedVersion as any).version),
-										})
-									: t('header.versionUnknown')}
-								{library
-									? ` · ${t('header.templateId', {
-											templateId: String((library as any).templateId),
-										})}`
-									: ''}
+								<div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+									<span>
+										{selectedVersion
+											? `v${Number((selectedVersion as any).version)}`
+											: 'v?'}
+									</span>
+									{isDirty && (
+										<>
+											<span className="size-1 rounded-full bg-amber-500" />
+											<span className="text-amber-500">Unsaved</span>
+										</>
+									)}
+								</div>
 							</div>
 						</div>
+						
+						<div className="h-6 w-px bg-border/60" />
 
-						<div className="flex flex-wrap items-center gap-2">
-							<Select
-								value={String(versionId)}
-								disabled={versionsQuery.isLoading || versions.length === 0}
-								onValueChange={(v) => {
-									if (String(v) === String(versionId)) return
-									if (!confirmDiscardChanges('switchVersions')) return
-									void navigate({
-										to: '/thread-templates/$libraryId/versions/$versionId/editor',
-										params: { libraryId, versionId: v },
-										search: { previewThreadId },
-									})
-								}}
-							>
-							<SelectTrigger className="rounded-none font-mono text-xs h-9 w-[190px]">
-									<SelectValue placeholder={t('controls.versionPlaceholder')} />
+						{/* Version Selector */}
+						<Select
+							value={String(versionId)}
+							disabled={versionsQuery.isLoading || versions.length === 0}
+							onValueChange={(v) => {
+								if (String(v) === String(versionId)) return
+								if (!confirmDiscardChanges('switchVersions')) return
+								void navigate({
+									to: '/thread-templates/$libraryId/versions/$versionId/editor',
+									params: { libraryId, versionId: v },
+									search: { previewThreadId },
+								})
+							}}
+						>
+							<SelectTrigger className="h-8 w-[140px] rounded-none border-0 bg-transparent font-mono text-xs shadow-none hover:bg-accent/50 focus:ring-0 px-2 gap-2">
+								<History className="size-3.5 text-muted-foreground" />
+								<SelectValue placeholder="Version" />
 							</SelectTrigger>
-								<SelectContent>
-									{versions.map((v: any) => (
-										<SelectItem key={String(v.id)} value={String(v.id)}>
-											v{Number(v.version)} · {String(v.id).slice(0, 10)}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<SelectContent>
+								{versions.map((v: any) => (
+									<SelectItem key={String(v.id)} value={String(v.id)} className="font-mono text-xs">
+										v{Number(v.version)} <span className="text-muted-foreground text-[10px] ml-1">· {String(v.id).slice(0, 8)}</span>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
 
+					{/* CENTER: Tools */}
+					<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 rounded-lg border border-border bg-background p-1 shadow-sm">
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="size-7 rounded-md"
+									disabled={visualTemplateHistory.past.length === 0}
+									onClick={undoVisualTemplate}
+								>
+									<Undo2 className="size-3.5" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+								{t('tooltips.undo')} (Cmd+Z)
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="size-7 rounded-md"
+									disabled={visualTemplateHistory.future.length === 0}
+									onClick={redoVisualTemplate}
+								>
+									<Redo2 className="size-3.5" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+								{t('tooltips.redo')} (Cmd+Shift+Z)
+							</TooltipContent>
+						</Tooltip>
+					</div>
+
+					{/* RIGHT: Actions */}
+					<div className="flex items-center gap-3">
+						{/* Thread Preview Context */}
+						<div className="hidden lg:flex items-center gap-2">
+							<span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Previewing</span>
 							<Select
 								value={previewThreadId || ''}
 								onValueChange={(v) => {
 									void navigate({ search: { previewThreadId: v } })
 								}}
 							>
-							<SelectTrigger className="rounded-none font-mono text-xs h-9 w-[260px]">
-									<SelectValue
-										placeholder={t('controls.previewThreadPlaceholder')}
-									/>
-							</SelectTrigger>
-								<SelectContent>
+								<SelectTrigger className="h-8 w-[200px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 gap-2">
+									<MonitorPlay className="size-3.5 text-muted-foreground" />
+									<SelectValue placeholder="Select Thread..." />
+								</SelectTrigger>
+								<SelectContent align="end">
 									{threads.map((t: any) => (
-										<SelectItem key={String(t.id)} value={String(t.id)}>
-											{String(t.title || t.id).slice(0, 40)} ·{' '}
-											{String(t.id).slice(0, 10)}
+										<SelectItem key={String(t.id)} value={String(t.id)} className="font-mono text-xs">
+											<span className="truncate block max-w-[240px]">{String(t.title || t.id)}</span>
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
+						</div>
 
+						<div className="h-6 w-px bg-border/60" />
+
+						<div className="flex items-center gap-1">
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant={showAdvanced ? 'secondary' : 'ghost'}
+										size="icon"
+										className="size-8 rounded-sm"
+										onClick={() => {
+											const next = !showAdvanced
+											if (next && layout.rightCollapsed) setRightCollapsed(false)
+											setShowAdvanced(next)
+										}}
+									>
+										<Code2 className="size-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+									{showAdvanced ? t('buttons.hideJson') : t('buttons.json')}
+								</TooltipContent>
+							</Tooltip>
+
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="size-8 rounded-sm"
+										onClick={() => setShortcutsOpen(true)}
+									>
+										<Keyboard className="size-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+									{t('tooltips.shortcuts')}
+								</TooltipContent>
+							</Tooltip>
+							
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="size-8 rounded-sm"
+										disabled={!selectedVersion}
+										onClick={() => {
+											if (!selectedVersion) return
+											if (isDirty && !confirmDiscardChanges('reset')) return
+											syncEditorFromVersion(selectedVersion)
+											setNote('')
+											setEditorScene('cover')
+											setEditorSelectedKey('cover:[]')
+											toast.message(t('toasts.resetToVersion'))
+										}}
+									>
+										<History className="size-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+									{t('buttons.reset')}
+								</TooltipContent>
+							</Tooltip>
+						</div>
+
+						<div className="flex items-center gap-2">
 							<Input
 								value={note}
 								onChange={(e) => setNote(e.target.value)}
-								placeholder={t('controls.publishNotePlaceholder')}
-								className="rounded-none font-mono text-xs h-9 w-[240px]"
+								placeholder="Publish note..."
+								className="h-8 w-[160px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 focus:bg-background transition-colors"
 							/>
-
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={visualTemplateHistory.past.length === 0}
-								title={t('tooltips.undo')}
-								onClick={() => undoVisualTemplate()}
-							>
-								{t('buttons.undo')}
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={visualTemplateHistory.future.length === 0}
-								title={t('tooltips.redo')}
-								onClick={() => redoVisualTemplate()}
-							>
-								{t('buttons.redo')}
-							</Button>
-
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase"
-								disabled={!selectedVersion}
-								title={t('tooltips.reset')}
-								onClick={() => {
-									if (!selectedVersion) return
-									if (isDirty && !confirmDiscardChanges('reset')) return
-									syncEditorFromVersion(selectedVersion)
-									setNote('')
-									setEditorScene('cover')
-									setEditorSelectedKey('cover:[]')
-									toast.message(t('toasts.resetToVersion'))
-								}}
-							>
-								{t('buttons.reset')}
-							</Button>
-
 							<Button
 								type="button"
 								size="sm"
-								variant={previewMode === 'edit' ? 'default' : 'outline'}
-								className="rounded-none font-mono text-xs uppercase"
-								onClick={() => setPreviewMode('edit')}
-							>
-								{t('buttons.edit')}
-							</Button>
-							<Button
-								type="button"
-								size="sm"
-								variant={previewMode === 'play' ? 'default' : 'outline'}
-								className="rounded-none font-mono text-xs uppercase"
-								onClick={() => setPreviewMode('play')}
-							>
-								{t('buttons.play')}
-							</Button>
-
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								onClick={() => {
-									const next = !showAdvanced
-									if (next && layout.rightCollapsed) setRightCollapsed(false)
-									setShowAdvanced(next)
-								}}
-								title={t('tooltips.toggleJson')}
-							>
-								{showAdvanced ? t('buttons.hideJson') : t('buttons.json')}
-							</Button>
-
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs uppercase"
-								title={t('tooltips.shortcuts')}
-								onClick={() => setShortcutsOpen(true)}
-							>
-								?
-							</Button>
-
-							<Button
-								type="button"
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase"
+								className="h-8 rounded-sm font-mono text-xs uppercase gap-2"
 								disabled={!canPublish}
-								title={
-									publishDisabledReason
-										? t('tooltips.publishDisabled', {
-												reason: publishDisabledReason,
-											})
-										: t('tooltips.publish')
-								}
 								onClick={() => {
 									if (!library) return
 									if (!previewThreadId) {
@@ -785,198 +831,408 @@ function ThreadTemplateVersionEditorRoute() {
 									})
 								}}
 							>
-								{publishMutation.isPending
-									? t('buttons.publishing')
-									: t('buttons.publish')}
-							</Button>
-
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase tracking-wider"
-								onClick={() => {
-									if (!confirmDiscardChanges('leave')) return
-									void navigate({ to: '/thread-templates' })
-								}}
-							>
-								{t('buttons.back')}
+								{publishMutation.isPending ? (
+									<span className="animate-spin">⟳</span>
+								) : (
+									<Save className="size-3.5" />
+								)}
+								{t('buttons.publish')}
 							</Button>
 						</div>
 					</div>
+				</header>
 
-					{publishDisabledReason ? (
-						<div className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-							{t('header.publishDisabled', { reason: publishDisabledReason })}
-						</div>
-					) : null}
-				</div>
-			</div>
-
-			<div className="mx-auto max-w-[1800px] px-4 py-6 sm:px-6 lg:px-8">
-				<div
-					ref={containerRef}
-					className="grid grid-cols-1 gap-x-6 gap-y-6 lg:gap-x-0 lg:grid-cols-[var(--tte-left)_8px_1fr_8px_var(--tte-right)]"
-					style={
-						{
-							'--tte-left': `${leftColPx}px`,
-							'--tte-right': `${rightColPx}px`,
-						} as React.CSSProperties
-					}
-				>
-					<ThreadTemplateVisualEditor
-						layout="panels"
-						structureClassName="order-1 lg:order-none lg:col-start-1 lg:col-end-2 lg:row-start-1"
-						propertiesClassName="order-3 lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-1"
-						structureCollapsed={layout.leftCollapsed}
-						onStructureCollapsedChange={setLeftCollapsed}
-						propertiesCollapsed={layout.rightCollapsed}
-						onPropertiesCollapsedChange={setRightCollapsed}
-						value={visualTemplateConfig}
-						baselineValue={selectedVersionConfig ?? undefined}
-						onChange={(next) =>
-							setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
-						}
-						assets={previewAssets as any}
-						historyState={visualTemplateHistory}
-						setHistoryState={setVisualTemplateHistory}
-						resetKey={String(selectedVersion?.id ?? '')}
-						scene={editorScene}
-						onSceneChange={(s) => setEditorScene(s)}
-						selectedKey={editorSelectedKey}
-						onSelectedKeyChange={(key) => {
-							setEditorSelectedKey(key)
-							const s = sceneFromNodeKey(key)
-							if (s) setEditorScene((prev) => (prev === s ? prev : s))
-						}}
-					/>
-
+				{/* WORKSPACE */}
+				<div className="flex-1 overflow-hidden relative">
 					<div
-						className="hidden lg:flex lg:col-start-2 lg:col-end-3 lg:row-start-1 cursor-col-resize items-stretch justify-center select-none touch-none"
-						onPointerDown={(e) => startResize('left', e)}
-						onDoubleClick={() => {
-							setLayout((prev) => ({
-								...prev,
-								leftPx: 360,
-								leftCollapsed: false,
-							}))
-						}}
-						title={t('panels.resizeTitle')}
+						ref={containerRef}
+						className="h-full grid grid-cols-1 lg:grid-cols-[var(--tte-left)_8px_1fr_8px_var(--tte-right)]"
+						style={
+							{
+								'--tte-left': `${leftColPx}px`,
+								'--tte-right': `${rightColPx}px`,
+							} as React.CSSProperties
+						}
 					>
-						<div className="w-full bg-border/60 hover:bg-border" />
-					</div>
-
-						<div className="order-2 space-y-4 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1">
-						<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-							{t('panels.previewTitle')}
-						</div>
-
-						{previewMode === 'edit' ? (
-							<ThreadRemotionEditorCard
-								thread={previewThread as any}
-								root={previewRoot as any}
-								replies={previewReplies as any}
-								assets={previewAssets as any}
-								audio={
-									previewAudio?.url && previewAudio?.asset?.durationMs
-										? {
-												url: String(previewAudio.url),
-												durationMs: Number(previewAudio.asset.durationMs),
-											}
-										: null
+						{/* LEFT PANEL */}
+						<div className="order-1 lg:order-none lg:col-start-1 lg:col-end-2 lg:row-start-1 h-full overflow-hidden border-r border-border bg-card">
+							<ThreadTemplateVisualEditor
+								layout="panels"
+								structureClassName="h-full"
+								propertiesClassName="hidden" 
+								structureCollapsed={layout.leftCollapsed}
+								onStructureCollapsedChange={setLeftCollapsed}
+								value={visualTemplateConfig}
+								baselineValue={selectedVersionConfig ?? undefined}
+								onChange={(next) =>
+									setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
 								}
-								isLoading={previewThreadQuery.isLoading}
-								templateId={(library as any)?.templateId as any}
-								templateConfig={normalizedTemplateConfig as any}
-								editCanvasConfig={visualTemplateConfig as any}
-								onEditCanvasConfigChange={(next) => {
-									applyVisualTemplateConfigExternal(next)
-								}}
-								onEditCanvasTransaction={(phase) => {
-									if (phase === 'start') beginVisualTemplateTxn()
-									else endVisualTemplateTxn()
-								}}
-								showLayers={false}
-								showInspector={false}
-								externalPrimaryKey={editorSelectedKey}
-								onSelectionChange={({ primaryKey }) => {
-									if (!primaryKey) return
-									setEditorSelectedKey(primaryKey)
-									const s = sceneFromNodeKey(primaryKey)
+								assets={previewAssets as any}
+								historyState={visualTemplateHistory}
+								setHistoryState={setVisualTemplateHistory}
+								resetKey={String(selectedVersion?.id ?? '')}
+								scene={editorScene}
+								onSceneChange={(s) => setEditorScene(s)}
+								selectedKey={editorSelectedKey}
+								onSelectedKeyChange={(key) => {
+									setEditorSelectedKey(key)
+									const s = sceneFromNodeKey(key)
 									if (s) setEditorScene((prev) => (prev === s ? prev : s))
 								}}
 							/>
-						) : (
-							<ThreadRemotionPlayerCard
-								thread={previewThread as any}
-								root={previewRoot as any}
-								replies={previewReplies as any}
-								assets={previewAssets as any}
-								audio={
-									previewAudio?.url && previewAudio?.asset?.durationMs
-										? {
-												url: String(previewAudio.url),
-												durationMs: Number(previewAudio.asset.durationMs),
-											}
-										: null
-								}
-								isLoading={previewThreadQuery.isLoading}
-								templateId={(library as any)?.templateId as any}
-								templateConfig={normalizedTemplateConfig as any}
+						</div>
+
+						{/* LEFT RESIZER */}
+						<div
+							className="hidden lg:flex lg:col-start-2 lg:col-end-3 lg:row-start-1 cursor-col-resize items-center justify-center select-none touch-none hover:bg-accent/50 transition-colors z-10"
+							onPointerDown={(e) => startResize('left', e)}
+							onDoubleClick={() => {
+								setLayout((prev) => ({
+									...prev,
+									leftPx: 320,
+									leftCollapsed: false,
+								}))
+							}}
+						>
+							<div className="h-8 w-1 rounded-full bg-border/80" />
+						</div>
+
+						{/* CENTER CANVAS */}
+						<div className="order-2 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1 h-full overflow-hidden flex flex-col relative bg-muted/5 group">
+							{/* Canvas Background Pattern */}
+							<div
+								className="absolute inset-0 opacity-[0.03] pointer-events-none"
+								style={{
+									backgroundImage:
+										'radial-gradient(circle, currentColor 1px, transparent 1px)',
+									backgroundSize: '20px 20px',
+								}}
 							/>
-						)}
 
-						{previewThreadId && previewThreadQuery.isError ? (
-							<div className="font-mono text-xs text-destructive">
-								{t('panels.previewLoadFailed')}
-							</div>
-						) : null}
-
-						{previewThreadId &&
-						!previewRoot &&
-						!previewThreadQuery.isLoading ? (
-							<div className="font-mono text-xs text-muted-foreground">
-								{t('panels.previewNoRoot')}
-							</div>
-						) : null}
-					</div>
-
-					<div
-						className="hidden lg:flex lg:col-start-4 lg:col-end-5 lg:row-start-1 cursor-col-resize items-stretch justify-center select-none touch-none"
-						onPointerDown={(e) => startResize('right', e)}
-						onDoubleClick={() => {
-							setLayout((prev) => ({
-								...prev,
-								rightPx: 420,
-								rightCollapsed: false,
-							}))
-						}}
-						title={t('panels.resizeTitle')}
-					>
-						<div className="w-full bg-border/60 hover:bg-border" />
-					</div>
-
-					{showAdvanced ? (
-						<Card className="order-4 rounded-none lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-2">
-							<CardHeader>
-								<CardTitle className="font-mono text-sm uppercase tracking-widest">
-									{t('panels.configTitle')}
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-2">
-								<Textarea
-									value={toPrettyJson(visualTemplateConfig)}
-									readOnly
-									className="min-h-[260px] rounded-none font-mono text-xs"
-								/>
-								<div className="font-mono text-xs text-muted-foreground">
-									{t('panels.configHint')}
+							{/* TOP FLOATING: Scene Switcher */}
+							<div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 transition-all duration-200">
+								<div className="flex items-center p-1 rounded-full bg-background/80 backdrop-blur border border-border/40 shadow-sm hover:shadow-md transition-all">
+									<button
+										type="button"
+										onClick={() => setEditorScene('cover')}
+										className={[
+											'px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
+											editorScene === 'cover'
+												? 'bg-foreground text-background font-bold shadow-sm'
+												: 'text-muted-foreground hover:text-foreground',
+										].join(' ')}
+									>
+										{t('structure.cover')}
+									</button>
+									<button
+										type="button"
+										onClick={() => setEditorScene('post')}
+										className={[
+											'px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
+											editorScene === 'post'
+												? 'bg-foreground text-background font-bold shadow-sm'
+												: 'text-muted-foreground hover:text-foreground',
+										].join(' ')}
+									>
+										{t('structure.post')}
+									</button>
 								</div>
-							</CardContent>
-						</Card>
-					) : null}
+							</div>
+
+							{/* MAIN CONTENT AREA with Zoom */}
+							<div className="flex-1 flex items-center justify-center overflow-auto p-8 relative">
+								<div
+									style={{
+										transform: `scale(${zoom})`,
+										transition: 'transform 0.1s ease-out',
+									}}
+									className="origin-center flex flex-col items-center justify-center"
+								>
+									{/* The Video "Artboard" - Clean, minimal borders */}
+									<div className="relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] bg-black rounded-sm overflow-hidden ring-1 ring-black/5">
+										{previewMode === 'edit' ? (
+											<ThreadRemotionEditorCard
+												thread={previewThread as any}
+												root={previewRoot as any}
+												replies={previewReplies as any}
+												assets={previewAssets as any}
+												audio={
+													previewAudio?.url &&
+													previewAudio?.asset?.durationMs
+														? {
+																url: String(previewAudio.url),
+																durationMs: Number(
+																	previewAudio.asset.durationMs,
+																),
+															}
+														: null
+												}
+												isLoading={previewThreadQuery.isLoading}
+												templateId={(library as any)?.templateId as any}
+												templateConfig={normalizedTemplateConfig as any}
+												editCanvasConfig={visualTemplateConfig as any}
+												onEditCanvasConfigChange={(next) => {
+													applyVisualTemplateConfigExternal(next)
+												}}
+												onEditCanvasTransaction={(phase) => {
+													if (phase === 'start') beginVisualTemplateTxn()
+													else endVisualTemplateTxn()
+												}}
+												showLayers={false}
+												showInspector={false}
+												externalPrimaryKey={editorSelectedKey}
+												onSelectionChange={({ primaryKey }) => {
+													if (!primaryKey) return
+													setEditorSelectedKey(primaryKey)
+													const s = sceneFromNodeKey(primaryKey)
+													if (s)
+														setEditorScene((prev) =>
+															prev === s ? prev : s,
+														)
+												}}
+											/>
+										) : (
+											<ThreadRemotionPlayerCard
+												thread={previewThread as any}
+												root={previewRoot as any}
+												replies={previewReplies as any}
+												assets={previewAssets as any}
+												audio={
+													previewAudio?.url &&
+													previewAudio?.asset?.durationMs
+														? {
+																url: String(previewAudio.url),
+																durationMs: Number(
+																	previewAudio.asset.durationMs,
+																),
+															}
+														: null
+												}
+												isLoading={previewThreadQuery.isLoading}
+												templateId={(library as any)?.templateId as any}
+												templateConfig={normalizedTemplateConfig as any}
+											/>
+										)}
+									</div>
+								</div>
+
+								{/* Canvas Messages (Floating) */}
+								<div className="absolute top-20 left-1/2 -translate-x-1/2 pointer-events-none opacity-80 flex flex-col items-center gap-2 z-10">
+									{previewThreadId && previewThreadQuery.isError ? (
+										<div className="font-mono text-xs text-destructive bg-destructive/10 backdrop-blur px-2 py-1 rounded shadow-sm border border-destructive/20">
+											{t('panels.previewLoadFailed')}
+										</div>
+									) : null}
+
+									{previewThreadId &&
+									!previewRoot &&
+									!previewThreadQuery.isLoading ? (
+										<div className="font-mono text-xs text-muted-foreground bg-muted/80 backdrop-blur px-2 py-1 rounded shadow-sm border border-border/50">
+											{t('panels.previewNoRoot')}
+										</div>
+									) : null}
+								</div>
+							</div>
+
+							{/* BOTTOM FLOATING: Unified Action Bar */}
+							<div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
+								<div className="flex items-center gap-1 p-1 rounded-full bg-background/80 backdrop-blur border border-border/40 shadow-lg hover:shadow-xl transition-all">
+									{/* Mode Switcher */}
+									<div className="flex items-center px-1">
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant={
+														previewMode === 'edit' ? 'secondary' : 'ghost'
+													}
+													size="icon"
+													className="size-8 rounded-full"
+													onClick={() => setPreviewMode('edit')}
+												>
+													<MousePointer2 className="size-4" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent
+												side="bottom"
+												className="font-mono text-[10px] uppercase"
+											>
+												{t('buttons.edit')}
+											</TooltipContent>
+										</Tooltip>
+
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant={
+														previewMode === 'play' ? 'secondary' : 'ghost'
+													}
+													size="icon"
+													className="size-8 rounded-full"
+													onClick={() => setPreviewMode('play')}
+												>
+													<Play className="size-4" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent
+												side="bottom"
+												className="font-mono text-[10px] uppercase"
+											>
+												{t('buttons.play')}
+											</TooltipContent>
+										</Tooltip>
+									</div>
+
+									<Separator orientation="vertical" className="h-5" />
+
+									{/* Zoom Controls */}
+									<div className="flex items-center px-1">
+										<Button
+											variant="ghost"
+											size="icon"
+											className="size-8 rounded-full"
+											onClick={() => setZoom((z) => Math.max(0.1, z - 0.1))}
+											title={t('tooltips.zoomOut')}
+										>
+											<Minus className="size-4" />
+										</Button>
+										<span className="w-10 text-center text-[10px] font-mono text-muted-foreground select-none">
+											{Math.round(zoom * 100)}%
+										</span>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="size-8 rounded-full"
+											onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
+											title={t('tooltips.zoomIn')}
+										>
+											<Plus className="size-4" />
+										</Button>
+									</div>
+
+									<Separator orientation="vertical" className="h-5" />
+
+									{/* Meta & Focus */}
+									<div className="flex items-center gap-2 pl-2 pr-1">
+										<span className="text-[10px] font-mono text-muted-foreground opacity-50 select-none">
+											1080×1920
+										</span>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant={
+														layout.leftCollapsed && layout.rightCollapsed
+															? 'secondary'
+															: 'ghost'
+													}
+													size="icon"
+													className="size-8 rounded-full"
+													onClick={() => {
+														const isFocused =
+															layout.leftCollapsed && layout.rightCollapsed
+														if (isFocused) {
+															setLayout((prev) => ({
+																...prev,
+																leftCollapsed: false,
+																rightCollapsed: false,
+															}))
+														} else {
+															setLayout((prev) => ({
+																...prev,
+																leftCollapsed: true,
+																rightCollapsed: true,
+															}))
+														}
+													}}
+												>
+													{layout.leftCollapsed && layout.rightCollapsed ? (
+														<Minimize className="size-4" />
+													) : (
+														<Maximize className="size-4" />
+													)}
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent
+												side="bottom"
+												className="font-mono text-[10px] uppercase"
+											>
+												{layout.leftCollapsed && layout.rightCollapsed
+													? 'Exit Focus Mode'
+													: 'Focus Mode'}
+											</TooltipContent>
+										</Tooltip>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* RIGHT RESIZER */}
+						<div
+							className="hidden lg:flex lg:col-start-4 lg:col-end-5 lg:row-start-1 cursor-col-resize items-center justify-center select-none touch-none hover:bg-accent/50 transition-colors z-10"
+							onPointerDown={(e) => startResize('right', e)}
+							onDoubleClick={() => {
+								setLayout((prev) => ({
+									...prev,
+									rightPx: 360,
+									rightCollapsed: false,
+								}))
+							}}
+						>
+							<div className="h-8 w-1 rounded-full bg-border/80" />
+						</div>
+
+						{/* RIGHT PANEL */}
+						<div className="order-3 lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-1 h-full overflow-hidden border-l border-border bg-card flex flex-col">
+							{showAdvanced ? (
+								<div className="flex-1 flex flex-col min-h-0">
+									<div className="flex items-center justify-between px-3 py-2 border-b border-border">
+										<span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">JSON Config</span>
+										<Button 
+											variant="ghost" 
+											size="icon" 
+											className="size-6"
+											onClick={() => setShowAdvanced(false)}
+										>
+											<X className="size-3" />
+										</Button>
+									</div>
+									<div className="flex-1 p-2 min-h-0">
+										<Textarea
+											value={toPrettyJson(visualTemplateConfig)}
+											readOnly
+											className="h-full w-full resize-none rounded-sm font-mono text-xs bg-muted/30 border-0 focus-visible:ring-0"
+										/>
+									</div>
+								</div>
+							) : (
+								<ThreadTemplateVisualEditor
+									layout="panels"
+									structureClassName="hidden"
+									propertiesClassName="h-full"
+									propertiesCollapsed={layout.rightCollapsed}
+									onPropertiesCollapsedChange={setRightCollapsed}
+									value={visualTemplateConfig}
+									baselineValue={selectedVersionConfig ?? undefined}
+									onChange={(next) =>
+										setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
+									}
+									assets={previewAssets as any}
+									historyState={visualTemplateHistory}
+									setHistoryState={setVisualTemplateHistory}
+									resetKey={String(selectedVersion?.id ?? '')}
+									scene={editorScene}
+									onSceneChange={(s) => setEditorScene(s)}
+									selectedKey={editorSelectedKey}
+									onSelectedKeyChange={(key) => {
+										setEditorSelectedKey(key)
+										const s = sceneFromNodeKey(key)
+										if (s) setEditorScene((prev) => (prev === s ? prev : s))
+									}}
+								/>
+							)}
+						</div>
+					</div>
 				</div>
 			</div>
-		</div>
+		</TooltipProvider>
 	)
 }
