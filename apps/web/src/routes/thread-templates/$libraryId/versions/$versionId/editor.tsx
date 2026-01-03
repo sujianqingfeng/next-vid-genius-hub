@@ -1015,6 +1015,7 @@ function ThreadTemplateVersionEditorRoute() {
 								layout="panels"
 								structureClassName="h-full"
 								propertiesClassName="hidden" 
+								showSceneToggle={false}
 								structureCollapsed={layout.leftCollapsed}
 								onStructureCollapsedChange={setLeftCollapsed}
 								value={visualTemplateConfig}

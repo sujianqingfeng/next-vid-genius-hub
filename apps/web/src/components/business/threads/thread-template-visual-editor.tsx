@@ -847,6 +847,7 @@ function TreeView({
 		onStructureCollapsedChange,
 		propertiesCollapsed,
 		onPropertiesCollapsedChange,
+		showSceneToggle = true,
 		hotkeysEnabled = true,
 		scene: controlledScene,
 		onSceneChange,
@@ -875,6 +876,7 @@ function TreeView({
 		onStructureCollapsedChange?: (collapsed: boolean) => void
 		propertiesCollapsed?: boolean
 		onPropertiesCollapsedChange?: (collapsed: boolean) => void
+		showSceneToggle?: boolean
 		hotkeysEnabled?: boolean
 		scene?: SceneKey
 		onSceneChange?: (scene: SceneKey) => void
@@ -1941,30 +1943,34 @@ function TreeView({
 								) : null}
 							</div>
 							<div className="flex items-center gap-2">
-								<Button
-									type="button"
-									size="sm"
-									variant={scene === 'cover' ? 'default' : 'outline'}
-									className="rounded-none font-mono text-[10px] uppercase"
-									onClick={() => {
-										setScene('cover')
-										setSelectedKey(pathKey('cover', []))
-									}}
-								>
-									{t('structure.cover')}
-								</Button>
-								<Button
-									type="button"
-									size="sm"
-									variant={scene === 'post' ? 'default' : 'outline'}
-									className="rounded-none font-mono text-[10px] uppercase"
-									onClick={() => {
-										setScene('post')
-										setSelectedKey(pathKey('post', []))
-									}}
-								>
-									{t('structure.post')}
-								</Button>
+								{showSceneToggle ? (
+									<>
+										<Button
+											type="button"
+											size="sm"
+											variant={scene === 'cover' ? 'default' : 'outline'}
+											className="rounded-none font-mono text-[10px] uppercase"
+											onClick={() => {
+												setScene('cover')
+												setSelectedKey(pathKey('cover', []))
+											}}
+										>
+											{t('structure.cover')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant={scene === 'post' ? 'default' : 'outline'}
+											className="rounded-none font-mono text-[10px] uppercase"
+											onClick={() => {
+												setScene('post')
+												setSelectedKey(pathKey('post', []))
+											}}
+										>
+											{t('structure.post')}
+										</Button>
+									</>
+								) : null}
 							</div>
 							</div>
 
