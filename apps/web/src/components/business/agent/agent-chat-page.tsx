@@ -2,11 +2,18 @@
 
 import * as React from 'react'
 import { Loader2, Send, Trash2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '~/components/ui/button'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '~/components/ui/select'
 import { Textarea } from '~/components/ui/textarea'
 import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
@@ -23,9 +30,13 @@ type ChatMessage = {
 
 const STORAGE_KEY = 'agentChat:messages'
 const STORAGE_VERSION = 1
+const STORAGE_MODEL_KEY = 'agentChat:modelId'
+const STORAGE_MODEL_VERSION = 1
 
 function createId() {
-	return globalThis.crypto?.randomUUID?.() ?? `msg_${Date.now()}_${Math.random()}`
+	return (
+		globalThis.crypto?.randomUUID?.() ?? `msg_${Date.now()}_${Math.random()}`
+	)
 }
 
 export function AgentChatPage() {
@@ -44,17 +55,27 @@ export function AgentChatPage() {
 					id: typeof x.id === 'string' ? x.id : createId(),
 					role: x.role === 'assistant' ? 'assistant' : 'user',
 					content: typeof x.content === 'string' ? x.content : '',
-					createdAt:
-						typeof x.createdAt === 'number' ? x.createdAt : Date.now(),
+					createdAt: typeof x.createdAt === 'number' ? x.createdAt : Date.now(),
 				}))
 				.filter((m) => m.content.trim().length > 0)
 		},
 	})
 
+	const [modelId, setModelId] = useLocalStorageState<string | null>(
+		STORAGE_MODEL_KEY,
+		{
+			version: STORAGE_MODEL_VERSION,
+			defaultValue: null,
+			migrate: (stored) => {
+				if (typeof stored === 'string') return stored.trim() || null
+				return null
+			},
+		},
+	)
+
 	const [draft, setDraft] = React.useState('')
-	const [pendingAssistantId, setPendingAssistantId] = React.useState<
-		string | null
-	>(null)
+	const [streaming, setStreaming] = React.useState<ChatMessage | null>(null)
+	const abortRef = React.useRef<AbortController | null>(null)
 
 	const scrollRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -62,49 +83,51 @@ export function AgentChatPage() {
 		const el = scrollRef.current
 		if (!el) return
 		el.scrollTop = el.scrollHeight
-	}, [messages.length])
+	}, [messages.length, streaming?.content.length])
 
-	const chatMutation = useEnhancedMutation(
-		queryOrpc.ai.chat.mutationOptions({
-			onSuccess: (data) => {
-				const text = String(data.text ?? '').trim()
-				if (!pendingAssistantId) return
-				setMessages((prev) =>
-					prev.map((m) =>
-						m.id === pendingAssistantId
-							? { ...m, content: text || t('errors.emptyResponse') }
-							: m,
-					),
-				)
-				setPendingAssistantId(null)
-			},
-			onError: (error) => {
-				if (!pendingAssistantId) return
-				const message = getUserFriendlyErrorMessage(error)
-				setMessages((prev) =>
-					prev.map((m) =>
-						m.id === pendingAssistantId
-							? { ...m, content: `${t('errors.failedPrefix')}${message}` }
-							: m,
-					),
-				)
-				setPendingAssistantId(null)
-			},
+	const llmModelsQuery = useQuery(
+		queryOrpc.ai.listModels.queryOptions({
+			input: { kind: 'llm', enabledOnly: true },
 		}),
-		{
-			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
-		},
+	)
+	const llmDefaultQuery = useQuery(
+		queryOrpc.ai.getDefaultModel.queryOptions({ input: { kind: 'llm' } }),
 	)
 
-	const canSend =
-		!chatMutation.isPending &&
-		!pendingAssistantId &&
-		draft.trim().length > 0
+	React.useEffect(() => {
+		if (modelId) return
+		const id = llmDefaultQuery.data?.model?.id
+		if (!id) return
+		setModelId(id)
+	}, [llmDefaultQuery.data?.model?.id, modelId, setModelId])
+
+	React.useEffect(() => {
+		const items = llmModelsQuery.data?.items ?? []
+		if (items.length === 0) return
+		if (modelId) return
+		if (llmDefaultQuery.data?.model?.id) return
+		setModelId(items[0]!.id)
+	}, [
+		llmDefaultQuery.data?.model?.id,
+		llmModelsQuery.data?.items,
+		modelId,
+		setModelId,
+	])
+
+	React.useEffect(() => {
+		const items = llmModelsQuery.data?.items ?? []
+		if (items.length === 0) return
+		if (!modelId) return
+		if (items.some((m) => m.id === modelId)) return
+		setModelId(items[0]!.id)
+	}, [llmModelsQuery.data?.items, modelId, setModelId])
+
+	const canSend = !streaming && draft.trim().length > 0
 
 	const submit = React.useCallback(() => {
 		const text = draft.trim()
 		if (!text) return
-		if (chatMutation.isPending || pendingAssistantId) return
+		if (streaming) return
 
 		const userMessage: ChatMessage = {
 			id: createId(),
@@ -116,7 +139,7 @@ export function AgentChatPage() {
 		const assistantMessage: ChatMessage = {
 			id: assistantId,
 			role: 'assistant',
-			content: t('status.thinking'),
+			content: '',
 			createdAt: Date.now(),
 		}
 
@@ -127,13 +150,70 @@ export function AgentChatPage() {
 		}))
 
 		setDraft('')
-		setPendingAssistantId(assistantId)
-		setMessages([...nextHistory, assistantMessage])
+		setMessages(nextHistory)
+		setStreaming({ ...assistantMessage, content: t('status.thinking') })
 
-		chatMutation.mutate({
-			messages: requestMessages,
-		})
-	}, [chatMutation, draft, messages, pendingAssistantId, setMessages, t])
+		const controller = new AbortController()
+		abortRef.current = controller
+
+		void (async () => {
+			let buffer = ''
+			try {
+				const res = await fetch('/api/agent/chat-stream', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						messages: requestMessages,
+						...(modelId ? { modelId } : {}),
+					}),
+					signal: controller.signal,
+				})
+
+				if (!res.ok) {
+					const errText = await res.text().catch(() => '')
+					throw new Error(errText || `HTTP ${res.status}`)
+				}
+				if (!res.body) throw new Error('No response body')
+
+				const reader = res.body.getReader()
+				const decoder = new TextDecoder()
+				setStreaming((prev) => (prev ? { ...prev, content: '' } : prev))
+
+				while (true) {
+					const { value, done } = await reader.read()
+					if (done) break
+					buffer += decoder.decode(value, { stream: true })
+					setStreaming((prev) =>
+						prev && prev.id === assistantId
+							? { ...prev, content: buffer }
+							: prev,
+					)
+				}
+
+				buffer += decoder.decode()
+				if (controller.signal.aborted) return
+				const finalText = buffer.trim() || t('errors.emptyResponse')
+				setMessages((prev) => [
+					...prev,
+					{ ...assistantMessage, content: finalText },
+				])
+			} catch (error) {
+				if (controller.signal.aborted) return
+				const message = getUserFriendlyErrorMessage(error)
+				setMessages((prev) => [
+					...prev,
+					{
+						...assistantMessage,
+						content: `${t('errors.failedPrefix')}${message}`,
+					},
+				])
+			} finally {
+				setStreaming(null)
+				abortRef.current = null
+			}
+		})()
+	}, [draft, messages, modelId, setMessages, streaming, t])
 
 	return (
 		<div className="flex h-full flex-col overflow-hidden bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
@@ -149,22 +229,51 @@ export function AgentChatPage() {
 							</h1>
 						</div>
 
-						<Button
-							variant="outline"
-							size="sm"
-							className="rounded-none font-mono text-xs uppercase tracking-wider"
-							type="button"
-							onClick={() => {
-								setDraft('')
-								setPendingAssistantId(null)
-								chatMutation.reset()
-								removeMessages()
-							}}
-							disabled={messages.length === 0 && draft.length === 0}
-						>
-							<Trash2 className="h-4 w-4" />
-							{t('actions.clear')}
-						</Button>
+						<div className="flex items-center gap-2">
+							<Select
+								value={modelId ?? ''}
+								onValueChange={(v) => setModelId(v)}
+								disabled={
+									Boolean(streaming) ||
+									(llmModelsQuery.data?.items ?? []).length === 0
+								}
+							>
+								<SelectTrigger className="h-9 w-[220px] rounded-none font-mono text-xs uppercase tracking-wider">
+									<SelectValue placeholder={t('fields.modelPlaceholder')} />
+								</SelectTrigger>
+								<SelectContent className="rounded-none">
+									{(llmModelsQuery.data?.items ?? []).map((m) => (
+										<SelectItem
+											key={m.id}
+											value={m.id}
+											className="font-mono text-sm"
+										>
+											{String(m.label ?? m.id)
+												.toUpperCase()
+												.replace(/\s+/g, '_')}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+
+							<Button
+								variant="outline"
+								size="sm"
+								className="rounded-none font-mono text-xs uppercase tracking-wider"
+								type="button"
+								onClick={() => {
+									setDraft('')
+									abortRef.current?.abort()
+									abortRef.current = null
+									setStreaming(null)
+									removeMessages()
+								}}
+								disabled={messages.length === 0 && draft.length === 0}
+							>
+								<Trash2 className="h-4 w-4" />
+								{t('actions.clear')}
+							</Button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -174,13 +283,13 @@ export function AgentChatPage() {
 					ref={scrollRef}
 					className="flex-1 min-h-0 overflow-y-auto border border-border bg-card p-4"
 				>
-					{messages.length === 0 ? (
+					{messages.length === 0 && !streaming ? (
 						<div className="py-16 text-center text-sm text-muted-foreground">
 							{t('empty')}
 						</div>
 					) : (
 						<div className="space-y-3">
-							{messages.map((m) => {
+							{[...messages, ...(streaming ? [streaming] : [])].map((m) => {
 								const isUser = m.role === 'user'
 								return (
 									<div
@@ -220,7 +329,7 @@ export function AgentChatPage() {
 							onChange={(e) => setDraft(e.target.value)}
 							placeholder={t('input.placeholder')}
 							className="min-h-20 resize-none rounded-none border-border bg-background font-mono text-xs"
-							disabled={chatMutation.isPending || Boolean(pendingAssistantId)}
+							disabled={Boolean(streaming)}
 							onKeyDown={(e) => {
 								if (e.key === 'Enter' && !e.shiftKey) {
 									e.preventDefault()
@@ -233,7 +342,7 @@ export function AgentChatPage() {
 							className="rounded-none font-mono text-xs uppercase tracking-wider"
 							disabled={!canSend}
 						>
-							{chatMutation.isPending || pendingAssistantId ? (
+							{streaming ? (
 								<Loader2 className="h-4 w-4 animate-spin" />
 							) : (
 								<Send className="h-4 w-4" />

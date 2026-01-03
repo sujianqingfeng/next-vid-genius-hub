@@ -1,6 +1,5 @@
 import {
 	generateObject as generateObjectFromAI,
-	generateText as generateTextFromAI,
 	streamObject as streamObjectFromAI,
 	streamText as streamTextFromAI,
 } from 'ai'
@@ -39,7 +38,9 @@ function normalizeUsage(result: unknown) {
 		usageRaw.completionTokens ?? usageRaw.outputTokens ?? 0,
 	)
 	const normalizedInputTokens = Number.isFinite(inputTokens) ? inputTokens : 0
-	const normalizedOutputTokens = Number.isFinite(outputTokens) ? outputTokens : 0
+	const normalizedOutputTokens = Number.isFinite(outputTokens)
+		? outputTokens
+		: 0
 	return {
 		inputTokens: normalizedInputTokens,
 		outputTokens: normalizedOutputTokens,
@@ -57,10 +58,9 @@ export async function generateText(options: {
 	const { model: modelId, ...rest } = options
 	const model = await getModel(modelId)
 
-	return generateTextFromAI({
-		...rest,
-		model,
-	})
+	const result = streamTextFromAI({ ...rest, model })
+	const [text, usage] = await Promise.all([result.text, result.usage])
+	return { text, usage: normalizeUsage({ usage }) }
 }
 
 export async function generateObject<T>(options: {
@@ -89,11 +89,7 @@ export async function generateTextWithUsage(options: {
 	maxTokens?: number
 	temperature?: number
 }) {
-	const result = await generateText(options)
-	return {
-		...result,
-		usage: normalizeUsage(result),
-	}
+	return generateText(options)
 }
 
 export async function generateObjectWithUsage<T>(options: {
@@ -117,19 +113,17 @@ export async function generateMessagesWithUsage(options: {
 	messages: ModelMessage[]
 	maxTokens?: number
 	temperature?: number
-}) {
+}): Promise<{ text: string; usage: ReturnType<typeof normalizeUsage> }> {
 	const { model: modelId, ...rest } = options
 	const model = await getModel(modelId)
 
-	const result = await generateTextFromAI({
+	const result = streamTextFromAI({
 		...rest,
 		model,
 	})
 
-	return {
-		...result,
-		usage: normalizeUsage(result),
-	}
+	const [text, usage] = await Promise.all([result.text, result.usage])
+	return { text, usage: normalizeUsage({ usage }) }
 }
 
 export async function streamObjectWithUsage<T>(options: {

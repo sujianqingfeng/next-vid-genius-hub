@@ -215,6 +215,9 @@
 			"send": "Send",
 			"clear": "Clear"
 		},
+		"fields": {
+			"modelPlaceholder": "Select model..."
+		},
 		"errors": {
 			"emptyResponse": "No response generated.",
 			"failedPrefix": "Request failed: "
@@ -372,8 +375,7 @@
 					"unknownType": "Unknown audio type"
 				}
 			}
-		}
-		,
+		},
 		"remotionEditor": {
 			"states": {
 				"loading": "Loading…",

@@ -215,6 +215,9 @@
 			"send": "发送",
 			"clear": "清空"
 		},
+		"fields": {
+			"modelPlaceholder": "选择模型..."
+		},
 		"errors": {
 			"emptyResponse": "未生成有效回复。",
 			"failedPrefix": "请求失败："
@@ -372,8 +375,7 @@
 					"unknownType": "未知音频类型"
 				}
 			}
-		}
-		,
+		},
 		"remotionEditor": {
 			"states": {
 				"loading": "加载中…",

@@ -46,6 +46,7 @@ import { Route as ApiRenderCfCallbackRouteImport } from './routes/api/render/cf-
 import { Route as ApiProxyCheckRunOneRouteImport } from './routes/api/proxy-check/run-one'
 import { Route as ApiProxyCheckRunRouteImport } from './routes/api/proxy-check/run'
 import { Route as ApiOrpcSplatRouteImport } from './routes/api/orpc/$'
+import { Route as ApiAgentChatStreamRouteImport } from './routes/api/agent/chat-stream'
 import { Route as ApiMediaIdSourceRouteImport } from './routes/api/media/$id/source'
 import { Route as ApiMediaIdRenderedInfoRouteImport } from './routes/api/media/$id/rendered-info'
 import { Route as ApiMediaIdRenderedRouteImport } from './routes/api/media/$id/rendered'
@@ -239,6 +240,11 @@ const ApiOrpcSplatRoute = ApiOrpcSplatRouteImport.update({
   path: '/api/orpc/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentChatStreamRoute = ApiAgentChatStreamRouteImport.update({
+  id: '/api/agent/chat-stream',
+  path: '/api/agent/chat-stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMediaIdSourceRoute = ApiMediaIdSourceRouteImport.update({
   id: '/api/media/$id/source',
   path: '/api/media/$id/source',
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/media/': typeof MediaIndexRoute
   '/thread-templates': typeof ThreadTemplatesIndexRoute
   '/threads/': typeof ThreadsIndexRoute
+  '/api/agent/chat-stream': typeof ApiAgentChatStreamRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
@@ -347,6 +354,7 @@ export interface FileRoutesByTo {
   '/media': typeof MediaIndexRoute
   '/thread-templates': typeof ThreadTemplatesIndexRoute
   '/threads': typeof ThreadsIndexRoute
+  '/api/agent/chat-stream': typeof ApiAgentChatStreamRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
@@ -394,6 +402,7 @@ export interface FileRoutesById {
   '/media/': typeof MediaIndexRoute
   '/thread-templates/': typeof ThreadTemplatesIndexRoute
   '/threads/': typeof ThreadsIndexRoute
+  '/api/agent/chat-stream': typeof ApiAgentChatStreamRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
@@ -442,6 +451,7 @@ export interface FileRouteTypes {
     | '/media/'
     | '/thread-templates'
     | '/threads/'
+    | '/api/agent/chat-stream'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
@@ -483,6 +493,7 @@ export interface FileRouteTypes {
     | '/media'
     | '/thread-templates'
     | '/threads'
+    | '/api/agent/chat-stream'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
@@ -529,6 +540,7 @@ export interface FileRouteTypes {
     | '/media/'
     | '/thread-templates/'
     | '/threads/'
+    | '/api/agent/chat-stream'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
@@ -563,6 +575,7 @@ export interface RootRouteChildren {
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   MarketingIndexRoute: typeof MarketingIndexRoute
   ThreadTemplatesIndexRoute: typeof ThreadTemplatesIndexRoute
+  ApiAgentChatStreamRoute: typeof ApiAgentChatStreamRoute
   ApiOrpcSplatRoute: typeof ApiOrpcSplatRoute
   ApiProxyCheckRunRoute: typeof ApiProxyCheckRunRoute
   ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
@@ -838,6 +851,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOrpcSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/chat-stream': {
+      id: '/api/agent/chat-stream'
+      path: '/api/agent/chat-stream'
+      fullPath: '/api/agent/chat-stream'
+      preLoaderRoute: typeof ApiAgentChatStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/media/$id/source': {
       id: '/api/media/$id/source'
       path: '/api/media/$id/source'
@@ -990,6 +1010,7 @@ const rootRouteChildren: RootRouteChildren = {
   LegalPrivacyRoute: LegalPrivacyRoute,
   MarketingIndexRoute: MarketingIndexRoute,
   ThreadTemplatesIndexRoute: ThreadTemplatesIndexRoute,
+  ApiAgentChatStreamRoute: ApiAgentChatStreamRoute,
   ApiOrpcSplatRoute: ApiOrpcSplatRoute,
   ApiProxyCheckRunRoute: ApiProxyCheckRunRoute,
   ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,
