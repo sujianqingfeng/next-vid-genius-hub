@@ -21,7 +21,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
+import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 import { listThreadTemplates } from '@app/remotion-project/thread-templates'
 import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
@@ -43,6 +45,7 @@ function ThreadTemplatesRoute() {
 	const navigate = Route.useNavigate()
 	const qc = useQueryClient()
 	const confirmDialog = useConfirmDialog()
+	const t = useTranslations('ThreadTemplates.library')
 
 	const templates = React.useMemo(() => listThreadTemplates(), [])
 
@@ -72,7 +75,7 @@ function ThreadTemplatesRoute() {
 	})
 	const [createDescription, setCreateDescription] = React.useState('')
 
-	const createMutation = useEnhancedMutation(
+		const createMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.create.mutationOptions({
 			onSuccess: async (data) => {
 				await qc.invalidateQueries({
@@ -91,15 +94,14 @@ function ThreadTemplatesRoute() {
 					})
 				}
 			},
-		}),
-		{
-			successToast: 'Created template',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
+			}),
+			{
+				successToast: t('toasts.created'),
+				errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
+			},
+		)
 
-	const updateMutation = useEnhancedMutation(
+		const updateMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.update.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
@@ -114,15 +116,14 @@ function ThreadTemplatesRoute() {
 				}
 				setRenameOpen(false)
 			},
-		}),
-		{
-			successToast: 'Updated template',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
+			}),
+			{
+				successToast: t('toasts.updated'),
+				errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
+			},
+		)
 
-	const deleteMutation = useEnhancedMutation(
+		const deleteMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.deleteById.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
@@ -130,15 +131,14 @@ function ThreadTemplatesRoute() {
 				})
 				setSelectedLibraryId('')
 			},
-		}),
-		{
-			successToast: 'Deleted template',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
+			}),
+			{
+				successToast: t('toasts.deleted'),
+				errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
+			},
+		)
 
-	const rollbackMutation = useEnhancedMutation(
+		const rollbackMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.rollback.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
@@ -152,13 +152,12 @@ function ThreadTemplatesRoute() {
 					})
 				}
 			},
-		}),
-		{
-			successToast: 'Rollback version created',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
+			}),
+			{
+				successToast: t('toasts.rollbackCreated'),
+				errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
+			},
+		)
 
 	const [renameOpen, setRenameOpen] = React.useState(false)
 	const [renameName, setRenameName] = React.useState('')
@@ -175,51 +174,51 @@ function ThreadTemplatesRoute() {
 		<div className="min-h-screen bg-background font-sans text-foreground">
 			<div className="border-b border-border bg-card">
 				<div className="mx-auto max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8">
-					<div className="flex items-center justify-between gap-4">
-						<div className="space-y-1">
-							<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-								Templates
+						<div className="flex items-center justify-between gap-4">
+							<div className="space-y-1">
+								<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+									{t('header.sectionLabel')}
+								</div>
+								<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
+									{t('header.title')}
+								</h1>
 							</div>
-							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
-								Thread Template Library
-							</h1>
-						</div>
 						<Button
 							variant="outline"
 							size="sm"
-							className="rounded-none font-mono text-xs uppercase tracking-wider"
-							asChild
-						>
-							<Link to="/threads">Back to Threads</Link>
-						</Button>
+								className="rounded-none font-mono text-xs uppercase tracking-wider"
+								asChild
+							>
+								<Link to="/threads">{t('header.backToThreads')}</Link>
+							</Button>
+						</div>
 					</div>
 				</div>
-			</div>
 
 			<div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-				<Card className="rounded-none">
-					<CardHeader>
-						<CardTitle className="font-mono text-sm uppercase tracking-widest">
-							Create
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<div className="space-y-2">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Name
-								</Label>
-								<Input
-									value={createName}
-									onChange={(e) => setCreateName(e.target.value)}
-									placeholder="e.g. Forum Split Layout"
-									className="rounded-none font-mono text-xs h-9"
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Template ID
-								</Label>
+					<Card className="rounded-none">
+						<CardHeader>
+							<CardTitle className="font-mono text-sm uppercase tracking-widest">
+								{t('create.title')}
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div className="space-y-2">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										{t('create.nameLabel')}
+									</Label>
+									<Input
+										value={createName}
+										onChange={(e) => setCreateName(e.target.value)}
+										placeholder={t('create.namePlaceholder')}
+										className="rounded-none font-mono text-xs h-9"
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										{t('create.templateIdLabel')}
+									</Label>
 								<Select
 									value={createTemplateId}
 									onValueChange={(v) => setCreateTemplateId(v)}
@@ -238,22 +237,22 @@ function ThreadTemplatesRoute() {
 							</div>
 						</div>
 
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<div className="space-y-2">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Description (optional)
-								</Label>
-								<Input
-									value={createDescription}
-									onChange={(e) => setCreateDescription(e.target.value)}
-									placeholder="What is this template for?"
-									className="rounded-none font-mono text-xs h-9"
-								/>
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div className="space-y-2">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										{t('create.descLabel')}
+									</Label>
+									<Input
+										value={createDescription}
+										onChange={(e) => setCreateDescription(e.target.value)}
+										placeholder={t('create.descPlaceholder')}
+										className="rounded-none font-mono text-xs h-9"
+									/>
+								</div>
+								<div className="font-mono text-xs text-muted-foreground">
+									{t('create.hint')}
+								</div>
 							</div>
-							<div className="font-mono text-xs text-muted-foreground">
-								You can customize layout in the editor after creation.
-							</div>
-						</div>
 
 						<Button
 							type="button"
@@ -267,39 +266,39 @@ function ThreadTemplatesRoute() {
 									note: 'Initial version',
 									templateConfig: DEFAULT_THREAD_TEMPLATE_CONFIG,
 								})
-							}}
-						>
-							{createMutation.isPending ? 'Creating…' : 'Create'}
-						</Button>
-					</CardContent>
-				</Card>
+								}}
+							>
+								{createMutation.isPending ? t('create.creating') : t('create.create')}
+							</Button>
+						</CardContent>
+					</Card>
 
 				<div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
-					<Card className="rounded-none">
-						<CardHeader>
-							<CardTitle className="font-mono text-sm uppercase tracking-widest">
-								Saved
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-2">
-							{libraries.length === 0 ? (
-								<div className="font-mono text-xs text-muted-foreground">
-									No templates yet.
-								</div>
-							) : null}
+						<Card className="rounded-none">
+							<CardHeader>
+								<CardTitle className="font-mono text-sm uppercase tracking-widest">
+									{t('saved.title')}
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-2">
+								{libraries.length === 0 ? (
+									<div className="font-mono text-xs text-muted-foreground">
+										{t('saved.empty')}
+									</div>
+								) : null}
 
-							<div className="space-y-1">
-								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-									Template
-								</Label>
-								<Select
+								<div className="space-y-1">
+									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+										{t('saved.templateLabel')}
+									</Label>
+									<Select
 									value={selectedLibraryId}
 									onValueChange={(v) => setSelectedLibraryId(v)}
-								>
-									<SelectTrigger className="rounded-none font-mono text-xs h-9">
-										<SelectValue placeholder="Select template" />
-									</SelectTrigger>
-									<SelectContent>
+									>
+										<SelectTrigger className="rounded-none font-mono text-xs h-9">
+											<SelectValue placeholder={t('saved.templatePlaceholder')} />
+										</SelectTrigger>
+										<SelectContent>
 										{libraries.map((l: any) => (
 											<SelectItem key={String(l.id)} value={String(l.id)}>
 												{String(l.name)} · {String(l.templateId)} · v
@@ -310,57 +309,57 @@ function ThreadTemplatesRoute() {
 								</Select>
 							</div>
 
-							<div className="flex flex-wrap items-center gap-2">
-								<Button
+								<div className="flex flex-wrap items-center gap-2">
+									<Button
 									type="button"
 									size="sm"
 									variant="outline"
 									className="rounded-none font-mono text-[10px] uppercase"
-									disabled={!selectedLibraryId}
-									onClick={() => setRenameOpen(true)}
-								>
-									Rename
-								</Button>
-								<Button
+										disabled={!selectedLibraryId}
+										onClick={() => setRenameOpen(true)}
+									>
+										{t('saved.rename')}
+									</Button>
+									<Button
 									type="button"
 									size="sm"
 									variant="outline"
 									className="rounded-none font-mono text-[10px] uppercase"
-									disabled={!selectedLibraryId || deleteMutation.isPending}
-									onClick={() => {
-										if (!selectedLibraryId) return
-										void (async () => {
-											const ok = await confirmDialog({
-												title: 'Delete template?',
-												description:
-													'This will delete the template and all its versions.',
-												confirmText: 'Delete',
-												variant: 'destructive',
-											})
-											if (!ok) return
-											deleteMutation.mutate({ libraryId: selectedLibraryId })
-										})()
-									}}
-								>
-									{deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-								</Button>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card className="rounded-none">
-						<CardHeader>
-							<CardTitle className="font-mono text-sm uppercase tracking-widest">
-								Versions
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							{!selectedLibrary ? (
-								<div className="font-mono text-xs text-muted-foreground">
-									Select a template to view versions.
+										disabled={!selectedLibraryId || deleteMutation.isPending}
+										onClick={() => {
+											if (!selectedLibraryId) return
+											void (async () => {
+												const ok = await confirmDialog({
+													title: t('dialogs.delete.title'),
+													description:
+														t('dialogs.delete.description'),
+													confirmText: t('dialogs.delete.confirmText'),
+													variant: 'destructive',
+												})
+												if (!ok) return
+												deleteMutation.mutate({ libraryId: selectedLibraryId })
+											})()
+										}}
+									>
+										{deleteMutation.isPending ? t('saved.deleting') : t('saved.delete')}
+									</Button>
 								</div>
-							) : (
-								<>
+							</CardContent>
+						</Card>
+
+						<Card className="rounded-none">
+							<CardHeader>
+								<CardTitle className="font-mono text-sm uppercase tracking-widest">
+									{t('versions.title')}
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								{!selectedLibrary ? (
+									<div className="font-mono text-xs text-muted-foreground">
+										{t('versions.selectTemplateHint')}
+									</div>
+								) : (
+									<>
 									<div className="flex flex-wrap items-center justify-between gap-2">
 										<div className="font-mono text-xs text-muted-foreground">
 											{String((selectedLibrary as any).name)} · templateId=
@@ -372,9 +371,9 @@ function ThreadTemplatesRoute() {
 												size="sm"
 												variant="outline"
 												className="rounded-none font-mono text-[10px] uppercase"
-												disabled={!versions[0]?.id}
-												asChild
-											>
+													disabled={!versions[0]?.id}
+													asChild
+												>
 												<Link
 													to="/thread-templates/$libraryId/versions/$versionId/editor"
 													params={{
@@ -382,28 +381,30 @@ function ThreadTemplatesRoute() {
 														versionId: String(versions[0]?.id ?? ''),
 													}}
 												>
-													Edit Latest
+													{t('versions.editLatest')}
 												</Link>
 											</Button>
 											<Button
 												type="button"
 												size="sm"
 												variant="outline"
-												className="rounded-none font-mono text-[10px] uppercase"
-												onClick={() => setShowVersionsAdvanced((v) => !v)}
-											>
-												{showVersionsAdvanced ? 'Hide advanced' : 'Advanced'}
-											</Button>
+													className="rounded-none font-mono text-[10px] uppercase"
+													onClick={() => setShowVersionsAdvanced((v) => !v)}
+												>
+													{showVersionsAdvanced
+														? t('versions.hideAdvanced')
+														: t('versions.advanced')}
+												</Button>
+											</div>
 										</div>
-									</div>
 
-									<div className="rounded-none border border-border">
-										<div className="max-h-[520px] overflow-auto">
-											{versions.length === 0 ? (
-												<div className="p-3 font-mono text-xs text-muted-foreground">
-													No versions yet.
-												</div>
-											) : null}
+										<div className="rounded-none border border-border">
+											<div className="max-h-[520px] overflow-auto">
+												{versions.length === 0 ? (
+													<div className="p-3 font-mono text-xs text-muted-foreground">
+														{t('versions.empty')}
+													</div>
+												) : null}
 
 											{versions.map((v: any) => (
 												<div
@@ -431,10 +432,10 @@ function ThreadTemplatesRoute() {
 																		libraryId: selectedLibraryId,
 																		versionId: String(v.id),
 																	}}
-																>
-																	Open Editor
-																</Link>
-															</Button>
+																	>
+																		{t('versions.openEditor')}
+																	</Link>
+																</Button>
 
 															{showVersionsAdvanced ? (
 																<Button
@@ -445,25 +446,25 @@ function ThreadTemplatesRoute() {
 																	disabled={rollbackMutation.isPending}
 																	onClick={() => {
 																		void (async () => {
-																			const ok = await confirmDialog({
-																				title: 'Rollback version?',
-																				description:
-																					'This creates a new version that matches the selected one.',
-																				confirmText: 'Rollback',
-																				variant: 'destructive',
-																			})
-																			if (!ok) return
-																			rollbackMutation.mutate({
-																				versionId: String(v.id),
-																			})
-																		})()
-																	}}
-																>
-																	Rollback
-																</Button>
-															) : null}
+																				const ok = await confirmDialog({
+																					title: t('dialogs.rollback.title'),
+																					description:
+																						t('dialogs.rollback.description'),
+																					confirmText: t('dialogs.rollback.confirmText'),
+																					variant: 'destructive',
+																				})
+																				if (!ok) return
+																				rollbackMutation.mutate({
+																					versionId: String(v.id),
+																				})
+																			})()
+																		}}
+																	>
+																		{t('versions.rollback')}
+																	</Button>
+																) : null}
+															</div>
 														</div>
-													</div>
 
 													{v.note ? (
 														<div className="font-mono text-xs text-muted-foreground">
@@ -481,31 +482,31 @@ function ThreadTemplatesRoute() {
 				</div>
 			</div>
 
-			<Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-				<DialogContent className="rounded-none border-2 border-primary p-0 overflow-hidden max-w-lg">
-					<DialogHeader className="bg-primary p-4 text-primary-foreground">
-						<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
-							Rename Template
-						</DialogTitle>
-						<DialogDescription className="text-primary-foreground/80">
-							Update name/description for the selected template.
-						</DialogDescription>
-					</DialogHeader>
-					<div className="p-4 space-y-3">
-						<div className="space-y-1">
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Name
-							</Label>
+				<Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+					<DialogContent className="rounded-none border-2 border-primary p-0 overflow-hidden max-w-lg">
+						<DialogHeader className="bg-primary p-4 text-primary-foreground">
+							<DialogTitle className="text-xs font-bold uppercase tracking-[0.2em]">
+								{t('dialogs.rename.title')}
+							</DialogTitle>
+							<DialogDescription className="text-primary-foreground/80">
+								{t('dialogs.rename.description')}
+							</DialogDescription>
+						</DialogHeader>
+						<div className="p-4 space-y-3">
+							<div className="space-y-1">
+								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{t('dialogs.rename.nameLabel')}
+								</Label>
 							<Input
 								value={renameName}
 								onChange={(e) => setRenameName(e.target.value)}
 								className="rounded-none font-mono text-xs h-9"
 							/>
 						</div>
-						<div className="space-y-1">
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Description
-							</Label>
+							<div className="space-y-1">
+								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{t('dialogs.rename.descriptionLabel')}
+								</Label>
 							<Input
 								value={renameDescription}
 								onChange={(e) => setRenameDescription(e.target.value)}
@@ -513,15 +514,15 @@ function ThreadTemplatesRoute() {
 							/>
 						</div>
 					</div>
-					<DialogFooter className="p-4 pt-0">
-						<Button
-							type="button"
-							variant="outline"
-							className="rounded-none font-mono text-xs uppercase"
-							onClick={() => setRenameOpen(false)}
-						>
-							Cancel
-						</Button>
+						<DialogFooter className="p-4 pt-0">
+							<Button
+								type="button"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase"
+								onClick={() => setRenameOpen(false)}
+							>
+								{t('dialogs.rename.cancel')}
+							</Button>
 						<Button
 							type="button"
 							className="rounded-none font-mono text-xs uppercase"
@@ -535,13 +536,13 @@ function ThreadTemplatesRoute() {
 										? renameDescription
 										: null,
 								})
-							}}
-						>
-							Save
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+								}}
+							>
+								{t('dialogs.rename.save')}
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 		</div>
 	)
 }

@@ -787,20 +787,22 @@ function ThreadTemplateVersionEditorRoute() {
 								<h1 className="font-mono text-sm font-bold uppercase tracking-tight truncate max-w-[200px]">
 									{library ? String((library as any).name) : '…'}
 								</h1>
-								<div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-									<span>
-										{selectedVersion
-											? `v${Number((selectedVersion as any).version)}`
-											: 'v?'}
-									</span>
-									{isDirty && (
-										<>
-											<span className="size-1 rounded-full bg-amber-500" />
-											<span className="text-amber-500">Unsaved</span>
-										</>
-									)}
+									<div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+										<span>
+											{selectedVersion
+												? t('header.versionTag', {
+														version: Number((selectedVersion as any).version),
+													})
+												: t('header.versionTagUnknown')}
+										</span>
+										{isDirty && (
+											<>
+												<span className="size-1 rounded-full bg-amber-500" />
+												<span className="text-amber-500">{t('header.unsaved')}</span>
+											</>
+										)}
+									</div>
 								</div>
-							</div>
 						</div>
 						
 						<div className="h-6 w-px bg-border/60" />
@@ -819,10 +821,10 @@ function ThreadTemplateVersionEditorRoute() {
 								})
 							}}
 						>
-							<SelectTrigger className="h-8 w-[140px] rounded-none border-0 bg-transparent font-mono text-xs shadow-none hover:bg-accent/50 focus:ring-0 px-2 gap-2">
-								<History className="size-3.5 text-muted-foreground" />
-								<SelectValue placeholder="Version" />
-							</SelectTrigger>
+								<SelectTrigger className="h-8 w-[140px] rounded-none border-0 bg-transparent font-mono text-xs shadow-none hover:bg-accent/50 focus:ring-0 px-2 gap-2">
+									<History className="size-3.5 text-muted-foreground" />
+									<SelectValue placeholder={t('controls.versionPlaceholder')} />
+								</SelectTrigger>
 							<SelectContent>
 								{versions.map((v: any) => (
 									<SelectItem key={String(v.id)} value={String(v.id)} className="font-mono text-xs">
@@ -873,18 +875,20 @@ function ThreadTemplateVersionEditorRoute() {
 					{/* RIGHT: Actions */}
 					<div className="flex items-center gap-3">
 						{/* Thread Preview Context */}
-						<div className="hidden lg:flex items-center gap-2">
-							<span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Previewing</span>
-							<Select
-								value={previewThreadId || ''}
-								onValueChange={(v) => {
+							<div className="hidden lg:flex items-center gap-2">
+								<span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+									{t('controls.previewingLabel')}
+								</span>
+								<Select
+									value={previewThreadId || ''}
+									onValueChange={(v) => {
 									void navigate({ search: { previewThreadId: v } })
 								}}
 							>
-								<SelectTrigger className="h-8 w-[200px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 gap-2">
-									<MonitorPlay className="size-3.5 text-muted-foreground" />
-									<SelectValue placeholder="Select Thread..." />
-								</SelectTrigger>
+									<SelectTrigger className="h-8 w-[200px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 gap-2">
+										<MonitorPlay className="size-3.5 text-muted-foreground" />
+										<SelectValue placeholder={t('controls.previewThreadPlaceholder')} />
+									</SelectTrigger>
 								<SelectContent align="end">
 									{threads.map((t: any) => (
 										<SelectItem key={String(t.id)} value={String(t.id)} className="font-mono text-xs">
@@ -961,12 +965,12 @@ function ThreadTemplateVersionEditorRoute() {
 						</div>
 
 						<div className="flex items-center gap-2">
-							<Input
-								value={note}
-								onChange={(e) => setNote(e.target.value)}
-								placeholder="Publish note..."
-								className="h-8 w-[160px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 focus:bg-background transition-colors"
-							/>
+								<Input
+									value={note}
+									onChange={(e) => setNote(e.target.value)}
+									placeholder={t('controls.publishNotePlaceholder')}
+									className="h-8 w-[160px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 focus:bg-background transition-colors"
+								/>
 							<Button
 								type="button"
 								size="sm"
@@ -1211,13 +1215,15 @@ function ThreadTemplateVersionEditorRoute() {
 
 						{/* RIGHT PANEL */}
 						<div className="order-3 lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-1 h-full overflow-hidden border-l border-border bg-card flex flex-col">
-							{showAdvanced ? (
-								<div className="flex-1 flex flex-col min-h-0">
-									<div className="flex items-center justify-between px-3 py-2 border-b border-border">
-										<span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">JSON Config</span>
-										<Button 
-											variant="ghost" 
-											size="icon" 
+								{showAdvanced ? (
+									<div className="flex-1 flex flex-col min-h-0">
+										<div className="flex items-center justify-between px-3 py-2 border-b border-border">
+											<span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('panels.configShortTitle')}
+											</span>
+											<Button 
+												variant="ghost" 
+												size="icon" 
 											className="size-6"
 											onClick={() => setShowAdvanced(false)}
 										>

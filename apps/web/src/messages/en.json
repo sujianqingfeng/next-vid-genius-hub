@@ -15,12 +15,15 @@
 			"en": "English",
 			"switchTo": "Switch to {language}"
 		},
-		"actions": {
-			"toggle": "Toggle"
-		},
-		"fallback": {
-			"unknown": "Unknown"
-		},
+			"actions": {
+				"toggle": "Toggle"
+			},
+			"aria": {
+				"close": "Close"
+			},
+			"fallback": {
+				"unknown": "Unknown"
+			},
 		"confirmDialog": {
 			"title": "Confirm action",
 			"cancel": "Cancel",
@@ -76,15 +79,66 @@
 			}
 		}
 	},
-	"Errors": {
-		"codes": {
-			"INSUFFICIENT_POINTS": "Insufficient points. Please top up and try again.",
-			"NO_SUCCESS_PROXY": "No available proxy (status is OK). Please check/add proxies and retry.",
-			"PROXY_NOT_SUCCESS": "Selected proxy is unavailable. Please choose a working proxy.",
-			"TIMEOUT": "Cloud transcription is still running. Please refresh and try again later."
+		"Errors": {
+			"codes": {
+				"INSUFFICIENT_POINTS": "Insufficient points. Please top up and try again.",
+				"NO_SUCCESS_PROXY": "No available proxy (status is OK). Please check/add proxies and retry.",
+				"PROXY_NOT_SUCCESS": "Selected proxy is unavailable. Please choose a working proxy.",
+				"TIMEOUT": "Cloud transcription is still running. Please refresh and try again later.",
+				"D1_BINDING_MISSING": "Cloudflare D1 binding not found. Please check your Wrangler config.",
+				"D1_SCHEMA_NOT_READY": "Cloudflare D1 database is not initialized. Run migrations and retry.",
+				"AUDIO_METADATA_READ_FAILED": "Failed to read audio metadata.",
+				"AUDIO_DURATION_INVALID": "Invalid audio duration.",
+				"MEDIA_NOT_FOUND": "Media not found.",
+				"THREAD_NOT_FOUND": "Thread not found.",
+				"PROVIDER_NOT_FOUND": "Provider not found.",
+				"CHANNEL_NOT_FOUND": "Channel not found.",
+				"THREAD_TEMPLATE_LIBRARY_NOT_FOUND": "Template library not found.",
+				"LLM_MODEL_NOT_ENABLED": "LLM model is not enabled.",
+				"PROXY_NOT_FOUND": "Proxy not found.",
+				"SSR_SUBSCRIPTION_NOT_FOUND": "SSR subscription not found.",
+				"MEDIA_OR_COMMENTS_NOT_FOUND": "Media or comments not found.",
+				"MODEL_NOT_FOUND": "Model not found.",
+				"THREAD_TEMPLATE_VERSION_NOT_FOUND": "Template version not found.",
+				"AUDIO_ASSET_NOT_FOUND": "Audio asset not found.",
+				"CANNOT_DELETE_SELF": "You cannot delete yourself.",
+				"CANNOT_DELETE_LAST_ADMIN": "Cannot delete the last admin.",
+				"PROVIDER_MISMATCH_FOR_MODEL_PRICING_RULE": "Provider mismatch for model pricing rule.",
+				"LLM_PRICING_RULE_UNIT_MUST_BE_TOKEN": "LLM pricing rule unit must be token.",
+				"LLM_PRICING_RULES_REQUIRE_INPUT_AND_OUTPUT_PRICE": "LLM pricing rules require both input and output price per unit.",
+				"WHISPER_API_PROVIDERS_REQUIRE_BASE_URL": "Whisper API providers require a baseUrl.",
+				"METADATA_MAX_UPLOAD_BYTES_MUST_BE_POSITIVE": "metadata.maxUploadBytes must be a positive number.",
+				"CANNOT_DELETE_PROVIDER_MODELS_STILL_REFERENCE": "Cannot delete provider: models still reference it.",
+				"WHISPER_API_BASE_URL_NOT_CONFIGURED": "Whisper API baseUrl is not configured for this provider.",
+				"WHISPER_API_TOKEN_NOT_CONFIGURED": "Whisper API token is not configured for this provider.",
+				"NO_ENABLED_LLM_MODEL_FOR_PROVIDER": "No enabled LLM model found for this provider.",
+				"MODEL_KIND_MISMATCH": "Model kind mismatch.",
+				"NO_SOURCE_VIDEO_AVAILABLE": "No source video available.",
+				"NO_COMMENTS_FOUND_FOR_MEDIA": "No comments found for this media.",
+				"SOURCE_VIDEO_NOT_FOUND_IN_CLOUD_STORAGE": "Source video not found in cloud storage. Re-run cloud download and retry.",
+				"INVALID_TEMPLATE_CONFIG": "Invalid template config.",
+				"FAILED_TO_PREPARE_COMMENTS_METADATA": "Failed to prepare comments metadata for cloud render.",
+				"MEDIA_URL_MISSING": "Media URL missing.",
+				"FAILED_TO_CREATE_MEDIA_RECORD_FOR_DOWNLOAD": "Failed to create media record for download.",
+				"MEDIA_URL_MISSING_CANNOT_REFRESH_METADATA": "Media URL is missing; cannot refresh metadata.",
+				"INVALID_COMMENTS_TEMPLATE_CONFIG": "Invalid comments template config.",
+				"THREAD_TEMPLATE_CONFIG_VERSION_REQUIRED": "templateConfig must include \"version\": 1 (v1 only).",
+				"NAME_IS_REQUIRED": "Name is required.",
+				"THREAD_TEMPLATE_NAME_ALREADY_EXISTS": "A template with the same name already exists.",
+				"INVALID_JSON": "Invalid JSON.",
+				"POST_NOT_FOUND": "Post not found.",
+				"UNSUPPORTED_AUDIO_CONTENT_TYPE": "Unsupported audio content-type.",
+				"AUDIO_STORAGE_KEY_MISSING": "Audio storageKey missing.",
+				"UPLOADED_AUDIO_NOT_FOUND_IN_STORAGE_YET": "Uploaded audio not found in storage yet.",
+				"AUDIO_ASSET_NOT_READY_YET": "Audio asset is not ready yet.",
+				"THREAD_TEMPLATE_CONFIG_OBJECT_REQUIRED": "templateConfig must be an object with version: 1 (v1 only).",
+				"NO_TEMPLATE_UPDATES_PROVIDED": "No template updates provided.",
+				"RENDER_NOT_FOUND": "Render not found.",
+				"RENDER_JOB_ID_MISSING": "Render jobId missing.",
+				"RENDER_JOB_NOT_FOUND": "Render job not found."
+			},
+			"unknown": "Unexpected error. Please try again."
 		},
-		"unknown": "Unexpected error. Please try again."
-	},
 	"NotFound": {
 		"title": "Page not found",
 		"body": "The page you’re looking for doesn’t exist or has moved.",
@@ -135,12 +189,14 @@
 				"desc": "User and config management"
 			}
 		},
-		"user": {
-			"guest": "Guest",
-			"loginPrompt": "Please sign in",
-			"logout": "Sign out",
-			"pointsSuffix": "pts"
-		}
+			"user": {
+				"avatarFallback": "U",
+				"guest": "Guest",
+				"loginPrompt": "Please sign in",
+				"logout": "Sign out",
+				"creditsLabel": "Credits",
+				"pointsSuffix": "pts"
+			}
 	},
 	"Agent": {
 		"header": {
@@ -210,41 +266,46 @@
 				"jsonEmpty": "JSON is empty"
 			}
 		},
-		"detail": {
-			"header": {
-				"breadcrumb": "Thread"
-			},
-			"sections": {
-				"preview": "Preview",
-				"audio": "Audio (BGM)",
-				"posts": "Posts",
-				"editor": "Editor",
-				"media": "Media",
-				"translation": "Translation",
-				"debug": "Stored (DB) / Raw",
-				"render": "Render (Cloud)"
-			},
-			"labels": {
-				"root": "ROOT",
-				"replies": "REPLIES ({count})",
-				"emptyText": "(empty)"
-			},
-			"actions": {
-				"back": "Back",
-				"downloading": "Downloading…",
-				"download": "Download",
-				"translateToZh": "Translate (zh-CN)",
-				"translateAllToZh": "Translate All (zh-CN)",
+			"detail": {
+				"header": {
+					"breadcrumb": "Thread"
+				},
+				"sections": {
+					"preview": "Preview",
+					"audio": "Audio (BGM)",
+					"posts": "Posts",
+					"editor": "Editor",
+					"media": "Media",
+					"translation": "Translation",
+					"debug": "Stored (DB) / Raw",
+					"render": "Render (Cloud)",
+					"templateLibrary": "Template Library"
+				},
+				"labels": {
+					"root": "ROOT",
+					"replies": "REPLIES ({count})",
+					"emptyText": "(empty)"
+				},
+				"actions": {
+					"back": "Back",
+					"manageTemplates": "Manage",
+					"downloading": "Downloading…",
+					"download": "Download",
+					"translateToZh": "Translate (zh-CN)",
+					"translateAllToZh": "Translate All (zh-CN)",
 				"translating": "Translating…",
 				"translatingAll": "Translating All…",
 				"useTranslation": "Use Translation",
 				"save": "Save",
-				"reset": "Reset",
-				"startRender": "Start Render"
-			},
-			"toasts": {
-				"saved": "Saved",
-				"reset": "Reset",
+					"reset": "Reset",
+					"startRender": "Start Render"
+				},
+				"inputs": {
+					"postContentPlaceholder": "Post content..."
+				},
+				"toasts": {
+					"saved": "Saved",
+					"reset": "Reset",
 				"translated": "Translated",
 				"translatedAll": "Translated: processed={processed} translated={translated} skipped={skipped} failed={failed}",
 				"translationApplied": "Applied translation to editor",
@@ -362,26 +423,145 @@
 			}
 		}
 	},
-	"ThreadTemplates": {
-		"editor": {
-			"shortcuts": {
-				"title": "Shortcuts",
-				"description": "Press Shift + / to open this again.",
-				"rows": {
+		"ThreadTemplates": {
+			"library": {
+				"header": {
+					"sectionLabel": "Templates",
+					"title": "Thread Template Library",
+					"backToThreads": "Back to Threads"
+				},
+				"create": {
+					"title": "Create",
+					"nameLabel": "Name",
+					"namePlaceholder": "e.g. Forum Split Layout",
+					"templateIdLabel": "Template ID",
+					"descLabel": "Description (optional)",
+					"descPlaceholder": "What is this template for?",
+					"hint": "You can customize layout in the editor after creation.",
+					"create": "Create",
+					"creating": "Creating…"
+				},
+				"saved": {
+					"title": "Saved",
+					"empty": "No templates yet.",
+					"templateLabel": "Template",
+					"templatePlaceholder": "Select template",
+					"rename": "Rename",
+					"delete": "Delete",
+					"deleting": "Deleting…"
+				},
+				"versions": {
+					"title": "Versions",
+					"selectTemplateHint": "Select a template to view versions.",
+					"editLatest": "Edit Latest",
+					"advanced": "Advanced",
+					"hideAdvanced": "Hide advanced",
+					"empty": "No versions yet.",
+					"openEditor": "Open Editor",
+					"rollback": "Rollback"
+				},
+				"dialogs": {
+					"delete": {
+						"title": "Delete template?",
+						"description": "This will delete the template and all its versions.",
+						"confirmText": "Delete"
+					},
+					"rollback": {
+						"title": "Rollback version?",
+						"description": "This creates a new version that matches the selected one.",
+						"confirmText": "Rollback"
+					},
+					"rename": {
+						"title": "Rename Template",
+						"description": "Update name/description for the selected template.",
+						"nameLabel": "Name",
+						"descriptionLabel": "Description",
+						"cancel": "Cancel",
+						"save": "Save"
+					}
+				},
+				"toasts": {
+					"created": "Created template",
+					"updated": "Updated template",
+					"deleted": "Deleted template",
+					"rollbackCreated": "Rollback version created"
+				}
+			},
+			"libraryCard": {
+				"header": {
+					"currentTemplate": "Current template: {templateId}",
+					"advanced": "Advanced",
+					"hideAdvanced": "Hide advanced"
+				},
+				"use": {
+					"title": "Use",
+					"templateLabel": "Template",
+					"templatePlaceholder": "Select template",
+					"versionLabel": "Version",
+					"versionPlaceholder": "Select version",
+					"apply": "Apply",
+					"applying": "Applying…",
+					"openEditor": "Open Editor",
+					"noteChangeTemplateId": "Note: applying this will also change templateId to {templateId}.",
+					"loadingVersions": "Loading versions…"
+				},
+				"advanced": {
+					"title": "Advanced",
+					"noteLabel": "Note (optional)",
+					"notePlaceholder": "e.g. tweak cover typography",
+					"saveNewTemplate": {
+						"title": "Save as new template",
+						"nameLabel": "Name",
+						"namePlaceholder": "e.g. My Forum Layout",
+						"descLabel": "Description (optional)",
+						"descPlaceholder": "What is this template for?",
+						"save": "Save New",
+						"saving": "Saving…"
+					},
+					"saveNewVersion": {
+						"title": "Save as new version",
+						"libraryLabel": "Library template",
+						"libraryPlaceholder": "Select a saved template",
+						"noneSaved": "No saved templates for templateId={templateId}.",
+						"save": "Save Version",
+						"saving": "Saving…"
+					},
+					"danger": {
+						"title": "Danger zone",
+						"rollback": "Rollback version",
+						"rollingBack": "Rolling back…"
+					}
+				},
+				"toasts": {
+					"savedToLibrary": "Saved to library",
+					"savedNewVersion": "Saved new version",
+					"rollbackCreated": "Rollback version created",
+					"appliedToThread": "Applied template to thread",
+					"nothingToSave": "Nothing to save: normalized config is empty"
+				}
+			},
+			"editor": {
+				"shortcuts": {
+					"title": "Shortcuts",
+					"description": "Press Shift + / to open this again.",
+					"rows": {
 					"undo": "Undo",
 					"redo": "Redo",
 					"toggleStructure": "Toggle Structure",
 					"publish": "Publish"
 				}
 			},
-			"header": {
-				"systemLabel": "Template Editor",
-				"unpublishedChanges": "Unpublished changes",
-				"version": "Version v{version}",
-				"versionUnknown": "Version …",
-				"templateId": "templateId={templateId}",
-				"publishDisabled": "Publish disabled: {reason}"
-			},
+				"header": {
+					"systemLabel": "Template Editor",
+					"unpublishedChanges": "Unpublished changes",
+					"unsaved": "Unsaved",
+					"version": "Version v{version}",
+					"versionUnknown": "Version …",
+					"versionTag": "v{version}",
+					"versionTagUnknown": "v?",
+					"templateId": "templateId={templateId}",
+					"publishDisabled": "Publish disabled: {reason}"
+				},
 			"confirm": {
 				"discard": "You have unpublished changes. Discard them and {action}?",
 				"actions": {
@@ -390,11 +570,12 @@
 					"leave": "leave"
 				}
 			},
-			"controls": {
-				"versionPlaceholder": "Version",
-				"previewThreadPlaceholder": "Preview thread",
-				"publishNotePlaceholder": "Publish note…"
-			},
+				"controls": {
+					"versionPlaceholder": "Version",
+					"previewThreadPlaceholder": "Preview thread",
+					"previewingLabel": "Previewing",
+					"publishNotePlaceholder": "Publish note…"
+				},
 			"buttons": {
 				"undo": "Undo",
 				"redo": "Redo",
@@ -426,15 +607,16 @@
 				"publishing": "Publishing…",
 				"previewThreadRequired": "Pick a preview thread first"
 			},
-			"panels": {
-				"resizeTitle": "Drag to resize (double-click to reset)",
-				"previewTitle": "Preview",
-				"previewLoadFailed": "Failed to load preview thread.",
-				"previewNoRoot": "Preview thread has no root post (or failed to load).",
-				"configTitle": "Config (read-only JSON)",
-				"configHint": "This is the normalized config used for preview/publish."
-			}
-		},
+				"panels": {
+					"resizeTitle": "Drag to resize (double-click to reset)",
+					"previewTitle": "Preview",
+					"previewLoadFailed": "Failed to load preview thread.",
+					"previewNoRoot": "Preview thread has no root post (or failed to load).",
+					"configShortTitle": "JSON Config",
+					"configTitle": "Config (read-only JSON)",
+					"configHint": "This is the normalized config used for preview/publish."
+				}
+			},
 		"visualEditor": {
 			"structure": {
 				"title": "Structure",

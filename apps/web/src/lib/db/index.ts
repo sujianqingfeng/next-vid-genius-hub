@@ -122,12 +122,14 @@ export async function getDb(): Promise<DbClient> {
 			const injectedD1 = getInjectedD1Database()
 			const d1 = injectedD1 ? wrapD1Database(injectedD1) : undefined
 			if (!d1) {
-				throw new Error(
-					[
-						'Cloudflare D1 绑定未找到：请在 wrangler 配置中设置 d1_databases 绑定名为 DB。',
-						'TanStack Start：确保 worker entry 将 env.DB 注入到应用（例如通过 setInjectedD1Database(env.DB)）。',
-					].join('\n'),
-				)
+				throw new Error('D1_BINDING_MISSING', {
+					cause: new Error(
+						[
+							'Cloudflare D1 binding not found: configure d1_databases binding named DB in wrangler.',
+							'TanStack Start: ensure worker entry injects env.DB (e.g. setInjectedD1Database(env.DB)).',
+						].join('\n'),
+					),
+				})
 			}
 
 			if (process.env.NODE_ENV !== 'production') {
@@ -158,13 +160,15 @@ async function assertD1SchemaReady(d1: D1Database, requiredTables: string[]) {
 
 	if (missingTables.length === 0) return
 
-	throw new Error(
-		[
-			`Cloudflare D1 数据库未初始化（缺少表：${missingTables.join(', ')}）。`,
-			'请先运行：pnpm db:d1:migrate:local',
-			'如需查看迁移状态：pnpm db:d1:list:local',
-		].join('\n'),
-	)
+	throw new Error('D1_SCHEMA_NOT_READY', {
+		cause: new Error(
+			[
+				`Cloudflare D1 schema not initialized (missing tables: ${missingTables.join(', ')}).`,
+				'Run: pnpm db:d1:migrate:local',
+				'Check status: pnpm db:d1:list:local',
+			].join('\n'),
+		),
+	})
 }
 
 async function d1HasTable(d1: D1Database, tableName: string) {

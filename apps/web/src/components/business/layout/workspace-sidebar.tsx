@@ -248,45 +248,48 @@ export default function WorkspaceSidebar({
 							collapsed && 'p-2 flex justify-center border-none bg-transparent',
 						)}
 					>
-						{!collapsed ? (
-							<div className="space-y-3">
-								<div className="flex items-center gap-3">
-									<div className="h-8 w-8 bg-secondary flex items-center justify-center border border-border">
-										<span className="text-xs font-bold font-mono">
-											{me?.user?.nickname?.[0]?.toUpperCase() || 'U'}
-										</span>
-									</div>
-									<div className="min-w-0">
-										<p className="text-xs font-bold uppercase truncate">
-											{me?.user?.nickname || 'Guest'}
-										</p>
-										<p className="text-[10px] font-mono text-muted-foreground truncate">
-											{me?.user?.email}
-										</p>
-									</div>
-								</div>
+								{!collapsed ? (
+									<div className="space-y-3">
+										<div className="flex items-center gap-3">
+											<div className="h-8 w-8 bg-secondary flex items-center justify-center border border-border">
+												<span className="text-xs font-bold font-mono">
+													{me?.user?.nickname?.[0]?.toUpperCase() ||
+														t('user.avatarFallback')}
+												</span>
+											</div>
+											<div className="min-w-0">
+												<p className="text-xs font-bold uppercase truncate">
+													{me?.user?.nickname || t('user.guest')}
+												</p>
+												<p className="text-[10px] font-mono text-muted-foreground truncate">
+													{me?.user?.email}
+												</p>
+											</div>
+										</div>
 
-								{typeof me?.balance === 'number' && (
-									<div className="flex items-center justify-between border-t border-border pt-2">
-										<span className="text-[10px] uppercase text-muted-foreground">
-											Credits
-										</span>
-										<span className="text-xs font-mono font-bold">
-											{me.balance}
+										{typeof me?.balance === 'number' && (
+											<div className="flex items-center justify-between border-t border-border pt-2">
+												<span className="text-[10px] uppercase text-muted-foreground">
+													{t('user.creditsLabel')}
+												</span>
+												<span className="text-xs font-mono font-bold">
+													{me.balance}
+													{t('user.pointsSuffix')}
+												</span>
+											</div>
+										)}
+									</div>
+								) : (
+									<div
+										className="h-8 w-8 bg-secondary flex items-center justify-center border border-border"
+										title={me?.user?.email}
+									>
+										<span className="text-xs font-bold font-mono">
+											{me?.user?.nickname?.[0]?.toUpperCase() ||
+												t('user.avatarFallback')}
 										</span>
 									</div>
 								)}
-							</div>
-						) : (
-							<div
-								className="h-8 w-8 bg-secondary flex items-center justify-center border border-border"
-								title={me?.user?.email}
-							>
-								<span className="text-xs font-bold font-mono">
-									{me?.user?.nickname?.[0]?.toUpperCase() || 'U'}
-								</span>
-							</div>
-						)}
 					</div>
 
 					<Button

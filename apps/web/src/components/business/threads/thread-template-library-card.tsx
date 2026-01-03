@@ -16,7 +16,9 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
+import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 
 export function ThreadTemplateLibraryCard({
@@ -31,6 +33,7 @@ export function ThreadTemplateLibraryCard({
 	onApplied: () => Promise<void>
 }) {
 	const qc = useQueryClient()
+	const t = useTranslations('ThreadTemplates.libraryCard')
 
 	const listQuery = useQuery(queryOrpc.threadTemplate.list.queryOptions())
 	const libraries = listQuery.data?.libraries ?? []
@@ -90,23 +93,22 @@ export function ThreadTemplateLibraryCard({
 		if (latest?.id) setApplyVersionId(String(latest.id))
 	}, [applyLibraryId, applyVersionId, versions])
 
-	const createMutation = useEnhancedMutation(
-		queryOrpc.threadTemplate.create.mutationOptions({
-			onSuccess: async () => {
-				await qc.invalidateQueries({
-					queryKey: queryOrpc.threadTemplate.list.key(),
-				})
+		const createMutation = useEnhancedMutation(
+			queryOrpc.threadTemplate.create.mutationOptions({
+				onSuccess: async () => {
+					await qc.invalidateQueries({
+						queryKey: queryOrpc.threadTemplate.list.key(),
+					})
+				},
+			}),
+			{
+				successToast: t('toasts.savedToLibrary'),
+				errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 			},
-		}),
-		{
-			successToast: 'Saved to library',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
+		)
 
-	const addVersionMutation = useEnhancedMutation(
-		queryOrpc.threadTemplate.addVersion.mutationOptions({
+		const addVersionMutation = useEnhancedMutation(
+			queryOrpc.threadTemplate.addVersion.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
 					queryKey: queryOrpc.threadTemplate.list.key(),
@@ -119,15 +121,14 @@ export function ThreadTemplateLibraryCard({
 					})
 				}
 			},
-		}),
-		{
-			successToast: 'Saved new version',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
+			}),
+			{
+				successToast: t('toasts.savedNewVersion'),
+				errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
+			},
+		)
 
-	const rollbackMutation = useEnhancedMutation(
+		const rollbackMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.rollback.mutationOptions({
 			onSuccess: async () => {
 				await qc.invalidateQueries({
@@ -141,26 +142,24 @@ export function ThreadTemplateLibraryCard({
 					})
 				}
 			},
-		}),
-		{
-			successToast: 'Rollback version created',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
+			}),
+			{
+				successToast: t('toasts.rollbackCreated'),
+				errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
+			},
+		)
 
-	const applyMutation = useEnhancedMutation(
+		const applyMutation = useEnhancedMutation(
 		queryOrpc.threadTemplate.applyToThread.mutationOptions({
 			onSuccess: async () => {
 				await onApplied()
 			},
-		}),
-		{
-			successToast: 'Applied template to thread',
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
-		},
-	)
+			}),
+			{
+				successToast: t('toasts.appliedToThread'),
+				errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
+			},
+		)
 
 	const canSave =
 		Boolean(normalizedTemplateConfig) &&
@@ -170,39 +169,41 @@ export function ThreadTemplateLibraryCard({
 	return (
 		<Card className="rounded-none shadow-none">
 			<CardContent className="py-5 space-y-5">
-				<div className="flex flex-wrap items-center justify-between gap-2">
-					<div className="font-mono text-xs text-muted-foreground">
-						Current template: {effectiveTemplateId}
-					</div>
-					<Button
+					<div className="flex flex-wrap items-center justify-between gap-2">
+						<div className="font-mono text-xs text-muted-foreground">
+							{t('header.currentTemplate', { templateId: effectiveTemplateId })}
+						</div>
+						<Button
 						type="button"
 						size="sm"
 						variant="outline"
 						className="rounded-none font-mono text-[10px] uppercase"
-						onClick={() => setShowAdvanced((v) => !v)}
-					>
-						{showAdvanced ? 'Hide advanced' : 'Advanced'}
-					</Button>
-				</div>
+							onClick={() => setShowAdvanced((v) => !v)}
+						>
+							{showAdvanced ? t('header.hideAdvanced') : t('header.advanced')}
+						</Button>
+					</div>
 
-				<div className="space-y-3">
-					<div className="font-mono text-xs uppercase tracking-widest">Use</div>
-					<div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto_auto] items-end">
-						<div className="space-y-1">
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Template
-							</Label>
-							<Select
+					<div className="space-y-3">
+						<div className="font-mono text-xs uppercase tracking-widest">
+							{t('use.title')}
+						</div>
+						<div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto_auto] items-end">
+							<div className="space-y-1">
+								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{t('use.templateLabel')}
+								</Label>
+								<Select
 								value={applyLibraryId}
 								onValueChange={(v) => {
 									setApplyLibraryId(v)
 									setApplyVersionId('')
 								}}
-							>
-								<SelectTrigger className="rounded-none font-mono text-xs h-9">
-									<SelectValue placeholder="Select template" />
-								</SelectTrigger>
-								<SelectContent>
+								>
+									<SelectTrigger className="rounded-none font-mono text-xs h-9">
+										<SelectValue placeholder={t('use.templatePlaceholder')} />
+									</SelectTrigger>
+									<SelectContent>
 									{libraries.map((l: any) => (
 										<SelectItem key={String(l.id)} value={String(l.id)}>
 											{String(l.name)} · {String(l.templateId)} · v
@@ -212,19 +213,19 @@ export function ThreadTemplateLibraryCard({
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="space-y-1">
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Version
-							</Label>
-							<Select
+							<div className="space-y-1">
+								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{t('use.versionLabel')}
+								</Label>
+								<Select
 								value={applyVersionId}
 								onValueChange={(v) => setApplyVersionId(v)}
 								disabled={!applyLibraryId || versions.length === 0}
-							>
-								<SelectTrigger className="rounded-none font-mono text-xs h-9">
-									<SelectValue placeholder="Select version" />
-								</SelectTrigger>
-								<SelectContent>
+								>
+									<SelectTrigger className="rounded-none font-mono text-xs h-9">
+										<SelectValue placeholder={t('use.versionPlaceholder')} />
+									</SelectTrigger>
+									<SelectContent>
 									{versions.map((v: any) => (
 										<SelectItem key={String(v.id)} value={String(v.id)}>
 											v{Number(v.version)} · {String(v.id).slice(0, 10)}
@@ -234,17 +235,17 @@ export function ThreadTemplateLibraryCard({
 								</SelectContent>
 							</Select>
 						</div>
-						<Button
-							type="button"
-							className="rounded-none font-mono text-xs uppercase"
-							disabled={!applyVersionId || applyMutation.isPending}
+							<Button
+								type="button"
+								className="rounded-none font-mono text-xs uppercase"
+								disabled={!applyVersionId || applyMutation.isPending}
 							onClick={() => {
 								if (!applyVersionId) return
 								applyMutation.mutate({ threadId, versionId: applyVersionId })
-							}}
-						>
-							{applyMutation.isPending ? 'Applying…' : 'Apply'}
-						</Button>
+								}}
+							>
+								{applyMutation.isPending ? t('use.applying') : t('use.apply')}
+							</Button>
 						<Button
 							type="button"
 							variant="outline"
@@ -259,82 +260,81 @@ export function ThreadTemplateLibraryCard({
 									versionId: applyVersionId,
 								}}
 								search={{ previewThreadId: threadId }}
-							>
-								Open Editor
-							</Link>
-						</Button>
+								>
+									{t('use.openEditor')}
+								</Link>
+							</Button>
+						</div>
+						{willChangeTemplateId ? (
+							<div className="font-mono text-xs text-muted-foreground">
+								{t('use.noteChangeTemplateId', {
+									templateId: String((applyLibrary as any)?.templateId),
+								})}
+							</div>
+						) : null}
+						{versionsQuery.isFetching ? (
+							<div className="font-mono text-xs text-muted-foreground">
+								{t('use.loadingVersions')}
+							</div>
+						) : null}
 					</div>
-					{willChangeTemplateId ? (
-						<div className="font-mono text-xs text-muted-foreground">
-							Note: applying this will also change templateId to{' '}
-							{String((applyLibrary as any)?.templateId)}.
-						</div>
-					) : null}
-					{versionsQuery.isFetching ? (
-						<div className="font-mono text-xs text-muted-foreground">
-							Loading versions…
-						</div>
-					) : null}
-				</div>
 
-				{showAdvanced ? (
-					<div className="border-t border-border pt-5 space-y-5">
-						<div className="font-mono text-xs uppercase tracking-widest">
-							Advanced
-						</div>
+					{showAdvanced ? (
+						<div className="border-t border-border pt-5 space-y-5">
+							<div className="font-mono text-xs uppercase tracking-widest">
+								{t('advanced.title')}
+							</div>
 
-						<div className="space-y-1">
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								Note (optional)
-							</Label>
-							<Input
-								value={note}
-								onChange={(e) => setNote(e.target.value)}
-								placeholder="e.g. tweak cover typography"
-								className="rounded-none font-mono text-xs h-9"
-							/>
-						</div>
+							<div className="space-y-1">
+								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{t('advanced.noteLabel')}
+								</Label>
+								<Input
+									value={note}
+									onChange={(e) => setNote(e.target.value)}
+									placeholder={t('advanced.notePlaceholder')}
+									className="rounded-none font-mono text-xs h-9"
+								/>
+							</div>
 
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<div className="space-y-3">
-								<div className="font-mono text-xs uppercase tracking-widest">
-									Save as new template
-								</div>
-								<div className="grid grid-cols-1 gap-3">
-									<div className="space-y-1">
-										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Name
-										</Label>
-										<Input
-											value={newName}
-											onChange={(e) => setNewName(e.target.value)}
-											placeholder="e.g. My Forum Layout"
-											className="rounded-none font-mono text-xs h-9"
-										/>
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div className="space-y-3">
+									<div className="font-mono text-xs uppercase tracking-widest">
+										{t('advanced.saveNewTemplate.title')}
 									</div>
-									<div className="space-y-1">
-										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Description (optional)
-										</Label>
-										<Input
-											value={newDescription}
-											onChange={(e) => setNewDescription(e.target.value)}
-											placeholder="What is this template for?"
-											className="rounded-none font-mono text-xs h-9"
-										/>
-									</div>
+									<div className="grid grid-cols-1 gap-3">
+										<div className="space-y-1">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('advanced.saveNewTemplate.nameLabel')}
+											</Label>
+											<Input
+												value={newName}
+												onChange={(e) => setNewName(e.target.value)}
+												placeholder={t('advanced.saveNewTemplate.namePlaceholder')}
+												className="rounded-none font-mono text-xs h-9"
+											/>
+										</div>
+										<div className="space-y-1">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('advanced.saveNewTemplate.descLabel')}
+											</Label>
+											<Input
+												value={newDescription}
+												onChange={(e) => setNewDescription(e.target.value)}
+												placeholder={t('advanced.saveNewTemplate.descPlaceholder')}
+												className="rounded-none font-mono text-xs h-9"
+											/>
+										</div>
 									<Button
 										type="button"
 										className="rounded-none font-mono text-xs uppercase"
 										disabled={!canSave || !newName.trim()}
-										onClick={() => {
-											if (!normalizedTemplateConfig) {
-												toast.error(
-													'Nothing to save: normalized config is empty',
-												)
-												return
-											}
-											createMutation.mutate({
+											onClick={() => {
+												if (!normalizedTemplateConfig) {
+													toast.error(t('toasts.nothingToSave'))
+													return
+												}
+												createMutation.mutate({
 												name: newName.trim(),
 												description: newDescription.trim() || undefined,
 												templateId: effectiveTemplateId,
@@ -343,28 +343,32 @@ export function ThreadTemplateLibraryCard({
 												sourceThreadId: threadId,
 											})
 										}}
-									>
-										{createMutation.isPending ? 'Saving…' : 'Save New'}
-									</Button>
+										>
+											{createMutation.isPending
+												? t('advanced.saveNewTemplate.saving')
+												: t('advanced.saveNewTemplate.save')}
+										</Button>
+									</div>
 								</div>
-							</div>
 
-							<div className="space-y-3">
-								<div className="font-mono text-xs uppercase tracking-widest">
-									Save as new version
-								</div>
-								<div className="grid grid-cols-1 gap-3">
-									<div className="space-y-1">
-										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Library template
-										</Label>
-										<Select
+								<div className="space-y-3">
+									<div className="font-mono text-xs uppercase tracking-widest">
+										{t('advanced.saveNewVersion.title')}
+									</div>
+									<div className="grid grid-cols-1 gap-3">
+										<div className="space-y-1">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('advanced.saveNewVersion.libraryLabel')}
+											</Label>
+											<Select
 											value={saveToLibraryId}
 											onValueChange={(v) => setSaveToLibraryId(v)}
-										>
-											<SelectTrigger className="rounded-none font-mono text-xs h-9">
-												<SelectValue placeholder="Select a saved template" />
-											</SelectTrigger>
+											>
+												<SelectTrigger className="rounded-none font-mono text-xs h-9">
+													<SelectValue
+														placeholder={t('advanced.saveNewVersion.libraryPlaceholder')}
+													/>
+												</SelectTrigger>
 											<SelectContent>
 												{saveTargetLibraries.map((l: any) => (
 													<SelectItem key={String(l.id)} value={String(l.id)}>
@@ -372,44 +376,46 @@ export function ThreadTemplateLibraryCard({
 													</SelectItem>
 												))}
 											</SelectContent>
-										</Select>
-										{saveTargetLibraries.length === 0 ? (
-											<div className="font-mono text-xs text-muted-foreground">
-												No saved templates for templateId={effectiveTemplateId}.
-											</div>
-										) : null}
-									</div>
+											</Select>
+											{saveTargetLibraries.length === 0 ? (
+												<div className="font-mono text-xs text-muted-foreground">
+													{t('advanced.saveNewVersion.noneSaved', {
+														templateId: effectiveTemplateId,
+													})}
+												</div>
+											) : null}
+										</div>
 									<Button
 										type="button"
 										variant="outline"
 										className="rounded-none font-mono text-xs uppercase"
 										disabled={!canSave || !saveToLibraryId}
-										onClick={() => {
-											if (!normalizedTemplateConfig) {
-												toast.error(
-													'Nothing to save: normalized config is empty',
-												)
-												return
-											}
-											addVersionMutation.mutate({
+											onClick={() => {
+												if (!normalizedTemplateConfig) {
+													toast.error(t('toasts.nothingToSave'))
+													return
+												}
+												addVersionMutation.mutate({
 												libraryId: saveToLibraryId,
 												templateConfig: normalizedTemplateConfig,
 												note: note.trim() || undefined,
 												sourceThreadId: threadId,
 											})
 										}}
-									>
-										{addVersionMutation.isPending ? 'Saving…' : 'Save Version'}
-									</Button>
+										>
+											{addVersionMutation.isPending
+												? t('advanced.saveNewVersion.saving')
+												: t('advanced.saveNewVersion.save')}
+										</Button>
+									</div>
 								</div>
 							</div>
-						</div>
 
-						<div className="space-y-2">
-							<div className="font-mono text-xs uppercase tracking-widest">
-								Danger zone
-							</div>
-							<Button
+							<div className="space-y-2">
+								<div className="font-mono text-xs uppercase tracking-widest">
+									{t('advanced.danger.title')}
+								</div>
+								<Button
 								type="button"
 								variant="outline"
 								className="rounded-none font-mono text-xs uppercase"
@@ -418,14 +424,14 @@ export function ThreadTemplateLibraryCard({
 									if (!applyVersionId) return
 									rollbackMutation.mutate({ versionId: applyVersionId })
 								}}
-							>
-								{rollbackMutation.isPending
-									? 'Rolling back…'
-									: 'Rollback version'}
-							</Button>
+								>
+									{rollbackMutation.isPending
+										? t('advanced.danger.rollingBack')
+										: t('advanced.danger.rollback')}
+								</Button>
+							</div>
 						</div>
-					</div>
-				) : null}
+					) : null}
 			</CardContent>
 		</Card>
 	)

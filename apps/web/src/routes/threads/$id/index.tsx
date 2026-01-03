@@ -7,6 +7,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 	import { Textarea } from '~/components/ui/textarea'
 	import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 	import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
+	import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
 	import { useCloudJob } from '~/lib/hooks/useCloudJob'
 	import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
@@ -2605,15 +2606,15 @@ async function readAudioDurationMs(file: File): Promise<number> {
 		const audio = document.createElement('audio')
 		audio.preload = 'metadata'
 
-		const durationSeconds = await new Promise<number>((resolve, reject) => {
-			audio.onloadedmetadata = () => resolve(audio.duration)
-			audio.onerror = () => reject(new Error('Failed to read audio metadata'))
-			audio.src = url
-		})
+			const durationSeconds = await new Promise<number>((resolve, reject) => {
+				audio.onloadedmetadata = () => resolve(audio.duration)
+				audio.onerror = () => reject(new Error('AUDIO_METADATA_READ_FAILED'))
+				audio.src = url
+			})
 
-		if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-			throw new Error('Invalid audio duration')
-		}
+			if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+				throw new Error('AUDIO_DURATION_INVALID')
+			}
 
 		return Math.round(durationSeconds * 1000)
 	} finally {
@@ -2889,14 +2890,13 @@ function ThreadDetailRoute() {
 			})
 			await refreshThread()
 			toast.success(t('audio.toasts.uploaded'))
-		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e)
-			toast.error(msg)
-		} finally {
-			setIsUploadingAudio(false)
-			if (audioFileInputRef.current) audioFileInputRef.current.value = ''
+			} catch (e) {
+				toast.error(getUserFriendlyErrorMessage(e))
+			} finally {
+				setIsUploadingAudio(false)
+				if (audioFileInputRef.current) audioFileInputRef.current.value = ''
+			}
 		}
-	}
 
 	// ---------- Thread template (read-only) ----------
 	const effectiveTemplateIdForLibrary = React.useMemo(() => {
@@ -3000,23 +3000,23 @@ function ThreadDetailRoute() {
 					</div>
 
 					{/* Template Library */}
-					<div className="space-y-2">
-						<div className="flex items-center justify-between">
-							<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-								Template Library
-							</div>
-							<Button
-								type="button"
-								variant="outline"
+						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+									{t('sections.templateLibrary')}
+								</div>
+								<Button
+									type="button"
+									variant="outline"
 								size="sm"
-								className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-7"
-								asChild
-							>
-								<Link to="/thread-templates">Manage</Link>
-							</Button>
-						</div>
-						<div className="border border-border bg-card">
-							<ThreadTemplateLibraryCard
+									className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-7"
+									asChild
+								>
+									<Link to="/thread-templates">{t('actions.manageTemplates')}</Link>
+								</Button>
+							</div>
+							<div className="border border-border bg-card">
+								<ThreadTemplateLibraryCard
 								threadId={id}
 								effectiveTemplateId={effectiveTemplateIdForLibrary}
 								normalizedTemplateConfig={normalizedTemplateConfig}
@@ -3286,30 +3286,30 @@ function ThreadDetailRoute() {
 												setDraftText(selectedZhTranslation)
 												toast.message(t('toasts.translationApplied'))
 											}}
-										>
-											Use Translation
-										</Button>
-									) : null}
-								</div>
+											>
+												{t('actions.useTranslation')}
+											</Button>
+										) : null}
+									</div>
 
-								{selectedZhTranslation ? (
-									<div className="bg-muted/30 border border-border p-2">
-										<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-											Translation
-										</div>
-										<div className="font-mono text-xs whitespace-pre-wrap">
-											{selectedZhTranslation}
-										</div>
+									{selectedZhTranslation ? (
+										<div className="bg-muted/30 border border-border p-2">
+											<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+												{t('sections.translation')}
+											</div>
+											<div className="font-mono text-xs whitespace-pre-wrap">
+												{selectedZhTranslation}
+											</div>
 									</div>
 								) : null}
 
 								<div className="space-y-2">
 									<Textarea
-										value={draftText}
-										onChange={(e) => setDraftText(e.target.value)}
-										className="rounded-[2px] border-border focus:ring-1 focus:ring-ring shadow-none font-mono text-xs min-h-[200px] resize-y bg-background"
-										placeholder="Post content..."
-									/>
+											value={draftText}
+											onChange={(e) => setDraftText(e.target.value)}
+											className="rounded-[2px] border-border focus:ring-1 focus:ring-ring shadow-none font-mono text-xs min-h-[200px] resize-y bg-background"
+											placeholder={t('inputs.postContentPlaceholder')}
+										/>
 									<div className="flex items-center justify-between">
 										<Button
 											type="button"

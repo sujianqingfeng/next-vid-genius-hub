@@ -63,7 +63,7 @@ export async function buildRequestContext(
 
 function isDbSchemaNotReadyError(error: unknown) {
 	const message = error instanceof Error ? error.message : String(error)
-	if (message.includes('Cloudflare D1 数据库未初始化')) return true
+	if (message.includes('D1_SCHEMA_NOT_READY')) return true
 	if (message.includes('no such table: sessions')) return true
 	if (message.includes('no such table: users')) return true
 
@@ -71,6 +71,7 @@ function isDbSchemaNotReadyError(error: unknown) {
 		error instanceof Error ? (error as { cause?: unknown }).cause : undefined
 	const causeMessage =
 		cause instanceof Error ? cause.message : String(cause ?? '')
+	if (causeMessage.includes('D1_SCHEMA_NOT_READY')) return true
 	if (causeMessage.includes('no such table: sessions')) return true
 	if (causeMessage.includes('no such table: users')) return true
 

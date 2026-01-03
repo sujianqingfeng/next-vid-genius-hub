@@ -15,12 +15,15 @@
 			"en": "英文",
 			"switchTo": "切换到{language}"
 		},
-		"actions": {
-			"toggle": "切换"
-		},
-		"fallback": {
-			"unknown": "未知"
-		},
+			"actions": {
+				"toggle": "切换"
+			},
+			"aria": {
+				"close": "关闭"
+			},
+			"fallback": {
+				"unknown": "未知"
+			},
 		"confirmDialog": {
 			"title": "确认操作",
 			"cancel": "取消",
@@ -76,15 +79,66 @@
 			}
 		}
 	},
-	"Errors": {
-		"codes": {
-			"INSUFFICIENT_POINTS": "积分不足，请前往“积分”页面充值后再重试。",
-			"NO_SUCCESS_PROXY": "暂无可用代理（状态为“可用”），请先在“代理管理”中检测/添加代理后再试。",
-			"PROXY_NOT_SUCCESS": "所选代理不可用，请选择状态为“可用”的代理。",
-			"TIMEOUT": "云转录耗时较长，任务仍在后台运行，请稍后刷新重试。"
+		"Errors": {
+			"codes": {
+				"INSUFFICIENT_POINTS": "积分不足，请前往“积分”页面充值后再重试。",
+				"NO_SUCCESS_PROXY": "暂无可用代理（状态为“可用”），请先在“代理管理”中检测/添加代理后再试。",
+				"PROXY_NOT_SUCCESS": "所选代理不可用，请选择状态为“可用”的代理。",
+				"TIMEOUT": "云转录耗时较长，任务仍在后台运行，请稍后刷新重试。",
+				"D1_BINDING_MISSING": "未找到 Cloudflare D1 绑定，请检查 wrangler 配置。",
+				"D1_SCHEMA_NOT_READY": "Cloudflare D1 数据库未初始化，请先执行迁移。",
+				"AUDIO_METADATA_READ_FAILED": "读取音频元数据失败。",
+				"AUDIO_DURATION_INVALID": "音频时长无效。",
+				"MEDIA_NOT_FOUND": "未找到媒体。",
+				"THREAD_NOT_FOUND": "未找到帖子。",
+				"PROVIDER_NOT_FOUND": "未找到提供方。",
+				"CHANNEL_NOT_FOUND": "未找到频道。",
+				"THREAD_TEMPLATE_LIBRARY_NOT_FOUND": "未找到模板库。",
+				"LLM_MODEL_NOT_ENABLED": "LLM 模型未启用。",
+				"PROXY_NOT_FOUND": "未找到代理。",
+				"SSR_SUBSCRIPTION_NOT_FOUND": "未找到 SSR 订阅。",
+				"MEDIA_OR_COMMENTS_NOT_FOUND": "未找到媒体或评论。",
+				"MODEL_NOT_FOUND": "未找到模型。",
+				"THREAD_TEMPLATE_VERSION_NOT_FOUND": "未找到模板版本。",
+				"AUDIO_ASSET_NOT_FOUND": "未找到音频资源。",
+				"CANNOT_DELETE_SELF": "不能删除自己。",
+				"CANNOT_DELETE_LAST_ADMIN": "不能删除最后一个管理员。",
+				"PROVIDER_MISMATCH_FOR_MODEL_PRICING_RULE": "模型计费规则的提供方不匹配。",
+				"LLM_PRICING_RULE_UNIT_MUST_BE_TOKEN": "LLM 计费单位必须是 token。",
+				"LLM_PRICING_RULES_REQUIRE_INPUT_AND_OUTPUT_PRICE": "LLM 计费规则需要同时提供 inputPricePerUnit 和 outputPricePerUnit。",
+				"WHISPER_API_PROVIDERS_REQUIRE_BASE_URL": "Whisper API 提供方需要配置 baseUrl。",
+				"METADATA_MAX_UPLOAD_BYTES_MUST_BE_POSITIVE": "metadata.maxUploadBytes 必须是正数。",
+				"CANNOT_DELETE_PROVIDER_MODELS_STILL_REFERENCE": "无法删除提供方：仍有模型引用它。",
+				"WHISPER_API_BASE_URL_NOT_CONFIGURED": "该提供方未配置 Whisper API baseUrl。",
+				"WHISPER_API_TOKEN_NOT_CONFIGURED": "该提供方未配置 Whisper API token。",
+				"NO_ENABLED_LLM_MODEL_FOR_PROVIDER": "该提供方没有已启用的 LLM 模型。",
+				"MODEL_KIND_MISMATCH": "模型类型不匹配。",
+				"NO_SOURCE_VIDEO_AVAILABLE": "没有可用的视频源。",
+				"NO_COMMENTS_FOUND_FOR_MEDIA": "该媒体没有评论。",
+				"SOURCE_VIDEO_NOT_FOUND_IN_CLOUD_STORAGE": "云端存储中找不到源视频，请重新执行云下载后重试。",
+				"INVALID_TEMPLATE_CONFIG": "模板配置无效。",
+				"FAILED_TO_PREPARE_COMMENTS_METADATA": "准备云端渲染的评论元数据失败。",
+				"MEDIA_URL_MISSING": "媒体 URL 缺失。",
+				"FAILED_TO_CREATE_MEDIA_RECORD_FOR_DOWNLOAD": "创建下载媒体记录失败。",
+				"MEDIA_URL_MISSING_CANNOT_REFRESH_METADATA": "媒体 URL 缺失，无法刷新元数据。",
+				"INVALID_COMMENTS_TEMPLATE_CONFIG": "评论模板配置无效。",
+				"THREAD_TEMPLATE_CONFIG_VERSION_REQUIRED": "templateConfig 必须包含 \"version\": 1（仅支持 v1）。",
+				"NAME_IS_REQUIRED": "名称不能为空。",
+				"THREAD_TEMPLATE_NAME_ALREADY_EXISTS": "已存在同名模板。",
+				"INVALID_JSON": "JSON 无效。",
+				"POST_NOT_FOUND": "未找到帖子内容。",
+				"UNSUPPORTED_AUDIO_CONTENT_TYPE": "不支持的音频 content-type。",
+				"AUDIO_STORAGE_KEY_MISSING": "音频 storageKey 缺失。",
+				"UPLOADED_AUDIO_NOT_FOUND_IN_STORAGE_YET": "上传的音频暂未在存储中找到。",
+				"AUDIO_ASSET_NOT_READY_YET": "音频资源尚未就绪。",
+				"THREAD_TEMPLATE_CONFIG_OBJECT_REQUIRED": "templateConfig 必须是包含 version: 1 的对象（仅支持 v1）。",
+				"NO_TEMPLATE_UPDATES_PROVIDED": "未提供模板更新内容。",
+				"RENDER_NOT_FOUND": "未找到渲染记录。",
+				"RENDER_JOB_ID_MISSING": "渲染 jobId 缺失。",
+				"RENDER_JOB_NOT_FOUND": "未找到渲染任务。"
+			},
+			"unknown": "发生未知错误，请稍后重试。"
 		},
-		"unknown": "发生未知错误，请稍后重试。"
-	},
 	"NotFound": {
 		"title": "页面不存在",
 		"body": "你访问的页面不存在或已被移动。",
@@ -135,12 +189,14 @@
 				"desc": "用户与配置管理"
 			}
 		},
-		"user": {
-			"guest": "未登录",
-			"loginPrompt": "请登录",
-			"logout": "退出",
-			"pointsSuffix": "分"
-		}
+			"user": {
+				"avatarFallback": "U",
+				"guest": "未登录",
+				"loginPrompt": "请登录",
+				"logout": "退出",
+				"creditsLabel": "积分",
+				"pointsSuffix": "分"
+			}
 	},
 	"Agent": {
 		"header": {
@@ -214,37 +270,42 @@
 			"header": {
 				"breadcrumb": "帖子"
 			},
-			"sections": {
-				"preview": "预览",
-				"audio": "音频（BGM）",
-				"posts": "帖子",
-				"editor": "编辑器",
-				"media": "媒体",
-				"translation": "翻译",
-				"debug": "存储（DB）/ 原始数据",
-				"render": "渲染（云端）"
-			},
+				"sections": {
+					"preview": "预览",
+					"audio": "音频（BGM）",
+					"posts": "帖子",
+					"editor": "编辑器",
+					"media": "媒体",
+					"translation": "翻译",
+					"debug": "存储（DB）/ 原始数据",
+					"render": "渲染（云端）",
+					"templateLibrary": "模板库"
+				},
 			"labels": {
 				"root": "根帖",
 				"replies": "回复（{count}）",
 				"emptyText": "（空）"
 			},
-			"actions": {
-				"back": "返回",
-				"downloading": "下载中…",
-				"download": "下载",
-				"translateToZh": "翻译（中文）",
-				"translateAllToZh": "全部翻译（中文）",
+				"actions": {
+					"back": "返回",
+					"manageTemplates": "管理",
+					"downloading": "下载中…",
+					"download": "下载",
+					"translateToZh": "翻译（中文）",
+					"translateAllToZh": "全部翻译（中文）",
 				"translating": "翻译中…",
 				"translatingAll": "全部翻译中…",
 				"useTranslation": "使用翻译",
 				"save": "保存",
-				"reset": "重置",
-				"startRender": "开始渲染"
-			},
-			"toasts": {
-				"saved": "已保存",
-				"reset": "已重置",
+					"reset": "重置",
+					"startRender": "开始渲染"
+				},
+				"inputs": {
+					"postContentPlaceholder": "帖子内容..."
+				},
+				"toasts": {
+					"saved": "已保存",
+					"reset": "已重置",
 				"translated": "已翻译",
 				"translatedAll": "翻译完成：处理={processed} 已翻译={translated} 跳过={skipped} 失败={failed}",
 				"translationApplied": "已将翻译应用到编辑器",
@@ -362,26 +423,145 @@
 			}
 		}
 	},
-	"ThreadTemplates": {
-		"editor": {
-			"shortcuts": {
-				"title": "快捷键",
-				"description": "按 Shift + / 再次打开。",
-				"rows": {
+		"ThreadTemplates": {
+			"library": {
+				"header": {
+					"sectionLabel": "模板",
+					"title": "帖子模板库",
+					"backToThreads": "返回帖子"
+				},
+				"create": {
+					"title": "创建",
+					"nameLabel": "名称",
+					"namePlaceholder": "例如：论坛分屏布局",
+					"templateIdLabel": "模板 ID",
+					"descLabel": "描述（可选）",
+					"descPlaceholder": "这个模板用来做什么？",
+					"hint": "创建后可在编辑器中自定义布局。",
+					"create": "创建",
+					"creating": "创建中…"
+				},
+				"saved": {
+					"title": "已保存",
+					"empty": "还没有模板。",
+					"templateLabel": "模板",
+					"templatePlaceholder": "选择模板",
+					"rename": "重命名",
+					"delete": "删除",
+					"deleting": "删除中…"
+				},
+				"versions": {
+					"title": "版本",
+					"selectTemplateHint": "选择一个模板查看版本。",
+					"editLatest": "编辑最新",
+					"advanced": "高级",
+					"hideAdvanced": "收起高级",
+					"empty": "还没有版本。",
+					"openEditor": "打开编辑器",
+					"rollback": "回滚"
+				},
+				"dialogs": {
+					"delete": {
+						"title": "删除模板？",
+						"description": "这将删除模板及其所有版本。",
+						"confirmText": "删除"
+					},
+					"rollback": {
+						"title": "回滚版本？",
+						"description": "这会创建一个与所选版本相同的新版本。",
+						"confirmText": "回滚"
+					},
+					"rename": {
+						"title": "重命名模板",
+						"description": "修改所选模板的名称/描述。",
+						"nameLabel": "名称",
+						"descriptionLabel": "描述",
+						"cancel": "取消",
+						"save": "保存"
+					}
+				},
+				"toasts": {
+					"created": "已创建模板",
+					"updated": "已更新模板",
+					"deleted": "已删除模板",
+					"rollbackCreated": "已创建回滚版本"
+				}
+			},
+			"libraryCard": {
+				"header": {
+					"currentTemplate": "当前模板：{templateId}",
+					"advanced": "高级",
+					"hideAdvanced": "收起高级"
+				},
+				"use": {
+					"title": "应用",
+					"templateLabel": "模板",
+					"templatePlaceholder": "选择模板",
+					"versionLabel": "版本",
+					"versionPlaceholder": "选择版本",
+					"apply": "应用",
+					"applying": "应用中…",
+					"openEditor": "打开编辑器",
+					"noteChangeTemplateId": "提示：应用后也会将 templateId 改为 {templateId}。",
+					"loadingVersions": "加载版本中…"
+				},
+				"advanced": {
+					"title": "高级",
+					"noteLabel": "备注（可选）",
+					"notePlaceholder": "例如：调整封面排版",
+					"saveNewTemplate": {
+						"title": "另存为新模板",
+						"nameLabel": "名称",
+						"namePlaceholder": "例如：我的论坛布局",
+						"descLabel": "描述（可选）",
+						"descPlaceholder": "这个模板用来做什么？",
+						"save": "保存新模板",
+						"saving": "保存中…"
+					},
+					"saveNewVersion": {
+						"title": "另存为新版本",
+						"libraryLabel": "模板库模板",
+						"libraryPlaceholder": "选择已保存模板",
+						"noneSaved": "templateId={templateId} 暂无已保存模板。",
+						"save": "保存版本",
+						"saving": "保存中…"
+					},
+					"danger": {
+						"title": "危险操作",
+						"rollback": "回滚版本",
+						"rollingBack": "回滚中…"
+					}
+				},
+				"toasts": {
+					"savedToLibrary": "已保存到模板库",
+					"savedNewVersion": "已保存新版本",
+					"rollbackCreated": "已创建回滚版本",
+					"appliedToThread": "已应用到帖子",
+					"nothingToSave": "没有可保存内容：normalized config 为空"
+				}
+			},
+			"editor": {
+				"shortcuts": {
+					"title": "快捷键",
+					"description": "按 Shift + / 再次打开。",
+					"rows": {
 					"undo": "撤销",
 					"redo": "重做",
 					"toggleStructure": "切换结构面板",
 					"publish": "发布"
 				}
 			},
-			"header": {
-				"systemLabel": "模板编辑器",
-				"unpublishedChanges": "未发布的更改",
-				"version": "版本 v{version}",
-				"versionUnknown": "版本 …",
-				"templateId": "templateId={templateId}",
-				"publishDisabled": "发布被禁用：{reason}"
-			},
+				"header": {
+					"systemLabel": "模板编辑器",
+					"unpublishedChanges": "未发布的更改",
+					"unsaved": "未保存",
+					"version": "版本 v{version}",
+					"versionUnknown": "版本 …",
+					"versionTag": "v{version}",
+					"versionTagUnknown": "v?",
+					"templateId": "templateId={templateId}",
+					"publishDisabled": "发布被禁用：{reason}"
+				},
 			"confirm": {
 				"discard": "你有未发布的更改。要丢弃并{action}吗？",
 				"actions": {
@@ -390,11 +570,12 @@
 					"leave": "离开"
 				}
 			},
-			"controls": {
-				"versionPlaceholder": "版本",
-				"previewThreadPlaceholder": "预览帖子",
-				"publishNotePlaceholder": "发布备注…"
-			},
+				"controls": {
+					"versionPlaceholder": "版本",
+					"previewThreadPlaceholder": "预览帖子",
+					"previewingLabel": "预览中",
+					"publishNotePlaceholder": "发布备注…"
+				},
 			"buttons": {
 				"undo": "撤销",
 				"redo": "重做",
@@ -426,14 +607,15 @@
 				"publishing": "发布中…",
 				"previewThreadRequired": "请先选择一个预览帖子"
 			},
-			"panels": {
-				"resizeTitle": "拖动调整大小（双击重置）",
-				"previewTitle": "预览",
-				"previewLoadFailed": "预览帖子加载失败。",
-				"previewNoRoot": "预览帖子没有根帖（或加载失败）。",
-				"configTitle": "配置（只读 JSON）",
-				"configHint": "这是用于预览/发布的规范化配置。"
-			}
+				"panels": {
+					"resizeTitle": "拖动调整大小（双击重置）",
+					"previewTitle": "预览",
+					"previewLoadFailed": "预览帖子加载失败。",
+					"previewNoRoot": "预览帖子没有根帖（或加载失败）。",
+					"configShortTitle": "JSON 配置",
+					"configTitle": "配置（只读 JSON）",
+					"configHint": "这是用于预览/发布的规范化配置。"
+				}
 		},
 		"visualEditor": {
 			"structure": {

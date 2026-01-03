@@ -1439,39 +1439,53 @@ function TreeView({
 		)
 	}
 
-	const selectField = (
-		label: string,
-		value: unknown,
-		options: Array<{ value: string; label?: string }>,
-		onCommit: (next: string | undefined) => void,
-	) => {
-		const v = typeof value === 'string' && value ? value : '__none__'
-		return (
-			<Select
-				value={v}
-				onValueChange={(next) =>
-					onCommit(next === '__none__' ? undefined : next)
-				}
-			>
-				<div className="space-y-1">
-					<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-						{label}
-					</Label>
-					<SelectTrigger className="rounded-none font-mono text-xs h-8">
-						<SelectValue />
-					</SelectTrigger>
-				</div>
-				<SelectContent>
-					<SelectItem value="__none__">none</SelectItem>
-					{options.map((o) => (
-						<SelectItem key={o.value} value={o.value}>
-							{o.label ?? o.value}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
-		)
-	}
+		const selectField = (
+			label: string,
+			value: unknown,
+			options: Array<{ value: string; label?: string }>,
+			onCommit: (next: string | undefined) => void,
+		) => {
+			const missingFieldPrefix = 'ThreadTemplates.visualEditor.fields.'
+			const missingOptionPrefix = 'ThreadTemplates.visualEditor.options.'
+
+			const fieldLabel = (() => {
+				const translated = t(`fields.${label}`)
+				return translated.startsWith(missingFieldPrefix) ? label : translated
+			})()
+
+			const getOptionLabel = (opt: { value: string; label?: string }) => {
+				if (opt.label) return opt.label
+				const translated = t(`options.${opt.value}`)
+				return translated.startsWith(missingOptionPrefix) ? opt.value : translated
+			}
+
+			const v = typeof value === 'string' && value ? value : '__none__'
+			return (
+				<Select
+					value={v}
+					onValueChange={(next) =>
+						onCommit(next === '__none__' ? undefined : next)
+					}
+				>
+					<div className="space-y-1">
+						<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+							{fieldLabel}
+						</Label>
+						<SelectTrigger className="rounded-none font-mono text-xs h-8">
+							<SelectValue />
+						</SelectTrigger>
+					</div>
+					<SelectContent>
+						<SelectItem value="__none__">{t('options.none')}</SelectItem>
+						{options.map((o) => (
+							<SelectItem key={o.value} value={o.value}>
+								{getOptionLabel(o)}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			)
+		}
 
 	const selectedNode = selected?.node ?? null
 	const baselineSelectedNode =
@@ -2611,20 +2625,20 @@ function TreeView({
 														}))
 													}
 												>
-													<div className="space-y-1">
-														<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-															direction
-														</Label>
-														<SelectTrigger className="rounded-none font-mono text-xs h-8">
-															<SelectValue />
-														</SelectTrigger>
-													</div>
-													<SelectContent>
-														<SelectItem value="column">column</SelectItem>
-														<SelectItem value="row">row</SelectItem>
-													</SelectContent>
-												</Select>
-											) : null}
+														<div className="space-y-1">
+															<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+																{t('fields.direction')}
+															</Label>
+															<SelectTrigger className="rounded-none font-mono text-xs h-8">
+																<SelectValue />
+															</SelectTrigger>
+														</div>
+														<SelectContent>
+															<SelectItem value="column">{t('options.column')}</SelectItem>
+															<SelectItem value="row">{t('options.row')}</SelectItem>
+														</SelectContent>
+													</Select>
+												) : null}
 											{selectedNode.type === 'Stack'
 												? selectField(
 														'align',
