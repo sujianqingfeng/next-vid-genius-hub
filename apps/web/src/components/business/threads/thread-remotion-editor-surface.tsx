@@ -280,6 +280,8 @@ export type ThreadRemotionEditorSurfaceProps = {
 	onViewScaleChange?: (next: number) => void
 	onViewPanChange?: (next: { x: number; y: number }) => void
 	showTimeline?: boolean
+	externalEditFrame?: number
+	onEditFrameChange?: (next: number) => void
 }
 
 export const ThreadRemotionEditorSurface = React.forwardRef<
@@ -312,6 +314,8 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 		onViewScaleChange,
 		onViewPanChange,
 		showTimeline = false,
+		externalEditFrame,
+		onEditFrameChange,
 	},
 	ref,
 ) {
@@ -320,7 +324,8 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 	const ui = 'canvas' as const
 
 	const mode = 'edit' as const
-	const [editFrame, setEditFrame] = React.useState(0)
+	const isEditFrameControlled = typeof externalEditFrame === 'number'
+	const [editFrameState, setEditFrameState] = React.useState(0)
 
 	const timeline = React.useMemo(() => {
 		const commentsForTiming = replies.map((r) => ({
@@ -336,37 +341,57 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 	const coverEndFrame = Math.max(0, timeline.coverDurationInFrames - 1)
 	const postStartFrame = Math.max(0, timeline.coverDurationInFrames)
 	const postEndFrame = Math.max(0, timeline.totalDurationInFrames - 1)
+	const maxFrame = Math.max(0, timeline.totalDurationInFrames - 1)
+
+	const editFrame = isEditFrameControlled ? externalEditFrame! : editFrameState
+	const safeEditFrame = Math.min(Math.max(0, editFrame), maxFrame)
+
+	const setEditFrame = React.useCallback(
+		(next: number | ((prev: number) => number)) => {
+			const prev = safeEditFrame
+			const resolved = typeof next === 'function' ? next(prev) : next
+			const clamped = Math.min(Math.max(0, Math.round(resolved)), maxFrame)
+
+			if (isEditFrameControlled) {
+				if (clamped === safeEditFrame) return
+				onEditFrameChange?.(clamped)
+				return
+			}
+
+			setEditFrameState((cur) => (cur === clamped ? cur : clamped))
+		},
+		[isEditFrameControlled, maxFrame, onEditFrameChange, safeEditFrame],
+	)
+
 	const sceneAnchorFrame =
 		scene === 'cover' ? coverEndFrame : scene === 'post' ? postStartFrame : null
 	const isPreviewFrame =
-		sceneAnchorFrame != null && editFrame !== sceneAnchorFrame
+		sceneAnchorFrame != null && safeEditFrame !== sceneAnchorFrame
 
 	React.useEffect(() => {
 		setEditFrame((prev) => {
-			const max = Math.max(0, timeline.totalDurationInFrames - 1)
-			return Math.min(Math.max(0, prev), max)
+			return Math.min(Math.max(0, prev), maxFrame)
 		})
-	}, [timeline.totalDurationInFrames])
+	}, [maxFrame, setEditFrame])
 
 	const editScene: SceneKey =
-		editFrame < timeline.coverDurationInFrames ? 'cover' : 'post'
+		safeEditFrame < timeline.coverDurationInFrames ? 'cover' : 'post'
 
 	React.useEffect(() => {
 		if (!scene) return
-		const max = Math.max(0, timeline.totalDurationInFrames - 1)
 		const nextFrame = scene === 'cover' ? coverEndFrame : postStartFrame
 		setEditFrame((prev) => {
-			const clamped = Math.min(nextFrame, max)
+			const clamped = Math.min(nextFrame, maxFrame)
 			return prev === clamped ? prev : clamped
 		})
-	}, [scene, timeline.coverDurationInFrames, timeline.totalDurationInFrames])
+	}, [coverEndFrame, maxFrame, postStartFrame, scene, setEditFrame])
 
 	React.useEffect(() => {
 		if (!scene) return
 		const min = scene === 'post' ? postStartFrame : 0
 		const max = scene === 'post' ? postEndFrame : coverEndFrame
 		setEditFrame((prev) => Math.min(Math.max(prev, min), max))
-	}, [scene, timeline.coverDurationInFrames, timeline.totalDurationInFrames])
+	}, [coverEndFrame, postEndFrame, postStartFrame, scene, setEditFrame])
 
 	const effectiveTemplateId = React.useMemo(() => {
 		if (templateId) return templateId
@@ -2342,12 +2367,17 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 							const ratio =
 								template.compositionHeight / template.compositionWidth
 							const effectiveTool = spacePan ? 'pan' : viewTool
-							const timelineMin = scene === 'post' ? postStartFrame : 0
-							const timelineMax =
+							const timelineMinRaw = scene === 'post' ? postStartFrame : 0
+							const timelineMaxRaw =
 								scene === 'post' ? postEndFrame : coverEndFrame
+							const timelineMin = Math.min(Math.max(0, timelineMinRaw), maxFrame)
+							const safeTimelineMax = Math.min(
+								Math.max(timelineMin, timelineMaxRaw),
+								maxFrame,
+							)
 							const timelineFrame = Math.min(
-								Math.max(editFrame, timelineMin),
-								timelineMax,
+								Math.max(safeEditFrame, timelineMin),
+								safeTimelineMax,
 							)
 							const wrapperStyle: React.CSSProperties = {
 								position: 'relative',
@@ -3082,7 +3112,7 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 											ref={thumbnailRef as any}
 											component={TemplateComponent}
 											inputProps={inputProps}
-											frameToDisplay={editFrame}
+											frameToDisplay={safeEditFrame}
 											durationInFrames={timeline.totalDurationInFrames}
 											compositionWidth={template.compositionWidth}
 											compositionHeight={template.compositionHeight}
@@ -3381,13 +3411,13 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 												<input
 													type="range"
 													min={timelineMin}
-													max={timelineMax}
+													max={safeTimelineMax}
 													value={timelineFrame}
 													onChange={(e) => setEditFrame(Number(e.target.value))}
 													className="w-full"
 												/>
 												<div className="shrink-0 tabular-nums font-mono text-[10px] text-slate-200/80">
-													{timelineFrame}/{timelineMax}
+													{timelineFrame}/{safeTimelineMax}
 												</div>
 											</div>
 										</div>
@@ -3401,8 +3431,8 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 								<div className="font-mono text-[10px] text-muted-foreground">
 									{t('status.line', {
 										scene: editScene,
-										frame: editFrame,
-										seconds: (editFrame / REMOTION_FPS).toFixed(2),
+										frame: safeEditFrame,
+										seconds: (safeEditFrame / REMOTION_FPS).toFixed(2),
 									})}
 								</div>
 								<div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-muted-foreground">
