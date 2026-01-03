@@ -43,6 +43,20 @@ export type PointTransactionType =
 
 export type PointResourceType = 'llm' | 'asr' | 'download'
 
+export type AgentActionKind =
+	| 'download'
+	| 'asr'
+	| 'optimize'
+	| 'translate'
+	| 'render'
+
+export type AgentActionStatus =
+	| 'proposed'
+	| 'canceled'
+	| 'running'
+	| 'completed'
+	| 'failed'
+
 export type TaskKind =
 	| 'download'
 	| 'metadata-refresh'
@@ -134,6 +148,31 @@ export const pointTransactions = sqliteTable('point_transactions', {
 	refId: text('ref_id'),
 	remark: text('remark'),
 	metadata: text('metadata', { mode: 'json' }),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+})
+
+export const agentActions = sqliteTable('agent_actions', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	userId: text('user_id').notNull(),
+	kind: text('kind', {
+		enum: ['download', 'asr', 'optimize', 'translate', 'render'],
+	}).notNull(),
+	status: text('status', {
+		enum: ['proposed', 'canceled', 'running', 'completed', 'failed'],
+	})
+		.notNull()
+		.default('proposed'),
+	params: text('params', { mode: 'json' }).$type<Record<string, unknown>>(),
+	estimate: text('estimate', { mode: 'json' }).$type<Record<string, unknown>>(),
+	result: text('result', { mode: 'json' }).$type<Record<string, unknown>>(),
+	error: text('error'),
+	confirmedAt: integer('confirmed_at', { mode: 'timestamp' }),
+	completedAt: integer('completed_at', { mode: 'timestamp' }),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date()),

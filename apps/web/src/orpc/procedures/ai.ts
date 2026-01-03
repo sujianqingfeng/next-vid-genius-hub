@@ -64,8 +64,9 @@ export const chat = os
 			}
 		}
 
-		const defaultModel =
-			resolvedModelId ? null : await getDefaultAiModel('llm' as AIProviderKind)
+		const defaultModel = resolvedModelId
+			? null
+			: await getDefaultAiModel('llm' as AIProviderKind)
 		const modelId = resolvedModelId ?? defaultModel?.id
 		if (!modelId) {
 			throw new ORPCError('INVALID_INPUT', {

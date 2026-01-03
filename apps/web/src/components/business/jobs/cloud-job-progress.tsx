@@ -82,14 +82,17 @@ export function CloudJobProgress({
 	const resolvedStatusLabel = (() => {
 		if (!status) return idleLabel ?? t('idle')
 		const translated = t(`status.${status}`)
-		if (translated !== `Common.cloudJobProgress.status.${status}`) return translated
-		return (STATUS_LABELS[status as keyof typeof STATUS_LABELS] ?? status) as string
+		if (translated !== `Common.cloudJobProgress.status.${status}`)
+			return translated
+		return (STATUS_LABELS[status as keyof typeof STATUS_LABELS] ??
+			status) as string
 	})()
 
 	const resolvedPhaseLabel = (() => {
 		if (!phase) return phase
 		const translated = t(`phase.${phase}`)
-		if (translated !== `Common.cloudJobProgress.phase.${phase}`) return translated
+		if (translated !== `Common.cloudJobProgress.phase.${phase}`)
+			return translated
 		return (PHASE_LABELS as Record<string, string>)[phase] ?? phase
 	})()
 
@@ -137,7 +140,9 @@ export function CloudJobProgress({
 	const tooltipDetails = (
 		<div className="space-y-2 min-w-[200px]">
 			<div className="flex items-center justify-between gap-3">
-				<span className="font-medium">{labels?.status ?? t('labels.status')}</span>
+				<span className="font-medium">
+					{labels?.status ?? t('labels.status')}
+				</span>
 				<span
 					className={cn(
 						'rounded-full px-2 py-0.5 text-[11px] font-semibold',

@@ -514,7 +514,8 @@ function ThreadTemplateVersionEditorRoute() {
 		const normalized = normalizeThreadTemplateConfig(
 			visualTemplateConfigRef.current,
 		)
-		if (JSON.stringify(normalized) !== after) setVisualTemplateConfig(normalized)
+		if (JSON.stringify(normalized) !== after)
+			setVisualTemplateConfig(normalized)
 	}
 
 	const undoVisualTemplate = React.useCallback(() => {
@@ -830,24 +831,26 @@ function ThreadTemplateVersionEditorRoute() {
 								<h1 className="font-mono text-sm font-bold uppercase tracking-tight truncate max-w-[200px]">
 									{library ? String((library as any).name) : '…'}
 								</h1>
-									<div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
-										<span>
-											{selectedVersion
-												? t('header.versionTag', {
-														version: Number((selectedVersion as any).version),
-													})
-												: t('header.versionTagUnknown')}
-										</span>
-										{isDirty && (
-											<>
-												<span className="size-1 rounded-full bg-amber-500" />
-												<span className="text-amber-500">{t('header.unsaved')}</span>
-											</>
-										)}
-									</div>
+								<div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+									<span>
+										{selectedVersion
+											? t('header.versionTag', {
+													version: Number((selectedVersion as any).version),
+												})
+											: t('header.versionTagUnknown')}
+									</span>
+									{isDirty && (
+										<>
+											<span className="size-1 rounded-full bg-amber-500" />
+											<span className="text-amber-500">
+												{t('header.unsaved')}
+											</span>
+										</>
+									)}
 								</div>
+							</div>
 						</div>
-						
+
 						<div className="h-6 w-px bg-border/60" />
 
 						{/* Version Selector */}
@@ -864,14 +867,21 @@ function ThreadTemplateVersionEditorRoute() {
 								})
 							}}
 						>
-								<SelectTrigger className="h-8 w-[140px] rounded-none border-0 bg-transparent font-mono text-xs shadow-none hover:bg-accent/50 focus:ring-0 px-2 gap-2">
-									<History className="size-3.5 text-muted-foreground" />
-									<SelectValue placeholder={t('controls.versionPlaceholder')} />
-								</SelectTrigger>
+							<SelectTrigger className="h-8 w-[140px] rounded-none border-0 bg-transparent font-mono text-xs shadow-none hover:bg-accent/50 focus:ring-0 px-2 gap-2">
+								<History className="size-3.5 text-muted-foreground" />
+								<SelectValue placeholder={t('controls.versionPlaceholder')} />
+							</SelectTrigger>
 							<SelectContent>
 								{versions.map((v: any) => (
-									<SelectItem key={String(v.id)} value={String(v.id)} className="font-mono text-xs">
-										v{Number(v.version)} <span className="text-muted-foreground text-[10px] ml-1">· {String(v.id).slice(0, 8)}</span>
+									<SelectItem
+										key={String(v.id)}
+										value={String(v.id)}
+										className="font-mono text-xs"
+									>
+										v{Number(v.version)}{' '}
+										<span className="text-muted-foreground text-[10px] ml-1">
+											· {String(v.id).slice(0, 8)}
+										</span>
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -892,7 +902,10 @@ function ThreadTemplateVersionEditorRoute() {
 									<Undo2 className="size-3.5" />
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+							<TooltipContent
+								side="bottom"
+								className="font-mono text-[10px] uppercase"
+							>
 								{t('tooltips.undo')} (Cmd+Z)
 							</TooltipContent>
 						</Tooltip>
@@ -909,7 +922,10 @@ function ThreadTemplateVersionEditorRoute() {
 									<Redo2 className="size-3.5" />
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+							<TooltipContent
+								side="bottom"
+								className="font-mono text-[10px] uppercase"
+							>
 								{t('tooltips.redo')} (Cmd+Shift+Z)
 							</TooltipContent>
 						</Tooltip>
@@ -918,24 +934,32 @@ function ThreadTemplateVersionEditorRoute() {
 					{/* RIGHT: Actions */}
 					<div className="flex items-center gap-3">
 						{/* Thread Preview Context */}
-							<div className="hidden lg:flex items-center gap-2">
-								<span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-									{t('controls.previewingLabel')}
-								</span>
-								<Select
-									value={previewThreadId || ''}
-									onValueChange={(v) => {
+						<div className="hidden lg:flex items-center gap-2">
+							<span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+								{t('controls.previewingLabel')}
+							</span>
+							<Select
+								value={previewThreadId || ''}
+								onValueChange={(v) => {
 									void navigate({ search: { previewThreadId: v } })
 								}}
 							>
-									<SelectTrigger className="h-8 w-[200px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 gap-2">
-										<MonitorPlay className="size-3.5 text-muted-foreground" />
-										<SelectValue placeholder={t('controls.previewThreadPlaceholder')} />
-									</SelectTrigger>
+								<SelectTrigger className="h-8 w-[200px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 gap-2">
+									<MonitorPlay className="size-3.5 text-muted-foreground" />
+									<SelectValue
+										placeholder={t('controls.previewThreadPlaceholder')}
+									/>
+								</SelectTrigger>
 								<SelectContent align="end">
 									{threads.map((t: any) => (
-										<SelectItem key={String(t.id)} value={String(t.id)} className="font-mono text-xs">
-											<span className="truncate block max-w-[240px]">{String(t.title || t.id)}</span>
+										<SelectItem
+											key={String(t.id)}
+											value={String(t.id)}
+											className="font-mono text-xs"
+										>
+											<span className="truncate block max-w-[240px]">
+												{String(t.title || t.id)}
+											</span>
 										</SelectItem>
 									))}
 								</SelectContent>
@@ -953,14 +977,18 @@ function ThreadTemplateVersionEditorRoute() {
 										className="size-8 rounded-sm"
 										onClick={() => {
 											const next = !showAdvanced
-											if (next && layout.rightCollapsed) setRightCollapsed(false)
+											if (next && layout.rightCollapsed)
+												setRightCollapsed(false)
 											setShowAdvanced(next)
 										}}
 									>
 										<Code2 className="size-4" />
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+								<TooltipContent
+									side="bottom"
+									className="font-mono text-[10px] uppercase"
+								>
 									{showAdvanced ? t('buttons.hideJson') : t('buttons.json')}
 								</TooltipContent>
 							</Tooltip>
@@ -976,11 +1004,14 @@ function ThreadTemplateVersionEditorRoute() {
 										<Keyboard className="size-4" />
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+								<TooltipContent
+									side="bottom"
+									className="font-mono text-[10px] uppercase"
+								>
 									{t('tooltips.shortcuts')}
 								</TooltipContent>
 							</Tooltip>
-							
+
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<Button
@@ -1001,19 +1032,22 @@ function ThreadTemplateVersionEditorRoute() {
 										<History className="size-4" />
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent side="bottom" className="font-mono text-[10px] uppercase">
+								<TooltipContent
+									side="bottom"
+									className="font-mono text-[10px] uppercase"
+								>
 									{t('buttons.reset')}
 								</TooltipContent>
 							</Tooltip>
 						</div>
 
 						<div className="flex items-center gap-2">
-								<Input
-									value={note}
-									onChange={(e) => setNote(e.target.value)}
-									placeholder={t('controls.publishNotePlaceholder')}
-									className="h-8 w-[160px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 focus:bg-background transition-colors"
-								/>
+							<Input
+								value={note}
+								onChange={(e) => setNote(e.target.value)}
+								placeholder={t('controls.publishNotePlaceholder')}
+								className="h-8 w-[160px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 focus:bg-background transition-colors"
+							/>
 							<Button
 								type="button"
 								size="sm"
@@ -1063,7 +1097,7 @@ function ThreadTemplateVersionEditorRoute() {
 							<ThreadTemplateVisualEditor
 								layout="panels"
 								structureClassName="h-full"
-								propertiesClassName="hidden" 
+								propertiesClassName="hidden"
 								showSceneToggle={false}
 								structureCollapsed={layout.leftCollapsed}
 								onStructureCollapsedChange={setLeftCollapsed}
@@ -1118,7 +1152,8 @@ function ThreadTemplateVersionEditorRoute() {
 								onResetView={() => canvasEditorRef.current?.resetView()}
 								focusMode={layout.leftCollapsed && layout.rightCollapsed}
 								onToggleFocusMode={() => {
-									const isFocused = layout.leftCollapsed && layout.rightCollapsed
+									const isFocused =
+										layout.leftCollapsed && layout.rightCollapsed
 									if (isFocused) {
 										setLayout((prev) => ({
 											...prev,
@@ -1149,18 +1184,19 @@ function ThreadTemplateVersionEditorRoute() {
 								<div className="h-full overflow-auto">
 									<div className="min-h-full flex items-center justify-center p-4 lg:p-6 relative">
 										<div className="origin-center w-full max-w-[720px] xl:max-w-[840px] 2xl:max-w-[960px] flex flex-col items-center justify-center">
-												<div className="relative w-full shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] bg-black rounded-sm overflow-hidden ring-1 ring-black/5">
-													{previewMode === 'edit' ? (
-														<ThreadRemotionEditorSurface
-															ref={canvasEditorRef}
-															thread={previewThread as any}
-															root={previewRoot as any}
-															replies={previewReplies as any}
-															scene={editorScene}
-															assets={previewAssets as any}
-															audio={
-																previewAudio?.url &&
-																previewAudio?.asset?.durationMs
+											<div className="relative w-full shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] bg-black rounded-sm overflow-hidden ring-1 ring-black/5">
+												{previewMode === 'edit' ? (
+													<ThreadRemotionEditorSurface
+														ref={canvasEditorRef}
+														thread={previewThread as any}
+														root={previewRoot as any}
+														replies={previewReplies as any}
+														scene={editorScene}
+														assets={previewAssets as any}
+														showTimeline
+														audio={
+															previewAudio?.url &&
+															previewAudio?.asset?.durationMs
 																? {
 																		url: String(previewAudio.url),
 																		durationMs: Number(
@@ -1185,16 +1221,16 @@ function ThreadTemplateVersionEditorRoute() {
 														showLayers={false}
 														showInspector={false}
 														externalPrimaryKey={editorSelectedKey}
-															onSelectionChange={({ primaryKey }) => {
-																if (!primaryKey) return
-																setEditorSelectedKey(primaryKey)
-																const s = sceneFromNodeKey(primaryKey)
-																if (s)
-																	setEditorScene((prev) =>
-																		prev === s ? prev : s,
-																	)
-															}}
-														/>
+														onSelectionChange={({ primaryKey }) => {
+															if (!primaryKey) return
+															setEditorSelectedKey(primaryKey)
+															const s = sceneFromNodeKey(primaryKey)
+															if (s)
+																setEditorScene((prev) =>
+																	prev === s ? prev : s,
+																)
+														}}
+													/>
 												) : (
 													<ThreadRemotionPlayerCard
 														thread={previewThread as any}
@@ -1258,15 +1294,15 @@ function ThreadTemplateVersionEditorRoute() {
 
 						{/* RIGHT PANEL */}
 						<div className="order-3 lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-1 h-full overflow-hidden border-l border-border bg-card flex flex-col">
-								{showAdvanced ? (
-									<div className="flex-1 flex flex-col min-h-0">
-										<div className="flex items-center justify-between px-3 py-2 border-b border-border">
-											<span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												{t('panels.configShortTitle')}
-											</span>
-											<Button 
-												variant="ghost" 
-												size="icon" 
+							{showAdvanced ? (
+								<div className="flex-1 flex flex-col min-h-0">
+									<div className="flex items-center justify-between px-3 py-2 border-b border-border">
+										<span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+											{t('panels.configShortTitle')}
+										</span>
+										<Button
+											variant="ghost"
+											size="icon"
 											className="size-6"
 											onClick={() => setShowAdvanced(false)}
 										>

@@ -1,4 +1,5 @@
 import { drizzle as drizzleD1 } from 'drizzle-orm/d1'
+import { drizzle as drizzleLibsql } from 'drizzle-orm/libsql'
 import * as schema from './schema'
 
 // Prefer Cloudflare D1 when available (wrangler dev / Worker runtime)
@@ -110,6 +111,41 @@ export function setInjectedD1Database(d1: D1Database | undefined) {
 	;(globalThis as unknown as DbGlobals).__VIDGEN_D1_DB__ = d1
 }
 
+function isTanStackStartDevServer() {
+	return (
+		process.env.TSS_DEV_SERVER === 'true' || process.env.TSS_DEV_SERVER === '1'
+	)
+}
+
+async function tryGetLocalD1SqliteUrl(): Promise<string | null> {
+	if (!isTanStackStartDevServer()) return null
+
+	const path = await import('node:path')
+	const { readdir } = await import('node:fs/promises')
+
+	const baseDir = path.join(
+		process.cwd(),
+		'.wrangler',
+		'state',
+		'v3',
+		'd1',
+		'miniflare-D1DatabaseObject',
+	)
+
+	let entries: string[]
+	try {
+		entries = await readdir(baseDir)
+	} catch {
+		return null
+	}
+
+	const sqliteFile = entries.filter((f) => f.endsWith('.sqlite')).sort()[0]
+	if (!sqliteFile) return null
+
+	const absPath = path.join(baseDir, sqliteFile)
+	return `file:${absPath}`
+}
+
 let cachedDb: DbClient | null = null
 let cachedDbPromise: Promise<DbClient> | null = null
 
@@ -122,6 +158,20 @@ export async function getDb(): Promise<DbClient> {
 			const injectedD1 = getInjectedD1Database()
 			const d1 = injectedD1 ? wrapD1Database(injectedD1) : undefined
 			if (!d1) {
+				const localD1Url = await tryGetLocalD1SqliteUrl()
+				if (localD1Url) {
+					const { createClient } = await import('@libsql/client')
+					const client: any = createClient({ url: localD1Url })
+
+					if (process.env.NODE_ENV !== 'production') {
+						await assertLibsqlSchemaReady(client, ['users', 'sessions'])
+					}
+
+					const db = drizzleLibsql<typeof schema>(client, { schema }) as any
+					cachedDb = db
+					return db
+				}
+
 				throw new Error('D1_BINDING_MISSING', {
 					cause: new Error(
 						[
@@ -171,12 +221,42 @@ async function assertD1SchemaReady(d1: D1Database, requiredTables: string[]) {
 	})
 }
 
+async function assertLibsqlSchemaReady(client: any, requiredTables: string[]) {
+	const missingTables: string[] = []
+	for (const table of requiredTables) {
+		if (!(await libsqlHasTable(client, table))) {
+			missingTables.push(table)
+		}
+	}
+
+	if (missingTables.length === 0) return
+
+	throw new Error('D1_SCHEMA_NOT_READY', {
+		cause: new Error(
+			[
+				`Local D1 schema not initialized (missing tables: ${missingTables.join(', ')}).`,
+				'Run: pnpm db:d1:migrate:local',
+				'Check status: pnpm db:d1:list:local',
+			].join('\n'),
+		),
+	})
+}
+
 async function d1HasTable(d1: D1Database, tableName: string) {
 	const row = await d1
 		.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
 		.bind(tableName)
 		.first()
 	return Boolean(row)
+}
+
+async function libsqlHasTable(client: any, tableName: string) {
+	const res: any = await client.execute({
+		sql: "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+		args: [tableName],
+	})
+	const rows: unknown[] = Array.isArray(res?.rows) ? res.rows : []
+	return rows.length > 0
 }
 
 export { schema }

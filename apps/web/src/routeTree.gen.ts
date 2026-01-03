@@ -53,6 +53,9 @@ import { Route as ApiMediaIdRenderedRouteImport } from './routes/api/media/$id/r
 import { Route as ApiMediaIdDownloadedRouteImport } from './routes/api/media/$id/downloaded'
 import { Route as ApiMediaIdCommentsDataRouteImport } from './routes/api/media/$id/comments-data'
 import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api/internal/ai/asr-provider'
+import { Route as ApiAgentActionsSuggestNextRouteImport } from './routes/api/agent/actions/suggest-next'
+import { Route as ApiAgentActionsConfirmRouteImport } from './routes/api/agent/actions/confirm'
+import { Route as ApiAgentActionsCancelRouteImport } from './routes/api/agent/actions/cancel'
 import { Route as ThreadTemplatesLibraryIdVersionsVersionIdEditorRouteImport } from './routes/thread-templates/$libraryId/versions/$versionId/editor'
 
 const LoginRoute = LoginRouteImport.update({
@@ -276,6 +279,22 @@ const ApiInternalAiAsrProviderRoute =
     path: '/api/internal/ai/asr-provider',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAgentActionsSuggestNextRoute =
+  ApiAgentActionsSuggestNextRouteImport.update({
+    id: '/api/agent/actions/suggest-next',
+    path: '/api/agent/actions/suggest-next',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAgentActionsConfirmRoute = ApiAgentActionsConfirmRouteImport.update({
+  id: '/api/agent/actions/confirm',
+  path: '/api/agent/actions/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentActionsCancelRoute = ApiAgentActionsCancelRouteImport.update({
+  id: '/api/agent/actions/cancel',
+  path: '/api/agent/actions/cancel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ThreadTemplatesLibraryIdVersionsVersionIdEditorRoute =
   ThreadTemplatesLibraryIdVersionsVersionIdEditorRouteImport.update({
     id: '/thread-templates/$libraryId/versions/$versionId/editor',
@@ -322,6 +341,9 @@ export interface FileRoutesByFullPath {
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id/': typeof MediaIdIndexRoute
   '/threads/$id/': typeof ThreadsIdIndexRoute
+  '/api/agent/actions/cancel': typeof ApiAgentActionsCancelRoute
+  '/api/agent/actions/confirm': typeof ApiAgentActionsConfirmRoute
+  '/api/agent/actions/suggest-next': typeof ApiAgentActionsSuggestNextRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
@@ -364,6 +386,9 @@ export interface FileRoutesByTo {
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id': typeof MediaIdIndexRoute
   '/threads/$id': typeof ThreadsIdIndexRoute
+  '/api/agent/actions/cancel': typeof ApiAgentActionsCancelRoute
+  '/api/agent/actions/confirm': typeof ApiAgentActionsConfirmRoute
+  '/api/agent/actions/suggest-next': typeof ApiAgentActionsSuggestNextRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
@@ -412,6 +437,9 @@ export interface FileRoutesById {
   '/media/$id/subtitles': typeof MediaIdSubtitlesRoute
   '/media/$id/': typeof MediaIdIndexRoute
   '/threads/$id/': typeof ThreadsIdIndexRoute
+  '/api/agent/actions/cancel': typeof ApiAgentActionsCancelRoute
+  '/api/agent/actions/confirm': typeof ApiAgentActionsConfirmRoute
+  '/api/agent/actions/suggest-next': typeof ApiAgentActionsSuggestNextRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
@@ -461,6 +489,9 @@ export interface FileRouteTypes {
     | '/media/$id/subtitles'
     | '/media/$id/'
     | '/threads/$id/'
+    | '/api/agent/actions/cancel'
+    | '/api/agent/actions/confirm'
+    | '/api/agent/actions/suggest-next'
     | '/api/internal/ai/asr-provider'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
@@ -503,6 +534,9 @@ export interface FileRouteTypes {
     | '/media/$id/subtitles'
     | '/media/$id'
     | '/threads/$id'
+    | '/api/agent/actions/cancel'
+    | '/api/agent/actions/confirm'
+    | '/api/agent/actions/suggest-next'
     | '/api/internal/ai/asr-provider'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
@@ -550,6 +584,9 @@ export interface FileRouteTypes {
     | '/media/$id/subtitles'
     | '/media/$id/'
     | '/threads/$id/'
+    | '/api/agent/actions/cancel'
+    | '/api/agent/actions/confirm'
+    | '/api/agent/actions/suggest-next'
     | '/api/internal/ai/asr-provider'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
@@ -581,6 +618,9 @@ export interface RootRouteChildren {
   ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
   ApiRenderCfCallbackRoute: typeof ApiRenderCfCallbackRoute
   ApiThreadsRenderedRoute: typeof ApiThreadsRenderedRoute
+  ApiAgentActionsCancelRoute: typeof ApiAgentActionsCancelRoute
+  ApiAgentActionsConfirmRoute: typeof ApiAgentActionsConfirmRoute
+  ApiAgentActionsSuggestNextRoute: typeof ApiAgentActionsSuggestNextRoute
   ApiInternalAiAsrProviderRoute: typeof ApiInternalAiAsrProviderRoute
   ApiMediaIdCommentsDataRoute: typeof ApiMediaIdCommentsDataRoute
   ApiMediaIdDownloadedRoute: typeof ApiMediaIdDownloadedRoute
@@ -900,6 +940,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInternalAiAsrProviderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/actions/suggest-next': {
+      id: '/api/agent/actions/suggest-next'
+      path: '/api/agent/actions/suggest-next'
+      fullPath: '/api/agent/actions/suggest-next'
+      preLoaderRoute: typeof ApiAgentActionsSuggestNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/actions/confirm': {
+      id: '/api/agent/actions/confirm'
+      path: '/api/agent/actions/confirm'
+      fullPath: '/api/agent/actions/confirm'
+      preLoaderRoute: typeof ApiAgentActionsConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent/actions/cancel': {
+      id: '/api/agent/actions/cancel'
+      path: '/api/agent/actions/cancel'
+      fullPath: '/api/agent/actions/cancel'
+      preLoaderRoute: typeof ApiAgentActionsCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/thread-templates/$libraryId/versions/$versionId/editor': {
       id: '/thread-templates/$libraryId/versions/$versionId/editor'
       path: '/thread-templates/$libraryId/versions/$versionId/editor'
@@ -1016,6 +1077,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,
   ApiRenderCfCallbackRoute: ApiRenderCfCallbackRoute,
   ApiThreadsRenderedRoute: ApiThreadsRenderedRoute,
+  ApiAgentActionsCancelRoute: ApiAgentActionsCancelRoute,
+  ApiAgentActionsConfirmRoute: ApiAgentActionsConfirmRoute,
+  ApiAgentActionsSuggestNextRoute: ApiAgentActionsSuggestNextRoute,
   ApiInternalAiAsrProviderRoute: ApiInternalAiAsrProviderRoute,
   ApiMediaIdCommentsDataRoute: ApiMediaIdCommentsDataRoute,
   ApiMediaIdDownloadedRoute: ApiMediaIdDownloadedRoute,

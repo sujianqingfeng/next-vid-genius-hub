@@ -58,6 +58,7 @@ const config = defineConfig(({ mode }) => {
 			holdUntilCrawlEnd: true,
 			entries: ['src/worker.ts', 'src/router.tsx'],
 			include: [
+				'@ai-sdk/react',
 				'@ai-sdk/deepseek',
 				'@ai-sdk/openai',
 				'@orpc/openapi',
@@ -97,6 +98,7 @@ const config = defineConfig(({ mode }) => {
 				holdUntilCrawlEnd: true,
 				entries: ['src/worker.ts', 'src/router.tsx'],
 				include: [
+					'@ai-sdk/react',
 					'@ai-sdk/deepseek',
 					'@ai-sdk/openai',
 					'@orpc/openapi',

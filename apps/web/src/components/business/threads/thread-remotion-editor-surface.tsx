@@ -279,6 +279,7 @@ export type ThreadRemotionEditorSurfaceProps = {
 	initialViewPan?: { x: number; y: number }
 	onViewScaleChange?: (next: number) => void
 	onViewPanChange?: (next: { x: number; y: number }) => void
+	showTimeline?: boolean
 }
 
 export const ThreadRemotionEditorSurface = React.forwardRef<
@@ -310,6 +311,7 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 		initialViewPan,
 		onViewScaleChange,
 		onViewPanChange,
+		showTimeline = false,
 	},
 	ref,
 ) {
@@ -331,6 +333,14 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 		return buildCommentTimeline(commentsForTiming, REMOTION_FPS)
 	}, [replies])
 
+	const coverEndFrame = Math.max(0, timeline.coverDurationInFrames - 1)
+	const postStartFrame = Math.max(0, timeline.coverDurationInFrames)
+	const postEndFrame = Math.max(0, timeline.totalDurationInFrames - 1)
+	const sceneAnchorFrame =
+		scene === 'cover' ? coverEndFrame : scene === 'post' ? postStartFrame : null
+	const isPreviewFrame =
+		sceneAnchorFrame != null && editFrame !== sceneAnchorFrame
+
 	React.useEffect(() => {
 		setEditFrame((prev) => {
 			const max = Math.max(0, timeline.totalDurationInFrames - 1)
@@ -344,17 +354,19 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 	React.useEffect(() => {
 		if (!scene) return
 		const max = Math.max(0, timeline.totalDurationInFrames - 1)
-		const nextFrame =
-			scene === 'cover' ? 0 : Math.max(0, timeline.coverDurationInFrames)
+		const nextFrame = scene === 'cover' ? coverEndFrame : postStartFrame
 		setEditFrame((prev) => {
 			const clamped = Math.min(nextFrame, max)
 			return prev === clamped ? prev : clamped
 		})
-	}, [
-		scene,
-		timeline.coverDurationInFrames,
-		timeline.totalDurationInFrames,
-	])
+	}, [scene, timeline.coverDurationInFrames, timeline.totalDurationInFrames])
+
+	React.useEffect(() => {
+		if (!scene) return
+		const min = scene === 'post' ? postStartFrame : 0
+		const max = scene === 'post' ? postEndFrame : coverEndFrame
+		setEditFrame((prev) => Math.min(Math.max(prev, min), max))
+	}, [scene, timeline.coverDurationInFrames, timeline.totalDurationInFrames])
 
 	const effectiveTemplateId = React.useMemo(() => {
 		if (templateId) return templateId
@@ -493,9 +505,10 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 	React.useEffect(() => {
 		viewScaleRef.current = viewScale
 	}, [viewScale])
-	const [viewPanState, setViewPanState] = React.useState<{ x: number; y: number }>(
-		() => initialViewPan ?? { x: 0, y: 0 },
-	)
+	const [viewPanState, setViewPanState] = React.useState<{
+		x: number
+		y: number
+	}>(() => initialViewPan ?? { x: 0, y: 0 })
 	const setViewPan = React.useCallback(
 		(next: { x: number; y: number }) => {
 			setViewPanState(next)
@@ -657,7 +670,8 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 		  }
 	>()
 
-	const canEditCanvas = Boolean(editCanvasConfig && onEditCanvasConfigChange)
+	const canEditCanvas =
+		Boolean(editCanvasConfig && onEditCanvasConfigChange) && !isPreviewFrame
 	const editCanvasConfigRef = React.useRef<ThreadTemplateConfigV1 | null>(null)
 	React.useEffect(() => {
 		editCanvasConfigRef.current = editCanvasConfig
@@ -714,7 +728,11 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 			const max = Math.max(0, timeline.totalDurationInFrames - 1)
 			return Math.min(nextFrame, max)
 		})
-	}, [externalPrimaryKey, timeline.coverDurationInFrames, timeline.totalDurationInFrames])
+	}, [
+		externalPrimaryKey,
+		timeline.coverDurationInFrames,
+		timeline.totalDurationInFrames,
+	])
 
 	const onSelectionChangeRef = React.useRef(onSelectionChange)
 	React.useEffect(() => {
@@ -1862,430 +1880,461 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 						{ui !== 'canvas' ? (
 							<>
 								<div className="flex flex-wrap items-center justify-between gap-2">
-							<div className="flex items-center gap-2">
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
-									className="rounded-none font-mono text-[10px] uppercase"
-									disabled={!onEditUndo || !canEditUndo}
-									onClick={() => onEditUndo?.()}
-								>
-									{t('buttons.undo')}
-								</Button>
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
-									className="rounded-none font-mono text-[10px] uppercase"
-									disabled={!onEditRedo || !canEditRedo}
-									onClick={() => onEditRedo?.()}
-								>
-									{t('buttons.redo')}
-								</Button>
-							</div>
-							<div className="font-mono text-[10px] text-muted-foreground">
-								{template.name} · {template.compositionWidth}×
-								{template.compositionHeight}
-							</div>
-						</div>
-
-						{mode === 'edit' ? (
-							<div className="flex flex-wrap items-center gap-2">
-								<Button
-									type="button"
-									size="sm"
-									variant={editScene === 'cover' ? 'default' : 'outline'}
-									className="rounded-none font-mono text-[10px] uppercase"
-									onClick={() => setEditFrame(0)}
-								>
-									{t('buttons.cover')}
-								</Button>
-								<Button
-									type="button"
-									size="sm"
-									variant={editScene === 'post' ? 'default' : 'outline'}
-									className="rounded-none font-mono text-[10px] uppercase"
-									onClick={() => {
-										const f = timeline.coverDurationInFrames
-										const max = Math.max(0, timeline.totalDurationInFrames - 1)
-										setEditFrame(Math.min(f, max))
-									}}
-								>
-									{t('buttons.post')}
-								</Button>
-								<div className="flex flex-1 items-center gap-2 min-w-[240px]">
-									<input
-										type="range"
-										min={0}
-										max={Math.max(0, timeline.totalDurationInFrames - 1)}
-										value={editFrame}
-										onChange={(e) => setEditFrame(Number(e.target.value))}
-										className="w-full"
-									/>
-									<div className="tabular-nums font-mono text-[10px] text-muted-foreground">
-										{editFrame}/
-										{Math.max(0, timeline.totalDurationInFrames - 1)}
+									<div className="flex items-center gap-2">
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-[10px] uppercase"
+											disabled={!onEditUndo || !canEditUndo}
+											onClick={() => onEditUndo?.()}
+										>
+											{t('buttons.undo')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant="outline"
+											className="rounded-none font-mono text-[10px] uppercase"
+											disabled={!onEditRedo || !canEditRedo}
+											onClick={() => onEditRedo?.()}
+										>
+											{t('buttons.redo')}
+										</Button>
+									</div>
+									<div className="font-mono text-[10px] text-muted-foreground">
+										{template.name} · {template.compositionWidth}×
+										{template.compositionHeight}
 									</div>
 								</div>
-								<div className="flex items-center gap-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										{t('labels.snap')}
-									</Label>
-									<Switch
-										checked={snapEnabled}
-										onCheckedChange={setSnapEnabled}
-									/>
-								</div>
-							</div>
-						) : null}
 
-						{mode === 'edit' ? (
-							<div className="flex flex-wrap items-center gap-2">
-								<div className="flex items-center gap-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										{t('labels.tool')}
-									</Label>
-									<Button
-										type="button"
-										size="sm"
-										variant={viewTool === 'select' ? 'default' : 'outline'}
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										onClick={() => setViewTool('select')}
-									>
-										{t('buttons.select')}
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant={viewTool === 'pan' ? 'default' : 'outline'}
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										onClick={() => setViewTool('pan')}
-									>
-										{t('buttons.pan')}
-									</Button>
-								</div>
-								<div className="flex items-center gap-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										{t('labels.zoom')}
-									</Label>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										onClick={() => setViewScaleWithAnchor(0.5)}
-									>
-										50
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										onClick={() => setViewScaleWithAnchor(2)}
-									>
-										200
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										onClick={() => setViewScaleWithAnchor(viewScale / 1.1)}
-									>
-										-
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										onClick={() => {
-											setViewScaleWithAnchor(1)
-											setViewPan({ x: 0, y: 0 })
-										}}
-									>
-										100
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										onClick={resetView}
-									>
-										{t('buttons.fit')}
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={
-											(!groupBox && !primaryBox) || selectedKeys.length === 0
-										}
-										onClick={fitSelection}
-									>
-										{t('buttons.fitSelection')}
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										onClick={() => setViewScaleWithAnchor(viewScale * 1.1)}
-									>
-										+
-									</Button>
-									<div className="tabular-nums font-mono text-[10px] text-muted-foreground min-w-[46px] text-right">
-										{Math.round(viewScale * 100)}%
-									</div>
-								</div>
-							</div>
-						) : null}
-
-						{mode === 'edit' ? (
-							<div className="flex flex-wrap items-center gap-2">
-								<div className="flex flex-wrap items-center gap-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										{t('labels.align')}
-									</Label>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={!canEditCanvas || selectedAbsoluteKeys.length < 2}
-										onClick={() => alignSelection('left')}
-									>
-										L
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={!canEditCanvas || selectedAbsoluteKeys.length < 2}
-										onClick={() => alignSelection('hCenter')}
-									>
-										HC
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={!canEditCanvas || selectedAbsoluteKeys.length < 2}
-										onClick={() => alignSelection('right')}
-									>
-										R
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={!canEditCanvas || selectedAbsoluteKeys.length < 2}
-										onClick={() => alignSelection('top')}
-									>
-										T
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={!canEditCanvas || selectedAbsoluteKeys.length < 2}
-										onClick={() => alignSelection('vCenter')}
-									>
-										VC
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={!canEditCanvas || selectedAbsoluteKeys.length < 2}
-										onClick={() => alignSelection('bottom')}
-									>
-										B
-									</Button>
-								</div>
-
-								<div className="flex flex-wrap items-center gap-2">
-									<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-										{t('labels.distribute')}
-									</Label>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={!canEditCanvas || selectedAbsoluteKeys.length < 3}
-										onClick={() => distributeSelection('horizontal')}
-									>
-										H
-									</Button>
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-										disabled={!canEditCanvas || selectedAbsoluteKeys.length < 3}
-										onClick={() => distributeSelection('vertical')}
-									>
-										V
-									</Button>
-								</div>
-							</div>
-						) : null}
-
-						{mode === 'edit' ? (
-							showLayers ? (
-								<div className="rounded-none border border-border bg-card p-4 space-y-3">
-									<div className="flex items-center justify-between gap-3">
-										<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											{t('labels.layers')}
-										</div>
-										<div className="font-mono text-[10px] text-muted-foreground">
-											{t('labels.nodes', { count: layerNodesByKey.size })}
-										</div>
-									</div>
-
-									<Input
-										placeholder={t('layers.filterPlaceholder')}
-										value={layersFilter}
-										onChange={(e) => setLayersFilter(e.target.value)}
-										className="rounded-none font-mono text-xs h-8"
-									/>
-
-									<div
-										className="rounded-none border border-border bg-muted/10"
-										style={{ maxHeight: 300, overflow: 'auto' }}
-									>
-										<div className="p-2 space-y-3">
-											{(['cover', 'post'] as const).map((scene) => {
-												const roots =
-													scene === 'cover'
-														? layerRootsByScene.cover
-														: layerRootsByScene.post
-												const title =
-													scene === 'cover' ? t('buttons.cover') : t('buttons.post')
-
-												const renderNode = (key: string): React.ReactNode => {
-													const n = layerNodesByKey.get(key)
-													if (!n) return null
-													if (
-														layerVisibleKeySet &&
-														!layerVisibleKeySet.has(key)
-													)
-														return null
-
-													const isCollapsed = collapsedKeySet.has(key)
-													const isSelected = selectedKeys.includes(key)
-													const isPrimary = primaryKey === key
-													const isHidden = hiddenKeySet.has(key)
-													const isLocked = lockedKeySet.has(key)
-
-													const canCollapse = n.children.length > 0
-
-													return (
-														<div key={key}>
-															<div
-																className="flex items-center gap-2 rounded-none px-2 py-1"
-																style={{
-																	background: isPrimary
-																		? 'rgba(34,197,94,0.12)'
-																		: isSelected
-																			? 'rgba(34,197,94,0.06)'
-																			: 'transparent',
-																}}
-															>
-																<button
-																	type="button"
-																	onClick={() => {
-																		if (!canCollapse) return
-																		toggleCollapsed(key)
-																	}}
-																	className="font-mono text-[10px] text-muted-foreground"
-																	style={{
-																		width: 18,
-																		opacity: canCollapse ? 1 : 0,
-																		cursor: canCollapse ? 'pointer' : 'default',
-																	}}
-																>
-																	{isCollapsed ? '▸' : '▾'}
-																</button>
-
-																<button
-																	type="button"
-																	onClick={(e) =>
-																		selectFromLayers(key, n.type, e)
-																	}
-																	className="flex-1 text-left font-mono text-[11px]"
-																	style={{
-																		paddingLeft: Math.min(180, n.depth * 10),
-																		opacity: isHidden ? 0.55 : 1,
-																		textDecoration: isHidden
-																			? 'line-through'
-																			: undefined,
-																	}}
-																>
-																	{n.type ?? t('labels.node')}{' '}
-																	<span className="text-muted-foreground">
-																		{key}
-																	</span>
-																</button>
-
-																<Button
-																	type="button"
-																	size="sm"
-																	variant="outline"
-																	className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-																	onClick={() => toggleHiddenSubtree(key)}
-																>
-																	{isHidden ? t('buttons.show') : t('buttons.hide')}
-																</Button>
-																<Button
-																	type="button"
-																	size="sm"
-																	variant="outline"
-																	className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
-																	onClick={() => toggleLockedSubtree(key)}
-																>
-																	{isLocked
-																		? t('buttons.unlock')
-																		: t('buttons.lock')}
-																</Button>
-															</div>
-															{!isCollapsed && canCollapse ? (
-																<div>
-																	{n.children.map((c) => renderNode(c))}
-																</div>
-															) : null}
-														</div>
-													)
-												}
-
-												return (
-													<div key={scene} className="space-y-2">
-														<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-															{title}
-														</div>
-														<div className="space-y-1">
-															{roots.map((k) => renderNode(k))}
-														</div>
-													</div>
+								{mode === 'edit' ? (
+									<div className="flex flex-wrap items-center gap-2">
+										<Button
+											type="button"
+											size="sm"
+											variant={editScene === 'cover' ? 'default' : 'outline'}
+											className="rounded-none font-mono text-[10px] uppercase"
+											onClick={() => setEditFrame(0)}
+										>
+											{t('buttons.cover')}
+										</Button>
+										<Button
+											type="button"
+											size="sm"
+											variant={editScene === 'post' ? 'default' : 'outline'}
+											className="rounded-none font-mono text-[10px] uppercase"
+											onClick={() => {
+												const f = timeline.coverDurationInFrames
+												const max = Math.max(
+													0,
+													timeline.totalDurationInFrames - 1,
 												)
-											})}
+												setEditFrame(Math.min(f, max))
+											}}
+										>
+											{t('buttons.post')}
+										</Button>
+										<div className="flex flex-1 items-center gap-2 min-w-[240px]">
+											<input
+												type="range"
+												min={0}
+												max={Math.max(0, timeline.totalDurationInFrames - 1)}
+												value={editFrame}
+												onChange={(e) => setEditFrame(Number(e.target.value))}
+												className="w-full"
+											/>
+											<div className="tabular-nums font-mono text-[10px] text-muted-foreground">
+												{editFrame}/
+												{Math.max(0, timeline.totalDurationInFrames - 1)}
+											</div>
+										</div>
+										<div className="flex items-center gap-2">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('labels.snap')}
+											</Label>
+											<Switch
+												checked={snapEnabled}
+												onCheckedChange={setSnapEnabled}
+											/>
 										</div>
 									</div>
+								) : null}
 
-									<style>{`[data-tt-editor-hidden="1"]{opacity:0!important}`}</style>
-								</div>
-							) : null
-						) : null}
+								{mode === 'edit' ? (
+									<div className="flex flex-wrap items-center gap-2">
+										<div className="flex items-center gap-2">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('labels.tool')}
+											</Label>
+											<Button
+												type="button"
+												size="sm"
+												variant={viewTool === 'select' ? 'default' : 'outline'}
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												onClick={() => setViewTool('select')}
+											>
+												{t('buttons.select')}
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant={viewTool === 'pan' ? 'default' : 'outline'}
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												onClick={() => setViewTool('pan')}
+											>
+												{t('buttons.pan')}
+											</Button>
+										</div>
+										<div className="flex items-center gap-2">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('labels.zoom')}
+											</Label>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												onClick={() => setViewScaleWithAnchor(0.5)}
+											>
+												50
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												onClick={() => setViewScaleWithAnchor(2)}
+											>
+												200
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												onClick={() => setViewScaleWithAnchor(viewScale / 1.1)}
+											>
+												-
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												onClick={() => {
+													setViewScaleWithAnchor(1)
+													setViewPan({ x: 0, y: 0 })
+												}}
+											>
+												100
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												onClick={resetView}
+											>
+												{t('buttons.fit')}
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													(!groupBox && !primaryBox) ||
+													selectedKeys.length === 0
+												}
+												onClick={fitSelection}
+											>
+												{t('buttons.fitSelection')}
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												onClick={() => setViewScaleWithAnchor(viewScale * 1.1)}
+											>
+												+
+											</Button>
+											<div className="tabular-nums font-mono text-[10px] text-muted-foreground min-w-[46px] text-right">
+												{Math.round(viewScale * 100)}%
+											</div>
+										</div>
+									</div>
+								) : null}
+
+								{mode === 'edit' ? (
+									<div className="flex flex-wrap items-center gap-2">
+										<div className="flex flex-wrap items-center gap-2">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('labels.align')}
+											</Label>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													!canEditCanvas || selectedAbsoluteKeys.length < 2
+												}
+												onClick={() => alignSelection('left')}
+											>
+												L
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													!canEditCanvas || selectedAbsoluteKeys.length < 2
+												}
+												onClick={() => alignSelection('hCenter')}
+											>
+												HC
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													!canEditCanvas || selectedAbsoluteKeys.length < 2
+												}
+												onClick={() => alignSelection('right')}
+											>
+												R
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													!canEditCanvas || selectedAbsoluteKeys.length < 2
+												}
+												onClick={() => alignSelection('top')}
+											>
+												T
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													!canEditCanvas || selectedAbsoluteKeys.length < 2
+												}
+												onClick={() => alignSelection('vCenter')}
+											>
+												VC
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													!canEditCanvas || selectedAbsoluteKeys.length < 2
+												}
+												onClick={() => alignSelection('bottom')}
+											>
+												B
+											</Button>
+										</div>
+
+										<div className="flex flex-wrap items-center gap-2">
+											<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												{t('labels.distribute')}
+											</Label>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													!canEditCanvas || selectedAbsoluteKeys.length < 3
+												}
+												onClick={() => distributeSelection('horizontal')}
+											>
+												H
+											</Button>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+												disabled={
+													!canEditCanvas || selectedAbsoluteKeys.length < 3
+												}
+												onClick={() => distributeSelection('vertical')}
+											>
+												V
+											</Button>
+										</div>
+									</div>
+								) : null}
+
+								{mode === 'edit' ? (
+									showLayers ? (
+										<div className="rounded-none border border-border bg-card p-4 space-y-3">
+											<div className="flex items-center justify-between gap-3">
+												<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+													{t('labels.layers')}
+												</div>
+												<div className="font-mono text-[10px] text-muted-foreground">
+													{t('labels.nodes', { count: layerNodesByKey.size })}
+												</div>
+											</div>
+
+											<Input
+												placeholder={t('layers.filterPlaceholder')}
+												value={layersFilter}
+												onChange={(e) => setLayersFilter(e.target.value)}
+												className="rounded-none font-mono text-xs h-8"
+											/>
+
+											<div
+												className="rounded-none border border-border bg-muted/10"
+												style={{ maxHeight: 300, overflow: 'auto' }}
+											>
+												<div className="p-2 space-y-3">
+													{(['cover', 'post'] as const).map((scene) => {
+														const roots =
+															scene === 'cover'
+																? layerRootsByScene.cover
+																: layerRootsByScene.post
+														const title =
+															scene === 'cover'
+																? t('buttons.cover')
+																: t('buttons.post')
+
+														const renderNode = (
+															key: string,
+														): React.ReactNode => {
+															const n = layerNodesByKey.get(key)
+															if (!n) return null
+															if (
+																layerVisibleKeySet &&
+																!layerVisibleKeySet.has(key)
+															)
+																return null
+
+															const isCollapsed = collapsedKeySet.has(key)
+															const isSelected = selectedKeys.includes(key)
+															const isPrimary = primaryKey === key
+															const isHidden = hiddenKeySet.has(key)
+															const isLocked = lockedKeySet.has(key)
+
+															const canCollapse = n.children.length > 0
+
+															return (
+																<div key={key}>
+																	<div
+																		className="flex items-center gap-2 rounded-none px-2 py-1"
+																		style={{
+																			background: isPrimary
+																				? 'rgba(34,197,94,0.12)'
+																				: isSelected
+																					? 'rgba(34,197,94,0.06)'
+																					: 'transparent',
+																		}}
+																	>
+																		<button
+																			type="button"
+																			onClick={() => {
+																				if (!canCollapse) return
+																				toggleCollapsed(key)
+																			}}
+																			className="font-mono text-[10px] text-muted-foreground"
+																			style={{
+																				width: 18,
+																				opacity: canCollapse ? 1 : 0,
+																				cursor: canCollapse
+																					? 'pointer'
+																					: 'default',
+																			}}
+																		>
+																			{isCollapsed ? '▸' : '▾'}
+																		</button>
+
+																		<button
+																			type="button"
+																			onClick={(e) =>
+																				selectFromLayers(key, n.type, e)
+																			}
+																			className="flex-1 text-left font-mono text-[11px]"
+																			style={{
+																				paddingLeft: Math.min(
+																					180,
+																					n.depth * 10,
+																				),
+																				opacity: isHidden ? 0.55 : 1,
+																				textDecoration: isHidden
+																					? 'line-through'
+																					: undefined,
+																			}}
+																		>
+																			{n.type ?? t('labels.node')}{' '}
+																			<span className="text-muted-foreground">
+																				{key}
+																			</span>
+																		</button>
+
+																		<Button
+																			type="button"
+																			size="sm"
+																			variant="outline"
+																			className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+																			onClick={() => toggleHiddenSubtree(key)}
+																		>
+																			{isHidden
+																				? t('buttons.show')
+																				: t('buttons.hide')}
+																		</Button>
+																		<Button
+																			type="button"
+																			size="sm"
+																			variant="outline"
+																			className="rounded-none font-mono text-[10px] uppercase h-7 px-2"
+																			onClick={() => toggleLockedSubtree(key)}
+																		>
+																			{isLocked
+																				? t('buttons.unlock')
+																				: t('buttons.lock')}
+																		</Button>
+																	</div>
+																	{!isCollapsed && canCollapse ? (
+																		<div>
+																			{n.children.map((c) => renderNode(c))}
+																		</div>
+																	) : null}
+																</div>
+															)
+														}
+
+														return (
+															<div key={scene} className="space-y-2">
+																<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+																	{title}
+																</div>
+																<div className="space-y-1">
+																	{roots.map((k) => renderNode(k))}
+																</div>
+															</div>
+														)
+													})}
+												</div>
+											</div>
+
+											<style>{`[data-tt-editor-hidden="1"]{opacity:0!important}`}</style>
+										</div>
+									) : null
+								) : null}
 							</>
 						) : null}
 
@@ -2293,18 +2342,24 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 							const ratio =
 								template.compositionHeight / template.compositionWidth
 							const effectiveTool = spacePan ? 'pan' : viewTool
+							const timelineMin = scene === 'post' ? postStartFrame : 0
+							const timelineMax =
+								scene === 'post' ? postEndFrame : coverEndFrame
+							const timelineFrame = Math.min(
+								Math.max(editFrame, timelineMin),
+								timelineMax,
+							)
 							const wrapperStyle: React.CSSProperties = {
-									position: 'relative',
-									width: '100%',
-									paddingBottom: `${ratio * 100}%`,
-									overflow: 'hidden',
-									borderRadius: 0,
-									border:
-										ui === 'canvas' ? '0' : '1px solid hsl(var(--border))',
-									cursor:
-										mode !== 'edit'
-											? 'default'
-											: effectiveTool === 'pan'
+								position: 'relative',
+								width: '100%',
+								paddingBottom: `${ratio * 100}%`,
+								overflow: 'hidden',
+								borderRadius: 0,
+								border: ui === 'canvas' ? '0' : '1px solid hsl(var(--border))',
+								cursor:
+									mode !== 'edit'
+										? 'default'
+										: effectiveTool === 'pan'
 											? isPanning
 												? 'grabbing'
 												: 'grab'
@@ -3012,33 +3067,33 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 												`}
 										</style>
 									) : null}
-										<div
-											style={{
-												position: 'absolute',
-												inset: 0,
+									<div
+										style={{
+											position: 'absolute',
+											inset: 0,
 											transform:
 												mode === 'edit'
 													? `translate(${viewPan.x}px, ${viewPan.y}px) scale(${viewScale})`
 													: undefined,
-												transformOrigin: mode === 'edit' ? '0 0' : undefined,
+											transformOrigin: mode === 'edit' ? '0 0' : undefined,
+										}}
+									>
+										<ThreadRemotionEditorCard
+											ref={thumbnailRef as any}
+											component={TemplateComponent}
+											inputProps={inputProps}
+											frameToDisplay={editFrame}
+											durationInFrames={timeline.totalDurationInFrames}
+											compositionWidth={template.compositionWidth}
+											compositionHeight={template.compositionHeight}
+											fps={REMOTION_FPS}
+											style={{
+												width: '100%',
+												height: '100%',
+												backgroundColor: '#0b1120',
 											}}
-										>
-											<ThreadRemotionEditorCard
-												ref={thumbnailRef as any}
-												component={TemplateComponent}
-												inputProps={inputProps}
-												frameToDisplay={editFrame}
-												durationInFrames={timeline.totalDurationInFrames}
-												compositionWidth={template.compositionWidth}
-												compositionHeight={template.compositionHeight}
-												fps={REMOTION_FPS}
-												style={{
-													width: '100%',
-													height: '100%',
-													backgroundColor: '#0b1120',
-												}}
-											/>
-										</div>
+										/>
+									</div>
 
 									{mode === 'edit' &&
 									snapGuides &&
@@ -3299,6 +3354,42 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 													/>
 												))
 											})()}
+										</div>
+									) : null}
+
+									{mode === 'edit' && ui === 'canvas' && showTimeline ? (
+										<div
+											className="pointer-events-none"
+											style={{
+												position: 'absolute',
+												left: 12,
+												right: 12,
+												bottom: 12,
+												zIndex: 30,
+											}}
+										>
+											<div
+												className="pointer-events-auto flex items-center gap-2 rounded-sm border border-white/10 bg-black/60 px-2 py-1 backdrop-blur"
+												onPointerDownCapture={(e) => e.stopPropagation()}
+												onClickCapture={(e) => e.stopPropagation()}
+											>
+												<div className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-slate-200/80">
+													{scene === 'post'
+														? t('buttons.post')
+														: t('buttons.cover')}
+												</div>
+												<input
+													type="range"
+													min={timelineMin}
+													max={timelineMax}
+													value={timelineFrame}
+													onChange={(e) => setEditFrame(Number(e.target.value))}
+													className="w-full"
+												/>
+												<div className="shrink-0 tabular-nums font-mono text-[10px] text-slate-200/80">
+													{timelineFrame}/{timelineMax}
+												</div>
+											</div>
 										</div>
 									) : null}
 								</div>

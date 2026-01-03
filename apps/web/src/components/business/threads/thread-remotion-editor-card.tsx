@@ -1,7 +1,10 @@
 'use client'
 
 import type { ThreadVideoInputProps } from '@app/remotion-project/types'
-import type { ThumbnailMethods, ThumbnailPropsWithoutZod } from '@remotion/player'
+import type {
+	ThumbnailMethods,
+	ThumbnailPropsWithoutZod,
+} from '@remotion/player'
 import { Loader2 } from 'lucide-react'
 import * as React from 'react'
 
@@ -65,4 +68,3 @@ export const ThreadRemotionEditorCard = React.forwardRef<
 )
 
 ThreadRemotionEditorCard.displayName = 'ThreadRemotionEditorCard'
-

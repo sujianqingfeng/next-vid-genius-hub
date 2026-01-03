@@ -27,14 +27,15 @@ const SERVER_MESSAGE_TO_CODE: Record<string, string> = {
 	'Model not found': 'MODEL_NOT_FOUND',
 	'Template version not found': 'THREAD_TEMPLATE_VERSION_NOT_FOUND',
 	'Audio asset not found': 'AUDIO_ASSET_NOT_FOUND',
-	'CANNOT_DELETE_SELF': 'CANNOT_DELETE_SELF',
-	'CANNOT_DELETE_LAST_ADMIN': 'CANNOT_DELETE_LAST_ADMIN',
+	CANNOT_DELETE_SELF: 'CANNOT_DELETE_SELF',
+	CANNOT_DELETE_LAST_ADMIN: 'CANNOT_DELETE_LAST_ADMIN',
 	'Provider mismatch for model pricing rule':
 		'PROVIDER_MISMATCH_FOR_MODEL_PRICING_RULE',
 	'LLM pricing rule unit must be token': 'LLM_PRICING_RULE_UNIT_MUST_BE_TOKEN',
 	'LLM pricing rules require both inputPricePerUnit and outputPricePerUnit':
 		'LLM_PRICING_RULES_REQUIRE_INPUT_AND_OUTPUT_PRICE',
-	'Whisper API providers require baseUrl': 'WHISPER_API_PROVIDERS_REQUIRE_BASE_URL',
+	'Whisper API providers require baseUrl':
+		'WHISPER_API_PROVIDERS_REQUIRE_BASE_URL',
 	'metadata.maxUploadBytes must be a positive number':
 		'METADATA_MAX_UPLOAD_BYTES_MUST_BE_POSITIVE',
 	'Cannot delete provider: models still reference it':

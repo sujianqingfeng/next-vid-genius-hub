@@ -26,6 +26,7 @@
 	"dependencies": {
 		"@ai-sdk/deepseek": "^2.0.1",
 		"@ai-sdk/openai": "^3.0.1",
+		"@ai-sdk/react": "^3.0.6",
 		"@app/job-callbacks": "workspace:*",
 		"@app/media-comments": "workspace:*",
 		"@app/media-core": "workspace:*",
@@ -35,6 +36,7 @@
 		"@app/media-subtitles": "workspace:*",
 		"@app/remotion-project": "workspace:*",
 		"@cloudflare/vite-plugin": "^1.13.8",
+		"@libsql/client": "^0.15.15",
 		"@orpc/client": "^1.12.2",
 		"@orpc/openapi": "^1.12.2",
 		"@orpc/server": "^1.12.2",

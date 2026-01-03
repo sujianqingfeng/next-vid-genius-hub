@@ -52,6 +52,9 @@ export async function buildRequestContext(
 			// break all requests. Clear the cookie and continue as anonymous.
 			if (isDbSchemaNotReadyError(error)) {
 				responseCookies.push(createClearSessionCookie())
+			} else if (isDbBindingMissingError(error)) {
+				// In Vite dev / non-Worker runtimes, the Cloudflare D1 binding may not
+				// be injected. Treat as anonymous so requests don't hard-fail.
 			} else {
 				throw error
 			}
@@ -74,6 +77,19 @@ function isDbSchemaNotReadyError(error: unknown) {
 	if (causeMessage.includes('D1_SCHEMA_NOT_READY')) return true
 	if (causeMessage.includes('no such table: sessions')) return true
 	if (causeMessage.includes('no such table: users')) return true
+
+	return false
+}
+
+function isDbBindingMissingError(error: unknown) {
+	const message = error instanceof Error ? error.message : String(error)
+	if (message.includes('D1_BINDING_MISSING')) return true
+
+	const cause =
+		error instanceof Error ? (error as { cause?: unknown }).cause : undefined
+	const causeMessage =
+		cause instanceof Error ? cause.message : String(cause ?? '')
+	if (causeMessage.includes('D1_BINDING_MISSING')) return true
 
 	return false
 }

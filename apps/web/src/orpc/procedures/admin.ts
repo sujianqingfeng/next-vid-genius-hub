@@ -139,13 +139,13 @@ export const addUserPoints = os
 	.handler(async ({ input }) => {
 		const db = await getDb()
 
-			const balance = await addPoints({
-				userId: input.userId,
-				amount: input.amount,
-				type: POINT_TRANSACTION_TYPES.MANUAL_ADJUST,
-				remark: input.remark,
-				db,
-			})
+		const balance = await addPoints({
+			userId: input.userId,
+			amount: input.amount,
+			type: POINT_TRANSACTION_TYPES.MANUAL_ADJUST,
+			remark: input.remark,
+			db,
+		})
 
 		return { balance }
 	})

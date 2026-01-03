@@ -72,4 +72,3 @@ describe('orpc.ai', () => {
 		expect(JSON.stringify(res.model ?? {})).not.toContain('SECRET')
 	})
 })
-

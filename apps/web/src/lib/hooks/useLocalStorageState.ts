@@ -71,7 +71,9 @@ export function useLocalStorageState<T>(
 
 		const raw = readLocalStorage(key)
 		const fallback =
-			typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue
+			typeof defaultValue === 'function'
+				? (defaultValue as () => T)()
+				: defaultValue
 
 		if (!raw) return fallback
 

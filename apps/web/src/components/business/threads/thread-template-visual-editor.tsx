@@ -23,7 +23,14 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
-import { ChevronRight, Copy, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react'
+import {
+	ChevronRight,
+	Copy,
+	MoreHorizontal,
+	Plus,
+	Search,
+	Trash2,
+} from 'lucide-react'
 import { useTranslations } from '~/lib/i18n'
 
 type NodePath = Array<string | number>
@@ -492,7 +499,10 @@ function parseTreeFilterTerms(filterText: string): TreeFilterTerm[] {
 		}
 
 		const kindRaw = part.slice(0, idx).trim().toLowerCase()
-		const value = part.slice(idx + 1).trim().toLowerCase()
+		const value = part
+			.slice(idx + 1)
+			.trim()
+			.toLowerCase()
 		if (!value) continue
 
 		const kind = (
@@ -516,8 +526,7 @@ function getTreeItemSearchFields(it: TreeItem) {
 	const node: any = it.node as any
 	const type = String(node?.type ?? '').toLowerCase()
 	const bind = typeof node?.bind === 'string' ? node.bind.toLowerCase() : ''
-	const kind =
-		type === 'builtin' ? String(node?.kind ?? '').toLowerCase() : ''
+	const kind = type === 'builtin' ? String(node?.kind ?? '').toLowerCase() : ''
 	const assetId =
 		typeof node?.assetId === 'string' || typeof node?.assetId === 'number'
 			? String(node.assetId).toLowerCase()
@@ -606,7 +615,10 @@ function TreeView({
 		selectedElRef.current?.scrollIntoView({ block: 'nearest' })
 	}, [selectedKey])
 
-	const terms = React.useMemo(() => parseTreeFilterTerms(filterText), [filterText])
+	const terms = React.useMemo(
+		() => parseTreeFilterTerms(filterText),
+		[filterText],
+	)
 	const { visibleKeys, forcedOpenKeys } = React.useMemo(() => {
 		if (terms.length === 0)
 			return {
@@ -640,31 +652,39 @@ function TreeView({
 		return out
 	}, [items])
 
-		const visibleItems = React.useMemo(() => {
-			const out: TreeItem[] = []
-			const walk = (key: string) => {
-				const it = itemByKey.get(key)
+	const visibleItems = React.useMemo(() => {
+		const out: TreeItem[] = []
+		const walk = (key: string) => {
+			const it = itemByKey.get(key)
 			if (!it) return
 			if (visibleKeys && !visibleKeys.has(key)) return
 
 			out.push(it)
 
-				const children = childrenByKey.get(key) ?? []
-				if (children.length === 0) return
+			const children = childrenByKey.get(key) ?? []
+			if (children.length === 0) return
 
-				const collapsed = state[key]?.collapsed ?? false
-				if (terms.length === 0) {
-					if (collapsed) return
-				} else {
-					if (collapsed && !(forcedOpenKeys?.has(key) ?? false)) return
-				}
+			const collapsed = state[key]?.collapsed ?? false
+			if (terms.length === 0) {
+				if (collapsed) return
+			} else {
+				if (collapsed && !(forcedOpenKeys?.has(key) ?? false)) return
+			}
 
 			for (const childKey of children) walk(childKey)
 		}
 
-			for (const rootKey of roots) walk(rootKey)
-			return out
-		}, [childrenByKey, forcedOpenKeys, itemByKey, roots, state, terms.length, visibleKeys])
+		for (const rootKey of roots) walk(rootKey)
+		return out
+	}, [
+		childrenByKey,
+		forcedOpenKeys,
+		itemByKey,
+		roots,
+		state,
+		terms.length,
+		visibleKeys,
+	])
 
 	function toggleCollapsed(key: string) {
 		onStateChange((prev) => {
@@ -683,30 +703,30 @@ function TreeView({
 
 	return (
 		<div className="space-y-0.5">
-				{visibleItems.map((it) => {
-					const active = it.key === selectedKey
-					const children = childrenByKey.get(it.key) ?? []
-					const hasChildren = children.length > 0
-					const collapsed = state[it.key]?.collapsed ?? false
-					const canQuickAddChild = Boolean(
-						onQuickAddChild && isContainerNode(it.node),
-					)
-					const canQuickDuplicate = Boolean(
-						onQuickDuplicate && it.parentSlot?.kind === 'children',
-					)
-					const canQuickDelete = Boolean(
-						onQuickDelete && it.parentSlot?.kind === 'children',
-					)
-					const canOpenActions = Boolean(onOpenActions)
+			{visibleItems.map((it) => {
+				const active = it.key === selectedKey
+				const children = childrenByKey.get(it.key) ?? []
+				const hasChildren = children.length > 0
+				const collapsed = state[it.key]?.collapsed ?? false
+				const canQuickAddChild = Boolean(
+					onQuickAddChild && isContainerNode(it.node),
+				)
+				const canQuickDuplicate = Boolean(
+					onQuickDuplicate && it.parentSlot?.kind === 'children',
+				)
+				const canQuickDelete = Boolean(
+					onQuickDelete && it.parentSlot?.kind === 'children',
+				)
+				const canOpenActions = Boolean(onOpenActions)
 
-					return (
-						<div
-							key={it.key}
-							className={[
-								'group flex items-center gap-1 px-1',
-								active ? 'bg-muted' : 'hover:bg-muted/40',
-							].join(' ')}
-						>
+				return (
+					<div
+						key={it.key}
+						className={[
+							'group flex items-center gap-1 px-1',
+							active ? 'bg-muted' : 'hover:bg-muted/40',
+						].join(' ')}
+					>
 						<div
 							className="flex items-center"
 							style={{ paddingLeft: it.depth * 12 }}
@@ -722,15 +742,15 @@ function TreeView({
 								className={[
 									'flex size-6 items-center justify-center text-muted-foreground',
 									hasChildren ? 'hover:text-foreground' : 'opacity-40',
-									].join(' ')}
-									aria-label={
-										hasChildren
-											? collapsed
-												? (t?.('structure.expandAria') ?? 'Expand')
-												: (t?.('structure.collapseAria') ?? 'Collapse')
-											: (t?.('structure.leafNode') ?? 'Leaf node')
-									}
-								>
+								].join(' ')}
+								aria-label={
+									hasChildren
+										? collapsed
+											? (t?.('structure.expandAria') ?? 'Expand')
+											: (t?.('structure.collapseAria') ?? 'Collapse')
+										: (t?.('structure.leafNode') ?? 'Leaf node')
+								}
+							>
 								<ChevronRight
 									className={[
 										'size-3 transition-transform',
@@ -752,138 +772,138 @@ function TreeView({
 							].join(' ')}
 							title={it.key}
 						>
-								{it.label}
-							</button>
+							{it.label}
+						</button>
 
-							{canQuickAddChild ||
-							canQuickDuplicate ||
-							canQuickDelete ||
-							canOpenActions ? (
-								<div className="flex shrink-0 items-center gap-0.5 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-									{canQuickAddChild ? (
-										<button
-											type="button"
-											className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
-											title={t?.('structure.addChild') ?? 'Add Child'}
-											aria-label={t?.('structure.addChild') ?? 'Add Child'}
-											onClick={(e) => {
-												e.preventDefault()
-												e.stopPropagation()
-												onQuickAddChild?.(it.key)
-											}}
-										>
-											<Plus className="size-3" />
-										</button>
-									) : null}
+						{canQuickAddChild ||
+						canQuickDuplicate ||
+						canQuickDelete ||
+						canOpenActions ? (
+							<div className="flex shrink-0 items-center gap-0.5 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+								{canQuickAddChild ? (
+									<button
+										type="button"
+										className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+										title={t?.('structure.addChild') ?? 'Add Child'}
+										aria-label={t?.('structure.addChild') ?? 'Add Child'}
+										onClick={(e) => {
+											e.preventDefault()
+											e.stopPropagation()
+											onQuickAddChild?.(it.key)
+										}}
+									>
+										<Plus className="size-3" />
+									</button>
+								) : null}
 
-									{canQuickDuplicate ? (
-										<button
-											type="button"
-											className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
-											title={t?.('structure.duplicate') ?? 'Duplicate'}
-											aria-label={t?.('structure.duplicate') ?? 'Duplicate'}
-											onClick={(e) => {
-												e.preventDefault()
-												e.stopPropagation()
-												onQuickDuplicate?.(it.key)
-											}}
-										>
-											<Copy className="size-3" />
-										</button>
-									) : null}
+								{canQuickDuplicate ? (
+									<button
+										type="button"
+										className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+										title={t?.('structure.duplicate') ?? 'Duplicate'}
+										aria-label={t?.('structure.duplicate') ?? 'Duplicate'}
+										onClick={(e) => {
+											e.preventDefault()
+											e.stopPropagation()
+											onQuickDuplicate?.(it.key)
+										}}
+									>
+										<Copy className="size-3" />
+									</button>
+								) : null}
 
-									{canQuickDelete ? (
-										<button
-											type="button"
-											className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
-											title={t?.('structure.delete') ?? 'Delete'}
-											aria-label={t?.('structure.delete') ?? 'Delete'}
-											onClick={(e) => {
-												e.preventDefault()
-												e.stopPropagation()
-												onQuickDelete?.(it.key)
-											}}
-										>
-											<Trash2 className="size-3" />
-										</button>
-									) : null}
+								{canQuickDelete ? (
+									<button
+										type="button"
+										className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+										title={t?.('structure.delete') ?? 'Delete'}
+										aria-label={t?.('structure.delete') ?? 'Delete'}
+										onClick={(e) => {
+											e.preventDefault()
+											e.stopPropagation()
+											onQuickDelete?.(it.key)
+										}}
+									>
+										<Trash2 className="size-3" />
+									</button>
+								) : null}
 
-									{canOpenActions ? (
-										<button
-											type="button"
-											className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
-											title={t?.('structure.actionsTitle') ?? 'Actions'}
-											aria-label={t?.('structure.actionsTitle') ?? 'Actions'}
-											onClick={(e) => {
-												e.preventDefault()
-												e.stopPropagation()
-												onOpenActions?.(it.key)
-											}}
-										>
-											<MoreHorizontal className="size-3" />
-										</button>
-									) : null}
-								</div>
-							) : null}
-						</div>
-					)
-				})}
-			</div>
+								{canOpenActions ? (
+									<button
+										type="button"
+										className="inline-flex size-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+										title={t?.('structure.actionsTitle') ?? 'Actions'}
+										aria-label={t?.('structure.actionsTitle') ?? 'Actions'}
+										onClick={(e) => {
+											e.preventDefault()
+											e.stopPropagation()
+											onOpenActions?.(it.key)
+										}}
+									>
+										<MoreHorizontal className="size-3" />
+									</button>
+								) : null}
+							</div>
+						) : null}
+					</div>
+				)
+			})}
+		</div>
 	)
 }
 
-	export function ThreadTemplateVisualEditor({
-		value,
-		onChange,
-		baselineValue,
-		assets = [],
-		historyState,
-		setHistoryState,
-		resetKey,
-		layout = 'split',
-		structureClassName,
-		propertiesClassName,
-		structureCollapsed,
-		onStructureCollapsedChange,
-		propertiesCollapsed,
-		onPropertiesCollapsedChange,
-		showSceneToggle = true,
-		hotkeysEnabled = true,
-		scene: controlledScene,
-		onSceneChange,
-		selectedKey: controlledSelectedKey,
-		onSelectedKeyChange,
-	}: {
-		value: ThreadTemplateConfigV1
-		onChange: (next: ThreadTemplateConfigV1) => void
-		baselineValue?: ThreadTemplateConfigV1
-		assets?: AssetRow[]
-		historyState?: {
+export function ThreadTemplateVisualEditor({
+	value,
+	onChange,
+	baselineValue,
+	assets = [],
+	historyState,
+	setHistoryState,
+	resetKey,
+	layout = 'split',
+	structureClassName,
+	propertiesClassName,
+	structureCollapsed,
+	onStructureCollapsedChange,
+	propertiesCollapsed,
+	onPropertiesCollapsedChange,
+	showSceneToggle = true,
+	hotkeysEnabled = true,
+	scene: controlledScene,
+	onSceneChange,
+	selectedKey: controlledSelectedKey,
+	onSelectedKeyChange,
+}: {
+	value: ThreadTemplateConfigV1
+	onChange: (next: ThreadTemplateConfigV1) => void
+	baselineValue?: ThreadTemplateConfigV1
+	assets?: AssetRow[]
+	historyState?: {
+		past: ThreadTemplateConfigV1[]
+		future: ThreadTemplateConfigV1[]
+	}
+	setHistoryState?: React.Dispatch<
+		React.SetStateAction<{
 			past: ThreadTemplateConfigV1[]
 			future: ThreadTemplateConfigV1[]
-		}
-		setHistoryState?: React.Dispatch<
-			React.SetStateAction<{
-				past: ThreadTemplateConfigV1[]
-				future: ThreadTemplateConfigV1[]
-			}>
-		>
-		resetKey?: string
-		layout?: 'split' | 'panels'
-		structureClassName?: string
-		propertiesClassName?: string
-		structureCollapsed?: boolean
-		onStructureCollapsedChange?: (collapsed: boolean) => void
-		propertiesCollapsed?: boolean
-		onPropertiesCollapsedChange?: (collapsed: boolean) => void
-		showSceneToggle?: boolean
-		hotkeysEnabled?: boolean
-		scene?: SceneKey
-		onSceneChange?: (scene: SceneKey) => void
-		selectedKey?: string
-		onSelectedKeyChange?: (key: string) => void
-	}) {
-		const t = useTranslations('ThreadTemplates.visualEditor')
+		}>
+	>
+	resetKey?: string
+	layout?: 'split' | 'panels'
+	structureClassName?: string
+	propertiesClassName?: string
+	structureCollapsed?: boolean
+	onStructureCollapsedChange?: (collapsed: boolean) => void
+	propertiesCollapsed?: boolean
+	onPropertiesCollapsedChange?: (collapsed: boolean) => void
+	showSceneToggle?: boolean
+	hotkeysEnabled?: boolean
+	scene?: SceneKey
+	onSceneChange?: (scene: SceneKey) => void
+	selectedKey?: string
+	onSelectedKeyChange?: (key: string) => void
+}) {
+	const t = useTranslations('ThreadTemplates.visualEditor')
 	const skipNextValueResetRef = React.useRef(false)
 	const txnRef = React.useRef<{ base: ThreadTemplateConfigV1 } | null>(null)
 	const [internalHistory, setInternalHistory] = React.useState<{
@@ -1183,7 +1203,10 @@ function TreeView({
 		const next = insertChildAt(sceneRoot, parent.path, idx, dup)
 		updateSceneRoot(next)
 		setSelectedKey(
-			pathKey(scene, pathForSlot(parent.path, { kind: 'children', index: idx })),
+			pathKey(
+				scene,
+				pathForSlot(parent.path, { kind: 'children', index: idx }),
+			),
 		)
 	}
 
@@ -1199,10 +1222,7 @@ function TreeView({
 		setSelectedKey(pathKey(scene, parent.path))
 	}
 
-	function quickInsertSiblingByKey(
-		key: string,
-		where: 'before' | 'after',
-	) {
+	function quickInsertSiblingByKey(key: string, where: 'before' | 'after') {
 		if (!sceneRoot) return
 		const it = itemByKey.get(key)
 		if (!it) return
@@ -1210,12 +1230,16 @@ function TreeView({
 		if (!it.parentKey) return
 		const parent = itemByKey.get(it.parentKey)
 		if (!parent) return
-		const idx = where === 'before' ? it.parentSlot.index : it.parentSlot.index + 1
+		const idx =
+			where === 'before' ? it.parentSlot.index : it.parentSlot.index + 1
 		const child = createNodeToAdd()
 		const next = insertChildAt(sceneRoot, parent.path, idx, child)
 		updateSceneRoot(next)
 		setSelectedKey(
-			pathKey(scene, pathForSlot(parent.path, { kind: 'children', index: idx })),
+			pathKey(
+				scene,
+				pathForSlot(parent.path, { kind: 'children', index: idx }),
+			),
 		)
 	}
 
@@ -1439,53 +1463,53 @@ function TreeView({
 		)
 	}
 
-		const selectField = (
-			label: string,
-			value: unknown,
-			options: Array<{ value: string; label?: string }>,
-			onCommit: (next: string | undefined) => void,
-		) => {
-			const missingFieldPrefix = 'ThreadTemplates.visualEditor.fields.'
-			const missingOptionPrefix = 'ThreadTemplates.visualEditor.options.'
+	const selectField = (
+		label: string,
+		value: unknown,
+		options: Array<{ value: string; label?: string }>,
+		onCommit: (next: string | undefined) => void,
+	) => {
+		const missingFieldPrefix = 'ThreadTemplates.visualEditor.fields.'
+		const missingOptionPrefix = 'ThreadTemplates.visualEditor.options.'
 
-			const fieldLabel = (() => {
-				const translated = t(`fields.${label}`)
-				return translated.startsWith(missingFieldPrefix) ? label : translated
-			})()
+		const fieldLabel = (() => {
+			const translated = t(`fields.${label}`)
+			return translated.startsWith(missingFieldPrefix) ? label : translated
+		})()
 
-			const getOptionLabel = (opt: { value: string; label?: string }) => {
-				if (opt.label) return opt.label
-				const translated = t(`options.${opt.value}`)
-				return translated.startsWith(missingOptionPrefix) ? opt.value : translated
-			}
-
-			const v = typeof value === 'string' && value ? value : '__none__'
-			return (
-				<Select
-					value={v}
-					onValueChange={(next) =>
-						onCommit(next === '__none__' ? undefined : next)
-					}
-				>
-					<div className="space-y-1">
-						<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-							{fieldLabel}
-						</Label>
-						<SelectTrigger className="rounded-none font-mono text-xs h-8">
-							<SelectValue />
-						</SelectTrigger>
-					</div>
-					<SelectContent>
-						<SelectItem value="__none__">{t('options.none')}</SelectItem>
-						{options.map((o) => (
-							<SelectItem key={o.value} value={o.value}>
-								{getOptionLabel(o)}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			)
+		const getOptionLabel = (opt: { value: string; label?: string }) => {
+			if (opt.label) return opt.label
+			const translated = t(`options.${opt.value}`)
+			return translated.startsWith(missingOptionPrefix) ? opt.value : translated
 		}
+
+		const v = typeof value === 'string' && value ? value : '__none__'
+		return (
+			<Select
+				value={v}
+				onValueChange={(next) =>
+					onCommit(next === '__none__' ? undefined : next)
+				}
+			>
+				<div className="space-y-1">
+					<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+						{fieldLabel}
+					</Label>
+					<SelectTrigger className="rounded-none font-mono text-xs h-8">
+						<SelectValue />
+					</SelectTrigger>
+				</div>
+				<SelectContent>
+					<SelectItem value="__none__">{t('options.none')}</SelectItem>
+					{options.map((o) => (
+						<SelectItem key={o.value} value={o.value}>
+							{getOptionLabel(o)}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+		)
+	}
 
 	const selectedNode = selected?.node ?? null
 	const baselineSelectedNode =
@@ -1503,27 +1527,33 @@ function TreeView({
 	const actionsParent = actionsItem?.parentKey
 		? (itemByKey.get(actionsItem.parentKey) ?? null)
 		: null
-	const canActionsAddChild = Boolean(actionsItem && isContainerNode(actionsItem.node))
+	const canActionsAddChild = Boolean(
+		actionsItem && isContainerNode(actionsItem.node),
+	)
 	const canActionsInsertSibling = Boolean(
 		actionsItem?.parentSlot?.kind === 'children' && actionsParent,
 	)
-	const canActionsDuplicate = Boolean(actionsItem?.parentSlot?.kind === 'children')
-	const canActionsDelete = Boolean(actionsItem?.parentKey && actionsItem?.parentSlot)
+	const canActionsDuplicate = Boolean(
+		actionsItem?.parentSlot?.kind === 'children',
+	)
+	const canActionsDelete = Boolean(
+		actionsItem?.parentKey && actionsItem?.parentSlot,
+	)
 	const canActionsMoveUp = Boolean(
 		actionsItem?.parentSlot?.kind === 'children' &&
-			(actionsItem.parentSlot?.index ?? 0) > 0,
+		(actionsItem.parentSlot?.index ?? 0) > 0,
 	)
 	const canActionsMoveDown = Boolean(
 		actionsItem?.parentSlot?.kind === 'children' &&
-			actionsParent &&
-			isContainerNode(actionsParent.node) &&
-			(actionsItem.parentSlot?.index ?? 0) <
-				(actionsParent.node.children?.length ?? 0) - 1,
+		actionsParent &&
+		isContainerNode(actionsParent.node) &&
+		(actionsItem.parentSlot?.index ?? 0) <
+			(actionsParent.node.children?.length ?? 0) - 1,
 	)
 	const canActionsUnwrap = Boolean(
 		actionsItem &&
-			isContainerNode(actionsItem.node) &&
-			(actionsItem.node.children?.length ?? 0) === 1,
+		isContainerNode(actionsItem.node) &&
+		(actionsItem.node.children?.length ?? 0) === 1,
 	)
 	const canActionsPaste = Boolean(actionsItem && copiedNode)
 
@@ -1552,25 +1582,25 @@ function TreeView({
 				layout === 'panels'
 					? 'contents'
 					: 'grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]'
+			}
+			onKeyDownCapture={(e) => {
+				if (!hotkeysEnabled) return
+				if (isTypingTarget(e.target)) return
+
+				if (e.altKey && e.key === 'ArrowUp') {
+					e.preventDefault()
+					moveSelected('up')
+					return
 				}
-				onKeyDownCapture={(e) => {
-					if (!hotkeysEnabled) return
-					if (isTypingTarget(e.target)) return
+				if (e.altKey && e.key === 'ArrowDown') {
+					e.preventDefault()
+					moveSelected('down')
+					return
+				}
 
-					if (e.altKey && e.key === 'ArrowUp') {
-						e.preventDefault()
-						moveSelected('up')
-						return
-					}
-					if (e.altKey && e.key === 'ArrowDown') {
-						e.preventDefault()
-						moveSelected('down')
-						return
-					}
-
-					const key = e.key.toLowerCase()
-					const mod = e.metaKey || e.ctrlKey
-					if (!mod) return
+				const key = e.key.toLowerCase()
+				const mod = e.metaKey || e.ctrlKey
+				if (!mod) return
 
 				if (key === 'z' && !e.shiftKey) {
 					e.preventDefault()
@@ -1597,324 +1627,324 @@ function TreeView({
 					pasteCopied()
 					return
 				}
-					if (key === 'd') {
-						e.preventDefault()
-						duplicateSelected()
-						return
-					}
-					if (key === 'f') {
-						e.preventDefault()
-						treeFilterInputRef.current?.focus()
-						treeFilterInputRef.current?.select()
-						return
-					}
-					if (key === 'k') {
-						e.preventDefault()
-						setJumpOpen(true)
-						return
-					}
+				if (key === 'd') {
+					e.preventDefault()
+					duplicateSelected()
+					return
+				}
+				if (key === 'f') {
+					e.preventDefault()
+					treeFilterInputRef.current?.focus()
+					treeFilterInputRef.current?.select()
+					return
+				}
+				if (key === 'k') {
+					e.preventDefault()
+					setJumpOpen(true)
+					return
+				}
+			}}
+		>
+			<Dialog
+				open={jumpOpen}
+				onOpenChange={(open) => {
+					setJumpOpen(open)
+					if (!open) setJumpQuery('')
 				}}
 			>
-				<Dialog
-					open={jumpOpen}
-					onOpenChange={(open) => {
-						setJumpOpen(open)
-						if (!open) setJumpQuery('')
-					}}
-				>
-					<DialogContent className="rounded-none sm:max-w-xl">
-						<DialogHeader>
-							<DialogTitle className="font-mono uppercase tracking-widest text-sm">
-								{t('structure.jumpDialogTitle')}
-							</DialogTitle>
-							<DialogDescription className="font-mono text-xs">
-								{t('structure.jumpDialogDescription')}
-							</DialogDescription>
-						</DialogHeader>
+				<DialogContent className="rounded-none sm:max-w-xl">
+					<DialogHeader>
+						<DialogTitle className="font-mono uppercase tracking-widest text-sm">
+							{t('structure.jumpDialogTitle')}
+						</DialogTitle>
+						<DialogDescription className="font-mono text-xs">
+							{t('structure.jumpDialogDescription')}
+						</DialogDescription>
+					</DialogHeader>
 
-						<div className="space-y-2">
-							<Input
-								ref={jumpInputRef}
-								value={jumpQuery}
-								onChange={(e) => setJumpQuery(e.target.value)}
-								placeholder={t('structure.jumpDialogPlaceholder')}
-								className="rounded-none font-mono text-xs h-9"
-								onKeyDown={(e) => {
-									if (e.key === 'Escape') {
-										e.preventDefault()
-										setJumpOpen(false)
-										return
-									}
-									if (e.key === 'Enter') {
-										const first = jumpResults[0]
-										if (!first) return
-										e.preventDefault()
-										selectJumpResult(first)
-									}
-								}}
-							/>
+					<div className="space-y-2">
+						<Input
+							ref={jumpInputRef}
+							value={jumpQuery}
+							onChange={(e) => setJumpQuery(e.target.value)}
+							placeholder={t('structure.jumpDialogPlaceholder')}
+							className="rounded-none font-mono text-xs h-9"
+							onKeyDown={(e) => {
+								if (e.key === 'Escape') {
+									e.preventDefault()
+									setJumpOpen(false)
+									return
+								}
+								if (e.key === 'Enter') {
+									const first = jumpResults[0]
+									if (!first) return
+									e.preventDefault()
+									selectJumpResult(first)
+								}
+							}}
+						/>
 
-							<div className="rounded-none border border-border bg-card">
-								<div className="max-h-[340px] overflow-auto py-1">
-									{jumpQuery.trim() ? (
-										jumpResults.length > 0 ? (
-											jumpResults.map((it) => (
-												<button
-													key={it.key}
-													type="button"
-													className="flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-xs hover:bg-muted"
-													title={it.key}
-													onClick={() => selectJumpResult(it)}
-												>
-													<span className="shrink-0 text-muted-foreground">
-														{it.scene === 'cover'
-															? t('structure.cover')
-															: t('structure.post')}
-													</span>
-													<span className="min-w-0 flex-1 truncate text-foreground">
-														{it.label}
-													</span>
-													<span className="shrink-0 text-muted-foreground">
-														{it.key.slice(0, 12)}
-													</span>
-												</button>
-											))
-										) : (
-											<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
-												{t('structure.jumpDialogNoResults')}
-											</div>
-										)
+						<div className="rounded-none border border-border bg-card">
+							<div className="max-h-[340px] overflow-auto py-1">
+								{jumpQuery.trim() ? (
+									jumpResults.length > 0 ? (
+										jumpResults.map((it) => (
+											<button
+												key={it.key}
+												type="button"
+												className="flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-xs hover:bg-muted"
+												title={it.key}
+												onClick={() => selectJumpResult(it)}
+											>
+												<span className="shrink-0 text-muted-foreground">
+													{it.scene === 'cover'
+														? t('structure.cover')
+														: t('structure.post')}
+												</span>
+												<span className="min-w-0 flex-1 truncate text-foreground">
+													{it.label}
+												</span>
+												<span className="shrink-0 text-muted-foreground">
+													{it.key.slice(0, 12)}
+												</span>
+											</button>
+										))
 									) : (
 										<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
-											{t('structure.jumpDialogTypeToSearch')}
+											{t('structure.jumpDialogNoResults')}
 										</div>
-									)}
-								</div>
+									)
+								) : (
+									<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
+										{t('structure.jumpDialogTypeToSearch')}
+									</div>
+								)}
 							</div>
 						</div>
-					</DialogContent>
-					</Dialog>
-					<Dialog
-						open={Boolean(actionsItem)}
-						onOpenChange={(open) => {
-							if (open) return
-							setActionsKey(null)
-						}}
-					>
-						<DialogContent className="rounded-none sm:max-w-xl">
-							<DialogHeader>
-								<DialogTitle className="font-mono uppercase tracking-widest text-sm">
-									{t('structure.actionsDialogTitle')}
-								</DialogTitle>
-								<DialogDescription className="font-mono text-xs">
-									{t('structure.actionsDialogDescription')}
-								</DialogDescription>
-							</DialogHeader>
+					</div>
+				</DialogContent>
+			</Dialog>
+			<Dialog
+				open={Boolean(actionsItem)}
+				onOpenChange={(open) => {
+					if (open) return
+					setActionsKey(null)
+				}}
+			>
+				<DialogContent className="rounded-none sm:max-w-xl">
+					<DialogHeader>
+						<DialogTitle className="font-mono uppercase tracking-widest text-sm">
+							{t('structure.actionsDialogTitle')}
+						</DialogTitle>
+						<DialogDescription className="font-mono text-xs">
+							{t('structure.actionsDialogDescription')}
+						</DialogDescription>
+					</DialogHeader>
 
-							{actionsItem ? (
-								<div className="space-y-3">
-									<div className="rounded-none border border-border bg-card px-3 py-2">
-										<div className="font-mono text-xs text-foreground">
-											{actionsItem.label}
-										</div>
-										<div className="font-mono text-[10px] text-muted-foreground">
-											{actionsItem.key}
-										</div>
-									</div>
-
-									<div className="space-y-1">
-										<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											{t('structure.newNodeType')}
-										</Label>
-										<Select
-											value={addType}
-											onValueChange={(v) =>
-												setAddType(v as ThreadRenderTreeNode['type'])
-											}
-										>
-											<SelectTrigger className="rounded-none font-mono text-xs h-9">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												{ADD_NODE_TYPES.map((t) => (
-													<SelectItem key={t} value={t}>
-														{t}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
-
-									<div className="flex flex-wrap items-center gap-2">
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsAddChild}
-											onClick={() => {
-												quickAddChildByKey(actionsItem.key)
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.addChild')}
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsInsertSibling}
-											onClick={() => {
-												quickInsertSiblingByKey(actionsItem.key, 'before')
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.insertBefore')}
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsInsertSibling}
-											onClick={() => {
-												quickInsertSiblingByKey(actionsItem.key, 'after')
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.insertAfter')}
-										</Button>
-									</div>
-
-									<div className="flex flex-wrap items-center gap-2">
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											onClick={() => void copyByKey(actionsItem.key)}
-										>
-											{t('structure.copy')}
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsPaste}
-											onClick={() => {
-												pasteByKey(actionsItem.key)
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.paste')}
-										</Button>
-									</div>
-
-									<div className="flex flex-wrap items-center gap-2">
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsMoveUp}
-											onClick={() => {
-												quickMoveByKey(actionsItem.key, 'up')
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.moveUp')}
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsMoveDown}
-											onClick={() => {
-												quickMoveByKey(actionsItem.key, 'down')
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.moveDown')}
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsDuplicate}
-											onClick={() => {
-												quickDuplicateByKey(actionsItem.key)
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.duplicate')}
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="destructive"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsDelete}
-											onClick={() => {
-												quickDeleteByKey(actionsItem.key)
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.delete')}
-										</Button>
-									</div>
-
-									<div className="flex flex-wrap items-center gap-2">
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											onClick={() => {
-												wrapByKey(actionsItem.key, 'Box')
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.wrapBox')}
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											onClick={() => {
-												wrapByKey(actionsItem.key, 'Stack')
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.wrapStack')}
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											className="rounded-none font-mono text-xs uppercase"
-											disabled={!canActionsUnwrap}
-											onClick={() => {
-												unwrapByKey(actionsItem.key)
-												setActionsKey(null)
-											}}
-										>
-											{t('structure.unwrap')}
-										</Button>
-									</div>
+					{actionsItem ? (
+						<div className="space-y-3">
+							<div className="rounded-none border border-border bg-card px-3 py-2">
+								<div className="font-mono text-xs text-foreground">
+									{actionsItem.label}
 								</div>
-							) : null}
-						</DialogContent>
-					</Dialog>
+								<div className="font-mono text-[10px] text-muted-foreground">
+									{actionsItem.key}
+								</div>
+							</div>
 
-					<div
-						className={[
-							isStructureCollapsed ? 'h-full' : 'space-y-3',
-							structureClassName,
+							<div className="space-y-1">
+								<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{t('structure.newNodeType')}
+								</Label>
+								<Select
+									value={addType}
+									onValueChange={(v) =>
+										setAddType(v as ThreadRenderTreeNode['type'])
+									}
+								>
+									<SelectTrigger className="rounded-none font-mono text-xs h-9">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{ADD_NODE_TYPES.map((t) => (
+											<SelectItem key={t} value={t}>
+												{t}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div className="flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsAddChild}
+									onClick={() => {
+										quickAddChildByKey(actionsItem.key)
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.addChild')}
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsInsertSibling}
+									onClick={() => {
+										quickInsertSiblingByKey(actionsItem.key, 'before')
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.insertBefore')}
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsInsertSibling}
+									onClick={() => {
+										quickInsertSiblingByKey(actionsItem.key, 'after')
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.insertAfter')}
+								</Button>
+							</div>
+
+							<div className="flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									onClick={() => void copyByKey(actionsItem.key)}
+								>
+									{t('structure.copy')}
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsPaste}
+									onClick={() => {
+										pasteByKey(actionsItem.key)
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.paste')}
+								</Button>
+							</div>
+
+							<div className="flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsMoveUp}
+									onClick={() => {
+										quickMoveByKey(actionsItem.key, 'up')
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.moveUp')}
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsMoveDown}
+									onClick={() => {
+										quickMoveByKey(actionsItem.key, 'down')
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.moveDown')}
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsDuplicate}
+									onClick={() => {
+										quickDuplicateByKey(actionsItem.key)
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.duplicate')}
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="destructive"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsDelete}
+									onClick={() => {
+										quickDeleteByKey(actionsItem.key)
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.delete')}
+								</Button>
+							</div>
+
+							<div className="flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									onClick={() => {
+										wrapByKey(actionsItem.key, 'Box')
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.wrapBox')}
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									onClick={() => {
+										wrapByKey(actionsItem.key, 'Stack')
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.wrapStack')}
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-none font-mono text-xs uppercase"
+									disabled={!canActionsUnwrap}
+									onClick={() => {
+										unwrapByKey(actionsItem.key)
+										setActionsKey(null)
+									}}
+								>
+									{t('structure.unwrap')}
+								</Button>
+							</div>
+						</div>
+					) : null}
+				</DialogContent>
+			</Dialog>
+
+			<div
+				className={[
+					isStructureCollapsed ? 'h-full' : 'space-y-3',
+					structureClassName,
 				]
 					.filter(Boolean)
 					.join(' ')}
@@ -1986,58 +2016,61 @@ function TreeView({
 									</>
 								) : null}
 							</div>
-							</div>
+						</div>
 
-							<div className="flex items-center gap-2">
-								<Input
-									ref={treeFilterInputRef}
-									placeholder={t('structure.searchPlaceholder')}
-									value={treeFilter}
-									onChange={(e) => setTreeFilter(e.target.value)}
-									className="rounded-none font-mono text-xs h-8"
+						<div className="flex items-center gap-2">
+							<Input
+								ref={treeFilterInputRef}
+								placeholder={t('structure.searchPlaceholder')}
+								value={treeFilter}
+								onChange={(e) => setTreeFilter(e.target.value)}
+								className="rounded-none font-mono text-xs h-8"
+							/>
+							<Button
+								type="button"
+								size="sm"
+								variant="outline"
+								className="rounded-none font-mono text-xs h-8 px-2"
+								title={t('structure.jumpTitle')}
+								onClick={() => setJumpOpen(true)}
+							>
+								<Search className="size-3" />
+								<span className="ml-1">{t('structure.jump')}</span>
+							</Button>
+						</div>
+
+						<div className="font-mono text-[10px] text-muted-foreground">
+							{t('structure.searchHint')}
+						</div>
+
+						<div className="rounded-none border border-border bg-card">
+							<div className="max-h-[420px] overflow-auto py-2">
+								<TreeView
+									items={tree}
+									childrenByKey={childrenByKey}
+									parentByKey={parentByKey}
+									selectedKey={selectedKey}
+									onSelectedKeyChange={setSelectedKey}
+									filterText={treeFilter}
+									state={treeState}
+									onStateChange={setTreeState}
+									onQuickAddChild={quickAddChildByKey}
+									onQuickDuplicate={quickDuplicateByKey}
+									onQuickDelete={quickDeleteByKey}
+									onOpenActions={(key) => {
+										setSelectedKey(key)
+										setActionsKey(key)
+									}}
+									t={t}
 								/>
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
-									className="rounded-none font-mono text-xs h-8 px-2"
-									title={t('structure.jumpTitle')}
-									onClick={() => setJumpOpen(true)}
-								>
-									<Search className="size-3" />
-									<span className="ml-1">{t('structure.jump')}</span>
-								</Button>
 							</div>
-
-							<div className="font-mono text-[10px] text-muted-foreground">
-								{t('structure.searchHint')}
-							</div>
-
-							<div className="rounded-none border border-border bg-card">
-								<div className="max-h-[420px] overflow-auto py-2">
-									<TreeView
-										items={tree}
-										childrenByKey={childrenByKey}
-										parentByKey={parentByKey}
-										selectedKey={selectedKey}
-										onSelectedKeyChange={setSelectedKey}
-										filterText={treeFilter}
-										state={treeState}
-										onStateChange={setTreeState}
-										onQuickAddChild={quickAddChildByKey}
-										onQuickDuplicate={quickDuplicateByKey}
-										onQuickDelete={quickDeleteByKey}
-										onOpenActions={(key) => {
-											setSelectedKey(key)
-											setActionsKey(key)
-										}}
-										t={t}
-									/>
-								</div>
-							</div>
+						</div>
 
 						<div className="flex flex-wrap items-center gap-2">
-							<Select value={addType} onValueChange={(v) => setAddType(v as any)}>
+							<Select
+								value={addType}
+								onValueChange={(v) => setAddType(v as any)}
+							>
 								<SelectTrigger className="rounded-none font-mono text-xs h-9">
 									<SelectValue />
 								</SelectTrigger>
@@ -2071,9 +2104,9 @@ function TreeView({
 								{t('structure.redo')}
 							</Button>
 						</div>
-						</>
-					)}
-				</div>
+					</>
+				)}
+			</div>
 
 			<div
 				className={[
@@ -2104,10 +2137,10 @@ function TreeView({
 				) : (
 					<>
 						<div className="flex items-center justify-between gap-2">
-						<div className="flex items-center gap-2">
-							<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
- 								{t('inspector.title')}
-							</div>
+							<div className="flex items-center gap-2">
+								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									{t('inspector.title')}
+								</div>
 								{canCollapseInspector ? (
 									<Button
 										type="button"
@@ -2125,7 +2158,7 @@ function TreeView({
 						<div className="rounded-none border border-border bg-card p-4 space-y-4">
 							{!selectedNode ? (
 								<div className="font-mono text-xs text-muted-foreground">
- 									{t('inspector.selectNodeHint')}
+									{t('inspector.selectNodeHint')}
 								</div>
 							) : (
 								<>
@@ -2168,156 +2201,160 @@ function TreeView({
 									{selectedNode.type === 'Text' ? (
 										<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 											{textField(
- 												t('fields.text'),
- 												selectedNode.text,
- 												(v) =>
- 													updateSelected((n) => ({ ...(n as any), text: v })),
- 												{ placeholder: t('placeholders.text') },
- 											)}
+												t('fields.text'),
+												selectedNode.text,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), text: v })),
+												{ placeholder: t('placeholders.text') },
+											)}
 											<Select
- 												value={selectedNode.bind ?? '__none__'}
- 												onValueChange={(v) =>
- 													updateSelected((n) => ({
- 														...(n as any),
- 														bind: v === '__none__' ? undefined : v,
- 													}))
- 												}
- 											>
- 												<div className="space-y-1">
- 													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
- 														{t('fields.bind')}
- 													</Label>
- 													<SelectTrigger className="rounded-none font-mono text-xs h-8">
- 														<SelectValue />
- 													</SelectTrigger>
- 												</div>
- 												<SelectContent>
- 													<SelectItem value="__none__">{t('options.none')}</SelectItem>
- 													{(
- 														[
- 															'thread.title',
- 															'thread.source',
- 															'thread.sourceUrl',
- 															'timeline.replyIndicator',
- 															'timeline.replyIndex',
- 															'timeline.replyCount',
- 															'root.author.name',
- 															'root.author.handle',
- 															'root.plainText',
- 															'root.translations.zh-CN.plainText',
- 															'post.author.name',
- 															'post.author.handle',
- 															'post.plainText',
- 															'post.translations.zh-CN.plainText',
- 														] as const
- 													).map((b) => (
- 														<SelectItem key={b} value={b}>
- 															{b}
- 														</SelectItem>
- 													))}
- 												</SelectContent>
- 											</Select>
+												value={selectedNode.bind ?? '__none__'}
+												onValueChange={(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														bind: v === '__none__' ? undefined : v,
+													}))
+												}
+											>
+												<div className="space-y-1">
+													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														{t('fields.bind')}
+													</Label>
+													<SelectTrigger className="rounded-none font-mono text-xs h-8">
+														<SelectValue />
+													</SelectTrigger>
+												</div>
+												<SelectContent>
+													<SelectItem value="__none__">
+														{t('options.none')}
+													</SelectItem>
+													{(
+														[
+															'thread.title',
+															'thread.source',
+															'thread.sourceUrl',
+															'timeline.replyIndicator',
+															'timeline.replyIndex',
+															'timeline.replyCount',
+															'root.author.name',
+															'root.author.handle',
+															'root.plainText',
+															'root.translations.zh-CN.plainText',
+															'post.author.name',
+															'post.author.handle',
+															'post.plainText',
+															'post.translations.zh-CN.plainText',
+														] as const
+													).map((b) => (
+														<SelectItem key={b} value={b}>
+															{b}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
 
- 											{numberField(
- 												t('fields.size'),
- 												selectedNode.size,
- 												(v) =>
- 													updateSelected((n) => ({ ...(n as any), size: v })),
- 												{ min: 8, max: 120, step: 1 },
- 											)}
- 											{numberField(
- 												t('fields.weight'),
- 												selectedNode.weight,
- 												(v) =>
- 													updateSelected((n) => ({ ...(n as any), weight: v })),
- 												{ min: 100, max: 900, step: 100 },
- 											)}
- 											{numberField(
- 												t('fields.opacity'),
- 												(selectedNode as any).opacity,
- 												(v) =>
- 													updateSelected((n) => ({
- 														...(n as any),
- 														opacity: v,
- 													})),
- 												{ min: 0, max: 1, step: 0.05 },
- 											)}
- 											{numberField(
- 												t('fields.maxLines'),
- 												selectedNode.maxLines,
- 												(v) =>
- 													updateSelected((n) => ({
- 														...(n as any),
- 														maxLines: v,
- 													})),
- 												{ min: 1, max: 20, step: 1 },
- 											)}
- 											<Select
- 												value={selectedNode.align ?? '__none__'}
- 												onValueChange={(v) =>
- 													updateSelected((n) => ({
- 														...(n as any),
- 														align: v === '__none__' ? undefined : v,
- 													}))
- 												}
- 											>
- 												<div className="space-y-1">
- 													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
- 														{t('fields.align')}
- 													</Label>
- 													<SelectTrigger className="rounded-none font-mono text-xs h-8">
- 														<SelectValue />
- 													</SelectTrigger>
- 												</div>
- 												<SelectContent>
- 													<SelectItem value="__none__">{t('options.none')}</SelectItem>
- 													{(['left', 'center', 'right'] as const).map((a) => (
- 														<SelectItem key={a} value={a}>
- 															{t(`options.${a}`)}
- 														</SelectItem>
- 													))}
- 												</SelectContent>
- 											</Select>
- 											{selectField(
- 												t('fields.color'),
- 												(selectedNode as any).color,
- 												[
- 													{ value: 'primary' },
- 													{ value: 'muted' },
- 													{ value: 'accent' },
- 												],
- 												(v) =>
- 													updateSelected((n) => ({ ...(n as any), color: v })),
- 											)}
- 											{numberField(
- 												t('fields.lineHeight'),
- 												(selectedNode as any).lineHeight,
- 												(v) =>
- 													updateSelected((n) => ({
- 														...(n as any),
- 														lineHeight: v,
- 													})),
- 												{ min: 0.8, max: 3, step: 0.05 },
- 											)}
- 											{numberField(
- 												t('fields.letterSpacing'),
- 												(selectedNode as any).letterSpacing,
- 												(v) =>
- 													updateSelected((n) => ({
- 														...(n as any),
- 														letterSpacing: v,
- 													})),
- 												{ min: -2, max: 20, step: 0.1 },
- 											)}
- 											{boolField(
- 												t('fields.uppercase'),
- 												(selectedNode as any).uppercase,
- 												(v) =>
- 													updateSelected((n) => ({
- 														...(n as any),
- 														uppercase: v,
- 													})),
- 											)}
+											{numberField(
+												t('fields.size'),
+												selectedNode.size,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), size: v })),
+												{ min: 8, max: 120, step: 1 },
+											)}
+											{numberField(
+												t('fields.weight'),
+												selectedNode.weight,
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), weight: v })),
+												{ min: 100, max: 900, step: 100 },
+											)}
+											{numberField(
+												t('fields.opacity'),
+												(selectedNode as any).opacity,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														opacity: v,
+													})),
+												{ min: 0, max: 1, step: 0.05 },
+											)}
+											{numberField(
+												t('fields.maxLines'),
+												selectedNode.maxLines,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														maxLines: v,
+													})),
+												{ min: 1, max: 20, step: 1 },
+											)}
+											<Select
+												value={selectedNode.align ?? '__none__'}
+												onValueChange={(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														align: v === '__none__' ? undefined : v,
+													}))
+												}
+											>
+												<div className="space-y-1">
+													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														{t('fields.align')}
+													</Label>
+													<SelectTrigger className="rounded-none font-mono text-xs h-8">
+														<SelectValue />
+													</SelectTrigger>
+												</div>
+												<SelectContent>
+													<SelectItem value="__none__">
+														{t('options.none')}
+													</SelectItem>
+													{(['left', 'center', 'right'] as const).map((a) => (
+														<SelectItem key={a} value={a}>
+															{t(`options.${a}`)}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											{selectField(
+												t('fields.color'),
+												(selectedNode as any).color,
+												[
+													{ value: 'primary' },
+													{ value: 'muted' },
+													{ value: 'accent' },
+												],
+												(v) =>
+													updateSelected((n) => ({ ...(n as any), color: v })),
+											)}
+											{numberField(
+												t('fields.lineHeight'),
+												(selectedNode as any).lineHeight,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														lineHeight: v,
+													})),
+												{ min: 0.8, max: 3, step: 0.05 },
+											)}
+											{numberField(
+												t('fields.letterSpacing'),
+												(selectedNode as any).letterSpacing,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														letterSpacing: v,
+													})),
+												{ min: -2, max: 20, step: 0.1 },
+											)}
+											{boolField(
+												t('fields.uppercase'),
+												(selectedNode as any).uppercase,
+												(v) =>
+													updateSelected((n) => ({
+														...(n as any),
+														uppercase: v,
+													})),
+											)}
 										</div>
 									) : null}
 
@@ -2625,20 +2662,24 @@ function TreeView({
 														}))
 													}
 												>
-														<div className="space-y-1">
-															<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-																{t('fields.direction')}
-															</Label>
-															<SelectTrigger className="rounded-none font-mono text-xs h-8">
-																<SelectValue />
-															</SelectTrigger>
-														</div>
-														<SelectContent>
-															<SelectItem value="column">{t('options.column')}</SelectItem>
-															<SelectItem value="row">{t('options.row')}</SelectItem>
-														</SelectContent>
-													</Select>
-												) : null}
+													<div className="space-y-1">
+														<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+															{t('fields.direction')}
+														</Label>
+														<SelectTrigger className="rounded-none font-mono text-xs h-8">
+															<SelectValue />
+														</SelectTrigger>
+													</div>
+													<SelectContent>
+														<SelectItem value="column">
+															{t('options.column')}
+														</SelectItem>
+														<SelectItem value="row">
+															{t('options.row')}
+														</SelectItem>
+													</SelectContent>
+												</Select>
+											) : null}
 											{selectedNode.type === 'Stack'
 												? selectField(
 														'align',
@@ -2735,11 +2776,15 @@ function TreeView({
 															Pick Asset
 														</Label>
 														<SelectTrigger className="rounded-none font-mono text-xs h-8">
-														<SelectValue placeholder={t('placeholders.select')} />
+															<SelectValue
+																placeholder={t('placeholders.select')}
+															/>
 														</SelectTrigger>
 													</div>
 													<SelectContent>
-															<SelectItem value="__pick__">{t('placeholders.select')}</SelectItem>
+														<SelectItem value="__pick__">
+															{t('placeholders.select')}
+														</SelectItem>
 														{pickableAssets
 															.filter((a) =>
 																selectedNode.type === 'Image'
