@@ -237,28 +237,15 @@ function ensureAbsoluteSizeByKey(
 	})
 }
 
-export function ThreadRemotionEditorSurface({
-	thread,
-	root,
-	replies,
-	isLoading,
-	assets = [],
-	audio = null,
-	templateId,
-	templateConfig,
-	editCanvasConfig = null,
-	onEditCanvasConfigChange,
-	onEditCanvasTransaction,
-	canEditUndo,
-	canEditRedo,
-	onEditUndo,
-	onEditRedo,
-	showLayers = true,
-	showInspector = true,
-	scene,
-	externalPrimaryKey,
-	onSelectionChange,
-}: {
+export type ThreadRemotionEditorSurfaceApi = {
+	setZoom: (nextScale: number, anchorClient?: { x: number; y: number }) => void
+	zoomIn: (anchorClient?: { x: number; y: number }) => void
+	zoomOut: (anchorClient?: { x: number; y: number }) => void
+	resetView: () => void
+	fitSelection: () => void
+}
+
+export type ThreadRemotionEditorSurfaceProps = {
 	thread: DbThread | null
 	root: DbThreadPost | null
 	replies: DbThreadPost[]
@@ -288,7 +275,44 @@ export function ThreadRemotionEditorSurface({
 		primaryKey: string | null
 		primaryType: string | null
 	}) => void
-}) {
+	initialViewScale?: number
+	initialViewPan?: { x: number; y: number }
+	onViewScaleChange?: (next: number) => void
+	onViewPanChange?: (next: { x: number; y: number }) => void
+}
+
+export const ThreadRemotionEditorSurface = React.forwardRef<
+	ThreadRemotionEditorSurfaceApi,
+	ThreadRemotionEditorSurfaceProps
+>(function ThreadRemotionEditorSurface(
+	{
+		thread,
+		root,
+		replies,
+		isLoading,
+		assets = [],
+		audio = null,
+		templateId,
+		templateConfig,
+		editCanvasConfig = null,
+		onEditCanvasConfigChange,
+		onEditCanvasTransaction,
+		canEditUndo,
+		canEditRedo,
+		onEditUndo,
+		onEditRedo,
+		showLayers = true,
+		showInspector = true,
+		scene,
+		externalPrimaryKey,
+		onSelectionChange,
+		initialViewScale,
+		initialViewPan,
+		onViewScaleChange,
+		onViewPanChange,
+	},
+	ref,
+) {
 	const isClient = typeof window !== 'undefined'
 	const t = useTranslations('Threads.remotionEditor')
 	const ui = 'canvas' as const
@@ -454,15 +478,32 @@ export function ThreadRemotionEditorSurface({
 	} | null>(null)
 	const [canvasScale, setCanvasScale] = React.useState(1)
 	const [viewTool, setViewTool] = React.useState<'select' | 'pan'>('select')
-	const [viewScale, setViewScale] = React.useState(1)
+	const [viewScaleState, setViewScaleState] = React.useState(
+		() => initialViewScale ?? 1,
+	)
+	const setViewScale = React.useCallback(
+		(next: number) => {
+			setViewScaleState(next)
+			onViewScaleChange?.(next)
+		},
+		[onViewScaleChange],
+	)
+	const viewScale = viewScaleState
 	const viewScaleRef = React.useRef(1)
 	React.useEffect(() => {
 		viewScaleRef.current = viewScale
 	}, [viewScale])
-	const [viewPan, setViewPan] = React.useState<{ x: number; y: number }>({
-		x: 0,
-		y: 0,
-	})
+	const [viewPanState, setViewPanState] = React.useState<{ x: number; y: number }>(
+		() => initialViewPan ?? { x: 0, y: 0 },
+	)
+	const setViewPan = React.useCallback(
+		(next: { x: number; y: number }) => {
+			setViewPanState(next)
+			onViewPanChange?.(next)
+		},
+		[onViewPanChange],
+	)
+	const viewPan = viewPanState
 	const viewPanRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 	React.useEffect(() => {
 		viewPanRef.current = viewPan
@@ -479,6 +520,47 @@ export function ThreadRemotionEditorSurface({
 		| undefined
 	>()
 	const [isPanning, setIsPanning] = React.useState(false)
+
+	function isTypingTarget(target: EventTarget | null) {
+		if (!target || !(target as any).tagName) return false
+		const el = target as HTMLElement
+		const tag = el.tagName
+		return (
+			tag === 'INPUT' ||
+			tag === 'TEXTAREA' ||
+			tag === 'SELECT' ||
+			el.isContentEditable
+		)
+	}
+
+	const [spacePan, setSpacePan] = React.useState(false)
+	const spacePanRef = React.useRef(false)
+	React.useEffect(() => {
+		spacePanRef.current = spacePan
+	}, [spacePan])
+
+	React.useEffect(() => {
+		if (!isClient) return
+		const onKeyDown = (e: KeyboardEvent) => {
+			const isSpace = e.code === 'Space' || e.key === ' '
+			if (!isSpace) return
+			if (e.repeat) return
+			if (isTypingTarget(e.target)) return
+			setSpacePan(true)
+			e.preventDefault()
+		}
+		const onKeyUp = (e: KeyboardEvent) => {
+			const isSpace = e.code === 'Space' || e.key === ' '
+			if (!isSpace) return
+			setSpacePan(false)
+		}
+		window.addEventListener('keydown', onKeyDown, true)
+		window.addEventListener('keyup', onKeyUp, true)
+		return () => {
+			window.removeEventListener('keydown', onKeyDown, true)
+			window.removeEventListener('keyup', onKeyUp, true)
+		}
+	}, [isClient])
 
 	const [layersFilter, setLayersFilter] = React.useState('')
 	const [hiddenLayerKeys, setHiddenLayerKeys] = React.useState<string[]>([])
@@ -1014,13 +1096,13 @@ export function ThreadRemotionEditorSurface({
 			setViewScale(clamped)
 			setViewPan({ x: Math.round(nextPanX), y: Math.round(nextPanY) })
 		},
-		[],
+		[setViewPan, setViewScale],
 	)
 
 	const resetView = React.useCallback(() => {
 		setViewScale(1)
 		setViewPan({ x: 0, y: 0 })
-	}, [])
+	}, [setViewPan, setViewScale])
 
 	const fitSelection = React.useCallback(() => {
 		const wrapper = previewWrapperRef.current
@@ -1051,7 +1133,25 @@ export function ThreadRemotionEditorSurface({
 
 		setViewScale(nextScale)
 		setViewPan({ x: Math.round(nextPanX), y: Math.round(nextPanY) })
-	}, [groupBox, primaryBox])
+	}, [groupBox, primaryBox, setViewPan, setViewScale])
+
+	React.useImperativeHandle(
+		ref,
+		() => ({
+			setZoom: (nextScale, anchorClient) => {
+				setViewScaleWithAnchor(nextScale, anchorClient)
+			},
+			zoomIn: (anchorClient) => {
+				setViewScaleWithAnchor(viewScaleRef.current * 1.1, anchorClient)
+			},
+			zoomOut: (anchorClient) => {
+				setViewScaleWithAnchor(viewScaleRef.current / 1.1, anchorClient)
+			},
+			resetView,
+			fitSelection,
+		}),
+		[fitSelection, resetView, setViewScaleWithAnchor],
+	)
 
 	const applySnapMove = React.useCallback(
 		(input: {
@@ -2192,7 +2292,8 @@ export function ThreadRemotionEditorSurface({
 						{(() => {
 							const ratio =
 								template.compositionHeight / template.compositionWidth
-								const wrapperStyle: React.CSSProperties = {
+							const effectiveTool = spacePan ? 'pan' : viewTool
+							const wrapperStyle: React.CSSProperties = {
 									position: 'relative',
 									width: '100%',
 									paddingBottom: `${ratio * 100}%`,
@@ -2203,7 +2304,7 @@ export function ThreadRemotionEditorSurface({
 									cursor:
 										mode !== 'edit'
 											? 'default'
-											: viewTool === 'pan'
+											: effectiveTool === 'pan'
 											? isPanning
 												? 'grabbing'
 												: 'grab'
@@ -2227,7 +2328,7 @@ export function ThreadRemotionEditorSurface({
 										if (!wrapper) return
 
 										// Pan tool (also allow middle button)
-										if (viewTool === 'pan' || e.button === 1) {
+										if (effectiveTool === 'pan' || e.button === 1) {
 											const start = viewPanRef.current
 											panRef.current = {
 												active: true,
@@ -2571,7 +2672,7 @@ export function ThreadRemotionEditorSurface({
 											e.preventDefault()
 											return
 										}
-										if (viewTool === 'pan') return
+										if (viewTool === 'pan' || spacePanRef.current) return
 										if (!dragRef.current) {
 											const target = e.target as HTMLElement | null
 											const el = target?.closest?.(
@@ -2715,7 +2816,11 @@ export function ThreadRemotionEditorSurface({
 									}}
 									onWheelCapture={(e) => {
 										if (mode !== 'edit') return
-										const allow = viewTool === 'pan' || e.ctrlKey || e.metaKey
+										const allow =
+											viewTool === 'pan' ||
+											spacePanRef.current ||
+											e.ctrlKey ||
+											e.metaKey
 										if (!allow) return
 										const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
 										setViewScaleWithAnchor(viewScaleRef.current * factor, {
@@ -3464,4 +3569,6 @@ export function ThreadRemotionEditorSurface({
 			</CardContent>
 		</Card>
 	)
-}
+})
+
+ThreadRemotionEditorSurface.displayName = 'ThreadRemotionEditorSurface'

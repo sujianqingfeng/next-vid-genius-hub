@@ -20,7 +20,10 @@ import {
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { ThreadRemotionEditorSurface } from '~/components/business/threads/thread-remotion-editor-surface'
+import {
+	ThreadRemotionEditorSurface,
+	type ThreadRemotionEditorSurfaceApi,
+} from '~/components/business/threads/thread-remotion-editor-surface'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { Button } from '~/components/ui/button'
@@ -125,6 +128,7 @@ type ThreadTemplateCanvasToolbarProps = {
 	onPreviewModeChange: (mode: 'edit' | 'play') => void
 	zoom: number
 	onZoomChange: (next: number) => void
+	onResetView: () => void
 	focusMode: boolean
 	onToggleFocusMode: () => void
 }
@@ -137,9 +141,11 @@ function ThreadTemplateCanvasToolbar({
 	onPreviewModeChange,
 	zoom,
 	onZoomChange,
+	onResetView,
 	focusMode,
 	onToggleFocusMode,
 }: ThreadTemplateCanvasToolbarProps) {
+	const canZoom = previewMode === 'edit'
 	return (
 		<div className="shrink-0 border-b border-border bg-card/70 backdrop-blur px-3 py-2">
 			<div className="flex items-center justify-between gap-3">
@@ -220,19 +226,27 @@ function ThreadTemplateCanvasToolbar({
 							variant="ghost"
 							size="icon"
 							className="size-8 rounded-full"
-							onClick={() => onZoomChange(Math.max(0.1, zoom - 0.1))}
+							disabled={!canZoom}
+							onClick={() => onZoomChange(Math.max(0.25, zoom / 1.1))}
 							title={t('tooltips.zoomOut')}
 						>
 							<Minus className="size-4" />
 						</Button>
-						<span className="w-10 text-center text-[10px] font-mono text-muted-foreground select-none">
+						<button
+							type="button"
+							className="w-10 text-center text-[10px] font-mono text-muted-foreground select-none disabled:opacity-50"
+							disabled={!canZoom}
+							onDoubleClick={onResetView}
+							title={t('tooltips.resetView')}
+						>
 							{Math.round(zoom * 100)}%
-						</span>
+						</button>
 						<Button
 							variant="ghost"
 							size="icon"
 							className="size-8 rounded-full"
-							onClick={() => onZoomChange(Math.min(3, zoom + 0.1))}
+							disabled={!canZoom}
+							onClick={() => onZoomChange(Math.min(4, zoom * 1.1))}
 							title={t('tooltips.zoomIn')}
 						>
 							<Plus className="size-4" />
@@ -357,7 +371,22 @@ function ThreadTemplateVersionEditorRoute() {
 	const threads = threadsQuery.data?.items ?? []
 
 	const [note, setNote] = React.useState('')
-	const [zoom, setZoom] = React.useState(1.0)
+	const [canvasZoom, setCanvasZoom] = useLocalStorageState<number>(
+		'vg.threadTemplateEditor.canvasZoom.v1',
+		{
+			version: 1,
+			defaultValue: 1,
+			migrate: (stored) => {
+				const n = Number(stored)
+				if (!Number.isFinite(n)) return null
+				return Math.max(0.25, Math.min(4, n))
+			},
+		},
+	)
+
+	const canvasEditorRef = React.useRef<ThreadRemotionEditorSurfaceApi | null>(
+		null,
+	)
 
 	const [editorScene, setEditorScene] = React.useState<'cover' | 'post'>(
 		'cover',
@@ -414,13 +443,20 @@ function ThreadTemplateVersionEditorRoute() {
 		)
 	}, [selectedVersion?.id])
 
+	const selectedVersionConfigJson = React.useMemo(() => {
+		if (!selectedVersionConfig) return null
+		return JSON.stringify(selectedVersionConfig)
+	}, [selectedVersionConfig])
+
+	const visualTemplateConfigJson = React.useMemo(
+		() => JSON.stringify(visualTemplateConfig),
+		[visualTemplateConfig],
+	)
+
 	const isDirty = React.useMemo(() => {
-		if (!selectedVersionConfig) return false
-		return (
-			JSON.stringify(selectedVersionConfig) !==
-			JSON.stringify(visualTemplateConfig)
-		)
-	}, [selectedVersionConfig, visualTemplateConfig])
+		if (!selectedVersionConfigJson) return false
+		return selectedVersionConfigJson !== visualTemplateConfigJson
+	}, [selectedVersionConfigJson, visualTemplateConfigJson])
 
 	React.useEffect(() => {
 		if (!isDirty) return
@@ -446,8 +482,8 @@ function ThreadTemplateVersionEditorRoute() {
 
 	function applyVisualTemplateConfigExternal(next: ThreadTemplateConfigV1) {
 		setVisualTemplateConfig((prev) => {
-			const normalized = normalizeThreadTemplateConfig(next)
 			const txn = visualTxnRef.current
+			const normalized = txn ? next : normalizeThreadTemplateConfig(next)
 			if (!txn) {
 				setVisualTemplateHistory((h) => ({
 					past: [...h.past, prev],
@@ -460,7 +496,7 @@ function ThreadTemplateVersionEditorRoute() {
 
 	function beginVisualTemplateTxn() {
 		if (visualTxnRef.current) return
-		visualTxnRef.current = { base: visualTemplateConfig }
+		visualTxnRef.current = { base: visualTemplateConfigRef.current }
 	}
 
 	function endVisualTemplateTxn() {
@@ -468,12 +504,17 @@ function ThreadTemplateVersionEditorRoute() {
 		visualTxnRef.current = null
 		if (!txn) return
 		const before = JSON.stringify(txn.base)
-		const after = JSON.stringify(visualTemplateConfig)
+		const after = JSON.stringify(visualTemplateConfigRef.current)
 		if (before === after) return
 		setVisualTemplateHistory((h) => ({
 			past: [...h.past, txn.base],
 			future: [],
 		}))
+
+		const normalized = normalizeThreadTemplateConfig(
+			visualTemplateConfigRef.current,
+		)
+		if (JSON.stringify(normalized) !== after) setVisualTemplateConfig(normalized)
 	}
 
 	const undoVisualTemplate = React.useCallback(() => {
@@ -637,7 +678,9 @@ function ThreadTemplateVersionEditorRoute() {
 				if (!previewThreadIdRef.current) return
 				publishMutation.mutate({
 					libraryId,
-					templateConfig: visualTemplateConfigRef.current,
+					templateConfig: normalizeThreadTemplateConfig(
+						visualTemplateConfigRef.current,
+					),
 					note: noteRef.current.trim() || undefined,
 					sourceThreadId: previewThreadIdRef.current,
 				})
@@ -984,7 +1027,9 @@ function ThreadTemplateVersionEditorRoute() {
 									}
 									publishMutation.mutate({
 										libraryId,
-										templateConfig: normalizedTemplateConfig,
+										templateConfig: normalizeThreadTemplateConfig(
+											visualTemplateConfigRef.current,
+										),
 										note: note.trim() || undefined,
 										sourceThreadId: previewThreadId,
 									})
@@ -1060,16 +1105,17 @@ function ThreadTemplateVersionEditorRoute() {
 						{/* CENTER CANVAS */}
 						<div className="order-2 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1 h-full overflow-hidden flex flex-col min-h-0 bg-muted/5">
 							<ThreadTemplateCanvasToolbar
-									t={t}
-									editorScene={editorScene}
-									onEditorSceneChange={(s) => {
-										setEditorScene(s)
-										setEditorSelectedKey(`${s}:[]`)
-									}}
-									previewMode={previewMode}
-									onPreviewModeChange={(m) => setPreviewMode(m)}
-								zoom={zoom}
-								onZoomChange={(next) => setZoom(next)}
+								t={t}
+								editorScene={editorScene}
+								onEditorSceneChange={(s) => {
+									setEditorScene(s)
+									setEditorSelectedKey(`${s}:[]`)
+								}}
+								previewMode={previewMode}
+								onPreviewModeChange={(m) => setPreviewMode(m)}
+								zoom={canvasZoom}
+								onZoomChange={(next) => canvasEditorRef.current?.setZoom(next)}
+								onResetView={() => canvasEditorRef.current?.resetView()}
 								focusMode={layout.leftCollapsed && layout.rightCollapsed}
 								onToggleFocusMode={() => {
 									const isFocused = layout.leftCollapsed && layout.rightCollapsed
@@ -1101,17 +1147,12 @@ function ThreadTemplateVersionEditorRoute() {
 								/>
 
 								<div className="h-full overflow-auto">
-									<div className="min-h-full flex items-center justify-center p-8 relative">
-											<div
-												style={{
-													transform: `scale(${zoom})`,
-													transition: 'transform 0.1s ease-out',
-												}}
-												className="origin-center w-full max-w-[560px] flex flex-col items-center justify-center"
-											>
+									<div className="min-h-full flex items-center justify-center p-4 lg:p-6 relative">
+										<div className="origin-center w-full max-w-[720px] xl:max-w-[840px] 2xl:max-w-[960px] flex flex-col items-center justify-center">
 												<div className="relative w-full shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] bg-black rounded-sm overflow-hidden ring-1 ring-black/5">
 													{previewMode === 'edit' ? (
 														<ThreadRemotionEditorSurface
+															ref={canvasEditorRef}
 															thread={previewThread as any}
 															root={previewRoot as any}
 															replies={previewReplies as any}
@@ -1135,6 +1176,8 @@ function ThreadTemplateVersionEditorRoute() {
 														onEditCanvasConfigChange={(next) => {
 															applyVisualTemplateConfigExternal(next)
 														}}
+														initialViewScale={canvasZoom}
+														onViewScaleChange={setCanvasZoom}
 														onEditCanvasTransaction={(phase) => {
 															if (phase === 'start') beginVisualTemplateTxn()
 															else endVisualTemplateTxn()
