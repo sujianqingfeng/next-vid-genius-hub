@@ -1,16 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import * as React from 'react'
-import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
-import { Button } from '~/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
-import { Label } from '~/components/ui/label'
-import { Textarea } from '~/components/ui/textarea'
-import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
-import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
-import { useCloudJob } from '~/lib/hooks/useCloudJob'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+	import * as React from 'react'
+	import { toast } from 'sonner'
+	import { Loader2 } from 'lucide-react'
+	import { Button } from '~/components/ui/button'
+	import { Textarea } from '~/components/ui/textarea'
+	import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
+	import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
+	import { useCloudJob } from '~/lib/hooks/useCloudJob'
+	import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 import { DEFAULT_THREAD_TEMPLATE_ID } from '@app/remotion-project/thread-templates'
@@ -2650,24 +2648,15 @@ function ThreadDetailRoute() {
 			([root, ...replies].find((p) => p?.id === selectedPostId) ?? null)) ||
 		null
 
-	const selectedPostJson = React.useMemo(
-		() => (selectedPost ? toPrettyJson(selectedPost) : ''),
-		[selectedPost],
-	)
-	const threadJson = React.useMemo(
-		() => (thread ? toPrettyJson(thread) : ''),
-		[thread],
-	)
-	const assetsById = React.useMemo(() => {
-		const m = new Map<string, any>()
-		for (const a of assets) m.set(String(a.id), a)
-		return m
-	}, [assets])
+		const selectedPostJson = React.useMemo(
+			() => (selectedPost ? toPrettyJson(selectedPost) : ''),
+			[selectedPost],
+		)
 
-	const hasExternalMediaRefs = React.useMemo(() => {
-		const posts = [root, ...replies].filter(Boolean) as any[]
-		for (const p of posts) {
-			const avatar = String(p?.authorAvatarAssetId ?? '')
+		const hasExternalMediaRefs = React.useMemo(() => {
+			const posts = [root, ...replies].filter(Boolean) as any[]
+			for (const p of posts) {
+				const avatar = String(p?.authorAvatarAssetId ?? '')
 			if (
 				avatar.startsWith('ext:') ||
 				avatar.startsWith('http://') ||
