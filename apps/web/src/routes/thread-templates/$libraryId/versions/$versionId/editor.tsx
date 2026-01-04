@@ -1,63 +1,62 @@
+import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
+import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
+import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
-	ArrowLeft,
-	Code2,
-	History,
-	Keyboard,
-	Maximize,
-	Minimize,
-	Minus,
-	MonitorPlay,
-	MousePointer2,
-	Play,
-	Plus,
-	Redo2,
-	Save,
-	Undo2,
-	X,
+  ArrowLeft,
+  History,
+  Keyboard,
+  Maximize,
+  Minimize,
+  Minus,
+  MonitorPlay,
+  MousePointer2,
+  Play,
+  Plus,
+  Redo2,
+  Save,
+  Undo2
 } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import {
-	ThreadRemotionEditorSurface,
-	ThreadRemotionTimeline,
-	type ThreadRemotionEditorSurfaceApi,
+  ThreadRemotionEditorSurface,
+  ThreadRemotionTimeline,
+  type ThreadRemotionEditorSurfaceApi,
 } from '~/components/business/threads/thread-remotion-editor-surface'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { Button } from '~/components/ui/button'
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '~/components/ui/dialog'
 import { Input } from '~/components/ui/input'
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '~/components/ui/select'
 import { Separator } from '~/components/ui/separator'
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from '~/components/ui/tooltip'
+import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '~/components/ui/tooltip'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
-import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
-import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
-import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
 
 const SearchSchema = z.object({
 	previewThreadId: z.string().optional().default(''),
@@ -124,6 +123,10 @@ type ThreadTemplateCanvasToolbarProps = {
 	onResetView: () => void
 	focusMode: boolean
 	onToggleFocusMode: () => void
+	canUndo: boolean
+	canRedo: boolean
+	onUndo: () => void
+	onRedo: () => void
 }
 
 function ThreadTemplateCanvasToolbar({
@@ -137,6 +140,10 @@ function ThreadTemplateCanvasToolbar({
 	onResetView,
 	focusMode,
 	onToggleFocusMode,
+	canUndo,
+	canRedo,
+	onUndo,
+	onRedo,
 }: ThreadTemplateCanvasToolbarProps) {
 	const canZoom = previewMode === 'edit'
 	return (
@@ -168,6 +175,50 @@ function ThreadTemplateCanvasToolbar({
 						>
 							{t('structure.post')}
 						</button>
+					</div>
+
+					<Separator orientation="vertical" className="h-5" />
+
+					<div className="flex items-center gap-0.5">
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="size-7 rounded-md"
+									disabled={!canUndo}
+									onClick={onUndo}
+								>
+									<Undo2 className="size-3.5" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent
+								side="bottom"
+								className="font-mono text-[10px] uppercase"
+							>
+								{t('tooltips.undo')} (Cmd+Z)
+							</TooltipContent>
+						</Tooltip>
+
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="size-7 rounded-md"
+									disabled={!canRedo}
+									onClick={onRedo}
+								>
+									<Redo2 className="size-3.5" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent
+								side="bottom"
+								className="font-mono text-[10px] uppercase"
+							>
+								{t('tooltips.redo')} (Cmd+Shift+Z)
+							</TooltipContent>
+						</Tooltip>
 					</div>
 
 					<Separator orientation="vertical" className="h-5" />
@@ -408,7 +459,7 @@ function ThreadTemplateVersionEditorRoute() {
 		Boolean(previewThreadId) &&
 		Boolean(previewThread) &&
 		Boolean(previewRoot)
-	const [showAdvanced, setShowAdvanced] = React.useState(false)
+	const [rightPanelTab, setRightPanelTab] = React.useState<'properties' | 'config'>('properties')
 	const [visualTemplateConfig, setVisualTemplateConfig] =
 		React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
 	const [visualTemplateHistory, setVisualTemplateHistory] = React.useState<{
@@ -620,7 +671,6 @@ function ThreadTemplateVersionEditorRoute() {
 	}
 
 	function setRightCollapsed(collapsed: boolean) {
-		if (collapsed) setShowAdvanced(false)
 		setLayout((prev) => ({ ...prev, rightCollapsed: collapsed }))
 	}
 
@@ -890,49 +940,6 @@ function ThreadTemplateVersionEditorRoute() {
 						</Select>
 					</div>
 
-					{/* CENTER: Tools */}
-					<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 rounded-lg border border-border bg-background p-1 shadow-sm">
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-7 rounded-md"
-									disabled={visualTemplateHistory.past.length === 0}
-									onClick={undoVisualTemplate}
-								>
-									<Undo2 className="size-3.5" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent
-								side="bottom"
-								className="font-mono text-[10px] uppercase"
-							>
-								{t('tooltips.undo')} (Cmd+Z)
-							</TooltipContent>
-						</Tooltip>
-
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-7 rounded-md"
-									disabled={visualTemplateHistory.future.length === 0}
-									onClick={redoVisualTemplate}
-								>
-									<Redo2 className="size-3.5" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent
-								side="bottom"
-								className="font-mono text-[10px] uppercase"
-							>
-								{t('tooltips.redo')} (Cmd+Shift+Z)
-							</TooltipContent>
-						</Tooltip>
-					</div>
-
 					{/* RIGHT: Actions */}
 					<div className="flex items-center gap-3">
 						{/* Thread Preview Context */}
@@ -971,30 +978,6 @@ function ThreadTemplateVersionEditorRoute() {
 						<div className="h-6 w-px bg-border/60" />
 
 						<div className="flex items-center gap-1">
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={showAdvanced ? 'secondary' : 'ghost'}
-										size="icon"
-										className="size-8 rounded-sm"
-										onClick={() => {
-											const next = !showAdvanced
-											if (next && layout.rightCollapsed)
-												setRightCollapsed(false)
-											setShowAdvanced(next)
-										}}
-									>
-										<Code2 className="size-4" />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent
-									side="bottom"
-									className="font-mono text-[10px] uppercase"
-								>
-									{showAdvanced ? t('buttons.hideJson') : t('buttons.json')}
-								</TooltipContent>
-							</Tooltip>
-
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<Button
@@ -1166,6 +1149,10 @@ function ThreadTemplateVersionEditorRoute() {
 										rightCollapsed: true,
 									}))
 								}}
+								canUndo={visualTemplateHistory.past.length > 0}
+								canRedo={visualTemplateHistory.future.length > 0}
+								onUndo={undoVisualTemplate}
+								onRedo={redoVisualTemplate}
 							/>
 
 							<div className="flex-1 min-h-0 relative overflow-hidden">
@@ -1305,28 +1292,34 @@ function ThreadTemplateVersionEditorRoute() {
 
 						{/* RIGHT PANEL */}
 						<div className="order-3 lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-1 h-full overflow-hidden border-l border-border bg-card flex flex-col">
-							{showAdvanced ? (
-								<div className="flex-1 flex flex-col min-h-0">
-									<div className="flex items-center justify-between px-3 py-2 border-b border-border">
-										<span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											{t('panels.configShortTitle')}
-										</span>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="size-6"
-											onClick={() => setShowAdvanced(false)}
+							{/* Tab Header */}
+							<div className="shrink-0 border-b border-border px-3 py-2">
+								<Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as 'properties' | 'config')}>
+									<TabsList className="w-full h-8 bg-muted/50 p-0.5 rounded-md">
+										<TabsTrigger
+											value="properties"
+											className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
 										>
-											<X className="size-3" />
-										</Button>
-									</div>
-									<div className="flex-1 p-2 min-h-0">
-										<Textarea
-											value={toPrettyJson(visualTemplateConfig)}
-											readOnly
-											className="h-full w-full resize-none rounded-sm font-mono text-xs bg-muted/30 border-0 focus-visible:ring-0"
-										/>
-									</div>
+											{t('panels.propertiesShortTitle')}
+										</TabsTrigger>
+										<TabsTrigger
+											value="config"
+											className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+										>
+											{t('panels.configShortTitle')}
+										</TabsTrigger>
+									</TabsList>
+								</Tabs>
+							</div>
+
+							{/* Tab Content */}
+							{rightPanelTab === 'config' ? (
+								<div className="flex-1 p-2 min-h-0">
+									<Textarea
+										value={toPrettyJson(visualTemplateConfig)}
+										readOnly
+										className="h-full w-full resize-none rounded-sm font-mono text-xs bg-muted/30 border-0 focus-visible:ring-0"
+									/>
 								</div>
 							) : (
 								<ThreadTemplateVisualEditor
