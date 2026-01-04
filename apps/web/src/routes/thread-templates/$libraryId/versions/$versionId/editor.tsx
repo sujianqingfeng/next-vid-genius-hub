@@ -55,10 +55,7 @@ import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
 import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
-import {
-	DEFAULT_THREAD_TEMPLATE_CONFIG,
-	normalizeThreadTemplateConfig,
-} from '@app/remotion-project/thread-template-config'
+import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
 import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
 
 const SearchSchema = z.object({
@@ -110,15 +107,9 @@ function coerceJsonValue(value: unknown): unknown {
 }
 
 function toConfigFromVersionRow(row: any): ThreadTemplateConfigV1 | null {
-	const raw = coerceJsonValue(
-		row?.templateConfigResolved ?? row?.templateConfig,
-	)
+	const raw = coerceJsonValue(row?.templateConfig)
 	if (!isPlainObject(raw) || (raw as any).version !== 1) return null
-	try {
-		return normalizeThreadTemplateConfig(raw) as ThreadTemplateConfigV1
-	} catch {
-		return null
-	}
+	return raw as ThreadTemplateConfigV1
 }
 
 type ThreadTemplateCanvasToolbarProps = {
@@ -467,8 +458,6 @@ function ThreadTemplateVersionEditorRoute() {
 		setEditorSelectedKey('cover:[]')
 	}, [selectedVersion?.id])
 
-	const normalizedTemplateConfig = visualTemplateConfig
-
 	const selectedVersionConfig = React.useMemo(() => {
 		if (!selectedVersion) return null
 		return (
@@ -516,14 +505,13 @@ function ThreadTemplateVersionEditorRoute() {
 	function applyVisualTemplateConfigExternal(next: ThreadTemplateConfigV1) {
 		setVisualTemplateConfig((prev) => {
 			const txn = visualTxnRef.current
-			const normalized = txn ? next : normalizeThreadTemplateConfig(next)
 			if (!txn) {
 				setVisualTemplateHistory((h) => ({
 					past: [...h.past, prev],
 					future: [],
 				}))
 			}
-			return normalized
+			return next
 		})
 	}
 
@@ -543,12 +531,6 @@ function ThreadTemplateVersionEditorRoute() {
 			past: [...h.past, txn.base],
 			future: [],
 		}))
-
-		const normalized = normalizeThreadTemplateConfig(
-			visualTemplateConfigRef.current,
-		)
-		if (JSON.stringify(normalized) !== after)
-			setVisualTemplateConfig(normalized)
 	}
 
 	const undoVisualTemplate = React.useCallback(() => {
@@ -616,7 +598,7 @@ function ThreadTemplateVersionEditorRoute() {
 
 	const canPublish =
 		!publishDisabledReason &&
-		Boolean(normalizedTemplateConfig) &&
+		Boolean(visualTemplateConfig) &&
 		Boolean(library)
 
 	const canPublishRef = React.useRef(canPublish)
@@ -712,9 +694,7 @@ function ThreadTemplateVersionEditorRoute() {
 				if (!previewThreadIdRef.current) return
 				publishMutation.mutate({
 					libraryId,
-					templateConfig: normalizeThreadTemplateConfig(
-						visualTemplateConfigRef.current,
-					),
+					templateConfig: visualTemplateConfigRef.current,
 					note: noteRef.current.trim() || undefined,
 					sourceThreadId: previewThreadIdRef.current,
 				})
@@ -1094,9 +1074,7 @@ function ThreadTemplateVersionEditorRoute() {
 									}
 									publishMutation.mutate({
 										libraryId,
-										templateConfig: normalizeThreadTemplateConfig(
-											visualTemplateConfigRef.current,
-										),
+										templateConfig: visualTemplateConfigRef.current,
 										note: note.trim() || undefined,
 										sourceThreadId: previewThreadId,
 									})
@@ -1136,9 +1114,7 @@ function ThreadTemplateVersionEditorRoute() {
 								onStructureCollapsedChange={setLeftCollapsed}
 								value={visualTemplateConfig}
 								baselineValue={selectedVersionConfig ?? undefined}
-								onChange={(next) =>
-									setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
-								}
+								onChange={(next) => setVisualTemplateConfig(next)}
 								assets={previewAssets as any}
 								historyState={visualTemplateHistory}
 								setHistoryState={setVisualTemplateHistory}
@@ -1241,7 +1217,7 @@ function ThreadTemplateVersionEditorRoute() {
 														}
 														isLoading={previewThreadQuery.isLoading}
 														templateId={(library as any)?.templateId as any}
-														templateConfig={normalizedTemplateConfig as any}
+														templateConfig={visualTemplateConfig as any}
 														editCanvasConfig={visualTemplateConfig as any}
 														onEditCanvasConfigChange={(next) => {
 															applyVisualTemplateConfigExternal(next)
@@ -1284,7 +1260,7 @@ function ThreadTemplateVersionEditorRoute() {
 														}
 														isLoading={previewThreadQuery.isLoading}
 														templateId={(library as any)?.templateId as any}
-														templateConfig={normalizedTemplateConfig as any}
+														templateConfig={visualTemplateConfig as any}
 													/>
 												)}
 											</div>
@@ -1384,9 +1360,7 @@ function ThreadTemplateVersionEditorRoute() {
 									onPropertiesCollapsedChange={setRightCollapsed}
 									value={visualTemplateConfig}
 									baselineValue={selectedVersionConfig ?? undefined}
-									onChange={(next) =>
-										setVisualTemplateConfig(normalizeThreadTemplateConfig(next))
-									}
+									onChange={(next) => setVisualTemplateConfig(next)}
 									assets={previewAssets as any}
 									historyState={visualTemplateHistory}
 									setHistoryState={setVisualTemplateHistory}

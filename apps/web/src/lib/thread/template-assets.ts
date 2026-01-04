@@ -51,11 +51,11 @@ function collectRenderTreeAssetIds(
 }
 
 export function collectThreadTemplateAssetIds(
-	templateConfigResolved: ThreadTemplateConfigV1 | undefined,
+	templateConfig: ThreadTemplateConfigV1 | undefined,
 ): Set<string> {
 	const out = new Set<string>()
-	if (!templateConfigResolved?.scenes) return out
-	collectRenderTreeAssetIds(templateConfigResolved.scenes.cover?.root, out)
-	collectRenderTreeAssetIds(templateConfigResolved.scenes.post?.root, out)
+	if (!templateConfig?.scenes) return out
+	collectRenderTreeAssetIds(templateConfig.scenes.cover?.root, out)
+	collectRenderTreeAssetIds(templateConfig.scenes.post?.root, out)
 	return out
 }

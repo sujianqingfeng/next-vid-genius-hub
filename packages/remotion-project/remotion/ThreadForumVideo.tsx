@@ -15,10 +15,7 @@ import {
 } from 'remotion'
 import type { ThreadRenderTreeNode, ThreadVideoInputProps } from './types'
 import { formatCount } from './utils/format'
-import {
-	DEFAULT_THREAD_TEMPLATE_CONFIG,
-	normalizeThreadTemplateConfig,
-} from './thread-template-config'
+import { DEFAULT_THREAD_TEMPLATE_CONFIG } from './thread-template-config'
 
 function clamp01(v: number) {
 	if (v < 0) return 0
@@ -2528,18 +2525,16 @@ export function ThreadForumVideo({
 	replyDurationsInFrames,
 	fps,
 	templateConfig,
-	}: ThreadVideoInputProps) {
+}: ThreadVideoInputProps) {
 	const videoConfig = useVideoConfig()
 	const frame = useCurrentFrame()
-	const normalizedTemplateConfig = React.useMemo(
-		() => normalizeThreadTemplateConfig(templateConfig),
-		[templateConfig],
-	)
+	const effectiveTemplateConfig =
+		templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG
 	const coverRoot: ThreadRenderTreeNode =
-		normalizedTemplateConfig.scenes?.cover?.root ??
+		effectiveTemplateConfig.scenes?.cover?.root ??
 		DEFAULT_THREAD_TEMPLATE_CONFIG.scenes!.cover!.root!
 	const postRoot: ThreadRenderTreeNode =
-		normalizedTemplateConfig.scenes?.post?.root ??
+		effectiveTemplateConfig.scenes?.post?.root ??
 		DEFAULT_THREAD_TEMPLATE_CONFIG.scenes!.post!.root!
 	const repliesTotalDuration = replyDurationsInFrames.reduce(
 		(sum, f) => sum + f,
@@ -2567,7 +2562,7 @@ export function ThreadForumVideo({
 		Math.min(coverDurationInFrames, Math.round(fps * 0.5)),
 	)
 	const coverOpacity =
-		normalizedTemplateConfig.motion?.enabled === false
+		effectiveTemplateConfig.motion?.enabled === false
 			? 1
 			: interpolate(frame, [0, coverFadeDurationInFrames], [0, 1], {
 					extrapolateLeft: 'clamp',
@@ -2581,14 +2576,14 @@ export function ThreadForumVideo({
 	}, [coverDurationInFrames, frame, replies, replyDurationsInFrames, root])
 
 	return (
-		<AbsoluteFill
-			style={{
-				...(buildCssVars(normalizedTemplateConfig) as any),
-				background: 'var(--tf-bg)',
-				color: 'var(--tf-text)',
-				fontFamily: 'var(--tf-font-family)',
-			}}
-		>
+			<AbsoluteFill
+				style={{
+					...(buildCssVars(effectiveTemplateConfig) as any),
+					background: 'var(--tf-bg)',
+					color: 'var(--tf-text)',
+					fontFamily: 'var(--tf-font-family)',
+				}}
+			>
 			{audio?.url && bgmDurationInFrames > 0 ? (
 				<>
 					{Array.from({ length: audioLoops }).map((_, idx) => {
@@ -2610,14 +2605,14 @@ export function ThreadForumVideo({
 			) : null}
 			<Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
 				<AbsoluteFill style={{ opacity: coverOpacity }}>
-					{renderThreadTemplateNode(
-						coverRoot,
-						{
-							templateConfig: normalizedTemplateConfig,
-							scene: 'cover',
-							frame,
-							thread,
-							root,
+						{renderThreadTemplateNode(
+							coverRoot,
+							{
+								templateConfig: effectiveTemplateConfig,
+								scene: 'cover',
+								frame,
+								thread,
+								root,
 							post: root,
 							replies,
 							assets,
@@ -2634,14 +2629,14 @@ export function ThreadForumVideo({
 				from={coverDurationInFrames}
 				durationInFrames={mainDuration}
 			>
-				{renderThreadTemplateNode(
-					postRoot,
-					{
-						templateConfig: normalizedTemplateConfig,
-						scene: 'post',
-						frame,
-						thread,
-						root,
+					{renderThreadTemplateNode(
+						postRoot,
+						{
+							templateConfig: effectiveTemplateConfig,
+							scene: 'post',
+							frame,
+							thread,
+							root,
 						post: activePost,
 						replies,
 						assets,

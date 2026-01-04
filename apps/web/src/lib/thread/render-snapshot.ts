@@ -1,9 +1,6 @@
 import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
 import type { ThreadVideoInputProps } from '@app/remotion-project/types'
-import {
-	THREAD_TEMPLATE_COMPILE_VERSION,
-	normalizeThreadTemplateConfig,
-} from '@app/remotion-project/thread-template-config'
+import { THREAD_TEMPLATE_COMPILE_VERSION } from '@app/remotion-project/thread-template-config'
 import { getThreadTemplate } from '@app/remotion-project/thread-templates'
 import { bucketPaths } from '@app/media-domain'
 import { and, asc, eq, inArray } from 'drizzle-orm'
@@ -81,10 +78,8 @@ export async function buildThreadRenderSnapshot(input: {
 	})
 	if (!thread) throw new Error('Thread not found')
 
-	const templateConfigResolved =
-		input.templateConfig === undefined
-			? undefined
-			: normalizeThreadTemplateConfig(input.templateConfig)
+	const templateConfig =
+		input.templateConfig === undefined ? undefined : (input.templateConfig as any)
 
 	let audio: ThreadVideoInputProps['audio'] | undefined = undefined
 	if (thread.audioAssetId) {
@@ -136,12 +131,12 @@ export async function buildThreadRenderSnapshot(input: {
 			data: { text: firstTextBlock(root.contentBlocks) },
 		},
 	]) as any
-	const rootPlain = root.plainText || blocksToPlainText(rootBlocks)
+		const rootPlain = root.plainText || blocksToPlainText(rootBlocks)
 
-	const referencedAssetIds = new Set<string>()
-	for (const id of collectThreadTemplateAssetIds(templateConfigResolved)) {
-		referencedAssetIds.add(id)
-	}
+		const referencedAssetIds = new Set<string>()
+		for (const id of collectThreadTemplateAssetIds(templateConfig)) {
+			referencedAssetIds.add(id)
+		}
 
 	for (const p of posts) {
 		if (p.authorAvatarAssetId) referencedAssetIds.add(p.authorAvatarAssetId)
@@ -192,9 +187,7 @@ export async function buildThreadRenderSnapshot(input: {
 	}
 
 	const templateConfigJson =
-		templateConfigResolved === undefined
-			? null
-			: stableStringify(templateConfigResolved)
+		templateConfig === undefined ? null : stableStringify(templateConfig)
 	const templateConfigHash = templateConfigJson
 		? await sha256Hex(templateConfigJson)
 		: null
@@ -236,12 +229,10 @@ export async function buildThreadRenderSnapshot(input: {
 		assets: Object.keys(assetsMap).length > 0 ? assetsMap : undefined,
 		coverDurationInFrames: timeline.coverDurationInFrames,
 		replyDurationsInFrames: timeline.commentDurationsInFrames,
-		fps: REMOTION_FPS,
-		templateConfig:
-			templateConfigResolved === undefined
-				? undefined
-				: (templateConfigResolved as any),
-	}
+			fps: REMOTION_FPS,
+			templateConfig:
+				templateConfig === undefined ? undefined : (templateConfig as any),
+		}
 
 	const key = bucketPaths.inputs.comments(thread.id, { title: thread.title })
 	const compileVersion =
@@ -250,17 +241,16 @@ export async function buildThreadRenderSnapshot(input: {
 	await putObjectByKey(
 		key,
 		'application/json',
-		JSON.stringify({
-			kind: 'thread-render-snapshot',
-			threadId: thread.id,
-			jobId: input.jobId,
-			templateId: input.templateId,
-			templateConfigResolved: templateConfigResolved ?? null,
-			templateConfigHash,
-			compileVersion,
-			inputProps,
-		}),
-	)
+			JSON.stringify({
+				kind: 'thread-render-snapshot',
+				threadId: thread.id,
+				jobId: input.jobId,
+				templateId: input.templateId,
+				templateConfigHash,
+				compileVersion,
+				inputProps,
+			}),
+		)
 
 	return { key, inputProps }
 }

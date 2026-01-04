@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeThreadTemplateConfig } from '@app/remotion-project/thread-template-config'
 import { collectThreadTemplateAssetIds } from '~/lib/thread/template-assets'
 
 describe('collectThreadTemplateAssetIds', () => {
 	it('collects Background/Image/Video assetId references', () => {
-		const resolved = normalizeThreadTemplateConfig({
+		const resolved = {
 			version: 1,
 			scenes: {
 				cover: { root: { type: 'Background', assetId: 'asset_bg' } },
@@ -18,14 +17,14 @@ describe('collectThreadTemplateAssetIds', () => {
 					},
 				},
 			},
-		})
+		} as any
 
-	const ids = collectThreadTemplateAssetIds(resolved)
-	expect([...ids].sort()).toEqual(['asset_bg', 'asset_img', 'asset_vid'])
-})
+		const ids = collectThreadTemplateAssetIds(resolved)
+		expect([...ids].sort()).toEqual(['asset_bg', 'asset_img', 'asset_vid'])
+	})
 
 	it('collects assetId references from Repeat(replies)', () => {
-		const resolved = normalizeThreadTemplateConfig({
+		const resolved = {
 			version: 1,
 			scenes: {
 				post: {
@@ -38,7 +37,7 @@ describe('collectThreadTemplateAssetIds', () => {
 					},
 				},
 			},
-		})
+		} as any
 
 		expect([...collectThreadTemplateAssetIds(resolved)].sort()).toEqual([
 			'asset_repeat_img',
@@ -46,7 +45,7 @@ describe('collectThreadTemplateAssetIds', () => {
 	})
 
 	it('ignores placeholders and external urls', () => {
-		const resolved = normalizeThreadTemplateConfig({
+		const resolved = {
 			version: 1,
 			scenes: {
 				cover: {
@@ -59,7 +58,7 @@ describe('collectThreadTemplateAssetIds', () => {
 					},
 				},
 			},
-		})
+		} as any
 
 		expect([...collectThreadTemplateAssetIds(resolved)]).toEqual([])
 	})

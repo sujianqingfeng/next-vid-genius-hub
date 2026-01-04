@@ -1,0 +1,1 @@
+ALTER TABLE `thread_template_versions` DROP COLUMN `template_config_resolved`;

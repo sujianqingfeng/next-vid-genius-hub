@@ -58,7 +58,7 @@
 验收点：
 
 - `thread-template-config.ts` 不再出现 `Builtin` 字样（除非仅在 docs 注释里，建议也删）。
-- `normalizeThreadTemplateConfig()` 返回的 `scenes.*.root` 永远是纯原语树（或回退默认）。
+- `DEFAULT_THREAD_TEMPLATE_CONFIG.scenes.*.root` 永远是纯原语树（且渲染侧缺失/非法 config 时回退默认）。
 
 ### 3) Remotion 渲染器删除 Builtin 分支
 
@@ -154,4 +154,3 @@
 - `packages/remotion-project/remotion/ThreadForumVideo.tsx` 不再渲染 Builtin。
 - Web 编辑器/threads 页面不再生成 Builtin JSON。
 - 全仓 `rg -n \"type:\\s*'Builtin'\"` 为 0（允许 docs 内出现，用于历史说明也可接受）。
-

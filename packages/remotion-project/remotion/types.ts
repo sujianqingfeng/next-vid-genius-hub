@@ -292,7 +292,7 @@ export type ThreadRenderTreeNode =
 				 * Optional scroll/highlight is time-driven by `replyDurationsInFrames`.
 				 */
 				source?: 'replies'
-				/** Limits rendered items for safety/perf (clamped in normalize). */
+				/** Limits rendered items for safety/perf (clamped at render time). */
 				maxItems?: number
 				gap?: number
 				wrapItemRoot?: boolean

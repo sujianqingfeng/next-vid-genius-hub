@@ -24,7 +24,6 @@ import {
 	DEFAULT_THREAD_TEMPLATE_ID,
 	THREAD_TEMPLATES,
 } from '@app/remotion-project/thread-templates'
-import { normalizeThreadTemplateConfig } from '@app/remotion-project/thread-template-config'
 import { ingestThreadAssets } from '~/lib/thread/server/asset-ingest'
 import {
 	translateAllThreadPosts,
@@ -85,9 +84,15 @@ export const byId = os
 			}
 		}
 
-		if (thread.templateConfig != null) {
-			const resolved = normalizeThreadTemplateConfig(thread.templateConfig)
-			for (const id of collectThreadTemplateAssetIds(resolved)) assetIds.add(id)
+		if (
+			thread.templateConfig &&
+			typeof thread.templateConfig === 'object' &&
+			!Array.isArray(thread.templateConfig) &&
+			(thread.templateConfig as any).version === 1
+		) {
+			for (const id of collectThreadTemplateAssetIds(thread.templateConfig as any)) {
+				assetIds.add(id)
+			}
 		}
 
 		const referencedAssetIds = [...assetIds]

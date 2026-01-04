@@ -15,7 +15,6 @@ import { queryOrpc } from '~/lib/orpc/client'
 import { DEFAULT_THREAD_TEMPLATE_ID } from '@app/remotion-project/thread-templates'
 import {
 	DEFAULT_THREAD_TEMPLATE_CONFIG,
-	normalizeThreadTemplateConfig,
 } from '@app/remotion-project/thread-template-config'
 
 export const Route = createFileRoute('/threads/$id/')({
@@ -2907,13 +2906,7 @@ function ThreadDetailRoute() {
 
 	const normalizedTemplateConfig = React.useMemo(() => {
 		if (!thread) return null
-		try {
-			return normalizeThreadTemplateConfig(
-				thread.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
-			)
-		} catch {
-			return DEFAULT_THREAD_TEMPLATE_CONFIG
-		}
+		return thread.templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG
 	}, [thread?.id, thread?.templateConfig])
 
 	return (

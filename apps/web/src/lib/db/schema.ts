@@ -539,8 +539,6 @@ export const threadTemplateVersions = sqliteTable(
 		sourceThreadId: text('source_thread_id'),
 		// User-provided raw config for editing (must be v1 for now)
 		templateConfig: text('template_config', { mode: 'json' }),
-		// Normalized/resolved config used for rendering
-		templateConfigResolved: text('template_config_resolved', { mode: 'json' }),
 		templateConfigHash: text('template_config_hash'),
 		compileVersion: integer('compile_version').notNull().default(1),
 		createdAt: integer('created_at', { mode: 'timestamp' })

@@ -4,7 +4,6 @@ import type { ThreadTemplateConfigV1, ThreadVideoInputProps } from '../types'
 import {
 	DEFAULT_THREAD_TEMPLATE_CONFIG,
 	THREAD_TEMPLATE_COMPILE_VERSION,
-	normalizeThreadTemplateConfig,
 } from '../thread-template-config'
 
 export type ThreadTemplateId = 'thread-forum'
@@ -18,7 +17,6 @@ export interface ThreadTemplateDef {
 	compositionWidth: number
 	compositionHeight: number
 	defaultConfig: ThreadTemplateConfigV1
-	normalizeConfig: (raw: unknown) => ThreadTemplateConfigV1
 	compileVersion: number
 }
 
@@ -32,7 +30,6 @@ export const THREAD_TEMPLATES: Record<ThreadTemplateId, ThreadTemplateDef> = {
 		compositionWidth: 1920,
 		compositionHeight: 1080,
 		defaultConfig: DEFAULT_THREAD_TEMPLATE_CONFIG,
-		normalizeConfig: normalizeThreadTemplateConfig,
 		compileVersion: THREAD_TEMPLATE_COMPILE_VERSION,
 	},
 }

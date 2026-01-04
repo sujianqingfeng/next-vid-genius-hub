@@ -4,10 +4,7 @@ import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
 import { getDb, schema } from '~/lib/db'
 import { createId } from '~/lib/utils/id'
-import {
-	THREAD_TEMPLATE_COMPILE_VERSION,
-	normalizeThreadTemplateConfig,
-} from '@app/remotion-project/thread-template-config'
+import { THREAD_TEMPLATE_COMPILE_VERSION } from '@app/remotion-project/thread-template-config'
 import { getThreadTemplate } from '@app/remotion-project/thread-templates'
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -171,18 +168,13 @@ export const create = os
 			throw new Error(`Unknown templateId: ${input.templateId}`)
 		}
 
-		assertV1Config(input.templateConfig)
-		assertJsonSize(input.templateConfig, 'templateConfig')
+			assertV1Config(input.templateConfig)
+			assertJsonSize(input.templateConfig, 'templateConfig')
 
-		const templateConfigResolved = normalizeThreadTemplateConfig(
-			input.templateConfig,
-		)
-		assertJsonSize(templateConfigResolved, 'templateConfigResolved')
-
-		const templateConfigJson = stableStringify(templateConfigResolved)
-		const templateConfigHash = templateConfigJson
-			? await sha256Hex(templateConfigJson)
-			: null
+			const templateConfigJson = stableStringify(input.templateConfig)
+			const templateConfigHash = templateConfigJson
+				? await sha256Hex(templateConfigJson)
+				: null
 
 		const compileVersion =
 			getThreadTemplate(input.templateId)?.compileVersion ??
@@ -200,18 +192,17 @@ export const create = os
 			updatedAt: new Date(),
 		})
 
-		await db.insert(schema.threadTemplateVersions).values({
-			id: versionId,
-			userId,
-			libraryId,
-			version: 1,
-			note: input.note ?? null,
-			sourceThreadId: input.sourceThreadId ?? null,
-			templateConfig: input.templateConfig,
-			templateConfigResolved,
-			templateConfigHash,
-			compileVersion,
-		})
+			await db.insert(schema.threadTemplateVersions).values({
+				id: versionId,
+				userId,
+				libraryId,
+				version: 1,
+				note: input.note ?? null,
+				sourceThreadId: input.sourceThreadId ?? null,
+				templateConfig: input.templateConfig,
+				templateConfigHash,
+				compileVersion,
+			})
 
 		return {
 			libraryId,
@@ -244,18 +235,13 @@ export const addVersion = os
 		})
 		if (!lib) throw new Error('Template library not found')
 
-		assertV1Config(input.templateConfig)
-		assertJsonSize(input.templateConfig, 'templateConfig')
+			assertV1Config(input.templateConfig)
+			assertJsonSize(input.templateConfig, 'templateConfig')
 
-		const templateConfigResolved = normalizeThreadTemplateConfig(
-			input.templateConfig,
-		)
-		assertJsonSize(templateConfigResolved, 'templateConfigResolved')
-
-		const templateConfigJson = stableStringify(templateConfigResolved)
-		const templateConfigHash = templateConfigJson
-			? await sha256Hex(templateConfigJson)
-			: null
+			const templateConfigJson = stableStringify(input.templateConfig)
+			const templateConfigHash = templateConfigJson
+				? await sha256Hex(templateConfigJson)
+				: null
 
 		const compileVersion =
 			getThreadTemplate(String(lib.templateId))?.compileVersion ??
@@ -277,18 +263,17 @@ export const addVersion = os
 		const nextVersion = (last ? Number(last.version) : 0) + 1
 		const versionId = createId()
 
-		await db.insert(schema.threadTemplateVersions).values({
-			id: versionId,
-			userId,
-			libraryId: input.libraryId,
-			version: nextVersion,
-			note: input.note ?? null,
-			sourceThreadId: input.sourceThreadId ?? null,
-			templateConfig: input.templateConfig,
-			templateConfigResolved,
-			templateConfigHash,
-			compileVersion,
-		})
+			await db.insert(schema.threadTemplateVersions).values({
+				id: versionId,
+				userId,
+				libraryId: input.libraryId,
+				version: nextVersion,
+				note: input.note ?? null,
+				sourceThreadId: input.sourceThreadId ?? null,
+				templateConfig: input.templateConfig,
+				templateConfigHash,
+				compileVersion,
+			})
 
 		await db
 			.update(schema.threadTemplateLibrary)
@@ -346,19 +331,18 @@ export const rollback = os
 		const note =
 			input.note ?? `Rollback to v${Number(from.version)} (${String(from.id)})`
 
-		await db.insert(schema.threadTemplateVersions).values({
-			id: versionId,
-			userId,
-			libraryId: String(from.libraryId),
-			version: nextVersion,
-			note,
-			sourceThreadId: from.sourceThreadId ?? null,
-			templateConfig: from.templateConfig ?? null,
-			templateConfigResolved: from.templateConfigResolved ?? null,
-			templateConfigHash: from.templateConfigHash ?? null,
-			compileVersion:
-				Number(from.compileVersion) || THREAD_TEMPLATE_COMPILE_VERSION,
-		})
+			await db.insert(schema.threadTemplateVersions).values({
+				id: versionId,
+				userId,
+				libraryId: String(from.libraryId),
+				version: nextVersion,
+				note,
+				sourceThreadId: from.sourceThreadId ?? null,
+				templateConfig: from.templateConfig ?? null,
+				templateConfigHash: from.templateConfigHash ?? null,
+				compileVersion:
+					Number(from.compileVersion) || THREAD_TEMPLATE_COMPILE_VERSION,
+			})
 
 		await db
 			.update(schema.threadTemplateLibrary)
@@ -409,20 +393,13 @@ export const applyToThread = os
 		})
 		if (!lib) throw new Error('Template library not found')
 
-		const templateConfigResolved =
-			version.templateConfigResolved ??
-			(version.templateConfig != null
-				? normalizeThreadTemplateConfig(version.templateConfig)
-				: null)
-
-		await db
-			.update(schema.threads)
-			.set({
-				templateId: String(lib.templateId),
-				// Apply the normalized/resolved config to ensure preview/render determinism.
-				templateConfig: templateConfigResolved,
-				updatedAt: new Date(),
-			})
+			await db
+				.update(schema.threads)
+				.set({
+					templateId: String(lib.templateId),
+					templateConfig: version.templateConfig ?? null,
+					updatedAt: new Date(),
+				})
 			.where(
 				and(
 					eq(schema.threads.userId, userId),
