@@ -54,7 +54,6 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
-import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
 import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
 import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
 
@@ -387,7 +386,6 @@ function ThreadTemplateVersionEditorRoute() {
 		React.useState<string>('cover:[]')
 
 	const [previewMode, setPreviewMode] = React.useState<'edit' | 'play'>('edit')
-	const [editFrame, setEditFrame] = React.useState(0)
 	const [showAdvanced, setShowAdvanced] = React.useState(false)
 	const [visualTemplateConfig, setVisualTemplateConfig] =
 		React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
@@ -411,37 +409,6 @@ function ThreadTemplateVersionEditorRoute() {
 	React.useEffect(() => {
 		visualTemplateHistoryRef.current = visualTemplateHistory
 	}, [visualTemplateHistory])
-
-	const previewTimeline = React.useMemo(() => {
-		const commentsForTiming = previewReplies.map((r: any) => ({
-			id: r.id,
-			author: r.authorName,
-			content: r.plainText,
-			likes: Number(r.metrics?.likes ?? 0) || 0,
-			replyCount: 0,
-		}))
-		return buildCommentTimeline(commentsForTiming, REMOTION_FPS)
-	}, [previewReplies])
-
-	const totalMaxFrame = Math.max(0, previewTimeline.totalDurationInFrames - 1)
-	const coverEndFrame = Math.min(
-		totalMaxFrame,
-		Math.max(0, previewTimeline.coverDurationInFrames - 1),
-	)
-	const postStartFrame = Math.min(
-		totalMaxFrame,
-		Math.max(0, previewTimeline.coverDurationInFrames),
-	)
-	const postEndFrame = totalMaxFrame
-
-	const timelineMin = editorScene === 'post' ? postStartFrame : 0
-	const timelineMax = editorScene === 'post' ? postEndFrame : coverEndFrame
-	const safeTimelineMax = Math.max(timelineMin, timelineMax)
-	const timelineFrame = Math.min(Math.max(editFrame, timelineMin), safeTimelineMax)
-	const canScrubTimeline =
-		previewMode === 'edit' &&
-		Boolean(previewThread && previewRoot) &&
-		!previewThreadQuery.isLoading
 
 	function syncEditorFromVersion(next: any) {
 		const base = toConfigFromVersionRow(next) ?? DEFAULT_THREAD_TEMPLATE_CONFIG
@@ -1202,8 +1169,6 @@ function ThreadTemplateVersionEditorRoute() {
 														replies={previewReplies as any}
 														scene={editorScene}
 														assets={previewAssets as any}
-														externalEditFrame={editFrame}
-														onEditFrameChange={setEditFrame}
 														audio={
 															previewAudio?.url &&
 															previewAudio?.asset?.durationMs
@@ -1285,30 +1250,6 @@ function ThreadTemplateVersionEditorRoute() {
 									) : null}
 								</div>
 							</div>
-
-							{previewMode === 'edit' ? (
-								<div className="shrink-0 border-t border-border bg-card/70 backdrop-blur px-3 py-2">
-									<div className="flex items-center gap-3">
-										<div className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											{editorScene === 'post'
-												? t('structure.post')
-												: t('structure.cover')}
-										</div>
-										<input
-											type="range"
-											min={timelineMin}
-											max={safeTimelineMax}
-											value={timelineFrame}
-											disabled={!canScrubTimeline}
-											onChange={(e) => setEditFrame(Number(e.target.value))}
-											className="w-full"
-										/>
-										<div className="shrink-0 tabular-nums font-mono text-[10px] text-muted-foreground">
-											{timelineFrame}/{safeTimelineMax}
-										</div>
-									</div>
-								</div>
-							) : null}
 						</div>
 
 						{/* RIGHT RESIZER */}
