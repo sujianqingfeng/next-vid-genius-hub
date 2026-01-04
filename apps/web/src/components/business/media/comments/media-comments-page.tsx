@@ -92,6 +92,14 @@ function writeLocalStorage(key: string, value: string | null) {
 	}
 }
 
+function safeParseInt(value: string, fallback: number): number {
+	const normalized = value.trim()
+	if (!normalized) return fallback
+	if (!/^-?\d+$/.test(normalized)) return fallback
+	const parsed = Number.parseInt(normalized, 10)
+	return Number.isFinite(parsed) ? parsed : fallback
+}
+
 function resolveAvatarFallback(author?: string) {
 	const value = author?.trim() ?? ''
 	if (!value) return '?'
