@@ -45,7 +45,6 @@ type AssetRow = {
 
 type ParentSlot =
 	| { kind: 'children'; index: number }
-	| { kind: 'rootRoot' }
 	| { kind: 'itemRoot' }
 
 type TreeItem = {
@@ -74,7 +73,6 @@ const ADD_NODE_TYPES: Array<ThreadRenderTreeNode['type']> = [
 	'Background',
 	'Spacer',
 	'Divider',
-	'Builtin',
 ]
 
 function pathKey(scene: SceneKey, path: NodePath): string {
@@ -118,7 +116,6 @@ function summarizeNode(node: ThreadRenderTreeNode): string {
 			: node.color
 				? `Background · ${String(node.color).slice(0, 16)}`
 				: 'Background'
-	if (node.type === 'Builtin') return `Builtin · ${node.kind}`
 	if (node.type === 'Repeat')
 		return `Repeat · ${(node.source ?? 'replies') === 'replies' ? 'replies' : String(node.source)}`
 	return node.type
@@ -135,23 +132,6 @@ function getChildEntries(
 			out.push({ slot: { kind: 'children', index: i }, child: children[i]! })
 	}
 
-	if (node.type === 'Builtin' && node.kind === 'repliesList') {
-		if (node.rootRoot)
-			out.push({ slot: { kind: 'rootRoot' }, child: node.rootRoot })
-		if (node.itemRoot)
-			out.push({ slot: { kind: 'itemRoot' }, child: node.itemRoot })
-	}
-
-	if (node.type === 'Builtin' && node.kind === 'repliesListRootPost') {
-		if (node.rootRoot)
-			out.push({ slot: { kind: 'rootRoot' }, child: node.rootRoot })
-	}
-
-	if (node.type === 'Builtin' && node.kind === 'repliesListReplies') {
-		if (node.itemRoot)
-			out.push({ slot: { kind: 'itemRoot' }, child: node.itemRoot })
-	}
-
 	if (node.type === 'Repeat') {
 		out.push({ slot: { kind: 'itemRoot' }, child: node.itemRoot })
 	}
@@ -161,7 +141,6 @@ function getChildEntries(
 
 function pathForSlot(path: NodePath, slot: ParentSlot): NodePath {
 	if (slot.kind === 'children') return [...path, 'children', slot.index]
-	if (slot.kind === 'rootRoot') return [...path, 'rootRoot']
 	return [...path, 'itemRoot']
 }
 
@@ -181,8 +160,8 @@ function getNodeAtPath(
 			i += 1
 			continue
 		}
-		if (seg === 'rootRoot' || seg === 'itemRoot') {
-			cur = cur?.[seg]
+		if (seg === 'itemRoot') {
+			cur = cur?.itemRoot
 			continue
 		}
 		return null
@@ -208,25 +187,11 @@ function updateNodeAtPath(
 		return { ...(root as any), children }
 	}
 
-	if (seg === 'rootRoot' || seg === 'itemRoot') {
-		if (seg === 'rootRoot') {
-			if (root.type !== 'Builtin') return root
-			const child = (root as any)[seg] as ThreadRenderTreeNode | undefined
-			if (!child) return root
-			return {
-				...(root as any),
-				[seg]: updateNodeAtPath(child, path.slice(1), updater),
-			}
-		}
-
-		if (seg === 'itemRoot') {
-			if (root.type !== 'Builtin' && root.type !== 'Repeat') return root
-			const child = (root as any)[seg] as ThreadRenderTreeNode | undefined
-			if (!child) return root
-			return {
-				...(root as any),
-				[seg]: updateNodeAtPath(child, path.slice(1), updater),
-			}
+	if (seg === 'itemRoot') {
+		if (root.type !== 'Repeat') return root
+		return {
+			...(root as any),
+			itemRoot: updateNodeAtPath(root.itemRoot, path.slice(1), updater),
 		}
 	}
 
@@ -252,13 +217,7 @@ function setNodeSlot(
 		children[slot.index] = nextChild as any
 		return { ...(root as any), children }
 	}
-	if (slot.kind === 'rootRoot') {
-		if (root.type !== 'Builtin') return root
-		return { ...(root as any), rootRoot: nextChild }
-	}
 	if (slot.kind === 'itemRoot') {
-		if (root.type === 'Builtin')
-			return { ...(root as any), itemRoot: nextChild }
 		if (root.type === 'Repeat') {
 			if (!nextChild) return root
 			return { ...(root as any), itemRoot: nextChild }
@@ -400,10 +359,10 @@ function createDefaultNode(
 				thickness: 3,
 				radius: 0,
 				opacity: 1,
-			},
-			itemRoot: { type: 'Text', bind: 'post.plainText', maxLines: 10 },
-		}
-	return { type: 'Builtin', kind: 'cover' }
+				},
+				itemRoot: { type: 'Text', bind: 'post.plainText', maxLines: 10 },
+			}
+	return { type: 'Text', text: 'Text', size: 28, weight: 700 }
 }
 
 function buildTree(scene: SceneKey, root: ThreadRenderTreeNode): TreeItem[] {
@@ -1046,10 +1005,7 @@ export function ThreadTemplateVisualEditor({
 	}, [assets])
 
 	function createNodeToAdd(): ThreadRenderTreeNode {
-		if (addType !== 'Builtin') return createDefaultNode(addType)
-		return scene === 'cover'
-			? { type: 'Builtin', kind: 'cover' }
-			: { type: 'Builtin', kind: 'repliesList' }
+		return createDefaultNode(addType)
 	}
 
 	function updateSceneRoot(nextRoot: ThreadRenderTreeNode) {
@@ -3022,277 +2978,12 @@ export function ThreadTemplateVisualEditor({
 													updateSelected((n) => ({ ...(n as any), origin: v })),
 											)}
 										</div>
-									) : null}
+										) : null}
 
-									{selectedNode.type === 'Builtin' ? (
-										<div className="space-y-3">
-											<Select
-												value={selectedNode.kind}
-												onValueChange={(v) =>
-													updateSelected((n) => ({ ...(n as any), kind: v }))
-												}
-											>
-												<div className="space-y-1">
-													<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-														kind
-													</Label>
-													<SelectTrigger className="rounded-none font-mono text-xs h-8">
-														<SelectValue />
-													</SelectTrigger>
-												</div>
-												<SelectContent>
-													{(
-														[
-															'cover',
-															'repliesList',
-															'repliesListHeader',
-															'repliesListRootPost',
-															'repliesListReplies',
-														] as const
-													).map((k) => (
-														<SelectItem key={k} value={k}>
-															{k}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-											{selectedNode.kind === 'repliesList' ||
-											selectedNode.kind === 'repliesListRootPost' ? (
-												<div className="space-y-2">
-													<div className="flex flex-wrap items-center justify-between gap-2">
-														<div className="font-mono text-xs text-muted-foreground">
-															rootRoot
-														</div>
-														<div className="flex flex-wrap items-center gap-2">
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase"
-																disabled={
-																	(selectedNode as any).rootRoot != null
-																}
-																onClick={() =>
-																	updateSelected((n) => ({
-																		...(n as any),
-																		rootRoot: createDefaultNode('Stack'),
-																	}))
-																}
-															>
-																{t('actions.add')}
-															</Button>
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase"
-																disabled={
-																	(selectedNode as any).rootRoot == null
-																}
-																onClick={() => {
-																	if (!selected) return
-																	setSelectedKey(
-																		pathKey(scene, [
-																			...selected.path,
-																			'rootRoot',
-																		]),
-																	)
-																}}
-															>
-																{t('actions.select')}
-															</Button>
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase"
-																disabled={
-																	(selectedNode as any).rootRoot == null
-																}
-																onClick={() =>
-																	updateSelected((n) => ({
-																		...(n as any),
-																		rootRoot: undefined,
-																	}))
-																}
-															>
-																{t('actions.clear')}
-															</Button>
-														</div>
-													</div>
-													{boolField(
-														'wrapRootRoot',
-														(selectedNode as any).wrapRootRoot,
-														(v) =>
-															updateSelected((n) => ({
-																...(n as any),
-																wrapRootRoot: v,
-															})),
-													)}
-												</div>
-											) : null}
-
-											{selectedNode.kind === 'repliesList' ||
-											selectedNode.kind === 'repliesListReplies' ? (
-												<div className="space-y-2">
-													<div className="flex flex-wrap items-center justify-between gap-2">
-														<div className="font-mono text-xs text-muted-foreground">
-															itemRoot
-														</div>
-														<div className="flex flex-wrap items-center gap-2">
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase"
-																disabled={
-																	(selectedNode as any).itemRoot != null
-																}
-																onClick={() =>
-																	updateSelected((n) => ({
-																		...(n as any),
-																		itemRoot: createDefaultNode('Stack'),
-																	}))
-																}
-															>
-																Add
-															</Button>
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase"
-																disabled={
-																	(selectedNode as any).itemRoot == null
-																}
-																onClick={() => {
-																	if (!selected) return
-																	setSelectedKey(
-																		pathKey(scene, [
-																			...selected.path,
-																			'itemRoot',
-																		]),
-																	)
-																}}
-															>
-																Select
-															</Button>
-															<Button
-																type="button"
-																size="sm"
-																variant="outline"
-																className="rounded-none font-mono text-[10px] uppercase"
-																disabled={
-																	(selectedNode as any).itemRoot == null
-																}
-																onClick={() =>
-																	updateSelected((n) => ({
-																		...(n as any),
-																		itemRoot: undefined,
-																	}))
-																}
-															>
-																Clear
-															</Button>
-														</div>
-													</div>
-													{boolField(
-														'wrapItemRoot',
-														(selectedNode as any).wrapItemRoot,
-														(v) =>
-															updateSelected((n) => ({
-																...(n as any),
-																wrapItemRoot: v,
-															})),
-													)}
-												</div>
-											) : null}
-
-											{selectedNode.kind === 'repliesList' ||
-											selectedNode.kind === 'repliesListReplies' ? (
+										{selectedNode.type === 'Repeat' ? (
+											<div className="space-y-3">
 												<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-													{numberField('gap', (selectedNode as any).gap, (v) =>
-														updateSelected((n) => ({ ...(n as any), gap: v })),
-													)}
-													{boolField(
-														'highlight.enabled',
-														(selectedNode as any).highlight?.enabled,
-														(v) =>
-															updateSelected((n) => ({
-																...(n as any),
-																highlight: v
-																	? { ...(n as any).highlight, enabled: true }
-																	: undefined,
-															})),
-													)}
-													{selectField(
-														'highlight.color',
-														(selectedNode as any).highlight?.color,
-														[
-															{ value: 'primary' },
-															{ value: 'muted' },
-															{ value: 'accent' },
-														],
-														(v) =>
-															updateSelected((n) => ({
-																...(n as any),
-																highlight: {
-																	...(n as any).highlight,
-																	color: v,
-																},
-															})),
-													)}
 													{numberField(
-														'highlight.thickness',
-														(selectedNode as any).highlight?.thickness,
-														(v) =>
-															updateSelected((n) => ({
-																...(n as any),
-																highlight: {
-																	...(n as any).highlight,
-																	thickness: v,
-																},
-															})),
-														{ min: 1, max: 12, step: 1 },
-													)}
-													{numberField(
-														'highlight.radius',
-														(selectedNode as any).highlight?.radius,
-														(v) =>
-															updateSelected((n) => ({
-																...(n as any),
-																highlight: {
-																	...(n as any).highlight,
-																	radius: v,
-																},
-															})),
-														{ min: 0, max: 48, step: 1 },
-													)}
-													{numberField(
-														'highlight.opacity',
-														(selectedNode as any).highlight?.opacity,
-														(v) =>
-															updateSelected((n) => ({
-																...(n as any),
-																highlight: {
-																	...(n as any).highlight,
-																	opacity: v,
-																},
-															})),
-														{ min: 0, max: 1, step: 0.05 },
-													)}
-												</div>
-											) : null}
-											<div className="font-mono text-xs text-muted-foreground">
-												{t('notes.treeEditNote')}
-											</div>
-										</div>
-									) : null}
-
-									{selectedNode.type === 'Repeat' ? (
-										<div className="space-y-3">
-											<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-												{numberField(
 													'maxItems',
 													(selectedNode as any).maxItems,
 													(v) =>

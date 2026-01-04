@@ -34,22 +34,6 @@ function collectRenderTreeAssetIds(
 		return
 	}
 
-	if (node.type === 'Builtin' && node.kind === 'repliesList') {
-		collectRenderTreeAssetIds(node.rootRoot, out)
-		collectRenderTreeAssetIds(node.itemRoot, out)
-		return
-	}
-
-	if (node.type === 'Builtin' && node.kind === 'repliesListRootPost') {
-		collectRenderTreeAssetIds(node.rootRoot, out)
-		return
-	}
-
-	if (node.type === 'Builtin' && node.kind === 'repliesListReplies') {
-		collectRenderTreeAssetIds(node.itemRoot, out)
-		return
-	}
-
 	if (node.type === 'Repeat') {
 		collectRenderTreeAssetIds(node.itemRoot, out)
 		return

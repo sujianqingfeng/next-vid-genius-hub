@@ -803,7 +803,7 @@
 				"replace": "Replace"
 			},
 			"notes": {
-				"treeEditNote": "Note: rootRoot/itemRoot editing is supported by selecting them in tree.",
+				"treeEditNote": "Note: select nodes in the tree to edit them.",
 				"repeatNote": "Note: Repeat renders each reply with ctx.post = reply."
 			},
 			"types": {
@@ -820,16 +820,9 @@
 				"Video": "Video",
 				"Background": "Background",
 				"Spacer": "Spacer",
-				"Divider": "Divider",
-				"Builtin": "Builtin",
-				"cover": "cover",
-				"repliesList": "repliesList",
-				"repliesListHeader": "repliesListHeader",
-				"repliesListRootPost": "repliesListRootPost",
-				"repliesListReplies": "repliesListReplies"
+				"Divider": "Divider"
 			}
-		}
-	},
+		},
 	"Media": {
 		"title": "Media Library",
 		"downloadCta": "Download Media",
@@ -2212,4 +2205,5 @@
 			}
 		}
 	}
+}
 }

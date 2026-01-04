@@ -803,7 +803,7 @@
 				"replace": "替换"
 			},
 			"notes": {
-				"treeEditNote": "提示：选择树中的根节点/项目根来编辑它们。",
+				"treeEditNote": "提示：在树中选择节点即可编辑。",
 				"repeatNote": "提示：Repeat 会为每个回复渲染，其中 ctx.post = reply。"
 			},
 			"types": {
@@ -820,16 +820,9 @@
 				"Video": "视频",
 				"Background": "背景",
 				"Spacer": "间隔",
-				"Divider": "分隔符",
-				"Builtin": "内置",
-				"cover": "封面",
-				"repliesList": "回复列表",
-				"repliesListHeader": "回复列表头",
-				"repliesListRootPost": "回复列表根帖",
-				"repliesListReplies": "回复列表回复"
+				"Divider": "分隔符"
 			}
-		}
-	},
+		},
 	"Media": {
 		"title": "媒体库",
 		"downloadCta": "下载媒体",
@@ -2212,4 +2205,5 @@
 			}
 		}
 	}
+}
 }

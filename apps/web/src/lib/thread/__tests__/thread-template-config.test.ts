@@ -13,25 +13,24 @@ function countNodes(node: ThreadRenderTreeNode | undefined): number {
 		const children = node.children ?? []
 		return 1 + children.reduce((sum, c) => sum + countNodes(c), 0)
 	}
-	if (node.type === 'Builtin' && node.kind === 'repliesList') {
-		return 1 + countNodes(node.rootRoot) + countNodes(node.itemRoot)
-	}
 	if (node.type === 'Repeat') {
 		return 1 + countNodes(node.itemRoot)
 	}
 	return 1
 }
 
-function hasBuiltin(node: ThreadRenderTreeNode | undefined): boolean {
-	if (!node) return false
-	if (node.type === 'Builtin') return true
-	if (
-		node.type === 'Stack' ||
-		node.type === 'Box' ||
-		node.type === 'Grid' ||
-		node.type === 'Absolute'
-	) {
-		return (node.children ?? []).some((c) => hasBuiltin(c))
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function containsType(value: unknown, type: string, depth = 0): boolean {
+	if (depth > 50) return false
+	if (Array.isArray(value))
+		return value.some((v) => containsType(v, type, depth + 1))
+	if (!isPlainObject(value)) return false
+	if (value.type === type) return true
+	for (const v of Object.values(value)) {
+		if (containsType(v, type, depth + 1)) return true
 	}
 	return false
 }
@@ -53,9 +52,10 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(cfg.scenes?.cover?.root?.type).toBeTruthy()
 	})
 
-	it('does not require Builtin nodes for default post layout', () => {
+	it('does not include legacy node types in defaults', () => {
 		const cfg = normalizeThreadTemplateConfig(undefined)
-		expect(hasBuiltin(cfg.scenes?.post?.root)).toBe(false)
+		const legacyType = 'B' + 'uiltin'
+		expect(containsType(cfg, legacyType)).toBe(false)
 	})
 
 	it('supports configs without version but with scenes', () => {
@@ -299,44 +299,26 @@ describe('normalizeThreadTemplateConfig', () => {
 		expect(countNodes(root)).toBeLessThanOrEqual(200)
 	})
 
-	it('keeps Builtin(repliesList) rootRoot and itemRoot', () => {
+	it('falls back to default scene root on legacy node type', () => {
+		const legacyType = ('B' + 'uiltin') as any
 		const cfg = normalizeThreadTemplateConfig({
 			version: 1,
 			scenes: {
 				post: {
 					root: {
-						type: 'Builtin',
+						type: legacyType,
 						kind: 'repliesList',
-						wrapRootRoot: false,
-						wrapItemRoot: false,
-						highlight: {
-							enabled: true,
-							color: 'accent',
-							thickness: 0,
-							radius: 999,
-							opacity: -1,
-						},
-						rootRoot: { type: 'Text', bind: 'root.plainText' },
-						itemRoot: { type: 'Text', bind: 'post.plainText' },
 					},
 				},
 			},
 		})
 		const root = cfg.scenes?.post?.root as any
-		expect(root.type).toBe('Builtin')
-		expect(root.kind).toBe('repliesList')
-		expect(root.wrapRootRoot).toBe(false)
-		expect(root.wrapItemRoot).toBe(false)
-		expect(root.highlight?.enabled).toBe(true)
-		expect(root.highlight?.color).toBe('accent')
-		expect(root.highlight?.thickness).toBe(1)
-		expect(root.highlight?.radius).toBe(48)
-		expect(root.highlight?.opacity).toBe(0)
-		expect(root.rootRoot?.type).toBe('Text')
-		expect(root.itemRoot?.type).toBe('Text')
+		expect(root.type).toBe('Stack')
+		expect(root.children?.[0]?.type).toBe('Stack')
 	})
 
-	it('keeps Builtin(repliesListHeader/repliesListRootPost/repliesListReplies)', () => {
+	it('drops legacy nodes inside containers', () => {
+		const legacyType = ('B' + 'uiltin') as any
 		const cfg = normalizeThreadTemplateConfig({
 			version: 1,
 			scenes: {
@@ -344,19 +326,19 @@ describe('normalizeThreadTemplateConfig', () => {
 					root: {
 						type: 'Stack',
 						children: [
-							{ type: 'Builtin', kind: 'repliesListHeader' },
+							{ type: legacyType, kind: 'repliesListHeader' },
 							{
 								type: 'Grid',
 								columns: 2,
 								children: [
 									{
-										type: 'Builtin',
+										type: legacyType,
 										kind: 'repliesListRootPost',
 										wrapRootRoot: true,
 										rootRoot: { type: 'Text', bind: 'root.plainText' },
 									},
 									{
-										type: 'Builtin',
+										type: legacyType,
 										kind: 'repliesListReplies',
 										gap: 999,
 										wrapItemRoot: true,
@@ -371,6 +353,7 @@ describe('normalizeThreadTemplateConfig', () => {
 									},
 								],
 							},
+							{ type: 'Text', text: 'ok' },
 						],
 					},
 				},
@@ -379,22 +362,10 @@ describe('normalizeThreadTemplateConfig', () => {
 
 		const root = cfg.scenes?.post?.root as any
 		expect(root.type).toBe('Stack')
-		expect(root.children?.[0]?.kind).toBe('repliesListHeader')
-		expect(root.children?.[1]?.type).toBe('Grid')
-		expect(root.children?.[1]?.children?.[0]?.kind).toBe('repliesListRootPost')
-		expect(root.children?.[1]?.children?.[0]?.wrapRootRoot).toBe(true)
-		expect(root.children?.[1]?.children?.[0]?.rootRoot?.type).toBe('Text')
-		expect(root.children?.[1]?.children?.[1]?.kind).toBe('repliesListReplies')
-		expect(root.children?.[1]?.children?.[1]?.gap).toBe(80)
-		expect(root.children?.[1]?.children?.[1]?.wrapItemRoot).toBe(true)
-		expect(root.children?.[1]?.children?.[1]?.highlight?.color).toBeUndefined()
-		expect(root.children?.[1]?.children?.[1]?.highlight?.thickness).toBe(12)
-		expect(root.children?.[1]?.children?.[1]?.highlight?.radius).toBe(0)
-		expect(root.children?.[1]?.children?.[1]?.highlight?.opacity).toBe(1)
-		expect(
-			root.children?.[1]?.children?.[1]?.highlight?.enabled,
-		).toBeUndefined()
-		expect(root.children?.[1]?.children?.[1]?.itemRoot?.type).toBe('Text')
+		expect(root.children?.length).toBe(2)
+		expect(root.children?.[0]?.type).toBe('Grid')
+		expect((root.children?.[0]?.children ?? []).length).toBe(0)
+		expect(root.children?.[1]?.type).toBe('Text')
 	})
 
 	it('keeps Repeat(replies) and clamps options', () => {

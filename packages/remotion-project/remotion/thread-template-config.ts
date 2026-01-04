@@ -461,99 +461,6 @@ function normalizeRenderTreeNode(
 		return { type: 'Background', color, assetId, opacity, blur }
 	}
 
-	if (type === 'Builtin') {
-		const kind = input.kind
-		if (
-			kind !== 'cover' &&
-			kind !== 'repliesList' &&
-			kind !== 'repliesListHeader' &&
-			kind !== 'repliesListRootPost' &&
-			kind !== 'repliesListReplies'
-		) {
-			return null
-		}
-		const wrapRootRoot =
-			kind === 'repliesList' || kind === 'repliesListRootPost'
-				? (safeBoolean(input.wrapRootRoot) ?? undefined)
-				: undefined
-		const wrapItemRoot =
-			kind === 'repliesList' || kind === 'repliesListReplies'
-				? (safeBoolean(input.wrapItemRoot) ?? undefined)
-				: undefined
-		const gap =
-			kind === 'repliesList' || kind === 'repliesListReplies'
-				? (clampInt(input.gap, 0, 80) ?? undefined)
-				: undefined
-		const highlightRaw = isPlainObject(input.highlight) ? input.highlight : null
-		const highlight =
-			kind === 'repliesList' || kind === 'repliesListReplies'
-				? highlightRaw
-					? {
-							enabled: safeBoolean(highlightRaw.enabled) ?? undefined,
-							color: safeColorToken(highlightRaw.color) ?? undefined,
-							thickness: clampInt(highlightRaw.thickness, 1, 12) ?? undefined,
-							radius: clampInt(highlightRaw.radius, 0, 48) ?? undefined,
-							opacity: clampNumber(highlightRaw.opacity, 0, 1) ?? undefined,
-						}
-					: undefined
-				: undefined
-		const rootRoot =
-			kind === 'repliesList' || kind === 'repliesListRootPost'
-				? normalizeRenderTreeNode(input.rootRoot, state, depth + 1)
-				: null
-		const itemRoot =
-			kind === 'repliesList' || kind === 'repliesListReplies'
-				? normalizeRenderTreeNode(input.itemRoot, state, depth + 1)
-				: null
-		state.nodeCount += 1
-		if (kind === 'repliesListRootPost') {
-			return rootRoot
-				? {
-						type: 'Builtin',
-						kind,
-						rootRoot,
-						...(wrapRootRoot != null ? { wrapRootRoot } : {}),
-					}
-				: { type: 'Builtin', kind }
-		}
-		if (kind === 'repliesListReplies') {
-			return itemRoot || gap != null || highlight
-				? {
-						type: 'Builtin',
-						kind,
-						...(itemRoot ? { itemRoot } : {}),
-						...(wrapItemRoot != null ? { wrapItemRoot } : {}),
-						...(gap != null ? { gap } : {}),
-						...(highlight ? { highlight } : {}),
-					}
-				: { type: 'Builtin', kind }
-		}
-		if (kind === 'repliesList') {
-			return rootRoot || itemRoot
-				? {
-						type: 'Builtin',
-						kind,
-						...(rootRoot ? { rootRoot } : {}),
-						...(wrapRootRoot != null ? { wrapRootRoot } : {}),
-						...(itemRoot ? { itemRoot } : {}),
-						...(wrapItemRoot != null ? { wrapItemRoot } : {}),
-						...(gap != null ? { gap } : {}),
-						...(highlight ? { highlight } : {}),
-					}
-				: gap != null || highlight
-					? {
-							type: 'Builtin',
-							kind,
-							...(wrapRootRoot != null ? { wrapRootRoot } : {}),
-							...(wrapItemRoot != null ? { wrapItemRoot } : {}),
-							...(gap != null ? { gap } : {}),
-							...(highlight ? { highlight } : {}),
-						}
-					: { type: 'Builtin', kind }
-		}
-		return { type: 'Builtin', kind }
-	}
-
 	if (type === 'Text') {
 		const text = safeString(input.text, 3000) ?? undefined
 		const bind = input.bind
@@ -1057,7 +964,7 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template normalization/compile logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 22
+export const THREAD_TEMPLATE_COMPILE_VERSION = 23
 
 export function normalizeThreadTemplateConfig(
 	input: unknown,

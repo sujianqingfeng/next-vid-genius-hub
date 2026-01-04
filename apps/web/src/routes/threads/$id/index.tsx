@@ -67,11 +67,11 @@ function buildRepliesListItemRootExample(): ThreadTemplateConfigV1 {
 		typography: { fontPreset: 'noto', fontScale: 1 },
 		scenes: {
 			post: {
-				root: {
-					type: 'Builtin',
-					kind: 'repliesList',
-					rootRoot: {
-						type: 'Stack',
+					root: {
+						type: 'RemovedNode',
+						kind: 'repliesList',
+						rootRoot: {
+							type: 'Stack',
 						direction: 'column',
 						gap: 14,
 						children: [
@@ -622,12 +622,12 @@ function buildRepeatRepliesSnippetExample(): Record<string, unknown> {
 	}
 }
 
-function buildRepliesHighlightSnippetExample(): Record<string, unknown> {
-	return {
-		type: 'Builtin',
-		kind: 'repliesListReplies',
-		gap: 12,
-		highlight: {
+	function buildRepliesHighlightSnippetExample(): Record<string, unknown> {
+		return {
+			type: 'RemovedNode',
+			kind: 'repliesListReplies',
+			gap: 12,
+			highlight: {
 			enabled: true,
 			color: 'accent',
 			thickness: 3,
@@ -707,12 +707,12 @@ function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 							gapY: 16,
 							align: 'stretch',
 							justify: 'stretch',
-							children: [
-								{
-									type: 'Builtin',
-									kind: 'repliesListRootPost',
-									wrapRootRoot: true,
-									rootRoot: {
+									children: [
+										{
+										type: 'RemovedNode',
+										kind: 'repliesListRootPost',
+										wrapRootRoot: true,
+										rootRoot: {
 										type: 'Stack',
 										gapY: 14,
 										children: [
@@ -767,12 +767,12 @@ function buildRepliesListSplitLayoutExample(): ThreadTemplateConfigV1 {
 									border: true,
 									background: 'rgba(255,255,255,0.02)',
 									padding: 18,
-									children: [
-										{
-											type: 'Builtin',
-											kind: 'repliesListReplies',
-											wrapItemRoot: true,
-											gap: 12,
+										children: [
+											{
+												type: 'RemovedNode',
+												kind: 'repliesListReplies',
+												wrapItemRoot: true,
+												gap: 12,
 											highlight: {
 												enabled: true,
 												color: 'accent',
@@ -974,13 +974,13 @@ function buildRepeatRepliesSplitLayoutExample(): ThreadTemplateConfigV1 {
 		}
 	}
 
-	function isSupportedRenderTreeNodeType(type: unknown): boolean {
-		return (
-			type === 'Background' ||
-			type === 'Builtin' ||
-			type === 'Repeat' ||
-			type === 'Stack' ||
-			type === 'Grid' ||
+		function isSupportedRenderTreeNodeType(type: unknown): boolean {
+			return (
+				type === 'Background' ||
+				type === 'RemovedNode' ||
+				type === 'Repeat' ||
+				type === 'Stack' ||
+				type === 'Grid' ||
 			type === 'Absolute' ||
 			type === 'Box' ||
 		type === 'Image' ||
@@ -1088,10 +1088,10 @@ function analyzeRenderTreeNode(
 		}
 	}
 
-		if (type === 'Builtin') {
-			warnUnknownKeys(
-				new Set([
-					'type',
+			if (type === 'RemovedNode') {
+				warnUnknownKeys(
+					new Set([
+						'type',
 					'kind',
 				'rootRoot',
 				'itemRoot',

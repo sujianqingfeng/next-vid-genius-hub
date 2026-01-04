@@ -15,7 +15,10 @@ import {
 } from 'remotion'
 import type { ThreadRenderTreeNode, ThreadVideoInputProps } from './types'
 import { formatCount } from './utils/format'
-import { normalizeThreadTemplateConfig } from './thread-template-config'
+import {
+	DEFAULT_THREAD_TEMPLATE_CONFIG,
+	normalizeThreadTemplateConfig,
+} from './thread-template-config'
 
 function clamp01(v: number) {
 	if (v < 0) return 0
@@ -160,89 +163,6 @@ function renderThreadTemplateNode(
 				) : null}
 			</div>
 		)
-	}
-
-	if (node.type === 'Builtin') {
-		if (node.kind === 'cover') {
-			return (
-				<CoverSlide
-					thread={ctx.thread}
-					root={ctx.root}
-					assets={ctx.assets}
-					fps={ctx.fps}
-				/>
-			)
-		}
-		if (node.kind === 'repliesList') {
-			return (
-				<RepliesListSlide
-					templateConfig={ctx.templateConfig}
-					thread={ctx.thread}
-					root={ctx.root}
-					replies={ctx.replies}
-					replyDurationsInFrames={ctx.replyDurationsInFrames}
-					coverDurationInFrames={ctx.coverDurationInFrames}
-					assets={ctx.assets}
-					fps={ctx.fps}
-					rootRoot={node.rootRoot}
-					rootRootPath={[...path, 'rootRoot']}
-					wrapRootRoot={node.wrapRootRoot}
-					itemRoot={node.itemRoot}
-					itemRootPath={[...path, 'itemRoot']}
-					wrapItemRoot={node.wrapItemRoot}
-					repliesGap={node.gap}
-					repliesHighlight={node.highlight}
-				/>
-			)
-		}
-		if (node.kind === 'repliesListHeader') {
-			return (
-				<RepliesListHeader
-					thread={ctx.thread}
-					replies={ctx.replies}
-					replyDurationsInFrames={ctx.replyDurationsInFrames}
-					fps={ctx.fps}
-				/>
-			)
-		}
-		if (node.kind === 'repliesListRootPost') {
-			return (
-				<RepliesListRootPost
-					templateConfig={ctx.templateConfig}
-					chromeless
-					thread={ctx.thread}
-					root={ctx.root}
-					replies={ctx.replies}
-					replyDurationsInFrames={ctx.replyDurationsInFrames}
-					coverDurationInFrames={ctx.coverDurationInFrames}
-					assets={ctx.assets}
-					fps={ctx.fps}
-					rootRoot={node.rootRoot}
-					rootRootPath={[...path, 'rootRoot']}
-					wrapRootRoot={node.wrapRootRoot ?? false}
-				/>
-			)
-		}
-		if (node.kind === 'repliesListReplies') {
-			return (
-				<RepliesListReplies
-					templateConfig={ctx.templateConfig}
-					thread={ctx.thread}
-					root={ctx.root}
-					replies={ctx.replies}
-					replyDurationsInFrames={ctx.replyDurationsInFrames}
-					coverDurationInFrames={ctx.coverDurationInFrames}
-					assets={ctx.assets}
-					fps={ctx.fps}
-					itemRoot={node.itemRoot}
-					itemRootPath={[...path, 'itemRoot']}
-					wrapItemRoot={node.wrapItemRoot ?? false}
-					gap={node.gap}
-					highlight={node.highlight}
-				/>
-			)
-		}
-		return null
 	}
 
 	if (node.type === 'Repeat') {
@@ -2608,20 +2528,19 @@ export function ThreadForumVideo({
 	replyDurationsInFrames,
 	fps,
 	templateConfig,
-}: ThreadVideoInputProps) {
+	}: ThreadVideoInputProps) {
 	const videoConfig = useVideoConfig()
 	const frame = useCurrentFrame()
 	const normalizedTemplateConfig = React.useMemo(
 		() => normalizeThreadTemplateConfig(templateConfig),
 		[templateConfig],
 	)
-	const coverRoot: ThreadRenderTreeNode = normalizedTemplateConfig.scenes?.cover
-		?.root ?? { type: 'Builtin', kind: 'cover' }
-	const postRoot: ThreadRenderTreeNode = normalizedTemplateConfig.scenes?.post
-		?.root ?? {
-		type: 'Builtin',
-		kind: 'repliesList',
-	}
+	const coverRoot: ThreadRenderTreeNode =
+		normalizedTemplateConfig.scenes?.cover?.root ??
+		DEFAULT_THREAD_TEMPLATE_CONFIG.scenes!.cover!.root!
+	const postRoot: ThreadRenderTreeNode =
+		normalizedTemplateConfig.scenes?.post?.root ??
+		DEFAULT_THREAD_TEMPLATE_CONFIG.scenes!.post!.root!
 	const repliesTotalDuration = replyDurationsInFrames.reduce(
 		(sum, f) => sum + f,
 		0,
