@@ -682,8 +682,18 @@ function renderThreadTemplateNode(
 	if (node.type === 'Stack') {
 		const hasGapXY =
 			typeof node.gapX === 'number' || typeof node.gapY === 'number'
-		const hasPaddingXY =
-			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
+		const paddingX =
+			typeof node.paddingX === 'number'
+				? node.paddingX
+				: typeof node.padding === 'number'
+					? node.padding
+					: undefined
+		const paddingY =
+			typeof node.paddingY === 'number'
+				? node.paddingY
+				: typeof node.padding === 'number'
+					? node.padding
+					: undefined
 		const flex = typeof node.flex === 'number' ? node.flex : undefined
 		const borderWidth =
 			node.border && typeof node.borderWidth === 'number' ? node.borderWidth : 1
@@ -696,7 +706,7 @@ function renderThreadTemplateNode(
 						? 'var(--tf-accent)'
 						: 'var(--tf-border)'
 		const style: CSSProperties = {
-			position: 'relative',
+			...(opts?.isRoot ? null : { position: 'relative' }),
 			display: 'flex',
 			flexDirection: node.direction === 'row' ? 'row' : 'column',
 			flex,
@@ -720,48 +730,21 @@ function renderThreadTemplateNode(
 						? node.gap
 						: undefined
 				: undefined,
-			padding:
-				!hasPaddingXY && typeof node.padding === 'number'
-					? node.padding
-					: undefined,
-			paddingLeft: hasPaddingXY
-				? typeof node.paddingX === 'number'
-					? node.paddingX
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingRight: hasPaddingXY
-				? typeof node.paddingX === 'number'
-					? node.paddingX
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingTop: hasPaddingXY
-				? typeof node.paddingY === 'number'
-					? node.paddingY
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingBottom: hasPaddingXY
-				? typeof node.paddingY === 'number'
-					? node.paddingY
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
+			paddingLeft: paddingX,
+			paddingRight: paddingX,
+			paddingTop: paddingY,
+			paddingBottom: paddingY,
 			border: node.border
 				? `${Math.max(1, Math.round(borderWidth))}px solid ${borderColor}`
 				: undefined,
 			background: node.background ?? undefined,
 			borderRadius: typeof node.radius === 'number' ? node.radius : undefined,
-			width: typeof node.width === 'number' ? node.width : undefined,
-			height: typeof node.height === 'number' ? node.height : undefined,
-			maxWidth: typeof node.maxWidth === 'number' ? node.maxWidth : undefined,
-			maxHeight:
-				typeof node.maxHeight === 'number' ? node.maxHeight : undefined,
+			...(typeof node.width === 'number' ? { width: node.width } : null),
+			...(typeof node.height === 'number' ? { height: node.height } : null),
+			...(typeof node.maxWidth === 'number' ? { maxWidth: node.maxWidth } : null),
+			...(typeof node.maxHeight === 'number'
+				? { maxHeight: node.maxHeight }
+				: null),
 			boxSizing: 'border-box',
 			alignItems:
 				node.align === 'center'
@@ -770,7 +753,7 @@ function renderThreadTemplateNode(
 						? 'flex-end'
 						: node.align === 'stretch'
 							? 'stretch'
-							: 'flex-start',
+							: 'stretch',
 			justifyContent:
 				node.justify === 'center'
 					? 'center'
@@ -809,8 +792,18 @@ function renderThreadTemplateNode(
 		const columns = typeof node.columns === 'number' ? node.columns : 2
 		const hasGapXY =
 			typeof node.gapX === 'number' || typeof node.gapY === 'number'
-		const hasPaddingXY =
-			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
+		const paddingX =
+			typeof node.paddingX === 'number'
+				? node.paddingX
+				: typeof node.padding === 'number'
+					? node.padding
+					: undefined
+		const paddingY =
+			typeof node.paddingY === 'number'
+				? node.paddingY
+				: typeof node.padding === 'number'
+					? node.padding
+					: undefined
 		const flex = typeof node.flex === 'number' ? node.flex : undefined
 		const borderWidth =
 			node.border && typeof node.borderWidth === 'number' ? node.borderWidth : 1
@@ -839,7 +832,7 @@ function renderThreadTemplateNode(
 						? 'stretch'
 						: 'start'
 		const style: CSSProperties = {
-			position: 'relative',
+			...(opts?.isRoot ? null : { position: 'relative' }),
 			display: 'grid',
 			flex,
 			opacity:
@@ -863,48 +856,21 @@ function renderThreadTemplateNode(
 						? node.gap
 						: undefined
 				: undefined,
-			padding:
-				!hasPaddingXY && typeof node.padding === 'number'
-					? node.padding
-					: undefined,
-			paddingLeft: hasPaddingXY
-				? typeof node.paddingX === 'number'
-					? node.paddingX
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingRight: hasPaddingXY
-				? typeof node.paddingX === 'number'
-					? node.paddingX
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingTop: hasPaddingXY
-				? typeof node.paddingY === 'number'
-					? node.paddingY
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingBottom: hasPaddingXY
-				? typeof node.paddingY === 'number'
-					? node.paddingY
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
+			paddingLeft: paddingX,
+			paddingRight: paddingX,
+			paddingTop: paddingY,
+			paddingBottom: paddingY,
 			border: node.border
 				? `${Math.max(1, Math.round(borderWidth))}px solid ${borderColor}`
 				: undefined,
 			background: node.background ?? undefined,
 			borderRadius: typeof node.radius === 'number' ? node.radius : undefined,
-			width: typeof node.width === 'number' ? node.width : undefined,
-			height: typeof node.height === 'number' ? node.height : undefined,
-			maxWidth: typeof node.maxWidth === 'number' ? node.maxWidth : undefined,
-			maxHeight:
-				typeof node.maxHeight === 'number' ? node.maxHeight : undefined,
+			...(typeof node.width === 'number' ? { width: node.width } : null),
+			...(typeof node.height === 'number' ? { height: node.height } : null),
+			...(typeof node.maxWidth === 'number' ? { maxWidth: node.maxWidth } : null),
+			...(typeof node.maxHeight === 'number'
+				? { maxHeight: node.maxHeight }
+				: null),
 			alignItems,
 			justifyItems,
 			boxSizing: 'border-box',
@@ -984,8 +950,18 @@ function renderThreadTemplateNode(
 	}
 
 	if (node.type === 'Box') {
-		const hasPaddingXY =
-			typeof node.paddingX === 'number' || typeof node.paddingY === 'number'
+		const paddingX =
+			typeof node.paddingX === 'number'
+				? node.paddingX
+				: typeof node.padding === 'number'
+					? node.padding
+					: undefined
+		const paddingY =
+			typeof node.paddingY === 'number'
+				? node.paddingY
+				: typeof node.padding === 'number'
+					? node.padding
+					: undefined
 		const flex = typeof node.flex === 'number' ? node.flex : undefined
 		const borderWidth =
 			node.border && typeof node.borderWidth === 'number' ? node.borderWidth : 1
@@ -998,55 +974,28 @@ function renderThreadTemplateNode(
 						? 'var(--tf-accent)'
 						: 'var(--tf-border)'
 		const style: CSSProperties = {
-			position: 'relative',
+			...(opts?.isRoot ? null : { position: 'relative' }),
 			flex,
 			opacity:
 				typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined,
 			minWidth: flex != null ? 0 : undefined,
 			minHeight: flex != null ? 0 : undefined,
 			overflow: node.overflow === 'hidden' ? 'hidden' : undefined,
-			padding:
-				!hasPaddingXY && typeof node.padding === 'number'
-					? node.padding
-					: undefined,
-			paddingLeft: hasPaddingXY
-				? typeof node.paddingX === 'number'
-					? node.paddingX
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingRight: hasPaddingXY
-				? typeof node.paddingX === 'number'
-					? node.paddingX
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingTop: hasPaddingXY
-				? typeof node.paddingY === 'number'
-					? node.paddingY
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
-			paddingBottom: hasPaddingXY
-				? typeof node.paddingY === 'number'
-					? node.paddingY
-					: typeof node.padding === 'number'
-						? node.padding
-						: undefined
-				: undefined,
+			paddingLeft: paddingX,
+			paddingRight: paddingX,
+			paddingTop: paddingY,
+			paddingBottom: paddingY,
 			border: node.border
 				? `${Math.max(1, Math.round(borderWidth))}px solid ${borderColor}`
 				: undefined,
 			background: node.background ?? undefined,
 			borderRadius: typeof node.radius === 'number' ? node.radius : undefined,
-			width: typeof node.width === 'number' ? node.width : undefined,
-			height: typeof node.height === 'number' ? node.height : undefined,
-			maxWidth: typeof node.maxWidth === 'number' ? node.maxWidth : undefined,
-			maxHeight:
-				typeof node.maxHeight === 'number' ? node.maxHeight : undefined,
+			...(typeof node.width === 'number' ? { width: node.width } : null),
+			...(typeof node.height === 'number' ? { height: node.height } : null),
+			...(typeof node.maxWidth === 'number' ? { maxWidth: node.maxWidth } : null),
+			...(typeof node.maxHeight === 'number'
+				? { maxHeight: node.maxHeight }
+				: null),
 			boxSizing: 'border-box',
 		}
 		const children = (node.children ?? []).map(
