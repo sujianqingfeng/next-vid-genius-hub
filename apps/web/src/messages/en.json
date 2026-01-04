@@ -254,6 +254,19 @@
 				"render": "Render Subtitles"
 			}
 		},
+		"sessions": {
+			"new": "New chat",
+			"empty": "No chats yet.",
+			"loading": "Loading chat...",
+			"rename": "Rename",
+			"renameTitle": "Rename chat",
+			"renameLabel": "Title",
+			"renamePlaceholder": "Chat title",
+			"delete": "Delete",
+			"deleteConfirm": "Delete this chat?",
+			"cancel": "Cancel",
+			"save": "Save"
+		},
 		"fields": {
 			"modelPlaceholder": "Select model..."
 		},
@@ -830,1387 +843,1387 @@
 				"Divider": "Divider"
 			}
 		},
-	"Media": {
-		"title": "Media Library",
-		"downloadCta": "Download Media",
-		"actions": {
-			"delete": "Delete"
-		},
-		"confirmDelete": "Delete \"{title}\"? This will remove the media and related artifacts.",
-		"toasts": {
-			"deleteSuccess": "Media deleted",
-			"deleteFail": "Failed to delete media: {message}"
-		},
-		"error": {
-			"title": "Failed to load media",
-			"body": "There was an error loading your media library. Please try again.",
-			"retry": "Try Again"
-		},
-		"empty": {
-			"title": "No media files yet",
-			"body": "Get started by downloading your first video to begin building your media library."
-		},
-		"ui": {
-			"breadcrumb": {
-				"system": "Library System",
-				"section": "Media Inventory"
+		"Media": {
+			"title": "Media Library",
+			"downloadCta": "Download Media",
+			"actions": {
+				"delete": "Delete"
 			},
-			"labels": {
-				"totalRecords": "Total_Records:",
-				"srcProvider": "SRC_PROVIDER",
-				"regDate": "REG_DATE",
-				"internal": "INTERNAL"
+			"confirmDelete": "Delete \"{title}\"? This will remove the media and related artifacts.",
+			"toasts": {
+				"deleteSuccess": "Media deleted",
+				"deleteFail": "Failed to delete media: {message}"
 			},
-			"loading": "Polling_Storage_System...",
-			"errorTitle": "System_Fault: Interface_Failure",
-			"retry": "[ RETRY_HANDSHAKE ]",
-			"emptyCta": "[ INITIATE_INGESTION ]",
-			"pagination": {
-				"prev": "[ PREV_VOL ]",
-				"prevDisabled": "PREV_VOL",
-				"next": "[ NEXT_VOL ]",
-				"nextDisabled": "NEXT_VOL",
-				"volumeUnit": "VOL_UNIT {page} / {pageCount}",
-				"endOfStream": "END_OF_STREAM_INDEX"
+			"error": {
+				"title": "Failed to load media",
+				"body": "There was an error loading your media library. Please try again.",
+				"retry": "Try Again"
 			},
-			"confirmDelete": {
-				"title": "SECURITY_WARNING: DESTRUCTIVE_ACTION",
-				"confirmText": "PURGE_RECORD"
-			}
-		}
-	},
-	"Home": {
-		"badge": "Next Gen Video Platform",
-		"topBar": {
-			"brand": "VidGenius Hub",
-			"login": "Login",
-			"documentation": "Documentation"
-		},
-		"title": "Video Genius Hub",
-		"hero": "Your intelligent platform for video processing, transcription, and analysis.",
-		"cta": "Get Started",
-		"features": {
-			"processing": {
-				"title": "Video Processing",
-				"desc": "Upload and process videos with advanced AI capabilities for superior results."
+			"empty": {
+				"title": "No media files yet",
+				"body": "Get started by downloading your first video to begin building your media library."
 			},
-			"downloads": {
-				"title": "Smart Downloads",
-				"desc": "Download videos with automatic quality optimization and format conversion."
-			},
-			"comments": {
-				"title": "AI Comments",
-				"desc": "Generate intelligent comments and insights using state-of-the-art models."
-			}
-		},
-		"tech": {
-			"next": "TanStack Start",
-			"ts": "TypeScript",
-			"tailwind": "Tailwind CSS"
-		}
-	},
-	"Dashboard": {
-		"title": "Dashboard",
-		"cards": {
-			"totalVideos": {
-				"title": "Total Videos",
-				"delta": "+0% from last month"
-			},
-			"media": {
-				"title": "Media Files",
-				"delta": "+0% from last month"
-			},
-			"processing": {
-				"title": "Processing",
-				"delta": "Active tasks"
-			},
-			"analytics": {
-				"title": "Analytics",
-				"delta": "Reports generated"
-			}
-		},
-		"quickActions": {
-			"download": {
-				"title": "Download Video",
-				"desc": "Add a new video to your library"
-			},
-			"browse": {
-				"title": "Browse Media",
-				"desc": "View and manage your videos"
-			},
-			"analytics": {
-				"title": "View Analytics",
-				"desc": "Check your video statistics"
-			}
-		}
-	},
-	"Tasks": {
-		"title": "Tasks",
-		"ui": {
-			"breadcrumb": {
-				"system": "Kernel System",
-				"section": "Process Queue"
-			},
-			"polling": "Polling task queue...",
-			"monitor": {
-				"title": "Live Task Monitor",
-				"activeNodes": "Active nodes: {count}"
-			}
-		},
-		"filter": "Filter",
-		"targetId": "Target ID",
-		"targetType": "Target Type",
-		"targetTypePlaceholder": "Select type",
-		"load": "Load",
-		"refresh": "Refresh",
-		"targetLabel": "Target",
-		"progress": "Progress",
-		"timestamps": {
-			"created": "Created",
-			"updated": "Updated",
-			"finished": "Finished",
-			"relative": "Updated {time}"
-		},
-		"empty": "No tasks found for this target.",
-		"errors": {
-			"byTarget": "Failed to load tasks: {message}",
-			"recent": "Failed to load tasks: {message}"
-		},
-		"lists": {
-			"forTarget": "Tasks for target",
-			"recent": "Recent tasks (latest 50)"
-		},
-		"select": {
-			"media": "media",
-			"channel": "channel",
-			"system": "system"
-		},
-		"status": {
-			"queued": "queued",
-			"fetching_metadata": "fetching metadata",
-			"preparing": "preparing",
-			"running": "running",
-			"uploading": "uploading",
-			"completed": "completed",
-			"failed": "failed",
-			"canceled": "canceled"
-		}
-	},
-	"Auth": {
-		"loginSuccess": "Login successful",
-		"loginError": "Login failed",
-		"signupSuccess": "Signup successful",
-		"signupError": "Signup failed",
-		"logoutSuccess": "Signed out",
-		"logoutError": "Logout failed"
-	},
-	"Channels": {
-		"videos": {
-			"loading": "Loading videos…",
-			"empty": "No videos found.",
-			"original": "Original: {title}",
-			"open": "Open"
-		},
-		"page": {
-			"title": "Channels",
 			"ui": {
 				"breadcrumb": {
-					"system": "Source Manager",
-					"section": "Channel Subscriptions"
+					"system": "Library System",
+					"section": "Media Inventory"
 				},
 				"labels": {
-					"lastSync": "LAST_SYNC: {datetime}"
+					"totalRecords": "Total_Records:",
+					"srcProvider": "SRC_PROVIDER",
+					"regDate": "REG_DATE",
+					"internal": "INTERNAL"
+				},
+				"loading": "Polling_Storage_System...",
+				"errorTitle": "System_Fault: Interface_Failure",
+				"retry": "[ RETRY_HANDSHAKE ]",
+				"emptyCta": "[ INITIATE_INGESTION ]",
+				"pagination": {
+					"prev": "[ PREV_VOL ]",
+					"prevDisabled": "PREV_VOL",
+					"next": "[ NEXT_VOL ]",
+					"nextDisabled": "NEXT_VOL",
+					"volumeUnit": "VOL_UNIT {page} / {pageCount}",
+					"endOfStream": "END_OF_STREAM_INDEX"
+				},
+				"confirmDelete": {
+					"title": "SECURITY_WARNING: DESTRUCTIVE_ACTION",
+					"confirmText": "PURGE_RECORD"
+				}
+			}
+		},
+		"Home": {
+			"badge": "Next Gen Video Platform",
+			"topBar": {
+				"brand": "VidGenius Hub",
+				"login": "Login",
+				"documentation": "Documentation"
+			},
+			"title": "Video Genius Hub",
+			"hero": "Your intelligent platform for video processing, transcription, and analysis.",
+			"cta": "Get Started",
+			"features": {
+				"processing": {
+					"title": "Video Processing",
+					"desc": "Upload and process videos with advanced AI capabilities for superior results."
+				},
+				"downloads": {
+					"title": "Smart Downloads",
+					"desc": "Download videos with automatic quality optimization and format conversion."
+				},
+				"comments": {
+					"title": "AI Comments",
+					"desc": "Generate intelligent comments and insights using state-of-the-art models."
 				}
 			},
-			"inputPlaceholder": "Paste a YouTube channel URL or ID",
-			"add": "Add Channel",
-			"adding": "Adding…",
-			"loading": "Loading your channels…",
-			"empty": "Add a channel to start tracking new uploads.",
-			"deleteConfirm": "Are you sure you want to delete this channel? This will remove all its videos locally.",
-			"deleteSuccess": "Channel deleted successfully",
-			"deleteError": "Failed to delete channel: {message}",
-			"status": {
-				"idle": "Idle",
-				"queued": "Queued",
-				"running": "Running",
-				"completed": "Completed",
-				"failed": "Failed",
-				"canceled": "Canceled"
-			},
-			"actions": {
-				"view": "View videos",
-				"hide": "Hide videos",
-				"syncTitle": "Sync",
-				"syncDesc": "Proxy is optional (auto-selects an available proxy).",
-				"sync": "Sync latest",
-				"syncing": "Syncing…",
-				"translateTitle": "Translate",
-				"translateDesc": "Choose a model to localize the latest video titles.",
-				"model": "Model",
-				"translate": "Translate titles",
-				"translating": "Translating…",
-				"showTranslation": "Show translation",
-				"hideTranslation": "Hide translation",
-				"translateSuccess": "Titles translated!",
-				"translateError": "Failed to translate titles: {message}"
-			}
-		}
-	},
-	"Proxy": {
-		"page": {
-			"title": "Proxy Manager",
-			"tabs": {
-				"subscriptions": "Subscriptions",
-				"proxies": "Proxies"
-			},
-			"addSubscription": "Add Subscription",
-			"runChecks": "Run Checks",
-			"runChecksRunning": "Running...",
-			"runChecksQueued": "Proxy checks queued (run: {runId})",
-			"runChecksError": "Failed to start proxy checks: {message}",
-			"checkSettings": "Check Settings",
-			"checkSettingsTitle": "Proxy Check Settings",
-			"checkSettingsDesc": "Configure the test URL and limits used by proxy availability checks.",
-			"checkSettingsFields": {
-				"testUrl": "Test URL",
-				"timeoutMs": "Timeout (ms)",
-				"probeBytes": "Probe Bytes",
-				"concurrency": "Concurrency"
-			},
-			"checkSettingsBadNumber": "Please enter valid numbers.",
-			"checkSettingsSave": "Save",
-			"checkSettingsSaving": "Saving...",
-			"checkSettingsSaved": "Proxy check settings saved",
-			"checkSettingsSaveError": "Failed to save proxy check settings: {message}"
-		},
-		"list": {
-			"search": "Search proxies...",
-			"empty": {
-				"title": "No proxies found",
-				"desc": "Try adjusting your search or add a new subscription."
-			},
-			"check": "Check",
-			"checkQueued": "Proxy check queued (run: {runId})",
-			"checkError": "Failed to start proxy check: {message}",
-			"setDefault": "Set default",
-			"clearDefault": "Clear default",
-			"defaultBadge": "Default",
-			"status": {
-				"pending": "Pending",
-				"success": "OK",
-				"failed": "Failed"
-			},
-			"lastTested": "Last tested {date}",
-			"rtt": "RTT {ms}ms",
-			"deleteConfirm": "Are you sure you want to delete this proxy?",
-			"deleteSuccess": "Proxy deleted successfully",
-			"deleteError": "Failed to delete proxy: {message}",
-			"setDefaultSuccess": {
-				"set": "Default proxy updated",
-				"cleared": "Default proxy cleared"
-			},
-			"setDefaultError": "Failed to set default proxy: {message}",
-			"pagination": {
-				"label": "Showing {from} to {to} of {total} proxies",
-				"prev": "Previous",
-				"next": "Next",
-				"page": "Page {page} of {pages}"
+			"tech": {
+				"next": "TanStack Start",
+				"ts": "TypeScript",
+				"tailwind": "Tailwind CSS"
 			}
 		},
-		"selector": {
-			"label": {
-				"optional": "Proxy (Optional)",
-				"required": "Proxy (Required)"
+		"Dashboard": {
+			"title": "Dashboard",
+			"cards": {
+				"totalVideos": {
+					"title": "Total Videos",
+					"delta": "+0% from last month"
+				},
+				"media": {
+					"title": "Media Files",
+					"delta": "+0% from last month"
+				},
+				"processing": {
+					"title": "Processing",
+					"delta": "Active tasks"
+				},
+				"analytics": {
+					"title": "Analytics",
+					"delta": "Reports generated"
+				}
 			},
-			"selectPlaceholder": "Select proxy",
-			"auto": "Auto select (Recommended)",
-			"direct": "No Proxy (Direct Connection)",
-			"loading": "Loading proxies...",
-			"noneAvailable": "No available proxies (status is OK). Please run checks/add one first.",
-			"loadError": "Failed to load proxies. Please try again.",
-			"defaultBadge": "Default"
-		},
-		"subscription": {
-			"dialog": {
-				"title": "Add SSR Subscription",
-				"desc": "Add a new SSR subscription URL to automatically import proxy servers",
-				"nameLabel": "Subscription Name *",
-				"urlLabel": "Subscription URL *",
-				"urlHint": "Enter the SSR subscription URL that returns proxy configurations",
-				"cancel": "Cancel",
-				"create": "Create Subscription",
-				"creating": "Creating...",
-				"nameRequired": "Subscription name is required",
-				"urlRequired": "Subscription URL is required",
-				"urlInvalid": "Please enter a valid URL (must start with http:// or https://)",
-				"success": "SSR subscription created successfully",
-				"error": "Failed to create SSR subscription: {message}"
-			},
-			"list": {
-				"emptyTitle": "No subscriptions yet",
-				"emptyDesc": "Add your first subscription to start managing proxies.",
-				"deleteConfirm": "Are you sure you want to delete this SSR subscription? This will also delete all associated proxies.",
-				"deleteSuccess": "SSR subscription deleted successfully",
-				"deleteError": "Failed to delete SSR subscription: {message}",
-				"importSuccess": "Imported {count} proxies from subscription",
-				"importSuccessFallback": "Imported proxies from subscription",
-				"importError": "Failed to import from subscription: {message}",
-				"syncing": "Importing...",
-				"sync": "Sync Proxies",
-				"proxiesCount": "{count} proxies",
-				"updated": "Updated {date}"
-			}
-		}
-	},
-	"Points": {
-		"title": "Points",
-		"ui": {
-			"breadcrumb": {
-				"system": "Ledger System",
-				"section": "Resource Balance"
+			"quickActions": {
+				"download": {
+					"title": "Download Video",
+					"desc": "Add a new video to your library"
+				},
+				"browse": {
+					"title": "Browse Media",
+					"desc": "View and manage your videos"
+				},
+				"analytics": {
+					"title": "View Analytics",
+					"desc": "Check your video statistics"
+				}
 			}
 		},
-		"refresh": "Refresh",
-		"balance": {
-			"title": "Current Balance",
-			"hint": "You can top up or earn points from tasks in the future.",
-			"unit": "pts"
-		},
-		"notes": {
-			"title": "Quick Notes",
-			"items": {
-				"one": "Points are charged before tasks; failures may refund per policy.",
-				"two": "Pricing varies by model/duration; see pricing table.",
-				"three": "Balance is server-side only; frontend cannot modify directly.",
-				"four": "Payments will be linked here when available."
-			}
-		},
-		"txTypes": {
-			"signup_bonus": "Signup bonus",
-			"task_cost": "Task cost",
-			"manual_adjust": "Manual adjustment",
-			"recharge": "Recharge",
-			"refund": "Refund",
-			"ai_usage": "AI usage",
-			"asr_usage": "ASR usage",
-			"download_usage": "Download usage"
-		},
-		"txRemarks": {
-			"signup_bonus": "Signup bonus",
-			"task_cost": "Task charge",
-			"manual_adjust": "Admin adjustment",
-			"recharge": "Recharge",
-			"refund": "Refund",
-			"ai_usage": "AI usage",
-			"asr_usage": "ASR usage",
-			"download_usage": "Download usage"
-		},
-		"table": {
-			"title": "Transactions",
-			"meta": "Buffer_Size: {count} | Page_Offset: {offset}",
-			"footer": "Stream_Terminal_Status: {status}",
-			"status": {
-				"ready": "Ready"
-			},
-			"headers": {
-				"time": "Time",
-				"type": "Type",
-				"delta": "Change",
-				"balance": "Balance",
-				"remark": "Remark"
-			},
-			"loading": "Loading...",
-			"empty": "No transactions yet"
-		}
-	},
-	"Download": {
-		"page": {
-			"title": "Cloud Video Download",
+		"Tasks": {
+			"title": "Tasks",
 			"ui": {
 				"breadcrumb": {
-					"system": "Ingestion System",
-					"section": "Resource Acquisition"
+					"system": "Kernel System",
+					"section": "Process Queue"
 				},
-				"taskConfigTitle": "Task_Configuration_Interface",
-				"statusAwaiting": "Status: Awaiting_Input"
+				"polling": "Polling task queue...",
+				"monitor": {
+					"title": "Live Task Monitor",
+					"activeNodes": "Active nodes: {count}"
+				}
 			},
-			"form": {
-				"title": "New Job",
-				"desc": "Paste a link, select quality; proxy is optional (auto-selects an available proxy).",
-				"urlLabel": "Video URL",
-				"urlPlaceholder": "https://example.com/video",
-				"proxyLabel": "Proxy",
-				"proxyAuto": "Auto select (Recommended)",
-				"noProxy": "No Proxy",
-				"quality": "Quality",
-				"quality1080": "1080p",
-				"quality720": "720p",
-				"qualityHint": "Use 720p only if throttling occurs.",
-				"rotateLabel": "Auto rotate proxies on failure",
-				"rotateHint": "Retry with the next proxy when a job fails.",
-				"maxAttempts": "Max attempts",
-				"scope": {
-					"label": "Rotation scope",
-					"selectedFirst": "Selected first",
-					"all": "All proxies"
+			"filter": "Filter",
+			"targetId": "Target ID",
+			"targetType": "Target Type",
+			"targetTypePlaceholder": "Select type",
+			"load": "Load",
+			"refresh": "Refresh",
+			"targetLabel": "Target",
+			"progress": "Progress",
+			"timestamps": {
+				"created": "Created",
+				"updated": "Updated",
+				"finished": "Finished",
+				"relative": "Updated {time}"
+			},
+			"empty": "No tasks found for this target.",
+			"errors": {
+				"byTarget": "Failed to load tasks: {message}",
+				"recent": "Failed to load tasks: {message}"
+			},
+			"lists": {
+				"forTarget": "Tasks for target",
+				"recent": "Recent tasks (latest 50)"
+			},
+			"select": {
+				"media": "media",
+				"channel": "channel",
+				"system": "system"
+			},
+			"status": {
+				"queued": "queued",
+				"fetching_metadata": "fetching metadata",
+				"preparing": "preparing",
+				"running": "running",
+				"uploading": "uploading",
+				"completed": "completed",
+				"failed": "failed",
+				"canceled": "canceled"
+			}
+		},
+		"Auth": {
+			"loginSuccess": "Login successful",
+			"loginError": "Login failed",
+			"signupSuccess": "Signup successful",
+			"signupError": "Signup failed",
+			"logoutSuccess": "Signed out",
+			"logoutError": "Logout failed"
+		},
+		"Channels": {
+			"videos": {
+				"loading": "Loading videos…",
+				"empty": "No videos found.",
+				"original": "Original: {title}",
+				"open": "Open"
+			},
+			"page": {
+				"title": "Channels",
+				"ui": {
+					"breadcrumb": {
+						"system": "Source Manager",
+						"section": "Channel Subscriptions"
+					},
+					"labels": {
+						"lastSync": "LAST_SYNC: {datetime}"
+					}
 				},
-				"submit": "Start download",
-				"submitPending": "Submitting...",
-				"reset": "Reset"
+				"inputPlaceholder": "Paste a YouTube channel URL or ID",
+				"add": "Add Channel",
+				"adding": "Adding…",
+				"loading": "Loading your channels…",
+				"empty": "Add a channel to start tracking new uploads.",
+				"deleteConfirm": "Are you sure you want to delete this channel? This will remove all its videos locally.",
+				"deleteSuccess": "Channel deleted successfully",
+				"deleteError": "Failed to delete channel: {message}",
+				"status": {
+					"idle": "Idle",
+					"queued": "Queued",
+					"running": "Running",
+					"completed": "Completed",
+					"failed": "Failed",
+					"canceled": "Canceled"
+				},
+				"actions": {
+					"view": "View videos",
+					"hide": "Hide videos",
+					"syncTitle": "Sync",
+					"syncDesc": "Proxy is optional (auto-selects an available proxy).",
+					"sync": "Sync latest",
+					"syncing": "Syncing…",
+					"translateTitle": "Translate",
+					"translateDesc": "Choose a model to localize the latest video titles.",
+					"model": "Model",
+					"translate": "Translate titles",
+					"translating": "Translating…",
+					"showTranslation": "Show translation",
+					"hideTranslation": "Hide translation",
+					"translateSuccess": "Titles translated!",
+					"translateError": "Failed to translate titles: {message}"
+				}
+			}
+		},
+		"Proxy": {
+			"page": {
+				"title": "Proxy Manager",
+				"tabs": {
+					"subscriptions": "Subscriptions",
+					"proxies": "Proxies"
+				},
+				"addSubscription": "Add Subscription",
+				"runChecks": "Run Checks",
+				"runChecksRunning": "Running...",
+				"runChecksQueued": "Proxy checks queued (run: {runId})",
+				"runChecksError": "Failed to start proxy checks: {message}",
+				"checkSettings": "Check Settings",
+				"checkSettingsTitle": "Proxy Check Settings",
+				"checkSettingsDesc": "Configure the test URL and limits used by proxy availability checks.",
+				"checkSettingsFields": {
+					"testUrl": "Test URL",
+					"timeoutMs": "Timeout (ms)",
+					"probeBytes": "Probe Bytes",
+					"concurrency": "Concurrency"
+				},
+				"checkSettingsBadNumber": "Please enter valid numbers.",
+				"checkSettingsSave": "Save",
+				"checkSettingsSaving": "Saving...",
+				"checkSettingsSaved": "Proxy check settings saved",
+				"checkSettingsSaveError": "Failed to save proxy check settings: {message}"
 			},
-			"rotation": {
-				"disabled": "Disabled",
-				"summary": "Attempt {attempt} / {max}"
+			"list": {
+				"search": "Search proxies...",
+				"empty": {
+					"title": "No proxies found",
+					"desc": "Try adjusting your search or add a new subscription."
+				},
+				"check": "Check",
+				"checkQueued": "Proxy check queued (run: {runId})",
+				"checkError": "Failed to start proxy check: {message}",
+				"setDefault": "Set default",
+				"clearDefault": "Clear default",
+				"defaultBadge": "Default",
+				"status": {
+					"pending": "Pending",
+					"success": "OK",
+					"failed": "Failed"
+				},
+				"lastTested": "Last tested {date}",
+				"rtt": "RTT {ms}ms",
+				"deleteConfirm": "Are you sure you want to delete this proxy?",
+				"deleteSuccess": "Proxy deleted successfully",
+				"deleteError": "Failed to delete proxy: {message}",
+				"setDefaultSuccess": {
+					"set": "Default proxy updated",
+					"cleared": "Default proxy cleared"
+				},
+				"setDefaultError": "Failed to set default proxy: {message}",
+				"pagination": {
+					"label": "Showing {from} to {to} of {total} proxies",
+					"prev": "Previous",
+					"next": "Next",
+					"page": "Page {page} of {pages}"
+				}
 			},
-			"progress": {
+			"selector": {
+				"label": {
+					"optional": "Proxy (Optional)",
+					"required": "Proxy (Required)"
+				},
+				"selectPlaceholder": "Select proxy",
+				"auto": "Auto select (Recommended)",
+				"direct": "No Proxy (Direct Connection)",
+				"loading": "Loading proxies...",
+				"noneAvailable": "No available proxies (status is OK). Please run checks/add one first.",
+				"loadError": "Failed to load proxies. Please try again.",
+				"defaultBadge": "Default"
+			},
+			"subscription": {
+				"dialog": {
+					"title": "Add SSR Subscription",
+					"desc": "Add a new SSR subscription URL to automatically import proxy servers",
+					"nameLabel": "Subscription Name *",
+					"urlLabel": "Subscription URL *",
+					"urlHint": "Enter the SSR subscription URL that returns proxy configurations",
+					"cancel": "Cancel",
+					"create": "Create Subscription",
+					"creating": "Creating...",
+					"nameRequired": "Subscription name is required",
+					"urlRequired": "Subscription URL is required",
+					"urlInvalid": "Please enter a valid URL (must start with http:// or https://)",
+					"success": "SSR subscription created successfully",
+					"error": "Failed to create SSR subscription: {message}"
+				},
+				"list": {
+					"emptyTitle": "No subscriptions yet",
+					"emptyDesc": "Add your first subscription to start managing proxies.",
+					"deleteConfirm": "Are you sure you want to delete this SSR subscription? This will also delete all associated proxies.",
+					"deleteSuccess": "SSR subscription deleted successfully",
+					"deleteError": "Failed to delete SSR subscription: {message}",
+					"importSuccess": "Imported {count} proxies from subscription",
+					"importSuccessFallback": "Imported proxies from subscription",
+					"importError": "Failed to import from subscription: {message}",
+					"syncing": "Importing...",
+					"sync": "Sync Proxies",
+					"proxiesCount": "{count} proxies",
+					"updated": "Updated {date}"
+				}
+			}
+		},
+		"Points": {
+			"title": "Points",
+			"ui": {
+				"breadcrumb": {
+					"system": "Ledger System",
+					"section": "Resource Balance"
+				}
+			},
+			"refresh": "Refresh",
+			"balance": {
+				"title": "Current Balance",
+				"hint": "You can top up or earn points from tasks in the future.",
+				"unit": "pts"
+			},
+			"notes": {
+				"title": "Quick Notes",
+				"items": {
+					"one": "Points are charged before tasks; failures may refund per policy.",
+					"two": "Pricing varies by model/duration; see pricing table.",
+					"three": "Balance is server-side only; frontend cannot modify directly.",
+					"four": "Payments will be linked here when available."
+				}
+			},
+			"txTypes": {
+				"signup_bonus": "Signup bonus",
+				"task_cost": "Task cost",
+				"manual_adjust": "Manual adjustment",
+				"recharge": "Recharge",
+				"refund": "Refund",
+				"ai_usage": "AI usage",
+				"asr_usage": "ASR usage",
+				"download_usage": "Download usage"
+			},
+			"txRemarks": {
+				"signup_bonus": "Signup bonus",
+				"task_cost": "Task charge",
+				"manual_adjust": "Admin adjustment",
+				"recharge": "Recharge",
+				"refund": "Refund",
+				"ai_usage": "AI usage",
+				"asr_usage": "ASR usage",
+				"download_usage": "Download usage"
+			},
+			"table": {
+				"title": "Transactions",
+				"meta": "Buffer_Size: {count} | Page_Offset: {offset}",
+				"footer": "Stream_Terminal_Status: {status}",
+				"status": {
+					"ready": "Ready"
+				},
+				"headers": {
+					"time": "Time",
+					"type": "Type",
+					"delta": "Change",
+					"balance": "Balance",
+					"remark": "Remark"
+				},
+				"loading": "Loading...",
+				"empty": "No transactions yet"
+			}
+		},
+		"Download": {
+			"page": {
+				"title": "Cloud Video Download",
+				"ui": {
+					"breadcrumb": {
+						"system": "Ingestion System",
+						"section": "Resource Acquisition"
+					},
+					"taskConfigTitle": "Task_Configuration_Interface",
+					"statusAwaiting": "Status: Awaiting_Input"
+				},
+				"form": {
+					"title": "New Job",
+					"desc": "Paste a link, select quality; proxy is optional (auto-selects an available proxy).",
+					"urlLabel": "Video URL",
+					"urlPlaceholder": "https://example.com/video",
+					"proxyLabel": "Proxy",
+					"proxyAuto": "Auto select (Recommended)",
+					"noProxy": "No Proxy",
+					"quality": "Quality",
+					"quality1080": "1080p",
+					"quality720": "720p",
+					"qualityHint": "Use 720p only if throttling occurs.",
+					"rotateLabel": "Auto rotate proxies on failure",
+					"rotateHint": "Retry with the next proxy when a job fails.",
+					"maxAttempts": "Max attempts",
+					"scope": {
+						"label": "Rotation scope",
+						"selectedFirst": "Selected first",
+						"all": "All proxies"
+					},
+					"submit": "Start download",
+					"submitPending": "Submitting...",
+					"reset": "Reset"
+				},
+				"rotation": {
+					"disabled": "Disabled",
+					"summary": "Attempt {attempt} / {max}"
+				},
+				"progress": {
+					"title": "Job Status",
+					"status": "Status",
+					"phase": "Phase",
+					"progress": "Progress",
+					"unknown": "Unknown",
+					"labels": {
+						"jobId": "Job ID",
+						"mediaId": "Media ID",
+						"proxy": "Proxy",
+						"autoRetry": "Auto Retry"
+					},
+					"queued": "Queued",
+					"idle": "Idle",
+					"hint": "Updated roughly every five seconds.",
+					"footer": "Jobs run up to two hours with a 2GB cap. Larger or protected media may take longer in the queue."
+				},
+				"autoRotate": {
+					"noProxy": "No proxies available. Please add one first.",
+					"selectProxy": "Pick a proxy before starting the download."
+				},
+				"toasts": {
+					"queued": "Cloud download queued!",
+					"completed": "Cloud download completed!",
+					"canceled": "Cloud download was canceled.",
+					"failed": "Cloud download failed.",
+					"failedWithMessage": "Cloud download failed: {message}"
+				},
+				"errors": {
+					"missingUrl": "Please enter a valid URL",
+					"missingProxy": "Pick a proxy before starting the download.",
+					"noProxy": "No proxies available. Please add one first.",
+					"missingJob": "jobId not set",
+					"queueFailed": "Failed to queue cloud download"
+				}
+			}
+		},
+		"MediaDetail": {
+			"back": "Back to Media Library",
+			"loading": "Loading media details...",
+			"error": "Failed to load media details. Please try again.",
+			"actions": {
+				"title": "Actions",
+				"open": "Open",
+				"sync": "Sync info",
+				"syncing": "Syncing…",
+				"syncQueued": "Metadata sync started.",
+				"syncSuccess": "Metadata synced from source.",
+				"syncError": "Failed to sync metadata: {message}"
+			},
+			"tabs": {
+				"subtitles": "Subtitles",
+				"subtitlesAction": "Generate Subtitles",
+				"commentsAction": "View Comments"
+			},
+			"video": {
+				"thumbnailAlt": "Channel thumbnail"
+			},
+			"status": {
 				"title": "Job Status",
-				"status": "Status",
-				"phase": "Phase",
-				"progress": "Progress",
-				"unknown": "Unknown",
+				"updated": "Updated roughly every five seconds.",
 				"labels": {
+					"status": "Status",
+					"phase": "Phase",
 					"jobId": "Job ID",
 					"mediaId": "Media ID",
 					"proxy": "Proxy",
 					"autoRetry": "Auto Retry"
 				},
-				"queued": "Queued",
 				"idle": "Idle",
-				"hint": "Updated roughly every five seconds.",
+				"queued": "Queued",
+				"unknown": "Unknown",
 				"footer": "Jobs run up to two hours with a 2GB cap. Larger or protected media may take longer in the queue."
 			},
-			"autoRotate": {
-				"noProxy": "No proxies available. Please add one first.",
-				"selectProxy": "Pick a proxy before starting the download."
-			},
-			"toasts": {
-				"queued": "Cloud download queued!",
-				"completed": "Cloud download completed!",
-				"canceled": "Cloud download was canceled.",
-				"failed": "Cloud download failed.",
-				"failedWithMessage": "Cloud download failed: {message}"
-			},
-			"errors": {
-				"missingUrl": "Please enter a valid URL",
-				"missingProxy": "Pick a proxy before starting the download.",
-				"noProxy": "No proxies available. Please add one first.",
-				"missingJob": "jobId not set",
-				"queueFailed": "Failed to queue cloud download"
-			}
-		}
-	},
-	"MediaDetail": {
-		"back": "Back to Media Library",
-		"loading": "Loading media details...",
-		"error": "Failed to load media details. Please try again.",
-		"actions": {
-			"title": "Actions",
-			"open": "Open",
-			"sync": "Sync info",
-			"syncing": "Syncing…",
-			"syncQueued": "Metadata sync started.",
-			"syncSuccess": "Metadata synced from source.",
-			"syncError": "Failed to sync metadata: {message}"
-		},
-		"tabs": {
-			"subtitles": "Subtitles",
-			"subtitlesAction": "Generate Subtitles",
-			"commentsAction": "View Comments"
-		},
-		"video": {
-			"thumbnailAlt": "Channel thumbnail"
-		},
-		"status": {
-			"title": "Job Status",
-			"updated": "Updated roughly every five seconds.",
-			"labels": {
-				"status": "Status",
-				"phase": "Phase",
-				"jobId": "Job ID",
-				"mediaId": "Media ID",
-				"proxy": "Proxy",
-				"autoRetry": "Auto Retry"
-			},
-			"idle": "Idle",
-			"queued": "Queued",
-			"unknown": "Unknown",
-			"footer": "Jobs run up to two hours with a 2GB cap. Larger or protected media may take longer in the queue."
-		},
-		"info": {
-			"title": "Storage",
-			"unknown": "Unknown",
-			"hint": "File sizes are recorded after successful cloud downloads.",
-			"labels": {
-				"videoSize": "Video size",
-				"processedAudioSize": "Processed audio size",
-				"videoKey": "Video key",
-				"processedAudioKey": "Processed audio key",
-				"sourceAudioKey": "Source audio key",
-				"metadataKey": "Metadata key"
-			}
-		},
-		"points": {
-			"title": "Points Activity",
-			"net": "Net",
-			"table": {
-				"headers": {
-					"time": "Time",
-					"type": "Type",
-					"delta": "Delta",
-					"balance": "Balance",
-					"remark": "Remark"
-				},
-				"loading": "Loading…",
-				"empty": "No transactions",
-				"error": "Failed to load"
-			},
-			"pagination": "Page {page}/{pages}, {total} total",
-			"prev": "Prev",
-			"next": "Next"
-		}
-	},
-	"Subtitles": {
-		"title": "Subtitles",
-		"back": "Back",
-		"transcribe": {
-			"title": "Transcribe",
-			"desc": "Generate a transcription using ASR.",
-			"model": "ASR model",
-			"language": "Language",
-			"start": "Start transcription",
-			"starting": "Starting…",
-			"started": "Transcription started",
-			"output": "Transcription",
-			"noHint": "No hint",
-			"languages": {
-				"auto": "Auto detect",
-				"zh": "Chinese (Mandarin)",
-				"yue": "Chinese (Cantonese)",
-				"en": "English",
-				"ja": "Japanese",
-				"ko": "Korean",
-				"es": "Spanish",
-				"fr": "French",
-				"de": "German",
-				"pt": "Portuguese",
-				"hi": "Hindi",
-				"id": "Indonesian"
-			}
-		},
-		"optimize": {
-			"title": "Optimize",
-			"desc": "Improve segmentation and readability using an LLM. Requires per-word timings from ASR.",
-			"model": "LLM model",
-			"start": "Optimize transcription",
-			"starting": "Optimizing…",
-			"completed": "Optimization completed",
-			"restore": "Restore original",
-			"restoring": "Restoring…",
-			"restored": "Restored",
-			"requiresWords": "Optimization requires word timings (transcriptionWords). Re-run transcription with a Cloudflare ASR model that returns words."
-		},
-		"translate": {
-			"title": "Translate",
-			"desc": "Translate the transcription to subtitles.",
-			"model": "LLM model",
-			"defaultModel": "Default: {model}",
-			"start": "Translate",
-			"starting": "Translating…",
-			"completed": "Translation completed",
-			"output": "Translation"
-		},
-		"render": {
-			"title": "Render",
-			"desc": "Burn subtitles into the video via cloud rendering.",
-			"start": "Start render",
-			"starting": "Rendering…",
-			"started": "Render started",
-			"badges": {
-				"ready": "Ready",
-				"needTranslation": "Need translation"
-			},
-			"progressLabels": {
-				"status": "Render",
-				"phase": "Phase"
-			},
-			"errorTitle": "Rendering error"
-		},
-		"ui": {
-			"toasts": {
-				"saved": "Saved",
-				"failed": "Failed"
-			},
-			"status": {
-				"loadingMediaData": "Loading media data...",
-				"errorLoadingMedia": "Error loading media"
-			},
-			"actions": {
-				"save": "Save",
-				"reset": "Reset"
-			},
-			"cues": {
-				"title": "Cues",
-				"deleteAria": "Delete cue",
-				"deleteTitle": "Delete this subtitle cue"
-			},
-			"translationEditor": {
-				"hideEditor": "Hide Editor",
-				"editVtt": "Edit VTT",
-				"noTranslationYet": "No translation yet. Start translation to generate cues."
-			},
-			"step4Preview": {
-				"renderingTitle": "Rendering in Progress",
-				"renderingBody": "Please wait while we process your video with subtitles...",
-				"previewTitle": "Preview Video",
-				"downloadTitle": "Download Files",
-				"downloadVideo": "Download Video",
-				"videoUnsupported": "Your browser does not support the video tag."
-			},
-			"videoPreview": {
-				"title": "Video Preview",
-				"videoUnsupported": "Your browser does not support the video tag.",
-				"badges": {
-					"rendered": "Rendered"
-				},
-				"messages": {
-					"previewDisabledDuringRendering": "Preview disabled during rendering",
-					"translationRequiredForPreview": "Translation required for preview",
-					"noSubtitlesFound": "No subtitles found"
+			"info": {
+				"title": "Storage",
+				"unknown": "Unknown",
+				"hint": "File sizes are recorded after successful cloud downloads.",
+				"labels": {
+					"videoSize": "Video size",
+					"processedAudioSize": "Processed audio size",
+					"videoKey": "Video key",
+					"processedAudioKey": "Processed audio key",
+					"sourceAudioKey": "Source audio key",
+					"metadataKey": "Metadata key"
 				}
 			},
-			"configControls": {
-				"title": "Subtitle Settings",
-				"badge": {
-					"custom": "Custom",
-					"preset": "Preset"
-				},
-				"tabs": {
-					"presets": "Presets",
-					"manual": "Manual"
-				},
-				"presets": {
-					"default": {
-						"label": "Default",
-						"description": "White subtitles with 65% black background."
+			"points": {
+				"title": "Points Activity",
+				"net": "Net",
+				"table": {
+					"headers": {
+						"time": "Time",
+						"type": "Type",
+						"delta": "Delta",
+						"balance": "Balance",
+						"remark": "Remark"
 					},
-					"contrast": {
-						"label": "High Contrast",
-						"description": "Golden subtitles with 80% dark background."
-					},
-					"minimal": {
-						"label": "Minimal",
-						"description": "Transparent background with white text."
-					},
-					"bold": {
-						"label": "Large",
-						"description": "28px font size with 70% background opacity."
-					}
+					"loading": "Loading…",
+					"empty": "No transactions",
+					"error": "Failed to load"
 				},
-				"fields": {
-					"fontSize": "Font Size",
-					"opacity": "Opacity",
-					"background": "Background",
-					"colors": "Colors"
-				},
-				"colors": {
-					"text": "Text",
-					"background": "BG",
-					"outline": "Outline"
-				},
-				"actions": {
-					"resetToDefault": "Reset to Default"
-				}
-			},
-			"hintTextConfig": {
-				"title": "Black Screen Hint Text",
-				"enabledLabel": "Enable hint text",
-				"contentLabel": "Hint Text Content",
-				"contentPlaceholder": "Enter hint text to display during black screen...",
-				"defaultText": "Please wait...",
-				"fontSize": "Font Size",
-				"position": {
-					"label": "Position",
-					"center": "Center",
-					"top": "Top",
-					"bottom": "Bottom"
-				},
-				"animation": {
-					"label": "Animation",
-					"none": "None",
-					"fadeIn": "Fade In",
-					"slideUp": "Slide Up"
-				},
-				"backgroundOpacity": "Background Opacity",
-				"colors": {
-					"text": "Text",
-					"background": "BG",
-					"outline": "Outline"
-				}
-			},
-			"timeline": {
-				"title": "Timeline Selection",
-				"badges": {
-					"loadingDuration": "Loading video duration...",
-					"conflicts": "{count, plural, one {# Conflict} other {# Conflicts}}"
-				},
-				"inputs": {
-					"startTime": "Start Time (seconds)",
-					"endTime": "End Time (seconds)"
-				},
-				"actions": {
-					"preview": "Preview"
-				},
-				"durationLabel": "Duration:",
-				"conflictsHint": "Conflicts with existing segments. Adjust the time range to avoid conflicts."
-			},
-			"effects": {
-				"header": {
-					"title": "Time Segment Effects",
-					"effectsCount": "{count, plural, one {# effect} other {# effects}}"
-				},
-				"empty": {
-					"title": "No time segment effects configured",
-					"body": "Add effects to create black screens or mute audio during specific time ranges"
-				},
-				"badges": {
-					"muted": "Muted",
-					"blackScreen": "Black Screen"
-				},
-				"form": {
-					"editTitle": "Edit Time Segment Effect",
-					"addTitle": "Add Time Segment Effect",
-					"blackScreen": "Black Screen",
-					"muteAudio": "Mute Audio",
-					"descriptionLabel": "Description (optional)",
-					"descriptionPlaceholder": "Describe this effect..."
-				},
-				"actions": {
-					"addFirst": "Add Your First Effect",
-					"addEffect": "Add Effect",
-					"editAria": "Edit effect",
-					"deleteAria": "Delete effect",
-					"cancel": "Cancel",
-					"update": "Update",
-					"add": "Add"
-				},
-				"toasts": {
-					"invalidTimeRange": "Invalid time range: start time must be less than end time"
-				}
+				"pagination": "Page {page}/{pages}, {total} total",
+				"prev": "Prev",
+				"next": "Next"
 			}
-		}
-	},
-	"MediaComments": {
-		"series": {
-			"externalRealComments": "Real comments"
 		},
-		"page": {
-			"header": {
-				"back": "Back",
-				"title": "Comments",
-				"editTitles": "Edit Titles"
-			},
-			"ui": {
-				"breadcrumb": {
-					"system": "Media System",
-					"section": "Comments Manager"
-				},
-				"actions": {
-					"refresh": "Refresh"
-				},
-				"status": {
-					"loading": "System loading...",
-					"errorSync": "Error: Failed to synchronize media data."
-				},
-				"placeholders": {
-					"selectEngine": "Select model",
-					"selectGateway": "Select proxy",
-					"autoDiscovery": "Auto select"
+		"Subtitles": {
+			"title": "Subtitles",
+			"back": "Back",
+			"transcribe": {
+				"title": "Transcribe",
+				"desc": "Generate a transcription using ASR.",
+				"model": "ASR model",
+				"language": "Language",
+				"start": "Start transcription",
+				"starting": "Starting…",
+				"started": "Transcription started",
+				"output": "Transcription",
+				"noHint": "No hint",
+				"languages": {
+					"auto": "Auto detect",
+					"zh": "Chinese (Mandarin)",
+					"yue": "Chinese (Cantonese)",
+					"en": "English",
+					"ja": "Japanese",
+					"ko": "Korean",
+					"es": "Spanish",
+					"fr": "French",
+					"de": "German",
+					"pt": "Portuguese",
+					"hi": "Hindi",
+					"id": "Indonesian"
 				}
 			},
-			"preview": {
-				"loading": "Loading…",
-				"empty": {
-					"mediaMissing": "Media details are required to generate a preview.",
-					"noComments": {
-						"title": "No comments to preview yet",
-						"body": "Download or translate comments to unlock the Remotion preview."
-					}
-				}
-			},
-			"editDialog": {
-				"title": "Edit Titles",
-				"description": "Update the original and translated titles for this media.",
-				"fields": {
-					"originalLabel": "Original Title",
-					"originalPlaceholder": "Enter original title",
-					"translatedLabel": "Translated Title",
-					"translatedPlaceholder": "Enter translated title"
-				},
-				"actions": {
-					"cancel": "Cancel",
-					"save": "Save",
-					"saving": "Saving..."
-				}
-			},
-			"workflow": {
-				"title": "Workflow"
-			},
-			"tabs": {
-				"basics": "Base",
-				"download": "Get",
-				"translate": "Trans",
-				"render": "Render"
-			},
-			"labels": {
-				"englishTitle": "Translated title",
-				"originalTitle": "Original title"
-			},
-			"fields": {
-				"proxy": "Proxy",
-				"aiModel": "AI Model",
-				"overwriteExisting": "Overwrite existing"
-			},
-			"basics": {
-				"translatedTitle": {
-					"label": "Translated Title",
-					"empty": "No translated title",
-					"copy": "Copy translated title"
-				},
-				"originalTitle": {
-					"label": "Original Title",
-					"empty": "No original title",
-					"copy": "Copy Original Title"
-				}
-			},
-			"download": {
-				"pagesLabel": "Pages to fetch",
-				"pagesOption": "{count, plural, one {# page} other {# pages}}",
-				"start": "Start Download",
-				"queuing": "Queuing..."
+			"optimize": {
+				"title": "Optimize",
+				"desc": "Improve segmentation and readability using an LLM. Requires per-word timings from ASR.",
+				"model": "LLM model",
+				"start": "Optimize transcription",
+				"starting": "Optimizing…",
+				"completed": "Optimization completed",
+				"restore": "Restore original",
+				"restoring": "Restoring…",
+				"restored": "Restored",
+				"requiresWords": "Optimization requires word timings (transcriptionWords). Re-run transcription with a Cloudflare ASR model that returns words."
 			},
 			"translate": {
-				"translate": "Translate",
-				"translating": "Translating..."
+				"title": "Translate",
+				"desc": "Translate the transcription to subtitles.",
+				"model": "LLM model",
+				"defaultModel": "Default: {model}",
+				"start": "Translate",
+				"starting": "Translating…",
+				"completed": "Translation completed",
+				"output": "Translation"
 			},
 			"render": {
-				"template": "Template",
-				"config": {
-					"title": "Style",
+				"title": "Render",
+				"desc": "Burn subtitles into the video via cloud rendering.",
+				"start": "Start render",
+				"starting": "Rendering…",
+				"started": "Render started",
+				"badges": {
+					"ready": "Ready",
+					"needTranslation": "Need translation"
+				},
+				"progressLabels": {
+					"status": "Render",
+					"phase": "Phase"
+				},
+				"errorTitle": "Rendering error"
+			},
+			"ui": {
+				"toasts": {
+					"saved": "Saved",
+					"failed": "Failed"
+				},
+				"status": {
+					"loadingMediaData": "Loading media data...",
+					"errorLoadingMedia": "Error loading media"
+				},
+				"actions": {
 					"save": "Save",
-					"saving": "Saving...",
-					"reset": "Use template defaults",
-					"theme": "Colors",
-					"typography": "Typography",
-					"layout": "Layout",
-					"brand": "Brand",
-					"motion": "Motion",
-					"fields": {
-						"background": "Background",
-						"surface": "Surface",
-						"textPrimary": "Text",
-						"textSecondary": "Text (secondary)",
-						"accent": "Accent",
-						"fontPreset": "Font",
-						"fontScale": "Font scale",
-						"paddingX": "Padding X",
-						"paddingY": "Padding Y",
-						"infoPanelWidth": "Info width",
-						"watermark": "Watermark",
-						"watermarkText": "Watermark text",
-						"motionEnabled": "Enable motion",
-						"motionIntensity": "Intensity"
+					"reset": "Reset"
+				},
+				"cues": {
+					"title": "Cues",
+					"deleteAria": "Delete cue",
+					"deleteTitle": "Delete this subtitle cue"
+				},
+				"translationEditor": {
+					"hideEditor": "Hide Editor",
+					"editVtt": "Edit VTT",
+					"noTranslationYet": "No translation yet. Start translation to generate cues."
+				},
+				"step4Preview": {
+					"renderingTitle": "Rendering in Progress",
+					"renderingBody": "Please wait while we process your video with subtitles...",
+					"previewTitle": "Preview Video",
+					"downloadTitle": "Download Files",
+					"downloadVideo": "Download Video",
+					"videoUnsupported": "Your browser does not support the video tag."
+				},
+				"videoPreview": {
+					"title": "Video Preview",
+					"videoUnsupported": "Your browser does not support the video tag.",
+					"badges": {
+						"rendered": "Rendered"
+					},
+					"messages": {
+						"previewDisabledDuringRendering": "Preview disabled during rendering",
+						"translationRequiredForPreview": "Translation required for preview",
+						"noSubtitlesFound": "No subtitles found"
 					}
 				},
-				"start": "Start Render",
-				"queuing": "Queuing...",
-				"sourcePolicy": {
-					"label": "Source Policy",
-					"auto": "Auto (Best available)",
-					"original": "Original Video",
-					"subtitles": "Subtitle Render"
+				"configControls": {
+					"title": "Subtitle Settings",
+					"badge": {
+						"custom": "Custom",
+						"preset": "Preset"
+					},
+					"tabs": {
+						"presets": "Presets",
+						"manual": "Manual"
+					},
+					"presets": {
+						"default": {
+							"label": "Default",
+							"description": "White subtitles with 65% black background."
+						},
+						"contrast": {
+							"label": "High Contrast",
+							"description": "Golden subtitles with 80% dark background."
+						},
+						"minimal": {
+							"label": "Minimal",
+							"description": "Transparent background with white text."
+						},
+						"bold": {
+							"label": "Large",
+							"description": "28px font size with 70% background opacity."
+						}
+					},
+					"fields": {
+						"fontSize": "Font Size",
+						"opacity": "Opacity",
+						"background": "Background",
+						"colors": "Colors"
+					},
+					"colors": {
+						"text": "Text",
+						"background": "BG",
+						"outline": "Outline"
+					},
+					"actions": {
+						"resetToDefault": "Reset to Default"
+					}
 				},
-				"output": {
-					"label": "Rendered Output",
-					"download": "Download Rendered Video",
-					"emptyHint": "Render completes here to enable download."
+				"hintTextConfig": {
+					"title": "Black Screen Hint Text",
+					"enabledLabel": "Enable hint text",
+					"contentLabel": "Hint Text Content",
+					"contentPlaceholder": "Enter hint text to display during black screen...",
+					"defaultText": "Please wait...",
+					"fontSize": "Font Size",
+					"position": {
+						"label": "Position",
+						"center": "Center",
+						"top": "Top",
+						"bottom": "Bottom"
+					},
+					"animation": {
+						"label": "Animation",
+						"none": "None",
+						"fadeIn": "Fade In",
+						"slideUp": "Slide Up"
+					},
+					"backgroundOpacity": "Background Opacity",
+					"colors": {
+						"text": "Text",
+						"background": "BG",
+						"outline": "Outline"
+					}
+				},
+				"timeline": {
+					"title": "Timeline Selection",
+					"badges": {
+						"loadingDuration": "Loading video duration...",
+						"conflicts": "{count, plural, one {# Conflict} other {# Conflicts}}"
+					},
+					"inputs": {
+						"startTime": "Start Time (seconds)",
+						"endTime": "End Time (seconds)"
+					},
+					"actions": {
+						"preview": "Preview"
+					},
+					"durationLabel": "Duration:",
+					"conflictsHint": "Conflicts with existing segments. Adjust the time range to avoid conflicts."
+				},
+				"effects": {
+					"header": {
+						"title": "Time Segment Effects",
+						"effectsCount": "{count, plural, one {# effect} other {# effects}}"
+					},
+					"empty": {
+						"title": "No time segment effects configured",
+						"body": "Add effects to create black screens or mute audio during specific time ranges"
+					},
+					"badges": {
+						"muted": "Muted",
+						"blackScreen": "Black Screen"
+					},
+					"form": {
+						"editTitle": "Edit Time Segment Effect",
+						"addTitle": "Add Time Segment Effect",
+						"blackScreen": "Black Screen",
+						"muteAudio": "Mute Audio",
+						"descriptionLabel": "Description (optional)",
+						"descriptionPlaceholder": "Describe this effect..."
+					},
+					"actions": {
+						"addFirst": "Add Your First Effect",
+						"addEffect": "Add Effect",
+						"editAria": "Edit effect",
+						"deleteAria": "Delete effect",
+						"cancel": "Cancel",
+						"update": "Update",
+						"add": "Add"
+					},
+					"toasts": {
+						"invalidTimeRange": "Invalid time range: start time must be less than end time"
+					}
 				}
+			}
+		},
+		"MediaComments": {
+			"series": {
+				"externalRealComments": "Real comments"
 			},
-			"cloudJob": {
+			"page": {
+				"header": {
+					"back": "Back",
+					"title": "Comments",
+					"editTitles": "Edit Titles"
+				},
+				"ui": {
+					"breadcrumb": {
+						"system": "Media System",
+						"section": "Comments Manager"
+					},
+					"actions": {
+						"refresh": "Refresh"
+					},
+					"status": {
+						"loading": "System loading...",
+						"errorSync": "Error: Failed to synchronize media data."
+					},
+					"placeholders": {
+						"selectEngine": "Select model",
+						"selectGateway": "Select proxy",
+						"autoDiscovery": "Auto select"
+					}
+				},
+				"preview": {
+					"loading": "Loading…",
+					"empty": {
+						"mediaMissing": "Media details are required to generate a preview.",
+						"noComments": {
+							"title": "No comments to preview yet",
+							"body": "Download or translate comments to unlock the Remotion preview."
+						}
+					}
+				},
+				"editDialog": {
+					"title": "Edit Titles",
+					"description": "Update the original and translated titles for this media.",
+					"fields": {
+						"originalLabel": "Original Title",
+						"originalPlaceholder": "Enter original title",
+						"translatedLabel": "Translated Title",
+						"translatedPlaceholder": "Enter translated title"
+					},
+					"actions": {
+						"cancel": "Cancel",
+						"save": "Save",
+						"saving": "Saving..."
+					}
+				},
+				"workflow": {
+					"title": "Workflow"
+				},
+				"tabs": {
+					"basics": "Base",
+					"download": "Get",
+					"translate": "Trans",
+					"render": "Render"
+				},
 				"labels": {
+					"englishTitle": "Translated title",
+					"originalTitle": "Original title"
+				},
+				"fields": {
+					"proxy": "Proxy",
+					"aiModel": "AI Model",
+					"overwriteExisting": "Overwrite existing"
+				},
+				"basics": {
+					"translatedTitle": {
+						"label": "Translated Title",
+						"empty": "No translated title",
+						"copy": "Copy translated title"
+					},
+					"originalTitle": {
+						"label": "Original Title",
+						"empty": "No original title",
+						"copy": "Copy Original Title"
+					}
+				},
+				"download": {
+					"pagesLabel": "Pages to fetch",
+					"pagesOption": "{count, plural, one {# page} other {# pages}}",
+					"start": "Start Download",
+					"queuing": "Queuing..."
+				},
+				"translate": {
+					"translate": "Translate",
+					"translating": "Translating..."
+				},
+				"render": {
+					"template": "Template",
+					"config": {
+						"title": "Style",
+						"save": "Save",
+						"saving": "Saving...",
+						"reset": "Use template defaults",
+						"theme": "Colors",
+						"typography": "Typography",
+						"layout": "Layout",
+						"brand": "Brand",
+						"motion": "Motion",
+						"fields": {
+							"background": "Background",
+							"surface": "Surface",
+							"textPrimary": "Text",
+							"textSecondary": "Text (secondary)",
+							"accent": "Accent",
+							"fontPreset": "Font",
+							"fontScale": "Font scale",
+							"paddingX": "Padding X",
+							"paddingY": "Padding Y",
+							"infoPanelWidth": "Info width",
+							"watermark": "Watermark",
+							"watermarkText": "Watermark text",
+							"motionEnabled": "Enable motion",
+							"motionIntensity": "Intensity"
+						}
+					},
+					"start": "Start Render",
+					"queuing": "Queuing...",
+					"sourcePolicy": {
+						"label": "Source Policy",
+						"auto": "Auto (Best available)",
+						"original": "Original Video",
+						"subtitles": "Subtitle Render"
+					},
+					"output": {
+						"label": "Rendered Output",
+						"download": "Download Rendered Video",
+						"emptyHint": "Render completes here to enable download."
+					}
+				},
+				"cloudJob": {
+					"labels": {
+						"status": "Status",
+						"renderStatus": "Render status"
+					}
+				},
+				"videoInfo": {
+					"title": "Video Info",
+					"sourceId": "Source",
+					"openSource": "Open source",
+					"copySourceLink": "Copy source link",
+					"copyDisclaimer": "Copy Disclaimer"
+				},
+				"disclaimer": {
+					"title": "Content Disclaimer",
+					"body1": "This video is for entertainment purposes only. Referenced comments do not represent this platform's stance or views.",
+					"body2": "Please watch responsibly and avoid spreading misinformation.",
+					"sourceVideo": "Source video: {sourceId}",
+					"collectedAt": "Comments collected at: {datetime}"
+				},
+				"comments": {
+					"title": "Comments ({count})",
+					"selected": "{count} selected",
+					"selectAll": "Select all",
+					"clearSelection": "Clear selection",
+					"deleteSelected": "Delete Selected",
+					"deleting": "Deleting..."
+				},
+				"empty": {
+					"title": "No comments found",
+					"description": "Download comments to get started."
+				},
+				"bulkDelete": {
+					"confirm": {
+						"title": "Delete comments",
+						"description": "Delete {count, plural, one {# selected comment} other {# selected comments}}?",
+						"action": "[ CONFIRM_PURGE ]",
+						"executing": "EXECUTING..."
+					}
+				},
+				"toasts": {
+					"valueMissing": "{label} does not exist",
+					"clipboardUnavailable": "Unable to access clipboard",
+					"copiedToClipboard": "{label} copied to clipboard",
+					"copyFailed": "Failed to copy {label}",
+					"templateSaved": "Template saved!",
+					"titlesUpdated": "Titles updated successfully!",
+					"cloudCommentsQueued": "Cloud comments download queued",
+					"commentsDownloaded": "Comments downloaded!",
+					"commentsTranslated": "Comments translated!",
+					"commentsDeleted": "Deleted {count, plural, one {# comment} other {# comments}}",
+					"cloudRenderQueued": "Cloud render queued",
+					"disclaimerCopied": "Disclaimer copied to clipboard"
+				},
+				"errors": {
+					"selectProxyFirst": "Please select a proxy first.",
+					"noProxiesAvailable": "No available proxies (status is OK).",
+					"templateSaveFailed": "Failed to save template: {message}",
+					"titlesUpdateFailed": "Failed to update titles: {message}",
+					"translateFailed": "Failed to translate comments: {message}",
+					"deleteFailed": "Failed to delete comments: {message}"
+				}
+			}
+		},
+		"Login": {
+			"title": "Sign In / Sign Up",
+			"subtitle": "Use your email and password to access the platform.",
+			"brand": {
+				"title": "Intelligent Video Workspace",
+				"subtitle": "Download, transcribe, and analyze in one place.",
+				"bullets": {
+					"processing": "Smart video processing & transcoding",
+					"downloads": "Multi-platform video downloads",
+					"subtitles": "AI subtitles and summaries"
+				},
+				"footer": "Cloud jobs and flexible workflows supported."
+			},
+			"tabs": {
+				"login": "Login",
+				"signup": "Create Account"
+			},
+			"login": {
+				"email": "Email",
+				"password": "Password",
+				"passwordPlaceholder": "At least 8 characters",
+				"submit": "Login",
+				"submitting": "Logging in…"
+			},
+			"signup": {
+				"email": "Email",
+				"password": "Password",
+				"passwordPlaceholder": "At least 8 characters",
+				"confirmPassword": "Confirm password",
+				"confirmPasswordPlaceholder": "Re-enter your password",
+				"confirmPasswordMismatch": "Passwords do not match.",
+				"nickname": "Nickname (optional)",
+				"nicknamePlaceholder": "Display name",
+				"hint": "Sign up to start using all features.",
+				"submit": "Sign up & login",
+				"submitting": "Signing up…"
+			},
+			"switchToSignup": "New here? Create an account",
+			"switchToLogin": "Already have an account? Sign in",
+			"backHome": "Back to Home"
+		},
+		"Admin": {
+			"layout": {
+				"title": "Admin Console",
+				"actions": {
+					"backToWorkspace": "Back to workspace",
+					"back": "Back"
+				},
+				"mobile": {
+					"sectionPlaceholder": "Select section"
+				},
+				"nav": {
+					"users": "Users",
+					"proxy": "Proxy",
+					"aiProviders": "AI providers",
+					"aiModels": "AI models",
+					"pricing": "Points pricing",
+					"jobEvents": "Job events"
+				}
+			},
+			"jobEvents": {
+				"title": "Job Events",
+				"subtitle": "Latest events across the system",
+				"loading": "Loading…",
+				"empty": "No events",
+				"fields": { "jobId": "Job ID", "taskId": "Task ID", "limit": "Limit" },
+				"placeholders": { "jobId": "job_…", "taskId": "task id" },
+				"replay": {
+					"title": "Replay callback",
+					"subtitle": "Ask the orchestrator to re-send /api/render/cf-callback for a jobId (admin only).",
+					"fields": { "jobId": "Job ID", "reason": "Reason", "force": "Force" },
+					"placeholders": { "reason": "optional (audit only)" },
+					"actions": { "replay": "Replay", "replaying": "Replaying…" },
+					"stats": {
+						"title": "Signals",
+						"ignoredInvalid": "App ignored-invalid",
+						"orchestratorStatus": "Orchestrator status",
+						"appNotified": "App notified",
+						"notifyAttempts": "Notify attempts"
+					},
+					"toast": {
+						"ok": "Replay requested",
+						"okWithSeq": "Replay requested (eventSeq {seq})",
+						"fail": "Replay failed"
+					}
+				},
+				"actions": {
+					"refresh": "Refresh",
+					"refreshing": "Refreshing…",
+					"apply": "Apply",
+					"clear": "Clear"
+				},
+				"cols": {
+					"time": "Time",
+					"source": "Src",
+					"kind": "Kind",
+					"jobId": "Job",
+					"taskId": "Task",
 					"status": "Status",
-					"renderStatus": "Render status"
-				}
+					"seq": "Seq"
+				},
+				"stats": "{count} shown (limit {limit})"
 			},
-			"videoInfo": {
-				"title": "Video Info",
-				"sourceId": "Source",
-				"openSource": "Open source",
-				"copySourceLink": "Copy source link",
-				"copyDisclaimer": "Copy Disclaimer"
-			},
-			"disclaimer": {
-				"title": "Content Disclaimer",
-				"body1": "This video is for entertainment purposes only. Referenced comments do not represent this platform's stance or views.",
-				"body2": "Please watch responsibly and avoid spreading misinformation.",
-				"sourceVideo": "Source video: {sourceId}",
-				"collectedAt": "Comments collected at: {datetime}"
-			},
-			"comments": {
-				"title": "Comments ({count})",
-				"selected": "{count} selected",
-				"selectAll": "Select all",
-				"clearSelection": "Clear selection",
-				"deleteSelected": "Delete Selected",
-				"deleting": "Deleting..."
-			},
-			"empty": {
-				"title": "No comments found",
-				"description": "Download comments to get started."
-			},
-			"bulkDelete": {
+			"aiProviders": {
+				"title": "AI Providers",
+				"tabs": { "llm": "LLM Providers", "asr": "ASR Providers" },
+				"empty": "No providers found",
+				"status": { "enabled": "Enabled", "disabled": "Disabled" },
+				"actions": {
+					"add": "Add provider",
+					"edit": "Edit",
+					"enable": "Enable",
+					"disable": "Disable",
+					"delete": "Delete",
+					"test": "Test",
+					"save": "Save",
+					"cancel": "Cancel"
+				},
 				"confirm": {
-					"title": "Delete comments",
-					"description": "Delete {count, plural, one {# selected comment} other {# selected comments}}?",
-					"action": "[ CONFIRM_PURGE ]",
-					"executing": "EXECUTING..."
-				}
-			},
-			"toasts": {
-				"valueMissing": "{label} does not exist",
-				"clipboardUnavailable": "Unable to access clipboard",
-				"copiedToClipboard": "{label} copied to clipboard",
-				"copyFailed": "Failed to copy {label}",
-				"templateSaved": "Template saved!",
-				"titlesUpdated": "Titles updated successfully!",
-				"cloudCommentsQueued": "Cloud comments download queued",
-				"commentsDownloaded": "Comments downloaded!",
-				"commentsTranslated": "Comments translated!",
-				"commentsDeleted": "Deleted {count, plural, one {# comment} other {# comments}}",
-				"cloudRenderQueued": "Cloud render queued",
-				"disclaimerCopied": "Disclaimer copied to clipboard"
-			},
-			"errors": {
-				"selectProxyFirst": "Please select a proxy first.",
-				"noProxiesAvailable": "No available proxies (status is OK).",
-				"templateSaveFailed": "Failed to save template: {message}",
-				"titlesUpdateFailed": "Failed to update titles: {message}",
-				"translateFailed": "Failed to translate comments: {message}",
-				"deleteFailed": "Failed to delete comments: {message}"
-			}
-		}
-	},
-	"Login": {
-		"title": "Sign In / Sign Up",
-		"subtitle": "Use your email and password to access the platform.",
-		"brand": {
-			"title": "Intelligent Video Workspace",
-			"subtitle": "Download, transcribe, and analyze in one place.",
-			"bullets": {
-				"processing": "Smart video processing & transcoding",
-				"downloads": "Multi-platform video downloads",
-				"subtitles": "AI subtitles and summaries"
-			},
-			"footer": "Cloud jobs and flexible workflows supported."
-		},
-		"tabs": {
-			"login": "Login",
-			"signup": "Create Account"
-		},
-		"login": {
-			"email": "Email",
-			"password": "Password",
-			"passwordPlaceholder": "At least 8 characters",
-			"submit": "Login",
-			"submitting": "Logging in…"
-		},
-		"signup": {
-			"email": "Email",
-			"password": "Password",
-			"passwordPlaceholder": "At least 8 characters",
-			"confirmPassword": "Confirm password",
-			"confirmPasswordPlaceholder": "Re-enter your password",
-			"confirmPasswordMismatch": "Passwords do not match.",
-			"nickname": "Nickname (optional)",
-			"nicknamePlaceholder": "Display name",
-			"hint": "Sign up to start using all features.",
-			"submit": "Sign up & login",
-			"submitting": "Signing up…"
-		},
-		"switchToSignup": "New here? Create an account",
-		"switchToLogin": "Already have an account? Sign in",
-		"backHome": "Back to Home"
-	},
-	"Admin": {
-		"layout": {
-			"title": "Admin Console",
-			"actions": {
-				"backToWorkspace": "Back to workspace",
-				"back": "Back"
-			},
-			"mobile": {
-				"sectionPlaceholder": "Select section"
-			},
-			"nav": {
-				"users": "Users",
-				"proxy": "Proxy",
-				"aiProviders": "AI providers",
-				"aiModels": "AI models",
-				"pricing": "Points pricing",
-				"jobEvents": "Job events"
-			}
-		},
-		"jobEvents": {
-			"title": "Job Events",
-			"subtitle": "Latest events across the system",
-			"loading": "Loading…",
-			"empty": "No events",
-			"fields": { "jobId": "Job ID", "taskId": "Task ID", "limit": "Limit" },
-			"placeholders": { "jobId": "job_…", "taskId": "task id" },
-			"replay": {
-				"title": "Replay callback",
-				"subtitle": "Ask the orchestrator to re-send /api/render/cf-callback for a jobId (admin only).",
-				"fields": { "jobId": "Job ID", "reason": "Reason", "force": "Force" },
-				"placeholders": { "reason": "optional (audit only)" },
-				"actions": { "replay": "Replay", "replaying": "Replaying…" },
-				"stats": {
-					"title": "Signals",
-					"ignoredInvalid": "App ignored-invalid",
-					"orchestratorStatus": "Orchestrator status",
-					"appNotified": "App notified",
-					"notifyAttempts": "Notify attempts"
+					"delete": "Delete provider \"{name}\"? This cannot be undone."
+				},
+				"fields": {
+					"slug": "Slug",
+					"name": "Name",
+					"type": "Type",
+					"baseUrl": "Base URL",
+					"accountId": "Account ID",
+					"maxUploadBytes": "Max upload bytes",
+					"apiKey": "API key",
+					"apiToken": "API token",
+					"enabled": "Enabled"
+				},
+				"dialog": {
+					"addTitle": "Add provider",
+					"editTitle": "Edit provider"
 				},
 				"toast": {
-					"ok": "Replay requested",
-					"okWithSeq": "Replay requested (eventSeq {seq})",
-					"fail": "Replay failed"
+					"saved": "Provider saved",
+					"deleted": "Provider deleted",
+					"deleteFail": "Provider delete failed",
+					"testOk": "Provider test OK",
+					"testFail": "Provider test failed"
 				}
 			},
-			"actions": {
-				"refresh": "Refresh",
-				"refreshing": "Refreshing…",
-				"apply": "Apply",
-				"clear": "Clear"
-			},
-			"cols": {
-				"time": "Time",
-				"source": "Src",
-				"kind": "Kind",
-				"jobId": "Job",
-				"taskId": "Task",
-				"status": "Status",
-				"seq": "Seq"
-			},
-			"stats": "{count} shown (limit {limit})"
-		},
-		"aiProviders": {
-			"title": "AI Providers",
-			"tabs": { "llm": "LLM Providers", "asr": "ASR Providers" },
-			"empty": "No providers found",
-			"status": { "enabled": "Enabled", "disabled": "Disabled" },
-			"actions": {
-				"add": "Add provider",
-				"edit": "Edit",
-				"enable": "Enable",
-				"disable": "Disable",
-				"delete": "Delete",
-				"test": "Test",
-				"save": "Save",
-				"cancel": "Cancel"
-			},
-			"confirm": {
-				"delete": "Delete provider \"{name}\"? This cannot be undone."
-			},
-			"fields": {
-				"slug": "Slug",
-				"name": "Name",
-				"type": "Type",
-				"baseUrl": "Base URL",
-				"accountId": "Account ID",
-				"maxUploadBytes": "Max upload bytes",
-				"apiKey": "API key",
-				"apiToken": "API token",
-				"enabled": "Enabled"
-			},
-			"dialog": {
-				"addTitle": "Add provider",
-				"editTitle": "Edit provider"
-			},
-			"toast": {
-				"saved": "Provider saved",
-				"deleted": "Provider deleted",
-				"deleteFail": "Provider delete failed",
-				"testOk": "Provider test OK",
-				"testFail": "Provider test failed"
-			}
-		},
-		"aiModels": {
-			"title": "AI Models",
-			"tabs": { "llm": "LLM Models", "asr": "ASR Models" },
-			"empty": "No models found",
-			"status": {
-				"default": "Default",
-				"enabled": "Enabled",
-				"disabled": "Disabled"
-			},
-			"actions": {
-				"add": "Add model",
-				"edit": "Edit",
-				"enable": "Enable",
-				"disable": "Disable",
-				"setDefault": "Set default",
-				"save": "Save",
-				"cancel": "Cancel"
-			},
-			"fields": {
-				"id": "Model ID",
-				"provider": "Provider",
-				"remoteModelId": "Remote model ID",
-				"label": "Label",
-				"description": "Description",
-				"inputFormat": "Input format",
-				"supportsLanguageHint": "Supports language hint",
-				"enabled": "Enabled",
-				"isDefault": "Default"
-			},
-			"dialog": {
-				"addTitle": "Add model",
-				"editTitle": "Edit model"
-			},
-			"toast": {
-				"saved": "Model saved",
-				"defaultSet": "Default model updated"
-			}
-		},
-		"users": {
-			"title": "User Management",
-			"subtitle": "Review, suspend, or promote users. Total users: {total}",
-			"badge": "Admin",
-			"table": {
-				"email": "Email",
-				"nickname": "Nickname",
-				"role": "Role",
-				"status": "Status",
-				"createdAt": "Created",
-				"lastLogin": "Last login",
-				"actions": "Actions"
-			},
-			"roles": {
-				"admin": "Admin",
-				"user": "User"
-			},
-			"status": {
-				"active": "Active",
-				"banned": "Banned"
-			},
-			"actions": {
-				"addPoints": "Add points",
-				"transactions": "Transactions",
-				"toggleRoleToUser": "Demote to user",
-				"toggleRoleToAdmin": "Promote to admin",
-				"delete": "Delete",
-				"ariaToggle": "Toggle status for {email}"
-			},
-			"empty": "No users found",
-			"searchPlaceholder": "Search email / nickname / ID",
-			"searchButton": "Search",
-			"pagination": "Page {page} / {pages}, {total} users",
-			"prev": "Previous",
-			"next": "Next",
-			"dialogs": {
-				"addTitle": "Add points to {email}",
-				"deleteTitle": "Delete user: {email}",
-				"deleteDescription": "This will delete the account and remove its login sessions, points account, and transactions. User-owned media/channels will be kept but detached.",
-				"deleteCancel": "Cancel",
-				"deleteConfirm": "Delete",
-				"deleting": "Deleting…"
-			},
-			"toast": {
-				"roleUpdated": "Role updated",
-				"roleUpdateError": "Failed to update role",
-				"statusUpdatedActive": "Unbanned",
-				"statusUpdatedBanned": "Banned",
-				"statusUpdateError": "Failed to update status",
-				"pointsAdded": "Points added",
-				"pointsAddError": "Failed to add points",
-				"userDeleted": "User deleted",
-				"userDeleteError": "Failed to delete user",
-				"deleteSelfError": "You cannot delete your own account",
-				"deleteLastAdminError": "You cannot delete the last admin account"
-			},
-			"labels": {
-				"points": "pts",
-				"none": "—"
-			}
-		},
-		"pointsPricing": {
-			"title": "Points Pricing",
-			"subtitle": "Manage pricing rules for LLM, ASR, and downloads. Total rules: {total}",
-			"badge": "Points",
-			"matrix": {
-				"title": "Pricing Matrix",
-				"subtitle": "Set prices per model; models without overrides inherit the default rule.",
-				"defaultReady": "Default rule configured",
-				"defaultMissing": "Missing default rule (no charge)"
-			},
-			"table": {
-				"title": "Pricing rules",
-				"provider": "Provider",
-				"model": "Model",
-				"resourceType": "Resource",
-				"modelId": "Model ID",
-				"unit": "Unit",
-				"pricePerUnit": "Price / unit",
-				"inputPricePerUnit": "Input token price (µpoints)",
-				"outputPricePerUnit": "Output token price (µpoints)",
-				"inputRmbPerMillion": "Input (RMB/1M tokens)",
-				"outputRmbPerMillion": "Output (RMB/1M tokens)",
-				"pointsPerMinute": "Points/min",
-				"minCharge": "Min charge",
-				"updatedAt": "Updated",
-				"status": "Status",
-				"actions": "Actions"
-			},
-			"filters": {
-				"resource": {
-					"all": "All resources",
-					"llm": "LLM",
-					"asr": "ASR",
-					"download": "Download"
-				}
-			},
-			"actions": {
-				"add": "Add rule",
-				"editDefault": "Edit default",
-				"edit": "Edit",
-				"reset": "Reset",
-				"delete": "Delete"
-			},
-			"dialogs": {
-				"addTitle": "Add pricing rule",
-				"editTitle": "Edit pricing rule",
-				"editDefaultTitle": "Edit default rule",
-				"editTitleWithTarget": "Edit: {target}"
-			},
-			"form": {
-				"resourceType": "Resource type",
-				"unit": "Unit",
-				"units": {
-					"token": "Token",
-					"second": "Second",
-					"minute": "Minute"
+			"aiModels": {
+				"title": "AI Models",
+				"tabs": { "llm": "LLM Models", "asr": "ASR Models" },
+				"empty": "No models found",
+				"status": {
+					"default": "Default",
+					"enabled": "Enabled",
+					"disabled": "Disabled"
 				},
-				"modelId": "Model ID (optional)",
-				"modelIdPlaceholder": "e.g. openai/gpt-4.1-mini",
-				"modelIdHint": "Leave empty for the default rule for this resource.",
-				"pricePerUnit": "Price per unit",
-				"pointsPerMinute": "Points per minute",
-				"inputPricePerUnit": "Input token price (µpoints/token)",
-				"outputPricePerUnit": "Output token price (µpoints/token)",
-				"inputRmbPerMillion": "Input (RMB/1M tokens)",
-				"outputRmbPerMillion": "Output (RMB/1M tokens)",
-				"microHint": "Stored: {micro} µpoints/token",
-				"overrideHint": "Hint: this model has no override yet; saving will create a model override rule.",
-				"llmPricingHint": "LLM prices are stored as µpoints/token. 1 point = 1,000,000 µpoints. With 10 RMB = 1000 points, RMB per 1M tokens = µpoints/token ÷ 100 (e.g. 8 RMB/1M input tokens ⇒ 800 µpoints/token).",
-				"minCharge": "Minimum charge (optional)",
-				"save": "Save",
-				"cancel": "Cancel"
+				"actions": {
+					"add": "Add model",
+					"edit": "Edit",
+					"enable": "Enable",
+					"disable": "Disable",
+					"setDefault": "Set default",
+					"save": "Save",
+					"cancel": "Cancel"
+				},
+				"fields": {
+					"id": "Model ID",
+					"provider": "Provider",
+					"remoteModelId": "Remote model ID",
+					"label": "Label",
+					"description": "Description",
+					"inputFormat": "Input format",
+					"supportsLanguageHint": "Supports language hint",
+					"enabled": "Enabled",
+					"isDefault": "Default"
+				},
+				"dialog": {
+					"addTitle": "Add model",
+					"editTitle": "Edit model"
+				},
+				"toast": {
+					"saved": "Model saved",
+					"defaultSet": "Default model updated"
+				}
 			},
-			"status": {
-				"override": "Override",
-				"inherited": "Inherited",
-				"missing": "Missing"
+			"users": {
+				"title": "User Management",
+				"subtitle": "Review, suspend, or promote users. Total users: {total}",
+				"badge": "Admin",
+				"table": {
+					"email": "Email",
+					"nickname": "Nickname",
+					"role": "Role",
+					"status": "Status",
+					"createdAt": "Created",
+					"lastLogin": "Last login",
+					"actions": "Actions"
+				},
+				"roles": {
+					"admin": "Admin",
+					"user": "User"
+				},
+				"status": {
+					"active": "Active",
+					"banned": "Banned"
+				},
+				"actions": {
+					"addPoints": "Add points",
+					"transactions": "Transactions",
+					"toggleRoleToUser": "Demote to user",
+					"toggleRoleToAdmin": "Promote to admin",
+					"delete": "Delete",
+					"ariaToggle": "Toggle status for {email}"
+				},
+				"empty": "No users found",
+				"searchPlaceholder": "Search email / nickname / ID",
+				"searchButton": "Search",
+				"pagination": "Page {page} / {pages}, {total} users",
+				"prev": "Previous",
+				"next": "Next",
+				"dialogs": {
+					"addTitle": "Add points to {email}",
+					"deleteTitle": "Delete user: {email}",
+					"deleteDescription": "This will delete the account and remove its login sessions, points account, and transactions. User-owned media/channels will be kept but detached.",
+					"deleteCancel": "Cancel",
+					"deleteConfirm": "Delete",
+					"deleting": "Deleting…"
+				},
+				"toast": {
+					"roleUpdated": "Role updated",
+					"roleUpdateError": "Failed to update role",
+					"statusUpdatedActive": "Unbanned",
+					"statusUpdatedBanned": "Banned",
+					"statusUpdateError": "Failed to update status",
+					"pointsAdded": "Points added",
+					"pointsAddError": "Failed to add points",
+					"userDeleted": "User deleted",
+					"userDeleteError": "Failed to delete user",
+					"deleteSelfError": "You cannot delete your own account",
+					"deleteLastAdminError": "You cannot delete the last admin account"
+				},
+				"labels": {
+					"points": "pts",
+					"none": "—"
+				}
 			},
-			"preview": {
-				"title": "Charge Preview",
-				"model": "Model (optional)",
-				"inputTokens": "Input tokens",
-				"outputTokens": "Output tokens",
-				"minutes": "Duration (minutes)",
-				"roundingHint": "Billed by rounding up to minutes.",
-				"points": "Estimated points",
-				"noRule": "Missing default rule: usage will not be charged.",
-				"llmDetail": "totalTokens={totalTokens} rawPoints={rawPoints} minCharge={minCharge}",
-				"timeDetail": "units={units} unit={unit} rawPoints={rawPoints} minCharge={minCharge}"
-			},
-			"labels": {
-				"defaultModel": "Default",
-				"providerDefault": "Provider default",
-				"none": "—"
-			},
-			"empty": "No pricing rules yet",
-			"pagination": "Page {page} / {pages}, {total} rules",
-			"prev": "Previous",
-			"next": "Next",
-			"toast": {
-				"saved": "Pricing rule saved",
-				"saveError": "Failed to save pricing rule",
-				"deleted": "Pricing rule deleted",
-				"deleteError": "Failed to delete pricing rule"
+			"pointsPricing": {
+				"title": "Points Pricing",
+				"subtitle": "Manage pricing rules for LLM, ASR, and downloads. Total rules: {total}",
+				"badge": "Points",
+				"matrix": {
+					"title": "Pricing Matrix",
+					"subtitle": "Set prices per model; models without overrides inherit the default rule.",
+					"defaultReady": "Default rule configured",
+					"defaultMissing": "Missing default rule (no charge)"
+				},
+				"table": {
+					"title": "Pricing rules",
+					"provider": "Provider",
+					"model": "Model",
+					"resourceType": "Resource",
+					"modelId": "Model ID",
+					"unit": "Unit",
+					"pricePerUnit": "Price / unit",
+					"inputPricePerUnit": "Input token price (µpoints)",
+					"outputPricePerUnit": "Output token price (µpoints)",
+					"inputRmbPerMillion": "Input (RMB/1M tokens)",
+					"outputRmbPerMillion": "Output (RMB/1M tokens)",
+					"pointsPerMinute": "Points/min",
+					"minCharge": "Min charge",
+					"updatedAt": "Updated",
+					"status": "Status",
+					"actions": "Actions"
+				},
+				"filters": {
+					"resource": {
+						"all": "All resources",
+						"llm": "LLM",
+						"asr": "ASR",
+						"download": "Download"
+					}
+				},
+				"actions": {
+					"add": "Add rule",
+					"editDefault": "Edit default",
+					"edit": "Edit",
+					"reset": "Reset",
+					"delete": "Delete"
+				},
+				"dialogs": {
+					"addTitle": "Add pricing rule",
+					"editTitle": "Edit pricing rule",
+					"editDefaultTitle": "Edit default rule",
+					"editTitleWithTarget": "Edit: {target}"
+				},
+				"form": {
+					"resourceType": "Resource type",
+					"unit": "Unit",
+					"units": {
+						"token": "Token",
+						"second": "Second",
+						"minute": "Minute"
+					},
+					"modelId": "Model ID (optional)",
+					"modelIdPlaceholder": "e.g. openai/gpt-4.1-mini",
+					"modelIdHint": "Leave empty for the default rule for this resource.",
+					"pricePerUnit": "Price per unit",
+					"pointsPerMinute": "Points per minute",
+					"inputPricePerUnit": "Input token price (µpoints/token)",
+					"outputPricePerUnit": "Output token price (µpoints/token)",
+					"inputRmbPerMillion": "Input (RMB/1M tokens)",
+					"outputRmbPerMillion": "Output (RMB/1M tokens)",
+					"microHint": "Stored: {micro} µpoints/token",
+					"overrideHint": "Hint: this model has no override yet; saving will create a model override rule.",
+					"llmPricingHint": "LLM prices are stored as µpoints/token. 1 point = 1,000,000 µpoints. With 10 RMB = 1000 points, RMB per 1M tokens = µpoints/token ÷ 100 (e.g. 8 RMB/1M input tokens ⇒ 800 µpoints/token).",
+					"minCharge": "Minimum charge (optional)",
+					"save": "Save",
+					"cancel": "Cancel"
+				},
+				"status": {
+					"override": "Override",
+					"inherited": "Inherited",
+					"missing": "Missing"
+				},
+				"preview": {
+					"title": "Charge Preview",
+					"model": "Model (optional)",
+					"inputTokens": "Input tokens",
+					"outputTokens": "Output tokens",
+					"minutes": "Duration (minutes)",
+					"roundingHint": "Billed by rounding up to minutes.",
+					"points": "Estimated points",
+					"noRule": "Missing default rule: usage will not be charged.",
+					"llmDetail": "totalTokens={totalTokens} rawPoints={rawPoints} minCharge={minCharge}",
+					"timeDetail": "units={units} unit={unit} rawPoints={rawPoints} minCharge={minCharge}"
+				},
+				"labels": {
+					"defaultModel": "Default",
+					"providerDefault": "Provider default",
+					"none": "—"
+				},
+				"empty": "No pricing rules yet",
+				"pagination": "Page {page} / {pages}, {total} rules",
+				"prev": "Previous",
+				"next": "Next",
+				"toast": {
+					"saved": "Pricing rule saved",
+					"saveError": "Failed to save pricing rule",
+					"deleted": "Pricing rule deleted",
+					"deleteError": "Failed to delete pricing rule"
+				}
 			}
-		}
-	},
-	"Privacy": {
-		"title": "Privacy Policy",
-		"backHome": "Back to Home",
-		"lastUpdated": "Last updated",
-		"updateDate": "January 2025",
-		"sections": {
-			"intro": {
-				"title": "Introduction",
-				"content": "Welcome to Video Genius Hub. We value your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, store, and protect your data. By using our service, you agree to the practices described in this policy."
-			},
-			"collection": {
-				"title": "Information We Collect",
-				"content": "We may collect the following types of information:",
-				"items": {
-					"account": "Account information: including your email address, nickname, and password (stored encrypted)",
-					"usage": "Usage data: including your activity logs, service usage patterns, and preferences",
-					"device": "Device information: including device type, operating system, browser type, and IP address",
-					"media": "Media data: including metadata related to videos you upload or download"
+		},
+		"Privacy": {
+			"title": "Privacy Policy",
+			"backHome": "Back to Home",
+			"lastUpdated": "Last updated",
+			"updateDate": "January 2025",
+			"sections": {
+				"intro": {
+					"title": "Introduction",
+					"content": "Welcome to Video Genius Hub. We value your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, store, and protect your data. By using our service, you agree to the practices described in this policy."
+				},
+				"collection": {
+					"title": "Information We Collect",
+					"content": "We may collect the following types of information:",
+					"items": {
+						"account": "Account information: including your email address, nickname, and password (stored encrypted)",
+						"usage": "Usage data: including your activity logs, service usage patterns, and preferences",
+						"device": "Device information: including device type, operating system, browser type, and IP address",
+						"media": "Media data: including metadata related to videos you upload or download"
+					}
+				},
+				"usage": {
+					"title": "How We Use Your Information",
+					"content": "We use the information we collect for the following purposes:",
+					"items": {
+						"service": "To provide, maintain, and improve our services",
+						"improve": "To analyze usage patterns and optimize user experience",
+						"communicate": "To send you service-related notifications and updates",
+						"security": "To detect, prevent, and address technical issues and security threats"
+					}
+				},
+				"storage": {
+					"title": "Data Storage",
+					"content": "Your data is stored on secure cloud servers. We employ industry-standard encryption and security measures to protect your information. We retain your data only for as long as necessary or as required by law."
+				},
+				"sharing": {
+					"title": "Data Sharing",
+					"content": "We do not sell your personal information. We may share your information in the following circumstances: with your consent; to comply with legal obligations; to protect our rights and safety; with trusted third-party service providers who help us operate our services (and who are bound by privacy protections)."
+				},
+				"rights": {
+					"title": "Your Rights",
+					"content": "You have the following rights regarding your personal data:",
+					"items": {
+						"access": "Access the personal data we hold about you",
+						"correct": "Correct inaccurate or incomplete data",
+						"delete": "Request deletion of your data in certain circumstances",
+						"export": "Request export of your data in a portable format"
+					}
+				},
+				"cookies": {
+					"title": "Cookies and Tracking Technologies",
+					"content": "We use cookies and similar technologies to enhance your experience, analyze usage, and provide personalized content. You can manage cookie preferences through your browser settings, but disabling certain cookies may affect service functionality."
+				},
+				"updates": {
+					"title": "Policy Updates",
+					"content": "We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Significant changes will be communicated to you through in-service notifications or email."
+				},
+				"contact": {
+					"title": "Contact Us",
+					"content": "If you have any questions or concerns about this Privacy Policy, please contact us through the support channels within the platform."
 				}
-			},
-			"usage": {
-				"title": "How We Use Your Information",
-				"content": "We use the information we collect for the following purposes:",
-				"items": {
-					"service": "To provide, maintain, and improve our services",
-					"improve": "To analyze usage patterns and optimize user experience",
-					"communicate": "To send you service-related notifications and updates",
-					"security": "To detect, prevent, and address technical issues and security threats"
-				}
-			},
-			"storage": {
-				"title": "Data Storage",
-				"content": "Your data is stored on secure cloud servers. We employ industry-standard encryption and security measures to protect your information. We retain your data only for as long as necessary or as required by law."
-			},
-			"sharing": {
-				"title": "Data Sharing",
-				"content": "We do not sell your personal information. We may share your information in the following circumstances: with your consent; to comply with legal obligations; to protect our rights and safety; with trusted third-party service providers who help us operate our services (and who are bound by privacy protections)."
-			},
-			"rights": {
-				"title": "Your Rights",
-				"content": "You have the following rights regarding your personal data:",
-				"items": {
-					"access": "Access the personal data we hold about you",
-					"correct": "Correct inaccurate or incomplete data",
-					"delete": "Request deletion of your data in certain circumstances",
-					"export": "Request export of your data in a portable format"
-				}
-			},
-			"cookies": {
-				"title": "Cookies and Tracking Technologies",
-				"content": "We use cookies and similar technologies to enhance your experience, analyze usage, and provide personalized content. You can manage cookie preferences through your browser settings, but disabling certain cookies may affect service functionality."
-			},
-			"updates": {
-				"title": "Policy Updates",
-				"content": "We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Significant changes will be communicated to you through in-service notifications or email."
-			},
-			"contact": {
-				"title": "Contact Us",
-				"content": "If you have any questions or concerns about this Privacy Policy, please contact us through the support channels within the platform."
 			}
 		}
 	}
-}
 }

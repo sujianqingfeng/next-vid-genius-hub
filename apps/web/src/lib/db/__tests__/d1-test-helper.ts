@@ -142,20 +142,20 @@ export async function applyThreadTemplateLibrarySchema(d1: D1Database) {
 			`  updated_at INTEGER NOT NULL`,
 			`);`,
 		].join('\n'),
-			[
-				`CREATE TABLE IF NOT EXISTS thread_template_versions (`,
-				`  id TEXT NOT NULL,`,
-				`  user_id TEXT NOT NULL,`,
-				`  library_id TEXT NOT NULL,`,
-				`  version INTEGER NOT NULL,`,
-				`  note TEXT,`,
-				`  source_thread_id TEXT,`,
-				`  template_config TEXT,`,
-				`  template_config_hash TEXT,`,
-				`  compile_version INTEGER NOT NULL DEFAULT 1,`,
-				`  created_at INTEGER NOT NULL`,
-				`);`,
-			].join('\n'),
+		[
+			`CREATE TABLE IF NOT EXISTS thread_template_versions (`,
+			`  id TEXT NOT NULL,`,
+			`  user_id TEXT NOT NULL,`,
+			`  library_id TEXT NOT NULL,`,
+			`  version INTEGER NOT NULL,`,
+			`  note TEXT,`,
+			`  source_thread_id TEXT,`,
+			`  template_config TEXT,`,
+			`  template_config_hash TEXT,`,
+			`  compile_version INTEGER NOT NULL DEFAULT 1,`,
+			`  created_at INTEGER NOT NULL`,
+			`);`,
+		].join('\n'),
 	])
 }
 
@@ -187,6 +187,35 @@ export async function applyMinimalAiSchema(d1: D1Database) {
 			`  enabled INTEGER NOT NULL DEFAULT 1,`,
 			`  is_default INTEGER NOT NULL DEFAULT 0,`,
 			`  capabilities TEXT,`,
+			`  created_at INTEGER NOT NULL,`,
+			`  updated_at INTEGER NOT NULL`,
+			`);`,
+		].join('\n'),
+	])
+}
+
+export async function applyMinimalAgentChatSchema(d1: D1Database) {
+	await execStatements(d1, [
+		[
+			`CREATE TABLE IF NOT EXISTS agent_chat_sessions (`,
+			`  id TEXT NOT NULL,`,
+			`  user_id TEXT NOT NULL,`,
+			`  title TEXT NOT NULL DEFAULT 'New chat',`,
+			`  model_id TEXT,`,
+			`  last_message_at INTEGER,`,
+			`  created_at INTEGER NOT NULL,`,
+			`  updated_at INTEGER NOT NULL,`,
+			`  deleted_at INTEGER`,
+			`);`,
+		].join('\n'),
+		[
+			`CREATE TABLE IF NOT EXISTS agent_chat_messages (`,
+			`  id TEXT NOT NULL,`,
+			`  session_id TEXT NOT NULL,`,
+			`  user_id TEXT NOT NULL,`,
+			`  role TEXT NOT NULL,`,
+			`  seq INTEGER NOT NULL,`,
+			`  message TEXT NOT NULL,`,
 			`  created_at INTEGER NOT NULL,`,
 			`  updated_at INTEGER NOT NULL`,
 			`);`,

@@ -1,5 +1,6 @@
 import { adminOnly, authed, os } from '~/orpc/base'
 import * as admin from './procedures/admin'
+import * as agent from './procedures/agent'
 import * as ai from './procedures/ai'
 import * as auth from './procedures/auth'
 import * as channel from './procedures/channel'
@@ -28,6 +29,7 @@ export const appRouter = os.router({
 	points: authed.router(points),
 	proxy: authed.router(proxy),
 	ai: authed.router(ai),
+	agent: authed.router(agent),
 	thread: authed.router(thread),
 	threadTemplate: authed.router(threadTemplate),
 	admin: adminOnly.router(admin),

@@ -16,10 +16,16 @@ import {
 	proposeTranslateAction,
 } from '~/lib/ai/server/agent-actions'
 import { getProviderClient } from '~/lib/ai/provider-factory'
+import {
+	getAgentChatSession,
+	saveAgentChatSessionMessages,
+} from '~/lib/ai/server/agent-chat-storage'
 import { getDb } from '~/lib/db'
 import { logger } from '~/lib/logger'
+import { createId } from '~/lib/utils/id'
 
 const BodySchema = z.object({
+	id: z.string().trim().min(1),
 	messages: z.array(z.unknown()).max(200).optional().default([]),
 	modelId: z.string().trim().min(1).optional(),
 	maxTokens: z.number().int().min(1).max(4096).optional(),
@@ -96,6 +102,15 @@ export async function handleAgentChatStreamRequest(
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'bad request'
 		return Response.json({ error: message }, { status: 400 })
+	}
+
+	const sessionId = input.id
+	const existingSession = await getAgentChatSession({
+		userId: context.auth.user.id,
+		sessionId,
+	})
+	if (!existingSession) {
+		return Response.json({ error: 'session_not_found' }, { status: 404 })
 	}
 
 	const resolvedModelId = input.modelId?.trim()
@@ -255,6 +270,23 @@ export async function handleAgentChatStreamRequest(
 			agent,
 			uiMessages: input.messages as unknown[],
 			abortSignal: request.signal,
+			originalMessages: input.messages as any,
+			generateMessageId: () => createId(),
+			onFinish: async ({ messages }) => {
+				try {
+					await saveAgentChatSessionMessages({
+						userId: context.auth.user!.id,
+						sessionId,
+						messages: messages as any,
+						modelId: resolvedModelId ?? null,
+					})
+				} catch (error) {
+					logger.warn(
+						'api',
+						`[agent.chat-stream] failed to persist session=${sessionId} user=${context.auth.user!.id} error=${error instanceof Error ? error.message : String(error)}`,
+					)
+				}
+			},
 			headers: {
 				'Cache-Control': 'no-store',
 				'X-Content-Type-Options': 'nosniff',

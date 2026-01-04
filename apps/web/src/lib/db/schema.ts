@@ -178,6 +178,53 @@ export const agentActions = sqliteTable('agent_actions', {
 		.$defaultFn(() => new Date()),
 })
 
+export const agentChatSessions = sqliteTable('agent_chat_sessions', {
+	id: text('id')
+		.unique()
+		.notNull()
+		.$defaultFn(() => createId()),
+	userId: text('user_id').notNull(),
+	title: text('title').notNull().default('New chat'),
+	modelId: text('model_id'),
+	lastMessageAt: integer('last_message_at', { mode: 'timestamp' }),
+	createdAt: integer('created_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer('updated_at', { mode: 'timestamp' })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	deletedAt: integer('deleted_at', { mode: 'timestamp' }),
+})
+
+export const agentChatMessages = sqliteTable(
+	'agent_chat_messages',
+	{
+		id: text('id').notNull(),
+		sessionId: text('session_id').notNull(),
+		userId: text('user_id').notNull(),
+		role: text('role', { enum: ['user', 'assistant', 'system'] }).notNull(),
+		seq: integer('seq').notNull(),
+		message: text('message', { mode: 'json' })
+			.notNull()
+			.$type<Record<string, unknown>>(),
+		createdAt: integer('created_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+		updatedAt: integer('updated_at', { mode: 'timestamp' })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => ({
+		sessionMsgIdIdx: uniqueIndex(
+			'agent_chat_messages_session_id_msg_id_idx',
+		).on(table.sessionId, table.id),
+		sessionSeqIdx: uniqueIndex('agent_chat_messages_session_seq_idx').on(
+			table.sessionId,
+			table.seq,
+		),
+	}),
+)
+
 export const pointPricingRules = sqliteTable('point_pricing_rules', {
 	id: text('id')
 		.unique()
