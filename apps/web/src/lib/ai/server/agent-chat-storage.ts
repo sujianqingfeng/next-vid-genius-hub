@@ -3,10 +3,29 @@
 import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 import type { UIMessage } from 'ai'
 
-import { getDb, schema } from '~/lib/db'
+import {
+	getDb,
+	getInjectedD1DatabaseBinding,
+	hasInjectedD1DatabaseBinding,
+	schema,
+} from '~/lib/db'
 import { createId } from '~/lib/utils/id'
 
 export type AgentChatSessionRow = typeof schema.agentChatSessions.$inferSelect
+
+function toSqlTimestampSeconds(value: Date): number {
+	return Math.trunc(value.getTime() / 1000)
+}
+
+async function runD1BatchOrFallback(d1: any, statements: any[]) {
+	if (typeof d1.batch === 'function') {
+		await d1.batch(statements)
+		return
+	}
+	for (const stmt of statements) {
+		await stmt.run()
+	}
+}
 
 function toDate(value: unknown): Date | null {
 	if (!value) return null
@@ -64,20 +83,24 @@ export async function createAgentChatSession(input: {
 	userId: string
 	title?: string
 	modelId?: string | null
+	sessionId?: string
 }) {
 	const db = await getDb()
-	const id = createId()
+	const id = input.sessionId?.trim() ? input.sessionId.trim() : createId()
 	const now = new Date()
-	await db.insert(schema.agentChatSessions).values({
-		id,
-		userId: input.userId,
-		title: input.title?.trim() || 'New chat',
-		modelId: input.modelId ?? null,
-		createdAt: now,
-		updatedAt: now,
-		lastMessageAt: null,
-		deletedAt: null,
-	})
+	await db
+		.insert(schema.agentChatSessions)
+		.values({
+			id,
+			userId: input.userId,
+			title: input.title?.trim() || 'New chat',
+			modelId: input.modelId ?? null,
+			createdAt: now,
+			updatedAt: now,
+			lastMessageAt: null,
+			deletedAt: null,
+		})
+		.onConflictDoNothing()
 	const row = await db.query.agentChatSessions.findFirst({
 		where: and(
 			eq(schema.agentChatSessions.id, id),
@@ -138,9 +161,35 @@ export async function deleteAgentChatSession(input: {
 	userId: string
 	sessionId: string
 }) {
-	const db = await getDb()
 	const now = new Date()
 
+	if (hasInjectedD1DatabaseBinding()) {
+		const d1 = getInjectedD1DatabaseBinding()
+		if (!d1) throw new Error('D1_BINDING_MISSING')
+
+		const nowTs = toSqlTimestampSeconds(now)
+		const statements = [
+			d1
+				.prepare(
+					[
+						`UPDATE agent_chat_sessions`,
+						`SET deleted_at = ?, updated_at = ?`,
+						`WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+					].join(' '),
+				)
+				.bind(nowTs, nowTs, input.sessionId, input.userId),
+			d1
+				.prepare(
+					`DELETE FROM agent_chat_messages WHERE session_id = ? AND user_id = ?`,
+				)
+				.bind(input.sessionId, input.userId),
+		]
+
+		await runD1BatchOrFallback(d1, statements)
+		return
+	}
+
+	const db = await getDb()
 	await db.transaction(async (tx) => {
 		await tx
 			.update(schema.agentChatSessions)
@@ -208,8 +257,6 @@ export async function saveAgentChatSessionMessages(input: {
 	messages: UIMessage[]
 	modelId?: string | null
 }) {
-	const db = await getDb()
-
 	const session = await getAgentChatSession({
 		userId: input.userId,
 		sessionId: input.sessionId,
@@ -231,6 +278,85 @@ export async function saveAgentChatSessionMessages(input: {
 				) ?? now)
 			: now
 
+	if (hasInjectedD1DatabaseBinding()) {
+		const d1 = getInjectedD1DatabaseBinding()
+		if (!d1) throw new Error('D1_BINDING_MISSING')
+
+		const nowTs = toSqlTimestampSeconds(now)
+		const lastMessageAtTs = toSqlTimestampSeconds(lastCreatedAt)
+		const modelId =
+			typeof input.modelId === 'string'
+				? input.modelId
+				: input.modelId === null
+					? null
+					: session.modelId
+		const title = shouldUpdateTitle ? titleFromMessages : session.title
+
+		const statements: any[] = [
+			d1
+				.prepare(
+					[
+						`UPDATE agent_chat_sessions`,
+						`SET model_id = ?, title = ?, updated_at = ?, last_message_at = ?`,
+						`WHERE id = ? AND user_id = ?`,
+					].join(' '),
+				)
+				.bind(
+					modelId,
+					title,
+					nowTs,
+					lastMessageAtTs,
+					input.sessionId,
+					input.userId,
+				),
+			d1
+				.prepare(
+					`DELETE FROM agent_chat_messages WHERE session_id = ? AND user_id = ?`,
+				)
+				.bind(input.sessionId, input.userId),
+		]
+
+		for (const [idx, m] of input.messages.entries()) {
+			const id =
+				typeof (m as any)?.id === 'string' && (m as any).id.trim()
+					? String((m as any).id)
+					: `msg_${input.sessionId}_${idx}`
+			const createdAt = toDate((m as any)?.createdAt) ?? now
+			const createdAtTs = toSqlTimestampSeconds(createdAt)
+			const role =
+				(m as any)?.role === 'assistant' ||
+				(m as any)?.role === 'system' ||
+				(m as any)?.role === 'user'
+					? (m as any).role
+					: 'assistant'
+
+			statements.push(
+				d1
+					.prepare(
+						[
+							`INSERT INTO agent_chat_messages`,
+							`(id, session_id, user_id, role, seq, message, created_at, updated_at)`,
+							`VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+						].join(' '),
+					)
+					.bind(
+						id,
+						input.sessionId,
+						input.userId,
+						role,
+						idx,
+						JSON.stringify(m as any),
+						createdAtTs,
+						nowTs,
+					),
+			)
+		}
+
+		await runD1BatchOrFallback(d1, statements)
+		return
+	}
+
+	const db = await getDb()
 	await db.transaction(async (tx) => {
 		await tx
 			.update(schema.agentChatSessions)

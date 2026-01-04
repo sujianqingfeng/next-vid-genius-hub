@@ -6,6 +6,8 @@ import * as schema from './schema'
 // Fallback to libsql (file/turso) when no CF binding is present.
 type D1PreparedStatement = {
 	bind: (...args: unknown[]) => {
+		all?: () => Promise<{ results: unknown[] }>
+		raw?: () => Promise<unknown[][]>
 		first: () => Promise<unknown>
 		run: () => Promise<unknown>
 	}
@@ -14,6 +16,9 @@ type D1PreparedStatement = {
 type D1Database = {
 	exec: (sql: string) => Promise<unknown>
 	prepare: (sql: string) => D1PreparedStatement
+	batch?: (
+		statements: Array<ReturnType<D1PreparedStatement['bind']>>,
+	) => Promise<unknown>
 }
 type DbClient = ReturnType<typeof drizzleD1<typeof schema>>
 
@@ -109,6 +114,14 @@ function getInjectedD1Database(): D1Database | undefined {
 
 export function setInjectedD1Database(d1: D1Database | undefined) {
 	;(globalThis as unknown as DbGlobals).__VIDGEN_D1_DB__ = d1
+}
+
+export function getInjectedD1DatabaseBinding(): D1Database | undefined {
+	return getInjectedD1Database()
+}
+
+export function hasInjectedD1DatabaseBinding(): boolean {
+	return Boolean(getInjectedD1Database())
 }
 
 function isTanStackStartDevServer() {

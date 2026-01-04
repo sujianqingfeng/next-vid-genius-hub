@@ -95,4 +95,18 @@ describe('orpc.agent', () => {
 
 		await expect(orpc.agent.getSession({ sessionId })).rejects.toBeTruthy()
 	})
+
+	it('dedupes createSession when sessionId is reused', async () => {
+		if (!d1) throw new Error('test db not initialized')
+
+		const sessionId = 'session_idempotent_1'
+		const a = await orpc.agent.createSession({ sessionId })
+		const b = await orpc.agent.createSession({ sessionId })
+
+		expect(a.session.id).toBe(sessionId)
+		expect(b.session.id).toBe(sessionId)
+
+		const list = await orpc.agent.listSessions({ limit: 50 })
+		expect(list.items.filter((s: any) => s.id === sessionId).length).toBe(1)
+	})
 })

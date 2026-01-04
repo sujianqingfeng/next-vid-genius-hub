@@ -17,6 +17,7 @@ export type D1PreparedStatement = {
 export type D1Database = {
 	exec: (sql: string) => Promise<unknown>
 	prepare: (sql: string) => D1PreparedStatement
+	batch?: (statements: D1BoundStatement[]) => Promise<unknown>
 }
 
 export function createD1FromLibsql(dbFileUrl: string): {
@@ -51,6 +52,12 @@ export function createD1FromLibsql(dbFileUrl: string): {
 					}
 				},
 			}
+		},
+		batch: async (statements) => {
+			for (const stmt of statements) {
+				await stmt.run()
+			}
+			return { results: [] }
 		},
 	}
 
@@ -208,6 +215,7 @@ export async function applyMinimalAgentChatSchema(d1: D1Database) {
 			`  deleted_at INTEGER`,
 			`);`,
 		].join('\n'),
+		`CREATE UNIQUE INDEX IF NOT EXISTS agent_chat_sessions_id_unique ON agent_chat_sessions (id);`,
 		[
 			`CREATE TABLE IF NOT EXISTS agent_chat_messages (`,
 			`  id TEXT NOT NULL,`,
@@ -220,5 +228,7 @@ export async function applyMinimalAgentChatSchema(d1: D1Database) {
 			`  updated_at INTEGER NOT NULL`,
 			`);`,
 		].join('\n'),
+		`CREATE UNIQUE INDEX IF NOT EXISTS agent_chat_messages_session_id_msg_id_idx ON agent_chat_messages (session_id, id);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS agent_chat_messages_session_seq_idx ON agent_chat_messages (session_id, seq);`,
 	])
 }

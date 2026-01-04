@@ -42,6 +42,7 @@ import { createId } from '~/lib/utils/id'
 
 const STORAGE_SETTINGS_KEY = 'agentChat:workflowSettings'
 const STORAGE_SETTINGS_VERSION = 1
+const AUTO_SESSION_ID_KEY = 'agentChat:autoSessionId'
 
 function updateMessagesWithAction(messages: UIMessage[], action: AgentAction) {
 	let anyChanged = false
@@ -84,6 +85,7 @@ export function AgentChatPage(props: {
 	const qc = useQueryClient()
 
 	const chatId = props.chatId
+	const autoSessionIdRef = React.useRef<string | null>(null)
 
 	const sessionsQuery = useQuery(
 		queryOrpc.agent.listSessions.queryOptions({ input: { limit: 100 } }),
@@ -92,6 +94,11 @@ export function AgentChatPage(props: {
 	const createSessionMutation = useMutation(
 		queryOrpc.agent.createSession.mutationOptions({
 			onSuccess: async (data) => {
+				try {
+					sessionStorage.removeItem(AUTO_SESSION_ID_KEY)
+				} catch {
+					// ignore
+				}
 				await qc.invalidateQueries({
 					queryKey: queryOrpc.agent.listSessions.key(),
 				})
@@ -316,13 +323,31 @@ export function AgentChatPage(props: {
 		if (!sessionsQuery.isSuccess) return
 		const items = sessionsQuery.data?.items ?? []
 		if (items.length > 0) {
+			try {
+				sessionStorage.removeItem(AUTO_SESSION_ID_KEY)
+			} catch {
+				// ignore
+			}
 			props.onChangeChatId(items[0]!.id)
 			return
 		}
-		createSessionMutation.mutate({})
+		if (createSessionMutation.isPending) return
+
+		if (!autoSessionIdRef.current) {
+			try {
+				autoSessionIdRef.current =
+					sessionStorage.getItem(AUTO_SESSION_ID_KEY) || createId()
+				sessionStorage.setItem(AUTO_SESSION_ID_KEY, autoSessionIdRef.current)
+			} catch {
+				autoSessionIdRef.current = createId()
+			}
+		}
+
+		createSessionMutation.mutate({ sessionId: autoSessionIdRef.current })
 	}, [
 		chatId,
 		createSessionMutation,
+		createSessionMutation.isPending,
 		props,
 		sessionsQuery.data?.items,
 		sessionsQuery.isSuccess,

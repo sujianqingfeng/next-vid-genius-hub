@@ -31,6 +31,7 @@ export const listSessions = os
 export const createSession = os
 	.input(
 		z.object({
+			sessionId: z.string().trim().min(1).optional(),
 			title: z.string().trim().min(1).max(120).optional(),
 			modelId: z.string().trim().min(1).nullable().optional(),
 		}),
@@ -40,6 +41,7 @@ export const createSession = os
 		const userId = ctx.auth.user!.id
 		const session = await createAgentChatSession({
 			userId,
+			sessionId: input.sessionId,
 			title: input.title,
 			modelId: input.modelId ?? null,
 		})
