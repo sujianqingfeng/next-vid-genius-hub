@@ -2,7 +2,7 @@ import { os } from '@orpc/server'
 import { z } from 'zod'
 import type { RequestContext } from '~/lib/auth/types'
 import {
-	getCloudDownloadStatus,
+	getCloudDownloadStatus as getCloudDownloadStatusFn,
 	startCloudDownload as startCloudDownloadUseCase,
 } from '~/lib/media/server/download'
 
@@ -27,5 +27,5 @@ export const startCloudDownload = os
 export const getCloudDownloadStatus = os
 	.input(z.object({ jobId: z.string().min(1) }))
 	.handler(async ({ input }) => {
-		return getCloudDownloadStatus(input)
+		return getCloudDownloadStatusFn(input)
 	})

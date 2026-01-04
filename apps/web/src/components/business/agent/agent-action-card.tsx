@@ -262,71 +262,85 @@ export function AgentActionCard(props: {
 				: null
 
 	return (
-		<div className="border border-border bg-card p-3 font-mono text-xs">
-			<div className="flex items-start justify-between gap-3">
-				<div className="min-w-0">
-					<div className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">
-						{t(titleKey)}
+		<div className="border border-border bg-card p-4 font-mono">
+			<div className="flex flex-col gap-4">
+				<div className="flex items-start justify-between gap-4">
+					<div className="min-w-0 space-y-2">
+						<div className="flex items-center gap-2">
+							<span className="text-[10px] uppercase tracking-widest text-muted-foreground border border-border px-1.5 py-0.5">
+								{t(titleKey)}
+							</span>
+							<span
+								className={cn(
+									'text-[10px] uppercase tracking-widest px-1.5 py-0.5 border',
+									action.status === 'completed'
+										? 'border-green-500/50 text-green-600'
+										: action.status === 'failed'
+											? 'border-destructive/50 text-destructive'
+											: action.status === 'running'
+												? 'border-blue-500/50 text-blue-600'
+												: 'border-border text-muted-foreground',
+								)}
+							>
+								{statusLabel}
+							</span>
+						</div>
+						
+						<div className="text-xs space-y-1 text-muted-foreground">
+							<div className="flex items-center gap-2">
+								<span>{pointsText}</span>
+								{forcedConfirm && (
+									<>
+										<span>•</span>
+										<span className="text-yellow-600 font-bold uppercase tracking-wider text-[10px]">
+											{t('actions.forceConfirm')}
+										</span>
+									</>
+								)}
+							</div>
+							
+							{jobLine && <div className="opacity-80">{jobLine}</div>}
+							
+							{action.error && (
+								<div className="text-destructive font-bold">
+									{t('actions.errorPrefix')} {action.error}
+								</div>
+							)}
+						</div>
 					</div>
-					<div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-						<span>{statusLabel}</span>
-						<span className="opacity-60">•</span>
-						<span>{pointsText}</span>
-						{forcedConfirm ? (
+
+					<div className="flex shrink-0 items-center gap-2">
+						{action.status === 'proposed' ? (
 							<>
-								<span className="opacity-60">•</span>
-								<span className="text-yellow-600">
-									{t('actions.forceConfirm')}
-								</span>
+								<Button
+									variant="outline"
+									size="sm"
+									className="h-7 rounded-none border-border font-mono text-[10px] uppercase tracking-wider hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+									type="button"
+									onClick={() => void cancel()}
+								>
+									{t('actions.cancel')}
+								</Button>
+								<Button
+									size="sm"
+									className="h-7 rounded-none border-primary bg-primary font-mono text-[10px] uppercase tracking-wider text-primary-foreground hover:bg-primary/90"
+									type="button"
+									onClick={() => void confirm()}
+								>
+									{canAuto && autoLeftMs != null
+										? t('actions.autoConfirm', {
+												seconds: Math.ceil(autoLeftMs / 1000),
+											})
+										: t('actions.confirm')}
+								</Button>
 							</>
+						) : action.status === 'running' ? (
+							<div className="flex items-center gap-2 border border-border bg-muted/50 px-3 py-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+								<Loader2 className="h-3 w-3 animate-spin" />
+								{t('actions.running')}
+							</div>
 						) : null}
 					</div>
-					{jobLine ? (
-						<div className="mt-1 text-[10px] text-muted-foreground">
-							{jobLine}
-						</div>
-					) : null}
-					{action.error ? (
-						<div className="mt-2 text-[10px] text-destructive">
-							{t('actions.errorPrefix')}
-							{action.error}
-						</div>
-					) : null}
-				</div>
-
-				<div className="flex shrink-0 items-center gap-2">
-					{action.status === 'proposed' ? (
-						<>
-							<Button
-								variant="outline"
-								size="sm"
-								className="h-8 rounded-none text-[10px] uppercase tracking-wider"
-								type="button"
-								onClick={() => void cancel()}
-							>
-								{t('actions.cancel')}
-							</Button>
-							<Button
-								size="sm"
-								className={cn(
-									'h-8 rounded-none text-[10px] uppercase tracking-wider',
-								)}
-								type="button"
-								onClick={() => void confirm()}
-							>
-								{canAuto && autoLeftMs != null
-									? t('actions.autoConfirm', {
-											seconds: Math.ceil(autoLeftMs / 1000),
-										})
-									: t('actions.confirm')}
-							</Button>
-						</>
-					) : action.status === 'running' ? (
-						<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-							<Loader2 className="h-4 w-4 animate-spin" />
-							{t('actions.running')}
-						</div>
-					) : null}
 				</div>
 			</div>
 		</div>

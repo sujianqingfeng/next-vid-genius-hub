@@ -454,37 +454,38 @@ export function AgentChatPage(props: {
 	const activeSession = sessionQuery.data?.session ?? null
 
 	return (
-		<div className="flex h-full overflow-hidden bg-background font-sans text-foreground selection:bg-primary selection:text-primary-foreground">
-			<div className="w-[280px] shrink-0 border-r border-border bg-card">
-				<div className="border-b border-border p-3">
+		<div className="flex h-full overflow-hidden bg-background font-sans text-foreground">
+			{/* Sidebar */}
+			<div className="w-[280px] shrink-0 border-r border-border bg-card flex flex-col">
+				<div className="border-b border-border p-4">
 					<Button
-						className="h-9 w-full rounded-none font-mono text-xs uppercase tracking-wider"
+						className="h-9 w-full rounded-none border border-primary bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:bg-primary/90"
 						type="button"
 						onClick={() => createSessionMutation.mutate({})}
 						disabled={createSessionMutation.isPending}
 					>
-						<Plus className="h-4 w-4" />
+						<Plus className="mr-2 h-3 w-3" />
 						{t('sessions.new')}
 					</Button>
 				</div>
 
-				<div className="h-full overflow-y-auto p-2">
+				<div className="flex-1 overflow-y-auto">
 					{sessions.length === 0 ? (
-						<div className="p-3 font-mono text-xs text-muted-foreground">
+						<div className="p-4 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
 							{t('sessions.empty')}
 						</div>
 					) : (
-						<div className="space-y-1">
+						<div className="flex flex-col">
 							{sessions.map((s) => {
 								const active = s.id === chatId
 								return (
 									<div
 										key={s.id}
 										className={cn(
-											'group flex w-full items-center justify-between gap-2 border px-3 py-2 text-left font-mono text-xs uppercase tracking-wider',
+											'group flex w-full items-center justify-between gap-2 border-b border-border px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wide transition-colors',
 											active
-												? 'border-primary bg-primary text-primary-foreground'
-												: 'border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
+												? 'bg-accent text-accent-foreground'
+												: 'bg-card text-muted-foreground hover:bg-accent/50 hover:text-foreground',
 										)}
 										role="button"
 										tabIndex={0}
@@ -496,21 +497,13 @@ export function AgentChatPage(props: {
 										}}
 									>
 										<span className="min-w-0 flex-1 truncate">
-											{(s.title || 'New chat')
+											{(s.title || 'Untitled Session')
 												.toUpperCase()
 												.replace(/\s+/g, '_')}
 										</span>
-										<span className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-											<Button
-												variant="outline"
-												size="sm"
-												className={cn(
-													'h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-wider',
-													active
-														? 'border-primary-foreground/30 bg-primary text-primary-foreground hover:bg-primary/90'
-														: '',
-												)}
-												type="button"
+										<div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+											<button
+												className="text-muted-foreground hover:text-foreground"
 												onClick={(e) => {
 													e.preventDefault()
 													e.stopPropagation()
@@ -519,18 +512,22 @@ export function AgentChatPage(props: {
 													setRenameOpen(true)
 												}}
 											>
-												{t('sessions.rename')}
-											</Button>
-											<Button
-												variant="outline"
-												size="sm"
-												className={cn(
-													'h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-wider',
-													active
-														? 'border-primary-foreground/30 bg-primary text-primary-foreground hover:bg-primary/90'
-														: '',
-												)}
-												type="button"
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													width="10"
+													height="10"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="2"
+													strokeLinecap="square"
+													strokeLinejoin="miter"
+												>
+													<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+												</svg>
+											</button>
+											<button
+												className="text-muted-foreground hover:text-destructive"
 												onClick={(e) => {
 													e.preventDefault()
 													e.stopPropagation()
@@ -552,9 +549,9 @@ export function AgentChatPage(props: {
 													)
 												}}
 											>
-												{t('sessions.delete')}
-											</Button>
-										</span>
+												<Trash2 className="h-2.5 w-2.5" />
+											</button>
+										</div>
 									</div>
 								)
 							})}
@@ -563,444 +560,181 @@ export function AgentChatPage(props: {
 				</div>
 			</div>
 
-			<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-				<div className="border-b border-border bg-card">
-					<div className="px-4 py-4 sm:px-6 lg:px-8">
-						<div className="flex items-center justify-between gap-4">
-							<div className="min-w-0">
-								<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-									{t('header.breadcrumb')}
-								</div>
-								<div className="flex items-center gap-2">
-									<h1 className="truncate font-mono text-xl font-bold uppercase tracking-tight">
-										{t('header.title')}
-									</h1>
-									{activeSession ? (
-										<span className="border border-border bg-background px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											{(activeSession.title || 'New chat')
-												.toUpperCase()
-												.replace(/\s+/g, '_')}
-										</span>
-									) : null}
-								</div>
-							</div>
-
-							<div className="flex items-center gap-2">
-								<Select
-									value={modelId ?? ''}
-									onValueChange={(v) => {
-										setModelId(v)
-										if (!chatId) return
-										setSessionModelMutation.mutate({
-											sessionId: chatId,
-											modelId: v,
-										})
-									}}
-									disabled={
-										!chatId ||
-										chat.status !== 'ready' ||
-										(llmModelsQuery.data?.items ?? []).length === 0
-									}
-								>
-									<SelectTrigger className="h-9 w-[220px] rounded-none font-mono text-xs uppercase tracking-wider">
-										<SelectValue placeholder={t('fields.modelPlaceholder')} />
-									</SelectTrigger>
-									<SelectContent className="rounded-none">
-										{(llmModelsQuery.data?.items ?? []).map((m) => (
-											<SelectItem
-												key={m.id}
-												value={m.id}
-												className="font-mono text-sm"
-											>
-												{String(m.label ?? m.id)
-													.toUpperCase()
-													.replace(/\s+/g, '_')}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-
-								<Select
-									value={settings.defaultMode}
-									onValueChange={(v) =>
-										setSettings((prev) => ({ ...prev, defaultMode: v as any }))
-									}
-									disabled={chat.status !== 'ready'}
-								>
-									<SelectTrigger className="h-9 w-[160px] rounded-none font-mono text-xs uppercase tracking-wider">
-										<SelectValue placeholder={t('actions.modeLabel')} />
-									</SelectTrigger>
-									<SelectContent className="rounded-none">
-										<SelectItem value="confirm" className="font-mono text-sm">
-											{t('actions.mode.confirm')}
-										</SelectItem>
-										<SelectItem value="auto" className="font-mono text-sm">
-											{t('actions.mode.auto')}
-										</SelectItem>
-									</SelectContent>
-								</Select>
-
-								<Dialog>
-									<DialogTrigger asChild>
-										<Button
-											variant="outline"
-											size="sm"
-											className="h-9 rounded-none font-mono text-xs uppercase tracking-wider"
-											type="button"
-											disabled={chat.status !== 'ready'}
-										>
-											<Settings className="h-4 w-4" />
-											{t('actions.settings')}
-										</Button>
-									</DialogTrigger>
-									<DialogContent className="max-w-[560px] rounded-none">
-										<DialogHeader>
-											<DialogTitle className="font-mono uppercase tracking-wider">
-												{t('actions.settingsTitle')}
-											</DialogTitle>
-											<DialogDescription className="font-mono text-xs">
-												{t('actions.settingsDesc')}
-											</DialogDescription>
-										</DialogHeader>
-
-										<div className="grid gap-4">
-											<div className="grid gap-2">
-												<Label className="font-mono text-xs uppercase tracking-wider">
-													{t('actions.perStepMode')}
-												</Label>
-												<div className="grid gap-2">
-													{(
-														[
-															'download',
-															'asr',
-															'optimize',
-															'translate',
-															'render',
-														] as const
-													).map((step) => {
-														const v = settings.perStepMode?.[step] ?? 'inherit'
-														return (
-															<div
-																key={step}
-																className="flex items-center justify-between gap-3"
-															>
-																<div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-																	{t(`actions.kind.${step}` as any)}
-																</div>
-																<Select
-																	value={v}
-																	onValueChange={(next) => {
-																		setSettings((prev) => {
-																			const per = { ...prev.perStepMode } as any
-																			if (next === 'inherit') {
-																				delete per[step]
-																			} else {
-																				per[step] = next
-																			}
-																			const has = Object.keys(per).length > 0
-																			return {
-																				...prev,
-																				perStepMode: has ? per : undefined,
-																			}
-																		})
-																	}}
-																>
-																	<SelectTrigger className="h-9 w-[180px] rounded-none font-mono text-xs uppercase tracking-wider">
-																		<SelectValue />
-																	</SelectTrigger>
-																	<SelectContent className="rounded-none">
-																		<SelectItem
-																			value="inherit"
-																			className="font-mono text-sm"
-																		>
-																			{t('actions.inherit')}
-																		</SelectItem>
-																		<SelectItem
-																			value="confirm"
-																			className="font-mono text-sm"
-																		>
-																			{t('actions.mode.confirm')}
-																		</SelectItem>
-																		<SelectItem
-																			value="auto"
-																			className="font-mono text-sm"
-																		>
-																			{t('actions.mode.auto')}
-																		</SelectItem>
-																	</SelectContent>
-																</Select>
-															</div>
-														)
-													})}
-												</div>
-											</div>
-
-											<div className="grid gap-2">
-												<Label className="font-mono text-xs uppercase tracking-wider">
-													{t('actions.autoDelayMs')}
-												</Label>
-												<Input
-													className="rounded-none font-mono text-xs"
-													value={String(settings.auto.delayMs)}
-													onChange={(e) => {
-														const n = Number(e.target.value)
-														setSettings((prev) => ({
-															...prev,
-															auto: {
-																...prev.auto,
-																delayMs: Number.isFinite(n)
-																	? Math.max(0, n)
-																	: prev.auto.delayMs,
-															},
-														}))
-													}}
-												/>
-											</div>
-
-											<div className="grid gap-2">
-												<Label className="font-mono text-xs uppercase tracking-wider">
-													{t('actions.autoMaxPoints')}
-												</Label>
-												<Input
-													className="rounded-none font-mono text-xs"
-													value={String(
-														settings.auto.maxEstimatedPointsPerAction ?? '',
-													)}
-													onChange={(e) => {
-														const raw = e.target.value.trim()
-														const n = raw ? Number(raw) : NaN
-														setSettings((prev) => ({
-															...prev,
-															auto: {
-																...prev.auto,
-																maxEstimatedPointsPerAction: raw
-																	? Number.isFinite(n)
-																		? Math.max(0, n)
-																		: prev.auto.maxEstimatedPointsPerAction
-																	: undefined,
-															},
-														}))
-													}}
-												/>
-											</div>
-
-											<div className="grid gap-2">
-												<Label className="font-mono text-xs uppercase tracking-wider">
-													{t('actions.requireConfirmUnknownCost')}
-												</Label>
-												<Select
-													value={
-														settings.auto.requireConfirmOnUnknownCost
-															? 'yes'
-															: 'no'
-													}
-													onValueChange={(v) =>
-														setSettings((prev) => ({
-															...prev,
-															auto: {
-																...prev.auto,
-																requireConfirmOnUnknownCost: v === 'yes',
-															},
-														}))
-													}
-												>
-													<SelectTrigger className="h-9 rounded-none font-mono text-xs uppercase tracking-wider">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent className="rounded-none">
-														<SelectItem
-															value="yes"
-															className="font-mono text-sm"
-														>
-															{t('actions.yes')}
-														</SelectItem>
-														<SelectItem
-															value="no"
-															className="font-mono text-sm"
-														>
-															{t('actions.no')}
-														</SelectItem>
-													</SelectContent>
-												</Select>
-											</div>
-
-											<div className="flex justify-end gap-2">
-												<Button
-													variant="outline"
-													size="sm"
-													className="rounded-none font-mono text-xs uppercase tracking-wider"
-													type="button"
-													onClick={() => {
-														removeSettings()
-														setSettings(DEFAULT_AGENT_WORKFLOW_SETTINGS)
-													}}
-												>
-													{t('actions.reset')}
-												</Button>
-											</div>
-										</div>
-									</DialogContent>
-								</Dialog>
-
-								<Button
-									variant="outline"
-									size="sm"
-									className="rounded-none font-mono text-xs uppercase tracking-wider"
-									type="button"
-									onClick={() => {
-										if (!chatId) return
-										setDraft('')
-										chat.stop()
-										chat.setMessages([])
-										setActionsById({})
-										scheduleSync([])
-									}}
-									disabled={
-										!chatId ||
-										(chat.messages.length === 0 && draft.length === 0) ||
-										chat.status === 'streaming'
-									}
-								>
-									<Trash2 className="h-4 w-4" />
-									{t('actions.clear')}
-								</Button>
-							</div>
+			{/* Main Chat Area */}
+			<div className="flex min-w-0 flex-1 flex-col">
+				{/* Top Header - Now simplified */}
+				<div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-6">
+					<div className="flex items-center gap-4">
+						<div className="flex items-center gap-2">
+							<span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+								{t('header.breadcrumb')}
+							</span>
+							<span className="text-muted-foreground/30">/</span>
+							<h1 className="font-sans text-xs font-bold uppercase tracking-widest">
+								{t('header.title')}
+							</h1>
 						</div>
+						{activeSession ? (
+							<>
+								<div className="h-4 w-px bg-border" />
+								<div className="font-mono text-[10px] uppercase tracking-widest text-foreground bg-accent px-2 py-0.5 border border-border">
+									{(activeSession.title || 'Untitled')
+										.toUpperCase()
+										.replace(/\s+/g, '_')}
+								</div>
+							</>
+						) : null}
 					</div>
 				</div>
 
-				<div className="flex min-h-0 flex-1 flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
-					<div
-						ref={scrollRef}
-						className="flex-1 min-h-0 overflow-y-auto border border-border bg-card p-4"
-					>
-						{chatId && sessionQuery.isLoading ? (
-							<div className="py-16 text-center text-sm text-muted-foreground">
-								{t('sessions.loading')}
-							</div>
-						) : chat.messages.length === 0 ? (
-							<div className="py-16 text-center text-sm text-muted-foreground">
-								{t('empty')}
-							</div>
-						) : (
-							<div className="space-y-3">
-								{chat.messages.map((m) => {
-									const isUser = m.role === 'user'
-									const text = (m.parts ?? [])
-										.filter(
-											(p: any) =>
-												p?.type === 'text' && typeof p.text === 'string',
+				{/* Messages Scroll Area */}
+				<div
+					ref={scrollRef}
+					className="flex-1 overflow-y-auto bg-background p-6"
+				>
+					{chatId && sessionQuery.isLoading ? (
+						<div className="flex h-full items-center justify-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+							{t('sessions.loading')}
+						</div>
+					) : chat.messages.length === 0 ? (
+						<div className="flex h-full items-center justify-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+							{t('empty')}
+						</div>
+					) : (
+						<div className="mx-auto max-w-4xl space-y-8">
+							{chat.messages.map((m) => {
+								const isUser = m.role === 'user'
+								const textParts = (m.parts ?? []).filter(
+									(p: any) => p?.type === 'text' && typeof p.text === 'string',
+								)
+								const actionParts = (m.parts ?? []).filter((p: any) => {
+									if (!p || typeof p !== 'object') return false
+									if (typeof p.type === 'string' && p.type.startsWith('tool-')) {
+										return (
+											p.state === 'output-available' ||
+											p.state === 'output-error'
 										)
-										.map((p: any) => p.text)
-										.join('')
-									const actionParts = (m.parts ?? []).filter((p: any) => {
-										if (!p || typeof p !== 'object') return false
-										if (
-											typeof p.type === 'string' &&
-											p.type.startsWith('tool-')
-										) {
-											return (
-												p.state === 'output-available' ||
-												p.state === 'output-error'
-											)
-										}
-										return false
-									})
+									}
+									return false
+								})
 
-									return (
+								return (
+									<div
+										key={m.id}
+										className={cn(
+											'flex gap-4',
+											isUser ? 'flex-row-reverse' : 'flex-row',
+										)}
+									>
 										<div
-											key={m.id}
 											className={cn(
-												'flex',
-												isUser ? 'justify-end' : 'justify-start',
+												'flex h-6 w-10 shrink-0 items-center justify-center border font-mono text-[9px] font-bold uppercase tracking-tighter',
+												isUser
+													? 'border-primary bg-primary text-primary-foreground'
+													: 'border-border bg-card text-muted-foreground',
 											)}
 										>
-											<div className="max-w-[85%] space-y-2">
-												{text.trim().length > 0 ? (
-													<div
-														className={cn(
-															'whitespace-pre-wrap break-words border px-3 py-2 text-sm',
-															isUser
-																? 'bg-primary text-primary-foreground border-primary'
-																: 'bg-secondary text-secondary-foreground border-border',
-														)}
-													>
-														{text}
-													</div>
-												) : null}
-
-												{actionParts.map((p: any, idx: number) => {
-													if (p.state === 'output-error') {
-														const text =
-															typeof p.errorText === 'string'
-																? p.errorText
-																: 'Tool error'
-														return (
-															<div
-																key={`${m.id}_${idx}_tool_error`}
-																className="border border-destructive bg-card p-3 font-mono text-xs text-destructive"
-															>
-																{text}
-															</div>
-														)
-													}
-
-													const out = p.output
-													const actionId =
-														typeof out?.actionId === 'string'
-															? out.actionId
-															: typeof out?.action?.id === 'string'
-																? out.action.id
-																: null
-													if (!actionId) return null
-													const action =
-														actionsById[actionId] ??
-														(out?.action as AgentAction | undefined)
-													if (!action) return null
-													return (
-														<AgentActionCard
-															key={`${m.id}_${idx}_${actionId}`}
-															action={action}
-															settings={settings}
-															onUpdateAction={(next) => {
-																setActionsById((prev) => ({
-																	...prev,
-																	[next.id]: next,
-																}))
-																chat.setMessages((prev) => {
-																	const updated = updateMessagesWithAction(
-																		prev,
-																		next,
-																	)
-																	if (updated !== prev) scheduleSync(updated)
-																	return updated
-																})
-															}}
-															onSuggestNext={suggestNext}
-														/>
-													)
-												})}
-											</div>
+											{isUser ? 'USER' : 'GENI'}
 										</div>
-									)
-								})}
-							</div>
-						)}
-					</div>
 
+										<div className="flex max-w-[85%] flex-col gap-3">
+											{textParts.length > 0 && (
+												<div
+													className={cn(
+														'border p-4 text-sm leading-relaxed font-mono',
+														isUser
+															? 'border-primary/20 bg-primary/5 text-foreground'
+															: 'border-border bg-card text-foreground',
+													)}
+												>
+													{textParts.map((p: any, idx: number) => (
+														<div
+															key={idx}
+															className="whitespace-pre-wrap break-words"
+														>
+															{p.text}
+														</div>
+													))}
+												</div>
+											)}
+
+											{actionParts.map((p: any, idx: number) => {
+												if (p.state === 'output-error') {
+													const text =
+														typeof p.errorText === 'string'
+															? p.errorText
+															: 'Tool error'
+													return (
+														<div
+															key={`${m.id}_${idx}_tool_error`}
+															className="border border-destructive/50 bg-destructive/5 p-3 font-mono text-xs text-destructive"
+														>
+															<span className="mr-2 font-bold uppercase tracking-wider">
+																[FAULT_ERR]
+															</span>
+															{text}
+														</div>
+													)
+												}
+
+												const out = p.output
+												const actionId =
+													typeof out?.actionId === 'string'
+														? out.actionId
+														: typeof out?.action?.id === 'string'
+															? out.action.id
+															: null
+												if (!actionId) return null
+												const action =
+													actionsById[actionId] ??
+													(out?.action as AgentAction | undefined)
+												if (!action) return null
+												return (
+													<AgentActionCard
+														key={`${m.id}_${idx}_${actionId}`}
+														action={action}
+														settings={settings}
+														onUpdateAction={(next) => {
+															setActionsById((prev) => ({
+																...prev,
+																[next.id]: next,
+															}))
+															chat.setMessages((prev) => {
+																const updated = updateMessagesWithAction(
+																	prev,
+																	next,
+																)
+																if (updated !== prev) scheduleSync(updated)
+																return updated
+															})
+														}}
+														onSuggestNext={suggestNext}
+													/>
+												)
+											})}
+										</div>
+									</div>
+								)
+							})}
+						</div>
+					)}
+				</div>
+
+				{/* Bottom Input Area - With Controls moved here */}
+				<div className="border-t border-border bg-card p-4">
 					<form
-						className="border border-border bg-card p-4"
+						className="mx-auto max-w-4xl"
 						onSubmit={(e) => {
 							e.preventDefault()
 							send()
 						}}
 					>
-						<div className="flex items-end gap-3">
+						<div className="flex flex-col border border-border bg-background transition-all focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
 							<textarea
 								value={draft}
 								onChange={(e) => setDraft(e.target.value)}
 								placeholder={t('input.placeholder')}
-								className="min-h-20 flex-1 resize-none rounded-none border border-border bg-background p-3 font-mono text-xs outline-none"
+								className="min-h-[80px] w-full resize-none bg-transparent p-4 font-mono text-sm outline-none"
 								disabled={!chatId || chat.status !== 'ready'}
 								onKeyDown={(e) => {
 									if (e.key === 'Enter' && !e.shiftKey) {
@@ -1009,84 +743,158 @@ export function AgentChatPage(props: {
 									}
 								}}
 							/>
-							<Button
-								type="submit"
-								className="rounded-none font-mono text-xs uppercase tracking-wider"
-								disabled={!canSend}
-							>
-								{chat.status === 'streaming' || chat.status === 'submitted' ? (
-									<Loader2 className="h-4 w-4 animate-spin" />
-								) : (
-									<Send className="h-4 w-4" />
-								)}
-								{t('actions.send')}
-							</Button>
-						</div>
+							
+							{/* Bottom Toolbar Row */}
+							<div className="flex h-10 items-center justify-between border-t border-border bg-card/50 px-3">
+								<div className="flex items-center gap-4">
+									<div className="flex items-center gap-2">
+										<span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">MODEL:</span>
+										<Select
+											value={modelId ?? ''}
+											onValueChange={(v) => {
+												setModelId(v)
+												if (!chatId) return
+												setSessionModelMutation.mutate({
+													sessionId: chatId,
+													modelId: v,
+												})
+											}}
+											disabled={!chatId || chat.status !== 'ready' || (llmModelsQuery.data?.items ?? []).length === 0}
+										>
+											<SelectTrigger className="h-6 w-fit min-w-[120px] border-none bg-transparent font-mono text-[9px] uppercase tracking-widest hover:bg-accent focus:ring-0">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent className="rounded-none border-border">
+												{(llmModelsQuery.data?.items ?? []).map((m) => (
+													<SelectItem key={m.id} value={m.id} className="rounded-none font-mono text-[10px] uppercase">
+														{String(m.label ?? m.id).toUpperCase().replace(/\s+/g, '_')}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
 
-						<div className="mt-2 text-[10px] text-muted-foreground">
-							{t('input.hint')}
+									<div className="flex items-center gap-2">
+										<span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">MODE:</span>
+										<Select
+											value={settings.defaultMode}
+											onValueChange={(v) => setSettings((prev) => ({ ...prev, defaultMode: v as any }))}
+											disabled={chat.status !== 'ready'}
+										>
+											<SelectTrigger className="h-6 w-fit border-none bg-transparent font-mono text-[9px] uppercase tracking-widest hover:bg-accent focus:ring-0">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent className="rounded-none border-border">
+												<SelectItem value="confirm" className="rounded-none font-mono text-[10px] uppercase">{t('actions.mode.confirm')}</SelectItem>
+												<SelectItem value="auto" className="rounded-none font-mono text-[10px] uppercase">{t('actions.mode.auto')}</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+								</div>
+
+								<div className="flex items-center gap-2">
+									<Dialog>
+										<DialogTrigger asChild>
+											<button className="flex h-6 items-center gap-1.5 px-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-50" disabled={chat.status !== 'ready'}>
+												<Settings className="h-3 w-3" />
+												{t('actions.settings')}
+											</button>
+										</DialogTrigger>
+										<DialogContent className="max-w-[500px] rounded-none border-border bg-card p-0 shadow-none">
+											<DialogHeader className="border-b border-border p-4">
+												<DialogTitle className="font-mono text-[10px] uppercase tracking-widest">{t('actions.settingsTitle')}</DialogTitle>
+											</DialogHeader>
+											<div className="grid gap-6 p-6">
+												{/* ... (Keep existing Dialog settings content, just update fonts to mono) */}
+												<div className="grid gap-3">
+													<Label className="font-mono text-[10px] uppercase tracking-widest">{t('actions.perStepMode')}</Label>
+													<div className="grid gap-1 border border-border bg-background p-3">
+														{(['download', 'asr', 'optimize', 'translate', 'render'] as const).map((step) => {
+															const v = settings.perStepMode?.[step] ?? 'inherit'
+															return (
+																<div key={step} className="flex items-center justify-between gap-3">
+																	<div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t(`actions.kind.${step}` as any)}</div>
+																	<Select value={v} onValueChange={(next) => {
+																		setSettings((prev) => {
+																			const per = { ...prev.perStepMode } as any
+																			if (next === 'inherit') delete per[step]
+																			else per[step] = next
+																			return { ...prev, perStepMode: Object.keys(per).length > 0 ? per : undefined }
+																		})
+																	}}>
+																		<SelectTrigger className="h-6 w-[100px] rounded-none border-border text-[9px] uppercase tracking-widest"><SelectValue /></SelectTrigger>
+																		<SelectContent className="rounded-none">
+																			<SelectItem value="inherit" className="rounded-none font-mono text-[9px] uppercase">{t('actions.inherit')}</SelectItem>
+																			<SelectItem value="confirm" className="rounded-none font-mono text-[9px] uppercase">{t('actions.mode.confirm')}</SelectItem>
+																			<SelectItem value="auto" className="rounded-none font-mono text-[9px] uppercase">{t('actions.mode.auto')}</SelectItem>
+																		</SelectContent>
+																	</Select>
+																</div>
+															)
+														})}
+													</div>
+												</div>
+												<div className="flex justify-end gap-3 pt-4 border-t border-border">
+													<Button variant="ghost" className="rounded-none font-mono text-[9px] uppercase" onClick={() => { removeSettings(); setSettings(DEFAULT_AGENT_WORKFLOW_SETTINGS); }}>{t('actions.reset')}</Button>
+												</div>
+											</div>
+										</DialogContent>
+									</Dialog>
+
+									<button 
+										type="button"
+										className="flex h-6 items-center gap-1.5 px-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors disabled:opacity-30"
+										disabled={!chatId || (chat.messages.length === 0 && draft.length === 0) || chat.status === 'streaming'}
+										onClick={() => { if (!chatId) return; setDraft(''); chat.stop(); chat.setMessages([]); setActionsById({}); scheduleSync([]); }}
+									>
+										<Trash2 className="h-3 w-3" />
+										{t('actions.clear')}
+									</button>
+
+									<div className="mx-1 h-4 w-px bg-border" />
+
+									<button
+										type="submit"
+										className="flex h-7 items-center gap-2 bg-primary px-3 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+										disabled={!canSend}
+									>
+										{chat.status === 'streaming' || chat.status === 'submitted' ? (
+											<Loader2 className="h-3 w-3 animate-spin" />
+										) : (
+											<Send className="h-3 w-3" />
+										)}
+										{t('actions.send')}
+									</button>
+								</div>
+							</div>
+						</div>
+						<div className="mt-2 text-right">
+							<span className="font-mono text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
+								{t('input.hint')}
+							</span>
 						</div>
 					</form>
 				</div>
-			</div>
 
-			<Dialog
-				open={renameOpen}
-				onOpenChange={(open) => {
-					setRenameOpen(open)
-					if (!open) setRenameSessionId(null)
-				}}
-			>
-				<DialogContent className="max-w-[520px] rounded-none">
-					<DialogHeader>
-						<DialogTitle className="font-mono uppercase tracking-wider">
-							{t('sessions.renameTitle')}
-						</DialogTitle>
-					</DialogHeader>
-					<div className="grid gap-3">
-						<div className="grid gap-2">
-							<Label className="font-mono text-xs uppercase tracking-wider">
-								{t('sessions.renameLabel')}
-							</Label>
-							<Input
-								className="rounded-none font-mono text-xs"
-								value={renameDraft}
-								onChange={(e) => setRenameDraft(e.target.value)}
-								placeholder={t('sessions.renamePlaceholder')}
-							/>
+				{/* Rename Session Dialog */}
+				<Dialog open={renameOpen} onOpenChange={(open) => { setRenameOpen(open); if (!open) setRenameSessionId(null); }}>
+					<DialogContent className="max-w-[400px] rounded-none border-border p-0 shadow-none">
+						<DialogHeader className="border-b border-border p-4">
+							<DialogTitle className="font-mono text-[10px] uppercase tracking-widest">{t('sessions.renameTitle')}</DialogTitle>
+						</DialogHeader>
+						<div className="grid gap-6 p-6">
+							<div className="grid gap-2">
+								<Label className="font-mono text-[9px] uppercase tracking-widest">{t('sessions.renameLabel')}</Label>
+								<Input className="rounded-none border-border font-mono text-xs" value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} placeholder={t('sessions.renamePlaceholder')} />
+							</div>
+							<div className="flex justify-end gap-3">
+								<Button variant="outline" className="rounded-none font-mono text-[9px] uppercase" onClick={() => setRenameOpen(false)}>{t('sessions.cancel')}</Button>
+								<Button className="rounded-none font-mono text-[9px] uppercase bg-primary text-primary-foreground" onClick={() => { if (!renameSessionId) return; const title = renameDraft.trim(); if (!title) return; renameSessionMutation.mutate({ sessionId: renameSessionId, title }); setRenameOpen(false); }}>{t('sessions.save')}</Button>
+							</div>
 						</div>
-						<div className="flex justify-end gap-2">
-							<Button
-								variant="outline"
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase tracking-wider"
-								type="button"
-								onClick={() => setRenameOpen(false)}
-							>
-								{t('sessions.cancel')}
-							</Button>
-							<Button
-								size="sm"
-								className="rounded-none font-mono text-xs uppercase tracking-wider"
-								type="button"
-								onClick={() => {
-									if (!renameSessionId) return
-									const title = renameDraft.trim()
-									if (!title) return
-									renameSessionMutation.mutate({
-										sessionId: renameSessionId,
-										title,
-									})
-									setRenameOpen(false)
-								}}
-								disabled={!renameSessionId}
-							>
-								{t('sessions.save')}
-							</Button>
-						</div>
-					</div>
-				</DialogContent>
-			</Dialog>
+					</DialogContent>
+				</Dialog>
+			</div>
 		</div>
 	)
 }
