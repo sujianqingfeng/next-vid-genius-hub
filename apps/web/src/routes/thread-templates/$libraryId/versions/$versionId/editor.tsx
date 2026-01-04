@@ -22,6 +22,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import {
 	ThreadRemotionEditorSurface,
+	ThreadRemotionTimeline,
 	type ThreadRemotionEditorSurfaceApi,
 } from '~/components/business/threads/thread-remotion-editor-surface'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
@@ -54,6 +55,7 @@ import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
 import { useTranslations } from '~/lib/i18n'
 import { queryOrpc } from '~/lib/orpc/client'
+import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
 import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
 import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
 
@@ -386,6 +388,26 @@ function ThreadTemplateVersionEditorRoute() {
 		React.useState<string>('cover:[]')
 
 	const [previewMode, setPreviewMode] = React.useState<'edit' | 'play'>('edit')
+	const timeline = React.useMemo(() => {
+		const commentsForTiming = previewReplies.map((r: any) => ({
+			id: r.id,
+			author: r.authorName,
+			content: r.plainText,
+			likes: Number(r.metrics?.likes ?? 0) || 0,
+			replyCount: 0,
+		}))
+		return buildCommentTimeline(commentsForTiming, REMOTION_FPS)
+	}, [previewReplies])
+	const maxFrame = Math.max(0, timeline.totalDurationInFrames - 1)
+	const [editFrame, setEditFrame] = React.useState(0)
+	React.useEffect(() => {
+		setEditFrame((prev) => Math.min(Math.max(0, prev), maxFrame))
+	}, [maxFrame])
+	const canScrubTimeline =
+		previewMode === 'edit' &&
+		Boolean(previewThreadId) &&
+		Boolean(previewThread) &&
+		Boolean(previewRoot)
 	const [showAdvanced, setShowAdvanced] = React.useState(false)
 	const [visualTemplateConfig, setVisualTemplateConfig] =
 		React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
@@ -1195,6 +1217,8 @@ function ThreadTemplateVersionEditorRoute() {
 														}}
 														showLayers={false}
 														showInspector={false}
+														externalEditFrame={editFrame}
+														onEditFrameChange={setEditFrame}
 														externalPrimaryKey={editorSelectedKey}
 														onSelectionChange={({ primaryKey }) => {
 															if (!primaryKey) return
@@ -1250,6 +1274,18 @@ function ThreadTemplateVersionEditorRoute() {
 									) : null}
 								</div>
 							</div>
+
+							{canScrubTimeline ? (
+								<div className="shrink-0 border-t border-border bg-card/70 backdrop-blur px-3 py-2">
+									<ThreadRemotionTimeline
+										scene={editorScene}
+										timeline={timeline}
+										editFrame={editFrame}
+										onEditFrameChange={setEditFrame}
+										disabled={previewThreadQuery.isLoading}
+									/>
+								</div>
+							) : null}
 						</div>
 
 						{/* RIGHT RESIZER */}

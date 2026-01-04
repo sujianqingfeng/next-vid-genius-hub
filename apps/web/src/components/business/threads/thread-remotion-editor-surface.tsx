@@ -51,6 +51,64 @@ function toIso(input?: Date | null): string | null {
 type SceneKey = 'cover' | 'post'
 type NodePath = Array<string | number>
 
+export type ThreadRemotionTimelineProps = {
+	scene?: 'cover' | 'post'
+	timeline: {
+		coverDurationInFrames: number
+		totalDurationInFrames: number
+	}
+	editFrame: number
+	onEditFrameChange: (next: number) => void
+	disabled?: boolean
+}
+
+export function ThreadRemotionTimeline({
+	scene = 'cover',
+	timeline,
+	editFrame,
+	onEditFrameChange,
+	disabled = false,
+}: ThreadRemotionTimelineProps) {
+	const t = useTranslations('Threads.remotionEditor')
+
+	const coverEndFrame = Math.max(0, timeline.coverDurationInFrames - 1)
+	const postStartFrame = Math.max(0, timeline.coverDurationInFrames)
+	const maxFrame = Math.max(0, timeline.totalDurationInFrames - 1)
+	const postEndFrame = Math.max(0, maxFrame)
+
+	const timelineMinRaw = scene === 'post' ? postStartFrame : 0
+	const timelineMaxRaw = scene === 'post' ? postEndFrame : coverEndFrame
+
+	const timelineMin = Math.min(Math.max(0, timelineMinRaw), maxFrame)
+	const safeTimelineMax = Math.min(Math.max(timelineMin, timelineMaxRaw), maxFrame)
+	const timelineFrame = Math.min(Math.max(editFrame, timelineMin), safeTimelineMax)
+
+	return (
+		<div
+			className={[
+				'flex items-center gap-2 rounded-sm border border-border bg-muted/20 px-2 py-1',
+				disabled ? 'opacity-60' : '',
+			].join(' ')}
+		>
+			<div className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+				{scene === 'post' ? t('buttons.post') : t('buttons.cover')}
+			</div>
+			<input
+				type="range"
+				min={timelineMin}
+				max={safeTimelineMax}
+				value={timelineFrame}
+				disabled={disabled || safeTimelineMax <= timelineMin}
+				onChange={(e) => onEditFrameChange(Number(e.target.value))}
+				className="w-full"
+			/>
+			<div className="shrink-0 tabular-nums font-mono text-[10px] text-muted-foreground">
+				{timelineFrame}/{safeTimelineMax}
+			</div>
+		</div>
+	)
+}
+
 function numOrNull(v: unknown): number | null {
 	return typeof v === 'number' && Number.isFinite(v) ? v : null
 }
@@ -279,7 +337,6 @@ export type ThreadRemotionEditorSurfaceProps = {
 	initialViewPan?: { x: number; y: number }
 	onViewScaleChange?: (next: number) => void
 	onViewPanChange?: (next: { x: number; y: number }) => void
-	showTimeline?: boolean
 	externalEditFrame?: number
 	onEditFrameChange?: (next: number) => void
 }
@@ -313,7 +370,6 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 		initialViewPan,
 		onViewScaleChange,
 		onViewPanChange,
-		showTimeline = false,
 		externalEditFrame,
 		onEditFrameChange,
 	},
@@ -345,22 +401,26 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 
 	const editFrame = isEditFrameControlled ? externalEditFrame! : editFrameState
 	const safeEditFrame = Math.min(Math.max(0, editFrame), maxFrame)
+	const safeEditFrameRef = React.useRef(safeEditFrame)
+	React.useEffect(() => {
+		safeEditFrameRef.current = safeEditFrame
+	}, [safeEditFrame])
 
 	const setEditFrame = React.useCallback(
 		(next: number | ((prev: number) => number)) => {
-			const prev = safeEditFrame
+			const prev = safeEditFrameRef.current
 			const resolved = typeof next === 'function' ? next(prev) : next
 			const clamped = Math.min(Math.max(0, Math.round(resolved)), maxFrame)
 
 			if (isEditFrameControlled) {
-				if (clamped === safeEditFrame) return
+				if (clamped === safeEditFrameRef.current) return
 				onEditFrameChange?.(clamped)
 				return
 			}
 
 			setEditFrameState((cur) => (cur === clamped ? cur : clamped))
 		},
-		[isEditFrameControlled, maxFrame, onEditFrameChange, safeEditFrame],
+		[isEditFrameControlled, maxFrame, onEditFrameChange],
 	)
 
 	const sceneAnchorFrame =
@@ -2367,18 +2427,6 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 							const ratio =
 								template.compositionHeight / template.compositionWidth
 							const effectiveTool = spacePan ? 'pan' : viewTool
-							const timelineMinRaw = scene === 'post' ? postStartFrame : 0
-							const timelineMaxRaw =
-								scene === 'post' ? postEndFrame : coverEndFrame
-							const timelineMin = Math.min(Math.max(0, timelineMinRaw), maxFrame)
-							const safeTimelineMax = Math.min(
-								Math.max(timelineMin, timelineMaxRaw),
-								maxFrame,
-							)
-							const timelineFrame = Math.min(
-								Math.max(safeEditFrame, timelineMin),
-								safeTimelineMax,
-							)
 							const wrapperStyle: React.CSSProperties = {
 								position: 'relative',
 								width: '100%',
@@ -3384,42 +3432,6 @@ export const ThreadRemotionEditorSurface = React.forwardRef<
 													/>
 												))
 											})()}
-										</div>
-									) : null}
-
-									{mode === 'edit' && ui === 'canvas' && showTimeline ? (
-										<div
-											className="pointer-events-none"
-											style={{
-												position: 'absolute',
-												left: 12,
-												right: 12,
-												bottom: 12,
-												zIndex: 30,
-											}}
-										>
-											<div
-												className="pointer-events-auto flex items-center gap-2 rounded-sm border border-white/10 bg-black/60 px-2 py-1 backdrop-blur"
-												onPointerDownCapture={(e) => e.stopPropagation()}
-												onClickCapture={(e) => e.stopPropagation()}
-											>
-												<div className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-slate-200/80">
-													{scene === 'post'
-														? t('buttons.post')
-														: t('buttons.cover')}
-												</div>
-												<input
-													type="range"
-													min={timelineMin}
-													max={safeTimelineMax}
-													value={timelineFrame}
-													onChange={(e) => setEditFrame(Number(e.target.value))}
-													className="w-full"
-												/>
-												<div className="shrink-0 tabular-nums font-mono text-[10px] text-slate-200/80">
-													{timelineFrame}/{safeTimelineMax}
-												</div>
-											</div>
 										</div>
 									) : null}
 								</div>
