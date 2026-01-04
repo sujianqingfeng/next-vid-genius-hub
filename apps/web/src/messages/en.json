@@ -617,6 +617,10 @@
 				"previewingLabel": "Previewing",
 				"publishNotePlaceholder": "Publish note…"
 			},
+			"structure": {
+				"cover": "Cover",
+				"post": "Post"
+			},
 			"buttons": {
 				"undo": "Undo",
 				"redo": "Redo",
@@ -703,6 +707,8 @@
 			},
 			"inspector": {
 				"title": "Inspector",
+				"expand": "Expand",
+				"collapse": "Collapse",
 				"selectNodeHint": "Select a node to edit.",
 				"modified": "Modified",
 				"resetToBaselineTitle": "Reset selection to current version baseline",
@@ -711,6 +717,7 @@
 			"fields": {
 				"text": "text",
 				"bind": "bind",
+				"color": "color",
 				"size": "size",
 				"weight": "weight",
 				"opacity": "opacity",

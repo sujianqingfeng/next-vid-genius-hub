@@ -617,6 +617,10 @@
 				"previewingLabel": "预览中",
 				"publishNotePlaceholder": "发布备注…"
 			},
+			"structure": {
+				"cover": "封面",
+				"post": "帖子"
+			},
 			"buttons": {
 				"undo": "撤销",
 				"redo": "重做",
@@ -703,6 +707,8 @@
 			},
 			"inspector": {
 				"title": "检查器",
+				"expand": "展开",
+				"collapse": "收起",
 				"selectNodeHint": "请选择一个节点进行编辑。",
 				"modified": "已修改",
 				"resetToBaselineTitle": "重置为当前版本基线",
@@ -711,6 +717,7 @@
 			"fields": {
 				"text": "文本",
 				"bind": "绑定",
+				"color": "颜色",
 				"size": "大小",
 				"weight": "字重",
 				"opacity": "透明度",

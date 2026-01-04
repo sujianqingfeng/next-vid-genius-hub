@@ -220,7 +220,12 @@ export function createTranslator({
 	messages: Messages | undefined | null
 	namespace: string
 }) {
-	const scope = getByPath(messages, namespace.split('.'))
+	const namespaceParts = namespace.split('.')
+	const scope =
+		getByPath(messages, namespaceParts) ??
+		(!namespace.startsWith('ThreadTemplates.')
+			? getByPath(messages, ['ThreadTemplates', ...namespaceParts])
+			: undefined)
 	return (key: string, params?: Record<string, unknown>) => {
 		const value = getByPath(scope, key.split('.'))
 		const template = typeof value === 'string' ? value : `${namespace}.${key}`
