@@ -11,7 +11,7 @@ import { Textarea } from '~/components/ui/textarea'
 import { parseXThreadImportDraft } from '~/lib/domain/thread/adapters/x'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 export function ThreadsNewPage() {
 	const navigate = useNavigate()

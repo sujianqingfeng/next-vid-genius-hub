@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
-import { queryOrpc } from '~/orpc/client'
+import { requireUser } from '~/lib/features/auth/route-guards'
 
 const SearchSchema = z.object({
 	tab: z.enum(['subscriptions', 'proxies']).optional().default('subscriptions'),
@@ -16,13 +16,7 @@ export const Route = createFileRoute('/proxy')({
 		page: search.page,
 	}),
 	loader: async ({ context, deps, location }) => {
-		const me = await context.queryClient.ensureQueryData(
-			queryOrpc.auth.me.queryOptions(),
-		)
-		if (!me.user) {
-			const next = location.href
-			throw redirect({ to: '/login', search: { next } })
-		}
+		const me = await requireUser({ context, location })
 
 		if (me.user.role === 'admin') {
 			throw redirect({ to: '/admin/proxy', search: deps })

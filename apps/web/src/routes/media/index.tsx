@@ -1,22 +1,17 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import {
 	MediaListPage,
 	MediaListSearchSchema,
 } from '~/components/business/media/media-list-page'
+import { requireUser } from '~/lib/features/auth/route-guards'
 import { MEDIA_PAGE_SIZE } from '~/lib/shared/pagination'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 export const Route = createFileRoute('/media/')({
 	validateSearch: MediaListSearchSchema,
 	loaderDeps: ({ search }) => ({ page: search.page }),
 	loader: async ({ context, deps, location }) => {
-		const me = await context.queryClient.ensureQueryData(
-			queryOrpc.auth.me.queryOptions(),
-		)
-		if (!me.user) {
-			const next = location.href
-			throw redirect({ to: '/login', search: { next } })
-		}
+		await requireUser({ context, location })
 
 		await context.queryClient.prefetchQuery(
 			queryOrpc.media.list.queryOptions({
@@ -39,4 +34,3 @@ function MediaIndexRoute() {
 		/>
 	)
 }
-

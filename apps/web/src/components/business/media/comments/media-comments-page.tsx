@@ -50,7 +50,7 @@ import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { MEDIA_SOURCES } from '~/lib/domain/media/source'
 import { formatHostPort } from '~/lib/infra/proxy/host'
 import { useLocale, useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 type SourcePolicy = 'auto' | 'original' | 'subtitles'
 

@@ -38,7 +38,7 @@ import { DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/features/subtitle/config/p
 import type { SubtitleRenderConfig } from '~/lib/features/subtitle/types'
 import { parseVttCues } from '~/lib/features/subtitle/utils/vtt'
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'canceled'])
 

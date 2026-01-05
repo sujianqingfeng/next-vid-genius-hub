@@ -61,7 +61,7 @@ import {
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/shared/hooks/useLocalStorageState'
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 function toPrettyJson(value: unknown): string {
 	try {

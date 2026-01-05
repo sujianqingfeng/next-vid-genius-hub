@@ -1,16 +1,11 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { MediaDownloadPage } from '~/components/business/media/media-download-page'
-import { queryOrpc } from '~/orpc/client'
+import { requireUser } from '~/lib/features/auth/route-guards'
+import { queryOrpc } from '~/orpc'
 
 export const Route = createFileRoute('/media/download')({
 	loader: async ({ context, location }) => {
-		const me = await context.queryClient.ensureQueryData(
-			queryOrpc.auth.me.queryOptions(),
-		)
-		if (!me.user) {
-			const next = location.href
-			throw redirect({ to: '/login', search: { next } })
-		}
+		await requireUser({ context, location })
 
 		await context.queryClient.prefetchQuery(
 			queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
@@ -18,4 +13,3 @@ export const Route = createFileRoute('/media/download')({
 	},
 	component: MediaDownloadPage,
 })
-

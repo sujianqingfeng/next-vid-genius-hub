@@ -20,7 +20,7 @@ import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/features/ai/model
 import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 type ChannelRow = {
 	id: string

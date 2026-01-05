@@ -9,7 +9,7 @@ import { Button } from '~/components/ui/button'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { MEDIA_PAGE_SIZE } from '~/lib/shared/pagination'
 import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 export const MediaListSearchSchema = z.object({
 	page: z.coerce.number().int().min(1).optional().default(1),

@@ -1,21 +1,15 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { AgentChatPage } from '~/components/business/agent/agent-chat-page'
-import { queryOrpc } from '~/orpc/client'
+import { requireUser } from '~/lib/features/auth/route-guards'
 
 export const Route = createFileRoute('/agent')({
 	validateSearch: z.object({
 		chat: z.string().trim().min(1).optional(),
 	}),
 	loader: async ({ context, location }) => {
-		const me = await context.queryClient.ensureQueryData(
-			queryOrpc.auth.me.queryOptions(),
-		)
-		if (!me.user) {
-			const next = location.href
-			throw redirect({ to: '/login', search: { next } })
-		}
+		await requireUser({ context, location })
 	},
 	component: AgentRoute,
 })

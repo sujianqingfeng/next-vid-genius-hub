@@ -28,7 +28,7 @@ import {
 import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 export function ThreadTemplatesPage() {
 	const navigate = useNavigate()

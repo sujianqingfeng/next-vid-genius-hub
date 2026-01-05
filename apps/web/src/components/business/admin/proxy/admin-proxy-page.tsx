@@ -20,7 +20,7 @@ import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { DEFAULT_PAGE_LIMIT } from '~/lib/shared/pagination'
 import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/infra/proxy/host'
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 import { cn } from '~/lib/shared/utils'
 
 export type AdminProxyTab = 'subscriptions' | 'proxies'

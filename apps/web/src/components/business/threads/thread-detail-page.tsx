@@ -13,7 +13,7 @@ import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
 import { useCloudJob } from '~/lib/shared/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 import { DEFAULT_THREAD_TEMPLATE_ID } from '@app/remotion-project/thread-templates'
 import {
 	DEFAULT_THREAD_TEMPLATE_CONFIG,

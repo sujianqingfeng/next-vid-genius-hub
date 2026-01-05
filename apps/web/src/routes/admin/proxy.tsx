@@ -1,9 +1,9 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { AdminProxyPage } from '~/components/business/admin/proxy/admin-proxy-page'
 import { DEFAULT_PAGE_LIMIT } from '~/lib/shared/pagination'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 const SearchSchema = z.object({
 	tab: z.enum(['subscriptions', 'proxies']).optional().default('subscriptions'),
@@ -17,15 +17,7 @@ export const Route = createFileRoute('/admin/proxy')({
 		page: search.page,
 		subscriptionId: search.subscriptionId,
 	}),
-	loader: async ({ context, deps, location }) => {
-		const me = await context.queryClient.ensureQueryData(
-			queryOrpc.auth.me.queryOptions(),
-		)
-		if (!me.user) {
-			const next = location.href
-			throw redirect({ to: '/login', search: { next } })
-		}
-
+	loader: async ({ context, deps }) => {
 		await Promise.all([
 			context.queryClient.prefetchQuery(
 				queryOrpc.proxy.getSSRSubscriptions.queryOptions(),

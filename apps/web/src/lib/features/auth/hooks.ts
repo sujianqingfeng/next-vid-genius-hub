@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 export function useAuthQuery() {
 	return useQuery({

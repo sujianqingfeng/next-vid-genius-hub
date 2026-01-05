@@ -31,7 +31,7 @@ import {
 } from '~/lib/domain/points/units'
 
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 import { cn } from '~/lib/shared/utils'
 
 type Kind = 'llm' | 'asr' | 'download'

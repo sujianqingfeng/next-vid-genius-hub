@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
 import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 function toDateLabel(input: unknown, locale: string): string {
 	if (input instanceof Date) return input.toLocaleString(locale)

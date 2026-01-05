@@ -8,7 +8,7 @@ import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 type Props = {
 	jobId?: string

@@ -5,7 +5,7 @@ import { RefreshCw } from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
 import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 
 export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 	const t = useTranslations('Points')

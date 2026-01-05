@@ -1,10 +1,11 @@
-import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
+import { createFileRoute, notFound } from '@tanstack/react-router'
 import { z } from 'zod'
 import {
 	MediaCommentsPage,
 	type MediaCommentsTab,
 } from '~/components/business/media/comments/media-comments-page'
-import { queryOrpc } from '~/orpc/client'
+import { requireUser } from '~/lib/features/auth/route-guards'
+import { queryOrpc } from '~/orpc'
 
 const SearchSchema = z.object({
 	tab: z.preprocess(
@@ -19,13 +20,7 @@ const SearchSchema = z.object({
 export const Route = createFileRoute('/media/$id/comments')({
 	validateSearch: SearchSchema,
 	loader: async ({ context, params, location }) => {
-		const me = await context.queryClient.ensureQueryData(
-			queryOrpc.auth.me.queryOptions(),
-		)
-		if (!me.user) {
-			const next = location.href
-			throw redirect({ to: '/login', search: { next } })
-		}
+		await requireUser({ context, location })
 
 		const item = await context.queryClient.ensureQueryData(
 			queryOrpc.media.byId.queryOptions({ input: { id: params.id } }),

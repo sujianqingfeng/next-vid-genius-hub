@@ -1,15 +1,9 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { queryOrpc } from '~/orpc/client'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { requireUser } from '~/lib/features/auth/route-guards'
 
 export const Route = createFileRoute('/threads')({
 	loader: async ({ context, location }) => {
-		const me = await context.queryClient.ensureQueryData(
-			queryOrpc.auth.me.queryOptions(),
-		)
-		if (!me.user) {
-			const next = location.href
-			throw redirect({ to: '/login', search: { next } })
-		}
+		await requireUser({ context, location })
 	},
 	component: ThreadsLayoutRoute,
 })

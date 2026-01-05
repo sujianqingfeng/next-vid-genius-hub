@@ -36,7 +36,7 @@ import {
 import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
 import { useLocalStorageState } from '~/lib/shared/hooks/useLocalStorageState'
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 import { cn } from '~/lib/shared/utils'
 import { createId } from '~/lib/shared/utils/id'
 

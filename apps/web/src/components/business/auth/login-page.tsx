@@ -12,7 +12,7 @@ import {
 	useSignupMutation,
 } from '~/lib/features/auth/hooks'
 import { useTranslations } from '~/lib/shared/i18n'
-import { getDefaultRedirect } from '~/orpc/client'
+import { getDefaultRedirect } from '~/orpc'
 
 export function LoginPage({ searchNext }: { searchNext?: string }) {
 	const t = useTranslations('Login')

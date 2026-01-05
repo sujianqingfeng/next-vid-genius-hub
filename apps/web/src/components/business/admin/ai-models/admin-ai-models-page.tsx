@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 
 import { useTranslations } from '~/lib/shared/i18n'
-import { queryOrpc } from '~/orpc/client'
+import { queryOrpc } from '~/orpc'
 import { cn } from '~/lib/shared/utils'
 
 type ModelKind = 'llm' | 'asr'
