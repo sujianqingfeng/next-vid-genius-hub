@@ -406,7 +406,7 @@ export const translateAllPosts = os
 		z.object({
 			threadId: z.string().min(1),
 			targetLocale: z.enum(['zh-CN']).optional().default('zh-CN'),
-			maxPosts: z.number().int().min(1).max(100).optional(),
+			maxPosts: z.number().int().min(1).max(500).optional(),
 		}),
 	)
 	.handler(async ({ input, context }) => {

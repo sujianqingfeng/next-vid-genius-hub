@@ -3029,21 +3029,22 @@ export function ThreadDetailPage({ id }: { id: string }) {
 							</h1>
 						</div>
 						<div className="flex items-center gap-2">
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								className="rounded-[2px] shadow-none font-sans text-xs uppercase tracking-wider h-8"
-								disabled={translateAllMutation.isPending || !thread?.id}
-								onClick={() => {
-									if (!thread?.id) return
-									translateAllMutation.mutate({
-										threadId: thread.id,
-										targetLocale: 'zh-CN',
-										maxPosts: 30,
-									})
-								}}
-							>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="rounded-[2px] shadow-none font-sans text-xs uppercase tracking-wider h-8"
+									disabled={translateAllMutation.isPending || !thread?.id}
+									onClick={() => {
+										if (!thread?.id) return
+										const totalPosts = (root ? 1 : 0) + (replies?.length ?? 0)
+										translateAllMutation.mutate({
+											threadId: thread.id,
+											targetLocale: 'zh-CN',
+											maxPosts: Math.max(1, Math.min(500, totalPosts || 500)),
+										})
+									}}
+								>
 								{translateAllMutation.isPending
 									? t('actions.translatingAll')
 									: t('actions.translateAllToZh')}
@@ -3279,26 +3280,45 @@ export function ThreadDetailPage({ id }: { id: string }) {
 							{/* Post List */}
 								<div className="flex-1 overflow-y-auto min-h-[150px] max-h-[300px] border-b border-border">
 									{root ? (
-										<button
-											type="button"
-											onClick={() => setSelectedPostId(root.id)}
-											className={`w-full text-left border-b border-border px-4 py-3 font-mono text-xs transition-colors ${
-												selectedPostId === root.id
-													? 'bg-primary/5'
-													: 'hover:bg-muted/30'
-											}`}
-										>
-											<div className="flex items-center gap-2 mb-1">
-												<span className="uppercase tracking-widest text-[10px] text-muted-foreground font-bold border border-border px-1 rounded-[2px]">
-													{t('labels.root')}
-												</span>
-												<span className="font-bold">{root.authorName}</span>
-											</div>
-											{(() => {
-												const preview = getPostPreviewMedia(root.contentBlocks)
-												return preview.length > 0 ? (
-													<div className="mt-2 flex gap-1">
-														{preview.map((m, idx) => (
+									<button
+										type="button"
+										onClick={() => setSelectedPostId(root.id)}
+										className={`w-full text-left border-b border-border px-4 py-3 font-mono text-xs transition-colors ${
+											selectedPostId === root.id
+												? 'bg-primary/5'
+												: 'hover:bg-muted/30'
+										}`}
+									>
+										<div className="flex items-center gap-2 mb-1">
+											<span className="uppercase tracking-widest text-[10px] text-muted-foreground font-bold border border-border px-1 rounded-[2px]">
+												{t('labels.root')}
+											</span>
+											<span className="font-bold">{root.authorName}</span>
+										</div>
+										{(() => {
+											const zhPreview =
+												(root as any)?.translations?.['zh-CN']?.plainText
+											const original = root.plainText || t('labels.emptyText')
+											const hasZh =
+												typeof zhPreview === 'string' && zhPreview.trim()
+											return (
+												<div className="space-y-0.5">
+													<div className="truncate text-muted-foreground opacity-80">
+														{original}
+													</div>
+													{hasZh ? (
+														<div className="truncate text-muted-foreground opacity-80">
+															{zhPreview}
+														</div>
+													) : null}
+												</div>
+											)
+										})()}
+										{(() => {
+											const preview = getPostPreviewMedia(root.contentBlocks)
+											return preview.length > 0 ? (
+												<div className="mt-2 flex gap-1">
+													{preview.map((m, idx) => (
 															<div
 																key={`${m.kind}:${m.url}:${idx}`}
 																className="relative h-10 w-16 overflow-hidden border border-border/60 bg-muted/30"
@@ -3323,30 +3343,42 @@ export function ThreadDetailPage({ id }: { id: string }) {
 											})()}
 										</button>
 									) : null}
-									{replies.map((p) => {
-										const isSelected = selectedPostId === p.id
-										const isDeleting = deletingPostId === p.id
-										const preview = getPostPreviewMedia(p.contentBlocks)
-										return (
-											<div
-												key={p.id}
-												className={`flex items-stretch border-b border-border last:border-0 ${
-												isSelected ? 'bg-primary/5' : 'hover:bg-muted/30'
-											}`}
+										{replies.map((p) => {
+											const isSelected = selectedPostId === p.id
+											const isDeleting = deletingPostId === p.id
+											const preview = getPostPreviewMedia(p.contentBlocks)
+											const zhPreview =
+												(p as any)?.translations?.['zh-CN']?.plainText
+											const original = p.plainText || t('labels.emptyText')
+											const hasZh =
+												typeof zhPreview === 'string' && zhPreview.trim()
+											return (
+												<div
+													key={p.id}
+													className={`flex items-stretch border-b border-border last:border-0 ${
+													isSelected ? 'bg-primary/5' : 'hover:bg-muted/30'
+												}`}
 										>
 												<button
 													type="button"
 													onClick={() => setSelectedPostId(p.id)}
 													className="flex-1 text-left px-4 py-3 font-mono text-xs transition-colors"
-												>
-													<div className="font-bold mb-1">{p.authorName}</div>
-													<div className="truncate text-muted-foreground opacity-80">
-														{p.plainText || t('labels.emptyText')}
-													</div>
-													{preview.length > 0 ? (
-														<div className="mt-2 flex gap-1">
-															{preview.map((m, idx) => (
-																<div
+													>
+														<div className="font-bold mb-1">{p.authorName}</div>
+														<div className="space-y-0.5">
+															<div className="truncate text-muted-foreground opacity-80">
+																{original}
+															</div>
+															{hasZh ? (
+																<div className="truncate text-muted-foreground opacity-80">
+																	{zhPreview}
+																</div>
+															) : null}
+														</div>
+														{preview.length > 0 ? (
+															<div className="mt-2 flex gap-1">
+																{preview.map((m, idx) => (
+																	<div
 																	key={`${m.kind}:${m.url}:${idx}`}
 																	className="relative h-10 w-16 overflow-hidden border border-border/60 bg-muted/30"
 																>

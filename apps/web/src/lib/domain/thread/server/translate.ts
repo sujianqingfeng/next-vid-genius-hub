@@ -93,7 +93,7 @@ export async function translateAllThreadPosts(input: {
 }> {
 	const targetLocale: ThreadPostTranslationLocale =
 		input.targetLocale ?? 'zh-CN'
-	const maxPosts = Math.max(1, Math.min(100, input.maxPosts ?? 30))
+	const maxPosts = Math.max(1, Math.min(500, input.maxPosts ?? 30))
 
 	const db = await getDb()
 	const thread = await db.query.threads.findFirst({
@@ -136,11 +136,6 @@ export async function translateAllThreadPosts(input: {
 		const existing = (post.translations ?? undefined) as
 			| ThreadPostTranslations
 			| undefined
-		const existingText = (existing as any)?.[targetLocale]?.plainText
-		if (typeof existingText === 'string' && existingText.trim()) {
-			skipped++
-			continue
-		}
 
 		const sourceText =
 			(post.plainText?.trim() ||
