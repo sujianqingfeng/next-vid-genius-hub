@@ -5,8 +5,8 @@ import { Link } from '@tanstack/react-router'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
-import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
 
 function toDateLabel(input: unknown, locale: string): string {
 	if (input instanceof Date) return input.toLocaleString(locale)

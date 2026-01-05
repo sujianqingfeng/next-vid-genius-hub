@@ -19,11 +19,11 @@ import {
 } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 
-import { useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
-import { cn } from '~/lib/utils'
+import { useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
+import { cn } from '~/lib/shared/utils'
 
 type ModelKind = 'llm' | 'asr'
 

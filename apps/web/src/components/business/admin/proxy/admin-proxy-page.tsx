@@ -16,12 +16,12 @@ import {
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
-import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/proxy/host'
-import { useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
-import { cn } from '~/lib/utils'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { DEFAULT_PAGE_LIMIT } from '~/lib/shared/pagination'
+import { classifyHost, formatHostPort, hostKindLabel } from '~/lib/infra/proxy/host'
+import { useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
+import { cn } from '~/lib/shared/utils'
 
 export type AdminProxyTab = 'subscriptions' | 'proxies'
 

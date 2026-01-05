@@ -16,10 +16,10 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
-import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
+import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
 
 export function ThreadTemplateLibraryCard({
 	threadId,

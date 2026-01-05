@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/threads')({
 	loader: async ({ context, location }) => {

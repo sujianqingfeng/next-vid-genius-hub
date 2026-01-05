@@ -33,12 +33,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
-import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
-import { useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
-import { cn } from '~/lib/utils'
-import { createId } from '~/lib/utils/id'
+import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
+import { useLocalStorageState } from '~/lib/shared/hooks/useLocalStorageState'
+import { useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
+import { cn } from '~/lib/shared/utils'
+import { createId } from '~/lib/shared/utils/id'
 
 const STORAGE_SETTINGS_KEY = 'agentChat:workflowSettings'
 const STORAGE_SETTINGS_VERSION = 1

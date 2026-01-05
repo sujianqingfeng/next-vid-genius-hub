@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { handleProxyCheckRun } from '~/lib/proxy/server/proxy-check'
+import { handleProxyCheckRun } from '~/lib/infra/proxy/server/proxy-check'
 
 export const Route = createFileRoute('/api/proxy-check/run')({
 	server: {

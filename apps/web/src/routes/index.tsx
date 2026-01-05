@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/')({
 	loader: async ({ context }) => {

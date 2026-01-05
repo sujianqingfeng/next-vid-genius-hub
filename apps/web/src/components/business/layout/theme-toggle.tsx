@@ -1,7 +1,7 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
-import { useTranslations } from '~/lib/i18n'
-import { useTheme, type Theme } from '~/lib/theme'
-import { cn } from '~/lib/utils'
+import { useTranslations } from '~/lib/shared/i18n'
+import { useTheme, type Theme } from '~/lib/shared/theme'
+import { cn } from '~/lib/shared/utils'
 
 interface ThemeToggleProps {
 	collapsed?: boolean

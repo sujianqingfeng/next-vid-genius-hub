@@ -16,12 +16,12 @@ import {
 import { Input } from '~/components/ui/input'
 import { Switch } from '~/components/ui/switch'
 import { Textarea } from '~/components/ui/textarea'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { ADMIN_USERS_PAGE_SIZE } from '~/lib/pagination'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { ADMIN_USERS_PAGE_SIZE } from '~/lib/shared/pagination'
 
-import { useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
-import { cn } from '~/lib/utils'
+import { useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
+import { cn } from '~/lib/shared/utils'
 
 export function AdminUsersPage() {
 	const t = useTranslations('Admin.users')

@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { ChannelsPage } from '~/components/business/channels/channels-page'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/channels')({
 	loader: async ({ context, location }) => {

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import type { OrpcRequestEnv } from '~/lib/orpc/server/handler'
-import { handleOrpcRequest } from '~/lib/orpc/server/handler'
+import type { OrpcRequestEnv } from '~/orpc/http/handler'
+import { handleOrpcRequest } from '~/orpc/http/handler'
 
 export const Route = createFileRoute('/api/orpc/$')({
 	server: {

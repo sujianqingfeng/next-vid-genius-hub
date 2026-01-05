@@ -1,0 +1,193 @@
+{
+	"rules": {
+		"no-restricted-imports": [
+			"error",
+			{
+				"paths": [
+					{
+						"name": "~/lib/types",
+						"message": "Use ~/lib/shared/types instead"
+					},
+					{
+						"name": "~/lib/utils",
+						"message": "Use ~/lib/shared/utils instead"
+					},
+					{
+						"name": "~/lib/errors",
+						"message": "Use ~/lib/shared/errors instead"
+					},
+					{
+						"name": "~/lib/hooks",
+						"message": "Use ~/lib/shared/hooks instead"
+					},
+					{
+						"name": "~/lib/providers",
+						"message": "Use ~/lib/shared/providers instead"
+					},
+					{
+						"name": "~/lib/query",
+						"message": "Use ~/lib/shared/query instead"
+					},
+					{
+						"name": "~/lib/i18n",
+						"message": "Use ~/lib/shared/i18n instead"
+					},
+					{
+						"name": "~/lib/theme",
+						"message": "Use ~/lib/shared/theme instead"
+					},
+					{
+						"name": "~/lib/config",
+						"message": "Use ~/lib/shared/config instead"
+					},
+					{
+						"name": "~/lib/pagination",
+						"message": "Use ~/lib/shared/pagination instead"
+					},
+					{
+						"name": "~/lib/db",
+						"message": "Use ~/lib/infra/db instead"
+					},
+					{
+						"name": "~/lib/cloudflare",
+						"message": "Use ~/lib/infra/cloudflare instead"
+					},
+					{
+						"name": "~/lib/proxy",
+						"message": "Use ~/lib/infra/proxy instead"
+					},
+					{
+						"name": "~/lib/logger",
+						"message": "Use ~/lib/infra/logger instead"
+					},
+					{
+						"name": "~/lib/auth",
+						"message": "Use ~/lib/features/auth instead"
+					},
+					{
+						"name": "~/lib/job",
+						"message": "Use ~/lib/features/job instead"
+					},
+					{
+						"name": "~/lib/subtitle",
+						"message": "Use ~/lib/features/subtitle instead"
+					},
+					{
+						"name": "~/lib/remotion",
+						"message": "Use ~/lib/features/remotion instead"
+					},
+					{
+						"name": "~/lib/ai",
+						"message": "Use ~/lib/features/ai instead"
+					},
+					{
+						"name": "~/lib/media",
+						"message": "Use ~/lib/domain/media instead"
+					},
+					{
+						"name": "~/lib/thread",
+						"message": "Use ~/lib/domain/thread instead"
+					},
+					{
+						"name": "~/lib/points",
+						"message": "Use ~/lib/domain/points instead"
+					},
+					{
+						"name": "~/lib/orpc",
+						"message": "Use ~/orpc/* instead"
+					}
+				],
+				"patterns": [
+					{
+						"group": ["~/lib/types/*"],
+						"message": "Use ~/lib/shared/types instead"
+					},
+					{
+						"group": ["~/lib/utils/*"],
+						"message": "Use ~/lib/shared/utils instead"
+					},
+					{
+						"group": ["~/lib/errors/*"],
+						"message": "Use ~/lib/shared/errors instead"
+					},
+					{
+						"group": ["~/lib/hooks/*"],
+						"message": "Use ~/lib/shared/hooks instead"
+					},
+					{
+						"group": ["~/lib/providers/*"],
+						"message": "Use ~/lib/shared/providers instead"
+					},
+					{
+						"group": ["~/lib/query/*"],
+						"message": "Use ~/lib/shared/query instead"
+					},
+					{
+						"group": ["~/lib/i18n/*"],
+						"message": "Use ~/lib/shared/i18n instead"
+					},
+					{
+						"group": ["~/lib/theme/*"],
+						"message": "Use ~/lib/shared/theme instead"
+					},
+					{
+						"group": ["~/lib/config/*"],
+						"message": "Use ~/lib/shared/config instead"
+					},
+					{
+						"group": ["~/lib/db/*"],
+						"message": "Use ~/lib/infra/db instead"
+					},
+					{
+						"group": ["~/lib/cloudflare/*"],
+						"message": "Use ~/lib/infra/cloudflare instead"
+					},
+					{
+						"group": ["~/lib/proxy/*"],
+						"message": "Use ~/lib/infra/proxy instead"
+					},
+					{
+						"group": ["~/lib/logger/*"],
+						"message": "Use ~/lib/infra/logger instead"
+					},
+					{
+						"group": ["~/lib/auth/*"],
+						"message": "Use ~/lib/features/auth instead"
+					},
+					{
+						"group": ["~/lib/job/*"],
+						"message": "Use ~/lib/features/job instead"
+					},
+					{
+						"group": ["~/lib/subtitle/*"],
+						"message": "Use ~/lib/features/subtitle instead"
+					},
+					{
+						"group": ["~/lib/remotion/*"],
+						"message": "Use ~/lib/features/remotion instead"
+					},
+					{
+						"group": ["~/lib/ai/*"],
+						"message": "Use ~/lib/features/ai instead"
+					},
+					{
+						"group": ["~/lib/media/*"],
+						"message": "Use ~/lib/domain/media instead"
+					},
+					{
+						"group": ["~/lib/thread/*"],
+						"message": "Use ~/lib/domain/thread instead"
+					},
+					{
+						"group": ["~/lib/points/*"],
+						"message": "Use ~/lib/domain/points instead"
+					},
+					{
+						"group": ["~/lib/orpc/*"],
+						"message": "Use ~/orpc/* instead"
+					}
+				]
+			}
+		]
+	}
+}

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { AdminAiProvidersPage } from '~/components/business/admin/ai-providers/admin-ai-providers-page'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/admin/ai-providers')({
 	loader: async ({ context }) => {

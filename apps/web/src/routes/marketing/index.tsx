@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import LanguageToggle from '~/components/business/layout/language-toggle'
-import { useTranslations } from '~/lib/i18n'
+import { useTranslations } from '~/lib/shared/i18n'
 
 export const Route = createFileRoute('/marketing/')({ component: Home })
 

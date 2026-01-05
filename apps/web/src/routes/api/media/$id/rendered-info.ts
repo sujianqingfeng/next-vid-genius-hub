@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { eq } from 'drizzle-orm'
 
-import { getDb, schema } from '~/lib/db'
-import { logger } from '~/lib/logger'
+import { getDb, schema } from '~/lib/infra/db'
+import { logger } from '~/lib/infra/logger'
 import {
 	buildDownloadFilename,
 	makeOrchestratorArtifactUrl,
 	proxyRemoteWithRange,
-} from '~/lib/media/stream'
+} from '~/lib/domain/media/stream'
 
 export const Route = createFileRoute('/api/media/$id/rendered-info')({
 	server: {

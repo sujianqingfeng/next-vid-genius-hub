@@ -13,8 +13,8 @@ import {
 } from 'lucide-react'
 import * as React from 'react'
 import { CloudJobProgress } from '~/components/business/jobs/cloud-job-progress'
-import { PreviewPane } from '~/components/business/media/subtitles/PreviewPane'
-import { Step3Render } from '~/components/business/media/subtitles/Step3Render'
+import { PreviewPane } from '~/components/business/media/subtitles/preview-pane'
+import { Step3Render } from '~/components/business/media/subtitles/render-step'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
@@ -28,17 +28,17 @@ import {
 import { Switch } from '~/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
-import { useCloudJob } from '~/lib/hooks/useCloudJob'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
+import { useCloudJob } from '~/lib/shared/hooks/useCloudJob'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import {
 	DEFAULT_TRANSCRIPTION_LANGUAGE,
 	TRANSCRIPTION_LANGUAGE_OPTIONS,
-} from '~/lib/subtitle/config/languages'
-import { DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/subtitle/config/presets'
-import type { SubtitleRenderConfig } from '~/lib/subtitle/types'
-import { parseVttCues } from '~/lib/subtitle/utils/vtt'
-import { useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
+} from '~/lib/features/subtitle/config/languages'
+import { DEFAULT_SUBTITLE_RENDER_CONFIG } from '~/lib/features/subtitle/config/presets'
+import type { SubtitleRenderConfig } from '~/lib/features/subtitle/types'
+import { parseVttCues } from '~/lib/features/subtitle/utils/vtt'
+import { useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'canceled'])
 

@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { AgentChatPage } from '~/components/business/agent/agent-chat-page'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/agent')({
 	validateSearch: z.object({

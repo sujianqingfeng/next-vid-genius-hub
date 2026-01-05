@@ -1,6 +1,6 @@
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
 import { MediaSubtitlesPage } from '~/components/business/media/subtitles/media-subtitles-page'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/media/$id/subtitles')({
 	loader: async ({ context, params, location }) => {

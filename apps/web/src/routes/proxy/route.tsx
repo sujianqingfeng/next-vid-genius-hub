@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 const SearchSchema = z.object({
 	tab: z.enum(['subscriptions', 'proxies']).optional().default('subscriptions'),

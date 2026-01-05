@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { logger } from '~/lib/logger'
+import { logger } from '~/lib/infra/logger'
 import {
 	buildDownloadFilename,
 	makeOrchestratorArtifactUrl,
 	proxyRemoteWithRange,
-} from '~/lib/media/stream'
+} from '~/lib/domain/media/stream'
 
 export const Route = createFileRoute('/api/threads/rendered')({
 	server: {

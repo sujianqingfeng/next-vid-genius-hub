@@ -17,7 +17,7 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Switch } from '~/components/ui/switch'
-import { useTranslations } from '~/lib/i18n'
+import { useTranslations } from '~/lib/shared/i18n'
 
 type DbThread = {
 	id: string

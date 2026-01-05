@@ -11,19 +11,19 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { ConfirmDialogProvider } from '~/components/business/layout/confirm-dialog-provider'
-import WorkspaceShell from '~/components/business/layout/workspace-shell'
+import WorkspaceLayout from '~/components/business/layout/workspace-layout'
 import { Button } from '~/components/ui/button'
 import { Toaster } from '~/components/ui/sonner'
 import { TooltipProvider } from '~/components/ui/tooltip'
-import { useTranslations } from '~/lib/i18n'
-import { ThemeProvider, ThemeScript } from '~/lib/theme'
+import { useTranslations } from '~/lib/shared/i18n'
+import { ThemeProvider, ThemeScript } from '~/lib/shared/theme'
 import {
 	DEFAULT_LOCALE,
 	getInitialI18n,
 	getMessages,
 	I18nProvider,
-} from '~/lib/i18n/start'
-import TanStackQueryDevtools from '~/lib/query/devtools'
+} from '~/lib/shared/i18n/start'
+import TanStackQueryDevtools from '~/lib/shared/query/devtools'
 import appCss from '~/styles.css?url'
 
 interface MyRouterContext {
@@ -90,9 +90,9 @@ function RootLayout() {
 	const isWorkspace = isWorkspacePath(pathname)
 
 	const content = isWorkspace ? (
-		<WorkspaceShell>
+		<WorkspaceLayout>
 			<Outlet />
-		</WorkspaceShell>
+		</WorkspaceLayout>
 	) : (
 		<Outlet />
 	)

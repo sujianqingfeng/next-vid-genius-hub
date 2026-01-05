@@ -1,4 +1,4 @@
-import { createId as createIdImpl } from '~/lib/utils/id'
+import { createId as createIdImpl } from '~/lib/shared/utils/id'
 
 export type InitOptions = {
 	length?: number

@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { AdminPointsPricingPage } from '~/components/business/admin/points-pricing/points-pricing-page'
-import { ADMIN_PRICING_RULES_PAGE_SIZE } from '~/lib/pagination'
-import { queryOrpc } from '~/lib/orpc/client'
+import { ADMIN_PRICING_RULES_PAGE_SIZE } from '~/lib/shared/pagination'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/admin/points-pricing')({
 	loader: async ({ context }) => {

@@ -6,9 +6,9 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
 
 type Props = {
 	jobId?: string

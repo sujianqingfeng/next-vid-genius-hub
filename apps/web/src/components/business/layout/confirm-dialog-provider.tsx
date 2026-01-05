@@ -12,7 +12,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '~/components/ui/dialog'
-import { useTranslations } from '~/lib/i18n'
+import { useTranslations } from '~/lib/shared/i18n'
 
 type ConfirmDialogOptions = {
 	title?: React.ReactNode

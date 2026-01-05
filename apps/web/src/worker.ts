@@ -2,11 +2,11 @@ import {
 	createStartHandler,
 	defaultStreamHandler,
 } from '@tanstack/react-start/server'
-import type { D1Database } from '~/lib/db'
-import { setInjectedD1Database } from '~/lib/db'
-import { runScheduledProxyChecks } from '~/lib/proxy/check'
-import { runScheduledTaskReconciler } from '~/lib/job/reconciler'
-import { runScheduledThreadAssetIngest } from '~/lib/thread/server/asset-ingest'
+import type { D1Database } from '~/lib/infra/db'
+import { setInjectedD1Database } from '~/lib/infra/db'
+import { runScheduledProxyChecks } from '~/lib/infra/proxy/check'
+import { runScheduledTaskReconciler } from '~/lib/features/job/reconciler'
+import { runScheduledThreadAssetIngest } from '~/lib/domain/thread/server/asset-ingest'
 
 type WorkerEnv = {
 	DB?: D1Database

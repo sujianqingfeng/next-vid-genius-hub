@@ -1,6 +1,6 @@
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
 import { MediaDetailPage } from '~/components/business/media/detail/media-detail-page'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/media/$id/')({
 	loader: async ({ context, params, location }) => {

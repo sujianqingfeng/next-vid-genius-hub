@@ -16,11 +16,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
-import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/ai/models'
-import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
+import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/features/ai/models'
+import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
 
 type ChannelRow = {
 	id: string

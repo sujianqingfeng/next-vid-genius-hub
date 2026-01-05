@@ -22,17 +22,17 @@ import {
 	SelectValue,
 } from '~/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { ADMIN_PRICING_RULES_PAGE_SIZE } from '~/lib/pagination'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { ADMIN_PRICING_RULES_PAGE_SIZE } from '~/lib/shared/pagination'
 import {
 	MICRO_POINTS_PER_POINT,
 	microPointsPerTokenFromRmbPerMillionTokens,
 	rmbPerMillionTokensFromMicroPointsPerToken,
-} from '~/lib/points/units'
+} from '~/lib/domain/points/units'
 
-import { useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
-import { cn } from '~/lib/utils'
+import { useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
+import { cn } from '~/lib/shared/utils'
 
 type Kind = 'llm' | 'asr' | 'download'
 

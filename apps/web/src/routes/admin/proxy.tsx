@@ -2,8 +2,8 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { AdminProxyPage } from '~/components/business/admin/proxy/admin-proxy-page'
-import { DEFAULT_PAGE_LIMIT } from '~/lib/pagination'
-import { queryOrpc } from '~/lib/orpc/client'
+import { DEFAULT_PAGE_LIMIT } from '~/lib/shared/pagination'
+import { queryOrpc } from '~/orpc/client'
 
 const SearchSchema = z.object({
 	tab: z.enum(['subscriptions', 'proxies']).optional().default('subscriptions'),

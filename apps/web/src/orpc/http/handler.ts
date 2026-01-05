@@ -1,0 +1,75 @@
+import { ORPCError, onError } from '@orpc/server'
+import { RPCHandler } from '@orpc/server/fetch'
+
+import { buildRequestContext } from '~/lib/features/auth/context'
+import type { D1Database } from '~/lib/infra/db'
+import { setInjectedD1Database } from '~/lib/infra/db'
+import { logger } from '~/lib/infra/logger'
+import { appRouter } from '~/orpc/server/router'
+
+export type OrpcRequestEnv = {
+	DB?: D1Database
+}
+
+function getErrorCauseMessage(error: unknown): string | undefined {
+	if (!(error instanceof Error)) return undefined
+	const cause = (error as { cause?: unknown }).cause
+	if (!cause) return undefined
+	if (cause instanceof Error) return `${cause.name}: ${cause.message}`
+	return String(cause)
+}
+
+const handler = new RPCHandler(appRouter, {
+	interceptors: [
+		onError((error, options) => {
+			const req = (options as { request?: { method?: unknown; url?: unknown } })
+				.request
+			const method = typeof req?.method === 'string' ? req.method : 'UNKNOWN'
+			const url = typeof req?.url === 'string' ? req.url : 'UNKNOWN'
+
+			if (error instanceof ORPCError) {
+				const json = error.toJSON()
+				const issues = (json.data as any)?.issues
+				const issuesText = issues ? ` issues=${JSON.stringify(issues)}` : ''
+
+				logger.error(
+					'api',
+					`[ORPC] Handler error: code=${json.code} status=${json.status} msg=${json.message} method=${method} url=${url}${issuesText}`,
+				)
+				return
+			}
+
+			const msg = error instanceof Error ? error.message : String(error)
+			const causeText = getErrorCauseMessage(error)
+			logger.error(
+				'api',
+				`[ORPC] Handler error: ${msg} method=${method} url=${url}${causeText ? ` cause=${causeText}` : ''}`,
+			)
+		}),
+	],
+})
+
+export async function handleOrpcRequest(
+	request: Request,
+	env?: OrpcRequestEnv,
+) {
+	if (env?.DB) {
+		setInjectedD1Database(env.DB)
+	}
+
+	const context = await buildRequestContext(request)
+	const { response, matched } = await handler.handle(request, {
+		prefix: '/api/orpc',
+		context,
+	})
+
+	if (!matched) return new Response('Not Found', { status: 404 })
+
+	if (context.responseCookies.length > 0) {
+		for (const cookie of context.responseCookies) {
+			response.headers.append('Set-Cookie', cookie)
+		}
+	}
+
+	return response
+}

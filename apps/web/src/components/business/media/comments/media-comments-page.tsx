@@ -43,14 +43,14 @@ import {
 import { Switch } from '~/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 
-import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/ai/models'
-import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
-import { useCloudJob } from '~/lib/hooks/useCloudJob'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import { MEDIA_SOURCES } from '~/lib/media/source'
-import { formatHostPort } from '~/lib/proxy/host'
-import { useLocale, useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
+import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/features/ai/models'
+import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
+import { useCloudJob } from '~/lib/shared/hooks/useCloudJob'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { MEDIA_SOURCES } from '~/lib/domain/media/source'
+import { formatHostPort } from '~/lib/infra/proxy/host'
+import { useLocale, useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
 
 type SourcePolicy = 'auto' | 'original' | 'subtitles'
 

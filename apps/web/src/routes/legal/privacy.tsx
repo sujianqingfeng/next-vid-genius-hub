@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import LanguageToggle from '~/components/business/layout/language-toggle'
 import { Button } from '~/components/ui/button'
-import { useTranslations } from '~/lib/i18n'
+import { useTranslations } from '~/lib/shared/i18n'
 
 export const Route = createFileRoute('/legal/privacy')({
 	component: PrivacyPage,

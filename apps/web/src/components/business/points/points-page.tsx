@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 
 import { Button } from '~/components/ui/button'
-import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
 
 export function PointsPage({ txLimit = 50 }: { txLimit?: number }) {
 	const t = useTranslations('Points')

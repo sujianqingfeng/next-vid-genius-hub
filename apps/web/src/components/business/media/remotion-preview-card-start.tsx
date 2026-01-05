@@ -15,8 +15,8 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 import * as React from 'react'
 import { Card, CardContent } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
-import { useTranslations } from '~/lib/i18n'
-import type { Comment, VideoInfo } from '~/lib/media/types'
+import { useTranslations } from '~/lib/shared/i18n'
+import type { Comment, VideoInfo } from '~/lib/domain/media/types'
 
 const LazyPlayer = React.lazy(async () => {
 	const mod = await import('@remotion/player')

@@ -2,13 +2,13 @@ import { createFileRoute } from '@tanstack/react-router'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { eq } from 'drizzle-orm'
 
-import { getDb, schema } from '~/lib/db'
+import { getDb, schema } from '~/lib/infra/db'
 import {
 	createTranslator,
 	getLocaleFromCookieHeader,
 	getMessages,
-} from '~/lib/i18n'
-import { logger } from '~/lib/logger'
+} from '~/lib/shared/i18n'
+import { logger } from '~/lib/infra/logger'
 
 export const Route = createFileRoute('/api/media/$id/comments-data')({
 	server: {

@@ -6,9 +6,9 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from '~/components/ui/tooltip'
-import { PHASE_LABELS, STATUS_LABELS } from '~/lib/config/media-status'
-import { useTranslations } from '~/lib/i18n'
-import { cn } from '~/lib/utils'
+import { PHASE_LABELS, STATUS_LABELS } from '~/lib/shared/config/media-status'
+import { useTranslations } from '~/lib/shared/i18n'
+import { cn } from '~/lib/shared/utils'
 
 type CloudJobProgressLabels = {
 	status?: string

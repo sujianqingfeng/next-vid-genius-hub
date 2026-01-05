@@ -21,12 +21,12 @@ import {
 	SheetTrigger,
 } from '~/components/ui/sheet'
 import { Skeleton } from '~/components/ui/skeleton'
-import { getUserFriendlyErrorMessage } from '~/lib/errors/client'
-import { useCloudJob } from '~/lib/hooks/useCloudJob'
-import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
-import type { MediaItem } from '~/lib/media/types'
-import { getBcp47Locale, useLocale, useTranslations } from '~/lib/i18n'
-import { queryOrpc } from '~/lib/orpc/client'
+import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
+import { useCloudJob } from '~/lib/shared/hooks/useCloudJob'
+import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import type { MediaItem } from '~/lib/domain/media/types'
+import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
+import { queryOrpc } from '~/orpc/client'
 
 function toDateLabel(input: unknown, locale: string): string {
 	if (input instanceof Date) return input.toLocaleString(locale)

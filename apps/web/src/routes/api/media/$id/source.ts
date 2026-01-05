@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { handleMediaSourceRequest } from '~/lib/media/server/source'
+import { handleMediaSourceRequest } from '~/lib/domain/media/server/source'
 
 export const Route = createFileRoute('/api/media/$id/source')({
 	server: {

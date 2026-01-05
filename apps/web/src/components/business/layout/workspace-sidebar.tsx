@@ -14,10 +14,10 @@ import {
 import * as React from 'react'
 
 import { Button } from '~/components/ui/button'
-import { cn } from '~/lib/utils'
+import { cn } from '~/lib/shared/utils'
 
-import { useAuthQuery, useLogoutMutation } from '~/lib/auth/hooks'
-import { useTranslations } from '~/lib/i18n'
+import { useAuthQuery, useLogoutMutation } from '~/lib/features/auth/hooks'
+import { useTranslations } from '~/lib/shared/i18n'
 
 import LanguageToggle from './language-toggle'
 import ThemeToggle from './theme-toggle'

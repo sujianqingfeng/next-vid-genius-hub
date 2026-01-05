@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { AdminJobEventsPage } from '~/components/business/admin/job-events/admin-job-events-page'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 const SearchSchema = z.object({
 	jobId: z.string().trim().optional(),

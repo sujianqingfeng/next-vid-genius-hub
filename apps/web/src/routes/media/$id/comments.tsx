@@ -4,7 +4,7 @@ import {
 	MediaCommentsPage,
 	type MediaCommentsTab,
 } from '~/components/business/media/comments/media-comments-page'
-import { queryOrpc } from '~/lib/orpc/client'
+import { queryOrpc } from '~/orpc/client'
 
 const SearchSchema = z.object({
 	tab: z.preprocess(

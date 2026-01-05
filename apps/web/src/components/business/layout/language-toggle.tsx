@@ -4,8 +4,8 @@ import {
 	type Locale,
 	useLocale,
 	useTranslations,
-} from '~/lib/i18n'
-import { cn } from '~/lib/utils'
+} from '~/lib/shared/i18n'
+import { cn } from '~/lib/shared/utils'
 
 interface LanguageToggleProps {
 	collapsed?: boolean

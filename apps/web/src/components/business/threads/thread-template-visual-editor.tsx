@@ -30,7 +30,7 @@ import {
 	Plus,
 	Trash2,
 } from 'lucide-react'
-import { useTranslations } from '~/lib/i18n'
+import { useTranslations } from '~/lib/shared/i18n'
 
 type NodePath = Array<string | number>
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { AdminUsersPage } from '~/components/business/admin/users/admin-users-page'
-import { ADMIN_USERS_PAGE_SIZE } from '~/lib/pagination'
-import { queryOrpc } from '~/lib/orpc/client'
+import { ADMIN_USERS_PAGE_SIZE } from '~/lib/shared/pagination'
+import { queryOrpc } from '~/orpc/client'
 
 export const Route = createFileRoute('/admin/users')({
 	loader: async ({ context }) => {
