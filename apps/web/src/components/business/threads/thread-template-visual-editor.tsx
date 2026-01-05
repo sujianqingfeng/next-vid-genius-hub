@@ -28,7 +28,6 @@ import {
 	Copy,
 	MoreHorizontal,
 	Plus,
-	Search,
 	Trash2,
 } from 'lucide-react'
 import { useTranslations } from '~/lib/i18n'
@@ -410,135 +409,11 @@ function buildChildrenMap(items: TreeItem[]) {
 	return childrenByKey
 }
 
-function buildAncestorsMap(items: TreeItem[]) {
-	const parentByKey = new Map<string, string | null>()
-	for (const it of items) parentByKey.set(it.key, it.parentKey)
-	return parentByKey
-}
-
-function collectAncestors(
-	key: string,
-	parentByKey: Map<string, string | null>,
-) {
-	const out: string[] = []
-	let cur: string | null | undefined = key
-	while (cur) {
-		const parent = parentByKey.get(cur)
-		if (!parent) break
-		out.push(parent)
-		cur = parent
-	}
-	return out
-}
-
-type TreeFilterTermKind =
-	| 'text'
-	| 'type'
-	| 'bind'
-	| 'kind'
-	| 'asset'
-	| 'scene'
-	| 'key'
-
-type TreeFilterTerm = { kind: TreeFilterTermKind; value: string }
-
-function parseTreeFilterTerms(filterText: string): TreeFilterTerm[] {
-	const raw = filterText.trim()
-	if (!raw) return []
-
-	const parts = raw.split(/\s+/g).filter(Boolean)
-	const out: TreeFilterTerm[] = []
-
-	for (const part of parts) {
-		const idx = part.indexOf(':')
-		if (idx <= 0) {
-			const value = part.trim().toLowerCase()
-			if (value) out.push({ kind: 'text', value })
-			continue
-		}
-
-		const kindRaw = part.slice(0, idx).trim().toLowerCase()
-		const value = part
-			.slice(idx + 1)
-			.trim()
-			.toLowerCase()
-		if (!value) continue
-
-		const kind = (
-			kindRaw === 'type' ||
-			kindRaw === 'bind' ||
-			kindRaw === 'kind' ||
-			kindRaw === 'asset' ||
-			kindRaw === 'scene' ||
-			kindRaw === 'key'
-				? kindRaw
-				: 'text'
-		) as TreeFilterTermKind
-
-		out.push({ kind, value })
-	}
-
-	return out
-}
-
-function getTreeItemSearchFields(it: TreeItem) {
-	const node: any = it.node as any
-	const type = String(node?.type ?? '').toLowerCase()
-	const bind = typeof node?.bind === 'string' ? node.bind.toLowerCase() : ''
-	const kind = type === 'builtin' ? String(node?.kind ?? '').toLowerCase() : ''
-	const assetId =
-		typeof node?.assetId === 'string' || typeof node?.assetId === 'number'
-			? String(node.assetId).toLowerCase()
-			: ''
-
-	return {
-		label: it.label.toLowerCase(),
-		key: it.key.toLowerCase(),
-		scene: it.scene.toLowerCase(),
-		type,
-		bind,
-		kind,
-		assetId,
-	}
-}
-
-function matchesTreeFilter(it: TreeItem, terms: TreeFilterTerm[]): boolean {
-	if (terms.length === 0) return true
-	const f = getTreeItemSearchFields(it)
-
-	for (const term of terms) {
-		const v = term.value
-		if (!v) continue
-
-		if (term.kind === 'type' && !f.type.includes(v)) return false
-		if (term.kind === 'bind' && !f.bind.includes(v)) return false
-		if (term.kind === 'kind' && !f.kind.includes(v)) return false
-		if (term.kind === 'asset' && !f.assetId.includes(v)) return false
-		if (term.kind === 'scene' && !f.scene.includes(v)) return false
-		if (term.kind === 'key' && !f.key.includes(v)) return false
-		if (term.kind === 'text') {
-			const ok =
-				f.label.includes(v) ||
-				f.key.includes(v) ||
-				f.type.includes(v) ||
-				f.bind.includes(v) ||
-				f.kind.includes(v) ||
-				f.assetId.includes(v) ||
-				f.scene.includes(v)
-			if (!ok) return false
-		}
-	}
-
-	return true
-}
-
 function TreeView({
 	items,
 	childrenByKey,
-	parentByKey,
 	selectedKey,
 	onSelectedKeyChange,
-	filterText,
 	state,
 	onStateChange,
 	onQuickAddChild,
@@ -549,10 +424,8 @@ function TreeView({
 }: {
 	items: TreeItem[]
 	childrenByKey: Map<string, string[]>
-	parentByKey: Map<string, string | null>
 	selectedKey: string
 	onSelectedKeyChange: (key: string) => void
-	filterText: string
 	state: Record<string, TreeNodeState>
 	onStateChange: React.Dispatch<
 		React.SetStateAction<Record<string, TreeNodeState>>
@@ -574,35 +447,6 @@ function TreeView({
 		selectedElRef.current?.scrollIntoView({ block: 'nearest' })
 	}, [selectedKey])
 
-	const terms = React.useMemo(
-		() => parseTreeFilterTerms(filterText),
-		[filterText],
-	)
-	const { visibleKeys, forcedOpenKeys } = React.useMemo(() => {
-		if (terms.length === 0)
-			return {
-				visibleKeys: null as Set<string> | null,
-				forcedOpenKeys: null as Set<string> | null,
-			}
-
-		const matched = new Set<string>()
-		for (const it of items) {
-			if (matchesTreeFilter(it, terms)) matched.add(it.key)
-		}
-
-		const visible = new Set<string>()
-		const forcedOpen = new Set<string>()
-		for (const key of matched) {
-			visible.add(key)
-			for (const a of collectAncestors(key, parentByKey)) {
-				visible.add(a)
-				forcedOpen.add(a)
-			}
-		}
-
-		return { visibleKeys: visible, forcedOpenKeys: forcedOpen }
-	}, [items, parentByKey, terms])
-
 	const roots = React.useMemo(() => {
 		const out: string[] = []
 		for (const it of items) {
@@ -616,7 +460,6 @@ function TreeView({
 		const walk = (key: string) => {
 			const it = itemByKey.get(key)
 			if (!it) return
-			if (visibleKeys && !visibleKeys.has(key)) return
 
 			out.push(it)
 
@@ -624,26 +467,14 @@ function TreeView({
 			if (children.length === 0) return
 
 			const collapsed = state[key]?.collapsed ?? false
-			if (terms.length === 0) {
-				if (collapsed) return
-			} else {
-				if (collapsed && !(forcedOpenKeys?.has(key) ?? false)) return
-			}
+			if (collapsed) return
 
 			for (const childKey of children) walk(childKey)
 		}
 
 		for (const rootKey of roots) walk(rootKey)
 		return out
-	}, [
-		childrenByKey,
-		forcedOpenKeys,
-		itemByKey,
-		roots,
-		state,
-		terms.length,
-		visibleKeys,
-	])
+	}, [childrenByKey, itemByKey, roots, state])
 
 	function toggleCollapsed(key: string) {
 		onStateChange((prev) => {
@@ -887,12 +718,6 @@ export function ThreadTemplateVisualEditor({
 	const sceneRoot = (value.scenes?.[scene]?.root ??
 		null) as ThreadRenderTreeNode | null
 
-	const coverSceneRoot = (value.scenes?.cover?.root ??
-		null) as ThreadRenderTreeNode | null
-
-	const postSceneRoot = (value.scenes?.post?.root ??
-		null) as ThreadRenderTreeNode | null
-
 	const baselineSceneRoot = (baselineValue?.scenes?.[scene]?.root ??
 		null) as ThreadRenderTreeNode | null
 
@@ -919,48 +744,7 @@ export function ThreadTemplateVisualEditor({
 		return buildTree(scene, sceneRoot)
 	}, [scene, sceneRoot])
 
-	const [treeFilter, setTreeFilter] = React.useState('')
-	const treeFilterInputRef = React.useRef<HTMLInputElement | null>(null)
 	const [actionsKey, setActionsKey] = React.useState<string | null>(null)
-
-	const [jumpOpen, setJumpOpen] = React.useState(false)
-	const [jumpQuery, setJumpQuery] = React.useState('')
-	const jumpInputRef = React.useRef<HTMLInputElement | null>(null)
-
-	const jumpCandidates = React.useMemo(() => {
-		const out: TreeItem[] = []
-		if (coverSceneRoot) out.push(...buildTree('cover', coverSceneRoot))
-		if (postSceneRoot) out.push(...buildTree('post', postSceneRoot))
-		return out
-	}, [coverSceneRoot, postSceneRoot])
-
-	const jumpTerms = React.useMemo(
-		() => parseTreeFilterTerms(jumpQuery),
-		[jumpQuery],
-	)
-	const jumpResults = React.useMemo(() => {
-		if (jumpTerms.length === 0) return [] as TreeItem[]
-		return jumpCandidates
-			.filter((it) => matchesTreeFilter(it, jumpTerms))
-			.slice(0, 120)
-	}, [jumpCandidates, jumpTerms])
-
-	React.useEffect(() => {
-		if (!jumpOpen) return
-		const id = window.setTimeout(() => {
-			jumpInputRef.current?.focus()
-			jumpInputRef.current?.select()
-		}, 0)
-		return () => window.clearTimeout(id)
-	}, [jumpOpen])
-
-	function selectJumpResult(it: TreeItem) {
-		setScene(it.scene)
-		setSelectedKey(it.key)
-		setJumpOpen(false)
-		setJumpQuery('')
-		setTreeFilter('')
-	}
 
 	const itemByKey = React.useMemo(() => {
 		const m = new Map<string, TreeItem>()
@@ -974,7 +758,6 @@ export function ThreadTemplateVisualEditor({
 	}, [actionsItem, actionsKey])
 
 	const childrenByKey = React.useMemo(() => buildChildrenMap(tree), [tree])
-	const parentByKey = React.useMemo(() => buildAncestorsMap(tree), [tree])
 
 	const [treeState, setTreeState] = React.useState<
 		Record<string, TreeNodeState>
@@ -1588,98 +1371,8 @@ export function ThreadTemplateVisualEditor({
 					duplicateSelected()
 					return
 				}
-				if (key === 'f') {
-					e.preventDefault()
-					treeFilterInputRef.current?.focus()
-					treeFilterInputRef.current?.select()
-					return
-				}
-				if (key === 'k') {
-					e.preventDefault()
-					setJumpOpen(true)
-					return
-				}
 			}}
 		>
-			<Dialog
-				open={jumpOpen}
-				onOpenChange={(open) => {
-					setJumpOpen(open)
-					if (!open) setJumpQuery('')
-				}}
-			>
-				<DialogContent className="rounded-none sm:max-w-xl">
-					<DialogHeader>
-						<DialogTitle className="font-mono uppercase tracking-widest text-sm">
-							{t('structure.jumpDialogTitle')}
-						</DialogTitle>
-						<DialogDescription className="font-mono text-xs">
-							{t('structure.jumpDialogDescription')}
-						</DialogDescription>
-					</DialogHeader>
-
-					<div className="space-y-2">
-						<Input
-							ref={jumpInputRef}
-							value={jumpQuery}
-							onChange={(e) => setJumpQuery(e.target.value)}
-							placeholder={t('structure.jumpDialogPlaceholder')}
-							className="rounded-none font-mono text-xs h-9"
-							onKeyDown={(e) => {
-								if (e.key === 'Escape') {
-									e.preventDefault()
-									setJumpOpen(false)
-									return
-								}
-								if (e.key === 'Enter') {
-									const first = jumpResults[0]
-									if (!first) return
-									e.preventDefault()
-									selectJumpResult(first)
-								}
-							}}
-						/>
-
-						<div className="rounded-none border border-border bg-card">
-							<div className="max-h-[340px] overflow-auto py-1">
-								{jumpQuery.trim() ? (
-									jumpResults.length > 0 ? (
-										jumpResults.map((it) => (
-											<button
-												key={it.key}
-												type="button"
-												className="flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-xs hover:bg-muted"
-												title={it.key}
-												onClick={() => selectJumpResult(it)}
-											>
-												<span className="shrink-0 text-muted-foreground">
-													{it.scene === 'cover'
-														? t('structure.cover')
-														: t('structure.post')}
-												</span>
-												<span className="min-w-0 flex-1 truncate text-foreground">
-													{it.label}
-												</span>
-												<span className="shrink-0 text-muted-foreground">
-													{it.key.slice(0, 12)}
-												</span>
-											</button>
-										))
-									) : (
-										<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
-											{t('structure.jumpDialogNoResults')}
-										</div>
-									)
-								) : (
-									<div className="px-3 py-2 font-mono text-xs text-muted-foreground">
-										{t('structure.jumpDialogTypeToSearch')}
-									</div>
-								)}
-							</div>
-						</div>
-					</div>
-				</DialogContent>
-			</Dialog>
 			<Dialog
 				open={Boolean(actionsItem)}
 				onOpenChange={(open) => {
@@ -1974,40 +1667,13 @@ export function ThreadTemplateVisualEditor({
 							</div>
 						</div>
 
-						<div className="flex items-center gap-2">
-							<Input
-								ref={treeFilterInputRef}
-								placeholder={t('structure.searchPlaceholder')}
-								value={treeFilter}
-								onChange={(e) => setTreeFilter(e.target.value)}
-								className="rounded-none font-mono text-xs h-8"
-							/>
-							<Button
-								type="button"
-								size="sm"
-								variant="outline"
-								className="rounded-none font-mono text-xs h-8 px-2"
-								title={t('structure.jumpTitle')}
-								onClick={() => setJumpOpen(true)}
-							>
-								<Search className="size-3" />
-								<span className="ml-1">{t('structure.jump')}</span>
-							</Button>
-						</div>
-
-						<div className="font-mono text-[10px] text-muted-foreground">
-							{t('structure.searchHint')}
-						</div>
-
 						<div className="rounded-none border border-border bg-card">
 							<div className="max-h-[420px] overflow-auto py-2">
 								<TreeView
 									items={tree}
 									childrenByKey={childrenByKey}
-									parentByKey={parentByKey}
 									selectedKey={selectedKey}
 									onSelectedKeyChange={setSelectedKey}
-									filterText={treeFilter}
 									state={treeState}
 									onStateChange={setTreeState}
 									onQuickAddChild={quickAddChildByKey}
