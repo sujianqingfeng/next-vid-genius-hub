@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Play, Trash2 } from 'lucide-react'
+import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 import { Button } from '~/components/ui/button'
 import { Textarea } from '~/components/ui/textarea'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
@@ -2621,6 +2622,7 @@ async function readAudioDurationMs(file: File): Promise<number> {
 
 export function ThreadDetailPage({ id }: { id: string }) {
 	const qc = useQueryClient()
+	const confirmDialog = useConfirmDialog()
 	const t = useTranslations('Threads.detail')
 
 	const dataQuery = useQuery(
@@ -2632,6 +2634,82 @@ export function ThreadDetailPage({ id }: { id: string }) {
 	const assets = dataQuery.data?.assets ?? []
 	const audio = dataQuery.data?.audio ?? null
 	const audioAssets = dataQuery.data?.audioAssets ?? []
+
+	const assetById = React.useMemo(() => {
+		const m = new Map<string, any>()
+		for (const a of assets as any[]) m.set(String(a.id), a)
+		return m
+	}, [assets])
+
+	const assetUrlById = React.useMemo(() => {
+		const m = new Map<string, string>()
+		for (const a of assets as any[]) {
+			const id = String(a.id)
+			const candidate = String(a?.renderUrl || a?.sourceUrl || '').trim()
+			if (
+				candidate.startsWith('http://') ||
+				candidate.startsWith('https://')
+			) {
+				m.set(id, candidate)
+			}
+		}
+		return m
+	}, [assets])
+
+	const getPostPreviewMedia = React.useCallback(
+		(blocks: any[] | null | undefined) => {
+			const out: Array<{ kind: 'image' | 'video'; url: string }> = []
+			for (const b of (blocks ?? []) as any[]) {
+				if (!b || typeof b !== 'object') continue
+				if (out.length >= 3) break
+
+				if (b.type === 'image') {
+					const rawId = String((b as any).data?.assetId ?? '').trim()
+					if (!rawId) continue
+					const extUrl = rawId.startsWith('ext:') ? rawId.slice(4).trim() : null
+					const url =
+						(extUrl &&
+							(extUrl.startsWith('http://') || extUrl.startsWith('https://'))
+							? extUrl
+							: null) ||
+						(rawId.startsWith('http://') || rawId.startsWith('https://')
+							? rawId
+							: null) ||
+						assetUrlById.get(rawId) ||
+						null
+					if (!url) continue
+					if (out.some((x) => x.url === url)) continue
+					out.push({ kind: 'image', url })
+					continue
+				}
+
+				if (b.type === 'video') {
+					const posterUrl = String((b as any).data?.posterUrl ?? '').trim()
+					const isPosterHttp =
+						posterUrl.startsWith('http://') || posterUrl.startsWith('https://')
+					if (isPosterHttp) {
+						if (!out.some((x) => x.url === posterUrl))
+							out.push({ kind: 'video', url: posterUrl })
+						continue
+					}
+
+					const rawId = String((b as any).data?.assetId ?? '').trim()
+					if (!rawId) continue
+					const asset = assetById.get(rawId)
+					const thumbId = asset?.thumbnailAssetId
+						? String(asset.thumbnailAssetId)
+						: null
+					const thumbUrl = thumbId ? assetUrlById.get(thumbId) : null
+					if (!thumbUrl) continue
+					if (out.some((x) => x.url === thumbUrl)) continue
+					out.push({ kind: 'video', url: thumbUrl })
+					continue
+				}
+			}
+			return out
+		},
+		[assetById, assetUrlById],
+	)
 
 	const [selectedPostId, setSelectedPostId] = React.useState<string | null>(
 		null,
@@ -2715,6 +2793,28 @@ export function ThreadDetailPage({ id }: { id: string }) {
 				error instanceof Error ? error.message : String(error),
 		},
 	)
+
+	const deletePostMutation = useEnhancedMutation(
+		queryOrpc.thread.deletePost.mutationOptions({
+			onSuccess: async ({ deletedPostIds }) => {
+				setSelectedPostId((prev) =>
+					prev && deletedPostIds.includes(prev) ? null : prev,
+				)
+				await qc.invalidateQueries({
+					queryKey: queryOrpc.thread.byId.queryKey({ input: { id } }),
+				})
+			},
+		}),
+		{
+			successToast: t('toasts.postDeleted'),
+			errorToast: ({ error }) =>
+				error instanceof Error ? error.message : String(error),
+		},
+	)
+
+	const deletingPostId = deletePostMutation.isPending
+		? deletePostMutation.variables?.postId
+		: null
 
 	const ingestAssetsMutation = useEnhancedMutation(
 		queryOrpc.thread.ingestAssets.mutationOptions({
@@ -3177,42 +3277,135 @@ export function ThreadDetailPage({ id }: { id: string }) {
 						</div>
 						<div className="border border-border bg-card flex flex-col max-h-[800px]">
 							{/* Post List */}
-							<div className="flex-1 overflow-y-auto min-h-[150px] max-h-[300px] border-b border-border">
-								{root ? (
-									<button
-										type="button"
-										onClick={() => setSelectedPostId(root.id)}
-										className={`w-full text-left border-b border-border px-4 py-3 font-mono text-xs transition-colors ${
-											selectedPostId === root.id
-												? 'bg-primary/5'
-												: 'hover:bg-muted/30'
-										}`}
-									>
-										<div className="flex items-center gap-2 mb-1">
-											<span className="uppercase tracking-widest text-[10px] text-muted-foreground font-bold border border-border px-1 rounded-[2px]">
-												{t('labels.root')}
-											</span>
-											<span className="font-bold">{root.authorName}</span>
+								<div className="flex-1 overflow-y-auto min-h-[150px] max-h-[300px] border-b border-border">
+									{root ? (
+										<button
+											type="button"
+											onClick={() => setSelectedPostId(root.id)}
+											className={`w-full text-left border-b border-border px-4 py-3 font-mono text-xs transition-colors ${
+												selectedPostId === root.id
+													? 'bg-primary/5'
+													: 'hover:bg-muted/30'
+											}`}
+										>
+											<div className="flex items-center gap-2 mb-1">
+												<span className="uppercase tracking-widest text-[10px] text-muted-foreground font-bold border border-border px-1 rounded-[2px]">
+													{t('labels.root')}
+												</span>
+												<span className="font-bold">{root.authorName}</span>
+											</div>
+											{(() => {
+												const preview = getPostPreviewMedia(root.contentBlocks)
+												return preview.length > 0 ? (
+													<div className="mt-2 flex gap-1">
+														{preview.map((m, idx) => (
+															<div
+																key={`${m.kind}:${m.url}:${idx}`}
+																className="relative h-10 w-16 overflow-hidden border border-border/60 bg-muted/30"
+															>
+																<img
+																	src={m.url}
+																	alt=""
+																	className="h-full w-full object-cover"
+																	loading="lazy"
+																/>
+																{m.kind === 'video' ? (
+																	<div className="absolute inset-0 flex items-center justify-center">
+																		<div className="rounded-full bg-background/70 p-1.5 text-foreground shadow-sm">
+																			<Play className="h-3 w-3" />
+																		</div>
+																	</div>
+																) : null}
+															</div>
+														))}
+													</div>
+												) : null
+											})()}
+										</button>
+									) : null}
+									{replies.map((p) => {
+										const isSelected = selectedPostId === p.id
+										const isDeleting = deletingPostId === p.id
+										const preview = getPostPreviewMedia(p.contentBlocks)
+										return (
+											<div
+												key={p.id}
+												className={`flex items-stretch border-b border-border last:border-0 ${
+												isSelected ? 'bg-primary/5' : 'hover:bg-muted/30'
+											}`}
+										>
+												<button
+													type="button"
+													onClick={() => setSelectedPostId(p.id)}
+													className="flex-1 text-left px-4 py-3 font-mono text-xs transition-colors"
+												>
+													<div className="font-bold mb-1">{p.authorName}</div>
+													<div className="truncate text-muted-foreground opacity-80">
+														{p.plainText || t('labels.emptyText')}
+													</div>
+													{preview.length > 0 ? (
+														<div className="mt-2 flex gap-1">
+															{preview.map((m, idx) => (
+																<div
+																	key={`${m.kind}:${m.url}:${idx}`}
+																	className="relative h-10 w-16 overflow-hidden border border-border/60 bg-muted/30"
+																>
+																	<img
+																		src={m.url}
+																		alt=""
+																		className="h-full w-full object-cover"
+																		loading="lazy"
+																	/>
+																	{m.kind === 'video' ? (
+																		<div className="absolute inset-0 flex items-center justify-center">
+																			<div className="rounded-full bg-background/70 p-1.5 text-foreground shadow-sm">
+																				<Play className="h-3 w-3" />
+																			</div>
+																		</div>
+																	) : null}
+																</div>
+															))}
+														</div>
+													) : null}
+												</button>
+												<Button
+													type="button"
+													variant="ghost"
+												size="icon"
+												className="h-8 w-8 my-auto mr-2 rounded-none text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+												aria-label={t('actions.deletePostAria')}
+												disabled={deletePostMutation.isPending}
+												onClick={() => {
+													if (deletePostMutation.isPending) return
+													void (async () => {
+														const ok = await confirmDialog({
+															title: t('confirmDeletePost.title'),
+															description: t(
+																'confirmDeletePost.description',
+																{
+																	authorName: p.authorName,
+																},
+															),
+															confirmText: t('confirmDeletePost.confirmText'),
+															variant: 'destructive',
+														})
+														if (!ok) return
+														deletePostMutation.mutate({
+															threadId: id,
+															postId: p.id,
+														})
+													})()
+												}}
+											>
+												{isDeleting ? (
+													<Loader2 className="h-3 w-3 animate-spin" />
+												) : (
+													<Trash2 className="h-3 w-3" />
+												)}
+											</Button>
 										</div>
-									</button>
-								) : null}
-								{replies.map((p) => (
-									<button
-										key={p.id}
-										type="button"
-										onClick={() => setSelectedPostId(p.id)}
-										className={`w-full text-left border-b border-border last:border-0 px-4 py-3 font-mono text-xs transition-colors ${
-											selectedPostId === p.id
-												? 'bg-primary/5'
-												: 'hover:bg-muted/30'
-										}`}
-									>
-										<div className="font-bold mb-1">{p.authorName}</div>
-										<div className="truncate text-muted-foreground opacity-80">
-											{p.plainText || t('labels.emptyText')}
-										</div>
-									</button>
-								))}
+									)
+								})}
 							</div>
 
 							{/* Editor Area */}

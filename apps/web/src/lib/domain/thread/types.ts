@@ -14,7 +14,7 @@ export type ThreadContentBlock =
 	| {
 			id: string
 			type: 'video'
-			data: { assetId: string; title?: string }
+			data: { assetId: string; title?: string; posterUrl?: string }
 	  }
 	| {
 			id: string

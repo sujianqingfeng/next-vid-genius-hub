@@ -353,13 +353,20 @@
 				"useTranslation": "Use Translation",
 				"save": "Save",
 				"reset": "Reset",
-				"startRender": "Start Render"
+				"startRender": "Start Render",
+				"deletePostAria": "Delete post"
+			},
+			"confirmDeletePost": {
+				"title": "Delete post?",
+				"description": "Delete this post by “{authorName}”?",
+				"confirmText": "Delete"
 			},
 			"inputs": {
 				"postContentPlaceholder": "Post content..."
 			},
 			"toasts": {
 				"saved": "Saved",
+				"postDeleted": "Deleted",
 				"reset": "Reset",
 				"translated": "Translated",
 				"translatedAll": "Translated: processed={processed} translated={translated} skipped={skipped} failed={failed}",

@@ -41,7 +41,175 @@ export const list = os.handler(async ({ context }) => {
 		.where(eq(schema.threads.userId, userId))
 		.orderBy(desc(schema.threads.createdAt))
 		.limit(50)
-	return { items }
+
+	const threadIds = items.map((t) => String(t.id))
+	if (threadIds.length === 0) return { items: [] as any[] }
+
+	const posts = await db
+		.select({
+			threadId: schema.threadPosts.threadId,
+			contentBlocks: schema.threadPosts.contentBlocks,
+			depth: schema.threadPosts.depth,
+			createdAt: schema.threadPosts.createdAt,
+		})
+		.from(schema.threadPosts)
+		.where(inArray(schema.threadPosts.threadId, threadIds))
+		.orderBy(
+			asc(schema.threadPosts.threadId),
+			asc(schema.threadPosts.depth),
+			asc(schema.threadPosts.createdAt),
+		)
+
+		type PreviewCandidate = {
+			kind: 'image' | 'video' | 'linkPreview'
+			assetId: string
+			posterUrl?: string | null
+		}
+
+	const previewCandidatesByThreadId = new Map<string, PreviewCandidate[]>()
+	for (const p of posts as any[]) {
+		const threadId = String(p.threadId)
+		const current = previewCandidatesByThreadId.get(threadId) ?? []
+		if (current.length >= 3) continue
+
+		const blocks = (p.contentBlocks ?? []) as any[]
+		for (const b of blocks) {
+			if (!b || typeof b !== 'object') continue
+			if (current.length >= 3) break
+
+				if (b.type === 'image' || b.type === 'video') {
+					const assetId = String((b as any).data?.assetId ?? '').trim()
+					if (!assetId) continue
+					if (current.some((x) => x.assetId === assetId)) continue
+					const posterUrl =
+						b.type === 'video' ? String((b as any).data?.posterUrl ?? '') : ''
+					current.push({
+						kind: b.type,
+						assetId,
+						posterUrl: posterUrl.trim() || null,
+					})
+					continue
+				}
+			if (b.type === 'link') {
+				const assetId = String((b as any).data?.previewAssetId ?? '').trim()
+				if (!assetId) continue
+				if (current.some((x) => x.assetId === assetId)) continue
+				current.push({ kind: 'linkPreview', assetId })
+				continue
+			}
+		}
+
+		if (current.length > 0) previewCandidatesByThreadId.set(threadId, current)
+	}
+
+	const primaryAssetIds = [
+		...new Set(
+			[...previewCandidatesByThreadId.values()]
+				.flat()
+				.map((c) => c.assetId),
+		),
+	]
+
+	const primaryAssets =
+		primaryAssetIds.length > 0
+			? await db
+					.select({
+						id: schema.threadAssets.id,
+						kind: schema.threadAssets.kind,
+						storageKey: schema.threadAssets.storageKey,
+						sourceUrl: schema.threadAssets.sourceUrl,
+						thumbnailAssetId: schema.threadAssets.thumbnailAssetId,
+					})
+					.from(schema.threadAssets)
+					.where(
+						and(
+							eq(schema.threadAssets.userId, userId),
+							inArray(schema.threadAssets.id, primaryAssetIds),
+						),
+					)
+			: []
+
+	const primaryAssetById = new Map<string, (typeof primaryAssets)[number]>()
+	const thumbnailAssetIds: string[] = []
+	for (const a of primaryAssets) {
+		primaryAssetById.set(String(a.id), a)
+		if (a.kind === 'video' && a.thumbnailAssetId) {
+			thumbnailAssetIds.push(String(a.thumbnailAssetId))
+		}
+	}
+
+	const thumbnails =
+		thumbnailAssetIds.length > 0
+			? await db
+					.select({
+						id: schema.threadAssets.id,
+						storageKey: schema.threadAssets.storageKey,
+						sourceUrl: schema.threadAssets.sourceUrl,
+					})
+					.from(schema.threadAssets)
+					.where(
+						and(
+							eq(schema.threadAssets.userId, userId),
+							inArray(schema.threadAssets.id, thumbnailAssetIds),
+						),
+					)
+			: []
+
+		const urlByAssetId = new Map<string, string>()
+		const presignRows = [...primaryAssets, ...thumbnails].filter(
+			(a) => a?.storageKey || a?.sourceUrl,
+		)
+	await Promise.all(
+		presignRows.map(async (a) => {
+			const id = String(a.id)
+			if (urlByAssetId.has(id)) return
+			if (a.storageKey) {
+				try {
+					const url = await presignGetByKey(String(a.storageKey))
+					urlByAssetId.set(id, url)
+					return
+				} catch {}
+			}
+			const sourceUrl = a.sourceUrl ? String(a.sourceUrl) : ''
+			if (sourceUrl.startsWith('http://') || sourceUrl.startsWith('https://')) {
+				urlByAssetId.set(id, sourceUrl)
+			}
+		}),
+	)
+
+	const itemsWithPreview = items.map((thread: any) => {
+		const candidates = previewCandidatesByThreadId.get(String(thread.id)) ?? []
+		const previewMedia = candidates
+			.map((c) => {
+				if (c.kind !== 'video') {
+					const url = urlByAssetId.get(c.assetId) ?? null
+					return url ? { kind: c.kind, url } : null
+				}
+
+				const video = primaryAssetById.get(c.assetId)
+					const thumbId = video?.thumbnailAssetId
+						? String(video.thumbnailAssetId)
+						: null
+					const url = (thumbId && urlByAssetId.get(thumbId)) ?? null
+					if (url) return { kind: c.kind, url }
+
+					const posterUrl = String(c.posterUrl ?? '').trim()
+					if (
+						posterUrl.startsWith('http://') ||
+						posterUrl.startsWith('https://')
+					) {
+						return { kind: c.kind, url: posterUrl }
+					}
+
+					return { kind: c.kind, url: null }
+				})
+				.filter(Boolean)
+
+		const hasVideo = candidates.some((c) => c.kind === 'video')
+		return { ...thread, previewMedia, hasVideo }
+	})
+
+	return { items: itemsWithPreview }
 })
 
 export const byId = os
@@ -403,7 +571,9 @@ export const createFromXJson = os
 
 			for (const row of toInsert) assetIdByUrl.set(row.sourceUrl, row.id)
 
-			const CHUNK_SIZE = 20
+			// D1 has a low bind-parameter limit per statement; keep batch size small
+			// to avoid "too many SQL variables" errors (14 columns per row).
+			const CHUNK_SIZE = 5
 			for (let i = 0; i < toInsert.length; i += CHUNK_SIZE) {
 				await db
 					.insert(schema.threadAssets)
@@ -637,6 +807,98 @@ export const updatePostText = os
 			.where(eq(schema.threadPosts.id, post.id))
 
 		return { ok: true }
+	})
+
+export const deletePost = os
+	.input(
+		z.object({
+			threadId: z.string().min(1),
+			postId: z.string().min(1),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+
+		const thread = await db.query.threads.findFirst({
+			where: and(
+				eq(schema.threads.id, input.threadId),
+				eq(schema.threads.userId, userId),
+			),
+			columns: { id: true },
+		})
+		if (!thread) throw new Error('Thread not found')
+
+		const post = await db.query.threadPosts.findFirst({
+			where: and(
+				eq(schema.threadPosts.id, input.postId),
+				eq(schema.threadPosts.threadId, thread.id),
+			),
+			columns: { id: true, role: true, sourcePostId: true },
+		})
+		if (!post) throw new Error('Post not found')
+		if (post.role === 'root') throw new Error('Root post cannot be deleted')
+
+		const deletedPostIds = new Set<string>([post.id])
+
+		// Best-effort: if imported from X, delete the whole reply subtree.
+		const rootSourcePostId = post.sourcePostId ? String(post.sourcePostId) : null
+		if (rootSourcePostId) {
+			const rows = await db
+				.select({
+					id: schema.threadPosts.id,
+					sourcePostId: schema.threadPosts.sourcePostId,
+					parentSourcePostId: schema.threadPosts.parentSourcePostId,
+				})
+				.from(schema.threadPosts)
+				.where(eq(schema.threadPosts.threadId, thread.id))
+
+			const childrenByParentSourcePostId = new Map<string, typeof rows>()
+			for (const r of rows) {
+				const parent = r.parentSourcePostId ? String(r.parentSourcePostId) : null
+				if (!parent) continue
+				const bucket = childrenByParentSourcePostId.get(parent)
+				if (bucket) {
+					bucket.push(r)
+				} else {
+					childrenByParentSourcePostId.set(parent, [r])
+				}
+			}
+
+			const visitedSourcePostIds = new Set<string>([rootSourcePostId])
+			const queue: string[] = [rootSourcePostId]
+			while (queue.length > 0) {
+				const current = queue.shift()
+				if (!current) continue
+				const children = childrenByParentSourcePostId.get(current) ?? []
+				for (const child of children) {
+					deletedPostIds.add(child.id)
+					const childSourcePostId = child.sourcePostId
+						? String(child.sourcePostId)
+						: null
+					if (childSourcePostId && !visitedSourcePostIds.has(childSourcePostId)) {
+						visitedSourcePostIds.add(childSourcePostId)
+						queue.push(childSourcePostId)
+					}
+				}
+			}
+		}
+
+		const ids = [...deletedPostIds]
+		const CHUNK_SIZE = 50
+		for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+			await db
+				.delete(schema.threadPosts)
+				.where(
+					and(
+						eq(schema.threadPosts.threadId, thread.id),
+						inArray(schema.threadPosts.id, ids.slice(i, i + CHUNK_SIZE)),
+					),
+				)
+		}
+
+		return { ok: true, deletedCount: ids.length, deletedPostIds: ids }
 	})
 
 export const ingestAssets = os

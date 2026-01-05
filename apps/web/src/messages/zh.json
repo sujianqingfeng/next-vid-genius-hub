@@ -353,13 +353,20 @@
 				"useTranslation": "使用翻译",
 				"save": "保存",
 				"reset": "重置",
-				"startRender": "开始渲染"
+				"startRender": "开始渲染",
+				"deletePostAria": "删除帖子"
+			},
+			"confirmDeletePost": {
+				"title": "删除帖子？",
+				"description": "删除 {authorName} 的这条帖子？",
+				"confirmText": "删除"
 			},
 			"inputs": {
 				"postContentPlaceholder": "帖子内容..."
 			},
 			"toasts": {
 				"saved": "已保存",
+				"postDeleted": "已删除",
 				"reset": "已重置",
 				"translated": "已翻译",
 				"translatedAll": "翻译完成：处理={processed} 已翻译={translated} 跳过={skipped} 失败={failed}",

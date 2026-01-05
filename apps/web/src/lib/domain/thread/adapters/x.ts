@@ -30,8 +30,20 @@ const XMetricsSchema = z
 const XMediaSchema = z.object({
 	type: z.string().catch(''),
 	url: z.string().optional().catch(''),
+	posterUrl: z.string().optional().catch(''),
 	alt: z.string().optional().catch(''),
+	m3u8Urls: z.array(z.string()).optional().catch([]),
 })
+
+const XMediaListSchema = z
+	.preprocess(
+		(value) => {
+			if (value === undefined || value === null) return []
+			return value
+		},
+		z.union([z.array(XMediaSchema), XMediaSchema.transform((x) => [x])]),
+	)
+	.catch([])
 
 const XPostSchema = z.object({
 	statusId: z.string(),
@@ -40,7 +52,7 @@ const XPostSchema = z.object({
 	createdAt: z.string().optional().catch(''),
 	text: z.string().optional().catch(''),
 	metrics: XMetricsSchema.optional(),
-	media: z.array(XMediaSchema).optional().catch([]),
+	media: XMediaListSchema,
 	isRoot: z.boolean().optional().catch(false),
 })
 
@@ -98,25 +110,41 @@ function appendExternalMediaBlocks(
 	const m = media ?? []
 	let idx = 0
 
-	for (const item of m) {
-		const url = String(item.url || '').trim()
-		if (!url) continue
-
-		const type = String(item.type || '').toLowerCase()
-		if (type === 'image') {
-			blocks.push({
-				id: `media-${idx++}`,
-				type: 'image',
-				data: { assetId: `ext:${url}`, caption: item.alt || undefined },
-			})
-		} else if (type === 'video') {
-			blocks.push({
-				id: `media-${idx++}`,
-				type: 'video',
-				data: { assetId: `ext:${url}`, title: item.alt || undefined },
-			})
+		for (const item of m) {
+			const type = String(item.type || '').toLowerCase()
+			if (type === 'image') {
+				const url = String(item.url || item.posterUrl || '').trim()
+				if (!url) continue
+				blocks.push({
+					id: `media-${idx++}`,
+					type: 'image',
+					data: { assetId: `ext:${url}`, caption: item.alt || undefined },
+				})
+			} else if (type === 'video') {
+				const posterUrl = String(item.posterUrl || '').trim()
+				const url = String(item.url || item.m3u8Urls?.[0] || '').trim()
+				if (url) {
+					blocks.push({
+						id: `media-${idx++}`,
+						type: 'video',
+						data: {
+							assetId: `ext:${url}`,
+							title: item.alt || undefined,
+							posterUrl: posterUrl || undefined,
+						},
+					})
+				} else if (posterUrl) {
+					blocks.push({
+						id: `media-${idx++}`,
+						type: 'image',
+						data: {
+							assetId: `ext:${posterUrl}`,
+							caption: item.alt || 'Video',
+						},
+					})
+				}
+			}
 		}
-	}
 
 	return blocks
 }
