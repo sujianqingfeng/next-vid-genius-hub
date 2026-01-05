@@ -4,54 +4,59 @@ import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
-  ArrowLeft,
-  History,
-  Keyboard,
-  Maximize,
-  Minimize,
-  Minus,
-  MonitorPlay,
-  MousePointer2,
-  Play,
-  Plus,
-  Redo2,
-  Save,
-  Undo2
+	ArrowLeft,
+	Code2,
+	History,
+	Keyboard,
+	ListTree,
+	Maximize,
+	Minimize,
+	Minus,
+	MonitorPlay,
+	MousePointer2,
+	PanelRightClose,
+	PanelRightOpen,
+	Play,
+	Plus,
+	Redo2,
+	Save,
+	SlidersHorizontal,
+	Undo2,
 } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import {
-  ThreadRemotionEditorSurface,
-  ThreadRemotionTimeline,
-  type ThreadRemotionEditorSurfaceApi,
+	ThreadRemotionEditorSurface,
+	ThreadRemotionTimeline,
+	type ThreadRemotionEditorSurfaceApi,
 } from '~/components/business/threads/thread-remotion-editor-surface'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { Button } from '~/components/ui/button'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
 } from '~/components/ui/dialog'
 import { Input } from '~/components/ui/input'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from '~/components/ui/select'
 import { Separator } from '~/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
 } from '~/components/ui/tooltip'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
@@ -338,34 +343,37 @@ function ThreadTemplateVersionEditorRoute() {
 	const t = useTranslations('ThreadTemplates.editor')
 
 	type EditorLayoutState = {
-		leftPx: number
-		rightPx: number
-		leftCollapsed: boolean
-		rightCollapsed: boolean
+		inspectorPx: number
+		inspectorCollapsed: boolean
 	}
 
 	const [layout, setLayout] = useLocalStorageState<EditorLayoutState>(
 		'vg.threadTemplateEditor.layout.v1',
 		{
-			version: 1,
+			version: 2,
 			defaultValue: {
-				leftPx: 320,
-				rightPx: 360,
-				leftCollapsed: false,
-				rightCollapsed: false,
+				inspectorPx: 360,
+				inspectorCollapsed: false,
 			},
-			migrate: (stored) => {
+			migrate: (stored, storedVersion) => {
 				if (!stored || typeof stored !== 'object') return null
-				const leftPx = Number((stored as any).leftPx)
-				const rightPx = Number((stored as any).rightPx)
-				const leftCollapsed = Boolean((stored as any).leftCollapsed)
-				const rightCollapsed = Boolean((stored as any).rightCollapsed)
-				if (!Number.isFinite(leftPx) || !Number.isFinite(rightPx)) return null
+
+				if (storedVersion === 1) {
+					const rightPx = Number((stored as any).rightPx)
+					const rightCollapsed = Boolean((stored as any).rightCollapsed)
+					if (!Number.isFinite(rightPx)) return null
+					return {
+						inspectorPx: Math.max(280, Math.min(720, rightPx)),
+						inspectorCollapsed: rightCollapsed,
+					}
+				}
+
+				const inspectorPx = Number((stored as any).inspectorPx)
+				const inspectorCollapsed = Boolean((stored as any).inspectorCollapsed)
+				if (!Number.isFinite(inspectorPx)) return null
 				return {
-					leftPx,
-					rightPx,
-					leftCollapsed,
-					rightCollapsed,
+					inspectorPx: Math.max(280, Math.min(720, inspectorPx)),
+					inspectorCollapsed,
 				}
 			},
 		},
@@ -373,17 +381,15 @@ function ThreadTemplateVersionEditorRoute() {
 
 	React.useEffect(() => {
 		setLayout((prev) => {
-			if (!prev.leftCollapsed && !prev.rightCollapsed) return prev
-			return { ...prev, leftCollapsed: false, rightCollapsed: false }
+			if (!prev.inspectorCollapsed) return prev
+			return { ...prev, inspectorCollapsed: false }
 		})
 	}, [setLayout])
 
 	const containerRef = React.useRef<HTMLDivElement | null>(null)
 	const dragRef = React.useRef<{
-		kind: 'left' | 'right'
 		startX: number
-		startLeft: number
-		startRight: number
+		startInspector: number
 		rect: DOMRect
 	} | null>(null)
 
@@ -459,7 +465,9 @@ function ThreadTemplateVersionEditorRoute() {
 		Boolean(previewThreadId) &&
 		Boolean(previewThread) &&
 		Boolean(previewRoot)
-	const [rightPanelTab, setRightPanelTab] = React.useState<'properties' | 'config'>('properties')
+	const [inspectorTab, setInspectorTab] = React.useState<
+		'structure' | 'properties' | 'config'
+	>('properties')
 	const [visualTemplateConfig, setVisualTemplateConfig] =
 		React.useState<ThreadTemplateConfigV1>(DEFAULT_THREAD_TEMPLATE_CONFIG)
 	const [visualTemplateHistory, setVisualTemplateHistory] = React.useState<{
@@ -637,9 +645,7 @@ function ThreadTemplateVersionEditorRoute() {
 				: null
 
 	const canPublish =
-		!publishDisabledReason &&
-		Boolean(visualTemplateConfig) &&
-		Boolean(library)
+		!publishDisabledReason && Boolean(visualTemplateConfig) && Boolean(library)
 
 	const canPublishRef = React.useRef(canPublish)
 	React.useEffect(() => {
@@ -661,17 +667,13 @@ function ThreadTemplateVersionEditorRoute() {
 		noteRef.current = note
 	}, [note])
 
-	const leftRailPx = 40
-	const rightRailPx = 40
-	const leftColPx = layout.leftCollapsed ? leftRailPx : layout.leftPx
-	const rightColPx = layout.rightCollapsed ? rightRailPx : layout.rightPx
+	const inspectorRailPx = 40
+	const inspectorColPx = layout.inspectorCollapsed
+		? inspectorRailPx
+		: layout.inspectorPx
 
-	function setLeftCollapsed(collapsed: boolean) {
-		setLayout((prev) => ({ ...prev, leftCollapsed: collapsed }))
-	}
-
-	function setRightCollapsed(collapsed: boolean) {
-		setLayout((prev) => ({ ...prev, rightCollapsed: collapsed }))
+	function setInspectorCollapsed(collapsed: boolean) {
+		setLayout((prev) => ({ ...prev, inspectorCollapsed: collapsed }))
 	}
 
 	function isTypingTarget(target: EventTarget | null) {
@@ -722,7 +724,10 @@ function ThreadTemplateVersionEditorRoute() {
 			if (e.key === '\\') {
 				e.preventDefault()
 				e.stopPropagation()
-				setLayout((prev) => ({ ...prev, leftCollapsed: !prev.leftCollapsed }))
+				setLayout((prev) => ({
+					...prev,
+					inspectorCollapsed: !prev.inspectorCollapsed,
+				}))
 				return
 			}
 			if (e.key === 'Enter') {
@@ -750,7 +755,7 @@ function ThreadTemplateVersionEditorRoute() {
 		undoVisualTemplate,
 	])
 
-	function startResize(kind: 'left' | 'right', e: React.PointerEvent) {
+	function startResizeInspector(e: React.PointerEvent) {
 		if (e.button !== 0) return
 		e.preventDefault()
 		const container = containerRef.current
@@ -758,15 +763,12 @@ function ThreadTemplateVersionEditorRoute() {
 
 		const rect = container.getBoundingClientRect()
 		dragRef.current = {
-			kind,
 			startX: e.clientX,
-			startLeft: layout.leftPx,
-			startRight: layout.rightPx,
+			startInspector: layout.inspectorPx,
 			rect,
 		}
 
-		if (kind === 'left' && layout.leftCollapsed) setLeftCollapsed(false)
-		if (kind === 'right' && layout.rightCollapsed) setRightCollapsed(false)
+		if (layout.inspectorCollapsed) setInspectorCollapsed(false)
 
 		const onMove = (ev: PointerEvent) => {
 			const drag = dragRef.current
@@ -775,42 +777,29 @@ function ThreadTemplateVersionEditorRoute() {
 			const dx = ev.clientX - drag.startX
 			const width = drag.rect.width
 
-			const minLeft = 260
-			const minRight = 280
-			const minCenter = 400
-			const handles = 16
+			const minInspector = 300
+			const minCenter = 480
+			const handle = 8
 
-			if (drag.kind === 'left') {
-				const currentRight = layout.rightCollapsed
-					? rightRailPx
-					: drag.startRight
-				const maxLeft = Math.max(
-					minLeft,
-					width - currentRight - handles - minCenter,
-				)
-				const nextLeft = Math.round(
-					Math.min(maxLeft, Math.max(minLeft, drag.startLeft + dx)),
-				)
-				setLayout((prev) => {
-					if (prev.leftPx === nextLeft && prev.leftCollapsed === false)
-						return prev
-					return { ...prev, leftPx: nextLeft, leftCollapsed: false }
-				})
-				return
-			}
+			const maxInspector = Math.max(minInspector, width - minCenter - handle)
+			const nextInspector = Math.round(
+				Math.min(
+					maxInspector,
+					Math.max(minInspector, drag.startInspector - dx),
+				),
+			)
 
-			const currentLeft = layout.leftCollapsed ? leftRailPx : drag.startLeft
-			const maxRight = Math.max(
-				minRight,
-				width - currentLeft - handles - minCenter,
-			)
-			const nextRight = Math.round(
-				Math.min(maxRight, Math.max(minRight, drag.startRight - dx)),
-			)
 			setLayout((prev) => {
-				if (prev.rightPx === nextRight && prev.rightCollapsed === false)
+				if (
+					prev.inspectorPx === nextInspector &&
+					prev.inspectorCollapsed === false
+				)
 					return prev
-				return { ...prev, rightPx: nextRight, rightCollapsed: false }
+				return {
+					...prev,
+					inspectorPx: nextInspector,
+					inspectorCollapsed: false,
+				}
 			})
 		}
 
@@ -1067,58 +1056,15 @@ function ThreadTemplateVersionEditorRoute() {
 				<div className="flex-1 overflow-hidden relative">
 					<div
 						ref={containerRef}
-						className="h-full grid grid-cols-1 lg:grid-cols-[var(--tte-left)_8px_1fr_8px_var(--tte-right)]"
+						className="h-full grid grid-cols-1 lg:grid-cols-[1fr_8px_var(--tte-right)]"
 						style={
 							{
-								'--tte-left': `${leftColPx}px`,
-								'--tte-right': `${rightColPx}px`,
+								'--tte-right': `${inspectorColPx}px`,
 							} as React.CSSProperties
 						}
 					>
-						{/* LEFT PANEL */}
-						<div className="order-1 lg:order-none lg:col-start-1 lg:col-end-2 lg:row-start-1 h-full overflow-hidden border-r border-border bg-card">
-							<ThreadTemplateVisualEditor
-								layout="panels"
-								structureClassName="h-full"
-								propertiesClassName="hidden"
-								showSceneToggle={false}
-								structureCollapsed={layout.leftCollapsed}
-								onStructureCollapsedChange={setLeftCollapsed}
-								value={visualTemplateConfig}
-								baselineValue={selectedVersionConfig ?? undefined}
-								onChange={(next) => setVisualTemplateConfig(next)}
-								assets={previewAssets as any}
-								historyState={visualTemplateHistory}
-								setHistoryState={setVisualTemplateHistory}
-								resetKey={String(selectedVersion?.id ?? '')}
-								scene={editorScene}
-								onSceneChange={(s) => setEditorScene(s)}
-								selectedKey={editorSelectedKey}
-								onSelectedKeyChange={(key) => {
-									setEditorSelectedKey(key)
-									const s = sceneFromNodeKey(key)
-									if (s) setEditorScene((prev) => (prev === s ? prev : s))
-								}}
-							/>
-						</div>
-
-						{/* LEFT RESIZER */}
-						<div
-							className="hidden lg:flex lg:col-start-2 lg:col-end-3 lg:row-start-1 cursor-col-resize items-center justify-center select-none touch-none hover:bg-accent/50 transition-colors z-10"
-							onPointerDown={(e) => startResize('left', e)}
-							onDoubleClick={() => {
-								setLayout((prev) => ({
-									...prev,
-									leftPx: 320,
-									leftCollapsed: false,
-								}))
-							}}
-						>
-							<div className="h-8 w-1 rounded-full bg-border/80" />
-						</div>
-
 						{/* CENTER CANVAS */}
-						<div className="order-2 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1 h-full overflow-hidden flex flex-col min-h-0 bg-muted/5">
+						<div className="order-1 lg:order-none lg:col-start-1 lg:col-end-2 lg:row-start-1 h-full overflow-hidden flex flex-col min-h-0 bg-muted/5">
 							<ThreadTemplateCanvasToolbar
 								t={t}
 								editorScene={editorScene}
@@ -1131,23 +1077,9 @@ function ThreadTemplateVersionEditorRoute() {
 								zoom={canvasZoom}
 								onZoomChange={(next) => canvasEditorRef.current?.setZoom(next)}
 								onResetView={() => canvasEditorRef.current?.resetView()}
-								focusMode={layout.leftCollapsed && layout.rightCollapsed}
+								focusMode={layout.inspectorCollapsed}
 								onToggleFocusMode={() => {
-									const isFocused =
-										layout.leftCollapsed && layout.rightCollapsed
-									if (isFocused) {
-										setLayout((prev) => ({
-											...prev,
-											leftCollapsed: false,
-											rightCollapsed: false,
-										}))
-										return
-									}
-									setLayout((prev) => ({
-										...prev,
-										leftCollapsed: true,
-										rightCollapsed: true,
-									}))
+									setInspectorCollapsed(!layout.inspectorCollapsed)
 								}}
 								canUndo={visualTemplateHistory.past.length > 0}
 								canRedo={visualTemplateHistory.future.length > 0}
@@ -1275,75 +1207,240 @@ function ThreadTemplateVersionEditorRoute() {
 							) : null}
 						</div>
 
-						{/* RIGHT RESIZER */}
+						{/* INSPECTOR RESIZER */}
 						<div
-							className="hidden lg:flex lg:col-start-4 lg:col-end-5 lg:row-start-1 cursor-col-resize items-center justify-center select-none touch-none hover:bg-accent/50 transition-colors z-10"
-							onPointerDown={(e) => startResize('right', e)}
+							className="hidden lg:flex lg:col-start-2 lg:col-end-3 lg:row-start-1 cursor-col-resize items-center justify-center select-none touch-none hover:bg-accent/50 transition-colors z-10"
+							onPointerDown={(e) => startResizeInspector(e)}
 							onDoubleClick={() => {
 								setLayout((prev) => ({
 									...prev,
-									rightPx: 360,
-									rightCollapsed: false,
+									inspectorPx: 360,
+									inspectorCollapsed: false,
 								}))
 							}}
 						>
 							<div className="h-8 w-1 rounded-full bg-border/80" />
 						</div>
 
-						{/* RIGHT PANEL */}
-						<div className="order-3 lg:order-none lg:col-start-5 lg:col-end-6 lg:row-start-1 h-full overflow-hidden border-l border-border bg-card flex flex-col">
-							{/* Tab Header */}
-							<div className="shrink-0 border-b border-border px-3 py-2">
-								<Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as 'properties' | 'config')}>
-									<TabsList className="w-full h-8 bg-muted/50 p-0.5 rounded-md">
-										<TabsTrigger
-											value="properties"
-											className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+						{/* INSPECTOR PANEL */}
+						<div className="order-2 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1 h-full overflow-hidden border-l border-border bg-card flex flex-col">
+							{layout.inspectorCollapsed ? (
+								<div className="h-full flex flex-col items-center gap-3 py-3">
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="size-8 rounded-sm"
+												onClick={() => setInspectorCollapsed(false)}
+											>
+												<PanelRightOpen className="size-4" />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent
+											side="left"
+											className="font-mono text-[10px] uppercase"
 										>
-											{t('panels.propertiesShortTitle')}
-										</TabsTrigger>
-										<TabsTrigger
-											value="config"
-											className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
-										>
-											{t('panels.configShortTitle')}
-										</TabsTrigger>
-									</TabsList>
-								</Tabs>
-							</div>
+											{t('panels.expand')}
+										</TooltipContent>
+									</Tooltip>
 
-							{/* Tab Content */}
-							{rightPanelTab === 'config' ? (
-								<div className="flex-1 p-2 min-h-0">
-									<Textarea
-										value={toPrettyJson(visualTemplateConfig)}
-										readOnly
-										className="h-full w-full resize-none rounded-sm font-mono text-xs bg-muted/30 border-0 focus-visible:ring-0"
-									/>
+									<div className="flex flex-col items-center gap-1">
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													type="button"
+													variant={
+														inspectorTab === 'structure' ? 'secondary' : 'ghost'
+													}
+													size="icon"
+													className="size-8 rounded-sm"
+													onClick={() => {
+														setInspectorTab('structure')
+														setInspectorCollapsed(false)
+													}}
+												>
+													<ListTree className="size-4" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent
+												side="left"
+												className="font-mono text-[10px] uppercase"
+											>
+												{t('panels.structureShortTitle')}
+											</TooltipContent>
+										</Tooltip>
+
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													type="button"
+													variant={
+														inspectorTab === 'properties'
+															? 'secondary'
+															: 'ghost'
+													}
+													size="icon"
+													className="size-8 rounded-sm"
+													onClick={() => {
+														setInspectorTab('properties')
+														setInspectorCollapsed(false)
+													}}
+												>
+													<SlidersHorizontal className="size-4" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent
+												side="left"
+												className="font-mono text-[10px] uppercase"
+											>
+												{t('panels.propertiesShortTitle')}
+											</TooltipContent>
+										</Tooltip>
+
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													type="button"
+													variant={
+														inspectorTab === 'config' ? 'secondary' : 'ghost'
+													}
+													size="icon"
+													className="size-8 rounded-sm"
+													onClick={() => {
+														setInspectorTab('config')
+														setInspectorCollapsed(false)
+													}}
+												>
+													<Code2 className="size-4" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent
+												side="left"
+												className="font-mono text-[10px] uppercase"
+											>
+												{t('panels.configShortTitle')}
+											</TooltipContent>
+										</Tooltip>
+									</div>
 								</div>
 							) : (
-								<ThreadTemplateVisualEditor
-									layout="panels"
-									structureClassName="hidden"
-									propertiesClassName="h-full"
-									propertiesCollapsed={layout.rightCollapsed}
-									onPropertiesCollapsedChange={setRightCollapsed}
-									value={visualTemplateConfig}
-									baselineValue={selectedVersionConfig ?? undefined}
-									onChange={(next) => setVisualTemplateConfig(next)}
-									assets={previewAssets as any}
-									historyState={visualTemplateHistory}
-									setHistoryState={setVisualTemplateHistory}
-									resetKey={String(selectedVersion?.id ?? '')}
-									scene={editorScene}
-									onSceneChange={(s) => setEditorScene(s)}
-									selectedKey={editorSelectedKey}
-									onSelectedKeyChange={(key) => {
-										setEditorSelectedKey(key)
-										const s = sceneFromNodeKey(key)
-										if (s) setEditorScene((prev) => (prev === s ? prev : s))
-									}}
-								/>
+								<>
+									{/* Tab Header */}
+									<div className="shrink-0 border-b border-border px-3 py-2 flex items-center gap-2">
+										<Tabs
+											value={inspectorTab}
+											className="flex-1 gap-0"
+											onValueChange={(v) =>
+												setInspectorTab(
+													v as 'structure' | 'properties' | 'config',
+												)
+											}
+										>
+											<TabsList className="w-full h-8 bg-muted/50 p-0.5 rounded-md">
+												<TabsTrigger
+													value="structure"
+													className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+												>
+													{t('panels.structureShortTitle')}
+												</TabsTrigger>
+												<TabsTrigger
+													value="properties"
+													className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+												>
+													{t('panels.propertiesShortTitle')}
+												</TabsTrigger>
+												<TabsTrigger
+													value="config"
+													className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+												>
+													{t('panels.configShortTitle')}
+												</TabsTrigger>
+											</TabsList>
+										</Tabs>
+
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													type="button"
+													variant="ghost"
+													size="icon"
+													className="size-8 rounded-sm"
+													onClick={() => setInspectorCollapsed(true)}
+												>
+													<PanelRightClose className="size-4" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent
+												side="left"
+												className="font-mono text-[10px] uppercase"
+											>
+												{t('panels.collapse')}
+											</TooltipContent>
+										</Tooltip>
+									</div>
+
+									{/* Tab Content */}
+									{inspectorTab === 'config' ? (
+										<div className="flex-1 p-2 min-h-0">
+											<Textarea
+												value={toPrettyJson(visualTemplateConfig)}
+												readOnly
+												className="h-full w-full resize-none rounded-sm font-mono text-xs bg-muted/30 border-0 focus-visible:ring-0"
+											/>
+										</div>
+									) : inspectorTab === 'structure' ? (
+										<div className="flex-1 min-h-0 overflow-hidden">
+											<ThreadTemplateVisualEditor
+												layout="panels"
+												structureClassName="h-full"
+												propertiesClassName="hidden"
+												showSceneToggle={false}
+												value={visualTemplateConfig}
+												baselineValue={selectedVersionConfig ?? undefined}
+												onChange={(next) => setVisualTemplateConfig(next)}
+												assets={previewAssets as any}
+												historyState={visualTemplateHistory}
+												setHistoryState={setVisualTemplateHistory}
+												resetKey={String(selectedVersion?.id ?? '')}
+												scene={editorScene}
+												onSceneChange={(s) => setEditorScene(s)}
+												selectedKey={editorSelectedKey}
+												onSelectedKeyChange={(key) => {
+													setEditorSelectedKey(key)
+													const s = sceneFromNodeKey(key)
+													if (s)
+														setEditorScene((prev) => (prev === s ? prev : s))
+												}}
+											/>
+										</div>
+									) : (
+										<div className="flex-1 min-h-0 overflow-hidden">
+											<ThreadTemplateVisualEditor
+												layout="panels"
+												structureClassName="hidden"
+												propertiesClassName="h-full"
+												value={visualTemplateConfig}
+												baselineValue={selectedVersionConfig ?? undefined}
+												onChange={(next) => setVisualTemplateConfig(next)}
+												assets={previewAssets as any}
+												historyState={visualTemplateHistory}
+												setHistoryState={setVisualTemplateHistory}
+												resetKey={String(selectedVersion?.id ?? '')}
+												scene={editorScene}
+												onSceneChange={(s) => setEditorScene(s)}
+												selectedKey={editorSelectedKey}
+												onSelectedKeyChange={(key) => {
+													setEditorSelectedKey(key)
+													const s = sceneFromNodeKey(key)
+													if (s)
+														setEditorScene((prev) => (prev === s ? prev : s))
+												}}
+											/>
+										</div>
+									)}
+								</>
 							)}
 						</div>
 					</div>

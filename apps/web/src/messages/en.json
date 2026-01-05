@@ -673,7 +673,11 @@
 				"previewTitle": "Preview",
 				"previewLoadFailed": "Failed to load preview thread.",
 				"previewNoRoot": "Preview thread has no root post (or failed to load).",
+				"structureShortTitle": "Structure",
+				"propertiesShortTitle": "Properties",
 				"configShortTitle": "JSON Config",
+				"expand": "Expand",
+				"collapse": "Collapse",
 				"configTitle": "Config (read-only JSON)",
 				"configHint": "This is the normalized config used for preview/publish."
 			}

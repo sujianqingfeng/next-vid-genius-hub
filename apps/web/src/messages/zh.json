@@ -673,7 +673,11 @@
 				"previewTitle": "预览",
 				"previewLoadFailed": "预览帖子加载失败。",
 				"previewNoRoot": "预览帖子没有根帖（或加载失败）。",
+				"structureShortTitle": "结构",
+				"propertiesShortTitle": "属性",
 				"configShortTitle": "JSON 配置",
+				"expand": "展开",
+				"collapse": "收起",
 				"configTitle": "配置（只读 JSON）",
 				"configHint": "这是用于预览/发布的规范化配置。"
 			}
