@@ -4,59 +4,58 @@ import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
-	ArrowLeft,
-	Code2,
-	History,
-	Keyboard,
-	ListTree,
-	Maximize,
-	Minimize,
-	Minus,
-	MonitorPlay,
-	MousePointer2,
-	PanelRightClose,
-	PanelRightOpen,
-	Play,
-	Plus,
-	Redo2,
-	Save,
-	SlidersHorizontal,
-	Undo2,
+    ArrowLeft,
+    Code2,
+    History,
+    Keyboard,
+    ListTree,
+    Maximize,
+    Minimize,
+    Minus,
+    MonitorPlay,
+    MousePointer2,
+    PanelRightClose,
+    PanelRightOpen,
+    Play,
+    Plus,
+    Redo2,
+    Save,
+    SlidersHorizontal,
+    Undo2,
 } from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import {
-	ThreadRemotionEditorSurface,
-	ThreadRemotionTimeline,
-	type ThreadRemotionEditorSurfaceApi,
+    ThreadRemotionEditorSurface,
+    ThreadRemotionTimeline,
+    type ThreadRemotionEditorSurfaceApi,
 } from '~/components/business/threads/thread-remotion-editor-surface'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateVisualEditor } from '~/components/business/threads/thread-template-visual-editor'
 import { Button } from '~/components/ui/button'
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
 } from '~/components/ui/dialog'
 import { Input } from '~/components/ui/input'
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '~/components/ui/select'
-import { Separator } from '~/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
 import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from '~/components/ui/tooltip'
 import { useEnhancedMutation } from '~/lib/hooks/useEnhancedMutation'
 import { useLocalStorageState } from '~/lib/hooks/useLocalStorageState'
@@ -134,7 +133,8 @@ type ThreadTemplateCanvasToolbarProps = {
 	onRedo: () => void
 }
 
-function ThreadTemplateCanvasToolbar({
+
+function ThreadTemplateFloatingToolbar({
 	t,
 	editorScene,
 	onEditorSceneChange,
@@ -152,188 +152,185 @@ function ThreadTemplateCanvasToolbar({
 }: ThreadTemplateCanvasToolbarProps) {
 	const canZoom = previewMode === 'edit'
 	return (
-		<div className="shrink-0 border-b border-border bg-card/70 backdrop-blur px-3 py-2">
-			<div className="flex items-center justify-between gap-3">
-				<div className="flex items-center gap-3">
-					<div className="flex items-center p-1 rounded-full bg-background/80 border border-border/40 shadow-sm">
-						<button
-							type="button"
-							onClick={() => onEditorSceneChange('cover')}
-							className={[
-								'px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
-								editorScene === 'cover'
-									? 'bg-foreground text-background font-bold shadow-sm'
-									: 'text-muted-foreground hover:text-foreground',
-							].join(' ')}
-						>
-							{t('structure.cover')}
-						</button>
-						<button
-							type="button"
-							onClick={() => onEditorSceneChange('post')}
-							className={[
-								'px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
-								editorScene === 'post'
-									? 'bg-foreground text-background font-bold shadow-sm'
-									: 'text-muted-foreground hover:text-foreground',
-							].join(' ')}
-						>
-							{t('structure.post')}
-						</button>
-					</div>
-
-					<Separator orientation="vertical" className="h-5" />
-
-					<div className="flex items-center gap-0.5">
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-7 rounded-md"
-									disabled={!canUndo}
-									onClick={onUndo}
-								>
-									<Undo2 className="size-3.5" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent
-								side="bottom"
-								className="font-mono text-[10px] uppercase"
-							>
-								{t('tooltips.undo')} (Cmd+Z)
-							</TooltipContent>
-						</Tooltip>
-
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-7 rounded-md"
-									disabled={!canRedo}
-									onClick={onRedo}
-								>
-									<Redo2 className="size-3.5" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent
-								side="bottom"
-								className="font-mono text-[10px] uppercase"
-							>
-								{t('tooltips.redo')} (Cmd+Shift+Z)
-							</TooltipContent>
-						</Tooltip>
-					</div>
-
-					<Separator orientation="vertical" className="h-5" />
-
-					<div className="flex items-center px-1">
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant={previewMode === 'edit' ? 'secondary' : 'ghost'}
-									size="icon"
-									className="size-8 rounded-full"
-									onClick={() => onPreviewModeChange('edit')}
-								>
-									<MousePointer2 className="size-4" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent
-								side="bottom"
-								className="font-mono text-[10px] uppercase"
-							>
-								{t('buttons.edit')}
-							</TooltipContent>
-						</Tooltip>
-
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant={previewMode === 'play' ? 'secondary' : 'ghost'}
-									size="icon"
-									className="size-8 rounded-full"
-									onClick={() => onPreviewModeChange('play')}
-								>
-									<Play className="size-4" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent
-								side="bottom"
-								className="font-mono text-[10px] uppercase"
-							>
-								{t('buttons.play')}
-							</TooltipContent>
-						</Tooltip>
-					</div>
-				</div>
-
-				<div className="flex items-center gap-2">
-					<div className="flex items-center px-1">
-						<Button
-							variant="ghost"
-							size="icon"
-							className="size-8 rounded-full"
-							disabled={!canZoom}
-							onClick={() => onZoomChange(Math.max(0.25, zoom / 1.1))}
-							title={t('tooltips.zoomOut')}
-						>
-							<Minus className="size-4" />
-						</Button>
-						<button
-							type="button"
-							className="w-10 text-center text-[10px] font-mono text-muted-foreground select-none disabled:opacity-50"
-							disabled={!canZoom}
-							onDoubleClick={onResetView}
-							title={t('tooltips.resetView')}
-						>
-							{Math.round(zoom * 100)}%
-						</button>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="size-8 rounded-full"
-							disabled={!canZoom}
-							onClick={() => onZoomChange(Math.min(4, zoom * 1.1))}
-							title={t('tooltips.zoomIn')}
-						>
-							<Plus className="size-4" />
-						</Button>
-					</div>
-
-					<Separator orientation="vertical" className="h-5" />
-
-					<span className="text-[10px] font-mono text-muted-foreground opacity-50 select-none">
-						1080×1920
-					</span>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant={focusMode ? 'secondary' : 'ghost'}
-								size="icon"
-								className="size-8 rounded-full"
-								onClick={onToggleFocusMode}
-							>
-								{focusMode ? (
-									<Minimize className="size-4" />
-								) : (
-									<Maximize className="size-4" />
-								)}
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent
-							side="bottom"
-							className="font-mono text-[10px] uppercase"
-						>
-							{focusMode ? 'Exit Focus Mode' : 'Focus Mode'}
-						</TooltipContent>
-					</Tooltip>
-				</div>
+		<div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-1.5 rounded-full bg-background/80 backdrop-blur-md border border-border/50 shadow-xl shadow-black/5 z-40 transition-all hover:bg-background/90 hover:shadow-2xl hover:scale-105 active:scale-100">
+			{/* Scene Toggles */}
+			<div className="flex items-center bg-muted/50 rounded-full p-0.5">
+				<button
+					type="button"
+					onClick={() => onEditorSceneChange('cover')}
+					className={[
+						'px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
+						editorScene === 'cover'
+							? 'bg-background text-foreground font-bold shadow-sm ring-1 ring-black/5'
+							: 'text-muted-foreground hover:text-foreground',
+					].join(' ')}
+				>
+					{t('structure.cover')}
+				</button>
+				<button
+					type="button"
+					onClick={() => onEditorSceneChange('post')}
+					className={[
+						'px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-wider transition-all',
+						editorScene === 'post'
+							? 'bg-background text-foreground font-bold shadow-sm ring-1 ring-black/5'
+							: 'text-muted-foreground hover:text-foreground',
+					].join(' ')}
+				>
+					{t('structure.post')}
+				</button>
 			</div>
+
+			<div className="w-px h-4 bg-border/50 mx-1" />
+
+			{/* Undo / Redo */}
+			<div className="flex items-center gap-0.5">
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-8 rounded-full hover:bg-muted/80"
+							disabled={!canUndo}
+							onClick={onUndo}
+						>
+							<Undo2 className="size-4" />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent
+						side="top"
+						className="font-mono text-[10px] uppercase"
+					>
+						{t('tooltips.undo')} (Cmd+Z)
+					</TooltipContent>
+				</Tooltip>
+
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-8 rounded-full hover:bg-muted/80"
+							disabled={!canRedo}
+							onClick={onRedo}
+						>
+							<Redo2 className="size-4" />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent
+						side="top"
+						className="font-mono text-[10px] uppercase"
+					>
+						{t('tooltips.redo')} (Cmd+Shift+Z)
+					</TooltipContent>
+				</Tooltip>
+			</div>
+
+			<div className="w-px h-4 bg-border/50 mx-1" />
+
+			{/* Preview Mode */}
+			<div className="flex items-center gap-0.5">
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant={previewMode === 'edit' ? 'secondary' : 'ghost'}
+							size="icon"
+							className="size-8 rounded-full"
+							onClick={() => onPreviewModeChange('edit')}
+						>
+							<MousePointer2 className="size-4" />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent
+						side="top"
+						className="font-mono text-[10px] uppercase"
+					>
+						{t('buttons.edit')}
+					</TooltipContent>
+				</Tooltip>
+
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant={previewMode === 'play' ? 'secondary' : 'ghost'}
+							size="icon"
+							className="size-8 rounded-full"
+							onClick={() => onPreviewModeChange('play')}
+						>
+							<Play className="size-4" />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent
+						side="top"
+						className="font-mono text-[10px] uppercase"
+					>
+						{t('buttons.play')}
+					</TooltipContent>
+				</Tooltip>
+			</div>
+
+			<div className="w-px h-4 bg-border/50 mx-1" />
+
+			{/* Zoom Controls */}
+			<div className="flex items-center gap-1">
+				<Button
+					variant="ghost"
+					size="icon"
+					className="size-8 rounded-full hover:bg-muted/80"
+					disabled={!canZoom}
+					onClick={() => onZoomChange(Math.max(0.25, zoom / 1.1))}
+				>
+					<Minus className="size-3.5" />
+				</Button>
+				<button
+					type="button"
+					className="w-10 text-center text-[10px] font-mono font-medium text-foreground/80 select-none disabled:opacity-50"
+					disabled={!canZoom}
+					onDoubleClick={onResetView}
+					title={t('tooltips.resetView')}
+				>
+					{Math.round(zoom * 100)}%
+				</button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="size-8 rounded-full hover:bg-muted/80"
+					disabled={!canZoom}
+					onClick={() => onZoomChange(Math.min(4, zoom * 1.1))}
+				>
+					<Plus className="size-3.5" />
+				</Button>
+			</div>
+
+			<div className="w-px h-4 bg-border/50 mx-1" />
+
+			{/* Focus Mode */}
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant={focusMode ? 'secondary' : 'ghost'}
+						size="icon"
+						className="size-8 rounded-full"
+						onClick={onToggleFocusMode}
+					>
+						{focusMode ? (
+							<Minimize className="size-4" />
+						) : (
+							<Maximize className="size-4" />
+						)}
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent
+					side="top"
+					className="font-mono text-[10px] uppercase"
+				>
+					{focusMode ? 'Exit Focus Mode' : 'Focus Mode'}
+				</TooltipContent>
+			</Tooltip>
 		</div>
 	)
 }
+
 
 function ThreadTemplateVersionEditorRoute() {
 	const { libraryId, versionId } = Route.useParams()
@@ -815,35 +812,35 @@ function ThreadTemplateVersionEditorRoute() {
 
 	return (
 		<TooltipProvider delayDuration={300}>
-			<div className="flex h-screen flex-col bg-background font-sans text-foreground overflow-hidden">
+			<div className="flex h-screen flex-col bg-muted/5 font-sans text-foreground overflow-hidden">
 				<Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
-					<DialogContent className="rounded-none sm:max-w-xl">
+					<DialogContent className="rounded-2xl border-none shadow-2xl sm:max-w-xl bg-background/95 backdrop-blur-xl">
 						<DialogHeader>
-							<DialogTitle className="font-mono uppercase tracking-widest text-sm">
+							<DialogTitle className="font-mono uppercase tracking-widest text-sm text-foreground/70">
 								{t('shortcuts.title')}
 							</DialogTitle>
-							<DialogDescription className="font-mono text-xs">
+							<DialogDescription className="font-mono text-xs text-muted-foreground">
 								{t('shortcuts.description')}
 							</DialogDescription>
 						</DialogHeader>
 
-						<div className="space-y-2">
+						<div className="space-y-2 mt-4">
 							<div className="grid grid-cols-1 gap-2">
-								<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-									<div>{t('shortcuts.rows.undo')}</div>
-									<div>Ctrl/Cmd + Z</div>
+								<div className="flex items-center justify-between border-b border-border/40 pb-2 font-mono text-xs">
+									<div className="text-muted-foreground">{t('shortcuts.rows.undo')}</div>
+									<div className="bg-muted px-1.5 py-0.5 rounded text-foreground">Ctrl/Cmd + Z</div>
 								</div>
-								<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-									<div>{t('shortcuts.rows.redo')}</div>
-									<div>Ctrl/Cmd + Shift + Z · Ctrl/Cmd + Y</div>
+								<div className="flex items-center justify-between border-b border-border/40 pb-2 font-mono text-xs">
+									<div className="text-muted-foreground">{t('shortcuts.rows.redo')}</div>
+									<div className="bg-muted px-1.5 py-0.5 rounded text-foreground">Ctrl/Cmd + Shift + Z</div>
 								</div>
-								<div className="flex items-center justify-between border-b border-border pb-2 font-mono text-xs">
-									<div>{t('shortcuts.rows.toggleStructure')}</div>
-									<div>Ctrl/Cmd + \\</div>
+								<div className="flex items-center justify-between border-b border-border/40 pb-2 font-mono text-xs">
+									<div className="text-muted-foreground">{t('shortcuts.rows.toggleStructure')}</div>
+									<div className="bg-muted px-1.5 py-0.5 rounded text-foreground">Ctrl/Cmd + \</div>
 								</div>
 								<div className="flex items-center justify-between font-mono text-xs">
-									<div>{t('shortcuts.rows.publish')}</div>
-									<div>Ctrl/Cmd + Enter</div>
+									<div className="text-muted-foreground">{t('shortcuts.rows.publish')}</div>
+									<div className="bg-muted px-1.5 py-0.5 rounded text-foreground">Ctrl/Cmd + Enter</div>
 								</div>
 							</div>
 						</div>
@@ -851,15 +848,15 @@ function ThreadTemplateVersionEditorRoute() {
 				</Dialog>
 
 				{/* HEADER */}
-				<header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-3 z-30 relative">
+				<header className="flex h-14 shrink-0 items-center justify-between bg-background border-b border-border/40 px-4 z-30 relative">
 					{/* LEFT: Context */}
 					<div className="flex items-center gap-4">
-						<div className="flex items-center gap-2">
+						<div className="flex items-center gap-3">
 							<Button
 								type="button"
 								variant="ghost"
 								size="icon"
-								className="size-8 rounded-none text-muted-foreground hover:text-foreground"
+								className="size-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
 								onClick={() => {
 									if (!confirmDiscardChanges('leave')) return
 									void navigate({ to: '/thread-templates' })
@@ -868,11 +865,17 @@ function ThreadTemplateVersionEditorRoute() {
 							>
 								<ArrowLeft className="size-4" />
 							</Button>
+							
 							<div className="flex flex-col">
-								<h1 className="font-mono text-sm font-bold uppercase tracking-tight truncate max-w-[200px]">
-									{library ? String((library as any).name) : '…'}
-								</h1>
-								<div className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+								<div className="flex items-center gap-2">
+									<h1 className="font-semibold text-sm tracking-tight truncate max-w-[200px]">
+										{library ? String((library as any).name) : '…'}
+									</h1>
+									{isDirty && (
+										<span className="flex h-1.5 w-1.5 rounded-full bg-amber-500 ring-2 ring-amber-500/20" />
+									)}
+								</div>
+								<div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground/70 uppercase tracking-wider">
 									<span>
 										{selectedVersion
 											? t('header.versionTag', {
@@ -880,19 +883,11 @@ function ThreadTemplateVersionEditorRoute() {
 												})
 											: t('header.versionTagUnknown')}
 									</span>
-									{isDirty && (
-										<>
-											<span className="size-1 rounded-full bg-amber-500" />
-											<span className="text-amber-500">
-												{t('header.unsaved')}
-											</span>
-										</>
-									)}
 								</div>
 							</div>
 						</div>
 
-						<div className="h-6 w-px bg-border/60" />
+						<div className="h-4 w-px bg-border/40" />
 
 						{/* Version Selector */}
 						<Select
@@ -908,8 +903,8 @@ function ThreadTemplateVersionEditorRoute() {
 								})
 							}}
 						>
-							<SelectTrigger className="h-8 w-[140px] rounded-none border-0 bg-transparent font-mono text-xs shadow-none hover:bg-accent/50 focus:ring-0 px-2 gap-2">
-								<History className="size-3.5 text-muted-foreground" />
+							<SelectTrigger className="h-7 w-auto min-w-[100px] rounded-full border border-border/30 bg-muted/30 font-mono text-xs shadow-none hover:bg-muted/50 focus:ring-0 px-2.5 gap-2 transition-all">
+								<History className="size-3 text-muted-foreground" />
 								<SelectValue placeholder={t('controls.versionPlaceholder')} />
 							</SelectTrigger>
 							<SelectContent>
@@ -933,20 +928,19 @@ function ThreadTemplateVersionEditorRoute() {
 					<div className="flex items-center gap-3">
 						{/* Thread Preview Context */}
 						<div className="hidden lg:flex items-center gap-2">
-							<span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-								{t('controls.previewingLabel')}
-							</span>
 							<Select
 								value={previewThreadId || ''}
 								onValueChange={(v) => {
 									void navigate({ search: { previewThreadId: v } })
 								}}
 							>
-								<SelectTrigger className="h-8 w-[200px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 gap-2">
+								<SelectTrigger className="h-8 max-w-[200px] rounded-full font-mono text-xs bg-muted/30 border-transparent hover:bg-muted/50 focus:ring-0 gap-2 transition-colors">
 									<MonitorPlay className="size-3.5 text-muted-foreground" />
-									<SelectValue
-										placeholder={t('controls.previewThreadPlaceholder')}
-									/>
+									<span className="truncate">
+										<SelectValue
+											placeholder={t('controls.previewThreadPlaceholder')}
+										/>
+									</span>
 								</SelectTrigger>
 								<SelectContent align="end">
 									{threads.map((t: any) => (
@@ -964,7 +958,7 @@ function ThreadTemplateVersionEditorRoute() {
 							</Select>
 						</div>
 
-						<div className="h-6 w-px bg-border/60" />
+						<div className="h-4 w-px bg-border/40" />
 
 						<div className="flex items-center gap-1">
 							<Tooltip>
@@ -972,10 +966,10 @@ function ThreadTemplateVersionEditorRoute() {
 									<Button
 										variant="ghost"
 										size="icon"
-										className="size-8 rounded-sm"
+										className="size-8 rounded-full hover:bg-muted"
 										onClick={() => setShortcutsOpen(true)}
 									>
-										<Keyboard className="size-4" />
+										<Keyboard className="size-4 text-muted-foreground" />
 									</Button>
 								</TooltipTrigger>
 								<TooltipContent
@@ -991,7 +985,7 @@ function ThreadTemplateVersionEditorRoute() {
 									<Button
 										variant="ghost"
 										size="icon"
-										className="size-8 rounded-sm"
+										className="size-8 rounded-full hover:bg-muted"
 										disabled={!selectedVersion}
 										onClick={() => {
 											if (!selectedVersion) return
@@ -1003,7 +997,7 @@ function ThreadTemplateVersionEditorRoute() {
 											toast.message(t('toasts.resetToVersion'))
 										}}
 									>
-										<History className="size-4" />
+										<History className="size-4 text-muted-foreground" />
 									</Button>
 								</TooltipTrigger>
 								<TooltipContent
@@ -1015,17 +1009,17 @@ function ThreadTemplateVersionEditorRoute() {
 							</Tooltip>
 						</div>
 
-						<div className="flex items-center gap-2">
+						<div className="flex items-center gap-2 pl-2">
 							<Input
 								value={note}
 								onChange={(e) => setNote(e.target.value)}
 								placeholder={t('controls.publishNotePlaceholder')}
-								className="h-8 w-[160px] rounded-sm font-mono text-xs bg-muted/30 border-border/50 focus:bg-background transition-colors"
+								className="h-8 w-[180px] rounded-full font-mono text-xs bg-muted/30 border-transparent hover:bg-muted/50 focus:bg-background focus:border-primary/20 transition-all placeholder:text-muted-foreground/50"
 							/>
 							<Button
 								type="button"
 								size="sm"
-								className="h-8 rounded-sm font-mono text-xs uppercase gap-2"
+								className="h-8 rounded-full font-mono text-xs font-semibold uppercase tracking-wide gap-2 px-4 shadow-sm"
 								disabled={!canPublish}
 								onClick={() => {
 									if (!library) return
@@ -1056,7 +1050,7 @@ function ThreadTemplateVersionEditorRoute() {
 				<div className="flex-1 overflow-hidden relative">
 					<div
 						ref={containerRef}
-						className="h-full grid grid-cols-1 lg:grid-cols-[1fr_8px_var(--tte-right)]"
+						className="h-full grid grid-cols-1 lg:grid-cols-[1fr_auto_var(--tte-right)]"
 						style={
 							{
 								'--tte-right': `${inspectorColPx}px`,
@@ -1064,44 +1058,48 @@ function ThreadTemplateVersionEditorRoute() {
 						}
 					>
 						{/* CENTER CANVAS */}
-						<div className="order-1 lg:order-none lg:col-start-1 lg:col-end-2 lg:row-start-1 h-full overflow-hidden flex flex-col min-h-0 bg-muted/5">
-							<ThreadTemplateCanvasToolbar
-								t={t}
-								editorScene={editorScene}
-								onEditorSceneChange={(s) => {
-									setEditorScene(s)
-									setEditorSelectedKey(`${s}:[]`)
-								}}
-								previewMode={previewMode}
-								onPreviewModeChange={(m) => setPreviewMode(m)}
-								zoom={canvasZoom}
-								onZoomChange={(next) => canvasEditorRef.current?.setZoom(next)}
-								onResetView={() => canvasEditorRef.current?.resetView()}
-								focusMode={layout.inspectorCollapsed}
-								onToggleFocusMode={() => {
-									setInspectorCollapsed(!layout.inspectorCollapsed)
-								}}
-								canUndo={visualTemplateHistory.past.length > 0}
-								canRedo={visualTemplateHistory.future.length > 0}
-								onUndo={undoVisualTemplate}
-								onRedo={redoVisualTemplate}
-							/>
+						<div className="order-1 lg:order-none lg:col-start-1 lg:col-end-2 lg:row-start-1 h-full overflow-hidden flex flex-col min-h-0 bg-muted/5 relative group/canvas">
+							
+
 
 							<div className="flex-1 min-h-0 relative overflow-hidden">
+								{/* Floating Toolbar */}
+								<ThreadTemplateFloatingToolbar
+									t={t}
+									editorScene={editorScene}
+									onEditorSceneChange={(s) => {
+										setEditorScene(s)
+										setEditorSelectedKey(`${s}:[]`)
+									}}
+									previewMode={previewMode}
+									onPreviewModeChange={(m) => setPreviewMode(m)}
+									zoom={canvasZoom}
+									onZoomChange={(next) => canvasEditorRef.current?.setZoom(next)}
+									onResetView={() => canvasEditorRef.current?.resetView()}
+									focusMode={layout.inspectorCollapsed}
+									onToggleFocusMode={() => {
+										setInspectorCollapsed(!layout.inspectorCollapsed)
+									}}
+									canUndo={visualTemplateHistory.past.length > 0}
+									canRedo={visualTemplateHistory.future.length > 0}
+									onUndo={undoVisualTemplate}
+									onRedo={redoVisualTemplate}
+								/>
+
 								{/* Canvas Background Pattern */}
 								<div
-									className="absolute inset-0 opacity-[0.03] pointer-events-none"
+									className="absolute inset-0 opacity-[0.02] pointer-events-none"
 									style={{
 										backgroundImage:
 											'radial-gradient(circle, currentColor 1px, transparent 1px)',
-										backgroundSize: '20px 20px',
+										backgroundSize: '24px 24px',
 									}}
 								/>
 
 								<div className="h-full overflow-auto">
-									<div className="min-h-full flex items-center justify-center p-4 lg:p-6 relative">
-										<div className="origin-center w-full max-w-[720px] xl:max-w-[840px] 2xl:max-w-[960px] flex flex-col items-center justify-center">
-											<div className="relative w-full shadow-[0_20px_50px_-12px_rgba(0,0,0,0.2)] bg-black rounded-sm overflow-hidden ring-1 ring-black/5">
+									<div className="min-h-full flex items-center justify-center p-8 lg:p-12 relative pb-28">
+										<div className="origin-center w-full max-w-[720px] xl:max-w-[840px] 2xl:max-w-[960px] flex flex-col items-center justify-center transition-all duration-300">
+											<div className="relative w-full shadow-2xl shadow-black/20 bg-black rounded-lg overflow-hidden ring-1 ring-black/5 transition-all duration-500 hover:shadow-3xl">
 												{previewMode === 'edit' ? (
 													<ThreadRemotionEditorSurface
 														ref={canvasEditorRef}
@@ -1177,9 +1175,9 @@ function ThreadTemplateVersionEditorRoute() {
 								</div>
 
 								{/* Canvas Messages */}
-								<div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-none opacity-80 flex flex-col items-center gap-2 z-10">
+								<div className="absolute top-6 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center gap-2 z-10 w-full max-w-sm">
 									{previewThreadId && previewThreadQuery.isError ? (
-										<div className="font-mono text-xs text-destructive bg-destructive/10 backdrop-blur px-2 py-1 rounded shadow-sm border border-destructive/20">
+										<div className="font-mono text-xs text-destructive bg-destructive/5 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-destructive/10 animate-in fade-in slide-in-from-top-2">
 											{t('panels.previewLoadFailed')}
 										</div>
 									) : null}
@@ -1187,7 +1185,7 @@ function ThreadTemplateVersionEditorRoute() {
 									{previewThreadId &&
 									!previewRoot &&
 									!previewThreadQuery.isLoading ? (
-										<div className="font-mono text-xs text-muted-foreground bg-muted/80 backdrop-blur px-2 py-1 rounded shadow-sm border border-border/50">
+										<div className="font-mono text-xs text-muted-foreground bg-background/50 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-border/50 animate-in fade-in slide-in-from-top-2">
 											{t('panels.previewNoRoot')}
 										</div>
 									) : null}
@@ -1195,7 +1193,7 @@ function ThreadTemplateVersionEditorRoute() {
 							</div>
 
 							{canScrubTimeline ? (
-								<div className="shrink-0 border-t border-border bg-card/70 backdrop-blur px-3 py-2">
+								<div className="shrink-0 border-t border-border/40 bg-background/80 backdrop-blur-xl px-4 py-3 z-30">
 									<ThreadRemotionTimeline
 										scene={editorScene}
 										timeline={timeline}
@@ -1209,7 +1207,7 @@ function ThreadTemplateVersionEditorRoute() {
 
 						{/* INSPECTOR RESIZER */}
 						<div
-							className="hidden lg:flex lg:col-start-2 lg:col-end-3 lg:row-start-1 cursor-col-resize items-center justify-center select-none touch-none hover:bg-accent/50 transition-colors z-10"
+							className="hidden lg:flex lg:col-start-2 lg:col-end-3 lg:row-start-1 cursor-col-resize items-center justify-center select-none touch-none hover:bg-accent/50 transition-colors z-20 w-2 -ml-1"
 							onPointerDown={(e) => startResizeInspector(e)}
 							onDoubleClick={() => {
 								setLayout((prev) => ({
@@ -1219,23 +1217,23 @@ function ThreadTemplateVersionEditorRoute() {
 								}))
 							}}
 						>
-							<div className="h-8 w-1 rounded-full bg-border/80" />
+							<div className="h-8 w-1 rounded-full bg-border/50 hover:bg-border transition-colors" />
 						</div>
 
 						{/* INSPECTOR PANEL */}
-						<div className="order-2 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1 h-full overflow-hidden border-l border-border bg-card flex flex-col">
+						<div className="order-2 lg:order-none lg:col-start-3 lg:col-end-4 lg:row-start-1 h-full overflow-hidden border-l border-border/40 bg-background flex flex-col shadow-xl shadow-black/5 z-20">
 							{layout.inspectorCollapsed ? (
-								<div className="h-full flex flex-col items-center gap-3 py-3">
+								<div className="h-full flex flex-col items-center gap-4 py-4 bg-muted/10">
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<Button
 												type="button"
 												variant="ghost"
 												size="icon"
-												className="size-8 rounded-sm"
+												className="size-9 rounded-xl hover:bg-muted"
 												onClick={() => setInspectorCollapsed(false)}
 											>
-												<PanelRightOpen className="size-4" />
+												<PanelRightOpen className="size-4 text-muted-foreground" />
 											</Button>
 										</TooltipTrigger>
 										<TooltipContent
@@ -1246,7 +1244,9 @@ function ThreadTemplateVersionEditorRoute() {
 										</TooltipContent>
 									</Tooltip>
 
-									<div className="flex flex-col items-center gap-1">
+									<div className="w-4 h-px bg-border/40" />
+
+									<div className="flex flex-col items-center gap-2">
 										<Tooltip>
 											<TooltipTrigger asChild>
 												<Button
@@ -1255,7 +1255,7 @@ function ThreadTemplateVersionEditorRoute() {
 														inspectorTab === 'structure' ? 'secondary' : 'ghost'
 													}
 													size="icon"
-													className="size-8 rounded-sm"
+													className="size-9 rounded-xl transition-all"
 													onClick={() => {
 														setInspectorTab('structure')
 														setInspectorCollapsed(false)
@@ -1282,7 +1282,7 @@ function ThreadTemplateVersionEditorRoute() {
 															: 'ghost'
 													}
 													size="icon"
-													className="size-8 rounded-sm"
+													className="size-9 rounded-xl transition-all"
 													onClick={() => {
 														setInspectorTab('properties')
 														setInspectorCollapsed(false)
@@ -1307,7 +1307,7 @@ function ThreadTemplateVersionEditorRoute() {
 														inspectorTab === 'config' ? 'secondary' : 'ghost'
 													}
 													size="icon"
-													className="size-8 rounded-sm"
+													className="size-9 rounded-xl transition-all"
 													onClick={() => {
 														setInspectorTab('config')
 														setInspectorCollapsed(false)
@@ -1328,7 +1328,7 @@ function ThreadTemplateVersionEditorRoute() {
 							) : (
 								<>
 									{/* Tab Header */}
-									<div className="shrink-0 border-b border-border px-3 py-2 flex items-center gap-2">
+									<div className="shrink-0 border-b border-border/40 px-3 py-3 flex items-center gap-3">
 										<Tabs
 											value={inspectorTab}
 											className="flex-1 gap-0"
@@ -1338,22 +1338,22 @@ function ThreadTemplateVersionEditorRoute() {
 												)
 											}
 										>
-											<TabsList className="w-full h-8 bg-muted/50 p-0.5 rounded-md">
+											<TabsList className="w-full h-9 bg-muted/30 p-1 rounded-lg">
 												<TabsTrigger
 													value="structure"
-													className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+													className="flex-1 h-full font-mono text-[10px] font-semibold uppercase tracking-wider rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
 												>
 													{t('panels.structureShortTitle')}
 												</TabsTrigger>
 												<TabsTrigger
 													value="properties"
-													className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+													className="flex-1 h-full font-mono text-[10px] font-semibold uppercase tracking-wider rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
 												>
 													{t('panels.propertiesShortTitle')}
 												</TabsTrigger>
 												<TabsTrigger
 													value="config"
-													className="flex-1 h-full font-mono text-[10px] uppercase tracking-widest rounded-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+													className="flex-1 h-full font-mono text-[10px] font-semibold uppercase tracking-wider rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
 												>
 													{t('panels.configShortTitle')}
 												</TabsTrigger>
@@ -1366,10 +1366,10 @@ function ThreadTemplateVersionEditorRoute() {
 													type="button"
 													variant="ghost"
 													size="icon"
-													className="size-8 rounded-sm"
+													className="size-7 rounded-sm active:scale-95 transition-transform"
 													onClick={() => setInspectorCollapsed(true)}
 												>
-													<PanelRightClose className="size-4" />
+													<PanelRightClose className="size-4 text-muted-foreground" />
 												</Button>
 											</TooltipTrigger>
 											<TooltipContent
@@ -1383,15 +1383,15 @@ function ThreadTemplateVersionEditorRoute() {
 
 									{/* Tab Content */}
 									{inspectorTab === 'config' ? (
-										<div className="flex-1 p-2 min-h-0">
+										<div className="flex-1 p-3 min-h-0 bg-muted/5">
 											<Textarea
 												value={toPrettyJson(visualTemplateConfig)}
 												readOnly
-												className="h-full w-full resize-none rounded-sm font-mono text-xs bg-muted/30 border-0 focus-visible:ring-0"
+												className="h-full w-full resize-none rounded-md font-mono text-xs bg-background border-border/40 focus-visible:ring-1 focus-visible:ring-primary/20 p-3 leading-relaxed"
 											/>
 										</div>
 									) : inspectorTab === 'structure' ? (
-										<div className="flex-1 min-h-0 overflow-hidden">
+										<div className="flex-1 min-h-0 overflow-hidden bg-background">
 											<ThreadTemplateVisualEditor
 												layout="panels"
 												structureClassName="h-full"
@@ -1416,7 +1416,7 @@ function ThreadTemplateVersionEditorRoute() {
 											/>
 										</div>
 									) : (
-										<div className="flex-1 min-h-0 overflow-hidden">
+										<div className="flex-1 min-h-0 overflow-hidden bg-background">
 											<ThreadTemplateVisualEditor
 												layout="panels"
 												structureClassName="hidden"
@@ -1449,3 +1449,4 @@ function ThreadTemplateVersionEditorRoute() {
 		</TooltipProvider>
 	)
 }
+

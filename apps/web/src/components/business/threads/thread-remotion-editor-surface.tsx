@@ -1,23 +1,22 @@
 'use client'
 
 import { buildCommentTimeline, REMOTION_FPS } from '@app/media-comments'
-import type { ThumbnailMethods } from '@remotion/player'
 import {
-	DEFAULT_THREAD_TEMPLATE_ID,
-	getThreadTemplate,
-	type ThreadTemplateId,
+    DEFAULT_THREAD_TEMPLATE_ID,
+    getThreadTemplate,
+    type ThreadTemplateId,
 } from '@app/remotion-project/thread-templates'
-import type { ThreadVideoInputProps } from '@app/remotion-project/types'
-import type { ThreadTemplateConfigV1 } from '@app/remotion-project/types'
+import type { ThreadTemplateConfigV1, ThreadVideoInputProps } from '@app/remotion-project/types'
+import type { ThumbnailMethods } from '@remotion/player'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import * as React from 'react'
+import { ThreadRemotionEditorCard } from '~/components/business/threads/thread-remotion-editor-card'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
-import { Switch } from '~/components/ui/switch'
 import { Skeleton } from '~/components/ui/skeleton'
-import { ThreadRemotionEditorCard } from '~/components/business/threads/thread-remotion-editor-card'
+import { Switch } from '~/components/ui/switch'
 import { useTranslations } from '~/lib/i18n'
 
 type DbThread = {
@@ -80,30 +79,62 @@ export function ThreadRemotionTimeline({
 	const timelineMaxRaw = scene === 'post' ? postEndFrame : coverEndFrame
 
 	const timelineMin = Math.min(Math.max(0, timelineMinRaw), maxFrame)
-	const safeTimelineMax = Math.min(Math.max(timelineMin, timelineMaxRaw), maxFrame)
-	const timelineFrame = Math.min(Math.max(editFrame, timelineMin), safeTimelineMax)
+	const safeTimelineMax = Math.min(
+		Math.max(timelineMin, timelineMaxRaw),
+		maxFrame,
+	)
+	const timelineFrame = Math.min(
+		Math.max(editFrame, timelineMin),
+		safeTimelineMax,
+	)
+
+	const duration = safeTimelineMax - timelineMin || 1
+	const progress = (timelineFrame - timelineMin) / duration
+	const progressPercent = Math.max(0, Math.min(100, progress * 100))
 
 	return (
 		<div
 			className={[
-				'flex items-center gap-2 rounded-sm border border-border bg-muted/20 px-2 py-1',
-				disabled ? 'opacity-60' : '',
+				'w-full flex items-center gap-4 select-none group/timeline',
+				disabled ? 'opacity-50 pointer-events-none' : '',
 			].join(' ')}
 		>
-			<div className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+			<div className="shrink-0 w-12 text-right font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 transition-colors group-hover/timeline:text-muted-foreground">
 				{scene === 'post' ? t('buttons.post') : t('buttons.cover')}
 			</div>
-			<input
-				type="range"
-				min={timelineMin}
-				max={safeTimelineMax}
-				value={timelineFrame}
-				disabled={disabled || safeTimelineMax <= timelineMin}
-				onChange={(e) => onEditFrameChange(Number(e.target.value))}
-				className="w-full"
-			/>
-			<div className="shrink-0 tabular-nums font-mono text-[10px] text-muted-foreground">
-				{timelineFrame}/{safeTimelineMax}
+
+			<div className="relative flex-1 h-6 flex items-center group/slider cursor-pointer">
+				{/* Track Background */}
+				<div className="absolute inset-x-0 h-1 bg-muted/30 rounded-full overflow-hidden transition-colors group-hover/slider:bg-muted/50">
+					{/* Progress Fill */}
+					<div
+						className="h-full bg-foreground/20 transition-all duration-75 ease-out group-hover/slider:bg-foreground/30"
+						style={{ width: `${progressPercent}%` }}
+					/>
+				</div>
+
+				{/* Native Input (Hidden but functional) */}
+				<input
+					type="range"
+					min={timelineMin}
+					max={safeTimelineMax}
+					value={timelineFrame}
+					disabled={disabled || safeTimelineMax <= timelineMin}
+					onChange={(e) => onEditFrameChange(Number(e.target.value))}
+					className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+				/>
+
+				{/* Custom Thumb (Visual) */}
+				<div
+					className="absolute h-3.5 w-1.5 bg-foreground rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.2)] ring-2 ring-background transition-transform duration-150 ease-out group-hover/slider:scale-125 group-active/slider:scale-95"
+					style={{ left: `${progressPercent}%`, marginLeft: '-3px' }}
+				/>
+			</div>
+
+			<div className="shrink-0 w-16 font-mono text-[10px] font-medium text-muted-foreground/60 tabular-nums text-right flex items-center justify-end gap-1">
+				<span className="text-foreground">{timelineFrame}</span>
+				<span className="opacity-30">/</span>
+				<span>{safeTimelineMax}</span>
 			</div>
 		</div>
 	)
