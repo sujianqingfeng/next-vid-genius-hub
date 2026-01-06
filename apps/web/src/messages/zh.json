@@ -348,19 +348,25 @@
 				"download": "下载",
 				"translateToZh": "翻译（中文）",
 				"translateAllToZh": "全部翻译（中文）",
-				"translating": "翻译中…",
-				"translatingAll": "全部翻译中…",
-				"useTranslation": "使用翻译",
-				"save": "保存",
-				"reset": "重置",
-				"startRender": "开始渲染",
-				"deletePostAria": "删除帖子"
-			},
-			"confirmDeletePost": {
-				"title": "删除帖子？",
-				"description": "删除 {authorName} 的这条帖子？",
-				"confirmText": "删除"
-			},
+    "translating": "翻译中…",
+    "translatingAll": "全部翻译中…",
+    "useTranslation": "使用翻译",
+    "edit": "编辑",
+    "save": "保存",
+    "reset": "重置",
+    "startRender": "开始渲染",
+    "deletePostAria": "删除帖子"
+  },
+  "confirmDiscard": {
+    "title": "放弃修改？",
+    "description": "你有未保存的修改，确定要放弃吗？",
+    "confirmText": "放弃"
+  },
+  "confirmDeletePost": {
+    "title": "删除帖子？",
+    "description": "删除 {authorName} 的这条帖子？",
+    "confirmText": "删除"
+  },
 			"inputs": {
 				"postContentPlaceholder": "帖子内容..."
 			},
@@ -379,13 +385,14 @@
 			"translation": {
 				"empty": "还没有翻译内容。"
 			},
-			"media": {
-				"assetRowMissing": "未在 `thread_assets` 中找到对应资源行",
-				"noBlocks": "此帖子没有图片/视频/链接块。",
-				"openSourceUrl": "打开 sourceUrl",
-				"unknownBlockType": "未知块类型：{type}",
-				"labels": {
-					"link": "链接",
+  "media": {
+    "assetRowMissing": "未在 `thread_assets` 中找到对应资源行",
+    "noPending": "没有待下载的媒体资源。",
+    "noBlocks": "此帖子没有图片/视频/链接块。",
+    "openSourceUrl": "打开 sourceUrl",
+    "unknownBlockType": "未知块类型：{type}",
+    "labels": {
+      "link": "链接",
 					"title": "标题",
 					"description": "描述",
 					"previewAssetId": "预览资源ID"

@@ -349,18 +349,24 @@
 				"translateToZh": "Translate (zh-CN)",
 				"translateAllToZh": "Translate All (zh-CN)",
 				"translating": "Translating…",
-				"translatingAll": "Translating All…",
-				"useTranslation": "Use Translation",
-				"save": "Save",
-				"reset": "Reset",
-				"startRender": "Start Render",
-				"deletePostAria": "Delete post"
-			},
-			"confirmDeletePost": {
-				"title": "Delete post?",
-				"description": "Delete this post by “{authorName}”?",
-				"confirmText": "Delete"
-			},
+      "translatingAll": "Translating All…",
+      "useTranslation": "Use Translation",
+      "edit": "Edit",
+      "save": "Save",
+      "reset": "Reset",
+      "startRender": "Start Render",
+      "deletePostAria": "Delete post"
+    },
+    "confirmDiscard": {
+      "title": "Discard changes?",
+      "description": "You have unsaved changes. Discard them?",
+      "confirmText": "Discard"
+    },
+    "confirmDeletePost": {
+      "title": "Delete post?",
+      "description": "Delete this post by “{authorName}”?",
+      "confirmText": "Delete"
+    },
 			"inputs": {
 				"postContentPlaceholder": "Post content..."
 			},
@@ -379,13 +385,14 @@
 			"translation": {
 				"empty": "No translation yet."
 			},
-			"media": {
-				"assetRowMissing": "asset row not found in `thread_assets`",
-				"noBlocks": "No image/video/link blocks on this post.",
-				"openSourceUrl": "Open sourceUrl",
-				"unknownBlockType": "unknown block type: {type}",
-				"labels": {
-					"link": "link",
+  "media": {
+    "assetRowMissing": "asset row not found in `thread_assets`",
+    "noPending": "No pending media.",
+    "noBlocks": "No image/video/link blocks on this post.",
+    "openSourceUrl": "Open sourceUrl",
+    "unknownBlockType": "unknown block type: {type}",
+    "labels": {
+      "link": "link",
 					"title": "title",
 					"description": "desc",
 					"previewAssetId": "previewAssetId"

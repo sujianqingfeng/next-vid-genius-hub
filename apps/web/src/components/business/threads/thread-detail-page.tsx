@@ -4,9 +4,16 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { toast } from 'sonner'
-import { Loader2, Play, Trash2 } from 'lucide-react'
+import { Loader2, Pencil, Play, Trash2 } from 'lucide-react'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 import { Button } from '~/components/ui/button'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from '~/components/ui/dialog'
 import {
 	Select,
 	SelectContent,
@@ -2865,6 +2872,79 @@ export function ThreadDetailPage({ id }: { id: string }) {
 		setDraftText(firstTextBlockText(selectedPost?.contentBlocks) || '')
 	}, [selectedPostId])
 
+	const [isEditorOpen, setIsEditorOpen] = React.useState(false)
+
+	const originalSelectedPostText = React.useMemo(
+		() => firstTextBlockText(selectedPost?.contentBlocks) || '',
+		[selectedPost],
+	)
+
+	const hasUnsavedEditorChanges =
+		isEditorOpen && draftText !== originalSelectedPostText
+
+	const confirmDiscardEditorChanges = React.useCallback(async () => {
+		return await confirmDialog({
+			title: t('confirmDiscard.title'),
+			description: t('confirmDiscard.description'),
+			confirmText: t('confirmDiscard.confirmText'),
+			variant: 'destructive',
+		})
+	}, [confirmDialog, t])
+
+	const requestCloseEditor = React.useCallback(async () => {
+		if (!isEditorOpen) return
+		if (!hasUnsavedEditorChanges) {
+			setIsEditorOpen(false)
+			return
+		}
+		const ok = await confirmDiscardEditorChanges()
+		if (!ok) return
+		setDraftText(originalSelectedPostText)
+		setIsEditorOpen(false)
+	}, [
+		confirmDiscardEditorChanges,
+		hasUnsavedEditorChanges,
+		isEditorOpen,
+		originalSelectedPostText,
+	])
+
+	const onEditorOpenChange = React.useCallback(
+		(open: boolean) => {
+			if (open) {
+				setIsEditorOpen(true)
+				return
+			}
+			void requestCloseEditor()
+		},
+		[requestCloseEditor],
+	)
+
+	const openEditorForPost = React.useCallback(
+		(postId: string) => {
+			void (async () => {
+				if (
+					isEditorOpen &&
+					hasUnsavedEditorChanges &&
+					postId !== selectedPostId
+				) {
+					const ok = await confirmDiscardEditorChanges()
+					if (!ok) return
+				}
+
+				if (postId === selectedPostId) setDraftText(originalSelectedPostText)
+				setSelectedPostId(postId)
+				setIsEditorOpen(true)
+			})()
+		},
+		[
+			confirmDiscardEditorChanges,
+			hasUnsavedEditorChanges,
+			isEditorOpen,
+			originalSelectedPostText,
+			selectedPostId,
+		],
+	)
+
 	const updateMutation = useEnhancedMutation(
 		queryOrpc.thread.updatePostText.mutationOptions({
 			onSuccess: async () => {
@@ -3357,6 +3437,60 @@ export function ThreadDetailPage({ id }: { id: string }) {
 						</div>
 					</div>
 
+					{/* Media Section */}
+					<div className="space-y-2">
+						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+							{t('sections.media')}
+						</div>
+						<div className="border border-border bg-card p-4">
+							{canIngestAssets ? (
+								<div className="flex flex-wrap items-center justify-end gap-2">
+									<Select
+										value={selectedProxyId}
+										onValueChange={setSelectedProxyId}
+										disabled={ingestAssetsMutation.isPending || proxiesQuery.isLoading}
+									>
+										<SelectTrigger className="h-8 rounded-[2px] shadow-none font-sans text-[10px] uppercase px-2">
+											<SelectValue placeholder="Proxy" />
+										</SelectTrigger>
+										<SelectContent>
+											{successProxies.map((p) => (
+												<SelectItem
+													key={p.id}
+													value={p.id}
+													className="font-mono text-xs"
+												>
+													{p.name ?? p.id}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8"
+										disabled={ingestAssetsMutation.isPending}
+										onClick={() =>
+											ingestAssetsMutation.mutate({
+												threadId: id,
+												proxyId:
+													selectedProxyId !== 'none' ? selectedProxyId : null,
+											})
+										}
+									>
+										{ingestAssetsMutation.isPending ? 'DL...' : 'Download Media'}
+									</Button>
+								</div>
+							) : (
+								<div className="font-mono text-xs text-muted-foreground">
+									{t('media.noPending')}
+								</div>
+							)}
+						</div>
+					</div>
+
 					{/* Posts & Editor */}
 					<div className="space-y-2">
 						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
@@ -3364,47 +3498,51 @@ export function ThreadDetailPage({ id }: { id: string }) {
 						</div>
 						<div className="border border-border bg-card flex flex-col max-h-[800px]">
 							{/* Post List */}
-								<div className="flex-1 overflow-y-auto min-h-[150px] max-h-[300px] border-b border-border">
-									{root ? (
-									<button
-										type="button"
-										onClick={() => setSelectedPostId(root.id)}
-										className={`w-full text-left border-b border-border px-4 py-3 font-mono text-xs transition-colors ${
+							<div className="flex-1 overflow-y-auto min-h-[150px] max-h-[800px]">
+								{root ? (
+									<div
+										className={`flex items-stretch border-b border-border ${
 											selectedPostId === root.id
 												? 'bg-primary/5'
 												: 'hover:bg-muted/30'
 										}`}
 									>
-										<div className="flex items-center gap-2 mb-1">
-											<span className="uppercase tracking-widest text-[10px] text-muted-foreground font-bold border border-border px-1 rounded-[2px]">
-												{t('labels.root')}
-											</span>
-											<span className="font-bold">{root.authorName}</span>
-										</div>
-										{(() => {
-											const zhPreview =
-												(root as any)?.translations?.['zh-CN']?.plainText
-											const original = root.plainText || t('labels.emptyText')
-											const hasZh =
-												typeof zhPreview === 'string' && zhPreview.trim()
-											return (
-												<div className="space-y-0.5">
-													<div className="truncate text-muted-foreground opacity-80">
-														{original}
-													</div>
-													{hasZh ? (
+										<button
+											type="button"
+											onClick={() => setSelectedPostId(root.id)}
+											className="flex-1 text-left px-4 py-3 font-mono text-xs transition-colors"
+										>
+											<div className="flex items-center gap-2 mb-1">
+												<span className="uppercase tracking-widest text-[10px] text-muted-foreground font-bold border border-border px-1 rounded-[2px]">
+													{t('labels.root')}
+												</span>
+												<span className="font-bold">{root.authorName}</span>
+											</div>
+											{(() => {
+												const zhPreview =
+													(root as any)?.translations?.['zh-CN']?.plainText
+												const original =
+													root.plainText || t('labels.emptyText')
+												const hasZh =
+													typeof zhPreview === 'string' && zhPreview.trim()
+												return (
+													<div className="space-y-0.5">
 														<div className="truncate text-muted-foreground opacity-80">
-															{zhPreview}
+															{original}
 														</div>
-													) : null}
-												</div>
-											)
-										})()}
-										{(() => {
-											const preview = getPostPreviewMedia(root.contentBlocks)
-											return preview.length > 0 ? (
-												<div className="mt-2 flex gap-1">
-													{preview.map((m, idx) => (
+														{hasZh ? (
+															<div className="truncate text-muted-foreground opacity-80">
+																{zhPreview}
+															</div>
+														) : null}
+													</div>
+												)
+											})()}
+											{(() => {
+												const preview = getPostPreviewMedia(root.contentBlocks)
+												return preview.length > 0 ? (
+													<div className="mt-2 flex gap-1">
+														{preview.map((m, idx) => (
 															<div
 																key={`${m.kind}:${m.url}:${idx}`}
 																className="relative h-10 w-16 overflow-hidden border border-border/60 bg-muted/30"
@@ -3428,67 +3566,88 @@ export function ThreadDetailPage({ id }: { id: string }) {
 												) : null
 											})()}
 										</button>
-									) : null}
-										{replies.map((p) => {
-											const isSelected = selectedPostId === p.id
-											const isDeleting = deletingPostId === p.id
-											const preview = getPostPreviewMedia(p.contentBlocks)
-											const zhPreview =
-												(p as any)?.translations?.['zh-CN']?.plainText
-											const original = p.plainText || t('labels.emptyText')
-											const hasZh =
-												typeof zhPreview === 'string' && zhPreview.trim()
-											return (
-												<div
-													key={p.id}
-													className={`flex items-stretch border-b border-border last:border-0 ${
-													isSelected ? 'bg-primary/5' : 'hover:bg-muted/30'
-												}`}
+										<Button
+											type="button"
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8 my-auto mr-2 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/30"
+											aria-label={t('actions.edit')}
+											onClick={() => openEditorForPost(root.id)}
 										>
-												<button
-													type="button"
-													onClick={() => setSelectedPostId(p.id)}
-													className="flex-1 text-left px-4 py-3 font-mono text-xs transition-colors"
-													>
-														<div className="font-bold mb-1">{p.authorName}</div>
-														<div className="space-y-0.5">
-															<div className="truncate text-muted-foreground opacity-80">
-																{original}
-															</div>
-															{hasZh ? (
-																<div className="truncate text-muted-foreground opacity-80">
-																	{zhPreview}
-																</div>
-															) : null}
-														</div>
-														{preview.length > 0 ? (
-															<div className="mt-2 flex gap-1">
-																{preview.map((m, idx) => (
-																	<div
-																	key={`${m.kind}:${m.url}:${idx}`}
-																	className="relative h-10 w-16 overflow-hidden border border-border/60 bg-muted/30"
-																>
-																	<img
-																		src={m.url}
-																		alt=""
-																		className="h-full w-full object-cover"
-																		loading="lazy"
-																	/>
-																	{m.kind === 'video' ? (
-																		<div className="absolute inset-0 flex items-center justify-center">
-																			<div className="rounded-full bg-background/70 p-1.5 text-foreground shadow-sm">
-																				<Play className="h-3 w-3" />
-																			</div>
-																		</div>
-																	) : null}
-																</div>
-															))}
+											<Pencil className="h-3 w-3" />
+										</Button>
+									</div>
+								) : null}
+
+								{replies.map((p) => {
+									const isSelected = selectedPostId === p.id
+									const isDeleting = deletingPostId === p.id
+									const preview = getPostPreviewMedia(p.contentBlocks)
+									const zhPreview =
+										(p as any)?.translations?.['zh-CN']?.plainText
+									const original = p.plainText || t('labels.emptyText')
+									const hasZh = typeof zhPreview === 'string' && zhPreview.trim()
+									return (
+										<div
+											key={p.id}
+											className={`flex items-stretch border-b border-border last:border-0 ${
+												isSelected ? 'bg-primary/5' : 'hover:bg-muted/30'
+											}`}
+										>
+											<button
+												type="button"
+												onClick={() => setSelectedPostId(p.id)}
+												className="flex-1 text-left px-4 py-3 font-mono text-xs transition-colors"
+											>
+												<div className="font-bold mb-1">{p.authorName}</div>
+												<div className="space-y-0.5">
+													<div className="truncate text-muted-foreground opacity-80">
+														{original}
+													</div>
+													{hasZh ? (
+														<div className="truncate text-muted-foreground opacity-80">
+															{zhPreview}
 														</div>
 													) : null}
-												</button>
-												<Button
-													type="button"
-													variant="ghost"
+												</div>
+												{preview.length > 0 ? (
+													<div className="mt-2 flex gap-1">
+														{preview.map((m, idx) => (
+															<div
+																key={`${m.kind}:${m.url}:${idx}`}
+																className="relative h-10 w-16 overflow-hidden border border-border/60 bg-muted/30"
+															>
+																<img
+																	src={m.url}
+																	alt=""
+																	className="h-full w-full object-cover"
+																	loading="lazy"
+																/>
+																{m.kind === 'video' ? (
+																	<div className="absolute inset-0 flex items-center justify-center">
+																		<div className="rounded-full bg-background/70 p-1.5 text-foreground shadow-sm">
+																			<Play className="h-3 w-3" />
+																		</div>
+																	</div>
+																) : null}
+															</div>
+														))}
+													</div>
+												) : null}
+											</button>
+											<Button
+												type="button"
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 my-auto rounded-none text-muted-foreground hover:text-foreground hover:bg-muted/30"
+												aria-label={t('actions.edit')}
+												onClick={() => openEditorForPost(p.id)}
+											>
+												<Pencil className="h-3 w-3" />
+											</Button>
+											<Button
+												type="button"
+												variant="ghost"
 												size="icon"
 												className="h-8 w-8 my-auto mr-2 rounded-none text-muted-foreground hover:text-destructive hover:bg-destructive/10"
 												aria-label={t('actions.deletePostAria')}
@@ -3498,12 +3657,9 @@ export function ThreadDetailPage({ id }: { id: string }) {
 													void (async () => {
 														const ok = await confirmDialog({
 															title: t('confirmDeletePost.title'),
-															description: t(
-																'confirmDeletePost.description',
-																{
-																	authorName: p.authorName,
-																},
-															),
+															description: t('confirmDeletePost.description', {
+																authorName: p.authorName,
+															}),
 															confirmText: t('confirmDeletePost.confirmText'),
 															variant: 'destructive',
 														})
@@ -3525,202 +3681,153 @@ export function ThreadDetailPage({ id }: { id: string }) {
 									)
 								})}
 							</div>
+						</div>
 
-							{/* Editor Area */}
-							<div className="p-4 space-y-4 bg-muted/10">
-								<div className="flex items-center justify-between">
-									<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-										Editor
-									</div>
-									<div className="flex items-center gap-2">
-											{canIngestAssets ? (
-												<div className="flex items-center gap-2">
-													<Select
-														value={selectedProxyId}
-														onValueChange={setSelectedProxyId}
-														disabled={
-															ingestAssetsMutation.isPending ||
-															proxiesQuery.isLoading
-														}
-													>
-														<SelectTrigger className="h-6 rounded-[2px] shadow-none font-sans text-[10px] uppercase px-2">
-															<SelectValue placeholder="Proxy" />
-														</SelectTrigger>
-														<SelectContent>
-															{successProxies.map((p) => (
-																<SelectItem
-																	key={p.id}
-																	value={p.id}
-																	className="font-mono text-xs"
-																>
-																	{p.name ?? p.id}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
+						<Dialog open={isEditorOpen} onOpenChange={onEditorOpenChange}>
+							<DialogContent className="sm:max-w-3xl">
+								<DialogHeader>
+									<DialogTitle>{t('sections.editor')}</DialogTitle>
+									<DialogDescription>
+										{selectedPost
+											? `${selectedPost.authorName} · ${selectedPost.id.slice(0, 8)}...`
+											: ''}
+									</DialogDescription>
+								</DialogHeader>
 
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-6"
-														disabled={ingestAssetsMutation.isPending}
-														onClick={() =>
-															ingestAssetsMutation.mutate({
-																threadId: id,
-																proxyId:
-																	selectedProxyId !== 'none'
-																		? selectedProxyId
-																		: null,
-															})
-														}
-													>
-														{ingestAssetsMutation.isPending
-															? 'DL...'
-															: 'Download Media'}
-													</Button>
-												</div>
-											) : null}
-										</div>
-									</div>
-
-								{/* Translation Controls */}
-								<div className="flex items-center gap-2 border-b border-border pb-3">
-									<Button
-										type="button"
-										size="sm"
-										variant="ghost"
-										className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-6 px-2 border border-border"
-										disabled={
-											translateMutation.isPending ||
-											!thread?.id ||
-											!selectedPost?.id
-										}
-										onClick={() => {
-											if (!thread?.id || !selectedPost?.id) return
-											translateMutation.mutate({
-												threadId: thread.id,
-												postId: selectedPost.id,
-												targetLocale: 'zh-CN',
-											})
-										}}
-									>
-										{translateMutation.isPending ? (
-											<Loader2 className="h-3 w-3 animate-spin" />
-										) : (
-											'Translate to ZH'
-										)}
-									</Button>
-									{selectedZhTranslation ? (
+								<div className="space-y-4">
+									<div className="flex items-center gap-2 border-b border-border pb-3">
 										<Button
 											type="button"
 											size="sm"
 											variant="ghost"
-											className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-6 px-2 border border-border hover:bg-accent"
-											onClick={() => {
-												setDraftText(selectedZhTranslation)
-												toast.message(t('toasts.translationApplied'))
-											}}
-										>
-											{t('actions.useTranslation')}
-										</Button>
-									) : null}
-								</div>
-
-								{selectedZhTranslation ? (
-									<div className="bg-muted/30 border border-border p-2">
-										<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-											{t('sections.translation')}
-										</div>
-										<div className="font-mono text-xs whitespace-pre-wrap">
-											{selectedZhTranslation}
-										</div>
-									</div>
-								) : null}
-
-								<div className="space-y-2">
-									<Textarea
-										value={draftText}
-										onChange={(e) => setDraftText(e.target.value)}
-										className="rounded-[2px] border-border focus:ring-1 focus:ring-ring shadow-none font-mono text-xs min-h-[200px] resize-y bg-background"
-										placeholder={t('inputs.postContentPlaceholder')}
-									/>
-									<div className="flex items-center justify-between">
-										<Button
-											type="button"
-											variant="ghost"
-											className="rounded-[2px] font-sans text-xs uppercase h-7 text-muted-foreground hover:text-foreground"
-											onClick={() => {
-												setDraftText(
-													firstTextBlockText(selectedPost?.contentBlocks) || '',
-												)
-												toast.message(t('toasts.reset'))
-											}}
-										>
-											{t('actions.reset')}
-										</Button>
-										<Button
-											className="rounded-[2px] shadow-none font-sans text-xs uppercase h-7"
+											className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8 px-2 border border-border"
 											disabled={
-												updateMutation.isPending ||
-												!selectedPost?.id ||
-												!thread?.id
+												translateMutation.isPending ||
+												!thread?.id ||
+												!selectedPost?.id
 											}
 											onClick={() => {
 												if (!thread?.id || !selectedPost?.id) return
-												updateMutation.mutate({
+												translateMutation.mutate({
 													threadId: thread.id,
 													postId: selectedPost.id,
-													text: draftText,
+													targetLocale: 'zh-CN',
 												})
 											}}
 										>
-											{t('actions.save')}
+											{translateMutation.isPending ? (
+												<Loader2 className="h-3 w-3 animate-spin" />
+											) : (
+												t('actions.translateToZh')
+											)}
 										</Button>
-									</div>
-								</div>
-
-								{/* Debug / Media Details */}
-								<details className="group">
-									<summary className="cursor-pointer select-none py-2 font-sans text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
-										Debug & Media Data
-									</summary>
-									<div className="space-y-3 pt-2">
-										{/* Media List in Editor */}
-										{(selectedPost?.contentBlocks ?? []).filter(
-											(b: any) => b?.type !== 'text',
-										).length > 0 ? (
-											<div className="space-y-1">
-												{(selectedPost?.contentBlocks ?? [])
-													.filter((b: any) => b?.type && b.type !== 'text')
-													.map((b: any) => {
-														const assetId =
-															b.data?.assetId || b.data?.previewAssetId
-														return (
-															<div
-																key={String(b.id)}
-																className="font-mono text-[10px] border border-border p-1.5 bg-background truncate"
-															>
-																<span className="text-muted-foreground uppercase mr-1">
-																	{b.type}
-																</span>
-																{assetId || 'no-id'}
-															</div>
-														)
-													})}
-											</div>
+										{selectedZhTranslation ? (
+											<Button
+												type="button"
+												size="sm"
+												variant="ghost"
+												className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8 px-2 border border-border hover:bg-accent"
+												onClick={() => {
+													setDraftText(selectedZhTranslation)
+													toast.message(t('toasts.translationApplied'))
+												}}
+											>
+												{t('actions.useTranslation')}
+											</Button>
 										) : null}
-
-										<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-											Raw Post
-										</div>
-										<pre className="max-h-[200px] overflow-auto whitespace-pre-wrap break-words border border-border bg-background p-2 font-mono text-[10px]">
-											{selectedPostJson || t('debug.none')}
-										</pre>
 									</div>
-								</details>
-							</div>
-						</div>
+
+									{selectedZhTranslation ? (
+										<div className="bg-muted/30 border border-border p-2">
+											<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+												{t('sections.translation')}
+											</div>
+											<div className="font-mono text-xs whitespace-pre-wrap">
+												{selectedZhTranslation}
+											</div>
+										</div>
+									) : null}
+
+									<div className="space-y-2">
+										<Textarea
+											value={draftText}
+											onChange={(e) => setDraftText(e.target.value)}
+											className="rounded-[2px] border-border focus:ring-1 focus:ring-ring shadow-none font-mono text-xs min-h-[200px] resize-y bg-background"
+											placeholder={t('inputs.postContentPlaceholder')}
+										/>
+										<div className="flex items-center justify-between">
+											<Button
+												type="button"
+												variant="ghost"
+												className="rounded-[2px] font-sans text-xs uppercase h-8 text-muted-foreground hover:text-foreground"
+												onClick={() => {
+													setDraftText(originalSelectedPostText)
+													toast.message(t('toasts.reset'))
+												}}
+											>
+												{t('actions.reset')}
+											</Button>
+											<Button
+												className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8"
+												disabled={
+													updateMutation.isPending ||
+													!selectedPost?.id ||
+													!thread?.id
+												}
+												onClick={() => {
+													if (!thread?.id || !selectedPost?.id) return
+													updateMutation.mutate({
+														threadId: thread.id,
+														postId: selectedPost.id,
+														text: draftText,
+													})
+												}}
+											>
+												{t('actions.save')}
+											</Button>
+										</div>
+									</div>
+
+									<details className="group">
+										<summary className="cursor-pointer select-none py-2 font-sans text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
+											{t('sections.debug')}
+										</summary>
+										<div className="space-y-3 pt-2">
+											{(selectedPost?.contentBlocks ?? []).filter(
+												(b: any) => b?.type !== 'text',
+											).length > 0 ? (
+												<div className="space-y-1">
+													{(selectedPost?.contentBlocks ?? [])
+														.filter((b: any) => b?.type && b.type !== 'text')
+														.map((b: any) => {
+															const assetId =
+																b.data?.assetId || b.data?.previewAssetId
+															return (
+																<div
+																	key={String(b.id)}
+																	className="font-mono text-[10px] border border-border p-1.5 bg-background truncate"
+																>
+																	<span className="text-muted-foreground uppercase mr-1">
+																		{b.type}
+																	</span>
+																	{assetId || 'no-id'}
+																</div>
+															)
+														})}
+												</div>
+											) : null}
+
+											<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+												Raw Post
+											</div>
+											<pre className="max-h-[200px] overflow-auto whitespace-pre-wrap break-words border border-border bg-background p-2 font-mono text-[10px]">
+												{selectedPostJson || t('debug.none')}
+											</pre>
+										</div>
+									</details>
+								</div>
+							</DialogContent>
+						</Dialog>
 					</div>
 				</div>
 			</div>
