@@ -134,6 +134,13 @@ const config = defineConfig(({ mode }) => {
 					find: '@paralleldrive/cuid2',
 					replacement: path.resolve(__dirname, './src/shims/cuid2.ts'),
 				},
+				// Fallback for environments where TanStack Start's Vite plugin aliasing
+				// doesn't apply (e.g. after SSR HMR reloads). Without this, the runtime
+				// may resolve `#tanstack-router-entry` to the fake entry, breaking SSR.
+				{
+					find: '#tanstack-router-entry',
+					replacement: path.resolve(__dirname, './src/router.tsx'),
+				},
 			],
 			dedupe: ['react', 'react-dom', '@tanstack/react-query'],
 		},

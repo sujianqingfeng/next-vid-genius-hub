@@ -22,6 +22,12 @@ let startHandler:
 	| undefined
 
 function getStartHandler() {
+	// In dev, avoid caching the handler across HMR reloads. The handler closure
+	// caches a dynamically imported router entry; after an HMR update this can
+	// become stale and throw `routerEntry.getRouter is not a function`.
+	if (import.meta.env.DEV) {
+		return createStartHandler(defaultStreamHandler)
+	}
 	if (!startHandler) {
 		startHandler = createStartHandler(defaultStreamHandler)
 	}

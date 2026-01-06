@@ -141,6 +141,18 @@ export async function handleMediaDownloaderNonDownloadCallback(input: {
 				typeof meta?.bytes === 'number' && Number.isFinite(meta.bytes)
 					? Math.trunc(meta.bytes)
 					: null
+			const durationMs =
+				typeof meta?.durationMs === 'number' && Number.isFinite(meta.durationMs)
+					? Math.trunc(meta.durationMs)
+					: null
+			const width =
+				typeof meta?.width === 'number' && Number.isFinite(meta.width)
+					? Math.trunc(meta.width)
+					: null
+			const height =
+				typeof meta?.height === 'number' && Number.isFinite(meta.height)
+					? Math.trunc(meta.height)
+					: null
 
 			await db
 				.update(schema.threadAssets)
@@ -149,6 +161,9 @@ export async function handleMediaDownloaderNonDownloadCallback(input: {
 					storageKey: String(key),
 					contentType,
 					bytes,
+					durationMs,
+					width,
+					height,
 					updatedAt: new Date(),
 				})
 				.where(eq(schema.threadAssets.id, assetId))

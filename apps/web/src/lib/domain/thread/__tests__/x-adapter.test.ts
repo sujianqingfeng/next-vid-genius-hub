@@ -126,4 +126,82 @@ describe('thread.adapters.x', () => {
 			'ext:https://pbs.twimg.com/profile_images/poster.jpg',
 		)
 	})
+
+	it('prefers m3u8Urls for amplify_video media (init mp4 segments are not playable)', () => {
+		const raw = {
+			sourceUrl: 'https://x.com/a/status/1',
+			total: 1,
+			root: {
+				statusId: '1',
+				url: 'https://x.com/a/status/1',
+				author: {
+					displayName: 'A',
+					handle: '@a',
+					profileUrl: 'https://x.com/a',
+				},
+				createdAt: '2025-12-25T03:47:05.000Z',
+				text: 'Root text',
+				metrics: { replies: 0, likes: 10 },
+				media: [
+					{
+						type: 'video',
+						posterUrl: 'https://pbs.twimg.com/amplify_video_thumb/x/img.jpg',
+						m3u8Urls: [
+							'https://video.twimg.com/amplify_video/x/pl/_master.m3u8?variant_version=1&tag=21',
+							'https://video.twimg.com/amplify_video/x/pl/avc1/1920x1080/vid.m3u8',
+						],
+						mp4Urls: [
+							'https://video.twimg.com/amplify_video/x/aud/mp4a/0/0/32000/audio.mp4',
+							'https://video.twimg.com/amplify_video/x/vid/avc1/0/0/1920x1080/video.mp4',
+						],
+					},
+				],
+				isRoot: true,
+			},
+			replies: [],
+			all: [],
+		}
+
+		const draft = parseXThreadImportDraft(raw)
+		expect(draft.root.contentBlocks[1]?.type).toBe('video')
+		expect((draft.root.contentBlocks[1] as any).data.assetId).toBe(
+			'ext:https://video.twimg.com/amplify_video/x/pl/_master.m3u8?variant_version=1&tag=21',
+		)
+	})
+
+	it('still prefers mp4Urls for non-amplify video media', () => {
+		const raw = {
+			sourceUrl: 'https://x.com/a/status/1',
+			total: 1,
+			root: {
+				statusId: '1',
+				url: 'https://x.com/a/status/1',
+				author: {
+					displayName: 'A',
+					handle: '@a',
+					profileUrl: 'https://x.com/a',
+				},
+				createdAt: '2025-12-25T03:47:05.000Z',
+				text: 'Root text',
+				metrics: { replies: 0, likes: 10 },
+				media: [
+					{
+						type: 'video',
+						posterUrl: 'https://pbs.twimg.com/tweet_video_thumb/x/img.jpg',
+						m3u8Urls: ['https://example.com/video.m3u8'],
+						mp4Urls: ['https://cdn.example.com/video.mp4'],
+					},
+				],
+				isRoot: true,
+			},
+			replies: [],
+			all: [],
+		}
+
+		const draft = parseXThreadImportDraft(raw)
+		expect(draft.root.contentBlocks[1]?.type).toBe('video')
+		expect((draft.root.contentBlocks[1] as any).data.assetId).toBe(
+			'ext:https://cdn.example.com/video.mp4',
+		)
+	})
 })

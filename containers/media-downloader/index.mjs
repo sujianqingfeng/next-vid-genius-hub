@@ -405,15 +405,285 @@ async function handleRender(req, res) {
       } catch {}
 
       const agent = proxy ? new ProxyAgent(proxy) : undefined;
-      const res = await undiciFetch(url, {
-        method: "GET",
-        dispatcher: agent,
-        headers: {
-          "user-agent": "next-vid-genius-hub/thread-asset-ingest",
-          accept: "*/*",
-        },
-        redirect: "follow",
-      });
+      const urlLower = String(url).toLowerCase();
+      const isM3u8Like =
+        urlLower.includes(".m3u8") ||
+        urlLower.includes("application/x-mpegurl");
+
+      const fetchText = async (playlistUrl) => {
+        const r = await undiciFetch(playlistUrl, {
+          method: "GET",
+          dispatcher: agent,
+          headers: {
+            "user-agent": "next-vid-genius-hub/thread-asset-ingest",
+            accept: "*/*",
+            "accept-encoding": "identity",
+          },
+          redirect: "follow",
+        });
+        if (!r.ok) {
+          throw new Error(`fetch playlist failed: ${r.status}`);
+        }
+        return await r.text();
+      };
+
+      const toAbsUrl = (base, maybeRelative) => {
+        const s = String(maybeRelative || "").trim();
+        if (!s) return null;
+        try {
+          return new URL(s, base).toString();
+        } catch {
+          return null;
+        }
+      };
+
+      const parseHlsMaster = ({ text, playlistUrl }) => {
+        const lines = String(text || "")
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
+
+        const variants = [];
+        const audios = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (!line) continue;
+
+          if (line.startsWith("#EXT-X-MEDIA:") && line.includes("TYPE=AUDIO")) {
+            const m = line.match(/URI=\"([^\"]+)\"/);
+            const uri = m ? m[1] : null;
+            const abs = uri ? toAbsUrl(playlistUrl, uri) : null;
+            if (abs) {
+              const bitrateMatch = abs.match(/\/pl\/mp4a\/(\d+)\//);
+              const bitrate = bitrateMatch ? Number(bitrateMatch[1]) : 0;
+              audios.push({ url: abs, bitrate: Number.isFinite(bitrate) ? bitrate : 0 });
+            }
+            continue;
+          }
+
+          if (line.startsWith("#EXT-X-STREAM-INF:")) {
+            const next = lines[i + 1] || "";
+            const abs = toAbsUrl(playlistUrl, next);
+            const resMatch = line.match(/RESOLUTION=(\d+)x(\d+)/);
+            const w = resMatch ? Number(resMatch[1]) : 0;
+            const h = resMatch ? Number(resMatch[2]) : 0;
+            const bwMatch = line.match(/BANDWIDTH=(\d+)/);
+            const bw = bwMatch ? Number(bwMatch[1]) : 0;
+            const area =
+              Number.isFinite(w) && Number.isFinite(h) ? Math.max(0, w * h) : 0;
+            if (abs) {
+              variants.push({
+                url: abs,
+                width: Number.isFinite(w) ? w : 0,
+                height: Number.isFinite(h) ? h : 0,
+                area,
+                bandwidth: Number.isFinite(bw) ? bw : 0,
+              });
+            }
+          }
+        }
+
+        variants.sort((a, b) => (b.area - a.area) || (b.bandwidth - a.bandwidth));
+        audios.sort((a, b) => b.bitrate - a.bitrate);
+
+        const bestVideo = variants[0] || null;
+        const bestAudio = audios[0] || null;
+        return {
+          bestVideoUrl: bestVideo?.url || null,
+          bestAudioUrl: bestAudio?.url || null,
+          bestWidth: bestVideo?.width || null,
+          bestHeight: bestVideo?.height || null,
+        };
+      };
+
+      const runFfmpeg = async ({ videoUrl, audioUrl, outPath }) => {
+        const { spawn } = await import("node:child_process");
+
+        const args = [
+          "-hide_banner",
+          "-y",
+          "-loglevel",
+          "error",
+          "-user_agent",
+          "next-vid-genius-hub/thread-asset-ingest",
+          "-i",
+          videoUrl,
+        ];
+
+        if (audioUrl) {
+          args.push("-i", audioUrl);
+          args.push("-map", "0:v:0", "-map", "1:a:0");
+        }
+
+        args.push("-c", "copy", "-movflags", "+faststart", outPath);
+
+        const env = { ...process.env };
+        if (proxy) {
+          env.http_proxy = proxy;
+          env.https_proxy = proxy;
+          env.HTTP_PROXY = proxy;
+          env.HTTPS_PROXY = proxy;
+        }
+
+        await new Promise((resolve, reject) => {
+          const child = spawn("ffmpeg", args, { stdio: "pipe", env });
+          let stderr = "";
+          child.stderr?.on("data", (d) => {
+            stderr += String(d || "");
+          });
+          child.on("error", reject);
+          child.on("close", (code) => {
+            if (code === 0) return resolve();
+            reject(new Error(stderr.trim() || `ffmpeg failed with code ${code}`));
+          });
+        });
+      };
+
+      const probeMp4 = async (outPath) => {
+        const { spawn } = await import("node:child_process");
+        const out = await new Promise((resolve, reject) => {
+          const child = spawn("ffprobe", [
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "json",
+            outPath,
+          ]);
+          let stdout = "";
+          let stderr = "";
+          child.stdout?.on("data", (d) => (stdout += String(d || "")));
+          child.stderr?.on("data", (d) => (stderr += String(d || "")));
+          child.on("error", reject);
+          child.on("close", (code) => {
+            if (code === 0) return resolve(stdout);
+            reject(new Error(stderr.trim() || `ffprobe failed with code ${code}`));
+          });
+        });
+
+        try {
+          const json = JSON.parse(String(out || "{}"));
+          const durationSeconds = Number(json?.format?.duration || 0);
+          const stream = Array.isArray(json?.streams) ? json.streams[0] : null;
+          const width = Number(stream?.width || 0);
+          const height = Number(stream?.height || 0);
+          const durationMs = Number.isFinite(durationSeconds)
+            ? Math.trunc(durationSeconds * 1000)
+            : null;
+          return {
+            durationMs: durationMs && durationMs > 0 ? durationMs : null,
+            width: Number.isFinite(width) && width > 0 ? Math.trunc(width) : null,
+            height: Number.isFinite(height) && height > 0 ? Math.trunc(height) : null,
+          };
+        } catch {
+          return { durationMs: null, width: null, height: null };
+        }
+      };
+
+      if (isM3u8Like) {
+        try {
+          await progress("running", 0.4);
+        } catch {}
+
+        const masterText = await fetchText(url);
+        const hasStreamInf = masterText.includes("#EXT-X-STREAM-INF");
+
+        let videoPlaylistUrl = url;
+        let audioPlaylistUrl = null;
+        let hintedWidth = null;
+        let hintedHeight = null;
+
+        if (hasStreamInf) {
+          const picked = parseHlsMaster({ text: masterText, playlistUrl: url });
+          if (!picked.bestVideoUrl) {
+            throw new Error("no HLS video variant found in master playlist");
+          }
+          videoPlaylistUrl = picked.bestVideoUrl;
+          audioPlaylistUrl = picked.bestAudioUrl;
+          hintedWidth = picked.bestWidth;
+          hintedHeight = picked.bestHeight;
+        }
+
+        const outPath = join(tmpdir(), `${jobId}-thread-asset.mp4`);
+        await runFfmpeg({
+          videoUrl: videoPlaylistUrl,
+          audioUrl: audioPlaylistUrl,
+          outPath,
+        });
+
+        const stat = await fsPromises.stat(outPath);
+        const bytes = stat?.size || 0;
+        if (!bytes || bytes < 1_000_000) {
+          throw new Error(`ffmpeg produced tiny mp4 (bytes=${bytes})`);
+        }
+
+        const probed = await probeMp4(outPath);
+        const width = probed.width ?? hintedWidth;
+        const height = probed.height ?? hintedHeight;
+
+        try {
+          await progress("uploading", 0.7);
+        } catch {}
+
+        await uploadArtifact(
+          outputVideoPutUrl,
+          () => createReadStream(outPath),
+          "video/mp4",
+          { "content-length": String(bytes) },
+        );
+
+        await postUpdate("completed", {
+          phase: "completed",
+          progress: 1,
+          metadata: {
+            kind: "thread-asset",
+            assetId: assetId || undefined,
+            url,
+            contentType: "video/mp4",
+            bytes,
+            ...(probed.durationMs ? { durationMs: probed.durationMs } : {}),
+            ...(width ? { width } : {}),
+            ...(height ? { height } : {}),
+            proxyUrl: proxy || null,
+          },
+          outputs: callbackOutputs(),
+        });
+
+        try {
+          await fsPromises.unlink(outPath);
+        } catch {}
+
+        return;
+      }
+
+      const makeFetch = async (extraHeaders = {}) => {
+        return await undiciFetch(url, {
+          method: "GET",
+          dispatcher: agent,
+          headers: {
+            "user-agent": "next-vid-genius-hub/thread-asset-ingest",
+            accept: "*/*",
+            "accept-encoding": "identity",
+            ...extraHeaders,
+          },
+          redirect: "follow",
+        });
+      };
+
+      const wantsFullRange = String(url).toLowerCase().includes(".mp4");
+      let res = await makeFetch(wantsFullRange ? { range: "bytes=0-" } : {});
+
+      const parseContentRangeTotal = (headerValue) => {
+        const v = String(headerValue || "").trim();
+        const m = v.match(/\/\s*(\d+)\s*$/);
+        if (!m) return null;
+        const total = Number(m[1]);
+        return Number.isFinite(total) && total > 0 ? total : null;
+      };
 
       if (!res.ok) {
         throw new Error(`fetch failed: ${res.status}`);
@@ -422,14 +692,65 @@ async function handleRender(req, res) {
         throw new Error("missing response body");
       }
 
-      const contentType =
-        String(res.headers.get("content-type") || "").split(";")[0].trim() ||
-        "application/octet-stream";
-      const contentLengthRaw = String(res.headers.get("content-length") || "").trim();
-      const contentLength =
-        contentLengthRaw && Number.isFinite(Number(contentLengthRaw))
-          ? String(Math.max(0, Math.trunc(Number(contentLengthRaw))))
-          : null;
+      const getResponseMeta = (response) => {
+        const contentType =
+          String(response.headers.get("content-type") || "").split(";")[0].trim() ||
+          "application/octet-stream";
+        const contentLengthRaw = String(response.headers.get("content-length") || "").trim();
+        const contentLengthNum =
+          contentLengthRaw && Number.isFinite(Number(contentLengthRaw))
+            ? Math.max(0, Math.trunc(Number(contentLengthRaw)))
+            : null;
+        const contentRangeTotal =
+          response.status === 206
+            ? parseContentRangeTotal(response.headers.get("content-range"))
+            : null;
+        return { contentType, contentLengthNum, contentRangeTotal };
+      };
+
+      let { contentType, contentLengthNum, contentRangeTotal } = getResponseMeta(res);
+
+      if (res.status === 206 && contentRangeTotal != null) {
+        const isPartial =
+          contentLengthNum != null &&
+          contentLengthNum > 0 &&
+          contentLengthNum < contentRangeTotal;
+        if (!isPartial) {
+          // Looks complete: proceed.
+        } else {
+        try {
+          await res.body?.cancel?.();
+        } catch {}
+        res = await makeFetch({ range: `bytes=0-${contentRangeTotal - 1}` });
+        if (!res.ok) {
+          throw new Error(`refetch full range failed: ${res.status}`);
+        }
+        if (!res.body) {
+          throw new Error("missing response body after refetch");
+        }
+
+          ({ contentType, contentLengthNum, contentRangeTotal } = getResponseMeta(res));
+
+          if (res.status === 206 && contentRangeTotal != null) {
+            const stillPartial =
+              contentLengthNum != null &&
+              contentLengthNum > 0 &&
+              contentLengthNum < contentRangeTotal;
+            if (stillPartial) {
+              throw new Error(
+                `refetch returned partial content (len=${contentLengthNum} total=${contentRangeTotal})`,
+              );
+            }
+          }
+        }
+      }
+
+      const uploadContentLength =
+        contentRangeTotal != null
+          ? String(contentRangeTotal)
+          : contentLengthNum != null && contentLengthNum > 0
+            ? String(contentLengthNum)
+            : null;
 
       try {
         await progress("uploading", 0.6);
@@ -439,10 +760,13 @@ async function handleRender(req, res) {
         outputVideoPutUrl,
         () => res.body,
         contentType,
-        contentLength ? { "content-length": contentLength } : {},
+        uploadContentLength ? { "content-length": uploadContentLength } : {},
       );
 
-      const bytes = contentLength ? Number(contentLength) : undefined;
+      const bytes =
+        uploadContentLength && Number.isFinite(Number(uploadContentLength))
+          ? Number(uploadContentLength)
+          : undefined;
       await postUpdate("completed", {
         phase: "completed",
         progress: 1,

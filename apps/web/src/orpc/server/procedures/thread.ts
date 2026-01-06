@@ -694,6 +694,45 @@ export const createFromXJson = os
 					.from(schema.threadPosts)
 					.where(eq(schema.threadPosts.threadId, threadId))
 
+				const existingAssetIds = new Set<string>()
+				for (const p of existingPosts) {
+					const currentBlocks = (p.contentBlocks ?? []) as any[]
+					for (const b of currentBlocks) {
+						if (!b || typeof b !== 'object') continue
+						if (b.type !== 'image' && b.type !== 'video') continue
+						const assetId = b.data?.assetId
+						if (typeof assetId === 'string' && assetId) existingAssetIds.add(assetId)
+					}
+				}
+
+				const assetMetaRows =
+					existingAssetIds.size > 0
+						? await db
+								.select({
+									id: schema.threadAssets.id,
+									sourceUrl: schema.threadAssets.sourceUrl,
+									contentType: schema.threadAssets.contentType,
+								})
+								.from(schema.threadAssets)
+								.where(
+									and(
+										eq(schema.threadAssets.userId, userId),
+										inArray(schema.threadAssets.id, [...existingAssetIds]),
+									),
+								)
+						: []
+
+				const assetMetaById = new Map<
+					string,
+					{ sourceUrl: string | null; contentType: string | null }
+				>()
+				for (const a of assetMetaRows) {
+					assetMetaById.set(String(a.id), {
+						sourceUrl: a.sourceUrl ? String(a.sourceUrl) : null,
+						contentType: a.contentType ? String(a.contentType) : null,
+					})
+				}
+
 				for (const p of existingPosts) {
 					const sourcePostId = p.sourcePostId ?? null
 					if (!sourcePostId) continue
@@ -723,7 +762,43 @@ export const createFromXJson = os
 						})
 
 					for (const mb of draftMediaBlocks) {
-						if (!hasBlock(mb)) nextBlocks.push(mb)
+						let replaced = false
+						if (mb?.type === 'video') {
+							const posterUrl = String(mb?.data?.posterUrl ?? '').trim()
+							if (posterUrl) {
+								const existingIdx = nextBlocks.findIndex((b: any) => {
+									if (!b || typeof b !== 'object') return false
+									if (b.type !== 'video') return false
+									const existingPoster = String(b?.data?.posterUrl ?? '').trim()
+									return existingPoster === posterUrl
+								})
+
+								if (existingIdx >= 0) {
+									const existing = nextBlocks[existingIdx]
+									const existingAssetId = String(existing?.data?.assetId ?? '').trim()
+									const meta = existingAssetId
+										? (assetMetaById.get(existingAssetId) ?? null)
+										: null
+									const contentType = String(meta?.contentType ?? '').trim()
+									const sourceUrl = String(meta?.sourceUrl ?? '').trim()
+									const looksLikeM3u8 =
+										contentType === 'application/x-mpegURL' ||
+										sourceUrl.endsWith('.m3u8') ||
+										sourceUrl.includes('.m3u8?')
+									const looksLikeAmplifyInitMp4 =
+										sourceUrl.includes('video.twimg.com/amplify_video/') &&
+										sourceUrl.includes('/vid/') &&
+										sourceUrl.endsWith('.mp4')
+
+									if (looksLikeM3u8 || looksLikeAmplifyInitMp4) {
+										nextBlocks[existingIdx] = { ...mb, id: existing?.id ?? mb.id }
+										replaced = true
+									}
+								}
+							}
+						}
+
+						if (!replaced && !hasBlock(mb)) nextBlocks.push(mb)
 					}
 
 					if (nextBlocks.length !== currentBlocks.length) {
@@ -1092,8 +1167,11 @@ export const ingestAssets = os
 		const candidates = await db
 			.select({
 				id: schema.threadAssets.id,
+				kind: schema.threadAssets.kind,
 				sourceUrl: schema.threadAssets.sourceUrl,
 				storageKey: schema.threadAssets.storageKey,
+				contentType: schema.threadAssets.contentType,
+				bytes: schema.threadAssets.bytes,
 				status: schema.threadAssets.status,
 			})
 			.from(schema.threadAssets)
@@ -1104,25 +1182,45 @@ export const ingestAssets = os
 				),
 			)
 
+		const MIN_TWITTER_VIDEO_BYTES = 1_000_000
+		const looksLikeCorruptTwitterVideo = (a: any) => {
+			if (a?.kind !== 'video') return false
+			if (a?.status !== 'ready') return false
+			if (!a?.storageKey) return false
+			const src = typeof a.sourceUrl === 'string' ? a.sourceUrl.trim() : ''
+			if (!src.includes('video.twimg.com')) return false
+			const bytes = typeof a.bytes === 'number' && Number.isFinite(a.bytes) ? a.bytes : null
+			if (bytes == null) return false
+			return bytes > 0 && bytes < MIN_TWITTER_VIDEO_BYTES
+		}
+
 		const toQueue = candidates
-			.filter(
-				(a) =>
-					!a.storageKey &&
-					typeof a.sourceUrl === 'string' &&
-					a.sourceUrl.trim() &&
-					(a.status === 'pending' || a.status === 'failed'),
-			)
+			.filter((a) => {
+				const src = typeof a.sourceUrl === 'string' ? a.sourceUrl.trim() : ''
+				if (!src) return false
+				if (looksLikeCorruptTwitterVideo(a)) return true
+				return !a.storageKey && (a.status === 'pending' || a.status === 'failed')
+			})
 			.slice(0, input.maxAssetsPerRun)
 
 		for (const a of toQueue) {
 			const assetId = String(a.id)
 			const url = String(a.sourceUrl).trim()
 
-			// Reset failed assets to pending when re-queued.
-			if (a.status !== 'pending') {
+			// Reset assets to pending when re-queued (including corrupt partial downloads).
+			if (a.status !== 'pending' || looksLikeCorruptTwitterVideo(a)) {
+				const reset: Partial<typeof schema.threadAssets.$inferInsert> = {
+					status: 'pending',
+					updatedAt: now,
+				}
+				if (looksLikeCorruptTwitterVideo(a)) {
+					reset.storageKey = null
+					reset.contentType = null
+					reset.bytes = null
+				}
 				await db
 					.update(schema.threadAssets)
-					.set({ status: 'pending', updatedAt: now })
+					.set(reset)
 					.where(eq(schema.threadAssets.id, assetId))
 			}
 

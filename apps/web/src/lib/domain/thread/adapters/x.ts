@@ -33,6 +33,7 @@ const XMediaSchema = z.object({
 	posterUrl: z.string().optional().catch(''),
 	alt: z.string().optional().catch(''),
 	m3u8Urls: z.array(z.string()).optional().catch([]),
+	mp4Urls: z.array(z.string()).optional().catch([]),
 })
 
 const XMediaListSchema = z
@@ -110,41 +111,94 @@ function appendExternalMediaBlocks(
 	const m = media ?? []
 	let idx = 0
 
-		for (const item of m) {
-			const type = String(item.type || '').toLowerCase()
-			if (type === 'image') {
-				const url = String(item.url || item.posterUrl || '').trim()
-				if (!url) continue
+	function pickBestVideoUrl(item: z.infer<typeof XMediaSchema>): string {
+		const direct = String(item.url || '').trim()
+		if (direct) return direct
+
+		const m3u8s = (item.m3u8Urls ?? [])
+			.map((u) => String(u || '').trim())
+			.filter(Boolean)
+
+		// Twitter amplify_video "mp4" links can be init segments (hundreds of bytes)
+		// referenced from HLS playlists. Prefer m3u8 when available.
+		const isAmplifyVideo = (u: string) => u.includes('video.twimg.com/amplify_video/')
+		if (m3u8s.length > 0 && m3u8s.some(isAmplifyVideo)) {
+			const master =
+				m3u8s.find((u) => u.includes('/pl/_') && u.includes('.m3u8')) ??
+				m3u8s.find((u) => u.includes('variant_version=') && u.includes('.m3u8'))
+			if (master) return master
+
+			const withRes = m3u8s
+				.map((u) => {
+					const m = u.match(/\/pl\/avc1\/(\d+)x(\d+)\//)
+					if (!m) return null
+					const w = Number(m[1])
+					const h = Number(m[2])
+					if (!Number.isFinite(w) || !Number.isFinite(h)) return null
+					return { u, score: w * h }
+				})
+				.filter(Boolean) as Array<{ u: string; score: number }>
+
+			if (withRes.length > 0) {
+				withRes.sort((a, b) => b.score - a.score)
+				return withRes[0]!.u
+			}
+
+			return m3u8s[0]!
+		}
+
+		const mp4s = (item.mp4Urls ?? [])
+			.map((u) => String(u || '').trim())
+			.filter(Boolean)
+
+		if (mp4s.length > 0) {
+			const looksLikeVideo = (u: string) =>
+				u.includes('/vid/') ||
+				u.includes('/video/') ||
+				(u.endsWith('.mp4') && !u.includes('/aud/'))
+			const preferred = mp4s.find(looksLikeVideo) ?? mp4s[0]!
+			return preferred
+		}
+
+		const m3u8 = m3u8s[0] ?? ''
+		return String(m3u8 || '').trim()
+	}
+
+	for (const item of m) {
+		const type = String(item.type || '').toLowerCase()
+		if (type === 'image') {
+			const url = String(item.url || item.posterUrl || '').trim()
+			if (!url) continue
+			blocks.push({
+				id: `media-${idx++}`,
+				type: 'image',
+				data: { assetId: `ext:${url}`, caption: item.alt || undefined },
+			})
+		} else if (type === 'video') {
+			const posterUrl = String(item.posterUrl || '').trim()
+			const url = pickBestVideoUrl(item)
+			if (url) {
+				blocks.push({
+					id: `media-${idx++}`,
+					type: 'video',
+					data: {
+						assetId: `ext:${url}`,
+						title: item.alt || undefined,
+						posterUrl: posterUrl || undefined,
+					},
+				})
+			} else if (posterUrl) {
 				blocks.push({
 					id: `media-${idx++}`,
 					type: 'image',
-					data: { assetId: `ext:${url}`, caption: item.alt || undefined },
+					data: {
+						assetId: `ext:${posterUrl}`,
+						caption: item.alt || 'Video',
+					},
 				})
-			} else if (type === 'video') {
-				const posterUrl = String(item.posterUrl || '').trim()
-				const url = String(item.url || item.m3u8Urls?.[0] || '').trim()
-				if (url) {
-					blocks.push({
-						id: `media-${idx++}`,
-						type: 'video',
-						data: {
-							assetId: `ext:${url}`,
-							title: item.alt || undefined,
-							posterUrl: posterUrl || undefined,
-						},
-					})
-				} else if (posterUrl) {
-					blocks.push({
-						id: `media-${idx++}`,
-						type: 'image',
-						data: {
-							assetId: `ext:${posterUrl}`,
-							caption: item.alt || 'Video',
-						},
-					})
-				}
 			}
 		}
+	}
 
 	return blocks
 }

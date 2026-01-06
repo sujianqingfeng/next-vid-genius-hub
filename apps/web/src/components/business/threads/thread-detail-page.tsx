@@ -2822,7 +2822,17 @@ export function ThreadDetailPage({ id }: { id: string }) {
 				a?.status === 'failed' ||
 				(a?.status === 'ready' && !a?.storageKey),
 		)
-		return hasExternalMediaRefs || hasPendingDbAssets
+		const hasCorruptTwitterVideo = assets.some((a: any) => {
+			if (a?.kind !== 'video') return false
+			if (a?.status !== 'ready') return false
+			if (!a?.storageKey) return false
+			const src = typeof a?.sourceUrl === 'string' ? String(a.sourceUrl).trim() : ''
+			if (!src.includes('video.twimg.com')) return false
+			const bytes =
+				typeof a?.bytes === 'number' && Number.isFinite(a.bytes) ? a.bytes : null
+			return bytes != null && bytes > 0 && bytes < 1_000_000
+		})
+		return hasExternalMediaRefs || hasPendingDbAssets || hasCorruptTwitterVideo
 	}, [assets, hasExternalMediaRefs])
 
 	const [draftText, setDraftText] = React.useState('')
