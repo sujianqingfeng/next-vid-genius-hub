@@ -21,6 +21,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '~/components/ui/select'
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from '~/components/ui/tabs'
 import { Textarea } from '~/components/ui/textarea'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
@@ -3220,19 +3226,25 @@ export function ThreadDetailPage({ id }: { id: string }) {
 				</div>
 			</div>
 
-			<div className="w-full max-w-[1800px] mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-				{/* Left Column: Preview & Library (Flexible width, maybe 7 cols) */}
-				<div className="lg:col-span-7 space-y-6">
-					{/* Preview Section */}
-					<div className="space-y-2">
-						<div className="flex items-center justify-between">
-							<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-								{t('sections.preview')}
-							</div>
-							{/* Render Status / Action could go here or bottom */}
+			<div className="flex-1 w-full max-w-[1920px] mx-auto p-4 sm:p-6 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start overflow-hidden h-[calc(100vh-65px)]">
+				{/* Main Column: Stage (Preview) + Script (Posts) */}
+				<div className="lg:col-span-9 h-full flex flex-col min-h-0 gap-6">
+					{/* Stage (Preview) */}
+					<div className="shrink-0 flex flex-col space-y-2">
+						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold shrink-0 flex justify-between items-center">
+							<span>{t('sections.preview')}</span>
+							{renderJobId ? (
+								<div className="flex items-center gap-2">
+									<div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+									<span className="font-mono text-xs text-muted-foreground">
+										{t('render.status', {
+											status: renderStatusQuery.data?.status ?? '...',
+										})}
+									</span>
+								</div>
+							) : null}
 						</div>
-
-						<div className="border border-border bg-card">
+						<div className="border border-border bg-card overflow-hidden">
 							<ThreadRemotionPlayerCard
 								thread={thread as any}
 								root={root as any}
@@ -3256,249 +3268,13 @@ export function ThreadDetailPage({ id }: { id: string }) {
 						</div>
 					</div>
 
-					{/* Template Library */}
-					<div className="space-y-2">
-						<div className="flex items-center justify-between">
-							<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-								{t('sections.templateLibrary')}
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-7"
-								asChild
-							>
-								<Link to="/thread-templates">
-									{t('actions.manageTemplates')}
-								</Link>
-							</Button>
-						</div>
-						<div className="border border-border bg-card">
-							<ThreadTemplateLibraryCard
-								threadId={id}
-								effectiveTemplateId={effectiveTemplateIdForLibrary}
-								normalizedTemplateConfig={normalizedTemplateConfig}
-								onApplied={refreshThread}
-							/>
-						</div>
-					</div>
-
-					{/* Render Section (Moved up or kept here) */}
-					<div className="space-y-2">
-						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-							{t('sections.render')}
-						</div>
-						<div className="border border-border bg-card p-4">
-							<div className="flex flex-wrap items-center gap-3">
-								<Button
-									className="rounded-[2px] shadow-none font-sans text-xs uppercase"
-									disabled={startRenderMutation.isPending || !thread || !root}
-									onClick={() => {
-										startRenderMutation.mutate({ threadId: id })
-									}}
-								>
-									{t('actions.startRender')}
-								</Button>
-								{renderJobId ? (
-									<div className="font-mono text-xs text-muted-foreground">
-										{t('render.jobId', { jobId: renderJobId })}
-									</div>
-								) : null}
-							</div>
-							{renderJobId ? (
-								<div className="mt-3 font-mono text-xs text-muted-foreground space-y-1 border-t border-border pt-3">
-									<div className="flex items-center gap-2">
-										<div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-										{t('render.status', {
-											status: renderStatusQuery.data?.status ?? '...',
-										})}
-									</div>
-									{typeof renderStatusQuery.data?.progress === 'number' ? (
-										<div>
-											{t('render.progress', {
-												progress: Math.round(
-													renderStatusQuery.data.progress * 100,
-												),
-											})}
-										</div>
-									) : null}
-									{renderStatusQuery.data?.status === 'completed' &&
-									renderedDownloadUrl ? (
-										<a
-											className="underline hover:text-foreground"
-											href={renderedDownloadUrl}
-										>
-											{t('render.downloadMp4')}
-										</a>
-									) : null}
-								</div>
-							) : null}
-						</div>
-					</div>
-				</div>
-
-				{/* Right Column: Editor & Assets (5 cols) */}
-				<div className="lg:col-span-5 space-y-6">
-					{/* Audio Section */}
-					<div className="space-y-2">
-						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-							{t('sections.audio')}
-						</div>
-						<div className="border border-border bg-card p-4 space-y-4">
-							<div className="flex flex-wrap items-center gap-2">
-								<input
-									ref={audioFileInputRef}
-									type="file"
-									accept="audio/*"
-									className="hidden"
-									onChange={(e) => {
-										const f = e.target.files?.[0]
-										if (!f) return
-										void uploadThreadAudio(f)
-									}}
-								/>
-								<Button
-									type="button"
-									variant="outline"
-									className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8"
-									disabled={isUploadingAudio}
-									onClick={() => audioFileInputRef.current?.click()}
-								>
-									{isUploadingAudio
-										? t('audio.actions.uploading')
-										: t('audio.actions.upload')}
-								</Button>
-								{thread?.audioAssetId ? (
-									<Button
-										type="button"
-										variant="ghost"
-										className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8 hover:bg-destructive/10 hover:text-destructive"
-										disabled={setAudioAssetMutation.isPending}
-										onClick={() => void setThreadAudio(null)}
-									>
-										{t('audio.actions.clear')}
-									</Button>
-								) : null}
-							</div>
-							{audio?.url ? (
-								<audio
-									controls
-									src={String(audio.url)}
-									className="w-full h-8"
-								/>
-							) : null}
-
-							{/* Audio Library List (Simplified) */}
-							{audioAssets.length > 0 ? (
-								<div className="space-y-2 border-t border-border pt-3">
-									<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-										{t('audio.labels.library')}
-									</div>
-									<div className="max-h-[150px] overflow-y-auto space-y-1 pr-1">
-										{audioAssets.map((a: any) => {
-											const isCurrent =
-												thread?.audioAssetId &&
-												String(thread.audioAssetId) === String(a.id)
-											return (
-												<div
-													key={String(a.id)}
-													className={`group flex items-center justify-between border px-2 py-1.5 font-mono text-[10px] ${
-														isCurrent
-															? 'border-primary bg-primary/5'
-															: 'border-border bg-background hover:bg-muted/50'
-													}`}
-												>
-													<div className="truncate flex-1">
-														{String(a.id).slice(0, 8)}...
-														{typeof a.durationMs === 'number'
-															? ` · ${Math.round(a.durationMs / 1000)}s`
-															: ''}
-													</div>
-													{!isCurrent && (
-														<button
-															type="button"
-															className="opacity-0 group-hover:opacity-100 uppercase tracking-wider hover:underline"
-															disabled={
-																setAudioAssetMutation.isPending ||
-																String(a.status) !== 'ready'
-															}
-															onClick={() => void setThreadAudio(String(a.id))}
-														>
-															Use
-														</button>
-													)}
-												</div>
-											)
-										})}
-									</div>
-								</div>
-							) : null}
-						</div>
-					</div>
-
-					{/* Media Section */}
-					<div className="space-y-2">
-						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
-							{t('sections.media')}
-						</div>
-						<div className="border border-border bg-card p-4">
-							{canIngestAssets ? (
-								<div className="flex flex-wrap items-center justify-end gap-2">
-									<Select
-										value={selectedProxyId}
-										onValueChange={setSelectedProxyId}
-										disabled={ingestAssetsMutation.isPending || proxiesQuery.isLoading}
-									>
-										<SelectTrigger className="h-8 rounded-[2px] shadow-none font-sans text-[10px] uppercase px-2">
-											<SelectValue placeholder="Proxy" />
-										</SelectTrigger>
-										<SelectContent>
-											{successProxies.map((p) => (
-												<SelectItem
-													key={p.id}
-													value={p.id}
-													className="font-mono text-xs"
-												>
-													{p.name ?? p.id}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8"
-										disabled={ingestAssetsMutation.isPending}
-										onClick={() =>
-											ingestAssetsMutation.mutate({
-												threadId: id,
-												proxyId:
-													selectedProxyId !== 'none' ? selectedProxyId : null,
-											})
-										}
-									>
-										{ingestAssetsMutation.isPending ? 'DL...' : 'Download Media'}
-									</Button>
-								</div>
-							) : (
-								<div className="font-mono text-xs text-muted-foreground">
-									{t('media.noPending')}
-								</div>
-							)}
-						</div>
-					</div>
-
-					{/* Posts & Editor */}
-					<div className="space-y-2">
-						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+					{/* Script (Posts) */}
+					<div className="flex-1 flex flex-col min-h-0 space-y-2">
+						<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold shrink-0">
 							{t('sections.posts')}
 						</div>
-						<div className="border border-border bg-card flex flex-col max-h-[800px]">
-							{/* Post List */}
-							<div className="flex-1 overflow-y-auto min-h-[150px] max-h-[800px]">
+						<div className="border border-border bg-card flex flex-col flex-1 min-h-0 overflow-hidden">
+							<div className="flex-1 overflow-y-auto">
 								{root ? (
 									<div
 										className={`flex items-stretch border-b border-border ${
@@ -3521,8 +3297,7 @@ export function ThreadDetailPage({ id }: { id: string }) {
 											{(() => {
 												const zhPreview =
 													(root as any)?.translations?.['zh-CN']?.plainText
-												const original =
-													root.plainText || t('labels.emptyText')
+												const original = root.plainText || t('labels.emptyText')
 												const hasZh =
 													typeof zhPreview === 'string' && zhPreview.trim()
 												return (
@@ -3682,155 +3457,406 @@ export function ThreadDetailPage({ id }: { id: string }) {
 								})}
 							</div>
 						</div>
+					</div>
+				</div>
 
-						<Dialog open={isEditorOpen} onOpenChange={onEditorOpenChange}>
-							<DialogContent className="sm:max-w-3xl">
-								<DialogHeader>
-									<DialogTitle>{t('sections.editor')}</DialogTitle>
-									<DialogDescription>
-										{selectedPost
-											? `${selectedPost.authorName} · ${selectedPost.id.slice(0, 8)}...`
-											: ''}
-									</DialogDescription>
-								</DialogHeader>
+				{/* Right Column: Tools (Tabs) */}
+				<div className="lg:col-span-3 h-full flex flex-col min-h-0">
+					<div className="flex-1 h-full flex flex-col min-h-0 bg-card border border-border overflow-hidden">
+						<Tabs defaultValue="design" className="flex flex-col h-full">
+							<div className="shrink-0 border-b border-border bg-muted/20 p-2">
+								<TabsList className="w-full grid grid-cols-3 h-8">
+									<TabsTrigger
+										value="design"
+										className="text-[10px] uppercase tracking-wider font-bold h-7 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+									>
+										Design
+									</TabsTrigger>
+									<TabsTrigger
+										value="assets"
+										className="text-[10px] uppercase tracking-wider font-bold h-7 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+									>
+										Assets
+									</TabsTrigger>
+									<TabsTrigger
+										value="export"
+										className="text-[10px] uppercase tracking-wider font-bold h-7 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+									>
+										Export
+									</TabsTrigger>
+								</TabsList>
+							</div>
 
-								<div className="space-y-4">
-									<div className="flex items-center gap-2 border-b border-border pb-3">
-										<Button
-											type="button"
-											size="sm"
-											variant="ghost"
-											className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8 px-2 border border-border"
-											disabled={
-												translateMutation.isPending ||
-												!thread?.id ||
-												!selectedPost?.id
-											}
-											onClick={() => {
-												if (!thread?.id || !selectedPost?.id) return
-												translateMutation.mutate({
-													threadId: thread.id,
-													postId: selectedPost.id,
-													targetLocale: 'zh-CN',
-												})
-											}}
-										>
-											{translateMutation.isPending ? (
-												<Loader2 className="h-3 w-3 animate-spin" />
-											) : (
-												t('actions.translateToZh')
-											)}
-										</Button>
-										{selectedZhTranslation ? (
-											<Button
-												type="button"
-												size="sm"
-												variant="ghost"
-												className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8 px-2 border border-border hover:bg-accent"
-												onClick={() => {
-													setDraftText(selectedZhTranslation)
-													toast.message(t('toasts.translationApplied'))
-												}}
-											>
-												{t('actions.useTranslation')}
-											</Button>
-										) : null}
-									</div>
+							<div className="flex-1 overflow-y-auto min-h-0">
+								<TabsContent value="design" className="m-0 p-4 h-full">
+									<ThreadTemplateLibraryCard
+										threadId={id}
+										effectiveTemplateId={effectiveTemplateIdForLibrary}
+										normalizedTemplateConfig={normalizedTemplateConfig}
+										onApplied={refreshThread}
+									/>
+								</TabsContent>
 
-									{selectedZhTranslation ? (
-										<div className="bg-muted/30 border border-border p-2">
-											<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-												{t('sections.translation')}
-											</div>
-											<div className="font-mono text-xs whitespace-pre-wrap">
-												{selectedZhTranslation}
-											</div>
-										</div>
-									) : null}
-
+								<TabsContent value="assets" className="m-0 p-4 h-full space-y-6">
 									<div className="space-y-2">
-										<Textarea
-											value={draftText}
-											onChange={(e) => setDraftText(e.target.value)}
-											className="rounded-[2px] border-border focus:ring-1 focus:ring-ring shadow-none font-mono text-xs min-h-[200px] resize-y bg-background"
-											placeholder={t('inputs.postContentPlaceholder')}
-										/>
-										<div className="flex items-center justify-between">
-											<Button
-												type="button"
-												variant="ghost"
-												className="rounded-[2px] font-sans text-xs uppercase h-8 text-muted-foreground hover:text-foreground"
-												onClick={() => {
-													setDraftText(originalSelectedPostText)
-													toast.message(t('toasts.reset'))
-												}}
-											>
-												{t('actions.reset')}
-											</Button>
-											<Button
-												className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8"
-												disabled={
-													updateMutation.isPending ||
-													!selectedPost?.id ||
-													!thread?.id
-												}
-												onClick={() => {
-													if (!thread?.id || !selectedPost?.id) return
-													updateMutation.mutate({
-														threadId: thread.id,
-														postId: selectedPost.id,
-														text: draftText,
-													})
-												}}
-											>
-												{t('actions.save')}
-											</Button>
+										<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+											{t('sections.audio')}
 										</div>
-									</div>
+										<div className="space-y-4">
+											<div className="flex flex-wrap items-center gap-2">
+												<input
+													ref={audioFileInputRef}
+													type="file"
+													accept="audio/*"
+													className="hidden"
+													onChange={(e) => {
+														const f = e.target.files?.[0]
+														if (!f) return
+														void uploadThreadAudio(f)
+													}}
+												/>
+												<Button
+													type="button"
+													variant="outline"
+													className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8"
+													disabled={isUploadingAudio}
+													onClick={() => audioFileInputRef.current?.click()}
+												>
+													{isUploadingAudio
+														? t('audio.actions.uploading')
+														: t('audio.actions.upload')}
+												</Button>
+												{thread?.audioAssetId ? (
+													<Button
+														type="button"
+														variant="ghost"
+														className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8 hover:bg-destructive/10 hover:text-destructive"
+														disabled={setAudioAssetMutation.isPending}
+														onClick={() => void setThreadAudio(null)}
+													>
+														{t('audio.actions.clear')}
+													</Button>
+												) : null}
+											</div>
+											{audio?.url ? (
+												<audio
+													controls
+													src={String(audio.url)}
+													className="w-full h-8"
+												/>
+											) : null}
 
-									<details className="group">
-										<summary className="cursor-pointer select-none py-2 font-sans text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
-											{t('sections.debug')}
-										</summary>
-										<div className="space-y-3 pt-2">
-											{(selectedPost?.contentBlocks ?? []).filter(
-												(b: any) => b?.type !== 'text',
-											).length > 0 ? (
-												<div className="space-y-1">
-													{(selectedPost?.contentBlocks ?? [])
-														.filter((b: any) => b?.type && b.type !== 'text')
-														.map((b: any) => {
-															const assetId =
-																b.data?.assetId || b.data?.previewAssetId
+											{audioAssets.length > 0 ? (
+												<div className="space-y-2 border-t border-border pt-3">
+													<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+														{t('audio.labels.library')}
+													</div>
+													<div className="max-h-[150px] overflow-y-auto space-y-1 pr-1">
+														{audioAssets.map((a: any) => {
+															const isCurrent =
+																thread?.audioAssetId &&
+																String(thread.audioAssetId) === String(a.id)
 															return (
 																<div
-																	key={String(b.id)}
-																	className="font-mono text-[10px] border border-border p-1.5 bg-background truncate"
+																	key={String(a.id)}
+																	className={`group flex items-center justify-between border px-2 py-1.5 font-mono text-[10px] ${
+																		isCurrent
+																			? 'border-primary bg-primary/5'
+																			: 'border-border bg-background hover:bg-muted/50'
+																	}`}
 																>
-																	<span className="text-muted-foreground uppercase mr-1">
-																		{b.type}
-																	</span>
-																	{assetId || 'no-id'}
+																	<div className="truncate flex-1">
+																		{String(a.id).slice(0, 8)}...
+																		{typeof a.durationMs === 'number'
+																			? ` · ${Math.round(a.durationMs / 1000)}s`
+																			: ''}
+																	</div>
+																	{!isCurrent && (
+																		<button
+																			type="button"
+																			className="opacity-0 group-hover:opacity-100 uppercase tracking-wider hover:underline"
+																			disabled={
+																				setAudioAssetMutation.isPending ||
+																				String(a.status) !== 'ready'
+																			}
+																			onClick={() =>
+																				void setThreadAudio(String(a.id))
+																			}
+																		>
+																			Use
+																		</button>
+																	)}
 																</div>
 															)
 														})}
+													</div>
 												</div>
 											) : null}
-
-											<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-												Raw Post
-											</div>
-											<pre className="max-h-[200px] overflow-auto whitespace-pre-wrap break-words border border-border bg-background p-2 font-mono text-[10px]">
-												{selectedPostJson || t('debug.none')}
-											</pre>
 										</div>
-									</details>
-								</div>
-							</DialogContent>
-						</Dialog>
+									</div>
+
+									<div className="space-y-2">
+										<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+											{t('sections.media')}
+										</div>
+										<div>
+											{canIngestAssets ? (
+												<div className="flex flex-wrap items-center justify-end gap-2">
+													<Select
+														value={selectedProxyId}
+														onValueChange={setSelectedProxyId}
+														disabled={
+															ingestAssetsMutation.isPending ||
+															proxiesQuery.isLoading
+														}
+													>
+														<SelectTrigger className="h-8 rounded-[2px] shadow-none font-sans text-[10px] uppercase px-2">
+															<SelectValue placeholder="Proxy" />
+														</SelectTrigger>
+														<SelectContent>
+															{successProxies.map((p) => (
+																<SelectItem
+																	key={p.id}
+																	value={p.id}
+																	className="font-mono text-xs"
+																>
+																	{p.name ?? p.id}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+
+													<Button
+														type="button"
+														size="sm"
+														variant="outline"
+														className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8"
+														disabled={ingestAssetsMutation.isPending}
+														onClick={() =>
+															ingestAssetsMutation.mutate({
+																threadId: id,
+																proxyId:
+																	selectedProxyId !== 'none'
+																		? selectedProxyId
+																		: null,
+															})
+														}
+													>
+														{ingestAssetsMutation.isPending
+															? 'DL...'
+															: 'Download Media'}
+													</Button>
+												</div>
+											) : (
+												<div className="font-mono text-xs text-muted-foreground">
+													{t('media.noPending')}
+												</div>
+											)}
+										</div>
+									</div>
+								</TabsContent>
+
+								<TabsContent value="export" className="m-0 p-4 h-full space-y-4">
+									<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+										{t('sections.render')}
+									</div>
+									<div className="space-y-3">
+										<div className="flex flex-wrap items-center gap-3">
+											<Button
+												className="rounded-[2px] shadow-none font-sans text-xs uppercase"
+												disabled={
+													startRenderMutation.isPending || !thread || !root
+												}
+												onClick={() => {
+													startRenderMutation.mutate({ threadId: id })
+												}}
+											>
+												{t('actions.startRender')}
+											</Button>
+											{renderJobId ? (
+												<div className="font-mono text-xs text-muted-foreground">
+													{t('render.jobId', { jobId: renderJobId })}
+												</div>
+											) : null}
+										</div>
+										{renderJobId ? (
+											<div className="mt-3 font-mono text-xs text-muted-foreground space-y-1 border-t border-border pt-3">
+												<div className="flex items-center gap-2">
+													<div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+													{t('render.status', {
+														status: renderStatusQuery.data?.status ?? '...',
+													})}
+												</div>
+												{typeof renderStatusQuery.data?.progress === 'number' ? (
+													<div>
+														{t('render.progress', {
+															progress: Math.round(
+																renderStatusQuery.data.progress * 100,
+															),
+														})}
+													</div>
+												) : null}
+												{renderStatusQuery.data?.status === 'completed' &&
+												renderedDownloadUrl ? (
+													<a
+														className="underline hover:text-foreground"
+														href={renderedDownloadUrl}
+													>
+														{t('render.downloadMp4')}
+													</a>
+												) : null}
+											</div>
+										) : null}
+									</div>
+								</TabsContent>
+							</div>
+						</Tabs>
 					</div>
 				</div>
 			</div>
+
+			<Dialog open={isEditorOpen} onOpenChange={onEditorOpenChange}>
+				<DialogContent className="sm:max-w-3xl">
+					<DialogHeader>
+						<DialogTitle>{t('sections.editor')}</DialogTitle>
+						<DialogDescription>
+							{selectedPost
+								? `${selectedPost.authorName} · ${selectedPost.id.slice(0, 8)}...`
+								: ''}
+						</DialogDescription>
+					</DialogHeader>
+
+					<div className="space-y-4">
+						<div className="flex items-center gap-2 border-b border-border pb-3">
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8 px-2 border border-border"
+								disabled={
+									translateMutation.isPending ||
+									!thread?.id ||
+									!selectedPost?.id
+								}
+								onClick={() => {
+									if (!thread?.id || !selectedPost?.id) return
+									translateMutation.mutate({
+										threadId: thread.id,
+										postId: selectedPost.id,
+										targetLocale: 'zh-CN',
+									})
+								}}
+							>
+								{translateMutation.isPending ? (
+									<Loader2 className="h-3 w-3 animate-spin" />
+								) : (
+									t('actions.translateToZh')
+								)}
+							</Button>
+							{selectedZhTranslation ? (
+								<Button
+									type="button"
+									size="sm"
+									variant="ghost"
+									className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8 px-2 border border-border hover:bg-accent"
+									onClick={() => {
+										setDraftText(selectedZhTranslation)
+										toast.message(t('toasts.translationApplied'))
+									}}
+								>
+									{t('actions.useTranslation')}
+								</Button>
+							) : null}
+						</div>
+
+						{selectedZhTranslation ? (
+							<div className="bg-muted/30 border border-border p-2">
+								<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+									{t('sections.translation')}
+								</div>
+								<div className="font-mono text-xs whitespace-pre-wrap">
+									{selectedZhTranslation}
+								</div>
+							</div>
+						) : null}
+
+						<div className="space-y-2">
+							<Textarea
+								value={draftText}
+								onChange={(e) => setDraftText(e.target.value)}
+								className="rounded-[2px] border-border focus:ring-1 focus:ring-ring shadow-none font-mono text-xs min-h-[200px] resize-y bg-background"
+								placeholder={t('inputs.postContentPlaceholder')}
+							/>
+							<div className="flex items-center justify-between">
+								<Button
+									type="button"
+									variant="ghost"
+									className="rounded-[2px] font-sans text-xs uppercase h-8 text-muted-foreground hover:text-foreground"
+									onClick={() => {
+										setDraftText(originalSelectedPostText)
+										toast.message(t('toasts.reset'))
+									}}
+								>
+									{t('actions.reset')}
+								</Button>
+								<Button
+									className="rounded-[2px] shadow-none font-sans text-xs uppercase h-8"
+									disabled={
+										updateMutation.isPending || !selectedPost?.id || !thread?.id
+									}
+									onClick={() => {
+										if (!thread?.id || !selectedPost?.id) return
+										updateMutation.mutate({
+											threadId: thread.id,
+											postId: selectedPost.id,
+											text: draftText,
+										})
+									}}
+								>
+									{t('actions.save')}
+								</Button>
+							</div>
+						</div>
+
+						<details className="group">
+							<summary className="cursor-pointer select-none py-2 font-sans text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">
+								{t('sections.debug')}
+							</summary>
+							<div className="space-y-3 pt-2">
+								{(selectedPost?.contentBlocks ?? []).filter(
+									(b: any) => b?.type !== 'text',
+								).length > 0 ? (
+									<div className="space-y-1">
+										{(selectedPost?.contentBlocks ?? [])
+											.filter((b: any) => b?.type && b.type !== 'text')
+											.map((b: any) => {
+												const assetId = b.data?.assetId || b.data?.previewAssetId
+												return (
+													<div
+														key={String(b.id)}
+														className="font-mono text-[10px] border border-border p-1.5 bg-background truncate"
+													>
+														<span className="text-muted-foreground uppercase mr-1">
+															{b.type}
+														</span>
+														{assetId || 'no-id'}
+													</div>
+												)
+											})}
+									</div>
+								) : null}
+
+								<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+									Raw Post
+								</div>
+								<pre className="max-h-[200px] overflow-auto whitespace-pre-wrap break-words border border-border bg-background p-2 font-mono text-[10px]">
+									{selectedPostJson || t('debug.none')}
+								</pre>
+							</div>
+						</details>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	)
 }

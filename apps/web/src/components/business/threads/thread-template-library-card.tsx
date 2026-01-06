@@ -184,13 +184,13 @@ export function ThreadTemplateLibraryCard({
 					</Button>
 				</div>
 
-				<div className="space-y-3">
-					<div className="font-mono text-xs uppercase tracking-widest">
+				<div className="space-y-4">
+					<div className="font-mono text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
 						{t('use.title')}
 					</div>
-					<div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto_auto] items-end">
-						<div className="space-y-1">
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+					<div className="flex flex-col gap-4">
+						<div className="space-y-1.5">
+							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
 								{t('use.templateLabel')}
 							</Label>
 							<Select
@@ -200,10 +200,10 @@ export function ThreadTemplateLibraryCard({
 									setApplyVersionId('')
 								}}
 							>
-								<SelectTrigger className="rounded-none font-mono text-xs h-9">
+								<SelectTrigger className="rounded-none font-mono text-xs h-9 w-full overflow-hidden">
 									<SelectValue placeholder={t('use.templatePlaceholder')} />
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent className="max-w-[calc(100vw-2rem)] sm:max-w-[400px]">
 									{libraries.map((l: any) => (
 										<SelectItem key={String(l.id)} value={String(l.id)}>
 											{String(l.name)} · {String(l.templateId)} · v
@@ -213,8 +213,8 @@ export function ThreadTemplateLibraryCard({
 								</SelectContent>
 							</Select>
 						</div>
-						<div className="space-y-1">
-							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+						<div className="space-y-1.5">
+							<Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70">
 								{t('use.versionLabel')}
 							</Label>
 							<Select
@@ -222,10 +222,10 @@ export function ThreadTemplateLibraryCard({
 								onValueChange={(v) => setApplyVersionId(v)}
 								disabled={!applyLibraryId || versions.length === 0}
 							>
-								<SelectTrigger className="rounded-none font-mono text-xs h-9">
+								<SelectTrigger className="rounded-none font-mono text-xs h-9 w-full overflow-hidden">
 									<SelectValue placeholder={t('use.versionPlaceholder')} />
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent className="max-w-[calc(100vw-2rem)] sm:max-w-[400px]">
 									{versions.map((v: any) => (
 										<SelectItem key={String(v.id)} value={String(v.id)}>
 											v{Number(v.version)} · {String(v.id).slice(0, 10)}
@@ -235,35 +235,37 @@ export function ThreadTemplateLibraryCard({
 								</SelectContent>
 							</Select>
 						</div>
-						<Button
-							type="button"
-							className="rounded-none font-mono text-xs uppercase"
-							disabled={!applyVersionId || applyMutation.isPending}
-							onClick={() => {
-								if (!applyVersionId) return
-								applyMutation.mutate({ threadId, versionId: applyVersionId })
-							}}
-						>
-							{applyMutation.isPending ? t('use.applying') : t('use.apply')}
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							className="rounded-none font-mono text-xs uppercase"
-							disabled={!applyLibraryId || !applyVersionId}
-							asChild
-						>
-							<Link
-								to="/thread-templates/$libraryId/versions/$versionId/editor"
-								params={{
-									libraryId: applyLibraryId,
-									versionId: applyVersionId,
+						<div className="grid grid-cols-2 gap-2">
+							<Button
+								type="button"
+								className="rounded-none font-mono text-xs uppercase w-full"
+								disabled={!applyVersionId || applyMutation.isPending}
+								onClick={() => {
+									if (!applyVersionId) return
+									applyMutation.mutate({ threadId, versionId: applyVersionId })
 								}}
-								search={{ previewThreadId: threadId }}
 							>
-								{t('use.openEditor')}
-							</Link>
-						</Button>
+								{applyMutation.isPending ? t('use.applying') : t('use.apply')}
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								className="rounded-none font-mono text-xs uppercase w-full"
+								disabled={!applyLibraryId || !applyVersionId}
+								asChild
+							>
+								<Link
+									to="/thread-templates/$libraryId/versions/$versionId/editor"
+									params={{
+										libraryId: applyLibraryId,
+										versionId: applyVersionId,
+									}}
+									search={{ previewThreadId: threadId }}
+								>
+									{t('use.openEditor')}
+								</Link>
+							</Button>
+						</div>
 					</div>
 					{willChangeTemplateId ? (
 						<div className="font-mono text-xs text-muted-foreground">
