@@ -1469,6 +1469,9 @@ function analyzeRenderTreeNode(
 					'type',
 					'text',
 					'bind',
+					'bilingual',
+					'bilingualPrimary',
+					'secondaryPlacement',
 					'color',
 					'align',
 					'opacity',
@@ -1492,13 +1495,35 @@ function analyzeRenderTreeNode(
 			bind === 'root.author.name' ||
 			bind === 'root.author.handle' ||
 			bind === 'root.plainText' ||
+			bind === 'root.translations.zh-CN.plainText' ||
 			bind === 'post.author.name' ||
 			bind === 'post.author.handle' ||
-			bind === 'post.plainText'
+			bind === 'post.plainText' ||
+			bind === 'post.translations.zh-CN.plainText'
 			if (text == null && bind == null) {
 				push(`${path}: Text node needs 'text' or 'bind'; ignored.`)
 			} else if (bind != null && !bindAllowed) {
 				push(`${path}.bind: unsupported (${String(bind)}); ignored.`)
+			}
+			const bilingual = (rawNode as any).bilingual
+			if (bilingual != null && typeof bilingual !== 'boolean') {
+				push(`${path}.bilingual: must be boolean; ignored.`)
+			}
+			const bilingualPrimary = (rawNode as any).bilingualPrimary
+			if (
+				bilingualPrimary != null &&
+				bilingualPrimary !== 'zh' &&
+				bilingualPrimary !== 'original'
+			) {
+				push(`${path}.bilingualPrimary: must be 'zh' | 'original'; ignored.`)
+			}
+			const secondaryPlacement = (rawNode as any).secondaryPlacement
+			if (
+				secondaryPlacement != null &&
+				secondaryPlacement !== 'above' &&
+				secondaryPlacement !== 'below'
+			) {
+				push(`${path}.secondaryPlacement: must be 'above' | 'below'; ignored.`)
 			}
 			const opacity = (rawNode as any).opacity
 			if (opacity != null) {

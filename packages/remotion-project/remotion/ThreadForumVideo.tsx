@@ -240,7 +240,23 @@ function renderThreadTemplateNode(
 			}
 		})()
 
-		const text = node.text ?? bound ?? ''
+		const wantsBilingual =
+			node.text == null &&
+			node.bilingual === true &&
+			(node.bind === 'root.plainText' ||
+				node.bind === 'root.translations.zh-CN.plainText' ||
+				node.bind === 'post.plainText' ||
+				node.bind === 'post.translations.zh-CN.plainText')
+		const bilingualTargetPost =
+			node.bind === 'root.plainText' || node.bind === 'root.translations.zh-CN.plainText'
+				? ctx.root
+				: post
+		const bilingualPrimary = node.bilingualPrimary ?? 'zh'
+		const { primaryText, secondaryText } = wantsBilingual
+			? resolveBilingualPostText(bilingualTargetPost, bilingualPrimary)
+			: { primaryText: '', secondaryText: null }
+
+		const text = wantsBilingual ? primaryText : node.text ?? bound ?? ''
 		const color =
 			node.color === 'accent'
 				? 'var(--tf-accent)'
@@ -281,6 +297,40 @@ function renderThreadTemplateNode(
 			;(style as any).WebkitBoxOrient = 'vertical'
 			;(style as any).WebkitLineClamp = String(node.maxLines)
 			style.overflow = 'hidden'
+		}
+
+		if (wantsBilingual && secondaryText) {
+			const secondaryStyle: CSSProperties = {
+				margin: 0,
+				color: 'var(--tf-muted)',
+				opacity: 0.9,
+				fontWeight: Math.max(400, Math.min(700, weight - 100)),
+				fontSize: `calc(${Math.max(12, sizePx - 2)}px * var(--tf-font-scale))`,
+				lineHeight: lineHeight ?? 1.25,
+				whiteSpace: 'pre-wrap',
+				textAlign: style.textAlign,
+			}
+
+			const placement = node.secondaryPlacement ?? 'below'
+			return (
+				<div
+					data-tt-key={key}
+					data-tt-type="Text"
+					style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+				>
+					{placement === 'above' ? (
+						<>
+							<p style={secondaryStyle}>{secondaryText}</p>
+							<p style={style}>{text}</p>
+						</>
+					) : (
+						<>
+							<p style={style}>{text}</p>
+							<p style={secondaryStyle}>{secondaryText}</p>
+						</>
+					)}
+				</div>
+			)
 		}
 
 		return (
@@ -458,12 +508,24 @@ function renderThreadTemplateNode(
 	}
 
 	if (node.type === 'ContentBlocks') {
+		const post =
+			node.bind === 'post.contentBlocks' ? (ctx.post ?? ctx.root) : ctx.root
 		const blocks =
 			node.bind === 'root.contentBlocks'
 				? ctx.root.contentBlocks
 				: node.bind === 'post.contentBlocks'
-					? (ctx.post ?? ctx.root).contentBlocks
+					? post.contentBlocks
 					: []
+		const hasZhTranslation = Boolean(
+			typeof post.translations?.['zh-CN']?.plainText === 'string' &&
+				post.translations?.['zh-CN']?.plainText.trim(),
+		)
+		const { primaryText, secondaryText } = hasZhTranslation
+			? resolveBilingualPostText(post, 'zh')
+			: { primaryText: '', secondaryText: null }
+		const displayBlocks = hasZhTranslation
+			? buildDisplayBlocks(post, primaryText)
+			: blocks
 		const gap = typeof node.gap === 'number' ? node.gap : 14
 		const maxHeight =
 			typeof node.maxHeight === 'number' ? node.maxHeight : undefined
@@ -483,7 +545,21 @@ function renderThreadTemplateNode(
 					opacity,
 				}}
 			>
-				{renderBlocks(blocks, ctx.assets)}
+				{renderBlocks(displayBlocks, ctx.assets)}
+				{hasZhTranslation && secondaryText ? (
+					<div
+						style={{
+							borderTop: '1px solid var(--tf-border)',
+							paddingTop: 14,
+							fontSize: 'calc(16px * var(--tf-font-scale))',
+							color: 'var(--tf-muted)',
+							lineHeight: 1.55,
+							whiteSpace: 'pre-wrap',
+						}}
+					>
+						{secondaryText}
+					</div>
+				) : null}
 			</div>
 		)
 	}
@@ -574,6 +650,7 @@ function renderThreadTemplateNode(
 				<Video
 					src={url}
 					muted
+					loop
 					data-tt-key={key}
 					data-tt-type="Video"
 					style={{
@@ -1141,6 +1218,7 @@ function renderBlocks(
 						<Video
 							src={url}
 							muted
+							loop
 							style={{
 								display: 'block',
 								width: '100%',

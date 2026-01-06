@@ -252,6 +252,13 @@ export type ThreadRenderTreeNode =
 				| 'post.author.handle'
 				| 'post.plainText'
 				| 'post.translations.zh-CN.plainText'
+			/**
+			 * When true (and `bind` points at a post plainText/translation field),
+			 * renders both zh-CN and original text when available.
+			 */
+			bilingual?: boolean
+			bilingualPrimary?: 'zh' | 'original'
+			secondaryPlacement?: 'above' | 'below'
 			color?: 'primary' | 'muted' | 'accent'
 			align?: 'left' | 'center' | 'right'
 			opacity?: number

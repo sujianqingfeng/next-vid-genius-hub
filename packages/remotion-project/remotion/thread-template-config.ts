@@ -285,6 +285,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 											{
 												type: 'Text',
 												bind: 'post.plainText',
+												bilingual: true,
 												size: 14,
 												weight: 600,
 												lineHeight: 1.5,
