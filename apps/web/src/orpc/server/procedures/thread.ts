@@ -12,6 +12,8 @@ import { getDb, schema } from '~/lib/infra/db'
 import { enqueueCloudTask } from '~/lib/features/job/enqueue'
 import { TASK_KINDS } from '~/lib/features/job/task'
 import { logger } from '~/lib/infra/logger'
+import { resolveSuccessProxy } from '~/lib/infra/proxy/resolve-success-proxy'
+import { toProxyJobPayload } from '~/lib/infra/proxy/utils'
 import { createId } from '~/lib/shared/utils/id'
 import {
 	buildThreadPostsInsertFromDraft,
@@ -24,7 +26,6 @@ import {
 	DEFAULT_THREAD_TEMPLATE_ID,
 	THREAD_TEMPLATES,
 } from '@app/remotion-project/thread-templates'
-import { ingestThreadAssets } from '~/lib/domain/thread/server/asset-ingest'
 import {
 	translateAllThreadPosts,
 	translateThreadPost,
@@ -906,6 +907,7 @@ export const ingestAssets = os
 		z.object({
 			threadId: z.string().min(1),
 			maxAssetsPerRun: z.number().int().min(1).max(25).optional().default(5),
+			proxyId: z.string().nullable().optional().default(null),
 		}),
 	)
 	.handler(async ({ input, context }) => {
@@ -931,6 +933,16 @@ export const ingestAssets = os
 			})
 			.from(schema.threadPosts)
 			.where(eq(schema.threadPosts.threadId, thread.id))
+
+		const requestedProxyId =
+			typeof input.proxyId === 'string' && input.proxyId.trim()
+				? input.proxyId.trim()
+				: null
+		const strictProxy = true as const
+		const resolvedProxy = requestedProxyId
+			? await resolveSuccessProxy({ db, requestedProxyId })
+			: null
+		const proxyPayload = resolvedProxy ? toProxyJobPayload(resolvedProxy.proxyRecord) : null
 
 		function extractExternalUrl(value: unknown): string | null {
 			if (typeof value !== 'string') return null
@@ -1072,13 +1084,93 @@ export const ingestAssets = os
 			}
 		}
 
-		const res = await ingestThreadAssets({
-			userId,
-			assetIds: [...new Set([...assetIds, ...materializedAssetIds])],
-			maxAssetsPerRun: input.maxAssetsPerRun,
-		})
+		const candidateIds = [...new Set([...assetIds, ...materializedAssetIds])]
+		if (candidateIds.length === 0) {
+			return { queued: 0, effectiveProxyId: resolvedProxy?.proxyId ?? null }
+		}
 
-		return res
+		const candidates = await db
+			.select({
+				id: schema.threadAssets.id,
+				sourceUrl: schema.threadAssets.sourceUrl,
+				storageKey: schema.threadAssets.storageKey,
+				status: schema.threadAssets.status,
+			})
+			.from(schema.threadAssets)
+			.where(
+				and(
+					eq(schema.threadAssets.userId, userId),
+					inArray(schema.threadAssets.id, candidateIds),
+				),
+			)
+
+		const toQueue = candidates
+			.filter(
+				(a) =>
+					!a.storageKey &&
+					typeof a.sourceUrl === 'string' &&
+					a.sourceUrl.trim() &&
+					(a.status === 'pending' || a.status === 'failed'),
+			)
+			.slice(0, input.maxAssetsPerRun)
+
+		for (const a of toQueue) {
+			const assetId = String(a.id)
+			const url = String(a.sourceUrl).trim()
+
+			// Reset failed assets to pending when re-queued.
+			if (a.status !== 'pending') {
+				await db
+					.update(schema.threadAssets)
+					.set({ status: 'pending', updatedAt: now })
+					.where(eq(schema.threadAssets.id, assetId))
+			}
+
+			await enqueueCloudTask({
+				db,
+				userId,
+				kind: TASK_KINDS.THREAD_ASSET_INGEST,
+				engine: 'media-downloader',
+				targetType: 'thread',
+				targetId: assetId,
+				mediaId: assetId,
+				purpose: TASK_KINDS.THREAD_ASSET_INGEST,
+				title: thread.id,
+				payload: {
+					threadId: thread.id,
+					assetId,
+					url,
+					proxyId: resolvedProxy?.proxyId ?? null,
+				},
+				options: {
+					task: 'thread-asset',
+					strictProxy,
+					assetId,
+					url,
+					proxyId: resolvedProxy?.proxyId ?? null,
+					proxy: proxyPayload ?? undefined,
+				},
+				buildManifest: ({ jobId }) => {
+					return {
+						jobId,
+						mediaId: assetId,
+						purpose: TASK_KINDS.THREAD_ASSET_INGEST,
+						engine: 'media-downloader',
+						createdAt: Date.now(),
+						inputs: {},
+						optionsSnapshot: {
+							threadId: thread.id,
+							assetId,
+							url,
+							strictProxy,
+							proxyId: resolvedProxy?.proxyId ?? null,
+						},
+					}
+				},
+			})
+		}
+
+		return { queued: toQueue.length, effectiveProxyId: resolvedProxy?.proxyId ?? null }
 	})
 
 const DEFAULT_MAX_THREAD_AUDIO_UPLOAD_BYTES = 50 * 1024 * 1024

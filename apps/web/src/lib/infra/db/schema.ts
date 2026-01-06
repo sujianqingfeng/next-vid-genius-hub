@@ -269,6 +269,7 @@ export const tasks = sqliteTable('tasks', {
 			'render-comments',
 			'render-subtitles',
 			'render-thread',
+			'thread-asset-ingest',
 			'channel-sync',
 			'asr',
 		],

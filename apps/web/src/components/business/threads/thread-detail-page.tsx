@@ -7,6 +7,13 @@ import { toast } from 'sonner'
 import { Loader2, Play, Trash2 } from 'lucide-react'
 import { useConfirmDialog } from '~/components/business/layout/confirm-dialog-provider'
 import { Button } from '~/components/ui/button'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '~/components/ui/select'
 import { Textarea } from '~/components/ui/textarea'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
@@ -2625,6 +2632,48 @@ export function ThreadDetailPage({ id }: { id: string }) {
 	const confirmDialog = useConfirmDialog()
 	const t = useTranslations('Threads.detail')
 
+	type ProxyRow = {
+		id: string
+		name?: string | null
+		testStatus?: 'pending' | 'success' | 'failed' | null
+		responseTime?: number | null
+	}
+
+	const proxyStorageKey = `threadAssetProxy:${id}`
+	const proxiesQuery = useQuery(
+		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
+	)
+	const proxies = (proxiesQuery.data?.proxies ?? [
+		{ id: 'none', name: 'No Proxy', testStatus: null, responseTime: null },
+	]) as ProxyRow[]
+	const successProxies = proxies.filter(
+		(p) => p.id === 'none' || p.testStatus === 'success',
+	)
+	const successProxyIdsKey = successProxies.map((p) => p.id).join('|')
+	const defaultProxyId = proxiesQuery.data?.defaultProxyId ?? 'none'
+	const defaultIsSuccess =
+		defaultProxyId !== 'none' &&
+		successProxies.some((p) => p.id === defaultProxyId)
+	const effectiveDefaultProxyId = defaultIsSuccess ? defaultProxyId : 'none'
+	const [selectedProxyId, setSelectedProxyId] = React.useState('none')
+
+	React.useEffect(() => {
+		if (typeof window === 'undefined') return
+		const saved = window.localStorage.getItem(proxyStorageKey)
+		if (saved && successProxies.some((p) => p.id === saved)) {
+			setSelectedProxyId(saved)
+			return
+		}
+		setSelectedProxyId(effectiveDefaultProxyId)
+	}, [proxyStorageKey, effectiveDefaultProxyId, successProxyIdsKey])
+
+	React.useEffect(() => {
+		if (typeof window === 'undefined') return
+		try {
+			window.localStorage.setItem(proxyStorageKey, selectedProxyId)
+		} catch {}
+	}, [proxyStorageKey, selectedProxyId])
+
 	const dataQuery = useQuery(
 		queryOrpc.thread.byId.queryOptions({ input: { id } }),
 	)
@@ -2769,7 +2818,9 @@ export function ThreadDetailPage({ id }: { id: string }) {
 	const canIngestAssets = React.useMemo(() => {
 		const hasPendingDbAssets = assets.some(
 			(a: any) =>
-				a?.status === 'pending' || (a?.status === 'ready' && !a?.storageKey),
+				a?.status === 'pending' ||
+				a?.status === 'failed' ||
+				(a?.status === 'ready' && !a?.storageKey),
 		)
 		return hasExternalMediaRefs || hasPendingDbAssets
 	}, [assets, hasExternalMediaRefs])
@@ -2825,14 +2876,14 @@ export function ThreadDetailPage({ id }: { id: string }) {
 			},
 		}),
 		{
-			successToast: ({ data }) =>
-				t('toasts.mediaIngest', {
-					processed: data.processed,
-					ok: data.succeeded,
-					failed: data.failed,
-				}),
-			errorToast: ({ error }) =>
-				error instanceof Error ? error.message : String(error),
+			successToast: ({ data }) => {
+				const proxyLabel =
+					data.effectiveProxyId && data.effectiveProxyId !== 'none'
+						? ` (proxy: ${data.effectiveProxyId})`
+						: ''
+				return `Queued ${data.queued} asset(s)${proxyLabel}`
+			},
+			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
 
@@ -3447,24 +3498,56 @@ export function ThreadDetailPage({ id }: { id: string }) {
 										Editor
 									</div>
 									<div className="flex items-center gap-2">
-										{canIngestAssets ? (
-											<Button
-												type="button"
-												size="sm"
-												variant="outline"
-												className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-6"
-												disabled={ingestAssetsMutation.isPending}
-												onClick={() =>
-													ingestAssetsMutation.mutate({ threadId: id })
-												}
-											>
-												{ingestAssetsMutation.isPending
-													? 'DL...'
-													: 'Download Media'}
-											</Button>
-										) : null}
+											{canIngestAssets ? (
+												<div className="flex items-center gap-2">
+													<Select
+														value={selectedProxyId}
+														onValueChange={setSelectedProxyId}
+														disabled={
+															ingestAssetsMutation.isPending ||
+															proxiesQuery.isLoading
+														}
+													>
+														<SelectTrigger className="h-6 rounded-[2px] shadow-none font-sans text-[10px] uppercase px-2">
+															<SelectValue placeholder="Proxy" />
+														</SelectTrigger>
+														<SelectContent>
+															{successProxies.map((p) => (
+																<SelectItem
+																	key={p.id}
+																	value={p.id}
+																	className="font-mono text-xs"
+																>
+																	{p.name ?? p.id}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+
+													<Button
+														type="button"
+														size="sm"
+														variant="outline"
+														className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-6"
+														disabled={ingestAssetsMutation.isPending}
+														onClick={() =>
+															ingestAssetsMutation.mutate({
+																threadId: id,
+																proxyId:
+																	selectedProxyId !== 'none'
+																		? selectedProxyId
+																		: null,
+															})
+														}
+													>
+														{ingestAssetsMutation.isPending
+															? 'DL...'
+															: 'Download Media'}
+													</Button>
+												</div>
+											) : null}
+										</div>
 									</div>
-								</div>
 
 								{/* Translation Controls */}
 								<div className="flex items-center gap-2 border-b border-border pb-3">

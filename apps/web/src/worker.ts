@@ -6,7 +6,6 @@ import type { D1Database } from '~/lib/infra/db'
 import { setInjectedD1Database } from '~/lib/infra/db'
 import { runScheduledProxyChecks } from '~/lib/infra/proxy/check'
 import { runScheduledTaskReconciler } from '~/lib/features/job/reconciler'
-import { runScheduledThreadAssetIngest } from '~/lib/domain/thread/server/asset-ingest'
 
 type WorkerEnv = {
 	DB?: D1Database
@@ -111,7 +110,6 @@ export default {
 			Promise.all([
 				runScheduledProxyChecks(),
 				runScheduledTaskReconciler(),
-				runScheduledThreadAssetIngest(),
 			]),
 		)
 	},

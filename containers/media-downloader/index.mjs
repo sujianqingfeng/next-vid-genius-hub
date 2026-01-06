@@ -334,6 +334,8 @@ async function handleRender(req, res) {
   const isChannelList = task === "channel-list";
   const isMetadataOnly = task === "metadata-only";
   const isProxyProbe = task === "proxy-probe";
+  const isThreadAsset = task === "thread-asset";
+  const strictProxy = Boolean(engineOptions?.strictProxy);
 
   if (!url) {
     await postUpdate("failed", { error: "missing url" });
@@ -369,8 +371,15 @@ async function handleRender(req, res) {
   }
 
   let clashController = null;
+  const shouldStartMihomo = !(
+    strictProxy &&
+    !engineOptions?.proxy &&
+    !engineOptions?.defaultProxyUrl
+  );
   try {
-    clashController = await startMihomoForJob(engineOptions, jobId);
+    if (shouldStartMihomo) {
+      clashController = await startMihomoForJob(engineOptions, jobId);
+    }
   } catch (error) {
     console.error("[media-downloader] Failed to start Clash/Mihomo", error);
   }
@@ -387,6 +396,89 @@ async function handleRender(req, res) {
     viaMihomo: Boolean(clashController),
     proxy,
   });
+
+  if (isThreadAsset) {
+    const assetId = String(engineOptions?.assetId || mediaId || "").trim();
+    try {
+      try {
+        await progress("fetching_metadata", 0.2);
+      } catch {}
+
+      const agent = proxy ? new ProxyAgent(proxy) : undefined;
+      const res = await undiciFetch(url, {
+        method: "GET",
+        dispatcher: agent,
+        headers: {
+          "user-agent": "next-vid-genius-hub/thread-asset-ingest",
+          accept: "*/*",
+        },
+        redirect: "follow",
+      });
+
+      if (!res.ok) {
+        throw new Error(`fetch failed: ${res.status}`);
+      }
+      if (!res.body) {
+        throw new Error("missing response body");
+      }
+
+      const contentType =
+        String(res.headers.get("content-type") || "").split(";")[0].trim() ||
+        "application/octet-stream";
+      const contentLengthRaw = String(res.headers.get("content-length") || "").trim();
+      const contentLength =
+        contentLengthRaw && Number.isFinite(Number(contentLengthRaw))
+          ? String(Math.max(0, Math.trunc(Number(contentLengthRaw))))
+          : null;
+
+      try {
+        await progress("uploading", 0.6);
+      } catch {}
+
+      await uploadArtifact(
+        outputVideoPutUrl,
+        () => res.body,
+        contentType,
+        contentLength ? { "content-length": contentLength } : {},
+      );
+
+      const bytes = contentLength ? Number(contentLength) : undefined;
+      await postUpdate("completed", {
+        phase: "completed",
+        progress: 1,
+        metadata: {
+          kind: "thread-asset",
+          assetId: assetId || undefined,
+          url,
+          contentType,
+          ...(typeof bytes === "number" ? { bytes } : {}),
+          proxyUrl: proxy || null,
+        },
+        outputs: callbackOutputs(),
+      });
+    } catch (error) {
+      const msg = error?.message || String(error);
+      await postUpdate("failed", {
+        error: msg,
+        metadata: {
+          kind: "thread-asset",
+          assetId: assetId || undefined,
+          url,
+          proxyUrl: proxy || null,
+        },
+      });
+    } finally {
+      try {
+        await clashController?.cleanup();
+      } catch (error) {
+        console.error(
+          "[media-downloader] Failed to shutdown Clash cleanly",
+          error,
+        );
+      }
+    }
+    return;
+  }
 
   async function probeDownloadCapability() {
     const start = Date.now();

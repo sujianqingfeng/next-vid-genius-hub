@@ -77,18 +77,34 @@ export async function handleStart(env: Env, req: Request) {
 		env.S3_INTERNAL_ENDPOINT,
 	)
 	const pathOptions = { title: body.title ?? undefined }
-	const outputVideoKey = isDownloader
-		? bucketPaths.downloads.video(body.mediaId, jobId, pathOptions)
-		: bucketPaths.outputs.video(body.mediaId, jobId, pathOptions)
-	const outputAudioSourceKey = isDownloader
-		? bucketPaths.downloads.audioSource(body.mediaId, jobId, pathOptions)
-		: undefined
-	const outputAudioProcessedKey = isDownloader
-		? bucketPaths.downloads.audioProcessed(body.mediaId, jobId, pathOptions)
-		: undefined
-	const metadataKey = isDownloader
-		? bucketPaths.downloads.metadata(body.mediaId, jobId, pathOptions)
-		: undefined
+	const isThreadAssetIngest = isDownloader && purpose === 'thread-asset-ingest'
+	const threadAssetIdRaw =
+		isThreadAssetIngest &&
+		typeof (body.options as any)?.assetId === 'string' &&
+		(body.options as any).assetId.trim()
+			? String((body.options as any).assetId).trim()
+			: null
+	const threadAssetId = isThreadAssetIngest
+		? threadAssetIdRaw || String(body.mediaId)
+		: null
+
+	const outputVideoKey = isThreadAssetIngest
+		? `thread-assets/${threadAssetId}`
+		: isDownloader
+			? bucketPaths.downloads.video(body.mediaId, jobId, pathOptions)
+			: bucketPaths.outputs.video(body.mediaId, jobId, pathOptions)
+	const outputAudioSourceKey =
+		isDownloader && !isThreadAssetIngest
+			? bucketPaths.downloads.audioSource(body.mediaId, jobId, pathOptions)
+			: undefined
+	const outputAudioProcessedKey =
+		isDownloader && !isThreadAssetIngest
+			? bucketPaths.downloads.audioProcessed(body.mediaId, jobId, pathOptions)
+			: undefined
+	const metadataKey =
+		isDownloader && !isThreadAssetIngest
+			? bucketPaths.downloads.metadata(body.mediaId, jobId, pathOptions)
+			: undefined
 
 	const opts = (body.options || {}) as any
 	const isOverlayOnlyRender =
@@ -240,19 +256,19 @@ export async function handleStart(env: Env, req: Request) {
 		bucketName,
 		outputVideoKey,
 		putTtl,
-		'video/mp4',
+		isThreadAssetIngest ? undefined : 'video/mp4',
 		jobS3Endpoint,
 	)
-		const outputAudioPutUrl = outputAudioProcessedKey
-			? await presignS3(
-					env,
-					'PUT',
-					bucketName,
-					outputAudioProcessedKey,
-					putTtl,
-					// Processed audio from media-downloader is WAV (PCM S16LE, 16kHz mono).
-					'audio/wav',
-					jobS3Endpoint,
+	const outputAudioPutUrl = outputAudioProcessedKey
+		? await presignS3(
+				env,
+				'PUT',
+				bucketName,
+				outputAudioProcessedKey,
+				putTtl,
+				// Processed audio from media-downloader is WAV (PCM S16LE, 16kHz mono).
+				'audio/wav',
+				jobS3Endpoint,
 			)
 		: undefined
 	const outputAudioSourcePutUrl = outputAudioSourceKey

@@ -7,6 +7,7 @@ export const TASK_KINDS = {
 	RENDER_COMMENTS: 'render-comments',
 	RENDER_SUBTITLES: 'render-subtitles',
 	RENDER_THREAD: 'render-thread',
+	THREAD_ASSET_INGEST: 'thread-asset-ingest',
 	CHANNEL_SYNC: 'channel-sync',
 	ASR: 'asr',
 } as const

@@ -115,6 +115,53 @@ export async function handleMediaDownloaderNonDownloadCallback(input: {
 }): Promise<Response> {
 	const { db, payload, task, effectiveKind } = input
 
+	if (effectiveKind === TASK_KINDS.THREAD_ASSET_INGEST) {
+		const assetId = task?.targetId || payload.mediaId
+		if (!assetId) {
+			logger.warn(
+				'api',
+				`[cf-callback] thread-asset-ingest missing assetId job=${payload.jobId}`,
+			)
+			return Response.json({ ok: true, ignored: true })
+		}
+
+		if (payload.status === 'completed') {
+			const key = payload.outputs?.video?.key
+			if (!key) {
+				throw new Error(
+					`thread-asset-ingest missing outputs.video.key job=${payload.jobId}`,
+				)
+			}
+			const meta = (payload.metadata ?? null) as any
+			const contentType =
+				typeof meta?.contentType === 'string' && meta.contentType.trim()
+					? meta.contentType.trim()
+					: null
+			const bytes =
+				typeof meta?.bytes === 'number' && Number.isFinite(meta.bytes)
+					? Math.trunc(meta.bytes)
+					: null
+
+			await db
+				.update(schema.threadAssets)
+				.set({
+					status: 'ready',
+					storageKey: String(key),
+					contentType,
+					bytes,
+					updatedAt: new Date(),
+				})
+				.where(eq(schema.threadAssets.id, assetId))
+		} else if (payload.status === 'failed' || payload.status === 'canceled') {
+			await db
+				.update(schema.threadAssets)
+				.set({ status: 'failed', updatedAt: new Date() })
+				.where(eq(schema.threadAssets.id, assetId))
+		}
+
+		return Response.json({ ok: true })
+	}
+
 	if (effectiveKind === TASK_KINDS.COMMENTS_DOWNLOAD) {
 		if (payload.status === 'completed') {
 			const metadataUrl = await resolveMetadataUrlFromPayload(payload)
