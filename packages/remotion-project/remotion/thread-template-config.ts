@@ -14,7 +14,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 				{
 					type: 'Background',
 					color:
-						'radial-gradient(1200px circle at 18% 12%, rgba(22,163,74,0.14), transparent 58%), radial-gradient(900px circle at 88% 14%, rgba(245,158,11,0.10), transparent 62%), linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0) 58%)',
+						'radial-gradient(900px circle at 50% -20%, rgba(255,255,255,0.42), transparent 62%), radial-gradient(1200px circle at 18% 12%, rgba(22,163,74,0.12), transparent 60%), radial-gradient(900px circle at 88% 14%, rgba(245,158,11,0.10), transparent 62%)',
 					opacity: 1,
 				},
 				{
@@ -28,7 +28,6 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 							paddingX: 14,
 							paddingY: 10,
 							border: true,
-							background: 'rgba(255,255,255,0.72)',
 							radius: 999,
 							children: [
 								{
@@ -292,7 +291,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 												bind: 'post.plainText',
 												bilingual: true,
 												secondaryPlacement: 'above',
-												size: 14,
+												size: 18,
 												weight: 600,
 												lineHeight: 1.5,
 												maxLines: 10,
