@@ -286,6 +286,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 												type: 'Text',
 												bind: 'post.plainText',
 												bilingual: true,
+												secondaryPlacement: 'above',
 												size: 14,
 												weight: 600,
 												lineHeight: 1.5,
@@ -335,4 +336,4 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template compile/render logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 24
+export const THREAD_TEMPLATE_COMPILE_VERSION = 28

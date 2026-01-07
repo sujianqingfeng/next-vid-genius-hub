@@ -97,6 +97,143 @@ function resolveAssetUrl(
 	return null
 }
 
+function renderMainMediaCard(
+	block: ThreadVideoInputProps['root']['contentBlocks'][number],
+	assets: ThreadVideoInputProps['assets'] | undefined,
+	opts?: { extraCount?: number },
+): React.ReactNode {
+	if (!block || (block as any).type == null) return null
+	const extraCount = Math.max(0, Math.floor(opts?.extraCount ?? 0))
+
+	const cardStyle: CSSProperties = {
+		border: '1px solid var(--tf-border)',
+		background: 'rgba(255,255,255,0.03)',
+		borderRadius: 18,
+		overflow: 'hidden',
+		position: 'relative',
+		width: '100%',
+		height: 420,
+		boxSizing: 'border-box',
+	}
+
+	const badgeStyle: CSSProperties = {
+		position: 'absolute',
+		top: 12,
+		right: 12,
+		border: '1px solid var(--tf-border)',
+		background: 'rgba(0,0,0,0.45)',
+		color: 'var(--tf-text)',
+		fontSize: 'calc(12px * var(--tf-font-scale))',
+		fontWeight: 800,
+		padding: '6px 10px',
+		borderRadius: 999,
+		letterSpacing: '0.06em',
+	}
+
+	const captionStyle: CSSProperties = {
+		position: 'absolute',
+		left: 0,
+		right: 0,
+		bottom: 0,
+		padding: '12px 14px',
+		background:
+			'linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.05))',
+		color: 'var(--tf-text)',
+		fontSize: 'calc(14px * var(--tf-font-scale))',
+		lineHeight: 1.35,
+	}
+
+	if ((block as any).type === 'image') {
+		const assetId = String((block as any).data?.assetId ?? '')
+		const url = assetId ? resolveAssetUrl(assetId, assets) : null
+		const caption = String((block as any).data?.caption ?? '').trim()
+		return (
+			<div style={cardStyle}>
+				{url ? (
+					<Img
+						src={url}
+						style={{
+							position: 'absolute',
+							inset: 0,
+							width: '100%',
+							height: '100%',
+							objectFit: 'cover',
+							objectPosition: 'center',
+						}}
+					/>
+				) : (
+					<div
+						style={{
+							position: 'absolute',
+							inset: 0,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							color: 'var(--tf-muted)',
+							fontSize: 'calc(14px * var(--tf-font-scale))',
+							border: '1px dashed var(--tf-border)',
+							margin: 14,
+							borderRadius: 14,
+							background: 'rgba(255,255,255,0.02)',
+						}}
+					>
+						[image: {assetId || 'no-id'}]
+					</div>
+				)}
+				{extraCount > 0 ? <div style={badgeStyle}>+{extraCount}</div> : null}
+				{caption ? <div style={captionStyle}>{caption}</div> : null}
+			</div>
+		)
+	}
+
+	if ((block as any).type === 'video') {
+		const assetId = String((block as any).data?.assetId ?? '')
+		const url = assetId ? resolveAssetUrl(assetId, assets) : null
+		const title = String((block as any).data?.title ?? '').trim()
+		return (
+			<div style={cardStyle}>
+				{url ? (
+					<Video
+						src={url}
+						muted
+						loop
+						style={{
+							position: 'absolute',
+							inset: 0,
+							width: '100%',
+							height: '100%',
+							objectFit: 'cover',
+							backgroundColor: 'rgba(0,0,0,0.25)',
+						}}
+					/>
+				) : (
+					<div
+						style={{
+							position: 'absolute',
+							inset: 0,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							color: 'var(--tf-muted)',
+							fontSize: 'calc(14px * var(--tf-font-scale))',
+							border: '1px dashed var(--tf-border)',
+							margin: 14,
+							borderRadius: 14,
+							background: 'rgba(255,255,255,0.02)',
+						}}
+					>
+						[video: {assetId || 'no-id'}]
+					</div>
+				)}
+				{extraCount > 0 ? <div style={badgeStyle}>+{extraCount}</div> : null}
+				{title ? <div style={captionStyle}>{title}</div> : null}
+			</div>
+		)
+	}
+
+	return null
+}
+
 function renderThreadTemplateNode(
 	node: ThreadRenderTreeNode | undefined,
 	ctx: {
@@ -526,6 +663,120 @@ function renderThreadTemplateNode(
 		const displayBlocks = hasZhTranslation
 			? buildDisplayBlocks(post, primaryText)
 			: blocks
+
+		const prefersPostTwoColumn =
+			ctx.scene === 'post' &&
+			(node.bind === 'root.contentBlocks' || node.bind === 'post.contentBlocks')
+
+		if (prefersPostTwoColumn) {
+			const mediaBlocks = (displayBlocks ?? []).filter(
+				(b) => b?.type === 'image' || b?.type === 'video',
+			)
+			const mainMedia = mediaBlocks[0] ?? null
+			const extraCount = Math.max(0, mediaBlocks.length - 1)
+			const hasMedia = Boolean(mainMedia)
+
+			const primary =
+				hasZhTranslation && primaryText.trim()
+					? primaryText.trim()
+					: (post.plainText ?? '').trim()
+			const secondary =
+				hasZhTranslation && secondaryText && secondaryText.trim()
+					? secondaryText.trim()
+					: null
+
+			const tagStyle: CSSProperties = {
+				border: '1px solid var(--tf-border)',
+				background: 'rgba(255,255,255,0.04)',
+				color: 'var(--tf-muted)',
+				fontSize: 'calc(11px * var(--tf-font-scale))',
+				fontWeight: 800,
+				padding: '4px 8px',
+				borderRadius: 999,
+				letterSpacing: '0.08em',
+				textTransform: 'uppercase',
+				display: 'inline-flex',
+				alignItems: 'center',
+				gap: 6,
+			}
+
+			const textPrimaryStyle: CSSProperties = {
+				margin: 0,
+				fontSize: 'calc(26px * var(--tf-font-scale))',
+				lineHeight: 1.55,
+				whiteSpace: 'pre-wrap',
+				color: 'var(--tf-text)',
+				fontWeight: 700,
+				display: '-webkit-box',
+				WebkitBoxOrient: 'vertical',
+				WebkitLineClamp: String(hasMedia ? 10 : 16),
+				overflow: 'hidden',
+			}
+
+			const textSecondaryStyle: CSSProperties = {
+				margin: 0,
+				fontSize: 'calc(18px * var(--tf-font-scale))',
+				lineHeight: 1.55,
+				whiteSpace: 'pre-wrap',
+				color: 'var(--tf-muted)',
+				opacity: 0.92,
+				fontWeight: 600,
+				display: '-webkit-box',
+				WebkitBoxOrient: 'vertical',
+				WebkitLineClamp: String(hasMedia ? 7 : 10),
+				overflow: 'hidden',
+			}
+
+			const maxHeight =
+				typeof node.maxHeight === 'number' ? node.maxHeight : undefined
+			const opacity =
+				typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
+
+			return (
+				<div
+					data-tt-key={key}
+					data-tt-type="ContentBlocks"
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						gap: 18,
+						alignItems: 'stretch',
+						maxHeight,
+						overflow: maxHeight ? 'hidden' : undefined,
+						opacity,
+					}}
+				>
+					{mainMedia
+						? renderMainMediaCard(mainMedia as any, ctx.assets, { extraCount })
+						: null}
+
+					<div style={{ minWidth: 0 }}>
+						<div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+							<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+								{hasZhTranslation && secondary ? (
+									<span style={{ ...tagStyle, opacity: 0.75 }}>ORIGINAL</span>
+								) : null}
+								<span style={tagStyle}>
+									<span
+										style={{
+											width: 8,
+											height: 8,
+											background: 'var(--tf-accent)',
+											borderRadius: 999,
+											display: 'inline-block',
+										}}
+									/>
+									{hasZhTranslation ? 'TRANSLATION' : 'TEXT'}
+								</span>
+							</div>
+							{secondary ? <p style={textSecondaryStyle}>{secondary}</p> : null}
+							{primary ? <p style={textPrimaryStyle}>{primary}</p> : null}
+						</div>
+					</div>
+				</div>
+			)
+		}
+
 		const gap = typeof node.gap === 'number' ? node.gap : 14
 		const maxHeight =
 			typeof node.maxHeight === 'number' ? node.maxHeight : undefined
