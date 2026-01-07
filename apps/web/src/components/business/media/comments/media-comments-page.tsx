@@ -48,7 +48,7 @@ import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
 import { useCloudJob } from '~/lib/shared/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { MEDIA_SOURCES } from '~/lib/domain/media/source'
-import { formatHostPort } from '~/lib/infra/proxy/host'
+import { formatHostPort } from '~/lib/shared/utils/host'
 import { useLocale, useTranslations } from '~/lib/shared/i18n'
 import { queryOrpc } from '~/orpc'
 

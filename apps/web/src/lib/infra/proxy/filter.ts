@@ -1,4 +1,4 @@
-import { classifyHost } from './host'
+import { classifyHost } from '~/lib/shared/utils/host'
 import type { ParsedProxy } from './parser'
 
 export function filterOutIpv6Proxies(input: readonly ParsedProxy[]): {

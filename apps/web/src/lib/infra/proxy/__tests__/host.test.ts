@@ -5,7 +5,7 @@ import {
 	formatHostPort,
 	isIpv4,
 	isIpv6,
-} from '../host'
+} from '~/lib/shared/utils/host'
 
 describe('proxy host helpers', () => {
 	it('detects ipv4', () => {

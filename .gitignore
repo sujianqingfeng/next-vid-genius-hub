@@ -67,6 +67,9 @@ frames
 .dev
 **/__tests__/artifacts/
 
+# Root-level x-thread exports (store fixtures under docs/fixtures instead)
+/x-thread-*.json
+
 # Worker/Cloudflare local artifacts
 workers/media-orchestrator/.wrangler
 workers/media-orchestrator/.mf
