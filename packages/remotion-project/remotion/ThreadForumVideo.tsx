@@ -77,12 +77,12 @@ function buildCssVars(
 					].join(', ')
 
 	return {
-		'--tf-bg': theme.background ?? '#0b1020',
-		'--tf-surface': theme.surface ?? 'rgba(255,255,255,0.06)',
-		'--tf-border': theme.border ?? 'rgba(255,255,255,0.10)',
-		'--tf-text': theme.textPrimary ?? '#e5e7eb',
-		'--tf-muted': theme.textMuted ?? 'rgba(229,231,235,0.65)',
-		'--tf-accent': theme.accent ?? '#22c55e',
+		'--tf-bg': theme.background ?? '#fbf7f1',
+		'--tf-surface': theme.surface ?? 'rgba(255,255,255,0.92)',
+		'--tf-border': theme.border ?? 'rgba(17,24,39,0.10)',
+		'--tf-text': theme.textPrimary ?? '#111827',
+		'--tf-muted': theme.textMuted ?? 'rgba(17,24,39,0.60)',
+		'--tf-accent': theme.accent ?? '#16a34a',
 		'--tf-font-family': fontFamily,
 		'--tf-font-scale': String(fontScale),
 	} as unknown as CSSProperties
@@ -107,7 +107,7 @@ function renderMainMediaCard(
 
 	const cardStyle: CSSProperties = {
 		border: '1px solid var(--tf-border)',
-		background: 'rgba(255,255,255,0.03)',
+		background: 'var(--tf-surface)',
 		borderRadius: 18,
 		overflow: 'hidden',
 		position: 'relative',
@@ -120,14 +120,15 @@ function renderMainMediaCard(
 		position: 'absolute',
 		top: 12,
 		right: 12,
-		border: '1px solid var(--tf-border)',
-		background: 'rgba(0,0,0,0.45)',
-		color: 'var(--tf-text)',
+		border: '1px solid rgba(0,0,0,0.06)',
+		background: 'var(--tf-accent)',
+		color: '#fff',
 		fontSize: 'calc(12px * var(--tf-font-scale))',
 		fontWeight: 800,
 		padding: '6px 10px',
 		borderRadius: 999,
 		letterSpacing: '0.06em',
+		boxShadow: '0 8px 18px rgba(17,24,39,0.12)',
 	}
 
 	const captionStyle: CSSProperties = {
@@ -138,9 +139,10 @@ function renderMainMediaCard(
 		padding: '12px 14px',
 		background:
 			'linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.05))',
-		color: 'var(--tf-text)',
+		color: '#fff',
 		fontSize: 'calc(14px * var(--tf-font-scale))',
 		lineHeight: 1.35,
+		textShadow: '0 1px 2px rgba(0,0,0,0.35)',
 	}
 
 	if ((block as any).type === 'image') {
@@ -174,7 +176,7 @@ function renderMainMediaCard(
 							border: '1px dashed var(--tf-border)',
 							margin: 14,
 							borderRadius: 14,
-							background: 'rgba(255,255,255,0.02)',
+							background: 'rgba(17,24,39,0.03)',
 						}}
 					>
 						[image: {assetId || 'no-id'}]
@@ -203,7 +205,7 @@ function renderMainMediaCard(
 							width: '100%',
 							height: '100%',
 							objectFit: 'cover',
-							backgroundColor: 'rgba(0,0,0,0.25)',
+							backgroundColor: 'rgba(17,24,39,0.06)',
 						}}
 					/>
 				) : (
@@ -219,7 +221,7 @@ function renderMainMediaCard(
 							border: '1px dashed var(--tf-border)',
 							margin: 14,
 							borderRadius: 14,
-							background: 'rgba(255,255,255,0.02)',
+							background: 'rgba(17,24,39,0.03)',
 						}}
 					>
 						[video: {assetId || 'no-id'}]
@@ -594,7 +596,7 @@ function renderThreadTemplateNode(
 		const url = assetId ? resolveAssetUrl(String(assetId), ctx.assets) : null
 		const size = typeof node.size === 'number' ? node.size : 96
 		const radius = typeof node.radius === 'number' ? node.radius : 999
-		const bg = node.background ?? 'rgba(255,255,255,0.06)'
+		const bg = node.background ?? 'rgba(17,24,39,0.04)'
 		const border = node.border ? '1px solid var(--tf-border)' : undefined
 		const opacity =
 			typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
@@ -694,7 +696,7 @@ function renderThreadTemplateNode(
 
 			const tagStyle: CSSProperties = {
 				border: '1px solid var(--tf-border)',
-				background: 'rgba(255,255,255,0.04)',
+				background: 'rgba(17,24,39,0.03)',
 				color: 'var(--tf-muted)',
 				fontSize: 'calc(11px * var(--tf-font-scale))',
 				fontWeight: 800,
@@ -836,7 +838,7 @@ function renderThreadTemplateNode(
 		const height = typeof node.height === 'number' ? node.height : undefined
 		const radius = typeof node.radius === 'number' ? node.radius : 0
 		const border = node.border ? '1px solid var(--tf-border)' : undefined
-		const background = node.background ?? 'rgba(255,255,255,0.02)'
+		const background = node.background ?? 'var(--tf-surface)'
 
 		if (url) {
 			return (
@@ -901,7 +903,7 @@ function renderThreadTemplateNode(
 		const height = typeof node.height === 'number' ? node.height : undefined
 		const radius = typeof node.radius === 'number' ? node.radius : 0
 		const border = node.border ? '1px solid var(--tf-border)' : undefined
-		const background = node.background ?? 'rgba(0,0,0,0.25)'
+		const background = node.background ?? 'rgba(17,24,39,0.06)'
 
 		if (url) {
 			return (
@@ -933,7 +935,7 @@ function renderThreadTemplateNode(
 				data-tt-type="Video"
 				style={{
 					border: border ?? '1px dashed var(--tf-border)',
-					background: 'rgba(255,255,255,0.02)',
+					background: 'var(--tf-surface)',
 					borderRadius: radius,
 					padding: 14,
 					fontSize: 'calc(14px * var(--tf-font-scale))',
@@ -1414,7 +1416,7 @@ function renderBlocks(
 					key={b.id}
 					style={{
 						border: '1px solid var(--tf-border)',
-						background: 'rgba(255,255,255,0.02)',
+						background: 'var(--tf-surface)',
 						padding: 14,
 					}}
 				>
@@ -1434,7 +1436,7 @@ function renderBlocks(
 						<div
 							style={{
 								border: '1px dashed var(--tf-border)',
-								background: 'rgba(255,255,255,0.03)',
+								background: 'rgba(17,24,39,0.03)',
 								padding: 18,
 								fontSize: 'calc(16px * var(--tf-font-scale))',
 								color: 'var(--tf-muted)',
@@ -1466,7 +1468,7 @@ function renderBlocks(
 					key={b.id}
 					style={{
 						border: '1px dashed var(--tf-border)',
-						background: 'rgba(255,255,255,0.03)',
+						background: 'rgba(17,24,39,0.03)',
 						padding: 18,
 						fontSize: 'calc(16px * var(--tf-font-scale))',
 						color: 'var(--tf-muted)',
@@ -1483,7 +1485,7 @@ function renderBlocks(
 								maxHeight: 520,
 								borderRadius: 0,
 								border: '1px solid var(--tf-border)',
-								backgroundColor: 'rgba(0,0,0,0.25)',
+								backgroundColor: 'rgba(17,24,39,0.06)',
 							}}
 						/>
 					) : (
@@ -1498,7 +1500,7 @@ function renderBlocks(
 					key={b.id}
 					style={{
 						border: '1px solid var(--tf-border)',
-						background: 'rgba(255,255,255,0.02)',
+						background: 'var(--tf-surface)',
 						padding: 18,
 					}}
 				>
@@ -1696,7 +1698,7 @@ function CoverSlide({
 							height: 44,
 							borderRadius: 999,
 							border: '1px solid var(--tf-border)',
-							background: 'rgba(255,255,255,0.04)',
+							background: 'rgba(17,24,39,0.04)',
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'center',
@@ -2599,7 +2601,7 @@ function PostCard({
 						height: 44,
 						borderRadius: 999,
 						border: '1px solid var(--tf-border)',
-						background: 'rgba(255,255,255,0.04)',
+						background: 'rgba(17,24,39,0.04)',
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'center',
@@ -2773,7 +2775,7 @@ function RepliesListSlide({
 							minHeight: 0,
 							overflow: 'hidden',
 							border: '1px solid var(--tf-border)',
-							background: 'rgba(255,255,255,0.02)',
+							background: 'var(--tf-surface)',
 							padding: 18,
 							boxSizing: 'border-box',
 						}}

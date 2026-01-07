@@ -14,7 +14,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 				{
 					type: 'Background',
 					color:
-						'radial-gradient(1200px circle at 18% 12%, rgba(34,197,94,0.22), transparent 55%), radial-gradient(900px circle at 88% 14%, rgba(59,130,246,0.10), transparent 58%), linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0) 55%)',
+						'radial-gradient(1200px circle at 18% 12%, rgba(22,163,74,0.14), transparent 58%), radial-gradient(900px circle at 88% 14%, rgba(245,158,11,0.10), transparent 62%), linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0) 58%)',
 					opacity: 1,
 				},
 				{
@@ -28,7 +28,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 							paddingX: 14,
 							paddingY: 10,
 							border: true,
-							background: 'rgba(255,255,255,0.03)',
+							background: 'rgba(255,255,255,0.72)',
 							radius: 999,
 							children: [
 								{
@@ -194,7 +194,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 													bind: 'root.author.avatarAssetId',
 													size: 44,
 													border: true,
-													background: 'rgba(255,255,255,0.04)',
+													background: 'rgba(17,24,39,0.04)',
 												},
 												{
 													type: 'Text',
@@ -228,7 +228,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 							flex: 42,
 							maxHeight: 2000,
 							border: true,
-							background: 'rgba(255,255,255,0.02)',
+							background: 'rgba(255,255,255,0.72)',
 							padding: 18,
 							children: [
 								{
@@ -266,7 +266,7 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 																bind: 'post.author.avatarAssetId',
 																size: 32,
 																border: true,
-																background: 'rgba(255,255,255,0.04)',
+																background: 'rgba(17,24,39,0.04)',
 															},
 															{
 																type: 'Text',
@@ -321,14 +321,15 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
 	version: 1,
 	theme: {
-		background: '#0b1020',
-		surface: 'rgba(255,255,255,0.06)',
-		border: 'rgba(255,255,255,0.10)',
-		textPrimary: '#e5e7eb',
-		textSecondary: 'rgba(229,231,235,0.85)',
-		textMuted: 'rgba(229,231,235,0.65)',
-		accent: '#22c55e',
-		accentGlow: 'rgba(34, 197, 94, 0.25)',
+		// Warm light theme (default).
+		background: '#fbf7f1',
+		surface: 'rgba(255,255,255,0.92)',
+		border: 'rgba(17,24,39,0.10)',
+		textPrimary: '#111827',
+		textSecondary: 'rgba(17,24,39,0.85)',
+		textMuted: 'rgba(17,24,39,0.60)',
+		accent: '#16a34a',
+		accentGlow: 'rgba(22, 163, 74, 0.18)',
 	},
 	typography: { fontPreset: 'noto', fontScale: 1 },
 	layout: {},
@@ -341,4 +342,4 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template compile/render logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 30
+export const THREAD_TEMPLATE_COMPILE_VERSION = 31
