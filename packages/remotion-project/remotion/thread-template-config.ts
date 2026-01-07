@@ -91,10 +91,15 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 					background: 'var(--tf-surface)',
 					children: [
 						{
-							type: 'ContentBlocks',
-							bind: 'root.contentBlocks',
-							gap: 16,
-							maxHeight: 900,
+							type: 'Text',
+							bind: 'root.plainText',
+							bilingual: true,
+							bilingualPrimary: 'zh',
+							secondaryPlacement: 'above',
+							size: 30,
+							weight: 700,
+							lineHeight: 1.5,
+							maxLines: 10,
 						},
 					],
 				},
@@ -336,4 +341,4 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template compile/render logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 28
+export const THREAD_TEMPLATE_COMPILE_VERSION = 29

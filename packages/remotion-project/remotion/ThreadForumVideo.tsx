@@ -448,6 +448,13 @@ function renderThreadTemplateNode(
 				textAlign: style.textAlign,
 			}
 
+			if (typeof node.maxLines === 'number' && node.maxLines > 0) {
+				;(secondaryStyle as any).display = '-webkit-box'
+				;(secondaryStyle as any).WebkitBoxOrient = 'vertical'
+				;(secondaryStyle as any).WebkitLineClamp = String(node.maxLines)
+				secondaryStyle.overflow = 'hidden'
+			}
+
 			const placement = node.secondaryPlacement ?? 'below'
 			return (
 				<div
