@@ -278,6 +278,54 @@ export const byId = os
 						)
 				: []
 
+		const ingestTasks =
+			referencedAssetIds.length > 0
+				? await db
+						.select({
+							id: schema.tasks.id,
+							targetId: schema.tasks.targetId,
+							jobId: schema.tasks.jobId,
+							status: schema.tasks.status,
+							progress: schema.tasks.progress,
+							createdAt: schema.tasks.createdAt,
+						})
+						.from(schema.tasks)
+						.where(
+							and(
+								eq(schema.tasks.userId, userId),
+								eq(schema.tasks.kind, TASK_KINDS.THREAD_ASSET_INGEST),
+								inArray(schema.tasks.targetId, referencedAssetIds),
+							),
+						)
+						.orderBy(desc(schema.tasks.createdAt))
+				: []
+
+		const ingestTaskByAssetId = new Map<
+			string,
+			{
+				id: string
+				jobId: string | null
+				status: string | null
+				progress: number | null
+				createdAt: Date
+			}
+		>()
+		for (const t of ingestTasks) {
+			const targetId = String(t.targetId ?? '').trim()
+			if (!targetId) continue
+			if (ingestTaskByAssetId.has(targetId)) continue
+			ingestTaskByAssetId.set(targetId, {
+				id: String(t.id),
+				jobId: t.jobId ? String(t.jobId) : null,
+				status: t.status ? String(t.status) : null,
+				progress:
+					typeof t.progress === 'number' && Number.isFinite(t.progress)
+						? Math.trunc(t.progress)
+						: null,
+				createdAt: t.createdAt as Date,
+			})
+		}
+
 		const assets = await Promise.all(
 			assetRows.map(async (a: any) => {
 				let renderUrl: string | null = null
@@ -286,7 +334,9 @@ export const byId = os
 						renderUrl = await presignGetByKey(String(a.storageKey))
 					} catch {}
 				}
-				return { ...a, renderUrl }
+				const ingestTask =
+					ingestTaskByAssetId.get(String(a?.id ?? '')) ?? null
+				return { ...a, renderUrl, ingestTask }
 			}),
 		)
 
@@ -1731,4 +1781,79 @@ export const getCloudRenderStatus = os
 		if (!render) throw new Error('Render job not found')
 
 		return await getJobStatus(input.jobId)
+	})
+
+export const getCloudAssetIngestStatuses = os
+	.input(
+		z.object({
+			jobIds: z.array(z.string().min(1)).min(1).max(25),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const ctx = context as RequestContext
+		const userId = ctx.auth.user!.id
+		const db = await getDb()
+
+		const jobIds = [
+			...new Set(input.jobIds.map((x) => String(x).trim()).filter(Boolean)),
+		].slice(0, 25)
+		if (jobIds.length === 0) return { items: [] as any[], errors: [] as any[] }
+
+		const tasks = await db
+			.select({
+				targetId: schema.tasks.targetId,
+				jobId: schema.tasks.jobId,
+			})
+			.from(schema.tasks)
+			.where(
+				and(
+					eq(schema.tasks.userId, userId),
+					eq(schema.tasks.kind, TASK_KINDS.THREAD_ASSET_INGEST),
+					inArray(schema.tasks.jobId, jobIds),
+				),
+			)
+
+		const lookups = tasks
+			.map((t) => ({
+				targetId: String(t.targetId),
+				jobId: t.jobId ? String(t.jobId) : '',
+			}))
+			.filter((t) => t.jobId)
+
+		const settled = await Promise.allSettled(
+			lookups.map(async (t) => {
+				const status = await getJobStatus(t.jobId)
+				return {
+					targetId: t.targetId,
+					jobId: t.jobId,
+					status: status.status,
+					phase: status.phase ?? null,
+					progress:
+						typeof status.progress === 'number' &&
+						Number.isFinite(status.progress)
+							? status.progress
+							: null,
+					message: status.message ?? null,
+					purpose: status.purpose ?? null,
+				}
+			}),
+		)
+
+		const items: any[] = []
+		const errors: Array<{ jobId: string; message: string }> = []
+		for (let i = 0; i < settled.length; i++) {
+			const r = settled[i]
+			if (r.status === 'fulfilled') {
+				items.push(r.value)
+			} else {
+				const jobId = lookups[i]?.jobId ?? ''
+				errors.push({
+					jobId,
+					message:
+						r.reason instanceof Error ? r.reason.message : String(r.reason),
+				})
+			}
+		}
+
+		return { items, errors }
 	})

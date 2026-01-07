@@ -386,12 +386,17 @@
 				"empty": "No translation yet."
 			},
   "media": {
-    "assetRowMissing": "asset row not found in `thread_assets`",
-    "noPending": "No pending media.",
-    "noBlocks": "No image/video/link blocks on this post.",
-    "openSourceUrl": "Open sourceUrl",
-    "unknownBlockType": "unknown block type: {type}",
-    "labels": {
+			"assetRowMissing": "asset row not found in `thread_assets`",
+			"downloadMedia": "Download Media",
+			"downloading": "Downloading…",
+			"downloadProgress": "Download progress",
+			"downloadProgressDetail": "{pct}% · {done}/{total}",
+			"progressWorking": "Working…",
+			"noPending": "No pending media.",
+			"noBlocks": "No image/video/link blocks on this post.",
+			"openSourceUrl": "Open sourceUrl",
+			"unknownBlockType": "unknown block type: {type}",
+			"labels": {
       "link": "link",
 					"title": "title",
 					"description": "desc",

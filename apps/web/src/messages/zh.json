@@ -386,12 +386,17 @@
 				"empty": "还没有翻译内容。"
 			},
   "media": {
-    "assetRowMissing": "未在 `thread_assets` 中找到对应资源行",
-    "noPending": "没有待下载的媒体资源。",
-    "noBlocks": "此帖子没有图片/视频/链接块。",
-    "openSourceUrl": "打开 sourceUrl",
-    "unknownBlockType": "未知块类型：{type}",
-    "labels": {
+			"assetRowMissing": "未在 `thread_assets` 中找到对应资源行",
+			"downloadMedia": "下载媒体",
+			"downloading": "下载中…",
+			"downloadProgress": "下载进度",
+			"downloadProgressDetail": "{pct}% · {done}/{total}",
+			"progressWorking": "处理中…",
+			"noPending": "没有待下载的媒体资源。",
+			"noBlocks": "此帖子没有图片/视频/链接块。",
+			"openSourceUrl": "打开 sourceUrl",
+			"unknownBlockType": "未知块类型：{type}",
+			"labels": {
       "link": "链接",
 					"title": "标题",
 					"description": "描述",

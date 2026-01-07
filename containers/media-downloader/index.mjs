@@ -407,8 +407,9 @@ async function handleRender(req, res) {
       const agent = proxy ? new ProxyAgent(proxy) : undefined;
       const urlLower = String(url).toLowerCase();
       const isM3u8Like =
-        urlLower.includes(".m3u8") ||
-        urlLower.includes("application/x-mpegurl");
+        /(\.m3u8|\.m3)(\?|$)/.test(urlLower) ||
+        urlLower.includes("application/x-mpegurl") ||
+        urlLower.includes("video.twimg.com/amplify_video/");
 
       const fetchText = async (playlistUrl) => {
         const r = await undiciFetch(playlistUrl, {
@@ -617,9 +618,7 @@ async function handleRender(req, res) {
 
         const stat = await fsPromises.stat(outPath);
         const bytes = stat?.size || 0;
-        if (!bytes || bytes < 1_000_000) {
-          throw new Error(`ffmpeg produced tiny mp4 (bytes=${bytes})`);
-        }
+        if (!bytes) throw new Error("ffmpeg produced empty mp4");
 
         const probed = await probeMp4(outPath);
         const width = probed.width ?? hintedWidth;
@@ -761,6 +760,8 @@ async function handleRender(req, res) {
         () => res.body,
         contentType,
         uploadContentLength ? { "content-length": uploadContentLength } : {},
+        // undici Response bodies are one-shot streams; retries would re-use a disturbed/locked body.
+        { maxAttempts: 1 },
       );
 
       const bytes =

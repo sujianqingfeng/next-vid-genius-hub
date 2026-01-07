@@ -2712,9 +2712,20 @@ export function ThreadDetailPage({ id }: { id: string }) {
 		} catch {}
 	}, [proxyStorageKey, selectedProxyId])
 
-	const dataQuery = useQuery(
-		queryOrpc.thread.byId.queryOptions({ input: { id } }),
-	)
+		const dataQuery = useQuery({
+			...queryOrpc.thread.byId.queryOptions({ input: { id } }),
+			refetchInterval: (q) => {
+				const assets = (q.state.data as any)?.assets ?? []
+				if (!Array.isArray(assets)) return false
+				const hasPending = assets.some((a: any) => {
+					const status = a?.status
+					if (status === 'pending') return true
+					if (status === 'ready' && !a?.storageKey) return true
+					return false
+				})
+				return hasPending ? 1500 : false
+			},
+		})
 	const thread = dataQuery.data?.thread ?? null
 	const root = dataQuery.data?.root ?? null
 	const replies = dataQuery.data?.replies ?? []
@@ -2853,12 +2864,12 @@ export function ThreadDetailPage({ id }: { id: string }) {
 		return false
 	}, [replies, root])
 
-	const canIngestAssets = React.useMemo(() => {
-		const hasPendingDbAssets = assets.some(
-			(a: any) =>
-				a?.status === 'pending' ||
-				a?.status === 'failed' ||
-				(a?.status === 'ready' && !a?.storageKey),
+		const canIngestAssets = React.useMemo(() => {
+			const hasPendingDbAssets = assets.some(
+				(a: any) =>
+					a?.status === 'pending' ||
+					a?.status === 'failed' ||
+					(a?.status === 'ready' && !a?.storageKey),
 		)
 		const hasCorruptTwitterVideo = assets.some((a: any) => {
 			if (a?.kind !== 'video') return false
@@ -2870,13 +2881,96 @@ export function ThreadDetailPage({ id }: { id: string }) {
 				typeof a?.bytes === 'number' && Number.isFinite(a.bytes) ? a.bytes : null
 			return bytes != null && bytes > 0 && bytes < 1_000_000
 		})
-		return hasExternalMediaRefs || hasPendingDbAssets || hasCorruptTwitterVideo
-	}, [assets, hasExternalMediaRefs])
+			return hasExternalMediaRefs || hasPendingDbAssets || hasCorruptTwitterVideo
+		}, [assets, hasExternalMediaRefs])
 
-	const [draftText, setDraftText] = React.useState('')
-	React.useEffect(() => {
-		setDraftText(firstTextBlockText(selectedPost?.contentBlocks) || '')
-	}, [selectedPostId])
+			const ingestProgress = React.useMemo(() => {
+				const candidates = (assets as any[]).filter((a) => {
+					const src =
+						typeof a?.sourceUrl === 'string' ? String(a.sourceUrl).trim() : ''
+				if (!src) return false
+				if (a?.status === 'pending' || a?.status === 'failed') return true
+				if (a?.status === 'ready' && !a?.storageKey) return true
+				return false
+			})
+			const total = candidates.length
+			const done = candidates.filter((a) => a?.status === 'ready' && a?.storageKey)
+				.length
+				const pct = total > 0 ? Math.round((done / total) * 100) : 0
+				return { total, done, pct, active: total > 0 && done < total }
+			}, [assets])
+
+		const ingestJobIds = React.useMemo(() => {
+			const ids = new Set<string>()
+			for (const a of assets as any[]) {
+				const status = a?.status
+				const needsIngest =
+					status === 'pending' ||
+					status === 'failed' ||
+					(status === 'ready' && !a?.storageKey)
+				if (!needsIngest) continue
+				const jobId = String(a?.ingestTask?.jobId ?? '').trim()
+				if (!jobId) continue
+				ids.add(jobId)
+			}
+			return [...ids].slice(0, 25)
+		}, [assets])
+
+		const ingestJobStatusQuery = useQuery({
+			...queryOrpc.thread.getCloudAssetIngestStatuses.queryOptions({
+				input: { jobIds: ingestJobIds.length ? ingestJobIds : ['__noop__'] },
+			}),
+			enabled: ingestJobIds.length > 0,
+			refetchInterval: (q) => {
+				const items = (q.state.data as any)?.items ?? []
+				if (!Array.isArray(items) || items.length === 0) return 1500
+				const terminal = new Set(['completed', 'failed', 'canceled'])
+				return items.every((it: any) => terminal.has(String(it?.status ?? '')))
+					? false
+					: 1500
+			},
+		})
+
+		const ingestJobProgress = React.useMemo(() => {
+			if (ingestJobIds.length === 0) return null
+			const items = (ingestJobStatusQuery.data as any)?.items ?? []
+			if (!Array.isArray(items) || items.length === 0) {
+				return {
+					pct: null as number | null,
+					done: 0,
+					total: ingestJobIds.length,
+					active: true,
+					hasProgress: false,
+				}
+			}
+			const terminal = new Set(['completed', 'failed', 'canceled'])
+			let sum = 0
+			let done = 0
+			let hasProgress = false
+			for (const it of items as any[]) {
+				const status = String(it?.status ?? '')
+				const isTerminal = terminal.has(status)
+				if (isTerminal) done++
+
+				if (typeof it?.progress === 'number' && Number.isFinite(it.progress)) {
+					hasProgress = true
+				}
+				const p = isTerminal
+					? 1
+					: typeof it?.progress === 'number' && Number.isFinite(it.progress)
+						? Math.max(0, Math.min(1, it.progress))
+						: 0
+				sum += p
+			}
+			const total = Math.max(1, items.length)
+			const pct = Math.round((sum / total) * 100)
+			return { pct, done, total: items.length, active: done < items.length, hasProgress }
+		}, [ingestJobIds.length, ingestJobStatusQuery.data])
+
+		const [draftText, setDraftText] = React.useState('')
+		React.useEffect(() => {
+			setDraftText(firstTextBlockText(selectedPost?.contentBlocks) || '')
+		}, [selectedPostId])
 
 	const [isEditorOpen, setIsEditorOpen] = React.useState(false)
 
@@ -3599,58 +3693,111 @@ export function ThreadDetailPage({ id }: { id: string }) {
 										<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
 											{t('sections.media')}
 										</div>
-										<div>
-											{canIngestAssets ? (
-												<div className="flex flex-wrap items-center justify-end gap-2">
-													<Select
-														value={selectedProxyId}
-														onValueChange={setSelectedProxyId}
-														disabled={
-															ingestAssetsMutation.isPending ||
-															proxiesQuery.isLoading
-														}
-													>
-														<SelectTrigger className="h-8 rounded-[2px] shadow-none font-sans text-[10px] uppercase px-2">
-															<SelectValue placeholder="Proxy" />
-														</SelectTrigger>
-														<SelectContent>
-															{successProxies.map((p) => (
-																<SelectItem
-																	key={p.id}
-																	value={p.id}
-																	className="font-mono text-xs"
-																>
-																	{p.name ?? p.id}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
+											<div>
+												{canIngestAssets ? (
+													<div className="space-y-2">
+														<div className="flex flex-wrap items-center justify-end gap-2">
+															<Select
+																value={selectedProxyId}
+																onValueChange={setSelectedProxyId}
+																disabled={
+																	ingestAssetsMutation.isPending ||
+																	proxiesQuery.isLoading
+																}
+															>
+																<SelectTrigger className="h-8 rounded-[2px] shadow-none font-sans text-[10px] uppercase px-2">
+																	<SelectValue placeholder="Proxy" />
+																</SelectTrigger>
+																<SelectContent>
+																	{successProxies.map((p) => (
+																		<SelectItem
+																			key={p.id}
+																			value={p.id}
+																			className="font-mono text-xs"
+																		>
+																			{p.name ?? p.id}
+																		</SelectItem>
+																	))}
+																</SelectContent>
+															</Select>
 
-													<Button
-														type="button"
-														size="sm"
-														variant="outline"
-														className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8"
-														disabled={ingestAssetsMutation.isPending}
-														onClick={() =>
-															ingestAssetsMutation.mutate({
-																threadId: id,
-																proxyId:
-																	selectedProxyId !== 'none'
-																		? selectedProxyId
-																		: null,
-															})
-														}
-													>
-														{ingestAssetsMutation.isPending
-															? 'DL...'
-															: 'Download Media'}
-													</Button>
-												</div>
-											) : (
-												<div className="font-mono text-xs text-muted-foreground">
-													{t('media.noPending')}
-												</div>
+															<Button
+																type="button"
+																size="sm"
+																variant="outline"
+																className="rounded-[2px] shadow-none font-sans text-[10px] uppercase h-8"
+																disabled={ingestAssetsMutation.isPending}
+																onClick={() =>
+																	ingestAssetsMutation.mutate({
+																		threadId: id,
+																		proxyId:
+																			selectedProxyId !== 'none'
+																				? selectedProxyId
+																				: null,
+																	})
+																}
+															>
+																{ingestAssetsMutation.isPending
+																	? t('media.downloading')
+																	: t('media.downloadMedia')}
+															</Button>
+														</div>
+
+															{ingestAssetsMutation.isPending ||
+															ingestProgress.total > 0 ||
+															ingestJobIds.length > 0 ? (
+																<div className="w-full">
+																	<div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+																		<span>{t('media.downloadProgress')}</span>
+																		{ingestJobProgress?.hasProgress &&
+																		typeof ingestJobProgress.pct === 'number' ? (
+																			<span className="text-foreground">
+																				{t('media.downloadProgressDetail', {
+																					done: ingestJobProgress.done,
+																					total: ingestJobProgress.total,
+																					pct: ingestJobProgress.pct,
+																				})}
+																			</span>
+																		) : ingestProgress.total > 0 ? (
+																			<span className="text-foreground">
+																				{t('media.downloadProgressDetail', {
+																					done: ingestProgress.done,
+																					total: ingestProgress.total,
+																					pct: ingestProgress.pct,
+																				})}
+																			</span>
+																		) : (
+																			<span className="text-foreground">
+																				{t('media.progressWorking')}
+																			</span>
+																		)}
+																	</div>
+																	<div className="mt-1 h-2 w-full border border-border bg-muted/30">
+																		<div
+																			className={
+																				(ingestJobProgress?.hasProgress &&
+																					typeof ingestJobProgress.pct === 'number') ||
+																				ingestProgress.total > 0
+																					? 'h-full bg-primary transition-[width] duration-300'
+																					: 'h-full w-1/2 bg-primary/70 animate-pulse'
+																			}
+																			style={
+																				ingestJobProgress?.hasProgress &&
+																				typeof ingestJobProgress.pct === 'number'
+																					? { width: `${ingestJobProgress.pct}%` }
+																					: ingestProgress.total > 0
+																						? { width: `${ingestProgress.pct}%` }
+																						: undefined
+																			}
+																		/>
+																	</div>
+																</div>
+															) : null}
+													</div>
+												) : (
+													<div className="font-mono text-xs text-muted-foreground">
+														{t('media.noPending')}
+													</div>
 											)}
 										</div>
 									</div>
