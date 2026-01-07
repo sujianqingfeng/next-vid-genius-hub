@@ -304,6 +304,24 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 					],
 				},
 				{
+					type: 'Absolute',
+					x: 480,
+					y: 270,
+					width: 960,
+					height: 540,
+					children: [
+						{
+							type: 'Video',
+							assetId: '__VIDEO_SLOT__',
+							width: 960,
+							height: 540,
+							fit: 'cover',
+							radius: 24,
+							background: 'rgba(17,24,39,0.06)',
+						},
+					],
+				},
+				{
 					type: 'Watermark',
 					position: 'bottom-right',
 					color: 'muted',

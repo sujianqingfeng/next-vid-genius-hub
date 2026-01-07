@@ -27,6 +27,7 @@ import {
 	TabsList,
 	TabsTrigger,
 } from '~/components/ui/tabs'
+import { Switch } from '~/components/ui/switch'
 import { Textarea } from '~/components/ui/textarea'
 import { ThreadRemotionPlayerCard } from '~/components/business/threads/thread-remotion-player-card'
 import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-template-library-card'
@@ -2678,6 +2679,8 @@ export function ThreadDetailPage({ id }: { id: string }) {
 	}
 
 	const proxyStorageKey = `threadAssetProxy:${id}`
+	const renderVideoStorageKey = `threadRenderVideo:${id}`
+	const renderMixAudioStorageKey = `threadRenderMixSourceAudio:${id}`
 	const proxiesQuery = useQuery(
 		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
@@ -2732,6 +2735,74 @@ export function ThreadDetailPage({ id }: { id: string }) {
 	const assets = dataQuery.data?.assets ?? []
 	const audio = dataQuery.data?.audio ?? null
 	const audioAssets = dataQuery.data?.audioAssets ?? []
+
+	const renderVideoCandidates = React.useMemo(() => {
+		if (!Array.isArray(assets)) return []
+		return assets.filter((a: any) => {
+			if (a?.kind !== 'video') return false
+			if (a?.status !== 'ready') return false
+			if (!a?.storageKey) return false
+			return true
+		})
+	}, [assets])
+	const renderVideoCandidatesKey = renderVideoCandidates
+		.map((a: any) => String(a?.id ?? ''))
+		.filter(Boolean)
+		.join('|')
+
+	const [selectedRenderVideoAssetId, setSelectedRenderVideoAssetId] =
+		React.useState<string>('none')
+	const [mixSourceAudio, setMixSourceAudio] = React.useState(false)
+	const didInitRenderOptionsRef = React.useRef(false)
+
+	React.useEffect(() => {
+		if (typeof window === 'undefined') return
+		if (didInitRenderOptionsRef.current) return
+
+		try {
+			const savedVideoId = window.localStorage.getItem(renderVideoStorageKey)
+			const savedMix = window.localStorage.getItem(renderMixAudioStorageKey)
+
+			const candidateIds = renderVideoCandidates.map((a: any) => String(a.id))
+			if (savedVideoId && candidateIds.includes(savedVideoId)) {
+				setSelectedRenderVideoAssetId(savedVideoId)
+			} else if (candidateIds.length > 0) {
+				setSelectedRenderVideoAssetId(candidateIds[0] ?? 'none')
+			} else {
+				setSelectedRenderVideoAssetId('none')
+			}
+
+			setMixSourceAudio(savedMix === '1')
+		} catch {
+			// ignore localStorage issues
+		} finally {
+			didInitRenderOptionsRef.current = true
+		}
+	}, [
+		renderMixAudioStorageKey,
+		renderVideoCandidatesKey,
+		renderVideoStorageKey,
+	])
+
+	React.useEffect(() => {
+		if (typeof window === 'undefined') return
+		try {
+			window.localStorage.setItem(
+				renderVideoStorageKey,
+				selectedRenderVideoAssetId,
+			)
+		} catch {}
+	}, [renderVideoStorageKey, selectedRenderVideoAssetId])
+
+	React.useEffect(() => {
+		if (typeof window === 'undefined') return
+		try {
+			window.localStorage.setItem(
+				renderMixAudioStorageKey,
+				mixSourceAudio ? '1' : '0',
+			)
+		} catch {}
+	}, [mixSourceAudio, renderMixAudioStorageKey])
 
 	const assetById = React.useMemo(() => {
 		const m = new Map<string, any>()
@@ -3814,6 +3885,64 @@ export function ThreadDetailPage({ id }: { id: string }) {
 										{t('sections.render')}
 									</div>
 									<div className="space-y-3">
+										<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+											<div className="space-y-1">
+												<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+													{t('render.sourceVideoLabel')}
+												</div>
+												<Select
+													value={selectedRenderVideoAssetId}
+													onValueChange={setSelectedRenderVideoAssetId}
+												>
+													<SelectTrigger className="rounded-[2px] h-9 font-mono text-xs">
+														<SelectValue
+															placeholder={t('render.sourceVideoPlaceholder')}
+														/>
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="none">
+															{t('render.sourceVideoNone')}
+														</SelectItem>
+														{renderVideoCandidates.map((a: any) => {
+															const vid = String(a?.id ?? '')
+															if (!vid) return null
+															const durationMs =
+																typeof a?.durationMs === 'number' &&
+																Number.isFinite(a.durationMs)
+																	? Math.max(0, Math.trunc(a.durationMs))
+																	: null
+															const seconds =
+																durationMs != null
+																	? Math.round(durationMs / 1000)
+																	: null
+															return (
+																<SelectItem key={vid} value={vid}>
+																	{vid.slice(0, 8)}
+																	{seconds != null ? ` · ${seconds}s` : ''}
+																</SelectItem>
+															)
+														})}
+													</SelectContent>
+												</Select>
+											</div>
+
+											<div className="flex items-end justify-between gap-3 border border-border/60 bg-muted/20 px-3 py-2 rounded-[2px]">
+												<div className="min-w-0">
+													<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														{t('render.mixSourceAudioLabel')}
+													</div>
+													<div className="font-mono text-xs text-muted-foreground truncate">
+														{t('render.mixSourceAudioHint')}
+													</div>
+												</div>
+												<Switch
+													checked={mixSourceAudio}
+													onCheckedChange={setMixSourceAudio}
+													disabled={selectedRenderVideoAssetId === 'none'}
+												/>
+											</div>
+										</div>
+
 										<div className="flex flex-wrap items-center gap-3">
 											<Button
 												className="rounded-[2px] shadow-none font-sans text-xs uppercase"
@@ -3821,7 +3950,17 @@ export function ThreadDetailPage({ id }: { id: string }) {
 													startRenderMutation.isPending || !thread || !root
 												}
 												onClick={() => {
-													startRenderMutation.mutate({ threadId: id })
+													startRenderMutation.mutate({
+														threadId: id,
+														videoAssetId:
+															selectedRenderVideoAssetId !== 'none'
+																? selectedRenderVideoAssetId
+																: null,
+														mixSourceAudio:
+															selectedRenderVideoAssetId !== 'none'
+																? mixSourceAudio
+																: false,
+													})
 												}}
 											>
 												{t('actions.startRender')}

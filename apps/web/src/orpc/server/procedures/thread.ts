@@ -22,10 +22,12 @@ import {
 } from '~/lib/domain/thread/adapters/x'
 import { blocksToPlainText } from '~/lib/domain/thread/utils/plain-text'
 import { buildThreadRenderSnapshot } from '~/lib/domain/thread/render-snapshot'
+import { extractThreadComposeVideoSlot } from '~/lib/domain/thread/video-slot'
 import {
 	DEFAULT_THREAD_TEMPLATE_ID,
 	THREAD_TEMPLATES,
 } from '@app/remotion-project/thread-templates'
+import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
 import {
 	translateAllThreadPosts,
 	translateThreadPost,
@@ -1604,6 +1606,8 @@ export const startCloudRender = os
 			threadId: z.string().min(1),
 			templateId: z.string().optional(),
 			templateConfig: z.unknown().optional().nullable(),
+			videoAssetId: z.string().optional().nullable(),
+			mixSourceAudio: z.boolean().optional(),
 		}),
 	)
 	.handler(async ({ input, context }) => {
@@ -1633,6 +1637,47 @@ export const startCloudRender = os
 			input.templateConfig !== undefined
 				? input.templateConfig
 				: (thread.templateConfig ?? null)
+
+		const videoAssetId =
+			typeof input.videoAssetId === 'string' && input.videoAssetId.trim()
+				? input.videoAssetId.trim()
+				: null
+		const mixSourceAudio = input.mixSourceAudio === true
+
+		let sourceVideoKey: string | null = null
+		let composeVideoSlot: ReturnType<typeof extractThreadComposeVideoSlot> | null =
+			null
+
+		if (videoAssetId) {
+			const sourceAsset = await db.query.threadAssets.findFirst({
+				where: and(
+					eq(schema.threadAssets.userId, userId),
+					eq(schema.threadAssets.id, videoAssetId),
+					eq(schema.threadAssets.kind, 'video'),
+				),
+				columns: { status: true, storageKey: true },
+			})
+			if (
+				!sourceAsset ||
+				sourceAsset.status !== 'ready' ||
+				!sourceAsset.storageKey
+			) {
+				throw new Error('Selected video asset is not ready')
+			}
+			sourceVideoKey = String(sourceAsset.storageKey)
+
+			composeVideoSlot =
+				extractThreadComposeVideoSlot(
+					effectiveTemplateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
+				) ?? extractThreadComposeVideoSlot(DEFAULT_THREAD_TEMPLATE_CONFIG)
+			if (!composeVideoSlot) {
+				throw new Error(
+					'compose-on-video requires an Absolute-positioned Video slot in the thread template',
+				)
+			}
+		}
+
+		const composeMode = sourceVideoKey ? 'compose-on-video' : 'overlay-only'
 
 		const renderId = createId()
 		const jobId = `job_${createId()}`
@@ -1692,7 +1737,10 @@ export const startCloudRender = os
 					threadId: thread.id,
 					templateId: effectiveTemplateId,
 					templateConfig: effectiveTemplateConfig,
-					composeMode: 'overlay-only',
+					composeMode,
+					videoAssetId,
+					videoLayout: composeVideoSlot,
+					mixSourceAudio,
 				},
 				options: {
 					resourceType: 'thread',
@@ -1701,7 +1749,10 @@ export const startCloudRender = os
 						effectiveTemplateConfig === null
 							? undefined
 							: effectiveTemplateConfig,
-					composeMode: 'overlay-only',
+					composeMode,
+					videoAssetId,
+					videoLayout: composeVideoSlot,
+					mixSourceAudio,
 				},
 				buildManifest: ({ jobId }) => {
 					return {
@@ -1711,7 +1762,7 @@ export const startCloudRender = os
 						engine: 'renderer-remotion',
 						createdAt: Date.now(),
 						inputs: {
-							videoKey: null,
+							videoKey: sourceVideoKey,
 							commentsKey: snapshot.key,
 							audioKey: audioAsset?.storageKey ?? null,
 						},
@@ -1720,7 +1771,10 @@ export const startCloudRender = os
 							resourceType: 'thread',
 							threadId: thread.id,
 							templateId: effectiveTemplateId,
-							composeMode: 'overlay-only',
+							composeMode,
+							videoAssetId,
+							videoLayout: composeVideoSlot,
+							mixSourceAudio,
 						},
 					}
 				},

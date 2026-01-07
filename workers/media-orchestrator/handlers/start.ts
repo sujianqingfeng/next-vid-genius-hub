@@ -107,13 +107,16 @@ export async function handleStart(env: Env, req: Request) {
 			: undefined
 
 	const opts = (body.options || {}) as any
+	const composeModeRaw =
+		typeof opts?.composeMode === 'string' ? opts.composeMode.trim() : ''
 	const isOverlayOnlyRender =
 		body.engine === 'renderer-remotion' &&
-		(opts?.composeMode === 'overlay-only' ||
-			opts?.resourceType === 'thread' ||
-			purpose === 'render-thread' ||
-			(typeof opts?.templateId === 'string' &&
-				opts.templateId.trim().startsWith('thread')))
+		(composeModeRaw === 'overlay-only' ||
+			(!composeModeRaw &&
+				(opts?.resourceType === 'thread' ||
+					purpose === 'render-thread' ||
+					(typeof opts?.templateId === 'string' &&
+						opts.templateId.trim().startsWith('thread')))))
 	if (isAsrPipeline) {
 		const sourceKey =
 			typeof opts.sourceKey === 'string'

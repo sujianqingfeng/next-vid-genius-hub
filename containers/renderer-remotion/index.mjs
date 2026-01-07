@@ -107,6 +107,177 @@ async function execFFmpegWithProgress(args, totalDurationSeconds, onProgress) {
 
 // (timeline/layout helpers are provided by @app/media-comments)
 
+function execFFprobeJson(args) {
+  return new Promise((resolve, reject) => {
+    const p = spawn("ffprobe", args);
+    let out = "";
+    let err = "";
+    p.stdout.on("data", (d) => (out += d.toString()));
+    p.stderr.on("data", (d) => (err += d.toString()));
+    p.on("close", (code) => {
+      if (code === 0) {
+        try {
+          resolve(JSON.parse(out || "{}"));
+        } catch (e) {
+          reject(e);
+        }
+        return;
+      }
+      reject(new Error(err || `ffprobe exit ${code}`));
+    });
+  });
+}
+
+async function hasAudioStream(filePath) {
+  try {
+    const json = await execFFprobeJson([
+      "-v",
+      "error",
+      "-select_streams",
+      "a:0",
+      "-show_entries",
+      "stream=index",
+      "-of",
+      "json",
+      filePath,
+    ]);
+    return Array.isArray(json?.streams) && json.streams.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeThreadVideoLayout(raw) {
+  const x = Number(raw?.x);
+  const y = Number(raw?.y);
+  const width = Number(raw?.width);
+  const height = Number(raw?.height);
+  const radius = Number(raw?.radius ?? 0);
+  const fit = raw?.fit === "contain" ? "contain" : "cover";
+
+  if (![x, y, width, height].every((n) => Number.isFinite(n))) return null;
+  if (width <= 0 || height <= 0) return null;
+
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(width),
+    height: Math.round(height),
+    radius: Math.max(0, Math.round(radius)),
+    fit,
+  };
+}
+
+function buildRoundedAlphaExpr(radius) {
+  const r = Math.max(0, Math.floor(Number(radius) || 0));
+  if (!r) return null;
+  const dx = `if(lt(X,${r}),${r}-X,if(gt(X,W-${r}),X-(W-${r}),0))`;
+  const dy = `if(lt(Y,${r}),${r}-Y,if(gt(Y,H-${r}),Y-(H-${r}),0))`;
+  return `if(lte((${dx})*(${dx})+(${dy})*(${dy}),${r}*${r}),255,0)`;
+}
+
+function buildThreadComposeArgs({
+  overlayPath,
+  sourceVideoPath,
+  outputPath,
+  fps,
+  coverDurationSeconds,
+  totalDurationSeconds,
+  layout,
+  preset,
+  mixSourceAudio,
+  overlayHasAudio,
+  sourceHasAudio,
+  sourceAudioVolume = 0.35,
+  videoCodec = "libx264",
+  audioCodec = "aac",
+  audioBitrate = "192k",
+  pixFmt = "yuv420p",
+  movFlags = "+faststart",
+  vsync = "cfr",
+}) {
+  const slot = layout;
+  const delayMs = Math.round(coverDurationSeconds * 1000);
+  const enable = `between(t,${coverDurationSeconds},${totalDurationSeconds})`;
+
+  const scaleFilter =
+    slot.fit === "contain"
+      ? `scale=${slot.width}:${slot.height}:force_original_aspect_ratio=decrease:flags=lanczos,pad=${slot.width}:${slot.height}:(ow-iw)/2:(oh-ih)/2:color=black@0`
+      : `scale=${slot.width}:${slot.height}:force_original_aspect_ratio=increase:flags=lanczos,crop=${slot.width}:${slot.height}`;
+
+  const alphaExpr = buildRoundedAlphaExpr(slot.radius);
+  const videoChain = alphaExpr
+    ? `[1:v]fps=${fps},setpts=PTS-STARTPTS,${scaleFilter},format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${alphaExpr}',format=yuva420p[srcv]`
+    : `[1:v]fps=${fps},setpts=PTS-STARTPTS,${scaleFilter},format=yuv420p[srcv]`;
+
+  const parts = [
+    videoChain,
+    `[0:v][srcv]overlay=${slot.x}:${slot.y}:enable='${enable}'[composited]`,
+  ];
+
+  const wantMix = Boolean(mixSourceAudio) && Boolean(sourceHasAudio);
+  const hasOverlay = Boolean(overlayHasAudio);
+
+  if (wantMix) {
+    if (hasOverlay) {
+      parts.push(`[0:a]atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS[a0]`);
+    }
+    parts.push(
+      `[1:a]adelay=${delayMs}|${delayMs},atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS,volume=${Number(sourceAudioVolume) || 0.35}[a1]`,
+    );
+    if (hasOverlay) {
+      parts.push(
+        `[a0][a1]amix=inputs=2:duration=first:dropout_transition=0[aout]`,
+      );
+    } else {
+      parts.push(`[a1]anull[aout]`);
+    }
+  }
+
+  const filterGraph = parts.join(";");
+
+  const args = [
+    "-y",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-progress",
+    "pipe:2",
+    "-i",
+    overlayPath,
+    "-stream_loop",
+    "-1",
+    "-i",
+    sourceVideoPath,
+    "-filter_complex",
+    filterGraph,
+    "-map",
+    "[composited]",
+  ];
+
+  if (wantMix) {
+    args.push("-map", "[aout]", "-c:a", audioCodec, "-b:a", audioBitrate);
+  } else {
+    args.push("-map", "0:a?", "-c:a", audioCodec, "-b:a", audioBitrate);
+  }
+
+  args.push("-vsync", vsync, "-r", String(fps), "-c:v", videoCodec);
+  if (preset) args.push("-preset", preset);
+
+  args.push(
+    "-pix_fmt",
+    pixFmt,
+    "-movflags",
+    movFlags,
+    "-t",
+    String(totalDurationSeconds),
+    "-shortest",
+    outputPath,
+  );
+
+  return args;
+}
+
 async function handleRender(req, res) {
   let body = "";
   for await (const chunk of req) body += chunk;
@@ -276,6 +447,9 @@ async function handleRender(req, res) {
         replyDurationsInFrames,
         fps: REMOTION_FPS,
         templateConfig: engineOptions && engineOptions.templateConfig != null ? engineOptions.templateConfig : p?.templateConfig,
+        renderHints: {
+          composeMode,
+        },
       };
 
       totalDurationInFrames =
@@ -457,6 +631,9 @@ async function handleRender(req, res) {
       // Compose overlay with source video via FFmpeg
       reportOverall("running", 0.75);
       console.log("[remotion] starting FFmpeg composition...");
+
+      const mixSourceAudio = Boolean(engineOptions && engineOptions.mixSourceAudio);
+
       // Optionally override source video slot for specific templates (e.g., vertical source on left)
       let overrideLayout = undefined;
       if (templateId === 'comments-vertical') {
@@ -464,16 +641,42 @@ async function handleRender(req, res) {
         overrideLayout = { x: 58, y: 36, width: 540, height: 960 };
       }
 
-      const ffArgs = buildComposeArgs({
-        overlayPath: overlayOut,
-        sourceVideoPath: inFile,
-        outputPath: outFile,
-        fps: REMOTION_FPS,
-        coverDurationSeconds,
-        totalDurationSeconds,
-        layout: overrideLayout,
-        preset: "veryfast",
-      });
+      const threadLayout =
+        isThreadTemplate || kind === "thread-render-snapshot"
+          ? normalizeThreadVideoLayout(engineOptions && engineOptions.videoLayout)
+          : null;
+      if ((isThreadTemplate || kind === "thread-render-snapshot") && !threadLayout) {
+        throw new Error("thread compose-on-video requires engineOptions.videoLayout");
+      }
+
+      const overlayHasAudio = mixSourceAudio ? await hasAudioStream(overlayOut) : false;
+      const sourceHasAudio = mixSourceAudio ? await hasAudioStream(inFile) : false;
+      const effectiveMix = mixSourceAudio && sourceHasAudio;
+
+      const ffArgs = threadLayout
+        ? buildThreadComposeArgs({
+            overlayPath: overlayOut,
+            sourceVideoPath: inFile,
+            outputPath: outFile,
+            fps: REMOTION_FPS,
+            coverDurationSeconds,
+            totalDurationSeconds,
+            layout: threadLayout,
+            preset: "veryfast",
+            mixSourceAudio: effectiveMix,
+            overlayHasAudio,
+            sourceHasAudio,
+          })
+        : buildComposeArgs({
+            overlayPath: overlayOut,
+            sourceVideoPath: inFile,
+            outputPath: outFile,
+            fps: REMOTION_FPS,
+            coverDurationSeconds,
+            totalDurationSeconds,
+            layout: overrideLayout,
+            preset: "veryfast",
+          });
       await execFFmpegWithProgress(ffArgs, totalDurationSeconds, (ratio) => {
         const p = clamp01(ratio);
         const overall = 0.75 + (0.9 - 0.75) * p;

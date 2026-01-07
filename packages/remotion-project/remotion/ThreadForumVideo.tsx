@@ -100,10 +100,11 @@ function resolveAssetUrl(
 function renderMainMediaCard(
 	block: ThreadVideoInputProps['root']['contentBlocks'][number],
 	assets: ThreadVideoInputProps['assets'] | undefined,
-	opts?: { extraCount?: number },
+	opts?: { extraCount?: number; videoMode?: 'inline' | 'placeholder' },
 ): React.ReactNode {
 	if (!block || (block as any).type == null) return null
 	const extraCount = Math.max(0, Math.floor(opts?.extraCount ?? 0))
+	const videoMode = opts?.videoMode ?? 'inline'
 
 	const cardStyle: CSSProperties = {
 		border: '1px solid var(--tf-border)',
@@ -194,7 +195,7 @@ function renderMainMediaCard(
 		const title = String((block as any).data?.title ?? '').trim()
 		return (
 			<div style={cardStyle}>
-				{url ? (
+				{url && videoMode === 'inline' ? (
 					<Video
 						src={url}
 						muted
@@ -240,6 +241,7 @@ function renderThreadTemplateNode(
 	node: ThreadRenderTreeNode | undefined,
 	ctx: {
 		templateConfig: ThreadVideoInputProps['templateConfig'] | undefined
+		videoMode?: 'inline' | 'placeholder'
 		scene?: 'cover' | 'post'
 		frame?: number
 		thread: ThreadVideoInputProps['thread']
@@ -756,7 +758,10 @@ function renderThreadTemplateNode(
 					}}
 				>
 					{mainMedia
-						? renderMainMediaCard(mainMedia as any, ctx.assets, { extraCount })
+						? renderMainMediaCard(mainMedia as any, ctx.assets, {
+								extraCount,
+								videoMode: ctx.videoMode,
+							})
 						: null}
 
 					<div style={{ minWidth: 0 }}>
@@ -805,7 +810,7 @@ function renderThreadTemplateNode(
 					opacity,
 				}}
 			>
-				{renderBlocks(displayBlocks, ctx.assets)}
+				{renderBlocks(displayBlocks, ctx.assets, ctx.videoMode)}
 				{hasZhTranslation && secondaryText ? (
 					<div
 						style={{
@@ -890,12 +895,15 @@ function renderThreadTemplateNode(
 	}
 
 	if (node.type === 'Video') {
-		const url = resolveAssetUrl(String(node.assetId), ctx.assets)
+		const assetId = String(node.assetId)
+		const url = resolveAssetUrl(assetId, ctx.assets)
 		const fit = node.fit === 'contain' ? 'contain' : 'cover'
 		const position =
 			typeof node.position === 'string' && node.position.trim()
 				? node.position
 				: undefined
+		const videoMode = ctx.videoMode ?? 'inline'
+		const isSentinelAssetId = assetId.startsWith('__') && assetId.endsWith('__')
 		const opacity =
 			typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
 		const blur = typeof node.blur === 'number' ? Math.max(0, node.blur) : 0
@@ -905,7 +913,7 @@ function renderThreadTemplateNode(
 		const border = node.border ? '1px solid var(--tf-border)' : undefined
 		const background = node.background ?? 'rgba(17,24,39,0.06)'
 
-		if (url) {
+		if (url && videoMode === 'inline') {
 			return (
 				<Video
 					src={url}
@@ -924,6 +932,30 @@ function renderThreadTemplateNode(
 						backgroundColor: background,
 						opacity,
 						filter: blur > 0 ? `blur(${blur}px)` : undefined,
+					}}
+				/>
+			)
+		}
+
+		if (videoMode === 'inline' && !url && isSentinelAssetId) {
+			return null
+		}
+
+		if (videoMode === 'placeholder') {
+			return (
+				<div
+					data-tt-key={key}
+					data-tt-type="Video"
+					style={{
+						background,
+						borderRadius: radius,
+						border,
+						opacity,
+						filter: blur > 0 ? `blur(${blur}px)` : undefined,
+						boxSizing: 'border-box',
+						width: width ?? '100%',
+						height: height ?? undefined,
+						overflow: 'hidden',
 					}}
 				/>
 			)
@@ -1363,6 +1395,7 @@ function renderThreadTemplateNode(
 function renderBlocks(
 	blocks: ThreadVideoInputProps['root']['contentBlocks'],
 	assets: ThreadVideoInputProps['assets'] | undefined,
+	videoMode: 'inline' | 'placeholder' = 'inline',
 ) {
 	return blocks.map((b) => {
 		if (b.type === 'text') {
@@ -1474,7 +1507,7 @@ function renderBlocks(
 						color: 'var(--tf-muted)',
 					}}
 				>
-					{url ? (
+					{url && videoMode === 'inline' ? (
 						<Video
 							src={url}
 							muted
@@ -2802,21 +2835,26 @@ function RepliesListSlide({
 	)
 }
 
-export function ThreadForumVideo({
-	thread,
-	audio,
-	root,
-	replies,
-	assets,
-	coverDurationInFrames,
-	replyDurationsInFrames,
-	fps,
-	templateConfig,
-}: ThreadVideoInputProps) {
+export function ThreadForumVideo(props: ThreadVideoInputProps) {
+	const {
+		thread,
+		audio,
+		root,
+		replies,
+		assets,
+		coverDurationInFrames,
+		replyDurationsInFrames,
+		fps,
+		templateConfig,
+	} = props
 	const videoConfig = useVideoConfig()
 	const frame = useCurrentFrame()
 	const effectiveTemplateConfig =
 		templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG
+	const videoMode: 'inline' | 'placeholder' =
+		(props as any)?.renderHints?.composeMode === 'compose-on-video'
+			? 'placeholder'
+			: 'inline'
 	const coverRoot: ThreadRenderTreeNode =
 		effectiveTemplateConfig.scenes?.cover?.root ??
 		DEFAULT_THREAD_TEMPLATE_CONFIG.scenes!.cover!.root!
@@ -2896,6 +2934,7 @@ export function ThreadForumVideo({
 							coverRoot,
 							{
 								templateConfig: effectiveTemplateConfig,
+								videoMode,
 								scene: 'cover',
 								frame,
 								thread,
@@ -2920,6 +2959,7 @@ export function ThreadForumVideo({
 						postRoot,
 						{
 							templateConfig: effectiveTemplateConfig,
+							videoMode,
 							scene: 'post',
 							frame,
 							thread,

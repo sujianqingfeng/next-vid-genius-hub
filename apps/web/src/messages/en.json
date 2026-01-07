@@ -420,6 +420,11 @@
 				"none": "(none)"
 			},
 			"render": {
+				"sourceVideoLabel": "Source video (compose)",
+				"sourceVideoPlaceholder": "Select a video asset",
+				"sourceVideoNone": "None (overlay-only)",
+				"mixSourceAudioLabel": "Mix source audio",
+				"mixSourceAudioHint": "Mix original video audio into the render.",
 				"jobId": "jobId: {jobId}",
 				"status": "status: {status}",
 				"progress": "progress: {progress}%",

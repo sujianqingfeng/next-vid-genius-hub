@@ -420,6 +420,11 @@
 				"none": "（无）"
 			},
 			"render": {
+				"sourceVideoLabel": "源视频（合成）",
+				"sourceVideoPlaceholder": "选择一个视频资产",
+				"sourceVideoNone": "无（仅渲染叠加层）",
+				"mixSourceAudioLabel": "混入原视频声音",
+				"mixSourceAudioHint": "将原视频音轨混入成片（可选）。",
 				"jobId": "jobId：{jobId}",
 				"status": "状态：{status}",
 				"progress": "进度：{progress}%",
