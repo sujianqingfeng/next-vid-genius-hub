@@ -3294,28 +3294,6 @@ export function ThreadDetailPage({ id }: { id: string }) {
 								{thread?.title ?? '…'}
 							</h1>
 						</div>
-						<div className="flex items-center gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									className="rounded-[2px] shadow-none font-sans text-xs uppercase tracking-wider h-8"
-									disabled={translateAllMutation.isPending || !thread?.id}
-									onClick={() => {
-										if (!thread?.id) return
-										const totalPosts = (root ? 1 : 0) + (replies?.length ?? 0)
-										translateAllMutation.mutate({
-											threadId: thread.id,
-											targetLocale: 'zh-CN',
-											maxPosts: Math.max(1, Math.min(500, totalPosts || 500)),
-										})
-									}}
-								>
-								{translateAllMutation.isPending
-									? t('actions.translatingAll')
-									: t('actions.translateAllToZh')}
-							</Button>
-						</div>
 					</div>
 				</div>
 			</div>
@@ -3582,7 +3560,35 @@ export function ThreadDetailPage({ id }: { id: string }) {
 							</div>
 
 							<div className="flex-1 overflow-y-auto min-h-0">
-								<TabsContent value="design" className="m-0 p-4 h-full">
+								<TabsContent value="design" className="m-0 p-4 h-full space-y-4">
+									<div className="space-y-2">
+										<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+											{t('sections.translation')}
+										</div>
+										<Button
+											type="button"
+											variant="outline"
+											className="w-full rounded-[2px] shadow-none font-sans text-xs uppercase h-8"
+											disabled={translateAllMutation.isPending || !thread?.id}
+											onClick={() => {
+												if (!thread?.id) return
+												const totalPosts =
+													(root ? 1 : 0) + (replies?.length ?? 0)
+												translateAllMutation.mutate({
+													threadId: thread.id,
+													targetLocale: 'zh-CN',
+													maxPosts: Math.max(
+														1,
+														Math.min(500, totalPosts || 500),
+													),
+												})
+											}}
+										>
+											{translateAllMutation.isPending
+												? t('actions.translatingAll')
+												: t('actions.translateAllToZh')}
+										</Button>
+									</div>
 									<ThreadTemplateLibraryCard
 										threadId={id}
 										effectiveTemplateId={effectiveTemplateIdForLibrary}
