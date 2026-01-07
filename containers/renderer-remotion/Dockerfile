@@ -78,7 +78,7 @@ COPY containers/shared.mjs ./shared.mjs
 COPY packages/remotion-project/remotion ./remotion
 COPY apps/web/public ./public
 
-# Pre-download headless browser at build time to avoid runtime download
+# Pre-download Remotion browser at build time to avoid runtime download
 ENV XDG_CACHE_HOME=/opt/.cache \
     PUPPETEER_CACHE_DIR=/opt/.cache/puppeteer \
     REMOTION_BROWSER_DOWNLOADS_DIR=/opt/remotion-browser
@@ -104,7 +104,7 @@ RUN set -eux; \
     chmod +x "$dest/chrome-headless-shell-${platform}/headless_shell"; \
     echo "Has browser at $dest/chrome-headless-shell-${platform}/headless_shell"; \
   else \
-    npm exec -- remotion browser ensure --log=verbose; \
+    node -e "const {ensureBrowser}=require('@remotion/renderer'); ensureBrowser({chromeMode:'chrome-for-testing', logLevel:'verbose'}).then((s)=>{if(!s?.path) throw new Error('Browser not ensured'); console.log('Has browser at', s.path);});"; \
   fi
 
 EXPOSE 8190

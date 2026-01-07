@@ -15,6 +15,7 @@ services:
       - "9080:8080"
 
   renderer-remotion:
+    platform: linux/amd64
     build:
       context: .
       dockerfile: containers/renderer-remotion/Dockerfile
@@ -25,6 +26,7 @@ services:
       - NODE_ENV=development
       # Keep in sync with workers/media-orchestrator/wrangler.toml [vars].
       - JOB_CALLBACK_HMAC_SECRET=replace-with-strong-secret
+      - REMOTION_CHROME_MODE=chrome-for-testing
     ports:
       - "8190:8190"
 

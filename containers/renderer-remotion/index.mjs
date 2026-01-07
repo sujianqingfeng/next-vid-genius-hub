@@ -20,6 +20,14 @@ import {
 } from "@app/media-core";
 
 const PORT = process.env.PORT || 8190;
+const VALID_CHROME_MODES = new Set(["headless-shell", "chrome-for-testing"]);
+const REMOTION_CHROME_MODE_RAW = String(process.env.REMOTION_CHROME_MODE || "");
+const REMOTION_CHROME_MODE = VALID_CHROME_MODES.has(REMOTION_CHROME_MODE_RAW)
+  ? REMOTION_CHROME_MODE_RAW
+  : process.arch === "arm64"
+    ? "headless-shell"
+    : "chrome-for-testing";
+const REMOTION_BROWSER_EXECUTABLE = process.env.REMOTION_BROWSER_EXECUTABLE || null;
 
 async function execFFmpegWithProgress(args, totalDurationSeconds, onProgress) {
   return new Promise((resolve, reject) => {
@@ -378,7 +386,16 @@ async function handleRender(req, res) {
       }),
     });
     console.log("[remotion] getting compositions...");
-    const compositions = await getCompositions(serveUrl, { inputProps });
+    console.log("[remotion] chrome", {
+      jobId,
+      chromeMode: REMOTION_CHROME_MODE,
+      hasBrowserExecutable: Boolean(REMOTION_BROWSER_EXECUTABLE),
+    });
+    const compositions = await getCompositions(serveUrl, {
+      inputProps,
+      chromeMode: REMOTION_CHROME_MODE,
+      browserExecutable: REMOTION_BROWSER_EXECUTABLE,
+    });
     const composition = compositions.find((c) => c.id === compositionId);
     if (!composition)
       throw new Error(`Remotion composition "${compositionId}" not found`);
@@ -403,6 +420,8 @@ async function handleRender(req, res) {
       audioCodec: "aac",
       outputLocation: overlayOut,
       inputProps,
+      chromeMode: REMOTION_CHROME_MODE,
+      browserExecutable: REMOTION_BROWSER_EXECUTABLE,
       chromiumOptions: {
         ignoreCertificateErrors: true,
         gl: "angle",
