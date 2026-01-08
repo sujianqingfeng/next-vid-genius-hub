@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { getDefaultAiModel, isEnabledModel } from '~/lib/features/ai/config/service'
@@ -167,6 +167,32 @@ async function createProposedAction(input: {
 	return row
 }
 
+async function findPendingActionForMedia(input: {
+	userId: string
+	kind: AgentActionKind
+	mediaId: string
+}): Promise<AgentActionRow | null> {
+	const db = await getDb()
+	const rows = await db.query.agentActions.findMany({
+		where: and(
+			eq(schema.agentActions.userId, input.userId),
+			eq(schema.agentActions.kind, input.kind),
+			inArray(schema.agentActions.status, ['proposed', 'running'] as any),
+		),
+		orderBy: (t, { desc }) => [desc(t.createdAt)],
+		limit: 50,
+	})
+
+	for (const row of rows) {
+		const params = (row.params ?? {}) as any
+		if (typeof params?.mediaId === 'string' && params.mediaId === input.mediaId) {
+			return row
+		}
+	}
+
+	return null
+}
+
 export async function handleAgentActionCancelRequest(
 	request: Request,
 ): Promise<Response> {
@@ -259,6 +285,17 @@ export async function handleAgentActionSuggestNextRequest(
 	}
 
 	if (next === 'asr') {
+		const existing = await findPendingActionForMedia({
+			userId: user.id,
+			kind: 'asr',
+			mediaId: media.id,
+		})
+		if (existing) {
+			const res = Response.json({ action: existing }, { status: 200 })
+			appendResponseCookies(res, context.responseCookies)
+			return res
+		}
+
 		const defaultAsr = await getDefaultAiModel('asr')
 		const modelId = defaultAsr?.id
 		const estimate: Record<string, unknown> = {
@@ -292,6 +329,17 @@ export async function handleAgentActionSuggestNextRequest(
 	}
 
 	if (next === 'optimize') {
+		const existing = await findPendingActionForMedia({
+			userId: user.id,
+			kind: 'optimize',
+			mediaId: media.id,
+		})
+		if (existing) {
+			const res = Response.json({ action: existing }, { status: 200 })
+			appendResponseCookies(res, context.responseCookies)
+			return res
+		}
+
 		const defaultLlm = await getDefaultAiModel('llm')
 		const action = await createProposedAction({
 			userId: user.id,
@@ -314,6 +362,17 @@ export async function handleAgentActionSuggestNextRequest(
 	}
 
 	if (next === 'translate') {
+		const existing = await findPendingActionForMedia({
+			userId: user.id,
+			kind: 'translate',
+			mediaId: media.id,
+		})
+		if (existing) {
+			const res = Response.json({ action: existing }, { status: 200 })
+			appendResponseCookies(res, context.responseCookies)
+			return res
+		}
+
 		const defaultLlm = await getDefaultAiModel('llm')
 		const action = await createProposedAction({
 			userId: user.id,
@@ -332,6 +391,17 @@ export async function handleAgentActionSuggestNextRequest(
 	}
 
 	// render
+	const existing = await findPendingActionForMedia({
+		userId: user.id,
+		kind: 'render',
+		mediaId: media.id,
+	})
+	if (existing) {
+		const res = Response.json({ action: existing }, { status: 200 })
+		appendResponseCookies(res, context.responseCookies)
+		return res
+	}
+
 	const action = await createProposedAction({
 		userId: user.id,
 		kind: 'render',

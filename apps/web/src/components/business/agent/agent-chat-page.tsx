@@ -76,6 +76,46 @@ function updateMessagesWithAction(messages: UIMessage[], action: AgentAction) {
 	return anyChanged ? next : messages
 }
 
+function messagesContainActionId(messages: UIMessage[], actionId: string): boolean {
+	for (const m of messages) {
+		for (const part of m.parts ?? []) {
+			if (!part || typeof part !== 'object') continue
+			if (typeof (part as any).type !== 'string') continue
+			if (!(part as any).type.startsWith('tool-')) continue
+			if ((part as any).state !== 'output-available') continue
+			const out = (part as any).output
+			const id =
+				typeof out?.actionId === 'string'
+					? out.actionId
+					: typeof out?.action?.id === 'string'
+						? out.action.id
+						: null
+			if (id === actionId) return true
+		}
+	}
+	return false
+}
+
+function messagesContainPendingActionForMedia(
+	messages: UIMessage[],
+	mediaId: string,
+): boolean {
+	for (const m of messages) {
+		for (const part of m.parts ?? []) {
+			if (!part || typeof part !== 'object') continue
+			if (typeof (part as any).type !== 'string') continue
+			if (!(part as any).type.startsWith('tool-')) continue
+			if ((part as any).state !== 'output-available') continue
+			const action = (part as any).output?.action as AgentAction | undefined
+			if (!action) continue
+			if (action.status !== 'proposed' && action.status !== 'running') continue
+			const p: any = action.params
+			if (typeof p?.mediaId === 'string' && p.mediaId === mediaId) return true
+		}
+	}
+	return false
+}
+
 export function AgentChatPage(props: {
 	chatId: string | null
 	onChangeChatId: (chatId: string | null) => void
@@ -366,15 +406,17 @@ export function AgentChatPage(props: {
 			if (!settings.autoSuggestNext) return
 			if (!chatId) return
 			const retryKey = `media_${mediaId}`
-			const alreadyHas = Object.values(actionsById).some((a) => {
-				if (!a || typeof a !== 'object') return false
-				const p: any = a.params
-				return (
-					(a.status === 'proposed' || a.status === 'running') &&
-					typeof p?.mediaId === 'string' &&
-					p.mediaId === mediaId
-				)
-			})
+			const alreadyHas =
+				messagesContainPendingActionForMedia(chat.messages, mediaId) ||
+				Object.values(actionsById).some((a) => {
+					if (!a || typeof a !== 'object') return false
+					const p: any = a.params
+					return (
+						(a.status === 'proposed' || a.status === 'running') &&
+						typeof p?.mediaId === 'string' &&
+						p.mediaId === mediaId
+					)
+				})
 			if (alreadyHas) return
 
 			void (async () => {
@@ -397,6 +439,7 @@ export function AgentChatPage(props: {
 					}
 					suggestRetryRef.current.delete(retryKey)
 					setActionsById((prev) => ({ ...prev, [action.id]: action }))
+					if (messagesContainActionId(chat.messages, action.id)) return
 					const toolNameByKind: Record<string, string> = {
 						download: 'proposeDownload',
 						asr: 'proposeAsr',
