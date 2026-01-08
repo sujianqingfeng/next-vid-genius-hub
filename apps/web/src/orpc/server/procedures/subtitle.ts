@@ -1,14 +1,21 @@
 import { os } from '@orpc/server'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { getDefaultAiModel, isEnabledModel } from '~/lib/features/ai/config/service'
+import {
+	getDefaultAiModel,
+	isEnabledModel,
+} from '~/lib/features/ai/config/service'
 import type { RequestContext } from '~/lib/features/auth/types'
 import { getJobStatus } from '~/lib/infra/cloudflare'
 import { getDb, schema } from '~/lib/infra/db'
 import { throwInsufficientPointsError } from '../errors'
-import { chargeLlmUsage, InsufficientPointsError } from '~/lib/domain/points/billing'
+import {
+	chargeLlmUsage,
+	InsufficientPointsError,
+} from '~/lib/domain/points/billing'
 import { subtitleService } from '~/lib/features/subtitle/server/subtitle'
 import { subtitleRenderConfigSchema } from '~/lib/features/subtitle/types'
+import { TRANSLATION_PROMPT_IDS } from '~/lib/features/subtitle/config/prompts'
 
 export const transcribe = os
 	.input(
@@ -49,7 +56,7 @@ export const transcribe = os
 const translateInput = z.object({
 	mediaId: z.string(),
 	model: z.string().trim().min(1).optional(),
-	promptId: z.string().optional(),
+	promptId: z.enum(TRANSLATION_PROMPT_IDS).optional(),
 })
 export const translate = os
 	.input(translateInput)

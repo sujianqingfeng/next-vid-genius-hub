@@ -1,14 +1,24 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { getDefaultAiModel, isEnabledModel } from '~/lib/features/ai/config/service'
+import {
+	getDefaultAiModel,
+	isEnabledModel,
+} from '~/lib/features/ai/config/service'
 import { buildRequestContext } from '~/lib/features/auth/context'
 import { getDb, schema } from '~/lib/infra/db'
 import { logger } from '~/lib/infra/logger'
 import { startCloudDownload } from '~/lib/domain/media/server/download'
-import { chargeLlmUsage, InsufficientPointsError } from '~/lib/domain/points/billing'
-import { calculateAsrCost, calculateDownloadCost } from '~/lib/domain/points/pricing'
+import {
+	chargeLlmUsage,
+	InsufficientPointsError,
+} from '~/lib/domain/points/billing'
+import {
+	calculateAsrCost,
+	calculateDownloadCost,
+} from '~/lib/domain/points/pricing'
 import { subtitleService } from '~/lib/features/subtitle/server/subtitle'
+import { TRANSLATION_PROMPT_IDS } from '~/lib/features/subtitle/config/prompts'
 import { createId } from '~/lib/shared/utils/id'
 
 type AgentActionKind = (typeof schema.agentActions.$inferSelect)['kind']
@@ -185,7 +195,10 @@ async function findPendingActionForMedia(input: {
 
 	for (const row of rows) {
 		const params = (row.params ?? {}) as any
-		if (typeof params?.mediaId === 'string' && params.mediaId === input.mediaId) {
+		if (
+			typeof params?.mediaId === 'string' &&
+			params.mediaId === input.mediaId
+		) {
 			return row
 		}
 	}
@@ -440,7 +453,7 @@ const OptimizeParamsSchema = z.object({
 const TranslateParamsSchema = z.object({
 	mediaId: z.string().min(1),
 	modelId: z.string().min(1).nullable().optional(),
-	promptId: z.string().optional(),
+	promptId: z.enum(TRANSLATION_PROMPT_IDS).optional(),
 	// Fixed by product decision:
 	target: z.literal('zh-CN').optional(),
 	format: z.literal('vtt-bilingual').optional(),
@@ -778,7 +791,6 @@ export async function proposeTranslateAction(input: {
 	userId: string
 	mediaId: string
 	modelId?: string | null
-	promptId?: string
 }): Promise<AgentActionRow> {
 	return createProposedAction({
 		userId: input.userId,
@@ -786,7 +798,6 @@ export async function proposeTranslateAction(input: {
 		params: {
 			mediaId: input.mediaId,
 			modelId: input.modelId ?? null,
-			promptId: input.promptId,
 			target: 'zh-CN',
 			format: 'vtt-bilingual',
 		},

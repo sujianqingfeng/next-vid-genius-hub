@@ -10,6 +10,8 @@ import { logger } from '~/lib/infra/logger'
 import {
 	DEFAULT_TRANSLATION_PROMPT_ID,
 	getTranslationPrompt,
+	isTranslationPromptId,
+	TRANSLATION_PROMPT_IDS,
 } from '~/lib/features/subtitle/config/prompts'
 import {
 	parseVttCues,
@@ -222,11 +224,13 @@ export async function translate(input: {
 	if (!media?.transcription && !media?.optimizedTranscription)
 		throw new Error('Transcription not found')
 
-	const promptConfig = getTranslationPrompt(
-		promptId || DEFAULT_TRANSLATION_PROMPT_ID,
-	)
-	if (!promptConfig)
-		throw new Error(`Invalid translation prompt ID: ${promptId}`)
+	const resolvedPromptId = (promptId ?? DEFAULT_TRANSLATION_PROMPT_ID).trim()
+	if (!isTranslationPromptId(resolvedPromptId)) {
+		throw new Error(
+			`Invalid translation prompt ID: ${resolvedPromptId} (allowed: ${TRANSLATION_PROMPT_IDS.join(', ')})`,
+		)
+	}
+	const promptConfig = getTranslationPrompt(resolvedPromptId)
 	logger.info(
 		'translation',
 		`Using translation prompt: ${promptConfig.name} for media ${mediaId}`,

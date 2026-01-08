@@ -10,6 +10,15 @@ export interface TranslationPrompt {
 	targetLanguage: string
 }
 
+export const TRANSLATION_PROMPT_IDS = ['bilingual-zh'] as const
+export type TranslationPromptId = (typeof TRANSLATION_PROMPT_IDS)[number]
+
+export function isTranslationPromptId(
+	value: string,
+): value is TranslationPromptId {
+	return (TRANSLATION_PROMPT_IDS as readonly string[]).includes(value)
+}
+
 /**
  * 双语字幕翻译提示词（英文到中文）
  */
@@ -44,17 +53,19 @@ WEBVTT
  * 获取翻译提示词
  */
 export function getTranslationPrompt(
-	promptId: string,
-): TranslationPrompt | undefined {
+	promptId: TranslationPromptId,
+): TranslationPrompt {
 	switch (promptId) {
 		case 'bilingual-zh':
 			return BILINGUAL_TRANSLATION_PROMPT
-		default:
-			return undefined
+		default: {
+			const exhaustive: never = promptId
+			throw new Error(`Unknown translation prompt ID: ${exhaustive}`)
+		}
 	}
 }
 
 /**
  * 默认翻译提示词ID
  */
-export const DEFAULT_TRANSLATION_PROMPT_ID = 'bilingual-zh'
+export const DEFAULT_TRANSLATION_PROMPT_ID: TranslationPromptId = 'bilingual-zh'

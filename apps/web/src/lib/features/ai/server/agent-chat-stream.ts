@@ -238,18 +238,12 @@ export async function handleAgentChatStreamRequest(
 				inputSchema: z.object({
 					mediaId: z.string().min(1),
 					modelId: z.string().optional().nullable(),
-					promptId: z.string().optional(),
 				}),
-				execute: async (args: {
-					mediaId: string
-					modelId?: string | null
-					promptId?: string
-				}) => {
+				execute: async (args: { mediaId: string; modelId?: string | null }) => {
 					const action = await proposeTranslateAction({
 						userId: context.auth.user!.id,
 						mediaId: args.mediaId,
 						modelId: args.modelId ?? null,
-						promptId: args.promptId,
 					})
 					return { actionId: action.id, action }
 				},
