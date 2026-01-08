@@ -449,6 +449,8 @@ async function handleRender(req, res) {
         templateConfig: engineOptions && engineOptions.templateConfig != null ? engineOptions.templateConfig : p?.templateConfig,
         renderHints: {
           composeMode,
+          mixSourceAudio: Boolean(engineOptions && engineOptions.mixSourceAudio),
+          sourceAudioVolume: 0.35,
         },
       };
 

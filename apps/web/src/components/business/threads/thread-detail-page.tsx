@@ -2666,10 +2666,10 @@ async function readAudioDurationMs(file: File): Promise<number> {
 	}
 }
 
-export function ThreadDetailPage({ id }: { id: string }) {
-	const qc = useQueryClient()
-	const confirmDialog = useConfirmDialog()
-	const t = useTranslations('Threads.detail')
+	export function ThreadDetailPage({ id }: { id: string }) {
+		const qc = useQueryClient()
+		const confirmDialog = useConfirmDialog()
+		const t = useTranslations('Threads.detail')
 
 	type ProxyRow = {
 		id: string
@@ -2678,9 +2678,9 @@ export function ThreadDetailPage({ id }: { id: string }) {
 		responseTime?: number | null
 	}
 
-	const proxyStorageKey = `threadAssetProxy:${id}`
-	const renderVideoStorageKey = `threadRenderVideo:${id}`
-	const renderMixAudioStorageKey = `threadRenderMixSourceAudio:${id}`
+		const proxyStorageKey = `threadAssetProxy:${id}`
+		const renderVideoStorageKey = `threadRenderVideo:${id}`
+		const renderMixAudioStorageKey = `threadRenderMixSourceAudio:${id}`
 	const proxiesQuery = useQuery(
 		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
 	)
@@ -2750,39 +2750,39 @@ export function ThreadDetailPage({ id }: { id: string }) {
 		.filter(Boolean)
 		.join('|')
 
-	const [selectedRenderVideoAssetId, setSelectedRenderVideoAssetId] =
-		React.useState<string>('none')
-	const [mixSourceAudio, setMixSourceAudio] = React.useState(false)
-	const didInitRenderOptionsRef = React.useRef(false)
+		const [selectedRenderVideoAssetId, setSelectedRenderVideoAssetId] =
+			React.useState<string>('none')
+		const [mixSourceAudio, setMixSourceAudio] = React.useState(false)
+		const didInitRenderOptionsRef = React.useRef(false)
 
-	React.useEffect(() => {
-		if (typeof window === 'undefined') return
-		if (didInitRenderOptionsRef.current) return
+		React.useEffect(() => {
+			if (typeof window === 'undefined') return
+			if (didInitRenderOptionsRef.current) return
 
-		try {
-			const savedVideoId = window.localStorage.getItem(renderVideoStorageKey)
-			const savedMix = window.localStorage.getItem(renderMixAudioStorageKey)
+			try {
+				const savedVideoId = window.localStorage.getItem(renderVideoStorageKey)
+				const savedMix = window.localStorage.getItem(renderMixAudioStorageKey)
 
-			const candidateIds = renderVideoCandidates.map((a: any) => String(a.id))
-			if (savedVideoId && candidateIds.includes(savedVideoId)) {
-				setSelectedRenderVideoAssetId(savedVideoId)
-			} else if (candidateIds.length > 0) {
-				setSelectedRenderVideoAssetId(candidateIds[0] ?? 'none')
-			} else {
-				setSelectedRenderVideoAssetId('none')
+				const candidateIds = renderVideoCandidates.map((a: any) => String(a.id))
+				if (savedVideoId && candidateIds.includes(savedVideoId)) {
+					setSelectedRenderVideoAssetId(savedVideoId)
+				} else if (candidateIds.length > 0) {
+					setSelectedRenderVideoAssetId(candidateIds[0] ?? 'none')
+				} else {
+					setSelectedRenderVideoAssetId('none')
+				}
+
+				setMixSourceAudio(savedMix === '1')
+			} catch {
+				// ignore localStorage issues
+			} finally {
+				didInitRenderOptionsRef.current = true
 			}
-
-			setMixSourceAudio(savedMix === '1')
-		} catch {
-			// ignore localStorage issues
-		} finally {
-			didInitRenderOptionsRef.current = true
-		}
-	}, [
-		renderMixAudioStorageKey,
-		renderVideoCandidatesKey,
-		renderVideoStorageKey,
-	])
+		}, [
+			renderMixAudioStorageKey,
+			renderVideoCandidatesKey,
+			renderVideoStorageKey,
+		])
 
 	React.useEffect(() => {
 		if (typeof window === 'undefined') return
@@ -2794,15 +2794,15 @@ export function ThreadDetailPage({ id }: { id: string }) {
 		} catch {}
 	}, [renderVideoStorageKey, selectedRenderVideoAssetId])
 
-	React.useEffect(() => {
-		if (typeof window === 'undefined') return
-		try {
-			window.localStorage.setItem(
-				renderMixAudioStorageKey,
-				mixSourceAudio ? '1' : '0',
-			)
-		} catch {}
-	}, [mixSourceAudio, renderMixAudioStorageKey])
+		React.useEffect(() => {
+			if (typeof window === 'undefined') return
+			try {
+				window.localStorage.setItem(
+					renderMixAudioStorageKey,
+					mixSourceAudio ? '1' : '0',
+				)
+			} catch {}
+		}, [mixSourceAudio, renderMixAudioStorageKey])
 
 	const assetById = React.useMemo(() => {
 		const m = new Map<string, any>()
@@ -3884,12 +3884,12 @@ export function ThreadDetailPage({ id }: { id: string }) {
 									<div className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
 										{t('sections.render')}
 									</div>
-									<div className="space-y-3">
-										<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-											<div className="space-y-1">
-												<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-													{t('render.sourceVideoLabel')}
-												</div>
+										<div className="space-y-3">
+											<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+												<div className="space-y-1">
+													<div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+														{t('render.sourceVideoLabel')}
+													</div>
 												<Select
 													value={selectedRenderVideoAssetId}
 													onValueChange={setSelectedRenderVideoAssetId}
@@ -3935,13 +3935,13 @@ export function ThreadDetailPage({ id }: { id: string }) {
 														{t('render.mixSourceAudioHint')}
 													</div>
 												</div>
-												<Switch
-													checked={mixSourceAudio}
-													onCheckedChange={setMixSourceAudio}
-													disabled={selectedRenderVideoAssetId === 'none'}
-												/>
+													<Switch
+														checked={mixSourceAudio}
+														onCheckedChange={setMixSourceAudio}
+														disabled={selectedRenderVideoAssetId === 'none'}
+													/>
+												</div>
 											</div>
-										</div>
 
 										<div className="flex flex-wrap items-center gap-3">
 											<Button
@@ -3949,19 +3949,19 @@ export function ThreadDetailPage({ id }: { id: string }) {
 												disabled={
 													startRenderMutation.isPending || !thread || !root
 												}
-												onClick={() => {
-													startRenderMutation.mutate({
-														threadId: id,
-														videoAssetId:
-															selectedRenderVideoAssetId !== 'none'
-																? selectedRenderVideoAssetId
-																: null,
-														mixSourceAudio:
-															selectedRenderVideoAssetId !== 'none'
-																? mixSourceAudio
-																: false,
-													})
-												}}
+													onClick={() => {
+														startRenderMutation.mutate({
+															threadId: id,
+															videoAssetId:
+																selectedRenderVideoAssetId !== 'none'
+																	? selectedRenderVideoAssetId
+																	: null,
+															mixSourceAudio:
+																selectedRenderVideoAssetId !== 'none'
+																	? mixSourceAudio
+																	: false,
+														})
+													}}
 											>
 												{t('actions.startRender')}
 											</Button>

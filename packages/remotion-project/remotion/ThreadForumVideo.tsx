@@ -97,14 +97,25 @@ function resolveAssetUrl(
 	return null
 }
 
-function renderMainMediaCard(
-	block: ThreadVideoInputProps['root']['contentBlocks'][number],
-	assets: ThreadVideoInputProps['assets'] | undefined,
-	opts?: { extraCount?: number; videoMode?: 'inline' | 'placeholder' },
-): React.ReactNode {
-	if (!block || (block as any).type == null) return null
-	const extraCount = Math.max(0, Math.floor(opts?.extraCount ?? 0))
-	const videoMode = opts?.videoMode ?? 'inline'
+	function renderMainMediaCard(
+		block: ThreadVideoInputProps['root']['contentBlocks'][number],
+		assets: ThreadVideoInputProps['assets'] | undefined,
+		opts?: {
+			extraCount?: number
+			videoMode?: 'inline' | 'placeholder'
+			mixSourceAudio?: boolean
+			sourceAudioVolume?: number
+		},
+	): React.ReactNode {
+		if (!block || (block as any).type == null) return null
+		const extraCount = Math.max(0, Math.floor(opts?.extraCount ?? 0))
+		const videoMode = opts?.videoMode ?? 'inline'
+		const mixSourceAudio = opts?.mixSourceAudio === true
+		const sourceAudioVolume =
+			typeof opts?.sourceAudioVolume === 'number' &&
+			Number.isFinite(opts.sourceAudioVolume)
+				? Math.max(0, opts.sourceAudioVolume)
+				: 0.35
 
 	const cardStyle: CSSProperties = {
 		border: '1px solid var(--tf-border)',
@@ -195,15 +206,16 @@ function renderMainMediaCard(
 		const title = String((block as any).data?.title ?? '').trim()
 		return (
 			<div style={cardStyle}>
-				{url && videoMode === 'inline' ? (
-					<Video
-						src={url}
-						muted
-						loop
-						style={{
-							position: 'absolute',
-							inset: 0,
-							width: '100%',
+					{url && videoMode === 'inline' ? (
+						<Video
+							src={url}
+							muted={!mixSourceAudio}
+							loop
+							volume={mixSourceAudio ? sourceAudioVolume : 0}
+							style={{
+								position: 'absolute',
+								inset: 0,
+								width: '100%',
 							height: '100%',
 							objectFit: 'cover',
 							backgroundColor: 'rgba(17,24,39,0.06)',
@@ -237,15 +249,17 @@ function renderMainMediaCard(
 	return null
 }
 
-function renderThreadTemplateNode(
-	node: ThreadRenderTreeNode | undefined,
-	ctx: {
-		templateConfig: ThreadVideoInputProps['templateConfig'] | undefined
-		videoMode?: 'inline' | 'placeholder'
-		scene?: 'cover' | 'post'
-		frame?: number
-		thread: ThreadVideoInputProps['thread']
-		root: ThreadVideoInputProps['root']
+	function renderThreadTemplateNode(
+		node: ThreadRenderTreeNode | undefined,
+		ctx: {
+			templateConfig: ThreadVideoInputProps['templateConfig'] | undefined
+			videoMode?: 'inline' | 'placeholder'
+			mixSourceAudio?: boolean
+			sourceAudioVolume?: number
+			scene?: 'cover' | 'post'
+			frame?: number
+			thread: ThreadVideoInputProps['thread']
+			root: ThreadVideoInputProps['root']
 		post?: ThreadVideoInputProps['root']
 		replies: ThreadVideoInputProps['replies']
 		assets: ThreadVideoInputProps['assets'] | undefined
@@ -757,12 +771,14 @@ function renderThreadTemplateNode(
 						opacity,
 					}}
 				>
-					{mainMedia
-						? renderMainMediaCard(mainMedia as any, ctx.assets, {
-								extraCount,
-								videoMode: ctx.videoMode,
-							})
-						: null}
+						{mainMedia
+							? renderMainMediaCard(mainMedia as any, ctx.assets, {
+									extraCount,
+									videoMode: ctx.videoMode,
+									mixSourceAudio: ctx.mixSourceAudio,
+									sourceAudioVolume: ctx.sourceAudioVolume,
+								})
+							: null}
 
 					<div style={{ minWidth: 0 }}>
 						<div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -894,35 +910,42 @@ function renderThreadTemplateNode(
 		)
 	}
 
-	if (node.type === 'Video') {
-		const assetId = String(node.assetId)
-		const url = resolveAssetUrl(assetId, ctx.assets)
-		const fit = node.fit === 'contain' ? 'contain' : 'cover'
-		const position =
-			typeof node.position === 'string' && node.position.trim()
-				? node.position
-				: undefined
-		const videoMode = ctx.videoMode ?? 'inline'
-		const isSentinelAssetId = assetId.startsWith('__') && assetId.endsWith('__')
-		const opacity =
-			typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
-		const blur = typeof node.blur === 'number' ? Math.max(0, node.blur) : 0
+		if (node.type === 'Video') {
+			const assetId = String(node.assetId)
+			const url = resolveAssetUrl(assetId, ctx.assets)
+			const fit = node.fit === 'contain' ? 'contain' : 'cover'
+			const position =
+				typeof node.position === 'string' && node.position.trim()
+					? node.position
+					: undefined
+			const videoMode = ctx.videoMode ?? 'inline'
+			const mixSourceAudio = ctx.mixSourceAudio === true
+			const sourceAudioVolume =
+				typeof ctx.sourceAudioVolume === 'number' &&
+				Number.isFinite(ctx.sourceAudioVolume)
+					? Math.max(0, ctx.sourceAudioVolume)
+					: 0.35
+			const isSentinelAssetId = assetId.startsWith('__') && assetId.endsWith('__')
+			const opacity =
+				typeof node.opacity === 'number' ? clamp01(node.opacity) : undefined
+			const blur = typeof node.blur === 'number' ? Math.max(0, node.blur) : 0
 		const width = typeof node.width === 'number' ? node.width : undefined
 		const height = typeof node.height === 'number' ? node.height : undefined
 		const radius = typeof node.radius === 'number' ? node.radius : 0
 		const border = node.border ? '1px solid var(--tf-border)' : undefined
 		const background = node.background ?? 'rgba(17,24,39,0.06)'
 
-		if (url && videoMode === 'inline') {
-			return (
-				<Video
-					src={url}
-					muted
-					loop
-					data-tt-key={key}
-					data-tt-type="Video"
-					style={{
-						display: 'block',
+			if (url && videoMode === 'inline') {
+				return (
+					<Video
+						src={url}
+						muted={!mixSourceAudio}
+						loop
+						volume={mixSourceAudio ? sourceAudioVolume : 0}
+						data-tt-key={key}
+						data-tt-type="Video"
+						style={{
+							display: 'block',
 						width: width ?? '100%',
 						height: height ?? 'auto',
 						objectFit: fit,
@@ -2851,8 +2874,15 @@ export function ThreadForumVideo(props: ThreadVideoInputProps) {
 	const frame = useCurrentFrame()
 	const effectiveTemplateConfig =
 		templateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG
+	const renderHints = ((props as any)?.renderHints ?? {}) as any
+	const mixSourceAudio = renderHints?.mixSourceAudio === true
+	const sourceAudioVolume =
+		typeof renderHints?.sourceAudioVolume === 'number' &&
+		Number.isFinite(renderHints.sourceAudioVolume)
+			? Math.max(0, renderHints.sourceAudioVolume)
+			: 0.35
 	const videoMode: 'inline' | 'placeholder' =
-		(props as any)?.renderHints?.composeMode === 'compose-on-video'
+		renderHints?.composeMode === 'compose-on-video'
 			? 'placeholder'
 			: 'inline'
 	const coverRoot: ThreadRenderTreeNode =
@@ -2930,15 +2960,17 @@ export function ThreadForumVideo(props: ThreadVideoInputProps) {
 			) : null}
 			<Sequence layout="none" from={0} durationInFrames={coverDurationInFrames}>
 				<AbsoluteFill style={{ opacity: coverOpacity }}>
-						{renderThreadTemplateNode(
-							coverRoot,
-							{
-								templateConfig: effectiveTemplateConfig,
-								videoMode,
-								scene: 'cover',
-								frame,
-								thread,
-								root,
+							{renderThreadTemplateNode(
+								coverRoot,
+								{
+									templateConfig: effectiveTemplateConfig,
+									videoMode,
+									mixSourceAudio,
+									sourceAudioVolume,
+									scene: 'cover',
+									frame,
+									thread,
+									root,
 							post: root,
 							replies,
 							assets,
@@ -2955,15 +2987,17 @@ export function ThreadForumVideo(props: ThreadVideoInputProps) {
 				from={coverDurationInFrames}
 				durationInFrames={mainDuration}
 			>
-					{renderThreadTemplateNode(
-						postRoot,
-						{
-							templateConfig: effectiveTemplateConfig,
-							videoMode,
-							scene: 'post',
-							frame,
-							thread,
-							root,
+						{renderThreadTemplateNode(
+							postRoot,
+							{
+								templateConfig: effectiveTemplateConfig,
+								videoMode,
+								mixSourceAudio,
+								sourceAudioVolume,
+								scene: 'post',
+								frame,
+								thread,
+								root,
 						post: activePost,
 						replies,
 						assets,

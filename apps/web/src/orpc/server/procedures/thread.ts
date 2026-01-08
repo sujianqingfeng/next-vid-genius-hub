@@ -21,13 +21,14 @@ import {
 	parseXThreadImportDraft,
 } from '~/lib/domain/thread/adapters/x'
 import { blocksToPlainText } from '~/lib/domain/thread/utils/plain-text'
-import { buildThreadRenderSnapshot } from '~/lib/domain/thread/render-snapshot'
-import { extractThreadComposeVideoSlot } from '~/lib/domain/thread/video-slot'
+import {
+	buildThreadRenderSnapshot,
+	sanitizeThreadTemplateConfigForRender,
+} from '~/lib/domain/thread/render-snapshot'
 import {
 	DEFAULT_THREAD_TEMPLATE_ID,
 	THREAD_TEMPLATES,
 } from '@app/remotion-project/thread-templates'
-import { DEFAULT_THREAD_TEMPLATE_CONFIG } from '@app/remotion-project/thread-template-config'
 import {
 	translateAllThreadPosts,
 	translateThreadPost,
@@ -1637,6 +1638,9 @@ export const startCloudRender = os
 			input.templateConfig !== undefined
 				? input.templateConfig
 				: (thread.templateConfig ?? null)
+		const renderTemplateConfig = sanitizeThreadTemplateConfigForRender(
+			effectiveTemplateConfig,
+		)
 
 		const videoAssetId =
 			typeof input.videoAssetId === 'string' && input.videoAssetId.trim()
@@ -1645,8 +1649,242 @@ export const startCloudRender = os
 		const mixSourceAudio = input.mixSourceAudio === true
 
 		let sourceVideoKey: string | null = null
-		let composeVideoSlot: ReturnType<typeof extractThreadComposeVideoSlot> | null =
+		let videoLayout: { x: number; y: number; width: number; height: number; radius: number; fit: 'cover' | 'contain' } | null =
 			null
+
+		function computeThreadForumContentCardLayoutFromTemplateConfig(
+			rawTemplateConfig: unknown,
+		) {
+			// Match the main media card position in the `thread-forum` post scene layout.
+			// We compute this from the template config so render output stays aligned even if
+			// padding/gaps change (no more hardcoded __VIDEO_SLOT__ center layout).
+			const compositionWidth = 1920
+			const cardHeight = 420
+			const cardRadius = 18
+			const cardBorder = 1
+
+			const fallback = () => {
+				const rootPadding = 64
+				const bodyGapX = 22
+				const leftFlex = 0.58
+				const leftBoxPadding = 28
+				const headerHeight = Math.ceil(12 * 1.25)
+				const rootGapY = 18
+				const avatarSize = 44
+				const dividerThickness = 1
+				const leftBoxBorder = 1
+
+				const contentWidth = compositionWidth - rootPadding * 2 - bodyGapX
+				const leftBoxWidth = contentWidth * leftFlex
+				const contentWidthInner = Math.round(
+					leftBoxWidth - leftBoxPadding * 2 - leftBoxBorder * 2,
+				)
+				const cardX = rootPadding + leftBoxPadding + leftBoxBorder
+				const cardY =
+					rootPadding +
+					headerHeight +
+					rootGapY +
+					leftBoxPadding +
+					leftBoxBorder +
+					avatarSize +
+					dividerThickness
+
+				return {
+					x: Math.round(cardX + cardBorder),
+					y: Math.round(cardY + cardBorder),
+					width: Math.max(1, Math.round(contentWidthInner - cardBorder * 2)),
+					height: Math.max(1, Math.round(cardHeight - cardBorder * 2)),
+					radius: Math.max(0, Math.round(cardRadius - cardBorder)),
+					fit: 'cover' as const,
+				}
+			}
+
+			const cfg =
+				rawTemplateConfig && typeof rawTemplateConfig === 'object'
+					? (rawTemplateConfig as any)
+					: null
+			const fontScaleRaw = cfg?.typography?.fontScale
+			const fontScale =
+				typeof fontScaleRaw === 'number' && Number.isFinite(fontScaleRaw)
+					? Math.max(0.5, Math.min(2, fontScaleRaw))
+					: 1
+
+			const postRoot = cfg?.scenes?.post?.root
+			if (!postRoot || typeof postRoot !== 'object') return fallback()
+
+			const getPaddingX = (n: any) => {
+				if (typeof n?.paddingX === 'number') return n.paddingX
+				if (typeof n?.padding === 'number') return n.padding
+				return 0
+			}
+			const getPaddingY = (n: any) => {
+				if (typeof n?.paddingY === 'number') return n.paddingY
+				if (typeof n?.padding === 'number') return n.padding
+				return 0
+			}
+			const getGapX = (n: any) => {
+				if (typeof n?.gapX === 'number') return n.gapX
+				if (typeof n?.gap === 'number') return n.gap
+				return 0
+			}
+			const getGapY = (n: any) => {
+				if (typeof n?.gapY === 'number') return n.gapY
+				if (typeof n?.gap === 'number') return n.gap
+				return 0
+			}
+
+			const measureHeight = (node: any): number => {
+				if (!node || typeof node !== 'object') return 0
+				if (typeof node.height === 'number' && Number.isFinite(node.height))
+					return Math.max(0, node.height)
+
+				if (node.type === 'Avatar') {
+					const size = typeof node.size === 'number' ? node.size : 44
+					return Math.max(0, size)
+				}
+				if (node.type === 'Text') {
+					const sizePx = typeof node.size === 'number' ? node.size : 16
+					const lineHeight =
+						typeof node.lineHeight === 'number'
+							? Math.min(2, Math.max(0.8, node.lineHeight))
+							: 1.25
+					return Math.max(0, Math.ceil(sizePx * fontScale * lineHeight))
+				}
+				if (node.type === 'Metrics') {
+					const sizePx = typeof node.size === 'number' ? node.size : 14
+					const iconPx = node.showIcon === false ? 0 : Math.max(12, Math.round(sizePx * 1.15))
+					const textPx = Math.ceil(sizePx * fontScale)
+					return Math.max(iconPx, textPx)
+				}
+				if (node.type === 'Divider') {
+					const thickness =
+						typeof node.thickness === 'number' ? node.thickness : 1
+					const margin = typeof node.margin === 'number' ? node.margin : 0
+					const axis = node.axis === 'y' ? 'y' : 'x'
+					return axis === 'y'
+						? 0
+						: Math.max(0, thickness) + Math.max(0, margin) * 2
+				}
+				if (node.type === 'Stack') {
+					const paddingY = getPaddingY(node)
+					const children = Array.isArray(node.children) ? node.children : []
+					if (node.direction === 'row') {
+						let maxH = 0
+						for (const c of children) maxH = Math.max(maxH, measureHeight(c))
+						return Math.max(0, paddingY * 2 + maxH)
+					}
+					const gapY = getGapY(node)
+					let total = 0
+					for (let i = 0; i < children.length; i++) {
+						total += measureHeight(children[i])
+						if (i !== children.length - 1) total += gapY
+					}
+					return Math.max(0, paddingY * 2 + total)
+				}
+				if (node.type === 'Box') {
+					const paddingY = getPaddingY(node)
+					const children = Array.isArray(node.children) ? node.children : []
+					let total = 0
+					for (const c of children) total += measureHeight(c)
+					return Math.max(0, paddingY * 2 + total)
+				}
+				return 0
+			}
+
+			const rootPaddingX = getPaddingX(postRoot)
+			const rootPaddingY = getPaddingY(postRoot)
+			const rootGapY = getGapY(postRoot)
+			const postChildren = Array.isArray((postRoot as any).children)
+				? (postRoot as any).children
+				: []
+			if (postChildren.length < 2) return fallback()
+
+			const headerNode = postChildren[0]
+			const bodyNode = postChildren.find(
+				(n: any, idx: number) =>
+					idx !== 0 &&
+					n &&
+					typeof n === 'object' &&
+					n.type === 'Stack' &&
+					n.direction === 'row',
+			)
+			if (!bodyNode) return fallback()
+
+			const headerHeight = measureHeight(headerNode)
+			const bodyTopY = rootPaddingY + headerHeight + rootGapY
+			const bodyGapX = getGapX(bodyNode)
+
+			const bodyChildren = Array.isArray(bodyNode.children) ? bodyNode.children : []
+			const flexChildren = bodyChildren.filter(
+				(c: any) => c && typeof c === 'object' && typeof c.flex === 'number',
+			)
+			if (flexChildren.length < 1) return fallback()
+
+			const leftBox =
+				flexChildren.reduce((best: any, cur: any) => {
+					if (!best) return cur
+					const bf = typeof best.flex === 'number' ? best.flex : 0
+					const cf = typeof cur.flex === 'number' ? cur.flex : 0
+					return cf > bf ? cur : best
+				}, null) ?? null
+			if (!leftBox) return fallback()
+
+			const totalFlex = flexChildren.reduce((sum: number, c: any) => {
+				const f = typeof c.flex === 'number' && Number.isFinite(c.flex) ? c.flex : 0
+				return sum + Math.max(0, f)
+			}, 0)
+			if (totalFlex <= 0) return fallback()
+
+			const leftFlex =
+				typeof leftBox.flex === 'number' && Number.isFinite(leftBox.flex)
+					? Math.max(0, leftBox.flex)
+					: 0
+			const contentWidth = compositionWidth - rootPaddingX * 2 - bodyGapX
+			const leftBoxWidth = (contentWidth * leftFlex) / totalFlex
+			const leftBoxPaddingX = getPaddingX(leftBox)
+			const leftBoxPaddingY = getPaddingY(leftBox)
+			const leftBoxBorder =
+				leftBox?.border === true
+					? typeof leftBox?.borderWidth === 'number' &&
+						Number.isFinite(leftBox.borderWidth)
+						? Math.max(1, Math.round(leftBox.borderWidth))
+						: 1
+					: 0
+
+			const leftChildren = Array.isArray(leftBox.children) ? leftBox.children : []
+			let contentBlocksIdx = -1
+			for (let i = 0; i < leftChildren.length; i++) {
+				const n = leftChildren[i]
+				if (n && typeof n === 'object' && n.type === 'ContentBlocks') {
+					const bind = typeof n.bind === 'string' ? n.bind : ''
+					if (bind === 'root.contentBlocks' || bind.endsWith('.contentBlocks')) {
+						contentBlocksIdx = i
+						break
+					}
+				}
+			}
+			if (contentBlocksIdx < 0) return fallback()
+
+			// Left box is the first column.
+			const leftBoxX = rootPaddingX
+			let contentBlocksY = bodyTopY + leftBoxBorder + leftBoxPaddingY
+			for (let i = 0; i < contentBlocksIdx; i++) {
+				contentBlocksY += measureHeight(leftChildren[i])
+			}
+
+			const cardX = leftBoxX + leftBoxBorder + leftBoxPaddingX
+			const cardY = contentBlocksY
+			const cardWidth = leftBoxWidth - leftBoxBorder * 2 - leftBoxPaddingX * 2
+
+			return {
+				x: Math.round(cardX + cardBorder),
+				y: Math.round(cardY + cardBorder),
+				width: Math.max(1, Math.round(cardWidth - cardBorder * 2)),
+				height: Math.max(1, Math.round(cardHeight - cardBorder * 2)),
+				radius: Math.max(0, Math.round(cardRadius - cardBorder)),
+				fit: 'cover' as const,
+			}
+		}
 
 		if (videoAssetId) {
 			const sourceAsset = await db.query.threadAssets.findFirst({
@@ -1665,16 +1903,10 @@ export const startCloudRender = os
 				throw new Error('Selected video asset is not ready')
 			}
 			sourceVideoKey = String(sourceAsset.storageKey)
-
-			composeVideoSlot =
-				extractThreadComposeVideoSlot(
-					effectiveTemplateConfig ?? DEFAULT_THREAD_TEMPLATE_CONFIG,
-				) ?? extractThreadComposeVideoSlot(DEFAULT_THREAD_TEMPLATE_CONFIG)
-			if (!composeVideoSlot) {
-				throw new Error(
-					'compose-on-video requires an Absolute-positioned Video slot in the thread template',
-				)
-			}
+			videoLayout = computeThreadForumContentCardLayoutFromTemplateConfig(
+				renderTemplateConfig ??
+					THREAD_TEMPLATES[effectiveTemplateId].defaultConfig,
+			)
 		}
 
 		const composeMode = sourceVideoKey ? 'compose-on-video' : 'overlay-only'
@@ -1702,7 +1934,8 @@ export const startCloudRender = os
 			userId,
 			jobId,
 			templateId: effectiveTemplateId,
-			templateConfig: effectiveTemplateConfig,
+			templateConfig: renderTemplateConfig,
+			mainVideoAssetId: videoAssetId,
 		})
 
 		await db.insert(schema.threadRenders).values({
@@ -1712,7 +1945,7 @@ export const startCloudRender = os
 			status: 'queued',
 			jobId,
 			templateId: effectiveTemplateId,
-			templateConfig: effectiveTemplateConfig as any,
+			templateConfig: (renderTemplateConfig ?? null) as any,
 			audioAssetId,
 			inputSnapshotKey: snapshot.key,
 			outputVideoKey: null,
@@ -1733,52 +1966,50 @@ export const startCloudRender = os
 				purpose: TASK_KINDS.RENDER_THREAD,
 				title: thread.title,
 				jobId,
-				payload: {
-					threadId: thread.id,
-					templateId: effectiveTemplateId,
-					templateConfig: effectiveTemplateConfig,
-					composeMode,
-					videoAssetId,
-					videoLayout: composeVideoSlot,
-					mixSourceAudio,
-				},
-				options: {
-					resourceType: 'thread',
-					templateId: effectiveTemplateId,
-					templateConfig:
-						effectiveTemplateConfig === null
-							? undefined
-							: effectiveTemplateConfig,
-					composeMode,
-					videoAssetId,
-					videoLayout: composeVideoSlot,
-					mixSourceAudio,
-				},
-				buildManifest: ({ jobId }) => {
-					return {
-						jobId,
-						mediaId: thread.id,
-						purpose: TASK_KINDS.RENDER_THREAD,
-						engine: 'renderer-remotion',
-						createdAt: Date.now(),
-						inputs: {
-							videoKey: sourceVideoKey,
-							commentsKey: snapshot.key,
-							audioKey: audioAsset?.storageKey ?? null,
-						},
-						outputs: { videoKey: null },
-						optionsSnapshot: {
-							resourceType: 'thread',
+						payload: {
 							threadId: thread.id,
 							templateId: effectiveTemplateId,
+							templateConfig: renderTemplateConfig,
 							composeMode,
 							videoAssetId,
-							videoLayout: composeVideoSlot,
+							videoLayout,
 							mixSourceAudio,
 						},
-					}
-				},
-			})
+						options: {
+							resourceType: 'thread',
+							templateId: effectiveTemplateId,
+							templateConfig:
+								renderTemplateConfig === null ? undefined : renderTemplateConfig,
+							composeMode,
+							videoAssetId,
+							videoLayout,
+							mixSourceAudio,
+						},
+					buildManifest: ({ jobId }) => {
+						return {
+							jobId,
+							mediaId: thread.id,
+							purpose: TASK_KINDS.RENDER_THREAD,
+							engine: 'renderer-remotion',
+							createdAt: Date.now(),
+							inputs: {
+								videoKey: sourceVideoKey,
+								commentsKey: snapshot.key,
+								audioKey: audioAsset?.storageKey ?? null,
+							},
+							outputs: { videoKey: null },
+							optionsSnapshot: {
+								resourceType: 'thread',
+								threadId: thread.id,
+								templateId: effectiveTemplateId,
+								composeMode,
+								videoAssetId,
+								videoLayout,
+								mixSourceAudio,
+							},
+						}
+					},
+				})
 			return { renderId, jobId, taskId }
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e)

@@ -419,16 +419,16 @@
 				"threadRow": "Thread row",
 				"none": "(none)"
 			},
-			"render": {
-				"sourceVideoLabel": "Source video (compose)",
-				"sourceVideoPlaceholder": "Select a video asset",
-				"sourceVideoNone": "None (overlay-only)",
-				"mixSourceAudioLabel": "Mix source audio",
-				"mixSourceAudioHint": "Mix original video audio into the render.",
-				"jobId": "jobId: {jobId}",
-				"status": "status: {status}",
-				"progress": "progress: {progress}%",
-				"downloadMp4": "Download mp4"
+				"render": {
+					"sourceVideoLabel": "Source video",
+					"sourceVideoPlaceholder": "Select a video asset",
+					"sourceVideoNone": "None",
+					"mixSourceAudioLabel": "Mix source audio",
+					"mixSourceAudioHint": "Use audio from the selected video (plays during the post scene).",
+					"jobId": "jobId: {jobId}",
+					"status": "status: {status}",
+					"progress": "progress: {progress}%",
+					"downloadMp4": "Download mp4"
 			},
 			"audio": {
 				"actions": {

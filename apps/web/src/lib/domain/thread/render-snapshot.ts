@@ -62,12 +62,76 @@ function firstTextBlock(blocks: unknown): string {
 	return b ? String((b as any).data?.text ?? '') : ''
 }
 
+export function sanitizeThreadTemplateConfigForRender(
+	templateConfig: unknown | null | undefined,
+): unknown | null | undefined {
+	if (templateConfig == null) return templateConfig
+	if (typeof templateConfig !== 'object') return templateConfig
+
+	const stripNode = (node: any): any => {
+		if (!node) return node
+		if (Array.isArray(node)) {
+			const next = node.map(stripNode).filter(Boolean)
+			return next
+		}
+		if (typeof node !== 'object') return node
+
+		if (node.type === 'Video' && String(node.assetId ?? '') === '__VIDEO_SLOT__') {
+			return null
+		}
+
+		const out: any = Array.isArray(node) ? [] : { ...node }
+
+		if (Array.isArray(node.children)) {
+			out.children = node.children.map(stripNode).filter(Boolean)
+			if (out.type === 'Absolute' && out.children.length === 0) return null
+		}
+
+		if (node.type === 'Repeat') {
+			if (node.itemRoot != null) out.itemRoot = stripNode(node.itemRoot)
+			if (out.itemRoot == null) delete out.itemRoot
+		}
+
+		if (node.type === 'Scenes' && node.scenes && typeof node.scenes === 'object') {
+			const scenes: any = { ...node.scenes }
+			for (const k of Object.keys(scenes)) {
+				const s = scenes[k]
+				if (!s || typeof s !== 'object') continue
+				if (s.root != null) scenes[k] = { ...s, root: stripNode(s.root) }
+			}
+			out.scenes = scenes
+		}
+
+		return out
+	}
+
+	// Template config shape is { scenes: { cover/post: { root } }, ... }.
+	const cfg: any = templateConfig
+	if (cfg.scenes && typeof cfg.scenes === 'object') {
+		const scenes: any = { ...cfg.scenes }
+		for (const k of Object.keys(scenes)) {
+			const s = scenes[k]
+			if (!s || typeof s !== 'object') continue
+			if (s.root != null) scenes[k] = { ...s, root: stripNode(s.root) }
+		}
+		return { ...cfg, scenes }
+	}
+
+	return stripNode(cfg)
+}
+
 export async function buildThreadRenderSnapshot(input: {
 	threadId: string
 	jobId: string
 	userId: string
 	templateId: string
 	templateConfig?: unknown | null
+	/**
+	 * If provided, the snapshot will ensure the root post has a `video` content block
+	 * using this asset id so the renderer can show it inline (content-block placement).
+	 * This does not mutate the DB.
+	 */
+	mainVideoAssetId?: string | null
 }): Promise<{ key: string; inputProps: ThreadVideoInputProps }> {
 	const db = await getDb()
 	const thread = await db.query.threads.findFirst({
@@ -79,7 +143,9 @@ export async function buildThreadRenderSnapshot(input: {
 	if (!thread) throw new Error('Thread not found')
 
 	const templateConfig =
-		input.templateConfig === undefined ? undefined : (input.templateConfig as any)
+		input.templateConfig === undefined
+			? undefined
+			: sanitizeThreadTemplateConfigForRender(input.templateConfig)
 
 	let audio: ThreadVideoInputProps['audio'] | undefined = undefined
 	if (thread.audioAssetId) {
@@ -124,19 +190,49 @@ export async function buildThreadRenderSnapshot(input: {
 	}))
 	const timeline = buildCommentTimeline(commentsForTiming, REMOTION_FPS)
 
-	const rootBlocks = (root.contentBlocks ?? [
+	let rootBlocks = (root.contentBlocks ?? [
 		{
 			id: 'text-0',
 			type: 'text',
 			data: { text: firstTextBlock(root.contentBlocks) },
 		},
 	]) as any
-		const rootPlain = root.plainText || blocksToPlainText(rootBlocks)
-
-		const referencedAssetIds = new Set<string>()
-		for (const id of collectThreadTemplateAssetIds(templateConfig)) {
-			referencedAssetIds.add(id)
+	const mainVideoAssetId =
+		typeof input.mainVideoAssetId === 'string' && input.mainVideoAssetId.trim()
+			? input.mainVideoAssetId.trim()
+			: null
+	if (mainVideoAssetId) {
+		const next = Array.isArray(rootBlocks) ? [...rootBlocks] : []
+		let replaced = false
+		for (const b of next) {
+			if (!b || typeof b !== 'object') continue
+			if ((b as any).type !== 'video') continue
+			const data =
+				(b as any).data && typeof (b as any).data === 'object'
+					? { ...(b as any).data }
+					: {}
+			data.assetId = mainVideoAssetId
+			;(b as any).data = data
+			replaced = true
+			break
 		}
+		if (!replaced) {
+			next.unshift({
+				id: `media-main-${mainVideoAssetId.slice(0, 8)}`,
+				type: 'video',
+				data: { assetId: mainVideoAssetId },
+			})
+		}
+		rootBlocks = next
+	}
+
+	const rootPlain = root.plainText || blocksToPlainText(rootBlocks)
+
+	const referencedAssetIds = new Set<string>()
+	for (const id of collectThreadTemplateAssetIds(templateConfig)) {
+		referencedAssetIds.add(id)
+	}
+	if (mainVideoAssetId) referencedAssetIds.add(mainVideoAssetId)
 
 	for (const p of posts) {
 		if (p.authorAvatarAssetId) referencedAssetIds.add(p.authorAvatarAssetId)

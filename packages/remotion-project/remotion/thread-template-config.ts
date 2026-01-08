@@ -303,28 +303,10 @@ const DEFAULT_SCENES: NonNullable<ThreadTemplateConfigV1['scenes']> = {
 						},
 					],
 				},
-				{
-					type: 'Absolute',
-					x: 480,
-					y: 270,
-					width: 960,
-					height: 540,
-					children: [
-						{
-							type: 'Video',
-							assetId: '__VIDEO_SLOT__',
-							width: 960,
-							height: 540,
-							fit: 'cover',
-							radius: 24,
-							background: 'rgba(17,24,39,0.06)',
-						},
-					],
-				},
-				{
-					type: 'Watermark',
-					position: 'bottom-right',
-					color: 'muted',
+					{
+						type: 'Watermark',
+						position: 'bottom-right',
+						color: 'muted',
 					size: 12,
 					weight: 700,
 					opacity: 0.7,
@@ -359,4 +341,4 @@ export const DEFAULT_THREAD_TEMPLATE_CONFIG: ThreadTemplateConfigV1 = {
  * Increment when the template compile/render logic changes in a way that might affect
  * determinism/replay of previously-saved configs.
  */
-export const THREAD_TEMPLATE_COMPILE_VERSION = 31
+export const THREAD_TEMPLATE_COMPILE_VERSION = 32
