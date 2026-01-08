@@ -241,58 +241,56 @@ export function normalizeVttContent(vttContent: string): string {
 
 	const prelim = normalizedLines.join('\n')
 
-	// Second pass: fix invalid or reversed ranges and enforce monotonic timings
-	// Parse cues after timestamp normalization
+	// Second pass: ensure every cue is valid (end > start) without re-timing the
+	// whole transcript. ASR providers sometimes emit zero-length cues
+	// (start==end) at word boundaries; we prefer merging them into the next cue
+	// when it starts at the same time, otherwise we minimally extend the end.
 	const cues = parseVttCues(prelim)
 	if (!cues || cues.length === 0) return prelim
 
-	// Enrich with numeric times
-	type TmpCue = { startTime: number; endTime: number; lines: string[] }
-	const tmp: TmpCue[] = cues.map((c) => ({
-		startTime: parseVttTimestamp(c.start),
-		endTime: parseVttTimestamp(c.end),
-		lines: c.lines,
-	}))
+	const toMs = (ts: string) => Math.round(parseVttTimestamp(ts) * 1000)
+	const nextMs = (idx: number) => (cues[idx + 1] ? toMs(cues[idx + 1]!.start) : null)
 
-	// Sort by start time first
-	tmp.sort((a, b) => a.startTime - b.startTime)
+	const out: VttCue[] = []
+	for (let i = 0; i < cues.length; i++) {
+		const cue = cues[i]!
+		let startMs = toMs(cue.start)
+		let endMs = toMs(cue.end)
 
-	// Fix reversed/invalid durations and enforce small positive gap
-	const MIN_DUR = 0.35 // seconds
-	const GAP = 0.02 // seconds, avoid zero-length overlap when tightening
-	for (let i = 0; i < tmp.length; i++) {
-		const cur = tmp[i]
-		const next = tmp[i + 1]
-		// If end <= start, stretch minimally or up to next.start - GAP
-		if (!(cur.endTime > cur.startTime)) {
-			const nextStart = next ? next.startTime : cur.startTime + 3
-			const target = Math.max(
-				cur.startTime + MIN_DUR,
-				Math.min(cur.startTime + 3, nextStart - GAP),
-			)
-			cur.endTime =
-				Number.isFinite(target) && target > cur.startTime
-					? target
-					: cur.startTime + MIN_DUR
-		}
-		// If overlaps with previous end (after sorting), push start forward slightly
-		if (i > 0) {
-			const prev = tmp[i - 1]
-			if (cur.startTime < prev.endTime - GAP / 2) {
-				cur.startTime = Math.max(prev.endTime + GAP, cur.startTime)
-				if (cur.endTime <= cur.startTime) cur.endTime = cur.startTime + MIN_DUR
+		if (!Number.isFinite(startMs) || startMs < 0) startMs = 0
+		if (!Number.isFinite(endMs)) endMs = startMs
+
+		if (endMs <= startMs) {
+			const ns = nextMs(i)
+			// If the next cue starts later, extend this cue until then.
+			if (typeof ns === 'number' && Number.isFinite(ns) && ns > startMs) {
+				endMs = ns
+			} else if (
+				typeof ns === 'number' &&
+				Number.isFinite(ns) &&
+				ns === startMs &&
+				cues[i + 1]
+			) {
+				// If the next cue starts at the same time, merge text into it and drop.
+				const nextCue = cues[i + 1]!
+				const prefix = cue.lines.join(' ').trim()
+				if (prefix) {
+					if (nextCue.lines.length === 0) nextCue.lines = [prefix]
+					else nextCue.lines[0] = `${prefix} ${nextCue.lines[0]}`.trim()
+				}
+				continue
+			} else {
+				// Fallback: make it minimally non-zero (1ms) to satisfy validators.
+				endMs = startMs + 1
 			}
 		}
+
+		out.push({
+			start: formatVttTimestamp(startMs / 1000),
+			end: formatVttTimestamp(endMs / 1000),
+			lines: cue.lines,
+		})
 	}
 
-	// Serialize back to VTT document
-	const fixed = createVttDocument(
-		tmp.map((t) => ({
-			start: formatVttTimestamp(t.startTime),
-			end: formatVttTimestamp(t.endTime),
-			lines: t.lines,
-		})),
-	)
-
-	return fixed
+	return createVttDocument(out)
 }

@@ -48,6 +48,17 @@ function errorMatches(error: unknown, needle: string) {
 	return causeMessage.includes(needle)
 }
 
+function sanitizeUiMessages(input: unknown[]): unknown[] {
+	// `@ai-sdk/*` UI message validation rejects placeholder messages like:
+	// { role: 'assistant', parts: [] }
+	// which can appear client-side when a stream fails mid-flight.
+	return input.filter((m) => {
+		if (!m || typeof m !== 'object') return false
+		const parts = (m as { parts?: unknown }).parts
+		return Array.isArray(parts) && parts.length > 0
+	})
+}
+
 async function ensureAgentDbReady(): Promise<Response | null> {
 	try {
 		await getDb()
@@ -155,6 +166,8 @@ export async function handleAgentChatStreamRequest(
 	].join(' ')
 
 	try {
+		const uiMessages = sanitizeUiMessages(input.messages as unknown[])
+
 		const providerClient = getProviderClient(cfg.provider)
 		const model = providerClient(cfg.remoteModelId)
 
@@ -262,15 +275,20 @@ export async function handleAgentChatStreamRequest(
 			instructions: system,
 			maxOutputTokens: input.maxTokens,
 			temperature: input.temperature,
+			// We persist chat history in our own DB; keep OpenAI/compat storage off.
+			// This avoids the SDK emitting `item_reference` inputs for non-stored items.
+			providerOptions: {
+				openai: { store: false },
+			},
 			tools: tools as any,
 			stopWhen: stepCountIs(1),
 		})
 
 		const res = await createAgentUIStreamResponse({
 			agent,
-			uiMessages: input.messages as unknown[],
+			uiMessages,
 			abortSignal: request.signal,
-			originalMessages: input.messages as any,
+			originalMessages: uiMessages as any,
 			generateMessageId: () => createId(),
 			onFinish: async ({ messages }) => {
 				try {

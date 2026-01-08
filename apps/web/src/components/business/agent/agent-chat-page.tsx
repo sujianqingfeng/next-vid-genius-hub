@@ -19,7 +19,6 @@ import { Button } from '~/components/ui/button'
 import {
 	Dialog,
 	DialogContent,
-	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
@@ -67,7 +66,7 @@ function updateMessagesWithAction(messages: UIMessage[], action: AgentAction) {
 			changed = true
 			return {
 				...p,
-				output: { ...(out ?? {}), actionId: action.id, action },
+				output: { ...out, actionId: action.id, action },
 			}
 		})
 

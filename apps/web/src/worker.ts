@@ -21,6 +21,16 @@ let startHandler:
 	| ReturnType<typeof createStartHandler<typeof defaultStreamHandler>>
 	| undefined
 
+function isStaleRouterEntryError(error: unknown) {
+	const message = error instanceof Error ? error.message : String(error)
+	if (message.includes('routerEntry.getRouter is not a function')) return true
+	const cause =
+		error instanceof Error ? (error as { cause?: unknown }).cause : undefined
+	const causeMessage =
+		cause instanceof Error ? cause.message : String(cause ?? '')
+	return causeMessage.includes('routerEntry.getRouter is not a function')
+}
+
 function getStartHandler() {
 	// In dev, avoid caching the handler across HMR reloads. The handler closure
 	// caches a dynamically imported router entry; after an HMR update this can
@@ -102,7 +112,15 @@ export default {
 			setInjectedD1Database(env.DB)
 		}
 
-		return getStartHandler()(request)
+		try {
+			return await getStartHandler()(request)
+		} catch (error) {
+			// Recover from dev-time stale router entry imports by rebuilding the
+			// Start handler once and retrying the request.
+			if (!isStaleRouterEntryError(error)) throw error
+			startHandler = undefined
+			return await getStartHandler()(request)
+		}
 	},
 	async scheduled(
 		_event: unknown,
