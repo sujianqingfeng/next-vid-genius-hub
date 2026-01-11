@@ -1,4 +1,7 @@
-import { POINT_RESOURCE_TYPES, POINT_TRANSACTION_TYPES } from '~/lib/features/job/task'
+import {
+	POINT_RESOURCE_TYPES,
+	POINT_TRANSACTION_TYPES,
+} from '~/lib/features/job/task'
 import { logger } from '~/lib/infra/logger'
 import {
 	calculateAsrCost,
@@ -6,9 +9,9 @@ import {
 	calculateLlmCost,
 } from './pricing'
 import {
-	hasTransactionForRef,
 	InsufficientPointsError,
 	spendPoints,
+	spendPointsOnce,
 } from './service'
 
 interface BaseChargeInput {
@@ -117,39 +120,47 @@ export async function chargeAsrUsage(
 
 	if (points <= 0) return { charged: 0 }
 
-	// Idempotency: if caller provides a stable refId (recommended: jobId),
-	// skip charging again when callbacks are retried.
-	if (opts.refId && opts.refId.trim()) {
-		try {
-			const already = await hasTransactionForRef({
-				userId: opts.userId,
-				type: POINT_TRANSACTION_TYPES.ASR_USAGE,
-				refId: opts.refId,
-			})
-			if (already) return { charged: 0 }
-		} catch {
-			// best-effort; if we can't check, fall back to charging
-		}
-	}
-
 	const remark = buildRemark(
 		`asr model=${opts.modelId ?? 'default'} dur=${durationSeconds.toFixed(1)}s`,
 		opts.remark,
 	)
-	const balance = await spendPoints({
-		userId: opts.userId,
-		amount: points,
-		type: POINT_TRANSACTION_TYPES.ASR_USAGE,
-		refType: opts.refType ?? 'asr',
-		refId: opts.refId ?? null,
-		remark,
-		metadata: {
-			resourceType: POINT_RESOURCE_TYPES.ASR,
-			modelId: opts.modelId ?? null,
-			durationSeconds,
-			...opts.metadata,
-		},
-	})
+	const spendResult =
+		opts.refId && opts.refId.trim()
+			? await spendPointsOnce({
+					userId: opts.userId,
+					amount: points,
+					type: POINT_TRANSACTION_TYPES.ASR_USAGE,
+					refType: opts.refType ?? 'asr',
+					refId: opts.refId,
+					remark,
+					metadata: {
+						resourceType: POINT_RESOURCE_TYPES.ASR,
+						modelId: opts.modelId ?? null,
+						durationSeconds,
+						...opts.metadata,
+					},
+				})
+			: {
+					charged: points,
+					balance: await spendPoints({
+						userId: opts.userId,
+						amount: points,
+						type: POINT_TRANSACTION_TYPES.ASR_USAGE,
+						refType: opts.refType ?? 'asr',
+						refId: opts.refId ?? null,
+						remark,
+						metadata: {
+							resourceType: POINT_RESOURCE_TYPES.ASR,
+							modelId: opts.modelId ?? null,
+							durationSeconds,
+							...opts.metadata,
+						},
+					}),
+				}
+
+	if (spendResult.charged <= 0) return { charged: 0 }
+
+	const balance = spendResult.balance
 	logger.info(
 		'api',
 		`[billing.asr] charged user=${opts.userId} model=${opts.modelId ?? 'default'} dur=${durationSeconds.toFixed(1)}s points=${points} balance=${balance ?? 0}`,
@@ -187,38 +198,45 @@ export async function chargeDownloadUsage(
 
 	if (points <= 0) return { charged: 0 }
 
-	// Idempotency: if caller provides a stable refId (recommended: jobId),
-	// skip charging again when callbacks are retried.
-	if (opts.refId && opts.refId.trim()) {
-		try {
-			const already = await hasTransactionForRef({
-				userId: opts.userId,
-				type: POINT_TRANSACTION_TYPES.DOWNLOAD_USAGE,
-				refId: opts.refId,
-			})
-			if (already) return { charged: 0 }
-		} catch {
-			// best-effort
-		}
-	}
-
 	const remark = buildRemark(
 		`download dur=${durationSeconds.toFixed(1)}s`,
 		opts.remark,
 	)
-	const balance = await spendPoints({
-		userId: opts.userId,
-		amount: points,
-		type: POINT_TRANSACTION_TYPES.DOWNLOAD_USAGE,
-		refType: opts.refType ?? 'download',
-		refId: opts.refId ?? null,
-		remark,
-		metadata: {
-			resourceType: POINT_RESOURCE_TYPES.DOWNLOAD,
-			durationSeconds,
-			...opts.metadata,
-		},
-	})
+	const spendResult =
+		opts.refId && opts.refId.trim()
+			? await spendPointsOnce({
+					userId: opts.userId,
+					amount: points,
+					type: POINT_TRANSACTION_TYPES.DOWNLOAD_USAGE,
+					refType: opts.refType ?? 'download',
+					refId: opts.refId,
+					remark,
+					metadata: {
+						resourceType: POINT_RESOURCE_TYPES.DOWNLOAD,
+						durationSeconds,
+						...opts.metadata,
+					},
+				})
+			: {
+					charged: points,
+					balance: await spendPoints({
+						userId: opts.userId,
+						amount: points,
+						type: POINT_TRANSACTION_TYPES.DOWNLOAD_USAGE,
+						refType: opts.refType ?? 'download',
+						refId: opts.refId ?? null,
+						remark,
+						metadata: {
+							resourceType: POINT_RESOURCE_TYPES.DOWNLOAD,
+							durationSeconds,
+							...opts.metadata,
+						},
+					}),
+				}
+
+	if (spendResult.charged <= 0) return { charged: 0 }
+
+	const balance = spendResult.balance
 	logger.info(
 		'api',
 		`[billing.download] charged user=${opts.userId} dur=${durationSeconds.toFixed(1)}s points=${points} balance=${balance ?? 0}`,
