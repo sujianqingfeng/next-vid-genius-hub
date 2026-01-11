@@ -211,22 +211,24 @@
 			"placeholder": "Message the agent...",
 			"hint": "Enter to send · Shift+Enter for newline"
 		},
-		"actions": {
-			"send": "Send",
-			"clear": "Clear",
-			"modeLabel": "Mode",
-			"mode": {
-				"confirm": "Confirm",
-				"auto": "Auto"
-			},
-			"settings": "Settings",
-			"settingsTitle": "Workflow Settings",
-			"settingsDesc": "Auto-suggest is always on. Auto mode can still require confirmation based on safety rules.",
-			"perStepMode": "Per-step override",
-			"inherit": "Inherit default",
-			"autoDelayMs": "Auto execute delay (ms)",
-			"autoMaxPoints": "Auto max points (per action)",
-			"requireConfirmUnknownCost": "Require confirm when cost is unknown",
+			"actions": {
+				"send": "Send",
+				"clear": "Clear",
+				"scrollToBottom": "Jump to latest",
+				"modeLabel": "Mode",
+				"mode": {
+					"confirm": "Confirm",
+					"auto": "Auto"
+				},
+				"settings": "Settings",
+				"settingsTitle": "Workflow Settings",
+				"settingsDesc": "Auto-suggest can be turned off. Auto mode can still require confirmation based on safety rules.",
+				"autoSuggestNext": "Auto-suggest next step",
+				"perStepMode": "Per-step override",
+				"inherit": "Inherit default",
+				"autoDelayMs": "Auto execute delay (ms)",
+				"autoMaxPoints": "Auto max points (per action)",
+				"requireConfirmUnknownCost": "Require confirm when cost is unknown",
 			"yes": "Yes",
 			"no": "No",
 			"reset": "Reset",
@@ -254,22 +256,24 @@
 				"render": "Render Subtitles"
 			}
 		},
-		"sessions": {
-			"new": "New chat",
-			"empty": "No chats yet.",
-			"loading": "Loading chat...",
-			"rename": "Rename",
-			"renameTitle": "Rename chat",
-			"renameLabel": "Title",
-			"renamePlaceholder": "Chat title",
-			"delete": "Delete",
+			"sessions": {
+				"new": "New chat",
+				"empty": "No chats yet.",
+				"loading": "Loading chat...",
+				"untitled": "Untitled",
+				"rename": "Rename",
+				"renameTitle": "Rename chat",
+				"renameLabel": "Title",
+				"renamePlaceholder": "Chat title",
+				"delete": "Delete",
 			"deleteConfirm": "Delete this chat?",
 			"cancel": "Cancel",
 			"save": "Save"
-		},
-		"fields": {
-			"modelPlaceholder": "Select model..."
-		},
+			},
+			"fields": {
+				"modelLabel": "Model",
+				"modelPlaceholder": "Select model..."
+			},
 		"errors": {
 			"emptyResponse": "No response generated.",
 			"failedPrefix": "Request failed: "

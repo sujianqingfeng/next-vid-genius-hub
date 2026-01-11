@@ -211,22 +211,24 @@
 			"placeholder": "和 Agent 聊点什么...",
 			"hint": "Enter 发送 · Shift+Enter 换行"
 		},
-		"actions": {
-			"send": "发送",
-			"clear": "清空",
-			"modeLabel": "模式",
-			"mode": {
-				"confirm": "确认",
-				"auto": "自动"
-			},
-			"settings": "设置",
-			"settingsTitle": "工作流设置",
-			"settingsDesc": "默认会自动建议下一步。自动模式仍可能因为安全规则而要求确认。",
-			"perStepMode": "分步骤覆盖",
-			"inherit": "继承默认",
-			"autoDelayMs": "自动执行延迟（毫秒）",
-			"autoMaxPoints": "自动执行最大积分（单步）",
-			"requireConfirmUnknownCost": "费用未知时强制确认",
+			"actions": {
+				"send": "发送",
+				"clear": "清空",
+				"scrollToBottom": "跳到最新",
+				"modeLabel": "模式",
+				"mode": {
+					"confirm": "确认",
+					"auto": "自动"
+				},
+				"settings": "设置",
+				"settingsTitle": "工作流设置",
+				"settingsDesc": "可以关闭自动建议下一步。自动模式仍可能因为安全规则而要求确认。",
+				"autoSuggestNext": "自动建议下一步",
+				"perStepMode": "分步骤覆盖",
+				"inherit": "继承默认",
+				"autoDelayMs": "自动执行延迟（毫秒）",
+				"autoMaxPoints": "自动执行最大积分（单步）",
+				"requireConfirmUnknownCost": "费用未知时强制确认",
 			"yes": "是",
 			"no": "否",
 			"reset": "重置",
@@ -254,22 +256,24 @@
 				"render": "渲染字幕"
 			}
 		},
-		"sessions": {
-			"new": "新建会话",
-			"empty": "暂无会话。",
-			"loading": "加载会话中...",
-			"rename": "重命名",
-			"renameTitle": "重命名会话",
-			"renameLabel": "标题",
-			"renamePlaceholder": "会话标题",
-			"delete": "删除",
+			"sessions": {
+				"new": "新建会话",
+				"empty": "暂无会话。",
+				"loading": "加载会话中...",
+				"untitled": "未命名",
+				"rename": "重命名",
+				"renameTitle": "重命名会话",
+				"renameLabel": "标题",
+				"renamePlaceholder": "会话标题",
+				"delete": "删除",
 			"deleteConfirm": "删除这个会话？",
 			"cancel": "取消",
 			"save": "保存"
-		},
-		"fields": {
-			"modelPlaceholder": "选择模型..."
-		},
+			},
+			"fields": {
+				"modelLabel": "模型",
+				"modelPlaceholder": "选择模型..."
+			},
 		"errors": {
 			"emptyResponse": "未生成有效回复。",
 			"failedPrefix": "请求失败："
