@@ -412,6 +412,7 @@ export function MediaCommentsPage({
 		statusQuery: cloudCommentsStatusQuery,
 	} = useCloudJob<CloudStatus, Error>({
 		storageKey: `commentsDownloadCloudJob:${id}`,
+		sse: {},
 		enabled: true,
 		autoClearOnComplete: false,
 		completeStatuses: ['completed', 'failed', 'canceled'],
@@ -542,6 +543,7 @@ export function MediaCommentsPage({
 		statusQuery: renderStatusQuery,
 	} = useCloudJob<CloudStatus, Error>({
 		storageKey: `commentsCloudJob:${id}`,
+		sse: {},
 		enabled: true,
 		completeStatuses: ['completed'],
 		onCompleted: async () => {

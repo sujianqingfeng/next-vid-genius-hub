@@ -36,6 +36,7 @@ import {
 import { Switch } from '~/components/ui/switch'
 import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
 import { useLocalStorageState } from '~/lib/shared/hooks/useLocalStorageState'
+import { useMultiJobStatusSse } from '~/lib/shared/hooks/useMultiJobStatusSse'
 import { useTranslations } from '~/lib/shared/i18n'
 import { queryOrpc } from '~/orpc'
 import { cn } from '~/lib/shared/utils'
@@ -117,6 +118,13 @@ function messagesContainPendingActionForMedia(
 		}
 	}
 	return false
+}
+
+function getActionJobId(action: AgentAction): string | null {
+	const r = action.result
+	if (!r || typeof r !== 'object') return null
+	const jobId = (r as any).jobId
+	return typeof jobId === 'string' && jobId.trim() ? jobId.trim() : null
 }
 
 export function AgentChatPage(props: {
@@ -222,6 +230,36 @@ export function AgentChatPage(props: {
 	const [actionsById, setActionsById] = React.useState<
 		Record<string, AgentAction>
 	>({})
+
+	const runningJobIds = React.useMemo(() => {
+		const ids = new Set<string>()
+		for (const action of Object.values(actionsById)) {
+			if (action.status !== 'running') continue
+			const jobId = getActionJobId(action)
+			if (jobId) ids.add(jobId)
+		}
+		return [...ids]
+	}, [actionsById])
+
+	useMultiJobStatusSse({
+		jobIds: runningJobIds,
+		enabled: runningJobIds.length > 0,
+		onStatus: ({ jobId, doc }) => {
+			const keys = [
+				queryOrpc.download.getCloudDownloadStatus.queryOptions({
+					input: { jobId },
+				}).queryKey,
+				queryOrpc.subtitle.getAsrStatus.queryOptions({ input: { jobId } }).queryKey,
+				queryOrpc.subtitle.getRenderStatus.queryOptions({
+					input: { jobId },
+				}).queryKey,
+			]
+			for (const key of keys) {
+				if (!key) continue
+				qc.setQueryData(key, doc as any)
+			}
+		},
+	})
 
 	const [draft, setDraft] = React.useState('')
 

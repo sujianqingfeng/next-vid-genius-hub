@@ -34,6 +34,7 @@ import { ThreadTemplateLibraryCard } from '~/components/business/threads/thread-
 import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
 import { useCloudJob } from '~/lib/shared/hooks/useCloudJob'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { useMultiJobStatusSse } from '~/lib/shared/hooks/useMultiJobStatusSse'
 import { useTranslations } from '~/lib/shared/i18n'
 import { queryOrpc } from '~/orpc'
 import { DEFAULT_THREAD_TEMPLATE_ID } from '@app/remotion-project/thread-templates'
@@ -2987,20 +2988,97 @@ async function readAudioDurationMs(file: File): Promise<number> {
 			return [...ids].slice(0, 25)
 		}, [assets])
 
-		const ingestJobStatusQuery = useQuery({
-			...queryOrpc.thread.getCloudAssetIngestStatuses.queryOptions({
+		const ingestTargetIdByJobId = React.useMemo(() => {
+			const map = new Map<string, string>()
+			for (const a of assets as any[]) {
+				const status = a?.status
+				const needsIngest =
+					status === 'pending' ||
+					status === 'failed' ||
+					(status === 'ready' && !a?.storageKey)
+				if (!needsIngest) continue
+				const jobId = String(a?.ingestTask?.jobId ?? '').trim()
+				if (!jobId) continue
+				const assetId = String(a?.id ?? '').trim()
+				if (!assetId) continue
+				map.set(jobId, assetId)
+			}
+			return map
+		}, [assets])
+
+		const ingestJobStatusQueryOptions =
+			queryOrpc.thread.getCloudAssetIngestStatuses.queryOptions({
 				input: { jobIds: ingestJobIds.length ? ingestJobIds : ['__noop__'] },
-			}),
+			})
+
+		const ingestJobStatusQuery = useQuery({
+			...ingestJobStatusQueryOptions,
+			enabled: false,
+			refetchInterval: false,
+		})
+
+		const ingestReceivedRef = React.useRef(false)
+		const ingestFallbackRefetchedRef = React.useRef(false)
+		const ingestJobIdsKey = React.useMemo(() => ingestJobIds.join('|'), [ingestJobIds])
+
+		useMultiJobStatusSse({
+			jobIds: ingestJobIds,
 			enabled: ingestJobIds.length > 0,
-			refetchInterval: (q) => {
-				const items = (q.state.data as any)?.items ?? []
-				if (!Array.isArray(items) || items.length === 0) return 1500
-				const terminal = new Set(['completed', 'failed', 'canceled'])
-				return items.every((it: any) => terminal.has(String(it?.status ?? '')))
-					? false
-					: 1500
+			onStatus: ({ jobId, doc }) => {
+				ingestReceivedRef.current = true
+				const key = ingestJobStatusQueryOptions.queryKey ?? []
+				qc.setQueryData(key, (prev: any) => {
+					const prevItems = Array.isArray(prev?.items) ? prev.items : []
+					const prevErrors = Array.isArray(prev?.errors) ? prev.errors : []
+
+					const targetId = ingestTargetIdByJobId.get(jobId) ?? jobId
+					const progress =
+						typeof (doc as any)?.progress === 'number' &&
+						Number.isFinite((doc as any).progress)
+							? (doc as any).progress
+							: null
+
+					const nextItem = {
+						targetId,
+						jobId,
+						status: (doc as any)?.status ?? null,
+						phase: (doc as any)?.phase ?? null,
+						progress,
+						message: (doc as any)?.message ?? null,
+						purpose: (doc as any)?.purpose ?? null,
+					}
+
+					const nextItems = prevItems
+						.filter((it: any) => String(it?.jobId ?? '') !== jobId)
+						.concat([nextItem])
+
+					return {
+						items: nextItems,
+						errors: prevErrors.filter(
+							(e: any) => String(e?.jobId ?? '') !== jobId,
+						),
+					}
+				})
+			},
+			onStreamError: () => {
+				if (ingestFallbackRefetchedRef.current) return
+				ingestFallbackRefetchedRef.current = true
+				void ingestJobStatusQuery.refetch()
 			},
 		})
+
+		React.useEffect(() => {
+			if (ingestJobIds.length === 0) return
+			ingestReceivedRef.current = false
+			ingestFallbackRefetchedRef.current = false
+			const t = setTimeout(() => {
+				if (ingestReceivedRef.current) return
+				if (ingestFallbackRefetchedRef.current) return
+				ingestFallbackRefetchedRef.current = true
+				void ingestJobStatusQuery.refetch()
+			}, 2500)
+			return () => clearTimeout(t)
+		}, [ingestJobIdsKey, ingestJobStatusQuery.refetch, ingestJobIds.length])
 
 		const ingestJobProgress = React.useMemo(() => {
 			if (ingestJobIds.length === 0) return null
@@ -3221,6 +3299,7 @@ async function readAudioDurationMs(file: File): Promise<number> {
 		statusQuery: renderStatusQuery,
 	} = useCloudJob<any, Error>({
 		storageKey: `threadRenderJob:${id}`,
+		sse: {},
 		enabled: true,
 		completeStatuses: ['completed', 'failed', 'canceled'],
 		autoClearOnComplete: false,

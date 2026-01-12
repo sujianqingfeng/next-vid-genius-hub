@@ -6,6 +6,7 @@ import {
 	useQuery,
 } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { useJobStatusSse } from './useJobStatusSse'
 import { usePersistedJobId } from './usePersistedJobId'
 
 type DefaultStatus = string | undefined
@@ -25,9 +26,16 @@ interface UseCloudJobOptions<
 	completeStatuses?: string[]
 	onCompleted?: (params: { data: TData | undefined; jobId: string }) => void
 	autoClearOnComplete?: boolean
+	sse?: {
+		enabled?: boolean
+		url?: (jobId: string) => string
+		pollFallbackIntervalMs?: number | false
+	}
 }
 
 const DEFAULT_COMPLETE_STATUSES = ['completed']
+const DEFAULT_SSE_POLL_FALLBACK_INTERVAL_MS = 30_000
+const DEFAULT_TERMINAL_STATUSES = new Set(['completed', 'failed', 'canceled'])
 
 export function useCloudJob<
 	TData = unknown,
@@ -46,16 +54,45 @@ export function useCloudJob<
 		completeStatuses = DEFAULT_COMPLETE_STATUSES,
 		onCompleted,
 		autoClearOnComplete = true,
+		sse,
 	} = options
 
 	const [jobId, setJobId] = usePersistedJobId(storageKey)
 
-	const queryOptions = createQueryOptions(jobId ?? '')
+	const baseQueryOptions = createQueryOptions(jobId ?? '')
+	const sseEnabled = Boolean(sse) && (sse.enabled ?? true)
+	const ssePollFallbackIntervalMs =
+		sse?.pollFallbackIntervalMs ?? DEFAULT_SSE_POLL_FALLBACK_INTERVAL_MS
+
+	const queryOptions = sseEnabled
+		? {
+				...baseQueryOptions,
+				refetchInterval:
+					ssePollFallbackIntervalMs === false
+						? false
+						: (q: { state: { data?: TData } }) => {
+								const status = getStatus(q.state.data)
+								if (typeof status === 'string' && DEFAULT_TERMINAL_STATUSES.has(status)) {
+									return false
+								}
+								return ssePollFallbackIntervalMs
+							},
+			}
+		: baseQueryOptions
+
 	const mergedEnabled =
 		Boolean(jobId) && enabled && (queryOptions.enabled ?? true)
 	const statusQuery: UseQueryResult<TData, TError> = useQuery({
 		...queryOptions,
 		enabled: mergedEnabled,
+	})
+
+	useJobStatusSse({
+		jobId,
+		queryKey: (queryOptions.queryKey ?? []) as unknown as readonly unknown[],
+		enabled: mergedEnabled && sseEnabled,
+		url: sse?.url,
+		terminalStatuses: DEFAULT_TERMINAL_STATUSES,
 	})
 
 	useEffect(() => {

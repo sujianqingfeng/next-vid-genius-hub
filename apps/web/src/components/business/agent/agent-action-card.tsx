@@ -102,15 +102,7 @@ export function AgentActionCard(props: {
 			input: { jobId: jobId ?? '' },
 		}),
 		enabled: action.kind === 'download' && Boolean(jobId),
-		refetchInterval: (q) => {
-			const status = (q.state.data as any)?.status
-			if (!status) return 1000
-			return status === 'completed' ||
-				status === 'failed' ||
-				status === 'canceled'
-				? false
-				: 1000
-		},
+		refetchInterval: false,
 	})
 
 	const asrStatusQuery = useQuery({
@@ -118,15 +110,7 @@ export function AgentActionCard(props: {
 			input: { jobId: jobId ?? '' },
 		}),
 		enabled: action.kind === 'asr' && Boolean(jobId),
-		refetchInterval: (q) => {
-			const status = (q.state.data as any)?.status
-			if (!status) return 1000
-			return status === 'completed' ||
-				status === 'failed' ||
-				status === 'canceled'
-				? false
-				: 1000
-		},
+		refetchInterval: false,
 	})
 
 	const renderStatusQuery = useQuery({
@@ -134,15 +118,7 @@ export function AgentActionCard(props: {
 			input: { jobId: jobId ?? '' },
 		}),
 		enabled: action.kind === 'render' && Boolean(jobId),
-		refetchInterval: (q) => {
-			const status = (q.state.data as any)?.status
-			if (!status) return 1000
-			return status === 'completed' ||
-				status === 'failed' ||
-				status === 'canceled'
-				? false
-				: 1000
-		},
+		refetchInterval: false,
 	})
 
 	const effectiveJobStatus =

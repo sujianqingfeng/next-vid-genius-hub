@@ -136,6 +136,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 		statusQuery: asrStatusQuery,
 	} = useCloudJob<any, Error>({
 		storageKey: `subtitleAsrJob:${id}`,
+		sse: {},
 		createQueryOptions: (jobId) => ({
 			...queryOrpc.subtitle.getAsrStatus.queryOptions({
 				input: { jobId },
@@ -247,6 +248,7 @@ export function MediaSubtitlesPage({ id }: { id: string }) {
 		statusQuery: renderStatusQuery,
 	} = useCloudJob<any, Error>({
 		storageKey: `subtitleRenderJob:${id}`,
+		sse: {},
 		createQueryOptions: (jobId) => ({
 			...queryOrpc.subtitle.getRenderStatus.queryOptions({
 				input: { jobId },

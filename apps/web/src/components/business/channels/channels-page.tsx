@@ -19,6 +19,7 @@ import {
 import { type ChatModelId, DEFAULT_CHAT_MODEL_ID } from '~/lib/features/ai/models'
 import { getUserFriendlyErrorMessage } from '~/lib/shared/errors/client'
 import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
+import { useMultiJobStatusSse } from '~/lib/shared/hooks/useMultiJobStatusSse'
 import { getBcp47Locale, useLocale, useTranslations } from '~/lib/shared/i18n'
 import { queryOrpc } from '~/orpc'
 
@@ -35,6 +36,7 @@ type ChannelRow = {
 }
 
 const SYNC_VIDEO_LIMIT = 20
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'canceled'])
 
 function channelLabel(ch: ChannelRow): string {
 	return (
@@ -89,6 +91,30 @@ export function ChannelsPage() {
 		queryOrpc.channel.listChannels.queryOptions({}),
 	)
 	const channels = (channelsQuery.data?.channels ?? []) as ChannelRow[]
+
+	const activeSyncJobIds = React.useMemo(() => {
+		const ids = new Set<string>()
+		for (const ch of channels) {
+			const jobId = ch.lastJobId
+			if (!jobId) continue
+			const status = ch.lastSyncStatus
+			if (status && TERMINAL_STATUSES.has(status)) continue
+			ids.add(jobId)
+		}
+		return [...ids]
+	}, [channels])
+
+	useMultiJobStatusSse({
+		jobIds: activeSyncJobIds,
+		enabled: activeSyncJobIds.length > 0,
+		onStatus: ({ jobId, doc }) => {
+			const key =
+				queryOrpc.channel.getCloudSyncStatus.queryOptions({
+					input: { jobId },
+				}).queryKey ?? []
+			qc.setQueryData(key, doc as any)
+		},
+	})
 
 	const proxiesQuery = useQuery(
 		queryOrpc.proxy.getActiveProxiesForDownload.queryOptions(),
@@ -457,12 +483,8 @@ function ChannelCard({
 		...queryOrpc.channel.getCloudSyncStatus.queryOptions({
 			input: { jobId: jobId || '' },
 		}),
-		enabled: Boolean(jobId),
-		refetchInterval: (q) => {
-			const status = (q.state.data as any)?.status
-			if (!status) return 1500
-			return ['completed', 'failed', 'canceled'].includes(status) ? false : 1500
-		},
+		enabled: Boolean(jobId) && !TERMINAL_STATUSES.has(String(ch.lastSyncStatus ?? '')),
+		refetchInterval: false,
 	})
 
 	const effectiveStatus =

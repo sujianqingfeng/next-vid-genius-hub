@@ -46,12 +46,14 @@ import { Route as ApiRenderCfCallbackRouteImport } from './routes/api/render/cf-
 import { Route as ApiProxyCheckRunOneRouteImport } from './routes/api/proxy-check/run-one'
 import { Route as ApiProxyCheckRunRouteImport } from './routes/api/proxy-check/run'
 import { Route as ApiOrpcSplatRouteImport } from './routes/api/orpc/$'
+import { Route as ApiJobsEventsRouteImport } from './routes/api/jobs/events'
 import { Route as ApiAgentChatStreamRouteImport } from './routes/api/agent/chat-stream'
 import { Route as ApiMediaIdSourceRouteImport } from './routes/api/media/$id/source'
 import { Route as ApiMediaIdRenderedInfoRouteImport } from './routes/api/media/$id/rendered-info'
 import { Route as ApiMediaIdRenderedRouteImport } from './routes/api/media/$id/rendered'
 import { Route as ApiMediaIdDownloadedRouteImport } from './routes/api/media/$id/downloaded'
 import { Route as ApiMediaIdCommentsDataRouteImport } from './routes/api/media/$id/comments-data'
+import { Route as ApiJobsJobIdEventsRouteImport } from './routes/api/jobs/$jobId/events'
 import { Route as ApiInternalAiAsrProviderRouteImport } from './routes/api/internal/ai/asr-provider'
 import { Route as ApiAgentActionsSuggestNextRouteImport } from './routes/api/agent/actions/suggest-next'
 import { Route as ApiAgentActionsConfirmRouteImport } from './routes/api/agent/actions/confirm'
@@ -243,6 +245,11 @@ const ApiOrpcSplatRoute = ApiOrpcSplatRouteImport.update({
   path: '/api/orpc/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiJobsEventsRoute = ApiJobsEventsRouteImport.update({
+  id: '/api/jobs/events',
+  path: '/api/jobs/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentChatStreamRoute = ApiAgentChatStreamRouteImport.update({
   id: '/api/agent/chat-stream',
   path: '/api/agent/chat-stream',
@@ -271,6 +278,11 @@ const ApiMediaIdDownloadedRoute = ApiMediaIdDownloadedRouteImport.update({
 const ApiMediaIdCommentsDataRoute = ApiMediaIdCommentsDataRouteImport.update({
   id: '/api/media/$id/comments-data',
   path: '/api/media/$id/comments-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiJobsJobIdEventsRoute = ApiJobsJobIdEventsRouteImport.update({
+  id: '/api/jobs/$jobId/events',
+  path: '/api/jobs/$jobId/events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiInternalAiAsrProviderRoute =
@@ -332,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/thread-templates': typeof ThreadTemplatesIndexRoute
   '/threads/': typeof ThreadsIndexRoute
   '/api/agent/chat-stream': typeof ApiAgentChatStreamRoute
+  '/api/jobs/events': typeof ApiJobsEventsRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
@@ -345,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/api/agent/actions/confirm': typeof ApiAgentActionsConfirmRoute
   '/api/agent/actions/suggest-next': typeof ApiAgentActionsSuggestNextRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/jobs/$jobId/events': typeof ApiJobsJobIdEventsRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
@@ -377,6 +391,7 @@ export interface FileRoutesByTo {
   '/thread-templates': typeof ThreadTemplatesIndexRoute
   '/threads': typeof ThreadsIndexRoute
   '/api/agent/chat-stream': typeof ApiAgentChatStreamRoute
+  '/api/jobs/events': typeof ApiJobsEventsRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
@@ -390,6 +405,7 @@ export interface FileRoutesByTo {
   '/api/agent/actions/confirm': typeof ApiAgentActionsConfirmRoute
   '/api/agent/actions/suggest-next': typeof ApiAgentActionsSuggestNextRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/jobs/$jobId/events': typeof ApiJobsJobIdEventsRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
@@ -428,6 +444,7 @@ export interface FileRoutesById {
   '/thread-templates/': typeof ThreadTemplatesIndexRoute
   '/threads/': typeof ThreadsIndexRoute
   '/api/agent/chat-stream': typeof ApiAgentChatStreamRoute
+  '/api/jobs/events': typeof ApiJobsEventsRoute
   '/api/orpc/$': typeof ApiOrpcSplatRoute
   '/api/proxy-check/run': typeof ApiProxyCheckRunRoute
   '/api/proxy-check/run-one': typeof ApiProxyCheckRunOneRoute
@@ -441,6 +458,7 @@ export interface FileRoutesById {
   '/api/agent/actions/confirm': typeof ApiAgentActionsConfirmRoute
   '/api/agent/actions/suggest-next': typeof ApiAgentActionsSuggestNextRoute
   '/api/internal/ai/asr-provider': typeof ApiInternalAiAsrProviderRoute
+  '/api/jobs/$jobId/events': typeof ApiJobsJobIdEventsRoute
   '/api/media/$id/comments-data': typeof ApiMediaIdCommentsDataRoute
   '/api/media/$id/downloaded': typeof ApiMediaIdDownloadedRoute
   '/api/media/$id/rendered': typeof ApiMediaIdRenderedRoute
@@ -480,6 +498,7 @@ export interface FileRouteTypes {
     | '/thread-templates'
     | '/threads/'
     | '/api/agent/chat-stream'
+    | '/api/jobs/events'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
@@ -493,6 +512,7 @@ export interface FileRouteTypes {
     | '/api/agent/actions/confirm'
     | '/api/agent/actions/suggest-next'
     | '/api/internal/ai/asr-provider'
+    | '/api/jobs/$jobId/events'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
     | '/api/media/$id/rendered'
@@ -525,6 +545,7 @@ export interface FileRouteTypes {
     | '/thread-templates'
     | '/threads'
     | '/api/agent/chat-stream'
+    | '/api/jobs/events'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
@@ -538,6 +559,7 @@ export interface FileRouteTypes {
     | '/api/agent/actions/confirm'
     | '/api/agent/actions/suggest-next'
     | '/api/internal/ai/asr-provider'
+    | '/api/jobs/$jobId/events'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
     | '/api/media/$id/rendered'
@@ -575,6 +597,7 @@ export interface FileRouteTypes {
     | '/thread-templates/'
     | '/threads/'
     | '/api/agent/chat-stream'
+    | '/api/jobs/events'
     | '/api/orpc/$'
     | '/api/proxy-check/run'
     | '/api/proxy-check/run-one'
@@ -588,6 +611,7 @@ export interface FileRouteTypes {
     | '/api/agent/actions/confirm'
     | '/api/agent/actions/suggest-next'
     | '/api/internal/ai/asr-provider'
+    | '/api/jobs/$jobId/events'
     | '/api/media/$id/comments-data'
     | '/api/media/$id/downloaded'
     | '/api/media/$id/rendered'
@@ -613,6 +637,7 @@ export interface RootRouteChildren {
   MarketingIndexRoute: typeof MarketingIndexRoute
   ThreadTemplatesIndexRoute: typeof ThreadTemplatesIndexRoute
   ApiAgentChatStreamRoute: typeof ApiAgentChatStreamRoute
+  ApiJobsEventsRoute: typeof ApiJobsEventsRoute
   ApiOrpcSplatRoute: typeof ApiOrpcSplatRoute
   ApiProxyCheckRunRoute: typeof ApiProxyCheckRunRoute
   ApiProxyCheckRunOneRoute: typeof ApiProxyCheckRunOneRoute
@@ -622,6 +647,7 @@ export interface RootRouteChildren {
   ApiAgentActionsConfirmRoute: typeof ApiAgentActionsConfirmRoute
   ApiAgentActionsSuggestNextRoute: typeof ApiAgentActionsSuggestNextRoute
   ApiInternalAiAsrProviderRoute: typeof ApiInternalAiAsrProviderRoute
+  ApiJobsJobIdEventsRoute: typeof ApiJobsJobIdEventsRoute
   ApiMediaIdCommentsDataRoute: typeof ApiMediaIdCommentsDataRoute
   ApiMediaIdDownloadedRoute: typeof ApiMediaIdDownloadedRoute
   ApiMediaIdRenderedRoute: typeof ApiMediaIdRenderedRoute
@@ -891,6 +917,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOrpcSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/jobs/events': {
+      id: '/api/jobs/events'
+      path: '/api/jobs/events'
+      fullPath: '/api/jobs/events'
+      preLoaderRoute: typeof ApiJobsEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agent/chat-stream': {
       id: '/api/agent/chat-stream'
       path: '/api/agent/chat-stream'
@@ -931,6 +964,13 @@ declare module '@tanstack/react-router' {
       path: '/api/media/$id/comments-data'
       fullPath: '/api/media/$id/comments-data'
       preLoaderRoute: typeof ApiMediaIdCommentsDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/jobs/$jobId/events': {
+      id: '/api/jobs/$jobId/events'
+      path: '/api/jobs/$jobId/events'
+      fullPath: '/api/jobs/$jobId/events'
+      preLoaderRoute: typeof ApiJobsJobIdEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/internal/ai/asr-provider': {
@@ -1072,6 +1112,7 @@ const rootRouteChildren: RootRouteChildren = {
   MarketingIndexRoute: MarketingIndexRoute,
   ThreadTemplatesIndexRoute: ThreadTemplatesIndexRoute,
   ApiAgentChatStreamRoute: ApiAgentChatStreamRoute,
+  ApiJobsEventsRoute: ApiJobsEventsRoute,
   ApiOrpcSplatRoute: ApiOrpcSplatRoute,
   ApiProxyCheckRunRoute: ApiProxyCheckRunRoute,
   ApiProxyCheckRunOneRoute: ApiProxyCheckRunOneRoute,
@@ -1081,6 +1122,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAgentActionsConfirmRoute: ApiAgentActionsConfirmRoute,
   ApiAgentActionsSuggestNextRoute: ApiAgentActionsSuggestNextRoute,
   ApiInternalAiAsrProviderRoute: ApiInternalAiAsrProviderRoute,
+  ApiJobsJobIdEventsRoute: ApiJobsJobIdEventsRoute,
   ApiMediaIdCommentsDataRoute: ApiMediaIdCommentsDataRoute,
   ApiMediaIdDownloadedRoute: ApiMediaIdDownloadedRoute,
   ApiMediaIdRenderedRoute: ApiMediaIdRenderedRoute,

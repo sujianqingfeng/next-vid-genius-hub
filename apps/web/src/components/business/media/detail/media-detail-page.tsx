@@ -80,6 +80,7 @@ export function MediaDetailPage({ id }: { id: string }) {
 		statusQuery: metadataStatusQuery,
 	} = useCloudJob<any, Error>({
 		storageKey: `metadataRefreshJob:${id}`,
+		sse: {},
 		enabled: true,
 		completeStatuses: ['completed', 'failed', 'canceled'],
 		createQueryOptions: (jobId) => ({

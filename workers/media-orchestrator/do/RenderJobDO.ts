@@ -19,12 +19,168 @@ import { hmacHex, requireJobCallbackSecret } from '../utils/hmac'
 import { jobStub } from '../utils/job'
 
 // ---------------- Durable Object for strong-consistent job state ----------------
+const SSE_RETRY_MS = 3000
+const SSE_KEEPALIVE_MS = 20_000
+const SSE_BROADCAST_THROTTLE_MS = 250
+
+const textEncoder = new TextEncoder()
+
+type SseClient = {
+	writer: WritableStreamDefaultWriter<Uint8Array>
+	keepAlive?: number
+	closed: boolean
+	close: () => void
+}
+
+function encodeSseComment(comment: string): Uint8Array {
+	return textEncoder.encode(`: ${comment}\n\n`)
+}
+
+function encodeSseEvent(event: string, data: unknown): Uint8Array {
+	return textEncoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+}
+
 export class RenderJobDO {
 	state: DurableObjectState
 	env: Env
+	private sseClients = new Map<string, SseClient>()
+	private pendingSseBroadcast: any | null = null
+	private pendingSseBroadcastTimer: number | null = null
+	private lastSseBroadcastAt = 0
 	constructor(state: DurableObjectState, env: Env) {
 		this.state = state
 		this.env = env
+	}
+
+	private toPublicJobDoc(doc: any): any {
+		if (!doc || typeof doc !== 'object') return doc
+
+		// Clone to avoid mutating any shared references.
+		const out = { ...(doc as Record<string, unknown>) } as any
+
+		// If the container stage has completed but ASR hasn't produced VTT yet,
+		// present a non-terminal status to clients to avoid premature completion.
+		if (out.engine === 'asr-pipeline') {
+			const hasVtt = Boolean(out.outputs?.vtt?.key)
+			if (out.status === 'completed' && !hasVtt) {
+				out.status = 'running'
+				// Avoid the confusing "100% but still running" state while ASR is in-flight.
+				const p =
+					typeof out.progress === 'number' && Number.isFinite(out.progress)
+						? (out.progress as number)
+						: null
+				if (p == null || p >= 1) out.progress = 0.95
+			}
+		}
+
+		// If job is already completed but retained a stale phase/progress from earlier stages,
+		// normalize the response so clients display a final 100% without an active phase.
+		// For asr-pipeline, only normalize when the final VTT output exists.
+		if (out.status === 'completed') {
+			const canFinalize =
+				out.engine !== 'asr-pipeline' || Boolean(out.outputs?.vtt?.key)
+			if (canFinalize) {
+				if (out.phase) delete out.phase
+				if (out.progress !== 1) out.progress = 1
+			}
+		}
+
+		return out
+	}
+
+		private scheduleSseBroadcast(doc: any): void {
+			if (this.sseClients.size === 0) return
+			this.pendingSseBroadcast = doc
+
+			const now = Date.now()
+			const status = doc?.status
+			const isTerminal =
+				typeof status === 'string' &&
+				(TERMINAL_STATUSES as readonly string[]).includes(status)
+			const delay = isTerminal
+				? 0
+				: Math.max(0, SSE_BROADCAST_THROTTLE_MS - (now - this.lastSseBroadcastAt))
+
+		if (this.pendingSseBroadcastTimer != null) return
+		this.pendingSseBroadcastTimer = setTimeout(() => {
+			this.pendingSseBroadcastTimer = null
+			void this.flushSseBroadcast()
+		}, delay) as unknown as number
+	}
+
+	private async flushSseBroadcast(): Promise<void> {
+		const doc = this.pendingSseBroadcast
+		this.pendingSseBroadcast = null
+		if (!doc || this.sseClients.size === 0) return
+
+		this.lastSseBroadcastAt = Date.now()
+		const payload = encodeSseEvent('status', this.toPublicJobDoc(doc))
+
+		for (const client of this.sseClients.values()) {
+			if (client.closed) continue
+			client.writer.write(payload).catch(() => {
+				try {
+					client.close()
+				} catch {}
+			})
+		}
+
+		// If more updates arrived during flush, schedule another send.
+		if (this.pendingSseBroadcast) this.scheduleSseBroadcast(this.pendingSseBroadcast)
+	}
+
+	private async handleSseSubscribe(req: Request): Promise<Response> {
+		const doc = (await this.state.storage.get('job')) as any
+		if (!doc) {
+			return new Response(JSON.stringify({ error: 'not found' }), {
+				status: 404,
+				headers: { 'content-type': 'application/json' },
+			})
+		}
+
+		const clientId = crypto.randomUUID()
+		const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
+		const writer = writable.getWriter()
+
+		const client: SseClient = {
+			writer,
+			closed: false,
+			close: () => {},
+		}
+
+		client.close = () => {
+			if (client.closed) return
+			client.closed = true
+			this.sseClients.delete(clientId)
+			if (client.keepAlive != null) {
+				try {
+					clearInterval(client.keepAlive)
+				} catch {}
+			}
+			try {
+				writer.close()
+			} catch {}
+		}
+
+		this.sseClients.set(clientId, client)
+		req.signal.addEventListener('abort', client.close, { once: true })
+
+		// Set client retry policy and send an initial snapshot.
+		await writer.write(textEncoder.encode(`retry: ${SSE_RETRY_MS}\n\n`))
+		await writer.write(encodeSseEvent('status', this.toPublicJobDoc(doc)))
+
+		// Keep the connection warm through proxies.
+		client.keepAlive = setInterval(() => {
+			writer.write(encodeSseComment('ping')).catch(() => client.close())
+		}, SSE_KEEPALIVE_MS) as unknown as number
+
+		return new Response(readable, {
+			headers: {
+				'content-type': 'text/event-stream; charset=utf-8',
+				'cache-control': 'no-store',
+				'x-content-type-options': 'nosniff',
+			},
+		})
 	}
 
 	private async maybeNotifyTerminal(doc: any): Promise<void> {
@@ -151,6 +307,9 @@ export class RenderJobDO {
 				headers: { 'content-type': 'application/json' },
 			})
 		}
+		if (req.method === 'GET' && path.endsWith('/events')) {
+			return await this.handleSseSubscribe(req)
+		}
 		if (req.method === 'POST' && path.endsWith('/init')) {
 			const body = (await req.json()) as any
 			const doc = {
@@ -165,6 +324,7 @@ export class RenderJobDO {
 				ts: Date.now(),
 			}
 			await this.state.storage.put('job', doc)
+			this.scheduleSseBroadcast(doc)
 			return new Response(JSON.stringify({ ok: true }), {
 				headers: { 'content-type': 'application/json' },
 			})
@@ -210,6 +370,7 @@ export class RenderJobDO {
 				ts: Date.now(),
 			}
 			await this.state.storage.put('job', next)
+			this.scheduleSseBroadcast(next)
 			await this.maybeNotifyTerminal(next)
 
 			return new Response(JSON.stringify({ ok: true }), {
@@ -246,6 +407,7 @@ export class RenderJobDO {
 			doc.canceledAt = Date.now()
 			doc.ts = Date.now()
 			await this.state.storage.put('job', doc)
+			this.scheduleSseBroadcast(doc)
 			await this.maybeNotifyTerminal(doc)
 
 			return new Response(JSON.stringify({ ok: true, status: doc.status }), {
