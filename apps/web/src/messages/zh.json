@@ -1269,7 +1269,8 @@
 						"section": "资源获取"
 					},
 					"taskConfigTitle": "任务配置界面",
-					"statusAwaiting": "状态：等待输入"
+					"statusAwaiting": "状态：等待输入",
+					"loadingProxies": "加载代理中…"
 				},
 				"form": {
 					"title": "新建任务",
@@ -1323,6 +1324,7 @@
 				"toasts": {
 					"queued": "云端下载已排队！",
 					"completed": "云端下载已完成！",
+					"reset": "已重置。",
 					"canceled": "云端下载已被取消。",
 					"failed": "云端下载失败。",
 					"failedWithMessage": "云端下载失败：{message}"

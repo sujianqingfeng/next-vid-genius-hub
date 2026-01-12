@@ -197,7 +197,7 @@ export function MediaListPage(props: {
 														variant="ghost"
 														size="icon"
 														className="h-8 w-8 rounded-none border border-border bg-background/90 text-muted-foreground hover:bg-destructive hover:text-white hover:border-destructive opacity-0 group-hover:opacity-100 transition-all"
-														aria-label={t('ui.actions.delete')}
+														aria-label={t('actions.delete')}
 														disabled={deleteMutation.isPending}
 														onClick={(e) => {
 															e.preventDefault()
@@ -205,9 +205,11 @@ export function MediaListPage(props: {
 															if (deleteMutation.isPending) return
 															void (async () => {
 																const ok = await confirmDialog({
-																	title: t('confirmDelete.title'),
-																	description: t('confirmDelete.description'),
-																	confirmText: t('confirmDelete.confirmText'),
+																	title: t('ui.confirmDelete.title'),
+																	description: t('confirmDelete', { title }),
+																	confirmText: t(
+																		'ui.confirmDelete.confirmText',
+																	),
 																	variant: 'destructive',
 																})
 																if (!ok) return
@@ -225,12 +227,12 @@ export function MediaListPage(props: {
 
 												<div className="space-y-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
 													<div className="flex items-center justify-between">
-														<span>{t('ui.labels.createdAt')}</span>
+														<span>{t('ui.labels.regDate')}</span>
 														<span className="text-foreground">{createdAt}</span>
 													</div>
 													{item.source ? (
 														<div className="flex items-center justify-between">
-															<span>{t('ui.labels.source')}</span>
+															<span>{t('ui.labels.srcProvider')}</span>
 															<span className="text-foreground">
 																{String(item.source)}
 															</span>
@@ -256,7 +258,7 @@ export function MediaListPage(props: {
 								{t('ui.pagination.prev')}
 							</Button>
 							<div className="border border-border bg-card px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-								{t('ui.pagination.page')} {page}/{pageCount}
+								{t('ui.pagination.volumeUnit', { page, pageCount })}
 							</div>
 							<Button
 								variant="outline"
@@ -273,4 +275,3 @@ export function MediaListPage(props: {
 		</div>
 	)
 }
-

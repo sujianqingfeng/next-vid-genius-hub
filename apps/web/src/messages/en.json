@@ -1269,7 +1269,8 @@
 						"section": "Resource Acquisition"
 					},
 					"taskConfigTitle": "Task_Configuration_Interface",
-					"statusAwaiting": "Status: Awaiting_Input"
+					"statusAwaiting": "Status: Awaiting_Input",
+					"loadingProxies": "Loading proxies…"
 				},
 				"form": {
 					"title": "New Job",
@@ -1323,6 +1324,7 @@
 				"toasts": {
 					"queued": "Cloud download queued!",
 					"completed": "Cloud download completed!",
+					"reset": "Reset.",
 					"canceled": "Cloud download was canceled.",
 					"failed": "Cloud download failed.",
 					"failedWithMessage": "Cloud download failed: {message}"

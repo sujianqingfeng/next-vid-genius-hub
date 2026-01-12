@@ -34,7 +34,7 @@ const FormSchema = z.object({
 })
 
 export function MediaDownloadPage() {
-	const t = useTranslations('Download')
+	const t = useTranslations('Download.page')
 	const tMediaDetail = useTranslations('MediaDetail')
 	const navigate = useNavigate()
 
@@ -44,7 +44,7 @@ export function MediaDownloadPage() {
 	const proxies = (proxiesQuery.data?.proxies ?? [
 		{
 			id: 'none',
-			name: t('page.form.noProxy'),
+			name: t('form.noProxy'),
 			testStatus: null,
 			responseTime: null,
 		},
@@ -74,7 +74,7 @@ export function MediaDownloadPage() {
 			},
 		}),
 		{
-			successToast: t('page.toasts.queued'),
+			successToast: t('toasts.queued'),
 			errorToast: ({ error }) => getUserFriendlyErrorMessage(error),
 		},
 	)
@@ -88,13 +88,13 @@ export function MediaDownloadPage() {
 							<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
 								<span className="flex items-center gap-1">
 									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
-									{t('page.ui.breadcrumb.system')}
+									{t('ui.breadcrumb.system')}
 								</span>
 								<span>/</span>
-								<span>{t('page.ui.breadcrumb.section')}</span>
+								<span>{t('ui.breadcrumb.section')}</span>
 							</div>
 							<h1 className="font-mono text-xl font-bold uppercase tracking-tight">
-								{t('page.title')}
+								{t('title')}
 							</h1>
 						</div>
 
@@ -114,10 +114,10 @@ export function MediaDownloadPage() {
 				<div className="border border-border bg-card">
 					<div className="border-b border-border bg-muted/30 px-6 py-3 flex items-center justify-between">
 						<div className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-							{t('page.ui.taskConfigTitle')}
+							{t('ui.taskConfigTitle')}
 						</div>
 						<div className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground opacity-50">
-							{t('page.ui.statusAwaiting')}
+							{t('ui.statusAwaiting')}
 						</div>
 					</div>
 
@@ -126,7 +126,7 @@ export function MediaDownloadPage() {
 						onSubmit={(e) => {
 							e.preventDefault()
 							if (!proxiesQuery.isLoading && !hasSuccessProxy) {
-								toast.error(t('page.errors.noProxy'))
+								toast.error(t('errors.noProxy'))
 								startMutation.reset()
 								return
 							}
@@ -140,7 +140,7 @@ export function MediaDownloadPage() {
 
 							const parsed = FormSchema.safeParse(raw)
 							if (!parsed.success) {
-								toast.error(t('page.errors.missingUrl'))
+								toast.error(t('errors.missingUrl'))
 								startMutation.reset()
 								return
 							}
@@ -160,7 +160,7 @@ export function MediaDownloadPage() {
 								htmlFor="url"
 								className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
 							>
-								{t('page.form.urlLabel')}
+								{t('form.urlLabel')}
 							</Label>
 							<div className="relative">
 								<div className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-primary opacity-50">
@@ -171,7 +171,7 @@ export function MediaDownloadPage() {
 									name="url"
 									type="url"
 									required
-									placeholder={t('page.form.urlPlaceholder')}
+									placeholder={t('form.urlPlaceholder')}
 									disabled={startMutation.isPending}
 									className="rounded-none border-border bg-background font-mono text-xs pl-10"
 								/>
@@ -187,7 +187,7 @@ export function MediaDownloadPage() {
 									htmlFor="quality"
 									className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
 								>
-									{t('page.form.quality')}
+									{t('form.quality')}
 								</Label>
 								<Select
 									name="quality"
@@ -216,7 +216,7 @@ export function MediaDownloadPage() {
 									htmlFor="proxyId"
 									className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
 								>
-									{t('page.form.proxy')}
+									{t('form.proxyLabel')}
 								</Label>
 								<Select
 									name="proxyId"
@@ -231,7 +231,11 @@ export function MediaDownloadPage() {
 									</SelectTrigger>
 									<SelectContent>
 										{proxies.map((p) => (
-											<SelectItem key={p.id} value={p.id} className="font-mono text-xs">
+											<SelectItem
+												key={p.id}
+												value={p.id}
+												className="font-mono text-xs"
+											>
 												{p.name ?? p.id}
 											</SelectItem>
 										))}
@@ -241,11 +245,11 @@ export function MediaDownloadPage() {
 								{proxiesQuery.isLoading ? (
 									<div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
 										<Loader2 className="h-3 w-3 animate-spin" />
-										{t('page.ui.loadingProxies')}
+										{t('ui.loadingProxies')}
 									</div>
 								) : !hasSuccessProxy ? (
 									<div className="text-[10px] font-mono uppercase tracking-widest text-destructive">
-										{t('page.errors.noProxy')}
+										{t('errors.noProxy')}
 									</div>
 								) : null}
 							</div>
@@ -259,11 +263,11 @@ export function MediaDownloadPage() {
 								disabled={startMutation.isPending}
 								onClick={() => {
 									startMutation.reset()
-									toast.message(t('page.toasts.reset'))
+									toast.message(t('toasts.reset'))
 								}}
 							>
 								<RotateCcw className="mr-2 h-3 w-3" />
-								{t('page.actions.reset')}
+								{t('form.reset')}
 							</Button>
 
 							<Button
@@ -274,7 +278,9 @@ export function MediaDownloadPage() {
 								{startMutation.isPending ? (
 									<Loader2 className="mr-2 h-3 w-3 animate-spin" />
 								) : null}
-								{t('page.actions.start')}
+								{startMutation.isPending
+									? t('form.submitPending')
+									: t('form.submit')}
 							</Button>
 						</div>
 					</form>
@@ -283,4 +289,3 @@ export function MediaDownloadPage() {
 		</div>
 	)
 }
-
