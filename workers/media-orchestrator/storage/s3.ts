@@ -4,20 +4,44 @@ import { presignS3 } from './presign'
 // --- S3 helpers ---
 // Note: R2 对预签名 HEAD 的行为在某些场景下会返回 403，而同一对象的 GET 却是 200。
 // 这里直接使用带 Range 的 GET 探测对象是否存在，避免误判 missing_inputs。
-export async function s3Head(env: Env, bucket: string, key: string): Promise<boolean> {
+export type S3ProbeResult = {
+	exists: boolean
+	status: number | null
+	url: string | null
+	error: string | null
+}
+
+export async function s3Probe(
+	env: Env,
+	bucket: string,
+	key: string,
+): Promise<S3ProbeResult> {
 	try {
 		const url = await presignS3(env, 'GET', bucket, key, 60)
 		const r = await fetch(url, {
 			method: 'GET',
 			headers: { range: 'bytes=0-0' },
 		})
-		// 200 或 206 都视为对象存在；404 视为不存在，其它状态按不存在处理
-		if (r.ok || r.status === 206) return true
-		if (r.status === 404) return false
-		return false
-	} catch {
-		return false
+		try {
+			if (!r.bodyUsed) {
+				await r.body?.cancel?.()
+			}
+		} catch {}
+		const exists = r.ok || r.status === 206
+		return { exists, status: r.status, url: url.split('?')[0], error: null }
+	} catch (err) {
+		return {
+			exists: false,
+			status: null,
+			url: null,
+			error: err instanceof Error ? err.message : String(err),
+		}
 	}
+}
+
+export async function s3Head(env: Env, bucket: string, key: string): Promise<boolean> {
+	const probe = await s3Probe(env, bucket, key)
+	return probe.exists
 }
 
 export async function s3Put(

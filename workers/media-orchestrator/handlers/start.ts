@@ -3,7 +3,7 @@ import { bucketPaths, type EngineId } from '@app/media-domain'
 import type { Env, JobManifest, StartBody } from '../types'
 import { containerS3Endpoint, presignS3 } from '../storage/presign'
 import { readObjectTextWithFallback } from '../storage/fallback'
-import { s3Head } from '../storage/s3'
+import { s3Probe } from '../storage/s3'
 import { json } from '../utils/http'
 import { jobStub } from '../utils/job'
 import { hmacHex, requireJobCallbackSecret, verifyHmac } from '../utils/hmac'
@@ -172,10 +172,14 @@ export async function handleStart(env: Env, req: Request) {
 				? jobManifest.purpose.trim()
 				: undefined
 
+		let videoProbe: Awaited<ReturnType<typeof s3Probe>> | null = null
+		let vttProbe: Awaited<ReturnType<typeof s3Probe>> | null = null
+		let commentsProbe: Awaited<ReturnType<typeof s3Probe>> | null = null
+
 		// 1) Video source
 		if (inputs.videoKey) {
-			const hasVideo = await s3Head(env, bucketName, inputs.videoKey)
-			if (hasVideo) {
+			videoProbe = await s3Probe(env, bucketName, inputs.videoKey)
+			if (videoProbe.exists) {
 				inputVideoUrl = await presignGetForContainer(
 					env,
 					bucketName,
@@ -187,8 +191,8 @@ export async function handleStart(env: Env, req: Request) {
 
 		// 2) Text inputs (VTT / comments)
 		if (body.engine === 'burner-ffmpeg' && inputs.vttKey) {
-			const hasVtt = await s3Head(env, bucketName, inputs.vttKey)
-			if (hasVtt) {
+			vttProbe = await s3Probe(env, bucketName, inputs.vttKey)
+			if (vttProbe.exists) {
 				inputVttUrl = await presignGetForContainer(
 					env,
 					bucketName,
@@ -197,8 +201,8 @@ export async function handleStart(env: Env, req: Request) {
 				)
 			}
 		} else if (body.engine === 'renderer-remotion' && inputs.commentsKey) {
-			const hasData = await s3Head(env, bucketName, inputs.commentsKey)
-			if (hasData) {
+			commentsProbe = await s3Probe(env, bucketName, inputs.commentsKey)
+			if (commentsProbe.exists) {
 				inputDataUrl = await presignGetForContainer(
 					env,
 					bucketName,
@@ -231,6 +235,9 @@ export async function handleStart(env: Env, req: Request) {
 						commentsKey: inputs.commentsKey ?? null,
 						hasInputVideoUrl: Boolean(inputVideoUrl),
 						hasInputVttUrl: Boolean(inputVttUrl),
+						videoProbe,
+						vttProbe,
+						commentsProbe,
 						needVideo,
 						needVtt,
 						needData,
