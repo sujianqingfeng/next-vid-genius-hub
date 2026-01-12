@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { getDb, schema } from '~/lib/infra/db'
 import { logger } from '~/lib/infra/logger'
-import { chargeAsrUsage, InsufficientPointsError } from '~/lib/domain/points/billing'
+import { addPointsOnce, getTransactionByTypeRef } from '~/lib/domain/points/service'
 import { persistAsrResultFromBucket } from '~/lib/features/subtitle/server/asr-result'
 import type { CallbackPayload } from '../types'
 
@@ -43,35 +43,24 @@ export async function handleAsrCallback(input: {
 			return Response.json({ error: msg }, { status: 500 })
 		}
 
-		try {
-			const durationSeconds =
-				typeof media.duration === 'number' && media.duration > 0
-					? media.duration
-					: 0
-			const modelId =
-				typeof payload.metadata?.model === 'string'
-					? payload.metadata.model
-					: undefined
-			if (durationSeconds > 0 && modelId && media.userId) {
-				await chargeAsrUsage({
+		if (media.userId) {
+			try {
+				const prefunded = await getTransactionByTypeRef({
 					userId: media.userId,
-					modelId,
-					durationSeconds,
-					refType: 'asr',
+					type: 'asr_usage',
 					refId: payload.jobId,
-					remark: `asr ${modelId} ${durationSeconds.toFixed(1)}s`,
+					db,
 				})
-			}
-		} catch (error) {
-			if (error instanceof InsufficientPointsError) {
+				if (!prefunded) {
+					logger.error(
+						'api',
+						`[cf-callback] asr completed but missing prefund tx user=${media.userId} job=${payload.jobId} media=${payload.mediaId}`,
+					)
+				}
+			} catch (error) {
 				logger.warn(
 					'api',
-					`[cf-callback] asr charge skipped (insufficient points) media=${media.id}`,
-				)
-			} else {
-				logger.warn(
-					'api',
-					`[cf-callback] asr charge failed: ${error instanceof Error ? error.message : String(error)}`,
+					`[cf-callback] asr prefund lookup failed: ${error instanceof Error ? error.message : String(error)}`,
 				)
 			}
 		}
@@ -91,6 +80,38 @@ export async function handleAsrCallback(input: {
 			'api',
 			`[cf-callback] asr ${payload.status} job=${payload.jobId} media=${payload.mediaId} error=${payload.error ?? 'n/a'}`,
 		)
+
+		if (media.userId) {
+			try {
+				const tx = await getTransactionByTypeRef({
+					userId: media.userId,
+					type: 'asr_usage',
+					refId: payload.jobId,
+					db,
+				})
+				const amount = typeof tx?.delta === 'number' ? -tx.delta : 0
+				if (amount > 0) {
+					await addPointsOnce({
+						userId: media.userId,
+						amount,
+						type: 'refund',
+						refType: 'asr',
+						refId: payload.jobId,
+						remark: `refund asr ${payload.status} job=${payload.jobId}`,
+						metadata: {
+							purpose: 'asr',
+							originalType: 'asr_usage',
+							reason: payload.status,
+						},
+					})
+				}
+			} catch (error) {
+				logger.warn(
+					'api',
+					`[cf-callback] asr refund failed: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		}
 	}
 
 	return Response.json({ ok: true })

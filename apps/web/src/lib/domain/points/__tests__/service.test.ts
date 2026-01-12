@@ -2,12 +2,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { setInjectedD1Database } from '~/lib/infra/db'
 import {
+	applyMinimalAuthSchema,
 	createTempD1Database,
 	execStatements,
 } from '~/lib/infra/db/__tests__/d1-test-helper'
 import {
 	addPoints,
+	addPointsOnce,
 	InsufficientPointsError,
+	getTransactionByTypeRef,
 	spendPoints,
 	spendPointsOnce,
 } from '../service'
@@ -21,6 +24,8 @@ describe('points service (D1)', () => {
 		d1 = db.d1
 		cleanup = db.cleanup
 		setInjectedD1Database(db.d1)
+
+		await applyMinimalAuthSchema(db.d1)
 
 		await execStatements(db.d1, [
 			[
@@ -148,5 +153,67 @@ describe('points service (D1)', () => {
 				refId: 'job-2',
 			}),
 		).rejects.toBeInstanceOf(InsufficientPointsError)
+	})
+
+	it('addPointsOnce is idempotent by refId', async () => {
+		const userId = 'u1'
+
+		const first = await addPointsOnce({
+			userId,
+			amount: 50,
+			type: 'refund',
+			refType: 'download',
+			refId: 'job-refund-1',
+		})
+		expect(first).toEqual({ credited: 50, balance: 50 })
+
+		const second = await addPointsOnce({
+			userId,
+			amount: 50,
+			type: 'refund',
+			refType: 'download',
+			refId: 'job-refund-1',
+		})
+		expect(second).toEqual({ credited: 0 })
+
+		const balanceRow: any = await d1!
+			.prepare(`SELECT balance FROM point_accounts WHERE user_id = ?`)
+			.bind(userId)
+			.first()
+		expect(Number(balanceRow?.balance ?? 0)).toBe(50)
+
+		const txRow: any = await d1!
+			.prepare(
+				[
+					`SELECT count(*) as cnt`,
+					`FROM point_transactions`,
+					`WHERE user_id = ? AND type = ? AND ref_id = ?`,
+				].join(' '),
+			)
+			.bind(userId, 'refund', 'job-refund-1')
+			.first()
+		expect(Number(txRow?.cnt ?? 0)).toBe(1)
+	})
+
+	it('getTransactionByTypeRef returns the matching row', async () => {
+		const userId = 'u1'
+		await addPointsOnce({
+			userId,
+			amount: 12,
+			type: 'manual_adjust',
+			refType: 'admin',
+			refId: 'adj-1',
+			remark: 'seed',
+		})
+
+		const tx = await getTransactionByTypeRef({
+			userId,
+			type: 'manual_adjust',
+			refId: 'adj-1',
+		})
+		expect(tx?.userId).toBe(userId)
+		expect(tx?.type).toBe('manual_adjust')
+		expect(tx?.refId).toBe('adj-1')
+		expect(tx?.delta).toBe(12)
 	})
 })

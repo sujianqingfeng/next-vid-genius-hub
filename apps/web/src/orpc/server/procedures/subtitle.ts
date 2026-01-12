@@ -41,15 +41,20 @@ export const transcribe = os
 		if (!(await isEnabledModel('asr', input.model, db))) {
 			throw new Error(`ASR model ${input.model} is not enabled`)
 		}
-		const res = await subtitleService.transcribe(input)
-
-		// Billing for ASR usage is now handled in the ASR callback handler based on media.duration
-		return {
-			success: true,
-			jobId: res.jobId,
-			durationSeconds: res.durationSeconds,
-			model: input.model,
-			userId,
+		try {
+			const res = await subtitleService.transcribe(input)
+			return {
+				success: true,
+				jobId: res.jobId,
+				durationSeconds: res.durationSeconds,
+				model: input.model,
+				userId,
+			}
+		} catch (err) {
+			if (err instanceof InsufficientPointsError) {
+				throwInsufficientPointsError()
+			}
+			throw err
 		}
 	})
 

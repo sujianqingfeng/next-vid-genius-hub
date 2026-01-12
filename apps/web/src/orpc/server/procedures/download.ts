@@ -5,6 +5,8 @@ import {
 	getCloudDownloadStatus as getCloudDownloadStatusFn,
 	startCloudDownload as startCloudDownloadUseCase,
 } from '~/lib/domain/media/server/download'
+import { throwInsufficientPointsError } from '../errors'
+import { InsufficientPointsError } from '~/lib/domain/points/service'
 
 const DownloadInputSchema = z.object({
 	url: z.string().url(),
@@ -16,12 +18,19 @@ export const startCloudDownload = os
 	.input(DownloadInputSchema)
 	.handler(async ({ input, context }) => {
 		const ctx = context as RequestContext
-		return startCloudDownloadUseCase({
-			userId: ctx.auth.user!.id,
-			url: input.url,
-			quality: input.quality,
-			proxyId: input.proxyId ?? null,
-		})
+		try {
+			return await startCloudDownloadUseCase({
+				userId: ctx.auth.user!.id,
+				url: input.url,
+				quality: input.quality,
+				proxyId: input.proxyId ?? null,
+			})
+		} catch (error) {
+			if (error instanceof InsufficientPointsError) {
+				throwInsufficientPointsError()
+			}
+			throw error
+		}
 	})
 
 export const getCloudDownloadStatus = os

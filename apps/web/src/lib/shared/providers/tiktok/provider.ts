@@ -35,6 +35,7 @@ export const tiktokProvider: VideoProvider = {
 				thumbnails: tiktokInfo.thumbnails,
 				viewCount: tiktokInfo.view_count,
 				likeCount: tiktokInfo.like_count,
+				duration: tiktokInfo.duration,
 				source: MEDIA_SOURCES.TIKTOK,
 				raw: tiktokInfo,
 			}

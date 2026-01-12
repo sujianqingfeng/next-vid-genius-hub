@@ -6,6 +6,9 @@ import { getDb, schema } from '~/lib/infra/db'
 import { enqueueCloudTask } from '~/lib/features/job/enqueue'
 import { TASK_KINDS } from '~/lib/features/job/task'
 import { logger } from '~/lib/infra/logger'
+import { chargeAsrUsage } from '~/lib/domain/points/billing'
+import { addPointsOnce } from '~/lib/domain/points/service'
+import { createId } from '~/lib/shared/utils/id'
 
 export async function transcribe(input: {
 	mediaId: string
@@ -90,6 +93,29 @@ export async function transcribe(input: {
 	const modelId = modelCfg.id
 	const remoteModelId = modelCfg.remoteModelId
 
+	const durationSeconds =
+		typeof mediaRecord.duration === 'number' && mediaRecord.duration > 0
+			? mediaRecord.duration
+			: 0
+	if (durationSeconds <= 0) {
+		throw new Error('MEDIA_DURATION_UNKNOWN')
+	}
+
+	const stableJobId = `job_${createId()}`
+	let charged = 0
+	if (mediaRecord.userId) {
+		const prefund = await chargeAsrUsage({
+			userId: mediaRecord.userId,
+			modelId,
+			durationSeconds,
+			refType: 'asr',
+			refId: stableJobId,
+			remark: `asr ${modelId} ${durationSeconds.toFixed(1)}s`,
+			metadata: { purpose: TASK_KINDS.ASR },
+		})
+		charged = prefund.charged
+	}
+
 	let jobId: string | null = null
 	try {
 		const { jobId: startedJobId } = await enqueueCloudTask({
@@ -100,6 +126,7 @@ export async function transcribe(input: {
 			targetType: 'media',
 			targetId: mediaId,
 			mediaId,
+			jobId: stableJobId,
 			purpose: TASK_KINDS.ASR,
 			title: mediaRecord.title || undefined,
 			payload: {
@@ -156,13 +183,34 @@ export async function transcribe(input: {
 			'transcription',
 			`[asr.start] failed media=${mediaId} ${message}`,
 		)
+		if (mediaRecord.userId && charged > 0) {
+			try {
+				await addPointsOnce({
+					userId: mediaRecord.userId,
+					amount: charged,
+					type: 'refund',
+					refType: 'asr',
+					refId: stableJobId,
+					remark: `refund asr start failed job=${stableJobId}`,
+					metadata: {
+						purpose: TASK_KINDS.ASR,
+						originalType: 'asr_usage',
+						reason: 'start_failed',
+					},
+				})
+			} catch (refundError) {
+				logger.warn(
+					'transcription',
+					`[asr.refund] failed job=${stableJobId} media=${mediaId} error=${
+						refundError instanceof Error
+							? refundError.message
+							: String(refundError)
+					}`,
+				)
+			}
+		}
 		throw error
 	}
-
-	const durationSeconds =
-		typeof mediaRecord.duration === 'number' && mediaRecord.duration > 0
-			? mediaRecord.duration
-			: 0
 
 	return { success: true, jobId: jobId!, durationSeconds }
 }

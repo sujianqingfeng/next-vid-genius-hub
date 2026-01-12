@@ -2,10 +2,7 @@ import { eq } from 'drizzle-orm'
 import { presignGetByKey } from '~/lib/infra/cloudflare'
 import { getDb, schema } from '~/lib/infra/db'
 import { logger } from '~/lib/infra/logger'
-import {
-	chargeDownloadUsage,
-	InsufficientPointsError,
-} from '~/lib/domain/points/billing'
+import { addPointsOnce, getTransactionByTypeRef } from '~/lib/domain/points/service'
 import type { CallbackPayload } from '../types'
 
 type Db = Awaited<ReturnType<typeof getDb>>
@@ -90,16 +87,58 @@ export async function handleDownloadCallback(input: {
 	const { db, media, payload } = input
 	const where = eq(schema.media.id, payload.mediaId)
 
+	async function refundPrefundedDownload(reason: string) {
+		if (!media.userId) return
+		try {
+			const tx = await getTransactionByTypeRef({
+				userId: media.userId,
+				type: 'download_usage',
+				refId: payload.jobId,
+				db,
+			})
+			const amount = typeof tx?.delta === 'number' ? -tx.delta : 0
+			if (amount > 0) {
+				await addPointsOnce({
+					userId: media.userId,
+					amount,
+					type: 'refund',
+					refType: 'download',
+					refId: payload.jobId,
+					remark: `refund download ${reason} job=${payload.jobId}`,
+					metadata: {
+						purpose: 'download',
+						originalType: 'download_usage',
+						reason,
+					},
+				})
+			}
+		} catch (error) {
+			logger.warn(
+				'api',
+				`[cf-callback.download] refund failed: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+	}
+
 	logger.info(
 		'api',
 		`[cf-callback.download] start job=${payload.jobId} media=${payload.mediaId} status=${payload.status}`,
 	)
 
-	if (media.downloadJobId && media.downloadJobId !== payload.jobId) {
+	const isStale = Boolean(media.downloadJobId && media.downloadJobId !== payload.jobId)
+	if (isStale) {
 		logger.warn(
 			'api',
 			`[cf-callback.download] ignored stale callback job=${payload.jobId} (current=${media.downloadJobId}) media=${payload.mediaId} status=${payload.status}`,
 		)
+
+		if (
+			payload.status === 'completed' ||
+			payload.status === 'failed' ||
+			payload.status === 'canceled'
+		) {
+			await refundPrefundedDownload('superseded')
+		}
 		return
 	}
 
@@ -250,10 +289,37 @@ export async function handleDownloadCallback(input: {
 			'api',
 			`[cf-callback.download] non-completed status=${payload.status} job=${payload.jobId} media=${payload.mediaId} error=${payload.error ?? 'n/a'}`,
 		)
+
+		// Strict prepay: refund on terminal failures only (callbacks may emit non-terminal statuses).
+		if (payload.status === 'failed' || payload.status === 'canceled') {
+			await refundPrefundedDownload(payload.status)
+		}
+
 		return
 	}
 
 	if (isCommentsOnly) {
+		// If this callback belongs to the active download job but only produced metadata,
+		// treat it as a failure and refund points. Otherwise ignore to avoid mutating
+		// download fields for non-download jobs routed here accidentally.
+		if (media.downloadJobId === payload.jobId) {
+			await db
+				.update(schema.media)
+				.set({
+					downloadBackend: 'cloud',
+					downloadStatus: 'failed',
+					downloadError: 'Cloud download produced metadata only (missing video/audio)',
+					downloadJobId: payload.jobId,
+				})
+				.where(where)
+			await refundPrefundedDownload('metadata_only')
+			logger.error(
+				'api',
+				`[cf-callback.download] completed but metadata-only output job=${payload.jobId} media=${payload.mediaId}`,
+			)
+			return
+		}
+
 		logger.info(
 			'api',
 			`[cf-callback.download] comments-only payload detected job=${payload.jobId} media=${payload.mediaId}`,
@@ -271,6 +337,7 @@ export async function handleDownloadCallback(input: {
 				downloadJobId: payload.jobId,
 			})
 			.where(where)
+		await refundPrefundedDownload('missing_video_output')
 		logger.error(
 			'api',
 			`[cf-callback.download] missing video output job=${payload.jobId} media=${payload.mediaId}`,
@@ -324,6 +391,7 @@ export async function handleDownloadCallback(input: {
 				remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
 			})
 			.where(where)
+		await refundPrefundedDownload('video_artifact_missing')
 		logger.error(
 			'api',
 			`[cf-callback.download] completed but video missing job=${payload.jobId} media=${payload.mediaId} key=${resolvedVideoKey ?? 'null'}`,
@@ -348,6 +416,7 @@ export async function handleDownloadCallback(input: {
 				remoteMetadataKey: metadataKey ?? media.remoteMetadataKey ?? null,
 			})
 			.where(where)
+		await refundPrefundedDownload('audio_artifact_missing')
 		logger.error(
 			'api',
 			`[cf-callback.download] completed but audio missing job=${payload.jobId} media=${payload.mediaId} key=${audioProcessedKey ?? 'null'}`,
@@ -479,27 +548,26 @@ export async function handleDownloadCallback(input: {
 		`[cf-callback.download] completed job=${payload.jobId} media=${payload.mediaId} duration=${roundedDuration ?? 0}s hasVideo=${videoProbe.state === 'exists'} hasAudio=${audioProcessedProbe.state === 'exists'} hasMetadata=${metadataProbe.state === 'exists'}`,
 	)
 
-	if (media.userId && durationSeconds > 0) {
+	if (media.userId) {
 		try {
-			await chargeDownloadUsage({
+			const prefunded = await getTransactionByTypeRef({
 				userId: media.userId,
-				durationSeconds,
-				refType: 'download',
+				type: 'download_usage',
 				refId: payload.jobId,
-				remark: `download dur=${durationSeconds.toFixed(1)}s`,
+				db,
 			})
-		} catch (error) {
-			if (error instanceof InsufficientPointsError) {
-				logger.warn(
+
+			if (!prefunded) {
+				logger.error(
 					'api',
-					`[cf-callback] download charge skipped (insufficient points) media=${media.id}`,
-				)
-			} else {
-				logger.warn(
-					'api',
-					`[cf-callback] download charge failed: ${error instanceof Error ? error.message : String(error)}`,
+					`[cf-callback.download] completed but missing prefund tx user=${media.userId} job=${payload.jobId} media=${payload.mediaId}`,
 				)
 			}
+		} catch (error) {
+			logger.warn(
+				'api',
+				`[cf-callback.download] prefund lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+			)
 		}
 	}
 }
