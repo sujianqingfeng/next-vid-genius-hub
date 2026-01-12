@@ -9,8 +9,6 @@ const SSE_RETRY_MS = 3000
 const SSE_KEEPALIVE_MS = 20_000
 const MAX_JOB_IDS = 50
 
-const TERMINAL_STATUSES = new Set(['completed', 'failed', 'canceled'])
-
 const textEncoder = new TextEncoder()
 
 function encodeSseComment(comment: string): Uint8Array {
@@ -95,17 +93,9 @@ export const Route = createFileRoute('/api/jobs/events')({
 						})
 				}
 
-				const upstreamControllers = new Map<string, AbortController>()
-
 				const closeAll = () => {
 					if (closed) return
 					closed = true
-					for (const c of upstreamControllers.values()) {
-						try {
-							c.abort()
-						} catch {}
-					}
-					upstreamControllers.clear()
 					try {
 						writer.close()
 					} catch {}
@@ -128,15 +118,18 @@ export const Route = createFileRoute('/api/jobs/events')({
 					enqueueWrite(encodeSseEvent('error', { jobId, error: 'not found' }))
 				}
 
-				const startUpstream = async (jobId: string) => {
-					const controller = new AbortController()
-					upstreamControllers.set(jobId, controller)
-					const upstreamUrl = `${orchestratorBase}/jobs/${encodeURIComponent(jobId)}/events`
-
+				void (async () => {
 					try {
+						const params = new URLSearchParams()
+						for (const jobId of allowedJobIds) {
+							params.append('jobId', jobId)
+						}
+						const qs = params.toString()
+						const upstreamUrl = `${orchestratorBase}/jobs/events${qs ? `?${qs}` : ''}`
+
 						const upstream = await fetch(upstreamUrl, {
 							headers: { Accept: 'text/event-stream' },
-							signal: controller.signal,
+							signal: request.signal,
 						})
 
 						if (!upstream.ok || !upstream.body) {
@@ -144,85 +137,23 @@ export const Route = createFileRoute('/api/jobs/events')({
 							try {
 								message = await upstream.clone().text()
 							} catch {}
-							enqueueWrite(
-								encodeSseEvent('error', {
-									jobId,
-									status: upstream.status,
-									message,
-								}),
-							)
+							if (!closed) {
+								enqueueWrite(
+									encodeSseEvent('error', {
+										status: upstream.status,
+										message,
+									}),
+								)
+								enqueueWrite(encodeSseEvent('done', { jobIds: allowedJobIds }))
+							}
 							return
 						}
 
 						const reader = upstream.body.getReader()
-						const decoder = new TextDecoder()
-						let buffer = ''
-
-						const flushFrame = (raw: string) => {
-							const lines = raw.split('\n')
-							let eventName: string | null = null
-							const dataLines: string[] = []
-							for (const line of lines) {
-								if (!line) continue
-								if (line.startsWith(':')) continue
-								if (line.startsWith('event:')) {
-									eventName = line.slice('event:'.length).trim()
-									continue
-								}
-								if (line.startsWith('data:')) {
-									dataLines.push(line.slice('data:'.length).trimStart())
-									continue
-								}
-							}
-
-							if (eventName !== 'status') return
-							const data = dataLines.join('\n').trim()
-							if (!data) return
-
-							let doc: any
-							try {
-								doc = JSON.parse(data)
-							} catch {
-								return
-							}
-
-							enqueueWrite(encodeSseEvent('status', { jobId, doc }))
-
-							const status = doc?.status
-							if (typeof status === 'string' && TERMINAL_STATUSES.has(status)) {
-								try {
-									controller.abort()
-								} catch {}
-							}
-						}
-
 						while (true) {
 							const { value, done } = await reader.read()
 							if (done) break
-							const chunk = decoder.decode(value, { stream: true })
-							buffer += chunk.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-
-							let idx: number
-							while ((idx = buffer.indexOf('\n\n')) !== -1) {
-								const frame = buffer.slice(0, idx)
-								buffer = buffer.slice(idx + 2)
-								if (frame.trim()) flushFrame(frame)
-							}
-						}
-					} catch {
-						// ignore upstream errors; client may have disconnected
-					} finally {
-						upstreamControllers.delete(jobId)
-					}
-				}
-
-				void (async () => {
-					try {
-						await Promise.allSettled(
-							allowedJobIds.map((id) => startUpstream(id)),
-						)
-						if (!closed) {
-							enqueueWrite(encodeSseEvent('done', { jobIds: allowedJobIds }))
+							enqueueWrite(value)
 						}
 					} finally {
 						try {

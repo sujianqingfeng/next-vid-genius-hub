@@ -5,7 +5,7 @@ import { handleContainerCallback } from './handlers/callback'
 import { handleArtifactDelete, handleArtifactGet } from './handlers/artifacts'
 import { handleCancel } from './handlers/cancel'
 import { handleDebugDelete, handleDebugDeletePrefixes, handleDebugPresign, handleDebugReplayAppCallback } from './handlers/debug'
-import { handleGetEvents } from './handlers/events'
+import { handleGetEvents, handleGetMultiEvents } from './handlers/events'
 import { handleGetStatus } from './handlers/status'
 
 // Re-export container classes so the runtime can locate them by class_name
@@ -33,6 +33,9 @@ export default {
     if (req.method === 'POST' && pathname.startsWith('/jobs/') && pathname.endsWith('/cancel')) {
       const jobId = pathname.split('/')[2]
       return handleCancel(env, req, jobId)
+    }
+    if (req.method === 'GET' && pathname === '/jobs/events') {
+      return handleGetMultiEvents(env, req)
     }
     if (req.method === 'GET' && pathname.startsWith('/jobs/') && pathname.endsWith('/events')) {
       const jobId = pathname.split('/')[2]

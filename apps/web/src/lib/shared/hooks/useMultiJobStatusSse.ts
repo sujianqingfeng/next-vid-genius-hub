@@ -41,7 +41,9 @@ export function useMultiJobStatusSse<TDoc = unknown>(opts: {
 		const ids = opts.jobIds
 			.map((x) => (typeof x === 'string' ? normalizeJobId(x) : ''))
 			.filter(Boolean)
-		return [...new Set(ids)]
+		const unique = [...new Set(ids)]
+		unique.sort()
+		return unique
 	}, [opts.jobIds])
 
 	const jobIdsKey = React.useMemo(() => jobIds.join('|'), [jobIds])
