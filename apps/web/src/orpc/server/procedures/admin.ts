@@ -19,6 +19,11 @@ import {
 	DEFAULT_PAGE_LIMIT,
 } from '~/lib/shared/pagination'
 import { addPoints, listTransactions } from '~/lib/domain/points/service'
+import {
+	derivePricingRuleFromCostMarkup,
+	markupPercentToBps,
+	rmbToFen,
+} from '~/lib/domain/points/cost-markup'
 
 const ListUsersSchema = z.object({
 	page: z.number().int().min(1).default(1),
@@ -375,17 +380,29 @@ export const listPricingRules = os
 		}
 	})
 
-const UpsertPricingRuleSchema = z.object({
+const UpsertPricingRuleBase = z.object({
 	id: z.string().min(1).optional(),
-	resourceType: z.custom<PointResourceType>(),
 	providerId: z.string().min(1).optional().nullable(),
 	modelId: z.string().trim().max(200).optional().nullable(),
-	unit: z.enum(['token', 'second', 'minute']),
-	pricePerUnit: z.number().int().min(0),
-	inputPricePerUnit: z.number().int().min(0).optional().nullable(),
-	outputPricePerUnit: z.number().int().min(0).optional().nullable(),
-	minCharge: z.number().int().min(0).optional().nullable(),
+	markupPercent: z.number().min(0).max(10_000),
+	minChargeCostRmb: z.number().min(0).optional().nullable(),
 })
+
+const UpsertPricingRuleSchema = z.discriminatedUnion('resourceType', [
+	UpsertPricingRuleBase.extend({
+		resourceType: z.literal('llm'),
+		costInputRmbPerMillion: z.number().min(0),
+		costOutputRmbPerMillion: z.number().min(0),
+	}),
+	UpsertPricingRuleBase.extend({
+		resourceType: z.literal('asr'),
+		costRmbPerMinute: z.number().min(0),
+	}),
+	UpsertPricingRuleBase.extend({
+		resourceType: z.literal('download'),
+		costRmbPerMinute: z.number().min(0),
+	}),
+])
 
 export const upsertPricingRule = os
 	.input(UpsertPricingRuleSchema)
@@ -429,36 +446,68 @@ export const upsertPricingRule = os
 			normalizedModelId = null
 		}
 
-		if (input.resourceType === 'llm') {
-			if (input.unit !== 'token') {
-				throw new Error('LLM pricing rule unit must be token')
-			}
-			if (input.inputPricePerUnit == null || input.outputPricePerUnit == null) {
+		const isGlobalDefault =
+			normalizedProviderId == null && normalizedModelId == null
+
+		if (!isGlobalDefault) {
+			const globalDefault = await db.query.pointPricingRules.findFirst({
+				where: and(
+					eq(schema.pointPricingRules.resourceType, input.resourceType),
+					isNull(schema.pointPricingRules.providerId),
+					isNull(schema.pointPricingRules.modelId),
+				),
+				columns: { id: true },
+			})
+			if (!globalDefault) {
 				throw new Error(
-					'LLM pricing rules require both inputPricePerUnit and outputPricePerUnit',
+					`DEFAULT_PRICING_RULE_MISSING resource=${input.resourceType}`,
 				)
 			}
 		}
+
+		const markupBps = markupPercentToBps(input.markupPercent)
+		const minChargeCostFen =
+			input.minChargeCostRmb == null ? null : rmbToFen(input.minChargeCostRmb)
+
+		const derived =
+			input.resourceType === 'llm'
+				? derivePricingRuleFromCostMarkup({
+						resourceType: 'llm',
+						markupBps,
+						costInputFenPer1M: rmbToFen(input.costInputRmbPerMillion),
+						costOutputFenPer1M: rmbToFen(input.costOutputRmbPerMillion),
+						minChargeCostFen,
+					})
+				: derivePricingRuleFromCostMarkup({
+						resourceType: input.resourceType,
+						markupBps,
+						costFenPerMinute: rmbToFen(input.costRmbPerMinute),
+						minChargeCostFen,
+					})
+
+		const nextValues = {
+			resourceType: input.resourceType,
+			providerId: normalizedProviderId,
+			modelId: normalizedModelId,
+			unit: derived.unit,
+			pricePerUnit: derived.pricePerUnit,
+			inputPricePerUnit: derived.inputPricePerUnit,
+			outputPricePerUnit: derived.outputPricePerUnit,
+			minCharge: derived.minCharge,
+			pricingMode: derived.pricingMode,
+			markupBps: derived.markupBps,
+			costInputFenPer1M: derived.costInputFenPer1M,
+			costOutputFenPer1M: derived.costOutputFenPer1M,
+			costFenPerMinute: derived.costFenPerMinute,
+			minChargeCostFen: derived.minChargeCostFen,
+			updatedAt: now,
+		} as const
 
 		if (input.id) {
 			await db
 				.update(schema.pointPricingRules)
 				.set({
-					resourceType: input.resourceType,
-					providerId: normalizedProviderId,
-					modelId: normalizedModelId,
-					unit: input.unit,
-					pricePerUnit: input.pricePerUnit,
-					inputPricePerUnit:
-						input.resourceType === 'llm'
-							? (input.inputPricePerUnit ?? null)
-							: null,
-					outputPricePerUnit:
-						input.resourceType === 'llm'
-							? (input.outputPricePerUnit ?? null)
-							: null,
-					minCharge: input.minCharge ?? null,
-					updatedAt: now,
+					...nextValues,
 				})
 				.where(eq(schema.pointPricingRules.id, input.id))
 			return { success: true }
@@ -499,21 +548,7 @@ export const upsertPricingRule = os
 			await db
 				.update(schema.pointPricingRules)
 				.set({
-					resourceType: input.resourceType,
-					providerId: normalizedProviderId,
-					modelId: normalizedModelId,
-					unit: input.unit,
-					pricePerUnit: input.pricePerUnit,
-					inputPricePerUnit:
-						input.resourceType === 'llm'
-							? (input.inputPricePerUnit ?? null)
-							: null,
-					outputPricePerUnit:
-						input.resourceType === 'llm'
-							? (input.outputPricePerUnit ?? null)
-							: null,
-					minCharge: input.minCharge ?? null,
-					updatedAt: now,
+					...nextValues,
 				})
 				.where(eq(schema.pointPricingRules.id, existing.id))
 			return { success: true }
@@ -523,15 +558,17 @@ export const upsertPricingRule = os
 			resourceType: input.resourceType,
 			providerId: normalizedProviderId,
 			modelId: normalizedModelId,
-			unit: input.unit,
-			pricePerUnit: input.pricePerUnit,
-			inputPricePerUnit:
-				input.resourceType === 'llm' ? (input.inputPricePerUnit ?? null) : null,
-			outputPricePerUnit:
-				input.resourceType === 'llm'
-					? (input.outputPricePerUnit ?? null)
-					: null,
-			minCharge: input.minCharge ?? null,
+			unit: derived.unit,
+			pricePerUnit: derived.pricePerUnit,
+			inputPricePerUnit: derived.inputPricePerUnit,
+			outputPricePerUnit: derived.outputPricePerUnit,
+			minCharge: derived.minCharge,
+			pricingMode: derived.pricingMode,
+			markupBps: derived.markupBps,
+			costInputFenPer1M: derived.costInputFenPer1M,
+			costOutputFenPer1M: derived.costOutputFenPer1M,
+			costFenPerMinute: derived.costFenPerMinute,
+			minChargeCostFen: derived.minChargeCostFen,
 			createdAt: now,
 			updatedAt: now,
 		})
@@ -547,6 +584,22 @@ export const deletePricingRule = os
 	.input(DeletePricingRuleSchema)
 	.handler(async ({ input }) => {
 		const db = await getDb()
+
+		const row = await db.query.pointPricingRules.findFirst({
+			where: eq(schema.pointPricingRules.id, input.id),
+			columns: {
+				id: true,
+				resourceType: true,
+				providerId: true,
+				modelId: true,
+			},
+		})
+		if (!row) return { success: true }
+		if (row.providerId == null && row.modelId == null) {
+			throw new Error(
+				`CANNOT_DELETE_DEFAULT_PRICING_RULE resource=${row.resourceType}`,
+			)
+		}
 
 		await db
 			.delete(schema.pointPricingRules)

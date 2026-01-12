@@ -232,6 +232,13 @@
       "when": 1767535701133,
       "tag": "0032_tricky_junta",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1768198885393,
+      "tag": "0033_brown_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }

@@ -45,12 +45,6 @@ export async function chargeLlmUsage(
 		points = result.points
 		totalTokens = result.totalTokens
 	} catch (error) {
-		if (
-			error instanceof Error &&
-			error.message.startsWith('Pricing rule not found for llm')
-		) {
-			return { charged: 0 }
-		}
 		logger.error(
 			'api',
 			`[billing.llm] pricing error user=${opts.userId} model=${opts.modelId ?? 'default'} error=${error instanceof Error ? error.message : String(error)}`,
@@ -105,12 +99,6 @@ export async function chargeAsrUsage(
 		points = result.points
 		durationSeconds = result.durationSeconds
 	} catch (error) {
-		if (
-			error instanceof Error &&
-			error.message.startsWith('Pricing rule not found for asr')
-		) {
-			return { charged: 0 }
-		}
 		logger.error(
 			'api',
 			`[billing.asr] pricing error user=${opts.userId} model=${opts.modelId ?? 'default'} error=${error instanceof Error ? error.message : String(error)}`,
@@ -183,12 +171,6 @@ export async function chargeDownloadUsage(
 		points = result.points
 		durationSeconds = result.durationSeconds
 	} catch (error) {
-		if (
-			error instanceof Error &&
-			error.message.startsWith('Pricing rule not found for download')
-		) {
-			return { charged: 0 }
-		}
 		logger.error(
 			'api',
 			`[billing.download] pricing error user=${opts.userId} dur=${opts.durationSeconds.toFixed(1)}s error=${error instanceof Error ? error.message : String(error)}`,

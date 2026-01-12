@@ -2087,7 +2087,7 @@
 					"title": "Pricing Matrix",
 					"subtitle": "Set prices per model; models without overrides inherit the default rule.",
 					"defaultReady": "Default rule configured",
-					"defaultMissing": "Missing default rule (no charge)"
+					"defaultMissing": "Missing default rule (strict billing will fail)"
 				},
 				"table": {
 					"title": "Pricing rules",
@@ -2131,6 +2131,7 @@
 				"form": {
 					"resourceType": "Resource type",
 					"unit": "Unit",
+					"markupPercent": "Markup %",
 					"units": {
 						"token": "Token",
 						"second": "Second",
@@ -2141,14 +2142,30 @@
 					"modelIdHint": "Leave empty for the default rule for this resource.",
 					"pricePerUnit": "Price per unit",
 					"pointsPerMinute": "Points per minute",
+					"costRmbPerMinute": "Cost (RMB/minute)",
 					"inputPricePerUnit": "Input token price (µpoints/token)",
 					"outputPricePerUnit": "Output token price (µpoints/token)",
 					"inputRmbPerMillion": "Input (RMB/1M tokens)",
 					"outputRmbPerMillion": "Output (RMB/1M tokens)",
+					"costInputRmbPerMillion": "Input cost (RMB/1M tokens)",
+					"costOutputRmbPerMillion": "Output cost (RMB/1M tokens)",
 					"microHint": "Stored: {micro} µpoints/token",
+					"derivedMicroHint": "Derived: {micro} µpoints/token (≈ {rmbPerMillion} RMB/1M)",
+					"derivedPointsPerMinuteHint": "Derived: {pointsPerMinute} points/min (≈ {rmbPerMinute} RMB/min)",
+					"derivedMinChargeHint": "Derived min charge: {points} points",
 					"overrideHint": "Hint: this model has no override yet; saving will create a model override rule.",
 					"llmPricingHint": "LLM prices are stored as µpoints/token. 1 point = 1,000,000 µpoints. With 10 RMB = 1000 points, RMB per 1M tokens = µpoints/token ÷ 100 (e.g. 8 RMB/1M input tokens ⇒ 800 µpoints/token).",
+					"costMarkupHint": "Sell price is derived as cost × (1 + markup%), rounded up to avoid undercharging.",
 					"minCharge": "Minimum charge (optional)",
+					"minChargeCostRmb": "Min charge cost (RMB, optional)",
+					"draftPreviewTitle": "Draft preview (current vs draft)",
+					"previewCols": {
+						"scenario": "Scenario",
+						"current": "Current",
+						"draft": "Draft",
+						"delta": "Delta"
+					},
+					"invalidDraft": "Invalid draft parameters (check cost/markup/min charge).",
 					"save": "Save",
 					"cancel": "Cancel"
 				},
@@ -2165,7 +2182,7 @@
 					"minutes": "Duration (minutes)",
 					"roundingHint": "Billed by rounding up to minutes.",
 					"points": "Estimated points",
-					"noRule": "Missing default rule: usage will not be charged.",
+					"noRule": "Missing default rule: usage will fail (strict billing).",
 					"llmDetail": "totalTokens={totalTokens} rawPoints={rawPoints} minCharge={minCharge}",
 					"timeDetail": "units={units} unit={unit} rawPoints={rawPoints} minCharge={minCharge}"
 				},

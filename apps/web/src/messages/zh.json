@@ -2087,7 +2087,7 @@
 					"title": "计价矩阵",
 					"subtitle": "按模型配置价格；未配置的模型会继承默认规则。",
 					"defaultReady": "默认规则已配置",
-					"defaultMissing": "缺少默认规则（将不扣费）"
+					"defaultMissing": "缺少默认规则（严格计费会失败）"
 				},
 				"table": {
 					"title": "计价规则",
@@ -2131,6 +2131,7 @@
 				"form": {
 					"resourceType": "资源类型",
 					"unit": "计价单位",
+					"markupPercent": "加成%（Markup）",
 					"units": {
 						"token": "Token",
 						"second": "秒",
@@ -2141,14 +2142,30 @@
 					"modelIdHint": "留空表示该资源类型的默认规则。",
 					"pricePerUnit": "每单位积分单价",
 					"pointsPerMinute": "每分钟积分",
+					"costRmbPerMinute": "成本（RMB/分钟）",
 					"inputPricePerUnit": "输入 Token 单价（微积分/Token）",
 					"outputPricePerUnit": "输出 Token 单价（微积分/Token）",
 					"inputRmbPerMillion": "输入价（RMB/1M tokens）",
 					"outputRmbPerMillion": "输出价（RMB/1M tokens）",
+					"costInputRmbPerMillion": "输入成本（RMB/1M tokens）",
+					"costOutputRmbPerMillion": "输出成本（RMB/1M tokens）",
 					"microHint": "存储值：{micro} 微积分/Token",
+					"derivedMicroHint": "推导单价：{micro} 微积分/Token（≈ {rmbPerMillion} RMB/1M）",
+					"derivedPointsPerMinuteHint": "推导单价：{pointsPerMinute} 积分/分钟（≈ {rmbPerMinute} RMB/分钟）",
+					"derivedMinChargeHint": "推导最小扣费：{points} 积分",
 					"overrideHint": "提示：当前模型未单独配置，保存后会创建“模型覆盖规则”。",
 					"llmPricingHint": "LLM 单价按“微积分/Token”计。1 积分 = 1,000,000 微积分；且 10 元 = 1000 积分，因此 RMB/1M Tokens = 微积分/Token ÷ 100（例如 8 元/1M 输入 Token ⇒ 800 微积分/Token）。",
+					"costMarkupHint": "售价按“成本 × (1 + 加成%)”推导；并向上取整以避免亏损。",
 					"minCharge": "最小扣费（可选）",
+					"minChargeCostRmb": "最小扣费成本（RMB，可选）",
+					"draftPreviewTitle": "草稿预览（当前 vs 草稿）",
+					"previewCols": {
+						"scenario": "场景",
+						"current": "当前",
+						"draft": "草稿",
+						"delta": "差值"
+					},
+					"invalidDraft": "草稿参数不合法（请检查成本/加成%/最小扣费）",
 					"save": "保存",
 					"cancel": "取消"
 				},
@@ -2165,7 +2182,7 @@
 					"minutes": "时长（分钟）",
 					"roundingHint": "按分钟向上取整计费。",
 					"points": "预计扣除积分",
-					"noRule": "缺少默认规则：当前用量将不会扣费。",
+					"noRule": "缺少默认规则：严格计费下将无法使用。",
 					"llmDetail": "totalTokens={totalTokens} rawPoints={rawPoints} minCharge={minCharge}",
 					"timeDetail": "units={units} unit={unit} rawPoints={rawPoints} minCharge={minCharge}"
 				},

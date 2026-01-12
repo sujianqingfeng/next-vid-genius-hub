@@ -26,9 +26,13 @@ import { useEnhancedMutation } from '~/lib/shared/hooks/useEnhancedMutation'
 import { ADMIN_PRICING_RULES_PAGE_SIZE } from '~/lib/shared/pagination'
 import {
 	MICRO_POINTS_PER_POINT,
-	microPointsPerTokenFromRmbPerMillionTokens,
 	rmbPerMillionTokensFromMicroPointsPerToken,
 } from '~/lib/domain/points/units'
+import {
+	derivePricingRuleFromCostMarkup,
+	markupPercentToBps,
+	rmbToFen,
+} from '~/lib/domain/points/cost-markup'
 
 import { useTranslations } from '~/lib/shared/i18n'
 import { queryOrpc } from '~/orpc'
@@ -53,6 +57,12 @@ type PricingRule = {
 	resourceType: Kind
 	providerId: string | null
 	modelId: string | null
+	pricingMode: 'cost_markup' | 'legacy_manual' | null
+	markupBps: number | null
+	costInputFenPer1M: number | null
+	costOutputFenPer1M: number | null
+	costFenPerMinute: number | null
+	minChargeCostFen: number | null
 	unit: 'token' | 'second' | 'minute'
 	pricePerUnit: number
 	inputPricePerUnit: number | null
@@ -67,17 +77,21 @@ type Editing =
 			targetProviderId: string | null
 			targetModelId: string | null
 			targetLabel: string
-			inputRmbPerMillion: number
-			outputRmbPerMillion: number
-			minCharge: number | ''
+			markupPercent: number
+			costInputRmbPerMillion: number
+			costOutputRmbPerMillion: number
+			minChargeCostRmb: number | ''
+			baseline: PricingRule | null
 	  }
 	| {
 			mode: 'asr' | 'download'
 			targetProviderId: string | null
 			targetModelId: string | null
 			targetLabel: string
-			pointsPerMinute: number
-			minCharge: number | ''
+			markupPercent: number
+			costRmbPerMinute: number
+			minChargeCostRmb: number | ''
+			baseline: PricingRule | null
 	  }
 
 function ceilDivBigInt(numerator: bigint, denominator: bigint) {
@@ -106,6 +120,19 @@ function normalizeRule(row: unknown): PricingRule {
 		resourceType: r.resourceType as Kind,
 		providerId: r.providerId ? String(r.providerId) : null,
 		modelId: r.modelId ? String(r.modelId) : null,
+		pricingMode:
+			r.pricingMode === 'cost_markup' || r.pricingMode === 'legacy_manual'
+				? r.pricingMode
+				: null,
+		markupBps: typeof r.markupBps === 'number' ? r.markupBps : null,
+		costInputFenPer1M:
+			typeof r.costInputFenPer1M === 'number' ? r.costInputFenPer1M : null,
+		costOutputFenPer1M:
+			typeof r.costOutputFenPer1M === 'number' ? r.costOutputFenPer1M : null,
+		costFenPerMinute:
+			typeof r.costFenPerMinute === 'number' ? r.costFenPerMinute : null,
+		minChargeCostFen:
+			typeof r.minChargeCostFen === 'number' ? r.minChargeCostFen : null,
 		unit: r.unit as PricingRule['unit'],
 		pricePerUnit: Number((r.pricePerUnit as number | undefined) ?? 0),
 		inputPricePerUnit:
@@ -264,40 +291,70 @@ export function AdminPointsPricingPage() {
 
 	const openEditDefault = () => {
 		if (kind === 'llm') {
+			const effective = globalDefaultRule
+			const sellInputRmbPerMillion = rmbPerMillionTokensFromMicroPointsPerToken(
+				effective?.inputPricePerUnit ?? 0,
+			)
+			const sellOutputRmbPerMillion = rmbPerMillionTokensFromMicroPointsPerToken(
+				effective?.outputPricePerUnit ?? 0,
+			)
+			const markupPercent =
+				typeof effective?.markupBps === 'number'
+					? effective.markupBps / 100
+					: 0
+
 			setEditing({
 				mode: 'llm',
 				targetProviderId: null,
 				targetModelId: null,
 				targetLabel: t('labels.defaultModel'),
-				inputRmbPerMillion: rmbPerMillionTokensFromMicroPointsPerToken(
-					globalDefaultRule?.inputPricePerUnit ?? 0,
-				),
-				outputRmbPerMillion: rmbPerMillionTokensFromMicroPointsPerToken(
-					globalDefaultRule?.outputPricePerUnit ?? 0,
-				),
-				minCharge:
-					typeof globalDefaultRule?.minCharge === 'number'
-						? globalDefaultRule.minCharge
-						: '',
+				markupPercent,
+				costInputRmbPerMillion:
+					typeof effective?.costInputFenPer1M === 'number'
+						? effective.costInputFenPer1M / 100
+						: sellInputRmbPerMillion,
+				costOutputRmbPerMillion:
+					typeof effective?.costOutputFenPer1M === 'number'
+						? effective.costOutputFenPer1M / 100
+						: sellOutputRmbPerMillion,
+				minChargeCostRmb:
+					typeof effective?.minChargeCostFen === 'number'
+						? effective.minChargeCostFen / 100
+						: typeof effective?.minCharge === 'number'
+							? effective.minCharge / 100
+							: '',
+				baseline: effective,
 			})
 			return
 		}
+
+		const effective = globalDefaultRule
+		const pointsPerMinute =
+			effective?.unit === 'minute'
+				? effective.pricePerUnit
+				: effective
+					? effective.pricePerUnit * 60
+					: 0
+		const markupPercent =
+			typeof effective?.markupBps === 'number' ? effective.markupBps / 100 : 0
 
 		setEditing({
 			mode: kind,
 			targetProviderId: null,
 			targetModelId: null,
 			targetLabel: t('labels.defaultModel'),
-			pointsPerMinute:
-				globalDefaultRule?.unit === 'minute'
-					? globalDefaultRule.pricePerUnit
-					: globalDefaultRule
-						? globalDefaultRule.pricePerUnit * 60
-						: 1,
-			minCharge:
-				typeof globalDefaultRule?.minCharge === 'number'
-					? globalDefaultRule.minCharge
-					: '',
+			markupPercent,
+			costRmbPerMinute:
+				typeof effective?.costFenPerMinute === 'number'
+					? effective.costFenPerMinute / 100
+					: pointsPerMinute / 100,
+			minChargeCostRmb:
+				typeof effective?.minChargeCostFen === 'number'
+					? effective.minChargeCostFen / 100
+					: typeof effective?.minCharge === 'number'
+						? effective.minCharge / 100
+						: '',
+			baseline: effective,
 		})
 	}
 
@@ -306,36 +363,66 @@ export function AdminPointsPricingPage() {
 		const effective = direct ?? globalDefaultRule
 
 		if (kind === 'llm') {
+			const sellInputRmbPerMillion = rmbPerMillionTokensFromMicroPointsPerToken(
+				effective?.inputPricePerUnit ?? 0,
+			)
+			const sellOutputRmbPerMillion = rmbPerMillionTokensFromMicroPointsPerToken(
+				effective?.outputPricePerUnit ?? 0,
+			)
+			const markupPercent =
+				typeof effective?.markupBps === 'number' ? effective.markupBps / 100 : 0
+
 			setEditing({
 				mode: 'llm',
 				targetProviderId: provider.id,
 				targetModelId: null,
 				targetLabel: `${provider.name} · ${t('labels.providerDefault')}`,
-				inputRmbPerMillion: rmbPerMillionTokensFromMicroPointsPerToken(
-					effective?.inputPricePerUnit ?? 0,
-				),
-				outputRmbPerMillion: rmbPerMillionTokensFromMicroPointsPerToken(
-					effective?.outputPricePerUnit ?? 0,
-				),
-				minCharge:
-					typeof effective?.minCharge === 'number' ? effective.minCharge : '',
+				markupPercent,
+				costInputRmbPerMillion:
+					typeof effective?.costInputFenPer1M === 'number'
+						? effective.costInputFenPer1M / 100
+						: sellInputRmbPerMillion,
+				costOutputRmbPerMillion:
+					typeof effective?.costOutputFenPer1M === 'number'
+						? effective.costOutputFenPer1M / 100
+						: sellOutputRmbPerMillion,
+				minChargeCostRmb:
+					typeof effective?.minChargeCostFen === 'number'
+						? effective.minChargeCostFen / 100
+						: typeof effective?.minCharge === 'number'
+							? effective.minCharge / 100
+							: '',
+				baseline: effective,
 			})
 			return
 		}
+
+		const pointsPerMinute =
+			effective?.unit === 'minute'
+				? effective.pricePerUnit
+				: effective
+					? effective.pricePerUnit * 60
+					: 0
+		const markupPercent =
+			typeof effective?.markupBps === 'number' ? effective.markupBps / 100 : 0
 
 		setEditing({
 			mode: kind,
 			targetProviderId: provider.id,
 			targetModelId: null,
 			targetLabel: `${provider.name} · ${t('labels.providerDefault')}`,
-			pointsPerMinute:
-				effective?.unit === 'minute'
-					? effective.pricePerUnit
-					: effective
-						? effective.pricePerUnit * 60
-						: 1,
-			minCharge:
-				typeof effective?.minCharge === 'number' ? effective.minCharge : '',
+			markupPercent,
+			costRmbPerMinute:
+				typeof effective?.costFenPerMinute === 'number'
+					? effective.costFenPerMinute / 100
+					: pointsPerMinute / 100,
+			minChargeCostRmb:
+				typeof effective?.minChargeCostFen === 'number'
+					? effective.minChargeCostFen / 100
+					: typeof effective?.minCharge === 'number'
+						? effective.minCharge / 100
+						: '',
+			baseline: effective,
 		})
 	}
 
@@ -346,36 +433,66 @@ export function AdminPointsPricingPage() {
 		const effective = direct ?? providerDefault ?? globalDefaultRule
 
 		if (kind === 'llm') {
+			const sellInputRmbPerMillion = rmbPerMillionTokensFromMicroPointsPerToken(
+				effective?.inputPricePerUnit ?? 0,
+			)
+			const sellOutputRmbPerMillion = rmbPerMillionTokensFromMicroPointsPerToken(
+				effective?.outputPricePerUnit ?? 0,
+			)
+			const markupPercent =
+				typeof effective?.markupBps === 'number' ? effective.markupBps / 100 : 0
+
 			setEditing({
 				mode: 'llm',
 				targetProviderId: model.providerId,
 				targetModelId: model.id,
 				targetLabel: model.label || model.id,
-				inputRmbPerMillion: rmbPerMillionTokensFromMicroPointsPerToken(
-					effective?.inputPricePerUnit ?? 0,
-				),
-				outputRmbPerMillion: rmbPerMillionTokensFromMicroPointsPerToken(
-					effective?.outputPricePerUnit ?? 0,
-				),
-				minCharge:
-					typeof effective?.minCharge === 'number' ? effective.minCharge : '',
+				markupPercent,
+				costInputRmbPerMillion:
+					typeof effective?.costInputFenPer1M === 'number'
+						? effective.costInputFenPer1M / 100
+						: sellInputRmbPerMillion,
+				costOutputRmbPerMillion:
+					typeof effective?.costOutputFenPer1M === 'number'
+						? effective.costOutputFenPer1M / 100
+						: sellOutputRmbPerMillion,
+				minChargeCostRmb:
+					typeof effective?.minChargeCostFen === 'number'
+						? effective.minChargeCostFen / 100
+						: typeof effective?.minCharge === 'number'
+							? effective.minCharge / 100
+							: '',
+				baseline: effective,
 			})
 			return
 		}
+
+		const pointsPerMinute =
+			effective?.unit === 'minute'
+				? effective.pricePerUnit
+				: effective
+					? effective.pricePerUnit * 60
+					: 0
+		const markupPercent =
+			typeof effective?.markupBps === 'number' ? effective.markupBps / 100 : 0
 
 		setEditing({
 			mode: kind,
 			targetProviderId: model.providerId,
 			targetModelId: model.id,
 			targetLabel: model.label || model.id,
-			pointsPerMinute:
-				effective?.unit === 'minute'
-					? effective.pricePerUnit
-					: effective
-						? effective.pricePerUnit * 60
-						: 1,
-			minCharge:
-				typeof effective?.minCharge === 'number' ? effective.minCharge : '',
+			markupPercent,
+			costRmbPerMinute:
+				typeof effective?.costFenPerMinute === 'number'
+					? effective.costFenPerMinute / 100
+					: pointsPerMinute / 100,
+			minChargeCostRmb:
+				typeof effective?.minChargeCostFen === 'number'
+					? effective.minChargeCostFen / 100
+					: typeof effective?.minCharge === 'number'
+						? effective.minCharge / 100
+						: '',
+			baseline: effective,
 		})
 	}
 
@@ -383,27 +500,17 @@ export function AdminPointsPricingPage() {
 		if (!editing) return
 
 		if (editing.mode === 'llm') {
-			const inputMicro = microPointsPerTokenFromRmbPerMillionTokens(
-				Number.isFinite(editing.inputRmbPerMillion)
-					? editing.inputRmbPerMillion
-					: 0,
-			)
-			const outputMicro = microPointsPerTokenFromRmbPerMillionTokens(
-				Number.isFinite(editing.outputRmbPerMillion)
-					? editing.outputRmbPerMillion
-					: 0,
-			)
-
 			upsertRule.mutate({
 				resourceType: 'llm',
 				providerId: editing.targetProviderId,
 				modelId: editing.targetModelId,
-				unit: 'token',
-				pricePerUnit: 0,
-				inputPricePerUnit: inputMicro,
-				outputPricePerUnit: outputMicro,
-				minCharge:
-					editing.minCharge === '' ? null : Number(editing.minCharge ?? 0),
+				markupPercent: editing.markupPercent,
+				costInputRmbPerMillion: editing.costInputRmbPerMillion,
+				costOutputRmbPerMillion: editing.costOutputRmbPerMillion,
+				minChargeCostRmb:
+					editing.minChargeCostRmb === ''
+						? null
+						: Number(editing.minChargeCostRmb ?? 0),
 			})
 			return
 		}
@@ -412,12 +519,12 @@ export function AdminPointsPricingPage() {
 			resourceType: editing.mode,
 			providerId: editing.mode === 'download' ? null : editing.targetProviderId,
 			modelId: editing.mode === 'download' ? null : editing.targetModelId,
-			unit: 'minute',
-			pricePerUnit: Math.max(0, Math.trunc(editing.pointsPerMinute)),
-			inputPricePerUnit: null,
-			outputPricePerUnit: null,
-			minCharge:
-				editing.minCharge === '' ? null : Number(editing.minCharge ?? 0),
+			markupPercent: editing.markupPercent,
+			costRmbPerMinute: editing.costRmbPerMinute,
+			minChargeCostRmb:
+				editing.minChargeCostRmb === ''
+					? null
+					: Number(editing.minChargeCostRmb ?? 0),
 		})
 	}
 
@@ -573,6 +680,36 @@ export function AdminPointsPricingPage() {
 		previewRule,
 		t,
 	])
+
+	const draftDerived = useMemo(() => {
+		if (!editing) return null
+		try {
+			const markupBps = markupPercentToBps(editing.markupPercent)
+			const minChargeCostFen =
+				editing.minChargeCostRmb === ''
+					? null
+					: rmbToFen(Number(editing.minChargeCostRmb ?? 0))
+
+			if (editing.mode === 'llm') {
+				return derivePricingRuleFromCostMarkup({
+					resourceType: 'llm',
+					markupBps,
+					costInputFenPer1M: rmbToFen(editing.costInputRmbPerMillion ?? 0),
+					costOutputFenPer1M: rmbToFen(editing.costOutputRmbPerMillion ?? 0),
+					minChargeCostFen,
+				})
+			}
+
+			return derivePricingRuleFromCostMarkup({
+				resourceType: editing.mode,
+				markupBps,
+				costFenPerMinute: rmbToFen(editing.costRmbPerMinute ?? 0),
+				minChargeCostFen,
+			})
+		} catch {
+			return null
+		}
+	}, [editing])
 
 	const renderPricingTable = () => {
 		const showLlmColumns = kind === 'llm'
@@ -737,7 +874,7 @@ export function AdminPointsPricingPage() {
 												>
 													EDIT
 												</Button>
-												{direct ? (
+												{direct && idx !== 0 ? (
 													<Button
 														size="xs"
 														variant="outline"
@@ -960,24 +1097,47 @@ export function AdminPointsPricingPage() {
 
 					{editing ? (
 						<div className="p-6 space-y-6">
+							<div className="space-y-2">
+								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+									{t('form.markupPercent')}
+								</Label>
+								<Input
+									type="number"
+									min={0}
+									step="0.01"
+									value={editing.markupPercent}
+									onChange={(e) =>
+										setEditing((prev) =>
+											prev
+												? {
+														...prev,
+														markupPercent: Number(e.target.value || 0),
+													}
+												: prev,
+										)
+									}
+									className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
+								/>
+							</div>
+
 							{editing.mode === 'llm' ? (
 								<>
 									<div className="grid gap-4 sm:grid-cols-2">
 										<div className="space-y-2">
 											<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-												{t('form.inputRmbPerMillion')}
+												{t('form.costInputRmbPerMillion')}
 											</Label>
 											<Input
 												type="number"
 												min={0}
 												step="0.01"
-												value={editing.inputRmbPerMillion}
+												value={editing.costInputRmbPerMillion}
 												onChange={(e) =>
 													setEditing((prev) =>
 														prev && prev.mode === 'llm'
 															? {
 																	...prev,
-																	inputRmbPerMillion: Number(
+																	costInputRmbPerMillion: Number(
 																		e.target.value || 0,
 																	),
 																}
@@ -986,29 +1146,33 @@ export function AdminPointsPricingPage() {
 												}
 												className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 											/>
-											<p className="text-[9px] font-mono text-muted-foreground">
-												{t('form.microHint', {
-													micro: microPointsPerTokenFromRmbPerMillionTokens(
-														editing.inputRmbPerMillion,
-													),
-												})}
-											</p>
+											{draftDerived && draftDerived.resourceType === 'llm' ? (
+												<p className="text-[9px] font-mono text-muted-foreground">
+													{t('form.derivedMicroHint', {
+														micro: draftDerived.inputPricePerUnit,
+														rmbPerMillion:
+															rmbPerMillionTokensFromMicroPointsPerToken(
+																draftDerived.inputPricePerUnit,
+															).toFixed(2),
+													})}
+												</p>
+											) : null}
 										</div>
 										<div className="space-y-2">
 											<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-												{t('form.outputRmbPerMillion')}
+												{t('form.costOutputRmbPerMillion')}
 											</Label>
 											<Input
 												type="number"
 												min={0}
 												step="0.01"
-												value={editing.outputRmbPerMillion}
+												value={editing.costOutputRmbPerMillion}
 												onChange={(e) =>
 													setEditing((prev) =>
 														prev && prev.mode === 'llm'
 															? {
 																	...prev,
-																	outputRmbPerMillion: Number(
+																	costOutputRmbPerMillion: Number(
 																		e.target.value || 0,
 																	),
 																}
@@ -1017,57 +1181,71 @@ export function AdminPointsPricingPage() {
 												}
 												className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 											/>
-											<p className="text-[9px] font-mono text-muted-foreground">
-												{t('form.microHint', {
-													micro: microPointsPerTokenFromRmbPerMillionTokens(
-														editing.outputRmbPerMillion,
-													),
-												})}
-											</p>
+											{draftDerived && draftDerived.resourceType === 'llm' ? (
+												<p className="text-[9px] font-mono text-muted-foreground">
+													{t('form.derivedMicroHint', {
+														micro: draftDerived.outputPricePerUnit,
+														rmbPerMillion:
+															rmbPerMillionTokensFromMicroPointsPerToken(
+																draftDerived.outputPricePerUnit,
+															).toFixed(2),
+													})}
+												</p>
+											) : null}
 										</div>
 									</div>
 									<p className="text-[9px] text-muted-foreground uppercase tracking-tighter">
-										{t('form.llmPricingHint')}
+										{t('form.costMarkupHint')}
 									</p>
 								</>
 							) : (
 								<div className="space-y-2">
 									<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-										{t('form.pointsPerMinute')}
+										{t('form.costRmbPerMinute')}
 									</Label>
 									<Input
 										type="number"
 										min={0}
-										value={editing.pointsPerMinute}
+										step="0.01"
+										value={editing.costRmbPerMinute}
 										onChange={(e) =>
 											setEditing((prev) =>
 												prev && prev.mode !== 'llm'
 													? {
 															...prev,
-															pointsPerMinute: Number(e.target.value || 0),
+															costRmbPerMinute: Number(e.target.value || 0),
 														}
 													: prev,
 											)
 										}
 										className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 									/>
+									{draftDerived && draftDerived.resourceType !== 'llm' ? (
+										<p className="text-[9px] font-mono text-muted-foreground">
+											{t('form.derivedPointsPerMinuteHint', {
+												pointsPerMinute: draftDerived.pricePerUnit,
+												rmbPerMinute: (draftDerived.pricePerUnit / 100).toFixed(2),
+											})}
+										</p>
+									) : null}
 								</div>
 							)}
 
 							<div className="space-y-2">
 								<Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-									{t('form.minCharge')}
+									{t('form.minChargeCostRmb')}
 								</Label>
 								<Input
 									type="number"
 									min={0}
-									value={editing.minCharge ?? ''}
+									step="0.01"
+									value={editing.minChargeCostRmb ?? ''}
 									onChange={(e) =>
 										setEditing((prev) =>
 											prev
 												? {
 														...prev,
-														minCharge:
+														minChargeCostRmb:
 															e.target.value === ''
 																? ''
 																: Number(e.target.value),
@@ -1077,6 +1255,137 @@ export function AdminPointsPricingPage() {
 									}
 									className="rounded-none border-border font-mono focus-visible:ring-0 focus-visible:border-primary"
 								/>
+								{draftDerived ? (
+									<p className="text-[9px] font-mono text-muted-foreground">
+										{t('form.derivedMinChargeHint', {
+											points: draftDerived.minCharge ?? 0,
+										})}
+									</p>
+								) : null}
+							</div>
+
+							<div className="border border-primary bg-primary/5 p-4 space-y-3">
+								<div className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+									{t('form.draftPreviewTitle')}
+								</div>
+
+								{draftDerived ? (
+									<div className="space-y-2">
+										<div className="grid grid-cols-4 gap-2 text-[10px] font-mono uppercase text-muted-foreground">
+											<div>{t('form.previewCols.scenario')}</div>
+											<div className="text-right">{t('form.previewCols.current')}</div>
+											<div className="text-right">{t('form.previewCols.draft')}</div>
+											<div className="text-right">{t('form.previewCols.delta')}</div>
+										</div>
+
+										{editing.mode === 'llm'
+											? [
+													{ key: 'S', inputTokens: 1000, outputTokens: 500 },
+													{ key: 'M', inputTokens: 4000, outputTokens: 1000 },
+													{ key: 'L', inputTokens: 32000, outputTokens: 8000 },
+												].map((s) => {
+													const base = editing.baseline
+													const baseOk =
+														base &&
+														base.resourceType === 'llm' &&
+														typeof base.inputPricePerUnit === 'number' &&
+														typeof base.outputPricePerUnit === 'number'
+													const basePoints = baseOk
+														? calculateLlmPoints({
+																inputTokens: s.inputTokens,
+																outputTokens: s.outputTokens,
+																inputMicroPointsPerToken: base.inputPricePerUnit ?? 0,
+																outputMicroPointsPerToken: base.outputPricePerUnit ?? 0,
+																minCharge: base.minCharge,
+															}).points
+														: null
+													const draftPoints = calculateLlmPoints({
+														inputTokens: s.inputTokens,
+														outputTokens: s.outputTokens,
+														inputMicroPointsPerToken:
+															draftDerived.resourceType === 'llm'
+																? draftDerived.inputPricePerUnit
+																: 0,
+														outputMicroPointsPerToken:
+															draftDerived.resourceType === 'llm'
+																? draftDerived.outputPricePerUnit
+																: 0,
+														minCharge: draftDerived.minCharge,
+													}).points
+													const delta =
+														typeof basePoints === 'number' ? draftPoints - basePoints : null
+
+													return (
+														<div
+															key={s.key}
+															className="grid grid-cols-4 gap-2 font-mono text-xs"
+														>
+															<div>{`${s.key} ${s.inputTokens}/${s.outputTokens}`}</div>
+															<div className="text-right">
+																{basePoints == null ? '---' : basePoints}
+															</div>
+															<div className="text-right">{draftPoints}</div>
+															<div className="text-right">
+																{delta == null ? '---' : delta >= 0 ? `+${delta}` : delta}
+															</div>
+														</div>
+													)
+												})
+											: [
+													{ key: '1m', minutes: 1 },
+													{ key: '5m', minutes: 5 },
+													{ key: '30m', minutes: 30 },
+													{ key: '2h', minutes: 120 },
+												].map((s) => {
+													const base = editing.baseline
+													const baseOk =
+														base &&
+														(base.resourceType === 'asr' ||
+															base.resourceType === 'download') &&
+														(base.unit === 'minute' || base.unit === 'second')
+													const durationSeconds = s.minutes * 60
+													const basePoints = baseOk
+														? calculateTimePoints({
+																durationSeconds,
+																unit: base.unit as any,
+																pricePerUnit: base.pricePerUnit,
+																minCharge: base.minCharge,
+															}).points
+														: null
+													const draftPoints = calculateTimePoints({
+														durationSeconds,
+														unit: 'minute',
+														pricePerUnit:
+															draftDerived.resourceType === 'llm'
+																? 0
+																: draftDerived.pricePerUnit,
+														minCharge: draftDerived.minCharge,
+													}).points
+													const delta =
+														typeof basePoints === 'number' ? draftPoints - basePoints : null
+
+													return (
+														<div
+															key={s.key}
+															className="grid grid-cols-4 gap-2 font-mono text-xs"
+														>
+															<div>{s.key}</div>
+															<div className="text-right">
+																{basePoints == null ? '---' : basePoints}
+															</div>
+															<div className="text-right">{draftPoints}</div>
+															<div className="text-right">
+																{delta == null ? '---' : delta >= 0 ? `+${delta}` : delta}
+															</div>
+														</div>
+													)
+												})}
+									</div>
+								) : (
+									<div className="text-[10px] font-mono text-destructive">
+										{t('form.invalidDraft')}
+									</div>
+								)}
 							</div>
 
 							{editing.targetModelId &&

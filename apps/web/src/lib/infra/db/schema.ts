@@ -233,6 +233,9 @@ export const pointPricingRules = sqliteTable('point_pricing_rules', {
 	resourceType: text('resource_type', {
 		enum: ['llm', 'asr', 'download'],
 	}).notNull(),
+	pricingMode: text('pricing_mode', {
+		enum: ['cost_markup', 'legacy_manual'],
+	}),
 	// Nullable:
 	// - null + null => global default for the resourceType
 	// - providerId + null => provider default (LLM/ASR only)
@@ -246,6 +249,15 @@ export const pointPricingRules = sqliteTable('point_pricing_rules', {
 	inputPricePerUnit: integer('input_price_per_unit'),
 	outputPricePerUnit: integer('output_price_per_unit'),
 	minCharge: integer('min_charge'),
+	// Cost-based pricing metadata (used by admin tooling to derive the actual price fields).
+	// All values are optional to allow legacy/manual rules to coexist.
+	// - cost fields are stored in fen to avoid floating-point drift.
+	// - markup is stored in bps: 100 bps = 1.00%
+	markupBps: integer('markup_bps'),
+	costInputFenPer1M: integer('cost_input_fen_per_1m'),
+	costOutputFenPer1M: integer('cost_output_fen_per_1m'),
+	costFenPerMinute: integer('cost_fen_per_minute'),
+	minChargeCostFen: integer('min_charge_cost_fen'),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date()),
