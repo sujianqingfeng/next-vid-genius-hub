@@ -2,7 +2,12 @@ import { eq } from 'drizzle-orm'
 import { presignGetByKey } from '~/lib/infra/cloudflare'
 import { getDb, schema } from '~/lib/infra/db'
 import { logger } from '~/lib/infra/logger'
-import { addPointsOnce, getTransactionByTypeRef } from '~/lib/domain/points/service'
+import { calculateDownloadCost } from '~/lib/domain/points/pricing'
+import {
+	addPointsOnce,
+	getTransactionByTypeRef,
+	spendPointsOnce,
+} from '~/lib/domain/points/service'
 import type { CallbackPayload } from '../types'
 
 type Db = Awaited<ReturnType<typeof getDb>>
@@ -290,7 +295,7 @@ export async function handleDownloadCallback(input: {
 			`[cf-callback.download] non-completed status=${payload.status} job=${payload.jobId} media=${payload.mediaId} error=${payload.error ?? 'n/a'}`,
 		)
 
-		// Strict prepay: refund on terminal failures only (callbacks may emit non-terminal statuses).
+		// Deposit prepay: refund on terminal failures only (callbacks may emit non-terminal statuses).
 		if (payload.status === 'failed' || payload.status === 'canceled') {
 			await refundPrefundedDownload(payload.status)
 		}
@@ -557,16 +562,70 @@ export async function handleDownloadCallback(input: {
 				db,
 			})
 
-			if (!prefunded) {
-				logger.error(
-					'api',
-					`[cf-callback.download] completed but missing prefund tx user=${media.userId} job=${payload.jobId} media=${payload.mediaId}`,
-				)
+			const prefundedPoints =
+				typeof prefunded?.delta === 'number' ? Math.max(0, -prefunded.delta) : 0
+
+			const finalCost = await calculateDownloadCost({
+				durationSeconds:
+					Number.isFinite(durationSeconds) && durationSeconds > 0
+						? durationSeconds
+						: 0,
+				db,
+			})
+
+			const finalPoints = finalCost.points
+			const deltaPoints = finalPoints - prefundedPoints
+			const settleRefId = `${payload.jobId}:settle`
+
+			if (deltaPoints > 0) {
+				await spendPointsOnce({
+					userId: media.userId,
+					amount: deltaPoints,
+					type: 'download_usage',
+					refType: 'download',
+					refId: settleRefId,
+					remark: `download settle +${deltaPoints}`,
+					metadata: {
+						purpose: 'download',
+						resourceType: 'download',
+						phase: 'settle',
+						pricingRuleId: finalCost.rule.id,
+						durationSeconds:
+							Number.isFinite(durationSeconds) && durationSeconds > 0
+								? durationSeconds
+								: null,
+						prefundedPoints,
+						finalPoints,
+					},
+					db,
+				})
+			} else if (deltaPoints < 0) {
+				await addPointsOnce({
+					userId: media.userId,
+					amount: -deltaPoints,
+					type: 'refund',
+					refType: 'download',
+					refId: settleRefId,
+					remark: `refund download settle ${-deltaPoints}`,
+					metadata: {
+						purpose: 'download',
+						originalType: 'download_usage',
+						reason: 'settle_refund',
+						pricingRuleId: finalCost.rule.id,
+						durationSeconds:
+							Number.isFinite(durationSeconds) && durationSeconds > 0
+								? durationSeconds
+								: null,
+						prefundedPoints,
+						finalPoints,
+					},
+					db,
+				})
 			}
 		} catch (error) {
 			logger.warn(
 				'api',
-				`[cf-callback.download] prefund lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+				`[cf-callback.download] billing settle failed: ${error instanceof Error ? error.message : String(error)}`,
 			)
 		}
 	}

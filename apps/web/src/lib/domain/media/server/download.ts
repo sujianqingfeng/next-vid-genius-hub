@@ -13,72 +13,6 @@ import { resolveSuccessProxy } from '~/lib/infra/proxy/resolve-success-proxy'
 import { toProxyJobPayload } from '~/lib/infra/proxy/utils'
 import { createId } from '~/lib/shared/utils/id'
 
-function toHttpProxyUrl(proxy: {
-	protocol: string
-	server: string
-	port: number
-	username?: string | null
-	password?: string | null
-}): string | null {
-	if (proxy.protocol !== 'http' && proxy.protocol !== 'https') return null
-	const auth =
-		proxy.username && proxy.password
-			? `${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@`
-			: proxy.username
-				? `${encodeURIComponent(proxy.username)}@`
-				: ''
-	return `${proxy.protocol}://${auth}${proxy.server}:${proxy.port}`
-}
-
-function parseHmsToSeconds(value: string): number | null {
-	const raw = value.trim()
-	if (!raw) return null
-	if (!/^\d{1,2}(:\d{1,2}){1,2}$/.test(raw)) return null
-	const parts = raw.split(':').map((p) => Number.parseInt(p, 10))
-	if (parts.some((n) => !Number.isFinite(n) || n < 0)) return null
-	if (parts.length === 2) return parts[0] * 60 + parts[1]
-	if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
-	return null
-}
-
-function normalizeDurationSeconds(value: unknown): number {
-	if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-		return value
-	}
-	if (typeof value === 'string') {
-		const asInt = Number.parseInt(value, 10)
-		if (Number.isFinite(asInt) && asInt > 0) return asInt
-		const hms = parseHmsToSeconds(value)
-		if (typeof hms === 'number' && Number.isFinite(hms) && hms > 0) return hms
-	}
-	return 0
-}
-
-async function resolveDurationSeconds(args: {
-	url: string
-	proxyUrl?: string | null
-}): Promise<number> {
-	try {
-		const metadata = await ProviderFactory.fetchMetadata(
-			args.url,
-			args.proxyUrl ? { proxyUrl: args.proxyUrl } : {},
-		)
-		if (metadata.duration) return normalizeDurationSeconds(metadata.duration)
-
-		const raw = metadata.raw as any
-		const fromRaw =
-			normalizeDurationSeconds(raw?.durationSeconds) ||
-			normalizeDurationSeconds(raw?.duration_seconds) ||
-			normalizeDurationSeconds(raw?.duration) ||
-			normalizeDurationSeconds(raw?.lengthSeconds) ||
-			normalizeDurationSeconds(raw?.length_seconds) ||
-			0
-		return fromRaw
-	} catch {
-		return 0
-	}
-}
-
 export async function startCloudDownload(input: {
 	userId: string
 	url: string
@@ -193,40 +127,33 @@ export async function startCloudDownload(input: {
 				requestedProxyId: proxyId ?? undefined,
 			})
 		const proxyPayload = toProxyJobPayload(proxyRecord)
-		const proxyUrl = toHttpProxyUrl(proxyRecord)
 
+		// Bill downloads via "deposit then settle":
+		// - Start: charge a deposit (at least `minCharge`, and at least 1 unit).
+		// - Complete: container reports true duration via callback; we settle the delta there.
 		const baseCost = await calculateDownloadCost({ durationSeconds: 0, db })
-		let durationSeconds = 0
+		const prefundPoints = Math.max(
+			0,
+			Math.max(baseCost.points, baseCost.rule.pricePerUnit),
+		)
 
-		// If pricing is duration-based, fetch a best-effort duration before starting the job.
-		if (baseCost.rule.pricePerUnit > 0) {
-			durationSeconds = await resolveDurationSeconds({ url, proxyUrl })
-			if (durationSeconds <= 0) throw new Error('DOWNLOAD_DURATION_UNKNOWN')
-		}
-
-		const cost = await calculateDownloadCost({ durationSeconds, db })
-		if (durationSeconds <= 0 && cost.rule.pricePerUnit > 0) {
-			throw new Error('DOWNLOAD_DURATION_UNKNOWN')
-		}
-
-		if (cost.points > 0) {
+		if (prefundPoints > 0) {
 			await spendPointsOnce({
 				userId,
-				amount: cost.points,
+				amount: prefundPoints,
 				type: 'download_usage',
 				refType: 'download',
 				refId: stableJobId,
-				remark:
-					durationSeconds > 0
-						? `download dur=${durationSeconds.toFixed(1)}s`
-						: 'download',
+				remark: 'download prefund',
 				metadata: {
 					purpose: TASK_KINDS.DOWNLOAD,
 					resourceType: 'download',
 					url,
 					quality,
-					durationSeconds: durationSeconds > 0 ? durationSeconds : null,
-					pricingRuleId: cost.rule.id,
+					durationSeconds: null,
+					phase: 'prefund',
+					pricingRuleId: baseCost.rule.id,
+					prefundPoints,
 				},
 			})
 		}
@@ -350,4 +277,3 @@ export async function getCloudDownloadStatus(input: { jobId: string }) {
 	)
 	return status
 }
-
