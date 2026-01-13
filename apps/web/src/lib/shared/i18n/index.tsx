@@ -7,19 +7,14 @@ import {
 	type Locale,
 } from './config'
 
-import enMessages from '~/messages/en.json'
-import zhMessages from '~/messages/zh.json'
-
 export type Messages = Record<string, Record<string, {}>>
 
 export { DEFAULT_LOCALE }
 export type { Locale } from './config'
 export { getBcp47Locale } from './config'
 
-const messagesByLocale: Record<Locale, Messages> = {
-	en: enMessages as Messages,
-	zh: zhMessages as Messages,
-}
+const runtimeMessages = new Map<Locale, Messages>()
+const loadCache = new Map<Locale, Promise<Messages>>()
 
 export function readCookieValue(
 	cookieHeader: string,
@@ -52,7 +47,36 @@ export function getLocaleFromDocument(): Locale {
 }
 
 export function getMessages(locale: Locale): Messages {
-	return messagesByLocale[locale] ?? messagesByLocale[DEFAULT_LOCALE]
+	const normalized = getValidLocale(locale)
+	return runtimeMessages.get(normalized) ?? ({} as Messages)
+}
+
+export function setRuntimeMessages(locale: Locale, messages: Messages) {
+	if (typeof window === 'undefined') return
+	const normalized = getValidLocale(locale)
+	runtimeMessages.set(normalized, messages)
+}
+
+export async function loadMessages(locale: Locale): Promise<Messages> {
+	const normalized = getValidLocale(locale)
+	const runtime = runtimeMessages.get(normalized)
+	if (runtime) return runtime
+
+	const cached = loadCache.get(normalized)
+	if (cached) return cached
+
+	const promise = (async () => {
+		const mod =
+			normalized === 'zh'
+				? await import('~/messages/zh.json')
+				: await import('~/messages/en.json')
+		const messages = mod.default as Messages
+		setRuntimeMessages(normalized, messages)
+		return messages
+	})()
+
+	loadCache.set(normalized, promise)
+	return promise
 }
 
 export function setLocaleCookie(locale: Locale) {

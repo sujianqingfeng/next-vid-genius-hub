@@ -4,8 +4,8 @@ import {
 	DEFAULT_LOCALE,
 	getLocaleFromCookieHeader,
 	getLocaleFromDocument,
-	getMessages,
 	I18nProvider,
+	loadMessages,
 	type Messages,
 	setLocaleCookie,
 	useLocale,
@@ -14,7 +14,6 @@ import {
 
 export {
 	DEFAULT_LOCALE,
-	getMessages,
 	I18nProvider,
 	setLocaleCookie,
 	useLocale,
@@ -29,9 +28,9 @@ export const getInitialI18n = createIsomorphicFn()
 		const { getRequestHeaders } = await import('@tanstack/react-start/server')
 		const cookieHeader = getRequestHeaders().get('cookie')
 		const locale = getLocaleFromCookieHeader(cookieHeader)
-		return { locale, messages: getMessages(locale) }
+		return { locale, messages: await loadMessages(locale) }
 	})
-	.client(() => {
+	.client(async () => {
 		const locale = getLocaleFromDocument()
-		return { locale, messages: getMessages(locale) }
+		return { locale, messages: await loadMessages(locale) }
 	})

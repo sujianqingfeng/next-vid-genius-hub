@@ -6,7 +6,7 @@ import { getDb, schema } from '~/lib/infra/db'
 import {
 	createTranslator,
 	getLocaleFromCookieHeader,
-	getMessages,
+	loadMessages,
 } from '~/lib/shared/i18n'
 import { logger } from '~/lib/infra/logger'
 
@@ -17,9 +17,10 @@ export const Route = createFileRoute('/api/media/$id/comments-data')({
 				try {
 					const cookieHeader = getRequestHeaders().get('cookie')
 					const locale = getLocaleFromCookieHeader(cookieHeader)
+					const messages = await loadMessages(locale)
 					const t = createTranslator({
 						locale,
-						messages: getMessages(locale),
+						messages,
 						namespace: 'MediaComments',
 					})
 

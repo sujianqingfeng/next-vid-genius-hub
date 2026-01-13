@@ -1,5 +1,4 @@
-import { useEffect } from 'react'
-import { TanStackDevtools } from '@tanstack/react-devtools'
+import * as React from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import {
 	createRootRouteWithContext,
@@ -9,26 +8,30 @@ import {
 	Scripts,
 	useRouterState,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { ConfirmDialogProvider } from '~/components/business/layout/confirm-dialog-provider'
 import WorkspaceLayout from '~/components/business/layout/workspace-layout'
 import { Button } from '~/components/ui/button'
 import { Toaster } from '~/components/ui/sonner'
 import { TooltipProvider } from '~/components/ui/tooltip'
-import { useTranslations } from '~/lib/shared/i18n'
+import { setRuntimeMessages, useTranslations } from '~/lib/shared/i18n'
 import { ThemeProvider, ThemeScript } from '~/lib/shared/theme'
 import {
 	DEFAULT_LOCALE,
 	getInitialI18n,
-	getMessages,
 	I18nProvider,
 } from '~/lib/shared/i18n/start'
-import TanStackQueryDevtools from '~/lib/shared/query/devtools'
 import appCss from '~/styles.css?url'
 
 interface MyRouterContext {
 	queryClient: QueryClient
 }
+
+const DevtoolsOverlay = import.meta.env.DEV
+	? React.lazy(async () => {
+			const mod = await import('~/components/business/dev/devtools-overlay')
+			return { default: mod.DevtoolsOverlay }
+		})
+	: () => null
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
 	loader: async (_ctx) => getInitialI18n(),
@@ -85,9 +88,11 @@ function isWorkspacePath(pathname: string): boolean {
 function RootLayout() {
 	const data = Route.useLoaderData()
 	const locale = data?.locale ?? DEFAULT_LOCALE
-	const messages = data?.messages ?? getMessages(locale)
+	const messages = data?.messages ?? {}
 	const pathname = useRouterState({ select: (s) => s.location.pathname })
 	const isWorkspace = isWorkspacePath(pathname)
+
+	setRuntimeMessages(locale, messages)
 
 	const content = isWorkspace ? (
 		<WorkspaceLayout>
@@ -105,18 +110,11 @@ function RootLayout() {
 					<ConfirmDialogProvider>
 						{content}
 						<Toaster richColors position="top-right" />
-						<TanStackDevtools
-							config={{
-								position: 'bottom-right',
-							}}
-							plugins={[
-								{
-									name: 'Tanstack Router',
-									render: <TanStackRouterDevtoolsPanel />,
-								},
-								TanStackQueryDevtools,
-							]}
-						/>
+						{import.meta.env.DEV && typeof window !== 'undefined' ? (
+							<React.Suspense fallback={null}>
+								<DevtoolsOverlay />
+							</React.Suspense>
+						) : null}
 					</ConfirmDialogProvider>
 				</TooltipProvider>
 			</I18nProvider>
@@ -127,7 +125,7 @@ function RootLayout() {
 function I18nDocumentTitle() {
 	const t = useTranslations('Layout')
 
-	useEffect(() => {
+	React.useEffect(() => {
 		document.title = t('title')
 	}, [t])
 
