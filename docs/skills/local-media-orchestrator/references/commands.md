@@ -14,6 +14,9 @@ Command surface source:
 - Common optional flags:
   - `--job-id <id>`
   - `--state-dir <dir>`
+  - `--upload` (optional cloud upload)
+  - `--upload-base-url <url>` (or use `LOCAL_RUN_UPLOAD_BASE_URL` / `CF_ORCHESTRATOR_URL`)
+  - `--upload-prefix <prefix>` (default `local-run`)
 
 ## Job commands
 
@@ -54,6 +57,8 @@ Command surface source:
   - `{"channelUrlOrId":"<channel-url-or-id>","limit":5,"proxyUrl":"http://127.0.0.1:17890"}`
 - `render-subtitles` (bilingual overlap clip):
   - `{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}`
+- `render-subtitles` upload to cloud object store:
+  - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>"}' --upload --upload-base-url 'https://media-orchestrator.<account>.workers.dev' --upload-prefix 'shared'`
 - `comments-review` prepare/apply:
   - `{"dataPath":"<translated-snapshot.json>","mode":"prepare"}`
   - `{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}`

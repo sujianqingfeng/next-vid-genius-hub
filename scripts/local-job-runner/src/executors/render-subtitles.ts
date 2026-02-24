@@ -124,17 +124,39 @@ export const renderSubtitlesExecutor: LocalJobExecutor = async (ctx) => {
 
 	if (await ctx.isCanceled()) return
 
+	const outputs = {
+		video: {
+			path: outputPath,
+			contentType: 'video/mp4',
+		},
+	}
+
+	const objectStore = ctx.ports.objectStore
+	if (objectStore) {
+		await ctx.emit({
+			status: 'running',
+			phase: 'uploading',
+			progress: 0.95,
+			message: 'Uploading artifacts to object store',
+		})
+		const key = await objectStore.putFile(
+			`${ctx.jobId}/render-subtitles/video.mp4`,
+			outputPath,
+			'video/mp4',
+		)
+		outputs.video.key = key
+		if (objectStore.getUrl) {
+			const url = await objectStore.getUrl(key)
+			if (url) outputs.video.url = url
+		}
+	}
+
 	await ctx.emit({
 		status: 'completed',
 		phase: 'completed',
 		progress: 1,
 		message: 'Subtitle render completed',
-		outputs: {
-			video: {
-				path: outputPath,
-				contentType: 'video/mp4',
-			},
-		},
+		outputs,
 		metadata: {
 			overlapPolicy,
 			overlap: {

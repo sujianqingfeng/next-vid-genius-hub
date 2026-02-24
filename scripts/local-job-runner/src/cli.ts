@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import type { LocalJobKind, LocalJobSpec } from './contracts'
+import type { ExternalPorts, LocalJobKind, LocalJobSpec } from './contracts'
 import { listJobCommands, listLocalRunCommands } from './command-surface'
+import { createCloudObjectStorePort } from './executors/cloud-object-store'
 import { createLocalMediaOrchestrator } from './orchestrator'
 import { createJobId } from './state-store'
 
@@ -53,7 +54,7 @@ function printHelp(): void {
 
 	console.log(`local-run - local media orchestrator\n
 Usage:
-  local-run <command> [--input <file.json>] [--payload '<json>'] [--job-id <id>] [--state-dir <dir>]
+  local-run <command> [--input <file.json>] [--payload '<json>'] [--job-id <id>] [--state-dir <dir>] [--upload] [--upload-base-url <url>] [--upload-prefix <prefix>]
   local-run status <jobId> [--state-dir <dir>]
   local-run cancel <jobId> [--reason <text>] [--state-dir <dir>]
   local-run clean [--state-dir <dir>] [--days <n>] [--all] [--orphans-only] [--dry-run]
@@ -70,6 +71,7 @@ Examples:
   local-run clean --all
   local-run render-subtitles --input ./examples/subtitles-job.json
   local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}'
+  local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>"}' --upload --upload-base-url 'https://media-orchestrator.<account>.workers.dev' --upload-prefix 'shared'
   local-run status job_abc123
 `)
 }
@@ -95,6 +97,40 @@ function parseDays(flags: Record<string, string | boolean>): number {
 		throw new Error('--days must be a non-negative number')
 	}
 	return parsed
+}
+
+function resolveRunPorts(flags: Record<string, string | boolean>): ExternalPorts {
+	const uploadEnabled = isTruthyFlag(flags.upload) || isTruthyFlag(process.env.LOCAL_RUN_UPLOAD)
+	if (!uploadEnabled) return {}
+
+	const baseUrlFromFlag =
+		typeof flags['upload-base-url'] === 'string'
+			? flags['upload-base-url'].trim()
+			: ''
+	const baseUrl =
+		baseUrlFromFlag ||
+		String(process.env.LOCAL_RUN_UPLOAD_BASE_URL || process.env.CF_ORCHESTRATOR_URL || '').trim()
+	if (!baseUrl) {
+		throw new Error(
+			'--upload requires --upload-base-url or LOCAL_RUN_UPLOAD_BASE_URL / CF_ORCHESTRATOR_URL',
+		)
+	}
+
+	const keyPrefixFromFlag =
+		typeof flags['upload-prefix'] === 'string'
+			? flags['upload-prefix'].trim()
+			: ''
+	const keyPrefix =
+		keyPrefixFromFlag ||
+		String(process.env.LOCAL_RUN_UPLOAD_PREFIX || '').trim() ||
+		'local-run'
+
+	return {
+		objectStore: createCloudObjectStorePort({
+			baseUrl,
+			keyPrefix,
+		}),
+	}
 }
 
 async function removePath(target: string, dryRun: boolean): Promise<void> {
@@ -262,9 +298,8 @@ async function main(): Promise<void> {
 		return
 	}
 
-	const orchestrator = createLocalMediaOrchestrator({ stateDir })
-
 	if (command === 'status') {
+		const orchestrator = createLocalMediaOrchestrator({ stateDir })
 		const jobId = positional[1] || (typeof flags['job-id'] === 'string' ? flags['job-id'] : '')
 		if (!jobId) throw new Error('status requires <jobId> or --job-id')
 		const status = await orchestrator.getStatus(jobId)
@@ -273,6 +308,7 @@ async function main(): Promise<void> {
 	}
 
 	if (command === 'cancel') {
+		const orchestrator = createLocalMediaOrchestrator({ stateDir })
 		const jobId = positional[1] || (typeof flags['job-id'] === 'string' ? flags['job-id'] : '')
 		if (!jobId) throw new Error('cancel requires <jobId> or --job-id')
 		const reason = typeof flags.reason === 'string' ? flags.reason : undefined
@@ -300,6 +336,8 @@ async function main(): Promise<void> {
 		createdAt: Date.now(),
 	}
 
+	const ports = resolveRunPorts(flags)
+	const orchestrator = createLocalMediaOrchestrator({ stateDir, ports })
 	const result = await orchestrator.runJob(spec)
 	const status = await orchestrator.getStatus(result.jobId)
 	console.log(

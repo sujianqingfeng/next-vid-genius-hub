@@ -491,28 +491,49 @@ export const renderCommentsExecutor: LocalJobExecutor = async (ctx) => {
 		void fs.unlink(overlayPath).catch(() => {})
 	}
 
+	const outputs = {
+		video: {
+			path: outputPath,
+			contentType: 'video/mp4',
+		},
+	}
+	const objectStore = ctx.ports.objectStore
+	if (objectStore) {
+		await ctx.emit({
+			status: 'running',
+			phase: 'uploading',
+			progress: 0.98,
+			message: 'Uploading artifacts to object store',
+		})
+		const key = await objectStore.putFile(
+			`${ctx.jobId}/render-comments/video.mp4`,
+			outputPath,
+			'video/mp4',
+		)
+		outputs.video.key = key
+		if (objectStore.getUrl) {
+			const url = await objectStore.getUrl(key)
+			if (url) outputs.video.url = url
+		}
+	}
+
 	await ctx.emit({
 		status: 'completed',
 		phase: 'completed',
 		progress: 1,
 		message: 'Comments render completed',
-		outputs: {
-			video: {
-				path: outputPath,
-				contentType: 'video/mp4',
-			},
+		outputs,
+		metadata: {
+			compositionId,
+			durationInFrames,
+			fps: REMOTION_FPS,
+			composedWithSource: shouldComposeWithSource,
+			avatarMode: resolvedAvatarMode,
+			avatarTotalCount,
+			avatarInlinedCount,
+			avatarDroppedCount,
 		},
-			metadata: {
-				compositionId,
-				durationInFrames,
-				fps: REMOTION_FPS,
-				composedWithSource: shouldComposeWithSource,
-				avatarMode: resolvedAvatarMode,
-				avatarTotalCount,
-				avatarInlinedCount,
-				avatarDroppedCount,
-			},
-		})
+	})
 
 	void fs.rm(bundleOutDir, { recursive: true, force: true }).catch(() => {})
 }

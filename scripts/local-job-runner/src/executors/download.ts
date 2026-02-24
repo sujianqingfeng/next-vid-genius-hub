@@ -97,7 +97,8 @@ export const downloadExecutor: LocalJobExecutor = async (ctx) => {
 		metadata: { path: metadataPath, contentType: 'application/json' },
 	}
 
-	if (ctx.ports.objectStore) {
+	const objectStore = ctx.ports.objectStore
+	if (objectStore) {
 		await ctx.emit({
 			status: 'running',
 			phase: 'uploading',
@@ -107,18 +108,18 @@ export const downloadExecutor: LocalJobExecutor = async (ctx) => {
 		const prefix = `${ctx.jobId}/download`
 		const [videoKey, audioSourceKey, audioProcessedKey, metadataKey] =
 			await Promise.all([
-				ctx.ports.objectStore.putFile(`${prefix}/video.mp4`, videoPath, 'video/mp4'),
-				ctx.ports.objectStore.putFile(
+				objectStore.putFile(`${prefix}/video.mp4`, videoPath, 'video/mp4'),
+				objectStore.putFile(
 					`${prefix}/audio.source.mka`,
 					audioSourcePath,
 					'audio/x-matroska',
 				),
-				ctx.ports.objectStore.putFile(
+				objectStore.putFile(
 					`${prefix}/audio.processed.wav`,
 					audioProcessedPath,
 					'audio/wav',
 				),
-				ctx.ports.objectStore.putFile(
+				objectStore.putFile(
 					`${prefix}/metadata.json`,
 					metadataPath,
 					'application/json',
@@ -128,6 +129,19 @@ export const downloadExecutor: LocalJobExecutor = async (ctx) => {
 		outputs.audioSource.key = audioSourceKey
 		outputs.audioProcessed.key = audioProcessedKey
 		outputs.metadata.key = metadataKey
+		if (objectStore.getUrl) {
+			const [videoUrl, audioSourceUrl, audioProcessedUrl, metadataUrl] =
+				await Promise.all([
+					objectStore.getUrl(videoKey),
+					objectStore.getUrl(audioSourceKey),
+					objectStore.getUrl(audioProcessedKey),
+					objectStore.getUrl(metadataKey),
+				])
+			if (videoUrl) outputs.video.url = videoUrl
+			if (audioSourceUrl) outputs.audioSource.url = audioSourceUrl
+			if (audioProcessedUrl) outputs.audioProcessed.url = audioProcessedUrl
+			if (metadataUrl) outputs.metadata.url = metadataUrl
+		}
 	}
 
 	await ctx.emit({

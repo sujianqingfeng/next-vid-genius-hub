@@ -96,6 +96,7 @@ export type AsrTranscribeResult = {
 export type LocalObjectStorePort = {
 	putFile: (key: string, localPath: string, contentType?: string) => Promise<string>
 	putText: (key: string, text: string, contentType?: string) => Promise<string>
+	getUrl?: (key: string) => Promise<string | undefined>
 }
 
 export type ExternalPorts = {
