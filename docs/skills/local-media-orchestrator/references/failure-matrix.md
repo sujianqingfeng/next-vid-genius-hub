@@ -75,13 +75,16 @@
 
 ## `pnpm local-run:check-boundary` failed
 
-- Cause: `fetch()` usage outside `executors/`.
+- Cause: outbound-network usage outside `executors/` (for example `fetch()`, `node:http/https`, `axios/got/ky/undici` imports).
 - Fix: move outbound network logic into an executor module.
 
 ## `pnpm local-run:check-skill-doc` failed
 
-- Cause: `SKILL.md` command list drifted from actual local-run command surface.
+- Cause: command lists drifted from actual local-run command surface in one or more of:
+  - `docs/skills/local-media-orchestrator/SKILL.md`
+  - `docs/skills/local-media-orchestrator/references/commands.md`
+  - CLI `help` output (`scripts/local-job-runner/src/cli.ts`)
 - Fix:
-  - sync command list in `docs/skills/local-media-orchestrator/SKILL.md`
+  - sync command list docs to match `scripts/local-job-runner/src/command-surface.ts`
   - keep one `pnpm local-run <command>` entry for each supported command
   - rerun `pnpm local-run:check`

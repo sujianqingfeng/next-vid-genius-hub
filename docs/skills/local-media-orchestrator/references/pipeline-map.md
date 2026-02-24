@@ -3,6 +3,7 @@
 ## Local runner entrypoints
 
 - `scripts/local-job-runner/src/cli.ts`
+- `scripts/local-job-runner/src/command-surface.ts`
 - `scripts/local-job-runner/src/orchestrator.ts`
 - `scripts/local-job-runner/src/state-store.ts`
 - `scripts/local-job-runner/src/dispatch.ts`

@@ -2,10 +2,12 @@
 
 ## Fast path (scripted)
 
-- Run:
-  - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --skip-proxy`
+- Static guard-only run (doc + boundary checks + clean dry-run):
+  - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --mode static --skip-proxy`
+- Minimal executable run (includes one `render-subtitles` local job):
+  - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --mode minimal-run --skip-proxy`
 - With proxy probe enabled:
-  - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --proxy-url http://127.0.0.1:17890`
+  - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --mode static --proxy-url http://127.0.0.1:17890`
 
 ## Prerequisites
 
@@ -93,5 +95,5 @@
 - Run:
   - `pnpm local-run:check`
 - Verify:
-  - no `fetch()` found outside `executors/`
-  - skill command list stays aligned with local-run command surface
+  - no outbound network usage (`fetch`, `node:http/https`, common HTTP clients) outside `executors/`
+  - `SKILL.md`, `references/commands.md`, and CLI `help` command list stay aligned with local-run command surface

@@ -1,5 +1,10 @@
 # Commands Reference
 
+Command surface source:
+
+- `scripts/local-job-runner/src/command-surface.ts`
+- `pnpm local-run:check-skill-doc` verifies this doc, `SKILL.md`, and CLI `help` output stay aligned.
+
 ## Global usage
 
 - Recommended for repeatability:

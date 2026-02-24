@@ -7,6 +7,15 @@ description: Local-first media orchestration for this repository using Node scri
 
 Implement and run media workflows via `scripts/local-job-runner` with JSON state stored in `.local-jobs`.
 
+## Quick start
+
+1. Validate local guardrails:
+   - `pnpm local-run:check`
+2. Run scripted smoke in static mode:
+   - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --mode static --skip-proxy`
+3. Run one dynamic smoke job (optional, validates executable path):
+   - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --mode minimal-run --skip-proxy`
+
 ## Core rules
 
 - Keep the orchestration core API-first and local-only:
@@ -20,6 +29,8 @@ Implement and run media workflows via `scripts/local-job-runner` with JSON state
 - Prefer `--input <file.json>` for reusable runs; use `--payload` only for quick one-off experiments.
 
 ## Commands (authoritative surface)
+
+Command names are sourced from `scripts/local-job-runner/src/command-surface.ts` and verified by `pnpm local-run:check`.
 
 - `pnpm local-run download --input <file.json>`
 - `pnpm local-run render-subtitles --input <file.json>`

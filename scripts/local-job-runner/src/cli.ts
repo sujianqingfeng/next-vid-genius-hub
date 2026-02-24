@@ -2,7 +2,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { LocalJobKind, LocalJobSpec } from './contracts'
-import { listSupportedKinds } from './dispatch'
+import { listJobCommands, listLocalRunCommands } from './command-surface'
 import { createLocalMediaOrchestrator } from './orchestrator'
 import { createJobId } from './state-store'
 
@@ -47,6 +47,10 @@ function parseArgs(argv: string[]): ParsedArgs {
 }
 
 function printHelp(): void {
+	const commandLines = listLocalRunCommands()
+		.map((command) => `  ${command}`)
+		.join('\n')
+
 	console.log(`local-run - local media orchestrator\n
 Usage:
   local-run <command> [--input <file.json>] [--payload '<json>'] [--job-id <id>] [--state-dir <dir>]
@@ -55,19 +59,7 @@ Usage:
   local-run clean [--state-dir <dir>] [--days <n>] [--all] [--orphans-only] [--dry-run]
 
 Commands:
-  download
-  render-subtitles
-  render-comments
-  comments-translate
-  comments-review
-  comments-download
-  channel-sync
-  thread-asset-ingest
-  asr
-  proxy-check
-  status
-  cancel
-  clean
+${commandLines}
 
 Examples:
   local-run download --payload '{"url":"https://www.youtube.com/watch?v=...","quality":"1080p"}'
@@ -249,7 +241,7 @@ async function loadPayload(flags: Record<string, string | boolean>): Promise<Rec
 }
 
 function isSupportedKind(kind: string): kind is LocalJobKind {
-	return listSupportedKinds().includes(kind as LocalJobKind)
+	return listJobCommands().includes(kind as LocalJobKind)
 }
 
 async function main(): Promise<void> {
@@ -291,7 +283,7 @@ async function main(): Promise<void> {
 
 	if (!isSupportedKind(command)) {
 		throw new Error(
-			`Unsupported command: ${command}. Supported: ${listSupportedKinds().join(', ')}`,
+			`Unsupported command: ${command}. Supported: ${listJobCommands().join(', ')}`,
 		)
 	}
 
