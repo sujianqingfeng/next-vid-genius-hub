@@ -29,9 +29,12 @@
 
 - Run:
   - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<subtitles.vtt>"}'`
+- Optional (for bilingual/multi-line VTT with overlap):
+  - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}'`
 - Verify:
   - output video exists
   - progress increases monotonically in job state
+  - if overlap clipping is enabled, final metadata shows overlap reduction (`metadata.overlap`)
 
 ## 3) Comments render
 

@@ -44,6 +44,18 @@ Implement and run media workflows via `scripts/local-job-runner`.
 - `pnpm local-run status <jobId>`
 - `pnpm local-run cancel <jobId>`
 
+## Subtitle workflow tips
+
+- Recommended chain for burned subtitles:
+  - `download` -> `asr` -> (optional translation/bilingual transform) -> `render-subtitles`
+- `render-subtitles` supports overlap handling for readability via `overlapPolicy`:
+  - `auto-clip` (default): clip overlaps only when VTT looks bilingual/multi-line and overlap risk is high
+  - `force-clip`: always clip overlapping cues
+  - `preserve`: keep source timings unchanged
+- For bilingual subtitles, prefer `overlapPolicy: "force-clip"` to avoid 4-line stacking caused by overlapping cues.
+- Example:
+  - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}'`
+
 ## Translation note (comments render)
 
 - `comments-download` only fetches source-language comments. It does not run AI translation.

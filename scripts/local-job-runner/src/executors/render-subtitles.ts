@@ -7,6 +7,7 @@ import {
 import type { LocalJobExecutor } from '../contracts'
 import { ensureDir, resolveOutputPath } from '../fs-utils'
 import { materializeInputFile, readTextFromPathOrUrl } from './io'
+import { clipVttOverlaps, inspectVttOverlap } from './vtt-overlap'
 
 type RenderSubtitlesInput = {
 	videoPath?: string
@@ -17,6 +18,9 @@ type RenderSubtitlesInput = {
 	outputPath?: string
 	outputDir?: string
 	subtitleConfig?: SubtitleRenderConfig
+	overlapPolicy?: 'preserve' | 'auto-clip' | 'force-clip'
+	overlapGapSec?: number
+	minCueDurationSec?: number
 }
 
 export const renderSubtitlesExecutor: LocalJobExecutor = async (ctx) => {
@@ -62,17 +66,46 @@ export const renderSubtitlesExecutor: LocalJobExecutor = async (ctx) => {
 				timeoutMs: 30_000,
 			})
 
+	const overlapPolicy =
+		input.overlapPolicy === 'preserve' || input.overlapPolicy === 'force-clip'
+			? input.overlapPolicy
+			: 'auto-clip'
+	const overlapBefore = inspectVttOverlap(subtitleText)
+	const shouldClipOverlaps =
+		overlapPolicy === 'force-clip' ||
+		(overlapPolicy === 'auto-clip' &&
+			overlapBefore.overlaps > 0 &&
+			overlapBefore.avgLinesPerCue >= 1.5)
+
+	let subtitleTextForRender = subtitleText
+	let overlapAfter = overlapBefore
+	let clippedOverlaps = 0
+	let overlapChanged = false
+
+	if (shouldClipOverlaps) {
+		const clipped = clipVttOverlaps(subtitleText, {
+			gapSec: input.overlapGapSec,
+			minDurationSec: input.minCueDurationSec,
+		})
+		subtitleTextForRender = clipped.vtt
+		clippedOverlaps = clipped.clippedOverlaps
+		overlapChanged = clipped.changed
+		overlapAfter = inspectVttOverlap(subtitleTextForRender)
+	}
+
 	if (await ctx.isCanceled()) return
 	await ctx.emit({
 		status: 'running',
 		phase: 'running',
 		progress: 0.2,
-		message: 'Rendering subtitles with ffmpeg',
+		message: overlapChanged
+			? 'Rendering subtitles with ffmpeg (overlap-normalized)'
+			: 'Rendering subtitles with ffmpeg',
 	})
 
 	await renderVideoWithSubtitles(
 		preparedVideoPath,
-		subtitleText,
+		subtitleTextForRender,
 		outputPath,
 		input.subtitleConfig,
 		{
@@ -100,6 +133,15 @@ export const renderSubtitlesExecutor: LocalJobExecutor = async (ctx) => {
 			video: {
 				path: outputPath,
 				contentType: 'video/mp4',
+			},
+		},
+		metadata: {
+			overlapPolicy,
+			overlap: {
+				before: overlapBefore,
+				after: overlapAfter,
+				clippedOverlaps,
+				changed: overlapChanged,
 			},
 		},
 	})

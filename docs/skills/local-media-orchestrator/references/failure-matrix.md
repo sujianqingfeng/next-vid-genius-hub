@@ -30,6 +30,17 @@
 - Cause: missing ASR key/model/url, provider returned non-2xx, or unsupported payload shape.
 - Fix: set `ASR_API_KEY` (or `input.apiKey`), confirm endpoint/model, inspect saved job error.
 
+## Subtitle render shows 4 stacked lines in bilingual output
+
+- Cause: consecutive VTT cues overlap in time; each cue has 2 lines (EN+ZH), so two active cues become 4 visible lines.
+- Fix:
+  - run `render-subtitles` with overlap clipping:
+    - `overlapPolicy: "force-clip"` (recommended for bilingual)
+    - or keep default `auto-clip` when source follows expected bilingual layout
+  - if needed, tune `overlapGapSec` / `minCueDurationSec`.
+- Example:
+  - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}'`
+
 ## `failed` in comments-translate stage
 
 - Cause: missing translation key/model/url, provider returned non-2xx, or response is not valid JSON array payload.

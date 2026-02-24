@@ -77,6 +77,7 @@ Examples:
   local-run clean --days 3 --dry-run
   local-run clean --all
   local-run render-subtitles --input ./examples/subtitles-job.json
+  local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}'
   local-run status job_abc123
 `)
 }
