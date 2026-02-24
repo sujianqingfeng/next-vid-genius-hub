@@ -11,6 +11,20 @@ type ParsedArgs = {
 	flags: Record<string, string | boolean>
 }
 
+type CleanupSummary = {
+	stateDir: string
+	all: boolean
+	dryRun: boolean
+	orphansOnly: boolean
+	days: number
+	removedJobDocs: number
+	removedJobArtifacts: number
+	removedOrphanArtifacts: number
+	keptActiveJobs: number
+	keptRecentTerminalJobs: number
+	errors: string[]
+}
+
 function parseArgs(argv: string[]): ParsedArgs {
 	const positional: string[] = []
 	const flags: Record<string, string | boolean> = {}
@@ -38,6 +52,7 @@ Usage:
   local-run <command> [--input <file.json>] [--payload '<json>'] [--job-id <id>] [--state-dir <dir>]
   local-run status <jobId> [--state-dir <dir>]
   local-run cancel <jobId> [--reason <text>] [--state-dir <dir>]
+  local-run clean [--state-dir <dir>] [--days <n>] [--all] [--orphans-only] [--dry-run]
 
 Commands:
   download
@@ -52,15 +67,164 @@ Commands:
   proxy-check
   status
   cancel
+  clean
 
 Examples:
   local-run download --payload '{"url":"https://www.youtube.com/watch?v=...","quality":"1080p"}'
   local-run comments-translate --payload '{"dataPath":"./comments-snapshot.json","targetLanguage":"zh-CN"}'
   local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"prepare"}'
   local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"apply","reviewPath":"./comments-review.template.json"}'
+  local-run clean --days 3 --dry-run
+  local-run clean --all
   local-run render-subtitles --input ./examples/subtitles-job.json
   local-run status job_abc123
 `)
+}
+
+function isTruthyFlag(value: string | boolean | undefined): boolean {
+	if (value === true) return true
+	if (typeof value !== 'string') return false
+	const normalized = value.trim().toLowerCase()
+	return (
+		normalized === '1' ||
+		normalized === 'true' ||
+		normalized === 'yes' ||
+		normalized === 'y' ||
+		normalized === 'on'
+	)
+}
+
+function parseDays(flags: Record<string, string | boolean>): number {
+	const raw = flags.days
+	if (raw == null || raw === false) return 3
+	const parsed = Number(raw)
+	if (!Number.isFinite(parsed) || parsed < 0) {
+		throw new Error('--days must be a non-negative number')
+	}
+	return parsed
+}
+
+async function removePath(target: string, dryRun: boolean): Promise<void> {
+	if (dryRun) return
+	await fs.rm(target, { recursive: true, force: true })
+}
+
+async function listJobDocs(stateDir: string): Promise<string[]> {
+	const entries = await fs.readdir(stateDir, { withFileTypes: true }).catch(() => [])
+	return entries
+		.filter((entry) => entry.isFile() && /^job_.+\.json$/.test(entry.name))
+		.map((entry) => path.join(stateDir, entry.name))
+}
+
+async function listArtifactDirs(stateDir: string): Promise<string[]> {
+	const artifactsDir = path.join(stateDir, 'artifacts')
+	const entries = await fs
+		.readdir(artifactsDir, { withFileTypes: true })
+		.catch(() => [])
+	return entries
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => path.join(artifactsDir, entry.name))
+}
+
+async function cleanLocalJobs(
+	stateDirInput: string,
+	flags: Record<string, string | boolean>,
+): Promise<CleanupSummary> {
+	const stateDir = path.resolve(stateDirInput)
+	const all = isTruthyFlag(flags.all)
+	const dryRun = isTruthyFlag(flags['dry-run'])
+	const orphansOnly = isTruthyFlag(flags['orphans-only'])
+	const days = parseDays(flags)
+
+	const summary: CleanupSummary = {
+		stateDir,
+		all,
+		dryRun,
+		orphansOnly,
+		days,
+		removedJobDocs: 0,
+		removedJobArtifacts: 0,
+		removedOrphanArtifacts: 0,
+		keptActiveJobs: 0,
+		keptRecentTerminalJobs: 0,
+		errors: [],
+	}
+
+	const stateDirExists = await fs
+		.stat(stateDir)
+		.then((st) => st.isDirectory())
+		.catch(() => false)
+	if (!stateDirExists) return summary
+
+	const terminalStatuses = new Set(['completed', 'failed', 'canceled'])
+	const now = Date.now()
+	const cutoffTs = now - days * 24 * 60 * 60 * 1000
+
+	if (all) {
+		const docs = await listJobDocs(stateDir)
+		const artifactDirs = await listArtifactDirs(stateDir)
+		summary.removedJobDocs = docs.length
+		summary.removedJobArtifacts = artifactDirs.length
+		await removePath(stateDir, dryRun)
+		if (!dryRun) {
+			await fs.mkdir(stateDir, { recursive: true })
+		}
+		return summary
+	}
+
+	if (!orphansOnly) {
+		const docs = await listJobDocs(stateDir)
+		for (const docPath of docs) {
+			try {
+				const docText = await fs.readFile(docPath, 'utf8')
+				const doc = JSON.parse(docText) as Record<string, unknown>
+				const status = String(doc.status || '').trim().toLowerCase()
+				const stat = await fs.stat(docPath)
+				const isTerminal = terminalStatuses.has(status)
+				if (!isTerminal) {
+					summary.keptActiveJobs += 1
+					continue
+				}
+				if (stat.mtimeMs > cutoffTs) {
+					summary.keptRecentTerminalJobs += 1
+					continue
+				}
+
+				const jobId = path.basename(docPath, '.json')
+				await removePath(docPath, dryRun)
+				summary.removedJobDocs += 1
+
+				const artifactDir = path.join(stateDir, 'artifacts', jobId)
+				const hasArtifacts = await fs
+					.stat(artifactDir)
+					.then((s) => s.isDirectory())
+					.catch(() => false)
+				if (hasArtifacts) {
+					await removePath(artifactDir, dryRun)
+					summary.removedJobArtifacts += 1
+				}
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error)
+				summary.errors.push(`${path.basename(docPath)}: ${message}`)
+			}
+		}
+	}
+
+	const artifactDirs = await listArtifactDirs(stateDir)
+	for (const dirPath of artifactDirs) {
+		const jobId = path.basename(dirPath)
+		const statePath = path.join(stateDir, `${jobId}.json`)
+		const hasState = await fs
+			.stat(statePath)
+			.then((st) => st.isFile())
+			.catch(() => false)
+		if (!hasState) {
+			await removePath(dirPath, dryRun)
+			summary.removedOrphanArtifacts += 1
+		}
+	}
+
+	return summary
 }
 
 async function loadPayload(flags: Record<string, string | boolean>): Promise<Record<string, unknown>> {
@@ -98,6 +262,13 @@ async function main(): Promise<void> {
 	}
 
 	const stateDir = typeof flags['state-dir'] === 'string' ? flags['state-dir'] : '.local-jobs'
+
+	if (command === 'clean') {
+		const result = await cleanLocalJobs(stateDir, flags)
+		console.log(JSON.stringify(result, null, 2))
+		return
+	}
+
 	const orchestrator = createLocalMediaOrchestrator({ stateDir })
 
 	if (command === 'status') {
