@@ -20,6 +20,19 @@
 - Cause: missing ASR key/model/url, provider returned non-2xx, or unsupported payload shape.
 - Fix: set `ASR_API_KEY` (or `input.apiKey`), confirm endpoint/model, inspect saved job error.
 
+## `failed` with `fetch failed` in comments/channel provider flows
+
+- Cause: provider endpoint is blocked/unreachable on direct path, or local DNS/TLS path is hijacked.
+- Typical signal: TLS name mismatch such as `ERR_TLS_CERT_ALTNAME_INVALID` when requesting YouTube.
+- Fix: run provider flows with explicit `proxyUrl`, and verify with:
+  - `curl -x http://127.0.0.1:17890 -I https://www.youtube.com`
+
+## `failed` with proxy connection refused
+
+- Cause: proxy core not running, wrong local port, or port conflict.
+- Typical signal: `Failed to connect to 127.0.0.1:<port>`.
+- Fix: use an available dedicated local port (recommended `17890`) and update payload `proxyUrl`.
+
 ## Terminal state overwritten concerns
 
 - Protection: `state-store.ts` blocks non-terminal updates after terminal state.

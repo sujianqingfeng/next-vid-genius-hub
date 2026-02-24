@@ -18,6 +18,17 @@ Implement and run media workflows via `scripts/local-job-runner`.
 - Do not call internal repository APIs (`/api/*`, local app worker, local orchestrator worker).
 - Allow outbound network only in `executors/*`.
 
+## Proxy guidance (provider flows)
+
+- `comments-download` and `channel-sync` should pass `input.proxyUrl` in environments where direct access to provider endpoints is unstable or blocked.
+- Do not assume `7890` is available. For smoke runs in this repo, use a dedicated non-default local port such as `17890`.
+- Validate proxy path before provider flow runs:
+  - `curl -x http://127.0.0.1:17890 -I https://www.youtube.com`
+- Example commands:
+  - `pnpm local-run comments-download --payload '{"url":"https://www.youtube.com/watch?v=...","source":"youtube","proxyUrl":"http://127.0.0.1:17890"}'`
+  - `pnpm local-run channel-sync --payload '{"channelUrlOrId":"<channel-url-or-id>","limit":5,"proxyUrl":"http://127.0.0.1:17890"}'`
+- Keep subscription URLs and credentials out of repo files; load them in local runtime only.
+
 ## Commands
 
 - `pnpm local-run download --payload '{...}'`
