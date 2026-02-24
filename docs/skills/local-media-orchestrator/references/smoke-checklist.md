@@ -37,14 +37,35 @@
 
 - Run:
   - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>"}'`
+- Optional (if remote avatars are unstable):
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","avatarMode":"initial"}'`
 - Verify:
   - output video exists
   - composition metadata saved in job state
 
-## 3.1) Comments render + source compose
+## 3.0) Comments translate (optional before render)
 
 - Run:
-  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","sourceVideoPath":"<source.mp4>","composeMode":"compose-on-video"}'`
+  - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}'`
+- Verify:
+  - output snapshot exists
+  - output includes `videoInfo.translatedTitle` and `comments[].translatedContent` (for translated items)
+
+## 3.1) Comments review (recommended before render)
+
+- Run:
+  - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"prepare"}'`
+  - edit template and set each item `decision` to `keep` or `remove`
+  - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}'`
+- Verify:
+  - reviewed snapshot exists
+  - removed comments list exists
+  - strict apply fails when decisions remain `pending`
+
+## 3.2) Comments render + source compose
+
+- Run:
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.reviewed.json>","sourceVideoPath":"<source.mp4>","composeMode":"compose-on-video"}'`
 - Verify:
   - final output video exists
   - job metadata has `"composedWithSource": true`

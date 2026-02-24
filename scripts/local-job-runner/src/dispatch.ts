@@ -2,6 +2,8 @@ import type { LocalJobExecutor, LocalJobKind } from './contracts'
 import { asrExecutor } from './executors/asr'
 import { channelSyncExecutor } from './executors/channel-sync'
 import { commentsDownloadExecutor } from './executors/comments-download'
+import { commentsReviewExecutor } from './executors/comments-review'
+import { commentsTranslateExecutor } from './executors/comments-translate'
 import { downloadExecutor } from './executors/download'
 import { proxyCheckExecutor } from './executors/proxy-check'
 import { renderCommentsExecutor } from './executors/render-comments'
@@ -12,6 +14,8 @@ const EXECUTORS: Record<LocalJobKind, LocalJobExecutor> = {
 	download: downloadExecutor,
 	'render-subtitles': renderSubtitlesExecutor,
 	'render-comments': renderCommentsExecutor,
+	'comments-translate': commentsTranslateExecutor,
+	'comments-review': commentsReviewExecutor,
 	'comments-download': commentsDownloadExecutor,
 	'channel-sync': channelSyncExecutor,
 	'thread-asset-ingest': threadAssetIngestExecutor,

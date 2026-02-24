@@ -5,6 +5,7 @@ import type { Comment, VideoInfo } from '@app/media-domain'
 import {
 	buildCommentTimeline,
 	buildComposeArgs,
+	inlineRemoteImage,
 	type SlotLayout,
 	REMOTION_FPS,
 } from '@app/media-comments'
@@ -30,9 +31,39 @@ type RenderCommentsInput = {
 	outputDir?: string
 	templateId?: 'comments-default' | 'comments-vertical' | 'thread-forum'
 	templateConfig?: Record<string, unknown>
+	avatarMode?: 'remote' | 'inline' | 'initial'
+	avatarProxyUrl?: string
+	avatarTimeoutMs?: number
+	avatarInlineConcurrency?: number
 	remotionEntry?: string
 	chromeMode?: 'headless-shell' | 'chrome-for-testing'
 	browserExecutable?: string
+}
+
+function isRemoteHttpUrl(value: unknown): value is string {
+	return typeof value === 'string' && /^https?:\/\//i.test(value)
+}
+
+async function mapWithConcurrency<T, R>(
+	items: T[],
+	concurrency: number,
+	worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+	if (items.length === 0) return []
+	const limit = Math.max(1, Math.floor(concurrency))
+	const results = new Array<R>(items.length)
+	let cursor = 0
+
+	const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+		while (true) {
+			const index = cursor++
+			if (index >= items.length) return
+			results[index] = await worker(items[index], index)
+		}
+	})
+
+	await Promise.all(runners)
+	return results
 }
 
 function normalizeLayout(value: unknown): SlotLayout | undefined {
@@ -217,6 +248,11 @@ export const renderCommentsExecutor: LocalJobExecutor = async (ctx) => {
 	let coverDurationInFrames = REMOTION_FPS * 3
 	let durationInFrames = REMOTION_FPS * 5
 	let inputProps: Record<string, unknown>
+	let avatarInlinedCount = 0
+	let avatarDroppedCount = 0
+	let avatarTotalCount = 0
+	let resolvedAvatarMode: RenderCommentsInput['avatarMode'] =
+		input.avatarMode || 'inline'
 
 	const looksLikeThread =
 		input.templateId === 'thread-forum' || raw.kind === 'thread-render-snapshot'
@@ -245,8 +281,78 @@ export const renderCommentsExecutor: LocalJobExecutor = async (ctx) => {
 			templateConfig: input.templateConfig ?? threadProps.templateConfig,
 		}
 	} else {
-		const comments = ensureCommentsArray(raw.comments)
-		const videoInfo = ensureVideoInfo(raw.videoInfo)
+		let comments = ensureCommentsArray(raw.comments)
+		let videoInfo = ensureVideoInfo(raw.videoInfo)
+
+		resolvedAvatarMode = input.avatarMode || 'inline'
+		if (resolvedAvatarMode !== 'remote') {
+			if (await ctx.isCanceled()) return
+			await ctx.emit({
+				status: 'running',
+				phase: 'preparing',
+				progress: 0.12,
+				message: 'Preparing avatar assets',
+			})
+
+			const avatarTimeoutMs = Number(input.avatarTimeoutMs || 12_000)
+			const avatarInlineConcurrency = Math.max(
+				1,
+				Math.min(12, Number(input.avatarInlineConcurrency || 4)),
+			)
+			const avatarProxyUrl =
+				typeof input.avatarProxyUrl === 'string' && input.avatarProxyUrl.trim()
+					? input.avatarProxyUrl.trim()
+					: undefined
+
+			comments = await mapWithConcurrency(
+				comments,
+				avatarInlineConcurrency,
+				async (comment) => {
+					if (await ctx.isCanceled()) return comment
+					if (!comment.authorThumbnail) return comment
+
+					avatarTotalCount += 1
+					if (resolvedAvatarMode === 'initial') {
+						avatarDroppedCount += 1
+						return { ...comment, authorThumbnail: undefined }
+					}
+
+					const inlined = await inlineRemoteImage(comment.authorThumbnail, {
+						proxyUrl: avatarProxyUrl,
+						timeoutMs: avatarTimeoutMs,
+					})
+					if (typeof inlined === 'string' && inlined.startsWith('data:image/')) {
+						avatarInlinedCount += 1
+						return { ...comment, authorThumbnail: inlined }
+					}
+					if (isRemoteHttpUrl(comment.authorThumbnail)) {
+						avatarDroppedCount += 1
+						return { ...comment, authorThumbnail: undefined }
+					}
+					return comment
+				},
+			)
+
+			const mediaThumb = videoInfo.thumbnail
+			if (resolvedAvatarMode === 'initial' && mediaThumb) {
+				videoInfo = { ...videoInfo, thumbnail: undefined }
+			} else if (resolvedAvatarMode === 'inline' && mediaThumb) {
+				const inlined = await inlineRemoteImage(mediaThumb, {
+					proxyUrl: avatarProxyUrl,
+					timeoutMs: avatarTimeoutMs,
+				})
+				videoInfo = {
+					...videoInfo,
+					thumbnail:
+						typeof inlined === 'string' && inlined.startsWith('data:image/')
+							? inlined
+							: isRemoteHttpUrl(mediaThumb)
+								? undefined
+								: mediaThumb,
+				}
+			}
+		}
+
 		const timeline = buildCommentTimeline(comments, REMOTION_FPS)
 		coverDurationInFrames = timeline.coverDurationInFrames
 		durationInFrames = timeline.totalDurationInFrames
@@ -396,13 +502,17 @@ export const renderCommentsExecutor: LocalJobExecutor = async (ctx) => {
 				contentType: 'video/mp4',
 			},
 		},
-		metadata: {
-			compositionId,
-			durationInFrames,
-			fps: REMOTION_FPS,
-			composedWithSource: shouldComposeWithSource,
-		},
-	})
+			metadata: {
+				compositionId,
+				durationInFrames,
+				fps: REMOTION_FPS,
+				composedWithSource: shouldComposeWithSource,
+				avatarMode: resolvedAvatarMode,
+				avatarTotalCount,
+				avatarInlinedCount,
+				avatarDroppedCount,
+			},
+		})
 
 	void fs.rm(bundleOutDir, { recursive: true, force: true }).catch(() => {})
 }

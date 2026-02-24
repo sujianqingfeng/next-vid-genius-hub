@@ -34,6 +34,8 @@ Implement and run media workflows via `scripts/local-job-runner`.
 - `pnpm local-run download --payload '{...}'`
 - `pnpm local-run render-subtitles --payload '{...}'`
 - `pnpm local-run render-comments --payload '{...}'`
+- `pnpm local-run comments-translate --payload '{...}'`
+- `pnpm local-run comments-review --payload '{...}'`
 - `pnpm local-run comments-download --payload '{...}'`
 - `pnpm local-run channel-sync --payload '{...}'`
 - `pnpm local-run thread-asset-ingest --payload '{...}'`
@@ -41,6 +43,30 @@ Implement and run media workflows via `scripts/local-job-runner`.
 - `pnpm local-run proxy-check --payload '{...}'`
 - `pnpm local-run status <jobId>`
 - `pnpm local-run cancel <jobId>`
+
+## Translation note (comments render)
+
+- `comments-download` only fetches source-language comments. It does not run AI translation.
+- Use `comments-translate` between download and render if translated title/comments are required.
+- `render-comments` only consumes what is already in the snapshot JSON:
+  - title translation field: `videoInfo.translatedTitle`
+  - comment translation field: `comments[].translatedContent`
+- If these fields are empty, output will be source language only.
+
+## Review note (comments moderation)
+
+- Recommended flow for publish-safe comments video:
+  - `comments-download` -> `comments-translate` -> `comments-review` -> `render-comments`
+- `comments-review` supports two modes:
+  - `mode=prepare`: generate editable review template (`decision: keep|remove|pending`)
+  - `mode=apply`: apply reviewed decisions and output filtered snapshot for rendering
+- In `mode=apply`, strict mode is enabled by default:
+  - command fails if any comment is still `pending` or missing in the review file
+- Example:
+  - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"prepare"}'`
+  - edit generated template and set each item `decision` to `keep` or `remove`
+  - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}'`
+  - `pnpm local-run render-comments --payload '{"dataPath":"<reviewed-snapshot.json>","avatarMode":"inline"}'`
 
 ## Implement in this order
 
@@ -57,6 +83,11 @@ Implement and run media workflows via `scripts/local-job-runner`.
   - provide `sourceVideoPath` or `sourceVideoUrl`
   - optional `composeMode`: `auto` (default), `overlay-only`, `compose-on-video`
   - optional `composeLayout` (`x,y,width,height`) for custom source slot
+  - optional avatar handling:
+    - `avatarMode`: `inline` (default), `remote`, `initial`
+    - `avatarProxyUrl`: proxy URL used when `avatarMode=inline`
+    - `avatarTimeoutMs`: per-image timeout in milliseconds
+    - `avatarInlineConcurrency`: parallel avatar inlining limit
 - Current compose-on-video support targets comments templates (`comments-default`, `comments-vertical`).
 
 ## References

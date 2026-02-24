@@ -117,3 +117,4 @@ apps/web/exports
 
 # Local media orchestrator state/artifacts
 .local-jobs
+/.tmp

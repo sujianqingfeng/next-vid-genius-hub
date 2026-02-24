@@ -35,7 +35,7 @@ export async function ensureStateDir(stateDir?: string): Promise<string> {
 }
 
 async function writeJobAtomic(filePath: string, doc: LocalJobStateDoc): Promise<void> {
-	const tmpPath = `${filePath}.${process.pid}.${Date.now()}.tmp`
+	const tmpPath = `${filePath}.${process.pid}.${Date.now()}.${randomUUID().replace(/-/g, '')}.tmp`
 	await fs.writeFile(tmpPath, JSON.stringify(doc, null, 2), 'utf8')
 	await fs.rename(tmpPath, filePath)
 }

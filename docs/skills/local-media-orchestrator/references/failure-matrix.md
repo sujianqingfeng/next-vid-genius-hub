@@ -15,10 +15,34 @@
 - Cause: Remotion composition not found or Chromium runtime unavailable.
 - Fix: verify `packages/remotion-project/remotion/Root.tsx` composition IDs and local Chrome/headless binary.
 
+## `failed` or long retry in render-comments with avatar URL 429/ORB
+
+- Cause: remote avatar host throttles/blocks rendering runtime (`yt3.ggpht.com` often returns 429), causing `<Img>` fetch retry loops.
+- Fix:
+  - Prefer avatar inlining (default): `avatarMode=inline`
+  - For blocked environments, pass `avatarProxyUrl`
+  - Force placeholder avatars: `avatarMode=initial`
+- Example:
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","avatarMode":"initial"}'`
+
 ## `failed` in ASR stage
 
 - Cause: missing ASR key/model/url, provider returned non-2xx, or unsupported payload shape.
 - Fix: set `ASR_API_KEY` (or `input.apiKey`), confirm endpoint/model, inspect saved job error.
+
+## `failed` in comments-translate stage
+
+- Cause: missing translation key/model/url, provider returned non-2xx, or response is not valid JSON array payload.
+- Fix: set `TRANSLATE_API_KEY` (or `input.apiKey`), confirm `input.apiUrl` and `input.model`, then retry with smaller `batchSize`.
+
+## `failed` in comments-review stage
+
+- Cause: `mode=apply` without review file, invalid review schema, or unresolved decisions in strict mode.
+- Fix:
+  - provide `reviewPath`/`reviewUrl` when applying
+  - ensure review file contains `items` (or `decisions`) with `id` + `decision`
+  - finish all decisions (`keep` or `remove`) before strict apply
+  - if needed for fast draft, set `"strict": false` to auto-resolve missing/pending by fallback decision
 
 ## `failed` with `fetch failed` in comments/channel provider flows
 
