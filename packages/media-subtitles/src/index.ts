@@ -36,10 +36,10 @@ export interface SubtitleRenderConfig {
 }
 
 export const defaultSubtitleRenderConfig: SubtitleRenderConfig = {
-  fontSize: 18,
-  textColor: '#ffffff',
-  backgroundColor: '#000000',
-  backgroundOpacity: 0.65,
+  fontSize: 20,
+  textColor: '#ffd54f',
+  backgroundColor: '#0f172a',
+  backgroundOpacity: 0.8,
   outlineColor: '#000000',
   timeSegmentEffects: [],
   hintTextConfig: {
@@ -435,4 +435,3 @@ export default {
   escapeForFFmpegFilterPath,
   defaultSubtitleRenderConfig,
 }
-

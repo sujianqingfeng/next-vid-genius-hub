@@ -14,11 +14,11 @@ import { areConfigsEqual } from '~/lib/features/subtitle/utils/config'
  * 默认字幕渲染配置
  */
 export const DEFAULT_SUBTITLE_RENDER_CONFIG: SubtitleRenderConfig = {
-	fontSize: COLOR_CONSTANTS.DEFAULT_FONT_SIZE,
-	textColor: COLOR_CONSTANTS.DEFAULT_TEXT_COLOR,
-	backgroundColor: COLOR_CONSTANTS.DEFAULT_BACKGROUND_COLOR,
-	backgroundOpacity: COLOR_CONSTANTS.DEFAULT_BACKGROUND_OPACITY,
-	outlineColor: COLOR_CONSTANTS.DEFAULT_OUTLINE_COLOR,
+	fontSize: 20,
+	textColor: '#ffd54f',
+	backgroundColor: '#0f172a',
+	backgroundOpacity: 0.8,
+	outlineColor: '#000000',
 	timeSegmentEffects: [],
 	hintTextConfig: {
 		enabled: false,
