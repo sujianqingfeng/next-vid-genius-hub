@@ -114,3 +114,6 @@ apps/web/temp
 apps/web/cache
 apps/web/logs
 apps/web/exports
+
+# Local media orchestrator state/artifacts
+.local-jobs

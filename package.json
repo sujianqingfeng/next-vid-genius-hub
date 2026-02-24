@@ -38,7 +38,9 @@
 		"dev:stack:restart-downloader": "pnpm dev:stack:rebuild-downloader && docker compose -f docker-compose.dev.yml up -d media-downloader",
 		"dev:stack:restart-all": "docker compose -f docker-compose.dev.yml build burner-ffmpeg renderer-remotion media-downloader && docker compose -f docker-compose.dev.yml up -d burner-ffmpeg renderer-remotion media-downloader",
 		"build:packages": "pnpm -r --filter './packages/*' run build",
-		"typecheck:packages": "pnpm -r --filter './packages/*' run typecheck"
+		"typecheck:packages": "pnpm -r --filter './packages/*' run typecheck",
+		"local-run": "pnpm exec tsx scripts/local-job-runner/src/cli.ts",
+		"local-run:check-boundary": "pnpm exec tsx scripts/local-job-runner/src/check-boundary.ts"
 	},
 	"devDependencies": {
 		"tsdown": "^0.17.2",
