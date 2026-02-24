@@ -1,11 +1,11 @@
 ---
 name: local-media-orchestrator
-description: Local-first media orchestration for this repository using Node scripts and function calls only. Use when implementing or running download, subtitle render, comments render, comments download, channel sync, thread asset ingest, ASR, or proxy checks without database access and without calling internal app/orchestrator APIs.
+description: Local-first media orchestration for this repository using Node scripts and function calls only. Use when implementing or running local `scripts/local-job-runner` tasks (download, subtitle render, comments pipelines, comments download, channel sync, thread asset ingest, ASR, proxy checks), diagnosing local job failures, or adding new local-run commands without database access and without calling internal app/orchestrator APIs.
 ---
 
 # Local Media Orchestrator
 
-Implement and run media workflows via `scripts/local-job-runner`.
+Implement and run media workflows via `scripts/local-job-runner` with JSON state stored in `.local-jobs`.
 
 ## Core rules
 
@@ -14,71 +14,41 @@ Implement and run media workflows via `scripts/local-job-runner`.
   - `cancelJob(jobId, reason?)`
   - `getStatus(jobId)`
   - `emitEvent(jobId, event)`
-- Store state in `.local-jobs/*.json`.
+- Store state in `.local-jobs/*.json`, and preserve terminal-state protection.
 - Do not call internal repository APIs (`/api/*`, local app worker, local orchestrator worker).
-- Allow outbound network only in `executors/*`.
+- Allow outbound network only in `scripts/local-job-runner/src/executors/*`.
+- Prefer `--input <file.json>` for reusable runs; use `--payload` only for quick one-off experiments.
 
-## Proxy guidance (provider flows)
+## Commands (authoritative surface)
 
-- `comments-download` and `channel-sync` should pass `input.proxyUrl` in environments where direct access to provider endpoints is unstable or blocked.
-- Do not assume `7890` is available. For smoke runs in this repo, use a dedicated non-default local port such as `17890`.
-- Validate proxy path before provider flow runs:
-  - `curl -x http://127.0.0.1:17890 -I https://www.youtube.com`
-- Example commands:
-  - `pnpm local-run comments-download --payload '{"url":"https://www.youtube.com/watch?v=...","source":"youtube","proxyUrl":"http://127.0.0.1:17890"}'`
-  - `pnpm local-run channel-sync --payload '{"channelUrlOrId":"<channel-url-or-id>","limit":5,"proxyUrl":"http://127.0.0.1:17890"}'`
-- Keep subscription URLs and credentials out of repo files; load them in local runtime only.
-
-## Commands
-
-- `pnpm local-run download --payload '{...}'`
-- `pnpm local-run render-subtitles --payload '{...}'`
-- `pnpm local-run render-comments --payload '{...}'`
-- `pnpm local-run comments-translate --payload '{...}'`
-- `pnpm local-run comments-review --payload '{...}'`
-- `pnpm local-run comments-download --payload '{...}'`
-- `pnpm local-run channel-sync --payload '{...}'`
-- `pnpm local-run thread-asset-ingest --payload '{...}'`
-- `pnpm local-run asr --payload '{...}'`
-- `pnpm local-run proxy-check --payload '{...}'`
+- `pnpm local-run download --input <file.json>`
+- `pnpm local-run render-subtitles --input <file.json>`
+- `pnpm local-run render-comments --input <file.json>`
+- `pnpm local-run comments-translate --input <file.json>`
+- `pnpm local-run comments-review --input <file.json>`
+- `pnpm local-run comments-download --input <file.json>`
+- `pnpm local-run channel-sync --input <file.json>`
+- `pnpm local-run thread-asset-ingest --input <file.json>`
+- `pnpm local-run asr --input <file.json>`
+- `pnpm local-run proxy-check --input <file.json>`
 - `pnpm local-run status <jobId>`
 - `pnpm local-run cancel <jobId>`
+- `pnpm local-run clean --days <n> --dry-run`
+- `pnpm local-run:check`
 
-## Subtitle workflow tips
+Use `references/commands.md` for payload examples and operational flags.
 
-- Recommended chain for burned subtitles:
+## Workflow guidance
+
+- For provider flows (`comments-download`, `channel-sync`), pass `proxyUrl` when direct access is unstable.
+- Do not assume `7890` is available; default to a dedicated local port like `17890`.
+- Validate proxy path before provider runs:
+  - `curl -x http://127.0.0.1:17890 -I https://www.youtube.com`
+- Recommended burned subtitle chain:
   - `download` -> `asr` -> (optional translation/bilingual transform) -> `render-subtitles`
-- `render-subtitles` supports overlap handling for readability via `overlapPolicy`:
-  - `auto-clip` (default): clip overlaps only when VTT looks bilingual/multi-line and overlap risk is high
-  - `force-clip`: always clip overlapping cues
-  - `preserve`: keep source timings unchanged
-- For bilingual subtitles, prefer `overlapPolicy: "force-clip"` to avoid 4-line stacking caused by overlapping cues.
-- Example:
-  - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}'`
-
-## Translation note (comments render)
-
-- `comments-download` only fetches source-language comments. It does not run AI translation.
-- Use `comments-translate` between download and render if translated title/comments are required.
-- `render-comments` only consumes what is already in the snapshot JSON:
-  - title translation field: `videoInfo.translatedTitle`
-  - comment translation field: `comments[].translatedContent`
-- If these fields are empty, output will be source language only.
-
-## Review note (comments moderation)
-
-- Recommended flow for publish-safe comments video:
+- Recommended publish-safe comments chain:
   - `comments-download` -> `comments-translate` -> `comments-review` -> `render-comments`
-- `comments-review` supports two modes:
-  - `mode=prepare`: generate editable review template (`decision: keep|remove|pending`)
-  - `mode=apply`: apply reviewed decisions and output filtered snapshot for rendering
-- In `mode=apply`, strict mode is enabled by default:
-  - command fails if any comment is still `pending` or missing in the review file
-- Example:
-  - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"prepare"}'`
-  - edit generated template and set each item `decision` to `keep` or `remove`
-  - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}'`
-  - `pnpm local-run render-comments --payload '{"dataPath":"<reviewed-snapshot.json>","avatarMode":"inline"}'`
+- Keep credentials/subscription URLs out of repo files; load secrets at runtime.
 
 ## Implement in this order
 
@@ -87,24 +57,12 @@ Implement and run media workflows via `scripts/local-job-runner`.
 3. Add or update executor logic under `scripts/local-job-runner/src/executors/*`.
 4. Wire executor mapping in `scripts/local-job-runner/src/dispatch.ts`.
 5. Keep CLI behavior in `scripts/local-job-runner/src/cli.ts` stable.
-6. Run boundary check: `pnpm local-run:check-boundary`.
-
-## Render compose notes
-
-- `render-comments` supports source-video composition:
-  - provide `sourceVideoPath` or `sourceVideoUrl`
-  - optional `composeMode`: `auto` (default), `overlay-only`, `compose-on-video`
-  - optional `composeLayout` (`x,y,width,height`) for custom source slot
-  - optional avatar handling:
-    - `avatarMode`: `inline` (default), `remote`, `initial`
-    - `avatarProxyUrl`: proxy URL used when `avatarMode=inline`
-    - `avatarTimeoutMs`: per-image timeout in milliseconds
-    - `avatarInlineConcurrency`: parallel avatar inlining limit
-- Current compose-on-video support targets comments templates (`comments-default`, `comments-vertical`).
+6. Run checks: `pnpm local-run:check`.
 
 ## References
 
-- Pipeline map: `references/pipeline-map.md`
-- New task template: `references/new-task-template.md`
-- Failure matrix: `references/failure-matrix.md`
-- Smoke checklist: `references/smoke-checklist.md`
+- Commands reference (payload/flags/examples): `references/commands.md`
+- Smoke checklist (manual + scripted smoke): `references/smoke-checklist.md`
+- Failure matrix (error signature -> fix): `references/failure-matrix.md`
+- New task template (add one command safely): `references/new-task-template.md`
+- Pipeline map (entrypoints and ownership): `references/pipeline-map.md`

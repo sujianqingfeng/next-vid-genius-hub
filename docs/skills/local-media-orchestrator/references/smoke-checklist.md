@@ -1,5 +1,12 @@
 # Smoke Checklist
 
+## Fast path (scripted)
+
+- Run:
+  - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --skip-proxy`
+- With proxy probe enabled:
+  - `bash docs/skills/local-media-orchestrator/scripts/smoke.sh --proxy-url http://127.0.0.1:17890`
+
 ## Prerequisites
 
 - `ffmpeg` available
@@ -84,6 +91,7 @@
 ## 5) Boundary guard
 
 - Run:
-  - `pnpm local-run:check-boundary`
+  - `pnpm local-run:check`
 - Verify:
-  - no `fetch()` found outside `executors/`.
+  - no `fetch()` found outside `executors/`
+  - skill command list stays aligned with local-run command surface

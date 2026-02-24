@@ -1,0 +1,7 @@
+interface:
+  display_name: "Local Media Orchestrator"
+  short_description: "Run and extend local media workflows safely"
+  default_prompt: "Use $local-media-orchestrator to run or extend scripts/local-job-runner flows without internal API calls."
+
+policy:
+  allow_implicit_invocation: true

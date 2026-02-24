@@ -61,3 +61,9 @@ These are read from `process.env` under `apps/web/src/lib/config/env.ts` and use
 - `PROXY_CHECK_TEST_URL` — test video URL used by scheduled proxy health checks (must be a stable, publicly reachable URL).
 - `PROXY_CHECK_TIMEOUT_MS` — per-proxy probe timeout in milliseconds; default `20000`.
 - `PROXY_CHECK_PROBE_BYTES` — number of bytes to range-download for probe; default `65536`.
+
+## Project Skills
+
+- `local-media-orchestrator` (`docs/skills/local-media-orchestrator/SKILL.md`)
+  - Use when implementing/running `scripts/local-job-runner` pipelines locally without DB/internal API calls.
+  - Run `pnpm local-run:check` before and after command-surface changes.

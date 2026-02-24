@@ -40,7 +40,9 @@
 		"build:packages": "pnpm -r --filter './packages/*' run build",
 		"typecheck:packages": "pnpm -r --filter './packages/*' run typecheck",
 		"local-run": "pnpm exec tsx scripts/local-job-runner/src/cli.ts",
-		"local-run:check-boundary": "pnpm exec tsx scripts/local-job-runner/src/check-boundary.ts"
+		"local-run:check-boundary": "pnpm exec tsx scripts/local-job-runner/src/check-boundary.ts",
+		"local-run:check-skill-doc": "pnpm exec tsx scripts/local-job-runner/src/check-skill-doc.ts",
+		"local-run:check": "pnpm local-run:check-boundary && pnpm local-run:check-skill-doc"
 	},
 	"devDependencies": {
 		"tsdown": "^0.17.2",

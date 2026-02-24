@@ -11,6 +11,7 @@ Add one new local command while keeping a single orchestrator and JSON state beh
 3. Register executor in `scripts/local-job-runner/src/dispatch.ts`.
 4. Add command usage to `scripts/local-job-runner/src/cli.ts` help text.
 5. Update `docs/skills/local-media-orchestrator/SKILL.md` command list.
+6. Add/update payload examples in `docs/skills/local-media-orchestrator/references/commands.md`.
 
 ## Executor checklist
 
@@ -34,4 +35,4 @@ Do not perform external calls in orchestrator/state/dispatch modules.
 
 - Command runs from `pnpm local-run <task> --payload '{...}'`.
 - Status file reaches terminal state.
-- `pnpm local-run:check-boundary` passes.
+- `pnpm local-run:check` passes.

@@ -77,3 +77,11 @@
 
 - Cause: `fetch()` usage outside `executors/`.
 - Fix: move outbound network logic into an executor module.
+
+## `pnpm local-run:check-skill-doc` failed
+
+- Cause: `SKILL.md` command list drifted from actual local-run command surface.
+- Fix:
+  - sync command list in `docs/skills/local-media-orchestrator/SKILL.md`
+  - keep one `pnpm local-run <command>` entry for each supported command
+  - rerun `pnpm local-run:check`

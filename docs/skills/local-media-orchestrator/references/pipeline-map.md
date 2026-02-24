@@ -8,6 +8,11 @@
 - `scripts/local-job-runner/src/dispatch.ts`
 - `scripts/local-job-runner/src/executors/*`
 
+## Local runner checks
+
+- Boundary guard: `scripts/local-job-runner/src/check-boundary.ts`
+- Skill-doc guard: `scripts/local-job-runner/src/check-skill-doc.ts`
+
 ## Reused local capability packages
 
 - Download/audio extraction: `packages/media-node/src/index.ts`
