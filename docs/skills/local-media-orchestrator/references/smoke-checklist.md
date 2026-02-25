@@ -85,11 +85,14 @@
 
 - Run:
   - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"prepare"}'`
+  - export reviewer-facing checklist (index + author + bilingual text):
+    - `jq -r '.items[] | "\(.index)\t\(.author)\t\(.content | gsub("\n"; " "))\t\((.translatedContent // "") | gsub("\n"; " "))"' <comments-review.template.json> > comments-review.index.tsv`
   - edit template and set each item `decision` to `keep` or `remove`
   - or skip file editing and apply by number list directly:
     - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"apply","removeIndexes":"3,7,12-15"}'`
   - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}'`
 - Verify:
+  - checklist file exists and line count matches `summary.totalComments`
   - reviewed snapshot exists
   - removed comments list exists
   - when input snapshot is translated, review template items include bilingual text (`content` + `translatedContent`)

@@ -79,6 +79,8 @@ Command surface source:
   - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>"}' --upload --upload-base-url 'https://media-orchestrator.<account>.workers.dev' --upload-prefix 'shared'`
 - `comments-review` prepare/apply:
   - `{"dataPath":"<translated-snapshot.json>","mode":"prepare"}`
+  - export review checklist (index + author + bilingual text):
+    - `jq -r '.items[] | "\(.index)\t\(.author)\t\(.content | gsub("\n"; " "))\t\((.translatedContent // "") | gsub("\n"; " "))"' <comments-review.template.json> > comments-review.index.tsv`
   - custom sensitive keywords (for suggested removals):
     - `{"dataPath":"<translated-snapshot.json>","mode":"prepare","sensitiveKeywords":["中共","国家主席"],"suggestOnSensitive":true}`
   - `{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}`

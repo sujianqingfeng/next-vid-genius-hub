@@ -73,6 +73,8 @@ Use `references/commands.md` for payload examples and operational flags.
   - `comments-translate` without `templatePath/templateUrl` emits `comments-translation.template.json` for editing.
   - After filling translated text, rerun `comments-translate` with `templatePath` (or `templateUrl`) so review input contains bilingual fields (`content` + `translatedContent`).
   - `comments-review` `prepare` now writes `items[].index` (1-based), so reviewers can decide by number.
+  - During review, always export a human-readable checklist (index + author + bilingual text) from `comments-review.template.json` before asking for `removeIndexes`.
+    - `jq -r '.items[] | "\(.index)\t\(.author)\t\(.content | gsub("\n"; " "))\t\((.translatedContent // "") | gsub("\n"; " "))"' <comments-review.template.json> > comments-review.index.tsv`
   - `comments-review` `prepare` marks `suggestedDecision=remove` when sensitive keywords are detected (default keywords include `中共`, `国家主席`).
   - `comments-review` `apply` can consume number input directly via `removeIndexes` (e.g. `3,7,12-15`) without editing template files.
   - If a comments overlay video is already available, use `render-comments-compose` to compose directly onto source video without re-rendering comment cards.
