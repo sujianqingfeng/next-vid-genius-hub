@@ -85,16 +85,9 @@ Command surface source:
   - `{"dataPath":"<translated-snapshot.json>","mode":"apply","removeIndexes":"3,7,12-15"}`
   - optional reason/base:
     - `{"dataPath":"<translated-snapshot.json>","mode":"apply","removeIndexes":"3,7,12-15","removeReason":"manual moderation","indexBase":1}`
-- `comments-translate` manual mode:
-  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}`
-- `comments-translate` auto mode (translate first, then review bilingual):
-  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto"}`
-  - when translation API is unavailable/invalid, auto mode falls back to manual translation template
-  - optional provider fields:
-    - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto","apiKey":"<key>","apiUrl":"https://api.openai.com/v1/chat/completions","model":"gpt-4.1-mini","concurrency":3}`
-- `comments-translate` apply mode (write edited template back into snapshot for bilingual review/render):
-  - `{"dataPath":"<comments-snapshot.json>","mode":"apply","templatePath":"<comments-translation.template.json>"}`
+- `comments-translate` template generation (default when `templatePath/templateUrl` is absent):
+  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}`
+- `comments-translate` apply translated template back into snapshot for bilingual review/render:
+  - `{"dataPath":"<comments-snapshot.json>","templatePath":"<comments-translation.template.json>"}`
 - `comments-translate` apply mode (allow partial translation and continue):
-  - `{"dataPath":"<comments-snapshot.json>","mode":"apply","templatePath":"<comments-translation.template.json>","strict":false}`
-- `comments-translate` default recommended behavior (explicit manual template generation):
-  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}`
+  - `{"dataPath":"<comments-snapshot.json>","templatePath":"<comments-translation.template.json>","strict":false}`

@@ -72,16 +72,13 @@
 ## 3.1) Comments translate (optional before render)
 
 - Run:
-  - explicit manual mode (default recommendation):
-    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}'`
-  - auto translate mode (recommended when review needs bilingual text immediately):
-    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto"}'`
-  - apply edited manual template into snapshot (for bilingual review):
-    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","mode":"apply","templatePath":"<comments-translation.template.json>"}'`
+  - generate translation template:
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}'`
+  - apply edited template into snapshot (for bilingual review):
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","templatePath":"<comments-translation.template.json>"}'`
 - Verify:
   - output snapshot exists
-  - manual mode output includes `comments-translation.template.json` for human translation edits
-  - auto mode output includes translated title/comments in snapshot for bilingual review
+  - template generation output includes `comments-translation.template.json` for human translation edits
   - apply mode output writes translated title/comments back to snapshot (`videoInfo.translatedTitle`, `comments[].translatedContent`)
 
 ## 3.2) Comments review (recommended before render)

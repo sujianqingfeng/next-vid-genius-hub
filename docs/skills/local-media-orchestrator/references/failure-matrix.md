@@ -92,20 +92,20 @@
 
 - Cause: missing/invalid `input.dataPath` or `input.dataUrl`, invalid snapshot JSON shape, or output path permission issues.
 - Fix:
-  - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}'`
-  - or auto mode:
-    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto"}'`
+  - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}'`
   - edit generated `comments-translation.template.json`, then apply it:
-    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","mode":"apply","templatePath":"<comments-translation.template.json>"}'`
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","templatePath":"<comments-translation.template.json>"}'`
   - if partial translations are acceptable, use `"strict": false` in apply mode.
 
-## `failed` in comments-translate auto mode with API/auth errors
+## `failed` with `comments-translate input.mode is no longer supported`
 
-- Cause: missing/invalid translation API key, API URL mismatch, provider rate limit, or model not available.
+- Cause: payload still includes `mode` (`manual/apply/auto`).
 - Fix:
-  - set `COMMENTS_TRANSLATE_API_KEY` (or `OPENAI_API_KEY`)
-  - verify `COMMENTS_TRANSLATE_API_URL` (default `https://api.openai.com/v1/chat/completions`)
-  - lower `concurrency` (e.g. `1` or `2`) when provider throttles
+  - remove `mode` from payload
+  - use template flow:
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}'`
+    - edit `comments-translation.template.json`
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","templatePath":"<comments-translation.template.json>"}'`
 
 ## `failed` with `comments-translate apply strict mode failed`
 

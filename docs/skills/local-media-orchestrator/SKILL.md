@@ -70,10 +70,8 @@ Use `references/commands.md` for payload examples and operational flags.
   - `subtitle-review` applies manual `translatedText` into final VTT for `render-subtitles`.
 - Recommended publish-safe comments chain:
   - `comments-download` -> `comments-snapshot-build` -> `comments-translate` -> `comments-review` -> `render-comments`
-  - Default to explicit manual translation mode: `comments-translate` with `mode: "manual"`.
-  - If review must be bilingual immediately, `mode: "auto"` is optional fallback and may switch to manual when translation API is unavailable.
-  - `comments-translate` manual mode emits `comments-translation.template.json` for editing.
-  - After filling translated text, run `comments-translate` in `apply` mode with `templatePath` so review input contains bilingual fields (`content` + `translatedContent`).
+  - `comments-translate` without `templatePath/templateUrl` emits `comments-translation.template.json` for editing.
+  - After filling translated text, rerun `comments-translate` with `templatePath` (or `templateUrl`) so review input contains bilingual fields (`content` + `translatedContent`).
   - `comments-review` `prepare` now writes `items[].index` (1-based), so reviewers can decide by number.
   - `comments-review` `prepare` marks `suggestedDecision=remove` when sensitive keywords are detected (default keywords include `中共`, `国家主席`).
   - `comments-review` `apply` can consume number input directly via `removeIndexes` (e.g. `3,7,12-15`) without editing template files.

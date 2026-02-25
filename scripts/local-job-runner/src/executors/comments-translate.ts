@@ -12,16 +12,10 @@ type CommentsTranslateInput = {
 	force?: boolean
 	translateTitle?: boolean
 	translateComments?: boolean
-	mode?: 'manual' | 'apply' | 'auto'
 	manualTemplatePath?: string
 	templatePath?: string
 	templateUrl?: string
 	strict?: boolean
-	apiUrl?: string
-	apiKey?: string
-	model?: string
-	concurrency?: number
-	provider?: 'openai-compatible' | 'custom'
 }
 
 const DEFAULT_TARGET_LANGUAGE = 'zh-CN'
@@ -97,14 +91,6 @@ type TemplateItem = {
 	status: string
 }
 
-type TranslateCallInput = {
-	text: string
-	targetLanguage: string
-	apiUrl?: string
-	apiKey?: string
-	model?: string
-}
-
 function normalizeTemplateItems(raw: unknown): Map<string, TemplateItem> {
 	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
 		throw new Error('comments-translate apply mode requires a JSON template object')
@@ -135,110 +121,21 @@ function normalizeTemplateTranslatedTitle(raw: unknown): string | undefined {
 	return translated.length > 0 ? translated : undefined
 }
 
-function normalizeMode(value: unknown): {
-	mode: 'manual' | 'apply' | 'auto'
-	reason?: string
-} {
-	const raw = String(value || '')
-		.trim()
-		.toLowerCase()
-	if (!raw || raw === 'manual') {
-		return {
-			mode: 'manual',
-		}
-	}
-	if (raw === 'apply') {
-		return {
-			mode: 'apply',
-		}
-	}
-	if (raw === 'auto') {
-		return {
-			mode: 'auto',
-		}
-	}
-	return {
-		mode: 'manual',
-		reason: `Requested mode "${raw}" is not supported; fallback to manual`,
-	}
-}
+type CommentsTranslateOperation = 'manual' | 'apply'
 
-async function mapWithConcurrency<T>(
-	items: T[],
-	concurrency: number,
-	worker: (item: T, index: number) => Promise<void>,
-): Promise<void> {
-	if (items.length === 0) return
-	const limit = Math.max(1, Math.floor(concurrency))
-	let cursor = 0
-
-	const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-		while (true) {
-			const index = cursor++
-			if (index >= items.length) return
-			await worker(items[index]!, index)
-		}
-	})
-
-	await Promise.all(runners)
-}
-
-async function callOpenAiCompatibleTranslate(
-	input: TranslateCallInput,
-): Promise<string> {
-	const apiUrl =
-		input.apiUrl ||
-		process.env.COMMENTS_TRANSLATE_API_URL ||
-		'https://api.openai.com/v1/chat/completions'
-	const apiKey =
-		input.apiKey ||
-		process.env.COMMENTS_TRANSLATE_API_KEY ||
-		process.env.OPENAI_API_KEY
-	const model = input.model || process.env.COMMENTS_TRANSLATE_MODEL || 'gpt-4.1-mini'
-
-	if (!apiKey) {
+function resolveOperation(input: CommentsTranslateInput): CommentsTranslateOperation {
+	const legacyModeRaw = (input as Record<string, unknown>).mode
+	if (typeof legacyModeRaw !== 'undefined') {
 		throw new Error(
-			'Translation API key is required (input.apiKey or COMMENTS_TRANSLATE_API_KEY/OPENAI_API_KEY)',
+			'comments-translate input.mode is no longer supported; omit mode and use templatePath/templateUrl to trigger apply',
 		)
 	}
 
-	const response = await fetch(apiUrl, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${apiKey}`,
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({
-			model,
-			temperature: 0,
-			messages: [
-				{
-					role: 'system',
-					content:
-						'You are a translation engine. Return only translated text with no explanation.',
-				},
-				{
-					role: 'user',
-					content: `Translate the following text to ${input.targetLanguage}:\n\n${input.text}`,
-				},
-			],
-		}),
-	})
-
-	if (!response.ok) {
-		const body = await response.text().catch(() => '')
-		throw new Error(`Translation request failed: ${response.status} ${body}`)
+	if (input.templatePath || input.templateUrl) {
+		return 'apply'
 	}
 
-	const json = (await response.json()) as Record<string, unknown>
-	const choices = Array.isArray(json.choices) ? json.choices : []
-	const first = (choices[0] || {}) as Record<string, unknown>
-	const message = (first.message || {}) as Record<string, unknown>
-	const content = String(message.content || '').trim()
-	if (!content) {
-		throw new Error('Translation response missing text content')
-	}
-	return content
+	return 'manual'
 }
 
 export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
@@ -259,7 +156,7 @@ export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
 	const manualTemplatePath = input.manualTemplatePath
 		? resolveOutputPath(outputDir, input.manualTemplatePath)
 		: path.join(outputDir, 'comments-translation.template.json')
-	const { mode, reason } = normalizeMode(input.mode)
+	const operation = resolveOperation(input)
 
 	await ctx.emit({
 		status: 'running',
@@ -284,14 +181,13 @@ export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
 	const title = String(videoInfo.title || '').trim()
 	const translatedTitleValue = String(videoInfo.translatedTitle || '').trim()
 
-	if (mode === 'manual') {
+	if (operation === 'manual') {
 		const template = {
 			version: 1,
 			kind: 'comments-translation-template',
 			generatedAt: new Date().toISOString(),
 			targetLanguage: input.targetLanguage || DEFAULT_TARGET_LANGUAGE,
 			mode: 'manual',
-			reason: reason || undefined,
 			title: pendingTitle
 				? {
 						source: title,
@@ -338,259 +234,10 @@ export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
 			},
 			metadata: {
 				targetLanguage: input.targetLanguage || DEFAULT_TARGET_LANGUAGE,
-				mode: 'manual',
-				reason: reason || undefined,
+				operation: 'manual',
 				pendingTitle,
 				pendingComments: pendingCommentIndices.length,
 				totalComments: comments.length,
-			},
-		})
-		return
-	}
-
-	if (mode === 'auto') {
-		const strict = input.strict !== false
-		const targetLanguage = input.targetLanguage || DEFAULT_TARGET_LANGUAGE
-		const translateText = async (text: string): Promise<string> => {
-			if (ctx.ports.translate) {
-				return ctx.ports.translate.translateText(text, input.model)
-			}
-			if (input.provider && input.provider !== 'openai-compatible') {
-				throw new Error(
-					'comments-translate auto currently supports provider=openai-compatible',
-				)
-			}
-			return callOpenAiCompatibleTranslate({
-				text,
-				targetLanguage,
-				apiUrl: input.apiUrl,
-				apiKey: input.apiKey,
-				model: input.model,
-			})
-		}
-
-		let completedSteps = 0
-		const totalSteps =
-			pendingCommentIndices.length + (pendingTitle ? 1 : 0) || 1
-		const toProgress = (done: number): number =>
-			Math.max(0, Math.min(1, 0.2 + (done / totalSteps) * 0.75))
-
-		let appliedTitle = false
-		let unresolvedTitle = false
-		let autoTitleText = ''
-		let titleError = ''
-		if (pendingTitle) {
-			await ctx.emit({
-				status: 'running',
-				phase: 'running',
-				progress: toProgress(completedSteps),
-				message: 'Auto translating title',
-			})
-			try {
-				autoTitleText = await translateText(title)
-				const normalized = String(autoTitleText || '').trim()
-				if (normalized) {
-					videoInfo.translatedTitle = normalized
-					appliedTitle = true
-				} else if (strict) {
-					unresolvedTitle = true
-				}
-			} catch (error) {
-				titleError = error instanceof Error ? error.message : String(error)
-				if (strict) unresolvedTitle = true
-			}
-			completedSteps += 1
-		}
-
-		const unresolvedCommentIds: string[] = []
-		const failedCommentIds: string[] = []
-		const failedSamples: string[] = []
-		const translatedById = new Map<string, string>()
-		const concurrency = Math.max(1, Math.min(8, Number(input.concurrency || 3)))
-		await mapWithConcurrency(pendingCommentIndices, concurrency, async (snapshotIndex) => {
-			const comment = comments[snapshotIndex] || {}
-			const commentId = String(comment.id || `c_${snapshotIndex}`)
-			const text = String(comment.content || '').trim()
-			if (!text) {
-				completedSteps += 1
-				return
-			}
-			try {
-				const translated = String(await translateText(text)).trim()
-				if (translated) {
-					comment.translatedContent = translated
-					translatedById.set(commentId, translated)
-				} else {
-					failedCommentIds.push(commentId)
-					if (failedSamples.length < 5) {
-						failedSamples.push(`${commentId}: empty translation result`)
-					}
-					if (strict) unresolvedCommentIds.push(commentId)
-				}
-			} catch (error) {
-				failedCommentIds.push(commentId)
-				if (failedSamples.length < 5) {
-					failedSamples.push(
-						`${commentId}: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-				if (strict) unresolvedCommentIds.push(commentId)
-			}
-			completedSteps += 1
-			await ctx.emit({
-				status: 'running',
-				phase: 'running',
-				progress: toProgress(completedSteps),
-				message: `Auto translating comments (${completedSteps}/${totalSteps})`,
-			})
-		})
-
-		if (pendingCommentIndices.length > 0 && translatedById.size === 0) {
-			const template = {
-				version: 1,
-				kind: 'comments-translation-template',
-				generatedAt: new Date().toISOString(),
-				targetLanguage,
-				mode: 'manual',
-				reason:
-					'Auto translation unavailable; fallback to manual translation template',
-				title: pendingTitle
-					? {
-							source: title,
-							translated: '',
-							status: 'pending',
-						}
-					: undefined,
-				items: pendingCommentIndices.map((index) => {
-					const comment = comments[index] || {}
-					return {
-						id: String(comment.id || `c_${index}`),
-						author: String(comment.author || 'unknown'),
-						content: String(comment.content || ''),
-						translatedContent: '',
-						status: 'pending',
-					}
-				}),
-			}
-
-			const translatedSnapshot = {
-				...snapshot,
-				videoInfo,
-				comments,
-			}
-			await writeJsonFile(manualTemplatePath, template)
-			await writeJsonFile(outputPath, translatedSnapshot)
-
-			await ctx.emit({
-				status: 'completed',
-				phase: 'completed',
-				progress: 1,
-				message:
-					'Auto translation unavailable, switched to manual translation template',
-				outputs: {
-					snapshot: {
-						path: outputPath,
-						contentType: 'application/json',
-					},
-					manualTemplate: {
-						path: manualTemplatePath,
-						contentType: 'application/json',
-					},
-				},
-				metadata: {
-					targetLanguage,
-					mode: 'auto',
-					fallbackMode: 'manual',
-					pendingTitle,
-					pendingComments: pendingCommentIndices.length,
-					failedComments: failedCommentIds.length,
-					titleError: titleError || undefined,
-					failedSamples,
-				},
-			})
-			return
-		}
-
-		if (strict && (unresolvedTitle || unresolvedCommentIds.length > 0)) {
-			const sample = unresolvedCommentIds.slice(0, 12).join(', ')
-			const more =
-				unresolvedCommentIds.length > 12
-					? ` ... +${unresolvedCommentIds.length - 12}`
-					: ''
-			const titleHint = unresolvedTitle ? 'title auto translation failed' : ''
-			const commentHint =
-				unresolvedCommentIds.length > 0
-					? `comment auto translation failed: ${sample}${more}`
-					: ''
-			const separator = titleHint && commentHint ? '; ' : ''
-			throw new Error(
-				`comments-translate auto strict mode failed: ${titleHint}${separator}${commentHint}`,
-			)
-		}
-
-		const template = {
-			version: 1,
-			kind: 'comments-translation-template',
-			generatedAt: new Date().toISOString(),
-			targetLanguage,
-			mode: 'auto',
-			title: pendingTitle
-				? {
-						source: title,
-						translated: String(autoTitleText || '').trim(),
-						status: appliedTitle ? 'done' : 'failed',
-					}
-				: undefined,
-			items: pendingCommentIndices.map((index) => {
-				const comment = comments[index] || {}
-				const id = String(comment.id || `c_${index}`)
-				const translated = String(translatedById.get(id) || '').trim()
-				return {
-					id,
-					author: String(comment.author || 'unknown'),
-					content: String(comment.content || ''),
-					translatedContent: translated,
-					status: translated ? 'done' : 'failed',
-				}
-			}),
-		}
-
-		const translatedSnapshot = {
-			...snapshot,
-			videoInfo,
-			comments,
-		}
-		await writeJsonFile(manualTemplatePath, template)
-		await writeJsonFile(outputPath, translatedSnapshot)
-
-		await ctx.emit({
-			status: 'completed',
-			phase: 'completed',
-			progress: 1,
-			message: 'Comments auto translation completed',
-			outputs: {
-				snapshot: {
-					path: outputPath,
-					contentType: 'application/json',
-				},
-				manualTemplate: {
-					path: manualTemplatePath,
-					contentType: 'application/json',
-				},
-			},
-			metadata: {
-				targetLanguage,
-				mode: 'auto',
-				strict,
-				pendingTitle,
-				pendingComments: pendingCommentIndices.length,
-				appliedTitle,
-				appliedComments: translatedById.size,
-				unresolvedTitle,
-				unresolvedComments: unresolvedCommentIds.length,
-				failedComments: failedCommentIds.length,
-				titleError: titleError || undefined,
-				failedSamples,
 			},
 		})
 		return
@@ -604,7 +251,7 @@ export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
 			: undefined
 	if (!templatePathFromInput && !input.templateUrl) {
 		throw new Error(
-			'comments-translate apply mode requires input.templatePath/input.templateUrl',
+			'comments-translate apply requires input.templatePath/input.templateUrl',
 		)
 	}
 
@@ -687,7 +334,7 @@ export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
 		},
 		metadata: {
 			targetLanguage: input.targetLanguage || DEFAULT_TARGET_LANGUAGE,
-			mode: 'apply',
+			operation: 'apply',
 			strict,
 			pendingTitle,
 			pendingComments: pendingCommentIndices.length,
