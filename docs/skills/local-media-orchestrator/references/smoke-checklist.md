@@ -52,7 +52,7 @@
 ## 3) Comments render
 
 - Run:
-  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","templateId":"comments-default"}'`
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","templateId":"comments-default","avatarMode":"inline"}'`
 - Optional (if remote avatars are unstable):
   - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","templateId":"comments-default","avatarMode":"initial"}'`
 - Optional (vertical output, opt-in only):
@@ -72,13 +72,17 @@
 ## 3.1) Comments translate (optional before render)
 
 - Run:
-  - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}'`
-  - explicit manual mode:
+  - explicit manual mode (default recommendation):
     - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}'`
+  - auto translate mode (recommended when review needs bilingual text immediately):
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto"}'`
+  - apply edited manual template into snapshot (for bilingual review):
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","mode":"apply","templatePath":"<comments-translation.template.json>"}'`
 - Verify:
   - output snapshot exists
-  - output includes original `videoInfo` and `comments[]` without automatic translation
-  - output includes `comments-translation.template.json` for human translation edits
+  - manual mode output includes `comments-translation.template.json` for human translation edits
+  - auto mode output includes translated title/comments in snapshot for bilingual review
+  - apply mode output writes translated title/comments back to snapshot (`videoInfo.translatedTitle`, `comments[].translatedContent`)
 
 ## 3.2) Comments review (recommended before render)
 
@@ -91,6 +95,7 @@
 - Verify:
   - reviewed snapshot exists
   - removed comments list exists
+  - when input snapshot is translated, review template items include bilingual text (`content` + `translatedContent`)
   - strict apply fails when decisions remain `pending`
 
 ## 3.3) Comments render + source compose

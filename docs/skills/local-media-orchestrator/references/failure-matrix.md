@@ -93,7 +93,26 @@
 - Cause: missing/invalid `input.dataPath` or `input.dataUrl`, invalid snapshot JSON shape, or output path permission issues.
 - Fix:
   - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}'`
-  - edit generated `comments-translation.template.json`, then sync translated fields back into snapshot before `comments-review` / `render-comments`.
+  - or auto mode:
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto"}'`
+  - edit generated `comments-translation.template.json`, then apply it:
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","mode":"apply","templatePath":"<comments-translation.template.json>"}'`
+  - if partial translations are acceptable, use `"strict": false` in apply mode.
+
+## `failed` in comments-translate auto mode with API/auth errors
+
+- Cause: missing/invalid translation API key, API URL mismatch, provider rate limit, or model not available.
+- Fix:
+  - set `COMMENTS_TRANSLATE_API_KEY` (or `OPENAI_API_KEY`)
+  - verify `COMMENTS_TRANSLATE_API_URL` (default `https://api.openai.com/v1/chat/completions`)
+  - lower `concurrency` (e.g. `1` or `2`) when provider throttles
+
+## `failed` with `comments-translate apply strict mode failed`
+
+- Cause: title or one/more pending comments are still missing `translated` / `translatedContent` in translation template.
+- Fix:
+  - complete missing translated fields in `comments-translation.template.json`
+  - rerun apply mode, or set `"strict": false` for draft runs
 
 ## `failed` in comments-review stage
 

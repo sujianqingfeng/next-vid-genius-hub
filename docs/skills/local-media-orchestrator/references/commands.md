@@ -66,11 +66,11 @@ Command surface source:
 - `subtitle-review` apply manual template to VTT:
   - `{"mode":"apply","reviewPath":"<subtitle-translation.template.json>","format":"bilingual"}`
 - `render-comments` (default horizontal template):
-  - `{"dataPath":"<comments-snapshot.reviewed.json>","templateId":"comments-default"}`
+  - `{"dataPath":"<comments-snapshot.reviewed.json>","templateId":"comments-default","avatarMode":"inline"}`
 - `render-comments` (vertical template, opt-in only):
   - `{"dataPath":"<comments-snapshot.reviewed.json>","templateId":"comments-vertical"}`
 - `render-comments` compose onto source video (recommended horizontal default):
-  - `{"dataPath":"<comments-snapshot.reviewed.json>","templateId":"comments-default","sourceVideoPath":"<source.mp4>","composeMode":"compose-on-video"}`
+  - `{"dataPath":"<comments-snapshot.reviewed.json>","templateId":"comments-default","avatarMode":"inline","sourceVideoPath":"<source.mp4>","composeMode":"compose-on-video"}`
 - `render-comments-compose` (compose existing comments overlay video):
   - `{"overlayVideoPath":"<comments-overlay.mp4>","sourceVideoPath":"<source.mp4>"}`
 - `comments-snapshot-build` (normalize raw comments into snapshot for translate/review/render):
@@ -87,5 +87,14 @@ Command surface source:
     - `{"dataPath":"<translated-snapshot.json>","mode":"apply","removeIndexes":"3,7,12-15","removeReason":"manual moderation","indexBase":1}`
 - `comments-translate` manual mode:
   - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}`
-- `comments-translate` default behavior (manual template generation):
-  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}`
+- `comments-translate` auto mode (translate first, then review bilingual):
+  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto"}`
+  - when translation API is unavailable/invalid, auto mode falls back to manual translation template
+  - optional provider fields:
+    - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto","apiKey":"<key>","apiUrl":"https://api.openai.com/v1/chat/completions","model":"gpt-4.1-mini","concurrency":3}`
+- `comments-translate` apply mode (write edited template back into snapshot for bilingual review/render):
+  - `{"dataPath":"<comments-snapshot.json>","mode":"apply","templatePath":"<comments-translation.template.json>"}`
+- `comments-translate` apply mode (allow partial translation and continue):
+  - `{"dataPath":"<comments-snapshot.json>","mode":"apply","templatePath":"<comments-translation.template.json>","strict":false}`
+- `comments-translate` default recommended behavior (explicit manual template generation):
+  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}`
