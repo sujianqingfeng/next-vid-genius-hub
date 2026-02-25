@@ -64,7 +64,7 @@ Use `references/commands.md` for payload examples and operational flags.
   - `download` -> `asr` -> (optional translation/bilingual transform) -> `render-subtitles`
 - Recommended publish-safe comments chain:
   - `comments-download` -> `comments-snapshot-build` -> `comments-translate` -> `comments-review` -> `render-comments`
-  - If API translation is unavailable, `comments-translate` can run with `mode: "manual"` (or auto-fallback) and emits a manual translation template for editing.
+  - `comments-translate` runs in manual mode and emits a translation template for editing.
   - If a comments overlay video is already available, use `render-comments-compose` to compose directly onto source video without re-rendering comment cards.
 - Keep credentials/subscription URLs out of repo files; load secrets at runtime.
 

@@ -74,7 +74,7 @@ Command surface source:
 - `comments-review` prepare/apply:
   - `{"dataPath":"<translated-snapshot.json>","mode":"prepare"}`
   - `{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}`
-- `comments-translate` manual mode (no API call):
+- `comments-translate` manual mode:
   - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}`
-- `comments-translate` auto mode with manual fallback on API failure (default):
-  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"auto"}`
+- `comments-translate` default behavior (manual template generation):
+  - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}`

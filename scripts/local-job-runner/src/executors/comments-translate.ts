@@ -8,70 +8,15 @@ type CommentsTranslateInput = {
 	dataUrl?: string
 	outputPath?: string
 	outputDir?: string
-	model?: string
 	targetLanguage?: string
 	force?: boolean
 	translateTitle?: boolean
 	translateComments?: boolean
-	batchSize?: number
-	batchMaxChars?: number
-	apiUrl?: string
-	apiKey?: string
-	mode?: 'auto' | 'api' | 'manual'
+	mode?: 'manual'
 	manualTemplatePath?: string
-	manualOnApiError?: boolean
 }
 
-type TokenUsage = {
-	inputTokens: number
-	outputTokens: number
-	totalTokens: number
-}
-
-const DEFAULT_API_URL = 'https://api.openai.com/v1/chat/completions'
-const DEFAULT_MODEL = 'gpt-4o-mini'
 const DEFAULT_TARGET_LANGUAGE = 'zh-CN'
-const DEFAULT_BATCH_SIZE = 20
-const DEFAULT_BATCH_MAX_CHARS = 6000
-const DEFAULT_TRANSLATE_MODE: 'auto' | 'api' | 'manual' = 'auto'
-
-function resolveApiKey(input: CommentsTranslateInput): string | undefined {
-	const raw =
-		input.apiKey || process.env.TRANSLATE_API_KEY || process.env.OPENAI_API_KEY
-	const normalized = String(raw || '').trim()
-	return normalized.length > 0 ? normalized : undefined
-}
-
-function normalizeMode(
-	value: unknown,
-): 'auto' | 'api' | 'manual' {
-	const normalized = String(value || '')
-		.trim()
-		.toLowerCase()
-	if (normalized === 'manual') return 'manual'
-	if (normalized === 'api') return 'api'
-	return DEFAULT_TRANSLATE_MODE
-}
-
-function toTokenUsage(value: unknown): TokenUsage {
-	if (!value || typeof value !== 'object') {
-		return { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
-	}
-	const usage = value as Record<string, unknown>
-	const inputTokens = Number(usage.prompt_tokens || usage.input_tokens || 0) || 0
-	const outputTokens =
-		Number(usage.completion_tokens || usage.output_tokens || 0) || 0
-	const totalTokens = Number(usage.total_tokens || 0) || inputTokens + outputTokens
-	return { inputTokens, outputTokens, totalTokens }
-}
-
-function mergeUsage(base: TokenUsage, next: TokenUsage): TokenUsage {
-	return {
-		inputTokens: base.inputTokens + next.inputTokens,
-		outputTokens: base.outputTokens + next.outputTokens,
-		totalTokens: base.totalTokens + next.totalTokens,
-	}
-}
 
 function normalizeSnapshot(raw: unknown): {
 	snapshot: Record<string, unknown>
@@ -107,108 +52,6 @@ function normalizeSnapshot(raw: unknown): {
 	return { snapshot, videoInfo: { ...videoInfoRaw }, comments }
 }
 
-function extractJsonObject(text: string): unknown {
-	const raw = String(text || '').trim()
-	if (!raw) {
-		throw new Error('Translation response was empty')
-	}
-	try {
-		return JSON.parse(raw)
-	} catch {}
-	const firstBrace = raw.indexOf('{')
-	const lastBrace = raw.lastIndexOf('}')
-	if (firstBrace === -1 || lastBrace <= firstBrace) {
-		throw new Error('Translation response was not valid JSON')
-	}
-	const candidate = raw.slice(firstBrace, lastBrace + 1)
-	return JSON.parse(candidate)
-}
-
-function normalizeTranslations(
-	payload: unknown,
-	sourceTexts: string[],
-): string[] {
-	if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-		const obj = payload as Record<string, unknown>
-		if (Array.isArray(obj.translations)) {
-			if (obj.translations.length !== sourceTexts.length) {
-				throw new Error(
-					`Translation length mismatch (expected ${sourceTexts.length}, got ${obj.translations.length})`,
-				)
-			}
-			return obj.translations.map((item, index) => {
-				const next = String(item ?? '').trim()
-				return next.length > 0 ? next : sourceTexts[index] || ''
-			})
-		}
-		if (typeof obj.translation === 'string' && sourceTexts.length === 1) {
-			const next = obj.translation.trim()
-			return [next.length > 0 ? next : sourceTexts[0] || '']
-		}
-	}
-	if (typeof payload === 'string' && sourceTexts.length === 1) {
-		const next = payload.trim()
-		return [next.length > 0 ? next : sourceTexts[0] || '']
-	}
-	throw new Error('Translation response schema mismatch')
-}
-
-function toMessageContent(value: unknown): string {
-	if (typeof value === 'string') return value
-	if (Array.isArray(value)) {
-		return value
-			.map((item) => {
-				if (typeof item === 'string') return item
-				if (!item || typeof item !== 'object') return ''
-				const part = item as Record<string, unknown>
-				if (typeof part.text === 'string') return part.text
-				if (
-					part.type === 'text' &&
-					part.text &&
-					typeof part.text === 'object' &&
-					typeof (part.text as Record<string, unknown>).value === 'string'
-				) {
-					return String((part.text as Record<string, unknown>).value || '')
-				}
-				return ''
-			})
-			.join('\n')
-			.trim()
-	}
-	return ''
-}
-
-function buildBatches(
-	indices: number[],
-	texts: string[],
-	maxItems: number,
-	maxChars: number,
-): number[][] {
-	const batches: number[][] = []
-	let current: number[] = []
-	let currentChars = 0
-
-	const pushCurrent = () => {
-		if (current.length === 0) return
-		batches.push(current)
-		current = []
-		currentChars = 0
-	}
-
-	for (let i = 0; i < indices.length; i++) {
-		const idx = indices[i]!
-		const chars = String(texts[i] || '').length
-		const overflow =
-			current.length >= maxItems ||
-			(current.length > 0 && currentChars + chars > maxChars)
-		if (overflow) pushCurrent()
-		current.push(idx)
-		currentChars += chars
-	}
-	pushCurrent()
-	return batches
-}
-
 function collectCommentIndices(
 	comments: Array<Record<string, unknown>>,
 	force: boolean,
@@ -240,133 +83,12 @@ function shouldTranslateTitleNow(
 	return translateTitle && title.length > 0 && (force || !hasTranslatedTitle)
 }
 
-async function callOpenAiCompatibleBatch(
-	input: CommentsTranslateInput,
-	texts: string[],
-): Promise<{ translations: string[]; usage: TokenUsage }> {
-	if (texts.length === 0) {
-		return {
-			translations: [],
-			usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-		}
-	}
-
-	const apiUrl =
-		input.apiUrl ||
-		process.env.TRANSLATE_API_URL ||
-		process.env.OPENAI_API_URL ||
-		DEFAULT_API_URL
-	const apiKey = resolveApiKey(input)
-	const model = input.model || process.env.TRANSLATE_MODEL || DEFAULT_MODEL
-	const targetLanguage = input.targetLanguage || DEFAULT_TARGET_LANGUAGE
-	if (!apiKey) {
-		throw new Error(
-			'Translation API key is required (input.apiKey or TRANSLATE_API_KEY / OPENAI_API_KEY)',
-		)
-	}
-
-	const system = [
-		'You are a professional translator.',
-		'Return JSON only.',
-		'Schema must be: {"translations":["..."]}.',
-		'Array length and order must exactly match input texts.',
-		`Target language: ${targetLanguage}.`,
-		'If source is already target language, keep it unchanged.',
-	].join(' ')
-
-	const messages = [
-		{ role: 'system', content: system },
-		{
-			role: 'user',
-			content: JSON.stringify({
-				targetLanguage,
-				texts,
-			}),
-		},
-	]
-
-	const request = async (useResponseFormat: boolean) => {
-		const body: Record<string, unknown> = {
-			model,
-			temperature: 0.2,
-			messages,
-		}
-		if (useResponseFormat) {
-			body.response_format = { type: 'json_object' }
-		}
-		return fetch(apiUrl, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(body),
-		})
-	}
-
-	let response = await request(true)
-	if (!response.ok) {
-		const detail = await response.text().catch(() => '')
-		const shouldRetryWithoutResponseFormat =
-			response.status === 400 &&
-			/response_format|json_object|schema/i.test(detail)
-		if (!shouldRetryWithoutResponseFormat) {
-			throw new Error(`Translation request failed: ${response.status} ${detail}`)
-		}
-		response = await request(false)
-		if (!response.ok) {
-			const retryDetail = await response.text().catch(() => '')
-			throw new Error(
-				`Translation request failed: ${response.status} ${retryDetail}`,
-			)
-		}
-	}
-
-	const json = (await response.json()) as Record<string, unknown>
-	const usage = toTokenUsage(json.usage)
-	const choices = Array.isArray(json.choices) ? json.choices : []
-	const first = choices[0]
-	if (!first || typeof first !== 'object') {
-		throw new Error('Translation response missing choices')
-	}
-	const message = (first as Record<string, unknown>).message
-	const content = message && typeof message === 'object'
-		? toMessageContent((message as Record<string, unknown>).content)
-		: ''
-	if (!content) {
-		throw new Error('Translation response content is empty')
-	}
-	const parsed = extractJsonObject(content)
-	return {
-		translations: normalizeTranslations(parsed, texts),
-		usage,
-	}
-}
-
-async function translateBatch(
-	ctx: Parameters<LocalJobExecutor>[0],
-	input: CommentsTranslateInput,
-	texts: string[],
-): Promise<{ translations: string[]; usage: TokenUsage }> {
-	if (texts.length === 0) {
-		return {
-			translations: [],
-			usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-		}
-	}
-	if (ctx.ports.translate?.translateText) {
-		const translated: string[] = []
-		for (const text of texts) {
-			const next = await ctx.ports.translate.translateText(text, input.model)
-			const normalized = String(next || '').trim()
-			translated.push(normalized.length > 0 ? normalized : text)
-		}
-		return {
-			translations: translated,
-			usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-		}
-	}
-	return callOpenAiCompatibleBatch(input, texts)
+function unsupportedModeReason(value: unknown): string | undefined {
+	const mode = String(value || '')
+		.trim()
+		.toLowerCase()
+	if (!mode || mode === 'manual') return undefined
+	return `Requested mode "${mode}" is no longer supported; generated manual template`
 }
 
 export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
@@ -384,6 +106,9 @@ export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
 	const outputPath = input.outputPath
 		? resolveOutputPath(outputDir, input.outputPath)
 		: path.join(outputDir, 'comments-snapshot.translated.json')
+	const manualTemplatePath = input.manualTemplatePath
+		? resolveOutputPath(outputDir, input.manualTemplatePath)
+		: path.join(outputDir, 'comments-translation.template.json')
 
 	await ctx.emit({
 		status: 'running',
@@ -403,196 +128,41 @@ export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
 	const force = Boolean(input.force)
 	const translateTitle = input.translateTitle !== false
 	const translateComments = input.translateComments !== false
-	const requestedMode = normalizeMode(input.mode)
-	const manualOnApiError = input.manualOnApiError !== false
-	const batchSize = Math.max(1, Number(input.batchSize || DEFAULT_BATCH_SIZE))
-	const batchMaxChars = Math.max(
-		200,
-		Number(input.batchMaxChars || DEFAULT_BATCH_MAX_CHARS),
-	)
+	const pendingTitle = shouldTranslateTitleNow(videoInfo, force, translateTitle)
+	const pendingCommentIndices = collectCommentIndices(comments, force, translateComments)
+	const title = String(videoInfo.title || '').trim()
+	const translatedTitleValue = String(videoInfo.translatedTitle || '').trim()
+	const reason = unsupportedModeReason(input.mode)
 
-	let usage: TokenUsage = {
-		inputTokens: 0,
-		outputTokens: 0,
-		totalTokens: 0,
-	}
-	let translatedTitle = false
-	let translatedComments = 0
-
-	const emitManualResult = async (reason?: string): Promise<void> => {
-		const pendingTitle = shouldTranslateTitleNow(videoInfo, force, translateTitle)
-		const pendingCommentIndices = collectCommentIndices(comments, force, translateComments)
-		const manualTemplatePath = input.manualTemplatePath
-			? resolveOutputPath(outputDir, input.manualTemplatePath)
-			: path.join(outputDir, 'comments-translation.template.json')
-		const title = String(videoInfo.title || '').trim()
-		const translatedTitleValue = String(videoInfo.translatedTitle || '').trim()
-		const template = {
-			version: 1,
-			kind: 'comments-translation-template',
-			generatedAt: new Date().toISOString(),
-			targetLanguage: input.targetLanguage || DEFAULT_TARGET_LANGUAGE,
-			mode: 'manual',
-			reason: reason || undefined,
-			title: pendingTitle
-				? {
-						source: title,
-						translated:
-							translatedTitleValue.length > 0 ? translatedTitleValue : '',
-						status: 'pending',
-					}
-				: undefined,
-			items: pendingCommentIndices.map((index) => {
-				const comment = comments[index] || {}
-				const translated = String(comment.translatedContent || '').trim()
-				return {
-					id: String(comment.id || `c_${index}`),
-					author: String(comment.author || 'unknown'),
-					content: String(comment.content || ''),
-					translatedContent: translated.length > 0 ? translated : '',
+	const template = {
+		version: 1,
+		kind: 'comments-translation-template',
+		generatedAt: new Date().toISOString(),
+		targetLanguage: input.targetLanguage || DEFAULT_TARGET_LANGUAGE,
+		mode: 'manual',
+		reason: reason || undefined,
+		title: pendingTitle
+			? {
+					source: title,
+					translated:
+						translatedTitleValue.length > 0 ? translatedTitleValue : '',
 					status: 'pending',
 				}
-			}),
-		}
-
-		await writeJsonFile(manualTemplatePath, template)
-		const translatedSnapshot = {
-			...snapshot,
-			videoInfo,
-			comments,
-		}
-		await writeJsonFile(outputPath, translatedSnapshot)
-
-		await ctx.emit({
-			status: 'completed',
-			phase: 'completed',
-			progress: 1,
-			message: 'Comments translation prepared for manual editing',
-			outputs: {
-				snapshot: {
-					path: outputPath,
-					contentType: 'application/json',
-				},
-				manualTemplate: {
-					path: manualTemplatePath,
-					contentType: 'application/json',
-				},
-			},
-			metadata: {
-				targetLanguage: input.targetLanguage || DEFAULT_TARGET_LANGUAGE,
-				mode: 'manual',
-				reason: reason || undefined,
-				pendingTitle,
-				pendingComments: pendingCommentIndices.length,
-				totalComments: comments.length,
-				usage,
-			},
-		})
-	}
-
-	const hasTranslatePort = Boolean(ctx.ports.translate?.translateText)
-	const hasApiKey = Boolean(resolveApiKey(input))
-	const canUseApiTranslator = hasTranslatePort || hasApiKey
-	let resolvedMode: 'auto' | 'api' | 'manual' = requestedMode
-	if (requestedMode === 'auto') {
-		resolvedMode = canUseApiTranslator ? 'api' : 'manual'
-	}
-
-	if (resolvedMode === 'manual') {
-		await emitManualResult(
-			requestedMode === 'auto'
-				? 'No translation backend available, switched to manual mode'
-				: undefined,
-		)
-		return
-	}
-
-	try {
-		const title = String(videoInfo.title || '').trim()
-		const shouldTranslateTitle = shouldTranslateTitleNow(videoInfo, force, translateTitle)
-		const commentIndices = collectCommentIndices(comments, force, translateComments)
-		const totalItems = (shouldTranslateTitle ? 1 : 0) + commentIndices.length
-
-		if (shouldTranslateTitle) {
-			if (await ctx.isCanceled()) return
-			await ctx.emit({
-				status: 'running',
-				phase: 'running',
-				progress: 0.14,
-				message: 'Translating title',
-			})
-
-			const res = await translateBatch(ctx, input, [title])
-			usage = mergeUsage(usage, res.usage)
-			videoInfo.translatedTitle = res.translations[0]
-			translatedTitle = true
-		}
-
-		if (commentIndices.length > 0) {
-			await ctx.emit({
-				status: 'running',
-				phase: 'running',
-				progress: shouldTranslateTitle ? 0.2 : 0.14,
-				message: 'Translating comments',
-			})
-
-			const texts = commentIndices.map((index) =>
-				String(comments[index]?.content || ''),
-			)
-			const batches = buildBatches(commentIndices, texts, batchSize, batchMaxChars)
-
-			for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-				if (await ctx.isCanceled()) return
-				const indexBatch = batches[batchIndex]!
-				const textBatch = indexBatch.map((index) =>
-					String(comments[index]?.content || ''),
-				)
-				const res = await translateBatch(ctx, input, textBatch)
-				usage = mergeUsage(usage, res.usage)
-
-				for (let i = 0; i < indexBatch.length; i++) {
-					const index = indexBatch[i]!
-					const translated = String(res.translations[i] || '').trim()
-					comments[index] = {
-						...comments[index],
-						translatedContent:
-							translated.length > 0 ? translated : String(comments[index]?.content || ''),
-					}
-					translatedComments += 1
-				}
-
-				const done = (translatedTitle ? 1 : 0) + translatedComments
-				const ratio = totalItems > 0 ? done / totalItems : 1
-				await ctx.emit({
-					status: 'running',
-					phase: 'running',
-					progress: 0.2 + ratio * 0.72,
-					message: `Translated batch ${batchIndex + 1}/${batches.length}`,
-					metadata: {
-						translatedComments,
-						totalComments: commentIndices.length,
-					},
-				})
+			: undefined,
+		items: pendingCommentIndices.map((index) => {
+			const comment = comments[index] || {}
+			const translated = String(comment.translatedContent || '').trim()
+			return {
+				id: String(comment.id || `c_${index}`),
+				author: String(comment.author || 'unknown'),
+				content: String(comment.content || ''),
+				translatedContent: translated.length > 0 ? translated : '',
+				status: 'pending',
 			}
-		}
-	} catch (error) {
-		if (requestedMode === 'auto' && manualOnApiError) {
-			const message = error instanceof Error ? error.message : String(error)
-			await ctx.emit({
-				status: 'running',
-				phase: 'running',
-				progress: 0.24,
-				message: 'API translation failed, switching to manual mode',
-				metadata: {
-					reason: message,
-				},
-			})
-			await emitManualResult(`API translation failed: ${message}`)
-			return
-		}
-		throw error
+		}),
 	}
 
+	await writeJsonFile(manualTemplatePath, template)
 	const translatedSnapshot = {
 		...snapshot,
 		videoInfo,
@@ -604,20 +174,24 @@ export const commentsTranslateExecutor: LocalJobExecutor = async (ctx) => {
 		status: 'completed',
 		phase: 'completed',
 		progress: 1,
-		message: 'Comments translation completed',
+		message: 'Comments translation prepared for manual editing',
 		outputs: {
 			snapshot: {
 				path: outputPath,
 				contentType: 'application/json',
 			},
+			manualTemplate: {
+				path: manualTemplatePath,
+				contentType: 'application/json',
+			},
 		},
 		metadata: {
 			targetLanguage: input.targetLanguage || DEFAULT_TARGET_LANGUAGE,
-			model: input.model || process.env.TRANSLATE_MODEL || DEFAULT_MODEL,
-			translatedTitle,
-			translatedComments,
+			mode: 'manual',
+			reason: reason || undefined,
+			pendingTitle,
+			pendingComments: pendingCommentIndices.length,
 			totalComments: comments.length,
-			usage,
 		},
 	})
 }

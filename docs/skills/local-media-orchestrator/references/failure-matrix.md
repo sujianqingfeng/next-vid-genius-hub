@@ -70,9 +70,8 @@
 
 ## `failed` in comments-translate stage
 
-- Cause: missing translation key/model/url, provider returned non-2xx, or response is not valid JSON array payload.
-- Fix: set `TRANSLATE_API_KEY` (or `input.apiKey`), confirm `input.apiUrl` and `input.model`, then retry with smaller `batchSize`.
-- Alternative (no API path): run manual mode and fill translation template:
+- Cause: missing/invalid `input.dataPath` or `input.dataUrl`, invalid snapshot JSON shape, or output path permission issues.
+- Fix:
   - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}'`
   - edit generated `comments-translation.template.json`, then sync translated fields back into snapshot before `comments-review` / `render-comments`.
 
