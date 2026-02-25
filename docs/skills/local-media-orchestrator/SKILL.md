@@ -69,6 +69,9 @@ Use `references/commands.md` for payload examples and operational flags.
 - Recommended publish-safe comments chain:
   - `comments-download` -> `comments-snapshot-build` -> `comments-translate` -> `comments-review` -> `render-comments`
   - `comments-translate` runs in manual mode and emits a translation template for editing.
+  - `comments-review` `prepare` now writes `items[].index` (1-based), so reviewers can decide by number.
+  - `comments-review` `prepare` marks `suggestedDecision=remove` when sensitive keywords are detected (default keywords include `中共`, `国家主席`).
+  - `comments-review` `apply` can consume number input directly via `removeIndexes` (e.g. `3,7,12-15`) without editing template files.
   - If a comments overlay video is already available, use `render-comments-compose` to compose directly onto source video without re-rendering comment cards.
 - Keep credentials/subscription URLs out of repo files; load secrets at runtime.
 

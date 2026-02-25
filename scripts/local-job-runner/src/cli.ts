@@ -69,6 +69,7 @@ Examples:
   local-run comments-translate --payload '{"dataPath":"./comments-snapshot.json","targetLanguage":"zh-CN","mode":"manual"}'
   local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"prepare"}'
   local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"apply","reviewPath":"./comments-review.template.json"}'
+  local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"apply","removeIndexes":"3,7,12-15"}'
   local-run render-comments-compose --payload '{"overlayVideoPath":"./comments-video.mp4","sourceVideoPath":"./source.mp4"}'
   local-run clean --days 3 --dry-run
   local-run clean --all

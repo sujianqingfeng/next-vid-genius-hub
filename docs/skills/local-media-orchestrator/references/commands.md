@@ -79,7 +79,12 @@ Command surface source:
   - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>"}' --upload --upload-base-url 'https://media-orchestrator.<account>.workers.dev' --upload-prefix 'shared'`
 - `comments-review` prepare/apply:
   - `{"dataPath":"<translated-snapshot.json>","mode":"prepare"}`
+  - custom sensitive keywords (for suggested removals):
+    - `{"dataPath":"<translated-snapshot.json>","mode":"prepare","sensitiveKeywords":["中共","国家主席"],"suggestOnSensitive":true}`
   - `{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}`
+  - `{"dataPath":"<translated-snapshot.json>","mode":"apply","removeIndexes":"3,7,12-15"}`
+  - optional reason/base:
+    - `{"dataPath":"<translated-snapshot.json>","mode":"apply","removeIndexes":"3,7,12-15","removeReason":"manual moderation","indexBase":1}`
 - `comments-translate` manual mode:
   - `{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}`
 - `comments-translate` default behavior (manual template generation):

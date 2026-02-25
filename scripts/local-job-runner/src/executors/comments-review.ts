@@ -11,6 +11,11 @@ type CommentsReviewInput = {
 	mode?: 'prepare' | 'apply'
 	reviewPath?: string
 	reviewUrl?: string
+	removeIndexes?: string | number | Array<string | number>
+	removeReason?: string
+	indexBase?: number
+	sensitiveKeywords?: string[]
+	suggestOnSensitive?: boolean
 	outputPath?: string
 	outputDir?: string
 	strict?: boolean
@@ -28,6 +33,7 @@ type SnapshotComment = {
 }
 
 type ReviewItem = {
+	index: number
 	id: string
 	author: string
 	content: string
@@ -35,9 +41,14 @@ type ReviewItem = {
 	likes: number
 	replyCount: number
 	decision: ReviewDecision
+	suggestedDecision: ReviewDecision
+	suggestedReason: string
+	matchedSensitiveKeywords: string[]
 	reason: string
 	riskFlags: string[]
 }
+
+const DEFAULT_SENSITIVE_KEYWORDS = ['中共', '国家主席']
 
 function normalizeDecision(value: unknown, fallback: ReviewDecision): ReviewDecision {
 	const normalized = String(value || '')
@@ -75,13 +86,45 @@ function normalizeDecision(value: unknown, fallback: ReviewDecision): ReviewDeci
 	return fallback
 }
 
-function detectRiskFlags(text: string): string[] {
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function collectSensitiveKeywordMatches(text: string, keywords: string[]): string[] {
+	const source = String(text || '')
+	if (!source.trim()) return []
+	const matches: string[] = []
+	for (const keyword of keywords) {
+		const normalized = String(keyword || '').trim()
+		if (!normalized) continue
+		const pattern = new RegExp(escapeRegExp(normalized), 'i')
+		if (pattern.test(source)) {
+			matches.push(normalized)
+		}
+	}
+	return Array.from(new Set(matches))
+}
+
+function detectRiskSignals(text: string, sensitiveKeywords: string[]): {
+	riskFlags: string[]
+	matchedSensitiveKeywords: string[]
+} {
 	const source = String(text || '')
 	const flags: string[] = []
 	if (/https?:\/\//i.test(source)) flags.push('contains_url')
 	if (/[@＠][a-zA-Z0-9_]/.test(source)) flags.push('contains_mention')
 	if (/[#＃]/.test(source)) flags.push('contains_hashtag')
-	return flags
+	const matchedSensitiveKeywords = collectSensitiveKeywordMatches(
+		source,
+		sensitiveKeywords,
+	)
+	if (matchedSensitiveKeywords.length > 0) {
+		flags.push('contains_sensitive_keyword')
+	}
+	return {
+		riskFlags: flags,
+		matchedSensitiveKeywords,
+	}
 }
 
 function normalizeSnapshot(raw: unknown): {
@@ -150,6 +193,116 @@ function extractReviewItems(raw: unknown): Record<string, unknown>[] {
 	throw new Error('Review payload must include items/decisions/comments array')
 }
 
+function normalizeIndexBase(value: unknown): 0 | 1 {
+	return Number(value) === 0 ? 0 : 1
+}
+
+function parseIntegerToken(raw: string): number {
+	const normalized = raw.trim()
+	if (!/^-?\d+$/.test(normalized)) {
+		throw new Error(`Invalid index token "${raw}"`)
+	}
+	const parsed = Number.parseInt(normalized, 10)
+	if (!Number.isSafeInteger(parsed)) {
+		throw new Error(`Invalid index token "${raw}"`)
+	}
+	return parsed
+}
+
+function parseIndexToken(token: string): number[] {
+	const normalized = token.trim()
+	if (!normalized) return []
+	const rangeMatch = normalized.match(/^(-?\d+)\s*-\s*(-?\d+)$/)
+	if (!rangeMatch) {
+		return [parseIntegerToken(normalized)]
+	}
+	const start = parseIntegerToken(rangeMatch[1] || '')
+	const end = parseIntegerToken(rangeMatch[2] || '')
+	if (end < start) {
+		throw new Error(`Invalid index range "${normalized}"`)
+	}
+	const values: number[] = []
+	for (let current = start; current <= end; current += 1) {
+		values.push(current)
+	}
+	return values
+}
+
+function parseRemoveIndexes(
+	input: unknown,
+	indexBase: 0 | 1,
+	totalComments: number,
+): {
+	humanIndexes: number[]
+	zeroBasedIndexes: number[]
+} {
+	if (typeof input === 'undefined') {
+		return { humanIndexes: [], zeroBasedIndexes: [] }
+	}
+
+	const tokens: string[] = []
+	if (typeof input === 'number') {
+		tokens.push(String(input))
+	} else if (typeof input === 'string') {
+		tokens.push(
+			...input
+				.split(/[,\n\r\t，;；]+/)
+				.map((part) => part.trim())
+				.filter(Boolean),
+		)
+	} else if (Array.isArray(input)) {
+		for (const item of input) {
+			if (typeof item === 'number') {
+				tokens.push(String(item))
+				continue
+			}
+			if (typeof item === 'string') {
+				tokens.push(
+					...item
+						.split(/[,\n\r\t，;；]+/)
+						.map((part) => part.trim())
+						.filter(Boolean),
+				)
+				continue
+			}
+			throw new Error('removeIndexes only accepts number/string or array of number/string')
+		}
+	} else {
+		throw new Error('removeIndexes only accepts number/string or array of number/string')
+	}
+
+	const uniqueHuman = new Set<number>()
+	for (const token of tokens) {
+		for (const parsed of parseIndexToken(token)) {
+			uniqueHuman.add(parsed)
+		}
+	}
+
+	const humanIndexes = Array.from(uniqueHuman.values())
+	const outOfRange: number[] = []
+	const zeroBasedIndexes: number[] = []
+	for (const humanIndex of humanIndexes) {
+		const zeroBased = humanIndex - indexBase
+		if (zeroBased < 0 || zeroBased >= totalComments) {
+			outOfRange.push(humanIndex)
+			continue
+		}
+		zeroBasedIndexes.push(zeroBased)
+	}
+
+	if (outOfRange.length > 0) {
+		const sorted = outOfRange.sort((a, b) => a - b).join(', ')
+		throw new Error(
+			`removeIndexes contains out-of-range numbers: ${sorted} (indexBase=${indexBase}, totalComments=${totalComments})`,
+		)
+	}
+
+	return {
+		humanIndexes: humanIndexes.sort((a, b) => a - b),
+		zeroBasedIndexes: Array.from(new Set(zeroBasedIndexes)).sort((a, b) => a - b),
+	}
+}
+
 export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 	const input = ctx.spec.input as CommentsReviewInput
 	if (!input?.dataPath && !input?.dataUrl) {
@@ -189,14 +342,28 @@ export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 
 	if (mode === 'prepare') {
 		const defaultDecision = normalizeDecision(input.defaultDecision, 'pending')
-		const items: ReviewItem[] = comments.map((comment) => {
+		const suggestOnSensitive = input.suggestOnSensitive !== false
+		const sensitiveKeywords = Array.isArray(input.sensitiveKeywords)
+			? input.sensitiveKeywords
+					.map((item) => String(item || '').trim())
+					.filter(Boolean)
+			: DEFAULT_SENSITIVE_KEYWORDS
+		const suggestedRemoveIndexes: number[] = []
+		const items: ReviewItem[] = comments.map((comment, index) => {
 			const mergedText = [
 				String(comment.content || ''),
 				String(comment.translatedContent || ''),
 			]
 				.filter(Boolean)
 				.join('\n')
+			const risk = detectRiskSignals(mergedText, sensitiveKeywords)
+			const shouldSuggestRemove =
+				suggestOnSensitive && risk.matchedSensitiveKeywords.length > 0
+			if (shouldSuggestRemove) {
+				suggestedRemoveIndexes.push(index + 1)
+			}
 			return {
+				index: index + 1,
 				id: comment.id,
 				author: comment.author,
 				content: comment.content,
@@ -204,8 +371,13 @@ export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 				likes: comment.likes,
 				replyCount: comment.replyCount,
 				decision: defaultDecision,
+				suggestedDecision: shouldSuggestRemove ? 'remove' : 'pending',
+				suggestedReason: shouldSuggestRemove
+					? 'contains_sensitive_keyword'
+					: '',
+				matchedSensitiveKeywords: risk.matchedSensitiveKeywords,
 				reason: '',
-				riskFlags: detectRiskFlags(mergedText),
+				riskFlags: risk.riskFlags,
 			}
 		})
 		const reviewDoc = {
@@ -219,6 +391,11 @@ export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 			summary: {
 				totalComments: items.length,
 				defaultDecision,
+				indexBase: 1,
+				sensitiveKeywords,
+				suggestOnSensitive,
+				suggestedRemoveCount: suggestedRemoveIndexes.length,
+				suggestedRemoveIndexes,
 			},
 			items,
 		}
@@ -239,13 +416,21 @@ export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 				mode,
 				totalComments: items.length,
 				defaultDecision,
+				suggestOnSensitive,
+				sensitiveKeywords,
+				suggestedRemoveCount: suggestedRemoveIndexes.length,
+				suggestedRemoveIndexes,
 			},
 		})
 		return
 	}
 
 	if (!input.reviewPath && !input.reviewUrl) {
-		throw new Error('comments-review apply mode requires input.reviewPath or input.reviewUrl')
+		if (typeof input.removeIndexes === 'undefined') {
+			throw new Error(
+				'comments-review apply mode requires input.reviewPath/input.reviewUrl or input.removeIndexes',
+			)
+		}
 	}
 
 	await ctx.emit({
@@ -255,14 +440,6 @@ export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 		message: 'Loading review decisions',
 	})
 
-	const reviewText = await readTextFromPathOrUrl({
-		path: input.reviewPath,
-		url: input.reviewUrl,
-		timeoutMs: 45_000,
-	})
-	const rawReview = JSON.parse(reviewText)
-	const reviewItems = extractReviewItems(rawReview)
-
 	const decisionMap = new Map<
 		string,
 		{
@@ -270,13 +447,54 @@ export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 			reason: string
 		}
 	>()
-	for (const item of reviewItems) {
-		const id = String(item.id || '').trim()
-		if (!id) continue
-		decisionMap.set(id, {
-			decision: normalizeDecision(item.decision, 'pending'),
-			reason: String(item.reason || '').trim(),
+	let decisionSource: 'review-file' | 'remove-indexes' = 'review-file'
+	let removeIndexesSummary:
+		| {
+				humanIndexes: number[]
+				indexBase: 0 | 1
+			}
+		| undefined
+
+	if (input.reviewPath || input.reviewUrl) {
+		const reviewText = await readTextFromPathOrUrl({
+			path: input.reviewPath,
+			url: input.reviewUrl,
+			timeoutMs: 45_000,
 		})
+		const rawReview = JSON.parse(reviewText)
+		const reviewItems = extractReviewItems(rawReview)
+		for (const item of reviewItems) {
+			const id = String(item.id || '').trim()
+			if (!id) continue
+			decisionMap.set(id, {
+				decision: normalizeDecision(item.decision, 'pending'),
+				reason: String(item.reason || '').trim(),
+			})
+		}
+	} else {
+		decisionSource = 'remove-indexes'
+		const indexBase = normalizeIndexBase(input.indexBase)
+		const parsed = parseRemoveIndexes(input.removeIndexes, indexBase, comments.length)
+		const removeSet = new Set(parsed.zeroBasedIndexes)
+		const removeReason = String(input.removeReason || '').trim()
+		for (let index = 0; index < comments.length; index += 1) {
+			const comment = comments[index]!
+			if (removeSet.has(index)) {
+				decisionMap.set(comment.id, {
+					decision: 'remove',
+					reason: removeReason || 'manual_index_removed',
+				})
+				continue
+			}
+			decisionMap.set(comment.id, {
+				decision: 'keep',
+				reason: '',
+			})
+		}
+		removeIndexesSummary = {
+			humanIndexes: parsed.humanIndexes,
+			indexBase,
+		}
 	}
 
 	const strict = input.strict !== false
@@ -346,18 +564,21 @@ export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 		snapshot.review && typeof snapshot.review === 'object' && !Array.isArray(snapshot.review)
 			? (snapshot.review as Record<string, unknown>)
 			: {}
-	const reviewedSnapshot = {
-		...snapshot,
-		comments: keptComments,
-		review: {
+		const reviewedSnapshot = {
+			...snapshot,
+			comments: keptComments,
+			review: {
 			...existingReview,
 			mode: 'manual-comments-review',
-			reviewedAt: new Date().toISOString(),
-			reviewPath: input.reviewPath,
-			reviewUrl: input.reviewUrl,
-			totalComments: comments.length,
-			keptComments: keptComments.length,
-			removedComments: removedComments.length,
+				reviewedAt: new Date().toISOString(),
+				reviewPath: input.reviewPath,
+				reviewUrl: input.reviewUrl,
+				decisionSource,
+				removeIndexes: removeIndexesSummary?.humanIndexes,
+				indexBase: removeIndexesSummary?.indexBase,
+				totalComments: comments.length,
+				keptComments: keptComments.length,
+				removedComments: removedComments.length,
 			pendingComments: pendingCount,
 			missingComments: missingCount,
 			strict,
@@ -383,11 +604,14 @@ export const commentsReviewExecutor: LocalJobExecutor = async (ctx) => {
 				contentType: 'application/json',
 			},
 		},
-		metadata: {
-			mode,
-			totalComments: comments.length,
-			keptComments: keptComments.length,
-			removedComments: removedComments.length,
+			metadata: {
+				mode,
+				decisionSource,
+				removeIndexes: removeIndexesSummary?.humanIndexes,
+				indexBase: removeIndexesSummary?.indexBase,
+				totalComments: comments.length,
+				keptComments: keptComments.length,
+				removedComments: removedComments.length,
 			pendingComments: pendingCount,
 			missingComments: missingCount,
 			strict,

@@ -97,9 +97,10 @@
 
 ## `failed` in comments-review stage
 
-- Cause: `mode=apply` without review file, invalid review schema, or unresolved decisions in strict mode.
+- Cause: `mode=apply` without `reviewPath/reviewUrl/removeIndexes`, invalid review schema, unresolved decisions in strict mode, or out-of-range `removeIndexes`.
 - Fix:
   - provide `reviewPath`/`reviewUrl` when applying
+  - or provide number-based input: `removeIndexes` (e.g. `"3,7,12-15"`)
   - ensure review file contains `items` (or `decisions`) with `id` + `decision`
   - finish all decisions (`keep` or `remove`) before strict apply
   - if needed for fast draft, set `"strict": false` to auto-resolve missing/pending by fallback decision

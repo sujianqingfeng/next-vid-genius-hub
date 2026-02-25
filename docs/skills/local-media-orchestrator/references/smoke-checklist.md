@@ -85,6 +85,8 @@
 - Run:
   - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"prepare"}'`
   - edit template and set each item `decision` to `keep` or `remove`
+  - or skip file editing and apply by number list directly:
+    - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"apply","removeIndexes":"3,7,12-15"}'`
   - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"apply","reviewPath":"<comments-review.template.json>"}'`
 - Verify:
   - reviewed snapshot exists
