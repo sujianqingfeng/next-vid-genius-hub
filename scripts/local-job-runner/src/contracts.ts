@@ -3,6 +3,8 @@ import type { JobStatus } from '@app/media-domain'
 export type LocalJobKind =
 	| 'download'
 	| 'render-subtitles'
+	| 'subtitle-translate'
+	| 'subtitle-review'
 	| 'render-comments'
 	| 'render-comments-compose'
 	| 'comments-snapshot-build'

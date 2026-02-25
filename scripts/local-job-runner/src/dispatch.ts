@@ -10,6 +10,8 @@ import { proxyCheckExecutor } from './executors/proxy-check'
 import { renderCommentsExecutor } from './executors/render-comments'
 import { renderCommentsComposeExecutor } from './executors/render-comments-compose'
 import { renderSubtitlesExecutor } from './executors/render-subtitles'
+import { subtitleReviewExecutor } from './executors/subtitle-review'
+import { subtitleTranslateExecutor } from './executors/subtitle-translate'
 import { threadAssetIngestExecutor } from './executors/thread-asset-ingest'
 
 const EXECUTORS: Record<LocalJobKind, LocalJobExecutor> = {
@@ -24,6 +26,8 @@ const EXECUTORS: Record<LocalJobKind, LocalJobExecutor> = {
 	'channel-sync': channelSyncExecutor,
 	'thread-asset-ingest': threadAssetIngestExecutor,
 	asr: asrExecutor,
+	'subtitle-translate': subtitleTranslateExecutor,
+	'subtitle-review': subtitleReviewExecutor,
 	'proxy-check': proxyCheckExecutor,
 }
 

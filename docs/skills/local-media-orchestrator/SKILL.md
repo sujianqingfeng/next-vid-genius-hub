@@ -43,6 +43,8 @@ Command names are sourced from `scripts/local-job-runner/src/command-surface.ts`
 - `pnpm local-run channel-sync --input <file.json>`
 - `pnpm local-run thread-asset-ingest --input <file.json>`
 - `pnpm local-run asr --input <file.json>`
+- `pnpm local-run subtitle-translate --input <file.json>`
+- `pnpm local-run subtitle-review --input <file.json>`
 - `pnpm local-run proxy-check --input <file.json>`
 - `pnpm local-run status <jobId>`
 - `pnpm local-run cancel <jobId>`
@@ -61,7 +63,9 @@ Use `references/commands.md` for payload examples and operational flags.
 - Use vertical comments video only when explicitly required:
   - `templateId: "comments-vertical"`
 - Recommended burned subtitle chain:
-  - `download` -> `asr` -> (optional translation/bilingual transform) -> `render-subtitles`
+  - `download` -> `asr` -> `subtitle-translate` -> `subtitle-review` -> `render-subtitles`
+  - `subtitle-translate` generates `subtitle-translation.template.json` in manual mode.
+  - `subtitle-review` applies manual `translatedText` into final VTT for `render-subtitles`.
 - Recommended publish-safe comments chain:
   - `comments-download` -> `comments-snapshot-build` -> `comments-translate` -> `comments-review` -> `render-comments`
   - `comments-translate` runs in manual mode and emits a translation template for editing.

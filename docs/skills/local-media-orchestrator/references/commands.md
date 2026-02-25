@@ -31,6 +31,8 @@ Command surface source:
 - `pnpm local-run channel-sync --input <file.json>`
 - `pnpm local-run thread-asset-ingest --input <file.json>`
 - `pnpm local-run asr --input <file.json>`
+- `pnpm local-run subtitle-translate --input <file.json>`
+- `pnpm local-run subtitle-review --input <file.json>`
 - `pnpm local-run proxy-check --input <file.json>`
 
 ## Operational commands
@@ -59,6 +61,10 @@ Command surface source:
   - `{"channelUrlOrId":"<channel-url-or-id>","limit":5,"proxyUrl":"http://127.0.0.1:17890"}`
 - `render-subtitles` (bilingual overlap clip):
   - `{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}`
+- `subtitle-translate` manual mode (generate translation template):
+  - `{"subtitlePath":"<transcript.vtt>","targetLanguage":"zh-CN","mode":"manual"}`
+- `subtitle-review` apply manual template to VTT:
+  - `{"mode":"apply","reviewPath":"<subtitle-translation.template.json>","format":"bilingual"}`
 - `render-comments` (default horizontal template):
   - `{"dataPath":"<comments-snapshot.reviewed.json>","templateId":"comments-default"}`
 - `render-comments` (vertical template, opt-in only):

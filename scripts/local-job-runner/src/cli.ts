@@ -73,6 +73,8 @@ Examples:
   local-run clean --days 3 --dry-run
   local-run clean --all
   local-run render-subtitles --input ./examples/subtitles-job.json
+  local-run subtitle-translate --payload '{"subtitlePath":"<transcript.vtt>","targetLanguage":"zh-CN","mode":"manual"}'
+  local-run subtitle-review --payload '{"mode":"apply","reviewPath":"./subtitle-translation.template.json","format":"bilingual"}'
   local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>","overlapPolicy":"force-clip"}'
   local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<bilingual.vtt>"}' --upload --upload-base-url 'https://media-orchestrator.<account>.workers.dev' --upload-prefix 'shared'
   local-run status job_abc123

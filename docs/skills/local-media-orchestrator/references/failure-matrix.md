@@ -57,6 +57,26 @@
 - Cause: missing ASR key/model/url, provider returned non-2xx, or unsupported payload shape.
 - Fix: set `ASR_API_KEY` (or `input.apiKey`), confirm endpoint/model, inspect saved job error.
 
+## `failed` in subtitle-translate stage
+
+- Cause: missing/invalid subtitle input, invalid VTT shape (no cues), or output path permission issues.
+- Fix:
+  - provide `subtitlePath` / `subtitleUrl` / `subtitleText`
+  - verify source file has valid VTT cues
+  - check generated `subtitle-translation.template.json` and fill `translatedText` manually
+- Example:
+  - `pnpm local-run subtitle-translate --payload '{"subtitlePath":"<transcript.vtt>","targetLanguage":"zh-CN","mode":"manual"}'`
+
+## `failed` in subtitle-review stage
+
+- Cause: `mode` not set to `apply`, missing `reviewPath/reviewUrl`, unresolved `translatedText` in strict mode, or invalid item timings.
+- Fix:
+  - run with `{"mode":"apply","reviewPath":"<subtitle-translation.template.json>"}`
+  - fill each item `translatedText` (or set `"strict": false` to fallback to source text)
+  - keep `start/end` fields intact in template
+- Example:
+  - `pnpm local-run subtitle-review --payload '{"mode":"apply","reviewPath":"<subtitle-translation.template.json>","format":"bilingual"}'`
+
 ## Subtitle render shows 4 stacked lines in bilingual output
 
 - Cause: consecutive VTT cues overlap in time; each cue has 2 lines (EN+ZH), so two active cues become 4 visible lines.

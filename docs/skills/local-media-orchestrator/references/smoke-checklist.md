@@ -36,6 +36,10 @@
 
 ## 2) Subtitle render
 
+- Optional (translate ASR VTT to bilingual VTT before burn-in):
+  - `pnpm local-run subtitle-translate --payload '{"subtitlePath":"<transcript.vtt>","targetLanguage":"zh-CN","mode":"manual"}'`
+- Optional (apply manual template into bilingual VTT):
+  - `pnpm local-run subtitle-review --payload '{"mode":"apply","reviewPath":"<subtitle-translation.template.json>","format":"bilingual"}'`
 - Run:
   - `pnpm local-run render-subtitles --payload '{"videoPath":"<video.mp4>","subtitlePath":"<subtitles.vtt>"}'`
 - Optional (for bilingual/multi-line VTT with overlap):
