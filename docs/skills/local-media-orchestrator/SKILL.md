@@ -59,6 +59,7 @@ Use `references/commands.md` for payload examples and operational flags.
   - `download` -> `asr` -> (optional translation/bilingual transform) -> `render-subtitles`
 - Recommended publish-safe comments chain:
   - `comments-download` -> `comments-translate` -> `comments-review` -> `render-comments`
+  - If API translation is unavailable, `comments-translate` can run with `mode: "manual"` (or auto-fallback) and emits a manual translation template for editing.
 - Keep credentials/subscription URLs out of repo files; load secrets at runtime.
 
 ## Implement in this order

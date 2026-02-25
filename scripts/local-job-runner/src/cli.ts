@@ -65,6 +65,7 @@ ${commandLines}
 Examples:
   local-run download --payload '{"url":"https://www.youtube.com/watch?v=...","quality":"1080p"}'
   local-run comments-translate --payload '{"dataPath":"./comments-snapshot.json","targetLanguage":"zh-CN"}'
+  local-run comments-translate --payload '{"dataPath":"./comments-snapshot.json","targetLanguage":"zh-CN","mode":"manual"}'
   local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"prepare"}'
   local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"apply","reviewPath":"./comments-review.template.json"}'
   local-run clean --days 3 --dry-run

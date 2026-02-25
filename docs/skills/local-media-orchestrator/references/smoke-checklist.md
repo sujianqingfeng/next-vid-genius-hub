@@ -59,9 +59,12 @@
 
 - Run:
   - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}'`
+  - no-API/manual mode:
+    - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN","mode":"manual"}'`
 - Verify:
   - output snapshot exists
   - output includes `videoInfo.translatedTitle` and `comments[].translatedContent` (for translated items)
+  - manual mode outputs `comments-translation.template.json` for human translation edits
 
 ## 3.1) Comments review (recommended before render)
 
