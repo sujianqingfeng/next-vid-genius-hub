@@ -64,10 +64,12 @@ ${commandLines}
 
 Examples:
   local-run download --payload '{"url":"https://www.youtube.com/watch?v=...","quality":"1080p"}'
+  local-run comments-snapshot-build --payload '{"dataPath":"./comments.json","title":"Sample Title","author":"sample-author"}'
   local-run comments-translate --payload '{"dataPath":"./comments-snapshot.json","targetLanguage":"zh-CN"}'
   local-run comments-translate --payload '{"dataPath":"./comments-snapshot.json","targetLanguage":"zh-CN","mode":"manual"}'
   local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"prepare"}'
   local-run comments-review --payload '{"dataPath":"./comments-snapshot.translated.json","mode":"apply","reviewPath":"./comments-review.template.json"}'
+  local-run render-comments-compose --payload '{"overlayVideoPath":"./comments-video.mp4","sourceVideoPath":"./source.mp4"}'
   local-run clean --days 3 --dry-run
   local-run clean --all
   local-run render-subtitles --input ./examples/subtitles-job.json

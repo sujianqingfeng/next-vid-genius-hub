@@ -35,6 +35,8 @@ Command names are sourced from `scripts/local-job-runner/src/command-surface.ts`
 - `pnpm local-run download --input <file.json>`
 - `pnpm local-run render-subtitles --input <file.json>`
 - `pnpm local-run render-comments --input <file.json>`
+- `pnpm local-run render-comments-compose --input <file.json>`
+- `pnpm local-run comments-snapshot-build --input <file.json>`
 - `pnpm local-run comments-translate --input <file.json>`
 - `pnpm local-run comments-review --input <file.json>`
 - `pnpm local-run comments-download --input <file.json>`
@@ -55,11 +57,15 @@ Use `references/commands.md` for payload examples and operational flags.
 - Do not assume `7890` is available; default to a dedicated local port like `17890`.
 - Validate proxy path before provider runs:
   - `curl -x http://127.0.0.1:17890 -I https://www.youtube.com`
+- `render-comments` defaults to horizontal template (`comments-default` / `CommentsVideo`) when `templateId` is not provided.
+- Use vertical comments video only when explicitly required:
+  - `templateId: "comments-vertical"`
 - Recommended burned subtitle chain:
   - `download` -> `asr` -> (optional translation/bilingual transform) -> `render-subtitles`
 - Recommended publish-safe comments chain:
-  - `comments-download` -> `comments-translate` -> `comments-review` -> `render-comments`
+  - `comments-download` -> `comments-snapshot-build` -> `comments-translate` -> `comments-review` -> `render-comments`
   - If API translation is unavailable, `comments-translate` can run with `mode: "manual"` (or auto-fallback) and emits a manual translation template for editing.
+  - If a comments overlay video is already available, use `render-comments-compose` to compose directly onto source video without re-rendering comment cards.
 - Keep credentials/subscription URLs out of repo files; load secrets at runtime.
 
 ## Implement in this order

@@ -4,6 +4,8 @@ export type LocalJobKind =
 	| 'download'
 	| 'render-subtitles'
 	| 'render-comments'
+	| 'render-comments-compose'
+	| 'comments-snapshot-build'
 	| 'comments-translate'
 	| 'comments-review'
 	| 'comments-download'

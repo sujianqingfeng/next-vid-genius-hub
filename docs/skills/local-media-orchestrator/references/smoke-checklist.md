@@ -48,14 +48,24 @@
 ## 3) Comments render
 
 - Run:
-  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>"}'`
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","templateId":"comments-default"}'`
 - Optional (if remote avatars are unstable):
-  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","avatarMode":"initial"}'`
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","templateId":"comments-default","avatarMode":"initial"}'`
+- Optional (vertical output, opt-in only):
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","templateId":"comments-vertical"}'`
 - Verify:
   - output video exists
   - composition metadata saved in job state
 
-## 3.0) Comments translate (optional before render)
+## 3.0) Comments snapshot build (recommended after comments-download)
+
+- Run:
+  - `pnpm local-run comments-snapshot-build --payload '{"dataPath":"<comments.json>","title":"<video-title>","author":"<channel-name>"}'`
+- Verify:
+  - output snapshot exists
+  - output includes `videoInfo` and `comments[]`
+
+## 3.1) Comments translate (optional before render)
 
 - Run:
   - `pnpm local-run comments-translate --payload '{"dataPath":"<comments-snapshot.json>","targetLanguage":"zh-CN"}'`
@@ -66,7 +76,7 @@
   - output includes `videoInfo.translatedTitle` and `comments[].translatedContent` (for translated items)
   - manual mode outputs `comments-translation.template.json` for human translation edits
 
-## 3.1) Comments review (recommended before render)
+## 3.2) Comments review (recommended before render)
 
 - Run:
   - `pnpm local-run comments-review --payload '{"dataPath":"<translated-snapshot.json>","mode":"prepare"}'`
@@ -77,10 +87,18 @@
   - removed comments list exists
   - strict apply fails when decisions remain `pending`
 
-## 3.2) Comments render + source compose
+## 3.3) Comments render + source compose
 
 - Run:
-  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.reviewed.json>","sourceVideoPath":"<source.mp4>","composeMode":"compose-on-video"}'`
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.reviewed.json>","templateId":"comments-default","sourceVideoPath":"<source.mp4>","composeMode":"compose-on-video"}'`
+- Verify:
+  - final output video exists
+  - job metadata has `"composedWithSource": true`
+
+## 3.4) Compose-only from existing comments overlay video
+
+- Run:
+  - `pnpm local-run render-comments-compose --payload '{"overlayVideoPath":"<comments-overlay.mp4>","sourceVideoPath":"<source.mp4>"}'`
 - Verify:
   - final output video exists
   - job metadata has `"composedWithSource": true`

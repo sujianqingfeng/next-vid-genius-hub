@@ -40,6 +40,11 @@ type RenderCommentsInput = {
 	browserExecutable?: string
 }
 
+type RenderCommentsTemplateId =
+	| 'comments-default'
+	| 'comments-vertical'
+	| 'thread-forum'
+
 function isRemoteHttpUrl(value: unknown): value is string {
 	return typeof value === 'string' && /^https?:\/\//i.test(value)
 }
@@ -86,12 +91,25 @@ function normalizeLayout(value: unknown): SlotLayout | undefined {
 }
 
 function defaultLayoutByTemplate(
-	templateId: RenderCommentsInput['templateId'],
+	templateId: RenderCommentsTemplateId,
 ): SlotLayout | undefined {
 	if (templateId === 'comments-vertical') {
 		return { x: 58, y: 36, width: 540, height: 960 }
 	}
 	return undefined
+}
+
+function resolveTemplateId(
+	templateId: unknown,
+	raw: Record<string, unknown>,
+): RenderCommentsTemplateId {
+	const normalized = String(templateId || '')
+		.trim()
+		.toLowerCase()
+	if (normalized === 'thread-forum') return 'thread-forum'
+	if (normalized === 'comments-vertical') return 'comments-vertical'
+	if (raw.kind === 'thread-render-snapshot') return 'thread-forum'
+	return 'comments-default'
 }
 
 async function execFfmpegWithProgress(
@@ -241,8 +259,9 @@ export const renderCommentsExecutor: LocalJobExecutor = async (ctx) => {
 	})
 	const raw = JSON.parse(dataText) as Record<string, any>
 
+	const resolvedTemplateId = resolveTemplateId(input.templateId, raw)
 	let compositionId =
-		input.templateId === 'comments-vertical'
+		resolvedTemplateId === 'comments-vertical'
 			? 'CommentsVideoVertical'
 			: 'CommentsVideo'
 	let coverDurationInFrames = REMOTION_FPS * 3
@@ -254,8 +273,7 @@ export const renderCommentsExecutor: LocalJobExecutor = async (ctx) => {
 	let resolvedAvatarMode: RenderCommentsInput['avatarMode'] =
 		input.avatarMode || 'inline'
 
-	const looksLikeThread =
-		input.templateId === 'thread-forum' || raw.kind === 'thread-render-snapshot'
+	const looksLikeThread = resolvedTemplateId === 'thread-forum'
 	if (looksLikeThread) {
 		const threadProps = (raw.inputProps || raw) as Record<string, unknown>
 		const replies = Array.isArray(threadProps.replies) ? threadProps.replies : []
@@ -466,7 +484,7 @@ export const renderCommentsExecutor: LocalJobExecutor = async (ctx) => {
 		})
 		const layout =
 			normalizeLayout(input.composeLayout) ||
-			defaultLayoutByTemplate(input.templateId)
+			defaultLayoutByTemplate(resolvedTemplateId)
 		const ffmpegArgs = buildComposeArgs({
 			overlayPath,
 			sourceVideoPath,
@@ -524,6 +542,7 @@ export const renderCommentsExecutor: LocalJobExecutor = async (ctx) => {
 		message: 'Comments render completed',
 		outputs,
 		metadata: {
+			templateId: resolvedTemplateId,
 			compositionId,
 			durationInFrames,
 			fps: REMOTION_FPS,

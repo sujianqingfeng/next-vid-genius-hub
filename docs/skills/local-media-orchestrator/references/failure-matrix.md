@@ -15,6 +15,15 @@
 - Cause: Remotion composition not found or Chromium runtime unavailable.
 - Fix: verify `packages/remotion-project/remotion/Root.tsx` composition IDs and local Chrome/headless binary.
 
+## `failed` in comments-snapshot-build stage
+
+- Cause: input payload is not an array/object with `comments`, or normalized comments list becomes empty.
+- Fix:
+  - pass raw comments array/object via `dataPath`/`dataUrl`, or inline `comments`
+  - ensure each comment has basic text fields (`content`, optional `author`)
+- Example:
+  - `pnpm local-run comments-snapshot-build --payload '{"dataPath":"<comments.json>","title":"<video-title>","author":"<channel-name>"}'`
+
 ## `failed` or long retry in render-comments with avatar URL 429/ORB
 
 - Cause: remote avatar host throttles/blocks rendering runtime (`yt3.ggpht.com` often returns 429), causing `<Img>` fetch retry loops.
@@ -24,6 +33,24 @@
   - Force placeholder avatars: `avatarMode=initial`
 - Example:
   - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.json>","avatarMode":"initial"}'`
+
+## Comments video rendered as vertical unexpectedly
+
+- Cause: payload explicitly set `templateId: "comments-vertical"`.
+- Fix:
+  - Use horizontal default by omitting `templateId`, or set `templateId: "comments-default"` explicitly.
+- Example:
+  - `pnpm local-run render-comments --payload '{"dataPath":"<comments-snapshot.reviewed.json>","templateId":"comments-default"}'`
+
+## `failed` in render-comments-compose stage
+
+- Cause: missing `overlayVideoPath/sourceVideoPath`, invalid media file, or `ffmpeg` compose failure.
+- Fix:
+  - ensure both overlay and source video inputs are reachable/local
+  - verify media files are playable (`ffprobe <file>`)
+  - rerun with explicit duration/layout only when needed
+- Example:
+  - `pnpm local-run render-comments-compose --payload '{"overlayVideoPath":"<comments-overlay.mp4>","sourceVideoPath":"<source.mp4>"}'`
 
 ## `failed` in ASR stage
 
