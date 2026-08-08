@@ -511,32 +511,141 @@ function audioContentType(filePath) {
 	)
 }
 
-function canonicalTimestamp(token) {
-	const parts = String(token).replace(',', '.').split(':')
-	const [secStr, msStr] = (parts.pop() || '').split('.')
-	let sec = Number(secStr || 0)
-	let min = parts.length ? Number(parts.pop()) : 0
-	const hr = parts.length ? Number(parts.pop()) : 0
-	min += Math.floor(sec / 60)
-	const hours = hr + Math.floor(min / 60)
-	const minutes = min % 60
-	const seconds = sec % 60
-	const ms = (msStr || '000').padEnd(3, '0').slice(0, 3)
-	const pad = (value) => String(value).padStart(2, '0')
-	return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${ms}`
+// Cloudflare Workers AI Whisper has a per-request time budget: audio longer than
+// ~60-90s returns 408 (code 3007). Long audio is transcribed in fixed-length
+// chunks and the cues are offset back into the original timeline. CF's response is
+// { result: { text, vtt, words, ... } }; its `vtt` may use seconds-only cues, so
+// timestamps are parsed to seconds and re-serialized via asrTimestamp.
+const CF_ASR_CHUNK_SECONDS = 30
+
+async function audioDurationSeconds(filePath) {
+	const result = spawnSync(
+		'ffprobe',
+		['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath],
+		{ encoding: 'utf8' },
+	)
+	if (result.status !== 0) throw new Error(`ffprobe could not read duration for ${filePath}`)
+	const seconds = Number((result.stdout || '').trim())
+	if (!Number.isFinite(seconds)) throw new Error(`Could not parse audio duration for ${filePath}`)
+	return seconds
 }
 
-// Cloudflare's result.vtt may emit seconds-only cues (e.g. `14.980 --> 16.000`);
-// normalize every timing line to HH:MM:SS.mmm so parseVtt accepts it.
-function normalizeVttTimestamps(vtt) {
-	return String(vtt)
-		.split(/\r?\n/)
-		.map((line) =>
-			line.includes('-->')
-				? line.replace(/\d{1,3}(?::\d{1,2}){0,2}[.,]\d{1,3}/g, (token) => canonicalTimestamp(token))
-				: line,
+function cfTimestampToSeconds(token) {
+	const parts = String(token).replace(',', '.').trim().split(':')
+	if (parts.some((part) => !/^\d+(\.\d+)?$/.test(part))) return null
+	let seconds = 0
+	for (const part of parts) seconds = seconds * 60 + Number(part)
+	return seconds
+}
+
+function parseCloudflareVttCues(vtt) {
+	const cues = []
+	const lines = String(vtt).replace(/\r/g, '').split('\n')
+	for (let i = 0; i < lines.length; i += 1) {
+		if (!lines[i].includes('-->')) continue
+		const [leftRaw, rightRaw] = lines[i].split('-->')
+		const startSec = cfTimestampToSeconds((leftRaw || '').trim().split(/\s+/)[0])
+		const endSec = cfTimestampToSeconds((rightRaw || '').trim().split(/\s+/)[0])
+		if (startSec == null || endSec == null) continue
+		const textLines = []
+		let j = i + 1
+		while (j < lines.length && lines[j].trim() && !lines[j].includes('-->')) {
+			textLines.push(lines[j].trim())
+			j += 1
+		}
+		const text = textLines.join(' ').replace(/\s+/g, ' ').trim()
+		if (text) cues.push({ startSec, endSec, text })
+		i = j - 1
+	}
+	return cues
+}
+
+function cloudflareCuesFromResult(result) {
+	if (typeof result.vtt === 'string' && result.vtt.trim()) return parseCloudflareVttCues(result.vtt)
+	const segments = Array.isArray(result.segments) ? result.segments : []
+	return segments
+		.filter(
+			(segment) =>
+				Number.isFinite(Number(segment.start)) &&
+				Number.isFinite(Number(segment.end)) &&
+				normalizeText(segment.text),
 		)
-		.join('\n')
+		.map((segment) => ({
+			startSec: Number(segment.start),
+			endSec: Number(segment.end),
+			text: normalizeText(segment.text),
+		}))
+}
+
+async function cloudflareRequest({ bytes, contentType, url, apiKey }) {
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': contentType },
+		body: bytes,
+	})
+	if (!response.ok) {
+		throw new Error(`Cloudflare ASR request failed: ${response.status} ${await response.text()}`)
+	}
+	const json = await response.json()
+	return (json && json.result) || {}
+}
+
+async function cloudflareAsr({ audioPath, url, apiKey }) {
+	const contentType = audioContentType(audioPath)
+	const duration = await audioDurationSeconds(audioPath)
+	const records =
+		duration > CF_ASR_CHUNK_SECONDS
+			? await cloudflareChunkedCues({ audioPath, duration, contentType, url, apiKey })
+			: cloudflareCuesFromResult(
+					await cloudflareRequest({ bytes: await fs.readFile(audioPath), contentType, url, apiKey }),
+				)
+	const cues = records.map((record) => ({
+		start: asrTimestamp(record.startSec),
+		end: asrTimestamp(record.endSec),
+		lines: [record.text],
+	}))
+	if (!cues.length) throw new Error('Cloudflare ASR produced no cues')
+	return serializeVtt(cues)
+}
+
+async function cloudflareChunkedCues({ audioPath, duration, contentType, url, apiKey }) {
+	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mediaflow-cf-asr-'))
+	const records = []
+	try {
+		for (let start = 0; start < duration; start += CF_ASR_CHUNK_SECONDS) {
+			const chunkPath = path.join(tmpDir, `chunk-${start}.wav`)
+			await runProcess('ffmpeg', [
+				'-y',
+				'-hide_banner',
+				'-loglevel',
+				'error',
+				'-ss',
+				String(start),
+				'-t',
+				String(CF_ASR_CHUNK_SECONDS),
+				'-i',
+				audioPath,
+				'-ar',
+				'16000',
+				'-ac',
+				'1',
+				chunkPath,
+			])
+			const bytes = await fs.readFile(chunkPath)
+			try {
+				const result = await cloudflareRequest({ bytes, contentType, url, apiKey })
+				for (const cue of cloudflareCuesFromResult(result)) {
+					records.push({ startSec: cue.startSec + start, endSec: cue.endSec + start, text: cue.text })
+				}
+			} catch (error) {
+				console.error(`[mediaflow] ASR chunk @${start}s skipped: ${error.message}`)
+			}
+		}
+	} finally {
+		await fs.rm(tmpDir, { recursive: true, force: true })
+	}
+	if (!records.length) throw new Error('Cloudflare ASR produced no cues across chunks')
+	return records
 }
 
 async function asr(flags) {
@@ -550,55 +659,34 @@ async function asr(flags) {
 	if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
 		throw new Error('ASR API URL must use http or https')
 	}
-	// Cloudflare Workers AI is auto-detected by host: its Whisper endpoint differs
-	// from the OpenAI-compatible shape (audio uploaded as the `audio` field, the
-	// model lives in the URL path, and the response is wrapped in {result:{...}}
-	// with a ready-made `vtt` string). The OpenAI-compatible path is unchanged.
+	// Cloudflare Workers AI is auto-detected by host (api.cloudflare.com); see
+	// cloudflareAsr for the raw-binary body, chunking, and timestamp handling.
+	// Anything else is treated as an OpenAI-compatible /v1/audio/transcriptions.
 	const isCloudflare = parsedUrl.hostname === 'api.cloudflare.com'
 
-	const bytes = await fs.readFile(audioPath)
-	let response
+	let vtt
 	if (isCloudflare) {
-		// Cloudflare Workers AI takes the audio as a raw binary request body whose
-		// Content-Type reflects the container — the documented `--data-binary` shape
-		// for /ai/run/@cf/openai/whisper (multipart upload is not accepted). The
-		// response is { result: { text, vtt, words, ... } } with a ready-made `vtt`.
-		response = await fetch(parsedUrl, {
-			method: 'POST',
-			headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': audioContentType(audioPath) },
-			body: bytes,
-		})
+		vtt = await cloudflareAsr({ audioPath, url: parsedUrl, apiKey })
 	} else {
 		const form = new FormData()
+		const bytes = await fs.readFile(audioPath)
 		form.append('file', new Blob([bytes]), path.basename(audioPath))
 		form.append('model', flagString(flags, 'model', process.env.MEDIAFLOW_ASR_MODEL || 'whisper-1'))
 		form.append('response_format', 'verbose_json')
 		const language = flagString(flags, 'language')
 		if (language) form.append('language', language)
-		response = await fetch(parsedUrl, {
+		const response = await fetch(parsedUrl, {
 			method: 'POST',
 			headers: { Authorization: `Bearer ${apiKey}` },
 			body: form,
 		})
-	}
-	if (!response.ok) {
-		throw new Error(`ASR request failed: ${response.status} ${await response.text()}`)
-	}
-	const contentType = response.headers.get('content-type') || ''
-	let vtt
-	if (contentType.includes('text/vtt')) {
-		vtt = await response.text()
-	} else {
-		const json = await response.json()
-		if (isCloudflare) {
-			const result = (json && json.result) || {}
-			vtt =
-				typeof result.vtt === 'string' && result.vtt.trim()
-					? normalizeVttTimestamps(result.vtt)
-					: vttFromSegments(result.segments || json.segments || [])
-		} else {
-			vtt = vttFromSegments(json.segments || [])
+		if (!response.ok) {
+			throw new Error(`ASR request failed: ${response.status} ${await response.text()}`)
 		}
+		const contentType = response.headers.get('content-type') || ''
+		vtt = contentType.includes('text/vtt')
+			? await response.text()
+			: vttFromSegments((await response.json()).segments || [])
 	}
 	await ensureDir(path.dirname(outputPath))
 	await fs.writeFile(outputPath, vtt, 'utf8')
