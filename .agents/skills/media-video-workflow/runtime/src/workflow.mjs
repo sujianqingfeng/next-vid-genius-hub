@@ -495,6 +495,50 @@ function vttFromSegments(segments) {
 	return serializeVtt(cues)
 }
 
+function audioContentType(filePath) {
+	const ext = path.extname(filePath).toLowerCase()
+	return (
+		{
+			'.wav': 'audio/wav',
+			'.mp3': 'audio/mpeg',
+			'.m4a': 'audio/mp4',
+			'.aac': 'audio/aac',
+			'.ogg': 'audio/ogg',
+			'.oga': 'audio/ogg',
+			'.flac': 'audio/flac',
+			'.webm': 'audio/webm',
+		}[ext] || 'audio/wav'
+	)
+}
+
+function canonicalTimestamp(token) {
+	const parts = String(token).replace(',', '.').split(':')
+	const [secStr, msStr] = (parts.pop() || '').split('.')
+	let sec = Number(secStr || 0)
+	let min = parts.length ? Number(parts.pop()) : 0
+	const hr = parts.length ? Number(parts.pop()) : 0
+	min += Math.floor(sec / 60)
+	const hours = hr + Math.floor(min / 60)
+	const minutes = min % 60
+	const seconds = sec % 60
+	const ms = (msStr || '000').padEnd(3, '0').slice(0, 3)
+	const pad = (value) => String(value).padStart(2, '0')
+	return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${ms}`
+}
+
+// Cloudflare's result.vtt may emit seconds-only cues (e.g. `14.980 --> 16.000`);
+// normalize every timing line to HH:MM:SS.mmm so parseVtt accepts it.
+function normalizeVttTimestamps(vtt) {
+	return String(vtt)
+		.split(/\r?\n/)
+		.map((line) =>
+			line.includes('-->')
+				? line.replace(/\d{1,3}(?::\d{1,2}){0,2}[.,]\d{1,3}/g, (token) => canonicalTimestamp(token))
+				: line,
+		)
+		.join('\n')
+}
+
 async function asr(flags) {
 	const audioPath = resolvePath(requiredFlag(flags, 'audio'))
 	const outputPath = resolvePath(requiredFlag(flags, 'out'))
@@ -506,30 +550,59 @@ async function asr(flags) {
 	if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
 		throw new Error('ASR API URL must use http or https')
 	}
+	// Cloudflare Workers AI is auto-detected by host: its Whisper endpoint differs
+	// from the OpenAI-compatible shape (audio uploaded as the `audio` field, the
+	// model lives in the URL path, and the response is wrapped in {result:{...}}
+	// with a ready-made `vtt` string). The OpenAI-compatible path is unchanged.
+	const isCloudflare = parsedUrl.hostname === 'api.cloudflare.com'
 
 	const bytes = await fs.readFile(audioPath)
-	const form = new FormData()
-	form.append('file', new Blob([bytes]), path.basename(audioPath))
-	form.append('model', flagString(flags, 'model', process.env.MEDIAFLOW_ASR_MODEL || 'whisper-1'))
-	form.append('response_format', 'verbose_json')
-	const language = flagString(flags, 'language')
-	if (language) form.append('language', language)
-
-	const response = await fetch(parsedUrl, {
-		method: 'POST',
-		headers: { Authorization: `Bearer ${apiKey}` },
-		body: form,
-	})
+	let response
+	if (isCloudflare) {
+		// Cloudflare Workers AI takes the audio as a raw binary request body whose
+		// Content-Type reflects the container — the documented `--data-binary` shape
+		// for /ai/run/@cf/openai/whisper (multipart upload is not accepted). The
+		// response is { result: { text, vtt, words, ... } } with a ready-made `vtt`.
+		response = await fetch(parsedUrl, {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': audioContentType(audioPath) },
+			body: bytes,
+		})
+	} else {
+		const form = new FormData()
+		form.append('file', new Blob([bytes]), path.basename(audioPath))
+		form.append('model', flagString(flags, 'model', process.env.MEDIAFLOW_ASR_MODEL || 'whisper-1'))
+		form.append('response_format', 'verbose_json')
+		const language = flagString(flags, 'language')
+		if (language) form.append('language', language)
+		response = await fetch(parsedUrl, {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${apiKey}` },
+			body: form,
+		})
+	}
 	if (!response.ok) {
 		throw new Error(`ASR request failed: ${response.status} ${await response.text()}`)
 	}
 	const contentType = response.headers.get('content-type') || ''
-	const vtt = contentType.includes('text/vtt')
-		? await response.text()
-		: vttFromSegments((await response.json()).segments || [])
+	let vtt
+	if (contentType.includes('text/vtt')) {
+		vtt = await response.text()
+	} else {
+		const json = await response.json()
+		if (isCloudflare) {
+			const result = (json && json.result) || {}
+			vtt =
+				typeof result.vtt === 'string' && result.vtt.trim()
+					? normalizeVttTimestamps(result.vtt)
+					: vttFromSegments(result.segments || json.segments || [])
+		} else {
+			vtt = vttFromSegments(json.segments || [])
+		}
+	}
 	await ensureDir(path.dirname(outputPath))
 	await fs.writeFile(outputPath, vtt, 'utf8')
-	print({ outputPath, provider: parsedUrl.origin })
+	print({ outputPath, provider: parsedUrl.origin, cloudflare: isCloudflare })
 }
 
 function isYoutubeUrl(value) {
