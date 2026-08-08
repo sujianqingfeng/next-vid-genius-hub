@@ -67,6 +67,6 @@ These are read from `process.env` under `apps/web/src/lib/config/env.ts` and use
 - `local-media-orchestrator` (`docs/skills/local-media-orchestrator/SKILL.md`)
   - Use when implementing/running `scripts/local-job-runner` pipelines locally without DB/internal API calls.
   - Run `pnpm local-run:check` before and after command-surface changes.
-- `media-video-workflow` (`docs/skills/media-video-workflow/SKILL.md`)
+- `media-video-workflow` (`.agents/skills/media-video-workflow/SKILL.md`)
   - Use for the standalone media workflow that translates and moderates local media artifacts and renders with its bundled Remotion runtime.
   - Keep it independent of app Workers, databases, Cloudflare endpoints, and `@app/*` workspace packages.
