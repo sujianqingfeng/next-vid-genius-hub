@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ensureDir, normalizeCommentsSnapshot, runProcess } from './lib.mjs'
-import { REMOTION_FPS, buildCommentTimeline, buildComposeArgs } from './comments-timeline.mjs'
+import { REMOTION_FPS, buildCommentTimeline, buildComposeArgs, sourceHasAudio } from './comments-timeline.mjs'
 
 const runtimeDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const fps = REMOTION_FPS
@@ -69,7 +69,8 @@ export async function renderCommentsVideo({ inputPath, outputPath, template, sou
 		})
 
 		if (sourceVideoPath) {
-			console.error('[mediaflow] Composing overlay onto source video')
+			const hasAudio = sourceHasAudio(sourceVideoPath)
+			console.error(`[mediaflow] Composing overlay onto source video${hasAudio ? '' : ' (no audio track)'}`)
 			await runProcess(
 				'ffmpeg',
 				buildComposeArgs({
@@ -80,6 +81,7 @@ export async function renderCommentsVideo({ inputPath, outputPath, template, sou
 					coverDurationSeconds,
 					totalDurationSeconds,
 					preset: 'veryfast',
+					hasAudio,
 				}),
 			)
 		}

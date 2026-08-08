@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process'
+
 // Vendored from packages/media-comments/src/core/shared.ts (plain JS).
 // The scroll/font constants here MUST stay in sync with the vendored
 // CommentsVideo.tsx / CommentsVideoVertical.tsx (ScrollingCommentWithTranslation),
@@ -104,7 +106,26 @@ export const layoutConstants = {
 }
 
 // ---------------- FFmpeg compose (overlay source video into the template slot) ----------------
-export function getOverlayFilter({ coverDurationSeconds, totalDurationSeconds, layout: overrideLayout, fps = REMOTION_FPS }) {
+
+// Probe whether the source has an audio track. Source videos with no audio
+// (e.g. silent/visual-only clips) must skip the audio filter branch entirely,
+// otherwise ffmpeg fails with "Stream specifier ':a' ... matches no streams".
+export function sourceHasAudio(filePath) {
+	const result = spawnSync(
+		'ffprobe',
+		['-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'csv=p=0', filePath],
+		{ encoding: 'utf8' },
+	)
+	return Boolean((result.stdout || '').trim())
+}
+
+export function getOverlayFilter({
+	coverDurationSeconds,
+	totalDurationSeconds,
+	layout: overrideLayout,
+	fps = REMOTION_FPS,
+	hasAudio = true,
+}) {
 	const slot = overrideLayout || layoutConstants.video
 	const actualX = Math.round(slot.x)
 	const actualY = Math.round(slot.y)
@@ -114,9 +135,13 @@ export function getOverlayFilter({ coverDurationSeconds, totalDurationSeconds, l
 	const filterGraph = [
 		`[1:v]fps=${fps},setpts=PTS-STARTPTS,scale=${actualWidth}:${actualHeight}:flags=lanczos,setsar=1[scaled_src]`,
 		`[0:v][scaled_src]overlay=${actualX}:${actualY}:enable='between(t,${coverDurationSeconds},${totalDurationSeconds})'[composited]`,
-		`[1:a]adelay=${delayMs}|${delayMs},atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS[delayed_audio]`,
-	].join(';')
-	return { filterGraph, actualX, actualY, actualWidth, actualHeight, delayMs }
+	]
+	if (hasAudio) {
+		filterGraph.push(
+			`[1:a]adelay=${delayMs}|${delayMs},atrim=0:${totalDurationSeconds},asetpts=PTS-STARTPTS[delayed_audio]`,
+		)
+	}
+	return { filterGraph: filterGraph.join(';'), actualX, actualY, actualWidth, actualHeight, delayMs }
 }
 
 export function buildComposeArgs({
@@ -127,6 +152,7 @@ export function buildComposeArgs({
 	coverDurationSeconds,
 	totalDurationSeconds,
 	layout: overrideLayout,
+	hasAudio = true,
 	videoCodec = 'libx264',
 	audioCodec = 'aac',
 	audioBitrate = '192k',
@@ -135,7 +161,7 @@ export function buildComposeArgs({
 	movFlags = '+faststart',
 	vsync = 'cfr',
 }) {
-	const { filterGraph } = getOverlayFilter({ coverDurationSeconds, totalDurationSeconds, layout: overrideLayout, fps })
+	const { filterGraph } = getOverlayFilter({ coverDurationSeconds, totalDurationSeconds, layout: overrideLayout, fps, hasAudio })
 	const args = [
 		'-y',
 		'-hide_banner',
@@ -153,20 +179,13 @@ export function buildComposeArgs({
 		filterGraph,
 		'-map',
 		'[composited]',
-		'-map',
-		'[delayed_audio]?',
-		'-vsync',
-		vsync,
-		'-r',
-		String(fps),
-		'-c:v',
-		videoCodec,
-		'-c:a',
-		audioCodec,
-		'-b:a',
-		audioBitrate,
 	]
+	if (hasAudio) {
+		args.push('-map', '[delayed_audio]?', '-c:a', audioCodec, '-b:a', audioBitrate)
+	}
+	args.push('-vsync', vsync, '-r', String(fps), '-c:v', videoCodec)
 	if (preset) args.push('-preset', preset)
 	args.push('-pix_fmt', pixFmt, '-movflags', movFlags, '-t', String(totalDurationSeconds), '-shortest', outputPath)
 	return args
 }
+
