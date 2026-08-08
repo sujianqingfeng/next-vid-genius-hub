@@ -119,3 +119,6 @@ apps/web/exports
 .local-jobs
 /.tmp
 /tmp
+
+# media-video-workflow scratch dir (contains exported login cookies & downloads)
+/mediaflow-work

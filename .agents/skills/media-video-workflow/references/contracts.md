@@ -52,6 +52,7 @@ awaiting_agent -> validated -> materialized
 ## External Commands
 
 - `download` and `fetch-comments` use local `yt-dlp` and need an explicit URL. When a platform requires authentication, pass a user-exported cookie file with `--cookies <cookies.txt>`; the runtime never reads browser cookies implicitly. YouTube comment collection defaults to 100 records and accepts `--max-comments <positive-integer|all>`.
+- For YouTube the runtime forces a Node.js JS runtime (`--js-runtimes node`) and, by default, fetches the nsig challenge solver from GitHub (`--remote-components ejs:github`). Without the solver, modern YouTube only exposes storyboard images and downloads fail with "Requested format is not available". This needs `node` reachable on `PATH` and outbound network to GitHub; pass `--remote-components none` to opt out for fully offline runs.
 - `extract-audio` and `render-subtitles` use local `ffmpeg`.
 - `asr` only runs when `MEDIAFLOW_ASR_API_URL` and `MEDIAFLOW_ASR_API_KEY` are configured, or an explicit `--api-url` is provided.
 - `render-comments` uses the bundled Remotion project inside `runtime/remotion`.

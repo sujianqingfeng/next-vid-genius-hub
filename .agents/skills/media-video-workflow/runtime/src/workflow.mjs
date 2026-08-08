@@ -74,8 +74,8 @@ function usage() {
 
 Usage:
   mediaflow doctor
-  mediaflow download --url <url> --out <video.mp4> [--quality 1080] [--cookies <cookies.txt>]
-  mediaflow fetch-comments --url <url> --out <comments.json> [--max-comments 100] [--cookies <cookies.txt>]
+  mediaflow download --url <url> --out <video.mp4> [--quality 1080] [--cookies <cookies.txt>] [--remote-components ejs:github|none] [--proxy <url>]
+  mediaflow fetch-comments --url <url> --out <comments.json> [--max-comments 100] [--cookies <cookies.txt>] [--remote-components ejs:github|none] [--proxy <url>]
   mediaflow extract-audio --video <video.mp4> --out <audio.wav>
   mediaflow asr --audio <audio.wav> --out <transcript.vtt> [--api-url <url>] [--model <id>] [--language <code>]
   mediaflow prepare-subtitles --input <transcript.vtt> --out <run-dir> [--target-language zh-CN]
@@ -546,6 +546,14 @@ function appendYtDlpAccessArgs(args, flags, url, commentLimit = null) {
 	if (cookies) args.push('--cookies', resolvePath(cookies))
 	if (isYoutubeUrl(url)) {
 		args.push('--js-runtimes', 'node')
+		// YouTube's nsig challenge needs a solver script distribution; without it
+		// yt-dlp only finds storyboard images and "Requested format is not available".
+		// `--remote-components ejs:github` is the yt-dlp-recommended default; pass
+		// `--remote-components none` to opt out (e.g. fully offline runs).
+		const remoteComponents = flagString(flags, 'remote-components', 'ejs:github')
+		if (remoteComponents && remoteComponents.toLowerCase() !== 'none') {
+			args.push('--remote-components', remoteComponents)
+		}
 		if (commentLimit && commentLimit !== 'all') {
 			args.push('--extractor-args', `youtube:max_comments=${commentLimit}`)
 		}
