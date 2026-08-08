@@ -84,7 +84,7 @@ Usage:
   mediaflow materialize-subtitles --tasks <results.jsonl> --out <bilingual.vtt> [--format bilingual|replace]
   mediaflow materialize-comments --tasks <results.jsonl> --out <output-dir>
   mediaflow render-subtitles --video <video.mp4> --subtitles <subtitles.vtt> --out <video.mp4>
-  mediaflow render-comments --input <comments.safe.json> --out <video.mp4> [--template landscape|portrait]
+  mediaflow render-comments --input <comments.safe.json> --out <video.mp4> [--template landscape|vertical] [--video <source.mp4>]
   mediaflow status --workdir <run-dir>
 `)
 }
@@ -436,13 +436,17 @@ async function renderSubtitles(flags) {
 async function renderComments(flags) {
 	const inputPath = resolvePath(requiredFlag(flags, 'input'))
 	const outputPath = resolvePath(requiredFlag(flags, 'out'))
-	const template = flagString(flags, 'template', 'landscape')
-	if (template !== 'landscape' && template !== 'portrait') {
-		throw new Error('--template must be landscape or portrait')
-	}
+	const templateRaw = flagString(flags, 'template', 'landscape')
+	const template = templateRaw === 'vertical' || templateRaw === 'portrait' ? 'vertical' : 'landscape'
+	const sourceVideoPath = flagString(flags, 'video')
 	const { renderCommentsVideo } = await import('./render-comments.mjs')
-	await renderCommentsVideo({ inputPath, outputPath, template })
-	print({ outputPath, renderer: `remotion-${template}` })
+	await renderCommentsVideo({
+		inputPath,
+		outputPath,
+		template,
+		sourceVideoPath: sourceVideoPath ? resolvePath(sourceVideoPath) : undefined,
+	})
+	print({ outputPath, renderer: `remotion-${template}`, composedWithSource: Boolean(sourceVideoPath) })
 }
 
 async function extractAudio(flags) {

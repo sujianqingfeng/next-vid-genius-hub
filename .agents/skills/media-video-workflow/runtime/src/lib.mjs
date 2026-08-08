@@ -201,6 +201,7 @@ export function normalizeCommentsSnapshot(raw) {
 			return {
 				id,
 				author: normalizeText(value.author) || 'Unknown',
+				authorThumbnail: normalizeText(value.authorThumbnail) || undefined,
 				content: normalizeText(value.content),
 				translatedContent: normalizeText(value.translatedContent),
 				likes: Number.isFinite(Number(value.likes)) ? Number(value.likes) : 0,
@@ -216,6 +217,7 @@ export function normalizeCommentsSnapshot(raw) {
 	return {
 		videoInfo: {
 			title: normalizeText(rawVideoInfo.title) || 'Untitled',
+			translatedTitle: normalizeText(rawVideoInfo.translatedTitle) || undefined,
 			author: normalizeText(rawVideoInfo.author),
 			viewCount: Number.isFinite(Number(rawVideoInfo.viewCount))
 				? Number(rawVideoInfo.viewCount)

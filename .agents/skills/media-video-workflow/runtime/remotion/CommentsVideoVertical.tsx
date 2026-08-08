@@ -18,10 +18,10 @@ import {
   useCurrentFrame,
 } from "remotion";
 import type { CommentVideoInputProps } from "./types";
-import { VIDEO_WIDTH, VIDEO_HEIGHT } from "./constants";
 // Use relative import to avoid TS/Vite path aliases in Remotion bundler
 import { formatCount } from "./utils/format";
 
+// 与横屏 CommentsVideo 模板共享的布局与配色
 const layout = {
   paddingX: 80,
   paddingY: 60,
@@ -141,30 +141,7 @@ const containerStyle: CSSProperties = {
   boxSizing: "border-box",
 };
 
-const topSectionStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto auto",
-  gap: layout.columnGap,
-  alignItems: "stretch",
-  justifyContent: "center",
-  width: "100%",
-};
-
-// base card style was only used by removed styles
-
-// removed unused local style objects to reduce dead code
-
-const sectionLabelStyle: CSSProperties = {
-  fontSize: 14,
-  letterSpacing: "0.24em",
-  textTransform: "uppercase",
-  color: "var(--tt-accent)",
-  fontWeight: 900,
-  textShadow: "0 0 20px var(--tt-accent-glow)",
-};
-
-// Removed metaListStyle - now using inline compact horizontal layout
-
+// 与横屏模板一致的正文与翻译样式
 const commentBodyStyle: CSSProperties = {
   fontSize: "calc(28px * var(--tt-font-scale))",
   lineHeight: 1.6,
@@ -194,7 +171,8 @@ function isLikelyChinese(text?: string | null): boolean {
   return Boolean(text && chineseCharRegex.test(text));
 }
 
-export const CommentsVideo: React.FC<CommentVideoInputProps> = ({
+// 竖屏主布局：封面 + 主画面
+export const CommentsVideoVertical: React.FC<CommentVideoInputProps> = ({
   videoInfo,
   comments,
   coverDurationInFrames,
@@ -218,22 +196,14 @@ export const CommentsVideo: React.FC<CommentVideoInputProps> = ({
       comment: CommentVideoInputProps["comments"][number];
     }[]
   >((acc, durationInFrames, index) => {
-    const startFrame =
-      index === 0
-        ? 0
-        : acc[index - 1].startFrame + acc[index - 1].durationInFrames;
-    const comment = comments[index];
-    if (comment) {
-      acc.push({ startFrame, durationInFrames, comment });
-    }
-    return acc;
-  }, []);
+    const startFrame = index === 0 ? 0 : acc[index - 1].startFrame + acc[index - 1].durationInFrames
+    const comment = comments[index]
+    if (comment) acc.push({ startFrame, durationInFrames, comment })
+    return acc
+  }, [])
 
-  const commentsTotalDuration = commentDurationsInFrames.reduce(
-    (sum, frames) => sum + frames,
-    0,
-  );
-  const mainDuration = Math.max(commentsTotalDuration, fps);
+  const commentsTotalDuration = commentDurationsInFrames.reduce((sum, f) => sum + f, 0)
+  const mainDuration = Math.max(commentsTotalDuration, fps)
 
   return (
     <AbsoluteFill
@@ -245,353 +215,172 @@ export const CommentsVideo: React.FC<CommentVideoInputProps> = ({
       <MotionContext.Provider
         value={{ enabled: motionEnabled, multiplier: motionMultiplier }}
       >
+        {/* 封面场景（统一为与横屏模板一致的电影质感封面） */}
         <Sequence
           layout="none"
           from={0}
           durationInFrames={coverDurationInFrames}
         >
-          <CoverSlide
+          <VerticalCover
             videoInfo={videoInfo}
             commentCount={comments.length}
             fps={fps}
           />
         </Sequence>
+
+        {/* 主场景：横屏画布，左竖屏视频，右评论 */}
         <Sequence
           layout="none"
           from={coverDurationInFrames}
           durationInFrames={mainDuration}
         >
-          <MainLayout
-            videoInfo={videoInfo}
-            comments={comments}
-            sequences={sequences}
-            fps={fps}
-          />
-        </Sequence>
-        {templateConfig?.brand?.showWatermark ? (
-          <div
+          <AbsoluteFill
             style={{
-              position: "absolute",
-              right: "var(--tt-padding-x)",
-              bottom: "calc(var(--tt-padding-y) * 0.6)",
-              fontFamily: "var(--tt-font-family)",
-              fontSize: "calc(12px * var(--tt-font-scale))",
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: "var(--tt-text-muted)",
-              opacity: 0.6,
+              ...containerStyle,
+              background: "var(--tt-bg)",
+              position: "relative",
             }}
           >
-            {templateConfig?.brand?.watermarkText || "TubeTweet Studio"}
-          </div>
-        ) : null}
-      </MotionContext.Provider>
-    </AbsoluteFill>
-  );
-};
+            {/* 背景网格 + 光晕，与横屏模板统一 */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundImage: `
+                  linear-gradient(0deg, var(--tt-border) 1px, transparent 1px),
+                  linear-gradient(90deg, var(--tt-border) 1px, transparent 1px)
+                `,
+                backgroundSize: "40px 40px",
+                opacity: 0.1,
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: "15%",
+                left: "-8%",
+                width: "320px",
+                height: "320px",
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
+                filter: "blur(70px)",
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: "10%",
+                right: "-5%",
+                width: "380px",
+                height: "380px",
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
+                filter: "blur(90px)",
+                pointerEvents: "none",
+              }}
+            />
 
-const MainLayout: React.FC<{
-  videoInfo: CommentVideoInputProps["videoInfo"];
-  comments: CommentVideoInputProps["comments"];
-  sequences: {
-    startFrame: number;
-    durationInFrames: number;
-    comment: CommentVideoInputProps["comments"][number];
-  }[];
-  fps: number;
-}> = ({ videoInfo, comments, sequences, fps }) => {
-  return (
-    <AbsoluteFill
-      style={{
-        ...containerStyle,
-        background: "var(--tt-bg)",
-        position: "relative",
-      }}
-    >
-      {/* Cinematic grid overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage: `
-            linear-gradient(0deg, var(--tt-border) 1px, transparent 1px),
-            linear-gradient(90deg, var(--tt-border) 1px, transparent 1px)
-          `,
-          backgroundSize: "40px 40px",
-          opacity: 0.1,
-          pointerEvents: "none",
-        }}
-      />
-      
-      {/* Accent glow effects */}
-      <div
-        style={{
-          position: "absolute",
-          top: "20%",
-          left: "-10%",
-          width: "340px",
-          height: "340px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
-          filter: "blur(70px)",
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: "10%",
-          right: "-5%",
-          width: "420px",
-          height: "420px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, var(--tt-accent-glow) 0%, transparent 70%)",
-          filter: "blur(90px)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div style={topSectionStyle}>
-        <InfoPanel videoInfo={videoInfo} commentCount={comments.length} />
-        <VideoPanel />
-      </div>
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          gap: 32,
-          minHeight: 420,
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div
-            style={{
-              width: 4,
-              height: 24,
-              backgroundColor: "var(--tt-accent)",
-              boxShadow: "0 0 20px var(--tt-accent-glow)",
-            }}
-          />
-          <span style={sectionLabelStyle}>AUDIENCE VOICE</span>
-        </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {sequences.map(({ startFrame, durationInFrames, comment }) => (
-            <Sequence
-              key={comment.id}
-              layout="none"
-              from={startFrame}
-              durationInFrames={durationInFrames}
+            <div
+              style={{
+                flex: 1,
+                display: "grid",
+                gridTemplateColumns: "560px 1fr",
+                gridTemplateRows: "1fr",
+                gap: 28,
+                alignItems: "stretch",
+                minHeight: 0,
+                position: "relative",
+                zIndex: 1,
+              }}
             >
-              <CommentSlide
-                comment={comment}
-                durationInFrames={durationInFrames}
-                fps={fps}
-              />
-            </Sequence>
-          ))}
-        </div>
-      </div>
-    </AbsoluteFill>
-  );
-};
+              {/* 左侧竖屏视频占位（9:16） */}
+              <div
+                style={{
+                  borderRadius: 24,
+                  backgroundColor: "var(--tt-surface)",
+                  border: "2px solid var(--tt-border)",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <div
+                  style={{
+                    width: 540,
+                    height: 960,
+                    borderRadius: 20,
+                    border: "2px solid var(--tt-border)",
+                    overflow: "hidden",
+                    backgroundImage: `
+                      linear-gradient(135deg, var(--tt-surface) 0%, var(--tt-bg) 100%)
+                    `,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--tt-text-muted)",
+                    fontSize: 18,
+                    fontFamily: "var(--tt-font-family)",
+                  }}
+                >
+                  竖屏视频占位
+                </div>
+              </div>
 
-const InfoPanel: React.FC<{
-  videoInfo: CommentVideoInputProps["videoInfo"];
-  commentCount: number;
-}> = ({ videoInfo, commentCount }) => {
-  return (
-    <div
-      style={{
-        width: "var(--tt-info-width)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        gap: 20,
-        position: "relative",
-      }}
-    >
-      {/* Decorative corner frame */}
-      <div
-        style={{
-          position: "absolute",
-          top: -20,
-          left: -20,
-          width: 50,
-          height: 50,
-          borderTop: "3px solid var(--tt-accent)",
-          borderLeft: "3px solid var(--tt-accent)",
-          opacity: 0.5,
-        }}
-      />
-      
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <div
-            style={{
-              width: 3,
-              height: 16,
-              backgroundColor: "var(--tt-accent)",
-              boxShadow: "0 0 15px var(--tt-accent-glow)",
-            }}
-          />
-          <span style={{ ...sectionLabelStyle, fontSize: 11 }}>CREATOR SPOTLIGHT</span>
-        </div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 36,
-              fontWeight: 900,
-              letterSpacing: "-0.02em",
-              color: "var(--tt-accent)",
-              lineHeight: 1.15,
-              textTransform: "uppercase",
-              textShadow: "0 4px 30px var(--tt-accent-glow)",
-            }}
-          >
-            {videoInfo.translatedTitle ?? videoInfo.title}
-          </h1>
+              {/* 右侧评论区域：样式与默认模板一致 */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                }}
+              >
+                {sequences.map(({ startFrame, durationInFrames, comment }) => (
+                  <Sequence
+                    key={comment.id}
+                    layout="none"
+                    from={startFrame}
+                    durationInFrames={durationInFrames}
+                  >
+                    <VerticalCommentSlide
+                      comment={comment}
+                      durationInFrames={durationInFrames}
+                      fps={fps}
+                    />
+                  </Sequence>
+                ))}
+              </div>
+            </div>
+          </AbsoluteFill>
+        </Sequence>
+      </MotionContext.Provider>
+      {templateConfig?.brand?.showWatermark ? (
         <div
           style={{
-            margin: "14px 0 0",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              padding: "6px 12px",
-              backgroundColor: "var(--tt-surface)",
-              border: "1px solid var(--tt-border)",
-              fontSize: 14,
-              color: "var(--tt-text-secondary)",
-              fontWeight: 600,
-              letterSpacing: "0.03em",
-            }}
-          >
-            @{videoInfo.author ?? "unknown"}
-          </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--tt-text-muted)",
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              fontWeight: 700,
-            }}
-          >
-            外网真实评论
-          </div>
-        </div>
-      </div>
-      
-      {/* Compact meta info - horizontal layout */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 20,
-          paddingTop: 12,
-          borderTop: "1px solid var(--tt-border)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span
-            style={{
-              fontSize: 9,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: "var(--tt-text-muted)",
-              fontWeight: 700,
-            }}
-          >
-            观看
-          </span>
-          <span
-            style={{
-              fontSize: 18,
-              color: "var(--tt-accent)",
-              fontWeight: 800,
-              letterSpacing: "-0.01em",
-            }}
-          >
-            {formatCount(videoInfo.viewCount)}
-          </span>
-        </div>
-        <div
-          style={{
-            width: 1,
-            height: 16,
-            backgroundColor: "var(--tt-border)",
-          }}
-        />
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span
-            style={{
-              fontSize: 9,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: "var(--tt-text-muted)",
-              fontWeight: 700,
-            }}
-          >
-            评论
-          </span>
-          <span
-            style={{
-              fontSize: 18,
-              color: "var(--tt-accent)",
-              fontWeight: 800,
-              letterSpacing: "-0.01em",
-            }}
-          >
-            {String(commentCount)}
-          </span>
-        </div>
-        <div
-          style={{
-            width: 1,
-            height: 16,
-            backgroundColor: "var(--tt-border)",
-          }}
-        />
-        <div
-          style={{
-            fontSize: 9,
-            letterSpacing: "0.2em",
+            position: "absolute",
+            right: "var(--tt-padding-x)",
+            bottom: "calc(var(--tt-padding-y) * 0.6)",
+            fontFamily: "var(--tt-font-family)",
+            fontSize: "calc(12px * var(--tt-font-scale))",
+            letterSpacing: "0.18em",
             textTransform: "uppercase",
             color: "var(--tt-text-muted)",
-            fontWeight: 700,
+            opacity: 0.6,
           }}
         >
-          TubeTweet Studio
+          {templateConfig?.brand?.watermarkText || "TubeTweet Studio"}
         </div>
-      </div>
-    </div>
-  );
-};
+      ) : null}
+    </AbsoluteFill>
+  )
+}
 
-const VideoPanel: React.FC = () => {
-  return (
-    <div
-      style={{
-        width: layout.cardPaddingX * 2 + VIDEO_WIDTH,
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <VideoPlaceholder />
-    </div>
-  );
-};
-
-const CoverSlide: React.FC<{
+// 竖屏封面：直接复用横屏模板的电影质感封面样式
+const VerticalCover: React.FC<{
   videoInfo: CommentVideoInputProps["videoInfo"];
   commentCount: number;
   fps: number;
@@ -602,7 +391,7 @@ const CoverSlide: React.FC<{
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  
+
   const titleSlide = motion.multiplier === 0 ? 0 : interpolate(frame, [fps * 0.3, fps * 0.8], [-50 * motion.multiplier, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -638,7 +427,7 @@ const CoverSlide: React.FC<{
           opacity: 0.12,
         }}
       />
-      
+
       {/* Dramatic accent glows */}
       <div
         style={{
@@ -666,7 +455,7 @@ const CoverSlide: React.FC<{
           filter: "blur(95px)",
         }}
       />
-      
+
       {/* Film frame corners */}
       <div
         style={{
@@ -951,206 +740,42 @@ const CoverSlide: React.FC<{
   );
 };
 
-const ScrollingCommentWithTranslation: React.FC<{
-  comment: CommentVideoInputProps["comments"][number];
-  displayCommentStyle: CSSProperties;
-  durationInFrames: number;
-  fps: number;
-}> = ({ comment, displayCommentStyle, durationInFrames, fps }) => {
-  const frame = useCurrentFrame();
-
-  // Fade timings and scroll pacing to maintain smoothness on long comments
-  const fadeTime = Math.min(fps * 0.8, 12);
-  const minDwellFrames = Math.round(0.2 * fps);
-  const scrollStart = fadeTime;
-
-  const isChineseTranslation = isLikelyChinese(comment.translatedContent);
-
-  // Estimated height (fallback) based on font metrics and rough line count
-  const fontSize = displayCommentStyle.fontSize as number;
-  const lineHeight = displayCommentStyle.lineHeight as number;
-  const lineHeightPx = fontSize * lineHeight;
-  const mainTextLines = Math.ceil(comment.content.length / 50);
-  let estimatedTotalHeight = mainTextLines * lineHeightPx;
-
-  let translationStyle: CSSProperties | null = null;
-  if (
-    comment.translatedContent &&
-    comment.translatedContent !== comment.content
-  ) {
-    const translationFontSize = isChineseTranslation ? 56 : 26;
-    const translationLineHeight = isChineseTranslation ? 1.4 : 1.6;
-    const translationLineHeightPx = translationFontSize * translationLineHeight;
-    const translationLines = Math.ceil(comment.translatedContent.length / 50);
-    estimatedTotalHeight += 28 + translationLines * translationLineHeightPx;
-
-    translationStyle = {
-      marginTop: 28,
-      padding: isChineseTranslation ? "0 0 0 24px" : "0 0 0 24px",
-      borderRadius: 0,
-      backgroundColor: "transparent",
-      color: isChineseTranslation ? palette.accent : palette.textSecondary,
-      borderLeft: `3px solid ${palette.accent}`,
-      fontSize: translationFontSize,
-      lineHeight: translationLineHeight,
-      letterSpacing: isChineseTranslation ? "0.02em" : "normal",
-      fontWeight: isChineseTranslation ? 700 : 300,
-      textShadow: isChineseTranslation
-        ? `0 0 10px ${palette.accentGlow}`
-        : "none",
-    };
-  }
-
-  // Measure real content height to avoid under-estimation for large Chinese text
-  const CONTAINER_HEIGHT = 320;
-  const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [measured, setMeasured] = useState<{
-    content: number;
-    container: number;
-  }>({ content: 0, container: CONTAINER_HEIGHT });
-
-  useLayoutEffect(() => {
-    const measure = () => {
-      const containerH = containerRef.current?.clientHeight ?? CONTAINER_HEIGHT;
-      const contentH = contentRef.current?.scrollHeight ?? 0;
-      setMeasured((prev) =>
-        prev.content === contentH && prev.container === containerH
-          ? prev
-          : { content: contentH, container: containerH },
-      );
-    };
-    measure();
-    const raf = requestAnimationFrame(measure);
-    // Observe size changes of either container or content
-    const ro =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(measure)
-        : undefined;
-    if (containerRef.current) ro?.observe(containerRef.current);
-    if (contentRef.current) ro?.observe(contentRef.current);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro?.disconnect();
-    };
-    // Re-measure when content or language style changes
-  }, [comment.content, comment.translatedContent, isChineseTranslation]);
-
-  const containerH = measured.container || CONTAINER_HEIGHT;
-  const effectiveContentH = measured.content || estimatedTotalHeight;
-  const maxScroll = Math.max(0, effectiveContentH - containerH);
-
-  const availableForScroll = Math.max(
-    durationInFrames - fadeTime - minDwellFrames,
-    0,
-  );
-  const minScrollFrames = Math.round(fps * 0.6);
-  const pixelsPerSecond = 100;
-  const desiredScrollFrames =
-    maxScroll > 0 ? Math.ceil((maxScroll / pixelsPerSecond) * fps) : 0;
-  const scrollDurationFrames =
-    maxScroll > 0
-      ? Math.min(
-          availableForScroll,
-          Math.max(minScrollFrames, desiredScrollFrames),
-        )
-      : 0;
-  const scrollEnd = scrollStart + scrollDurationFrames;
-
-  const currentScroll =
-    maxScroll > 0 && scrollDurationFrames > 0
-      ? interpolate(frame, [scrollStart, scrollEnd], [0, maxScroll], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-          easing: Easing.ease,
-        })
-      : 0;
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        height: CONTAINER_HEIGHT,
-        position: "relative",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        gap: 0,
-      }}
-    >
-      <div
-        ref={contentRef}
-        style={{
-          transform: `translateY(-${currentScroll}px)`,
-          // No CSS transition: frame-driven for exact positioning
-          display: "flex",
-          flexDirection: "column",
-          gap: 0,
-        }}
-      >
-        <div
-          style={{
-            ...displayCommentStyle,
-            whiteSpace: "pre-wrap",
-            marginBottom: 0,
-          }}
-        >
-          {comment.content}
-        </div>
-        {comment.translatedContent &&
-        comment.translatedContent !== comment.content ? (
-          <div style={translationStyle ?? undefined}>
-            {comment.translatedContent}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-};
-
-const CommentSlide: React.FC<{
-  comment: CommentVideoInputProps["comments"][number];
-  durationInFrames: number;
-  fps: number;
+const VerticalCommentSlide: React.FC<{
+  comment: CommentVideoInputProps["comments"][number]
+  durationInFrames: number
+  fps: number
 }> = ({ comment, durationInFrames, fps }) => {
-  const motion = useContext(MotionContext);
-  const frame = useCurrentFrame();
+  const motion = useContext(MotionContext)
+  const frame = useCurrentFrame()
 
-  // Use shorter fade times to match scrolling component
-  const fadeTimeBase = Math.min(fps * 0.8, 12);
-  const fadeTime = Math.max(1, fadeTimeBase * (motion.multiplier || 1));
+  const fadeTimeBase = Math.min(fps * 0.8, 12)
+  const fadeTime = Math.max(1, fadeTimeBase * (motion.multiplier || 1))
   const appear =
     motion.multiplier === 0
       ? 1
       : interpolate(frame, [0, fadeTime], [0, 1], {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
-        });
-  const exitStart = Math.max(durationInFrames - fadeTime, 0);
+        })
+  const exitStart = Math.max(durationInFrames - fadeTime, 0)
   const disappear =
     motion.multiplier === 0
       ? 1
       : interpolate(frame, [exitStart, durationInFrames], [1, 0], {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
-        });
-  const opacity = motion.multiplier === 0 ? 1 : Math.min(appear, disappear);
+        })
+  const opacity = motion.multiplier === 0 ? 1 : Math.min(appear, disappear)
 
-  // Calculate countdown timer
-  const remainingFrames = Math.max(0, durationInFrames - frame);
-  const remainingSeconds = Math.ceil(remainingFrames / fps);
-  const countdownOpacity = motion.multiplier === 0 ? 0 : interpolate(
-    frame,
-    [durationInFrames - fps * 3, durationInFrames - fps * 2],
-    [0, 1],
-    {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    },
-  );
+  const remainingFrames = Math.max(0, durationInFrames - frame)
+  const remainingSeconds = Math.ceil(remainingFrames / fps)
+  const countdownOpacity = motion.multiplier === 0 ? 0 : interpolate(frame, [durationInFrames - fps * 3, durationInFrames - fps * 2], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  })
 
-  const isChinesePrimary = isLikelyChinese(comment.content);
-  const isChineseTranslation = isLikelyChinese(comment.translatedContent);
+  const isChinesePrimary = isLikelyChinese(comment.content)
+  const isChineseTranslation = isLikelyChinese(comment.translatedContent)
   const displayCommentStyle: CSSProperties = {
     fontSize: isChinesePrimary ? 56 : 28,
     lineHeight: isChinesePrimary ? 1.4 : 1.6,
@@ -1159,12 +784,10 @@ const CommentSlide: React.FC<{
     fontWeight: isChinesePrimary ? 700 : 400,
     textShadow:
       isChinesePrimary ? "0 0 12px var(--tt-accent-glow)" : "none",
-  };
+  }
 
-  const commentText = comment.content;
-  const totalTextLength =
-    commentText.length + (comment.translatedContent?.length || 0);
-  const needsScroll = totalTextLength > 100; // Consider both main and translation content
+  const totalTextLength = comment.content.length + (comment.translatedContent?.length || 0)
+  const needsScroll = totalTextLength > 100
 
   return (
     <div
@@ -1205,8 +828,8 @@ const CommentSlide: React.FC<{
           opacity: 0.6,
         }}
       />
-      
-      {/* Countdown Timer */}
+
+      {/* 倒计时 */}
       <div
         style={{
           position: "absolute",
@@ -1217,10 +840,10 @@ const CommentSlide: React.FC<{
           alignItems: "center",
           gap: 8,
           fontSize: 14,
-          color: "var(--tt-text-muted)",
-          backgroundColor: "var(--tt-bg)",
+          color: palette.textMuted,
+          backgroundColor: palette.background,
           padding: "8px 14px",
-          border: "1px solid var(--tt-border)",
+          border: `1px solid ${palette.border}`,
           fontWeight: 700,
           letterSpacing: "0.1em",
         }}
@@ -1229,17 +852,17 @@ const CommentSlide: React.FC<{
           style={{
             width: 10,
             height: 10,
-            backgroundColor:
-              remainingSeconds <= 2 ? "var(--tt-accent)" : "var(--tt-text-muted)",
+            backgroundColor: remainingSeconds <= 2 ? palette.accent : palette.textMuted,
             boxShadow:
               remainingSeconds <= 2
-                ? "0 0 15px var(--tt-accent-glow)"
+                ? `0 0 15px ${palette.accentGlow}`
                 : "none",
           }}
         />
         <span>{remainingSeconds}S</span>
       </div>
 
+      {/* 头像 / 作者 / 点赞 */}
       <div
         style={{
           display: "flex",
@@ -1257,7 +880,7 @@ const CommentSlide: React.FC<{
               margin: 0,
               fontSize: 26,
               fontWeight: 800,
-              color: "var(--tt-text-primary)",
+              color: palette.textPrimary,
               letterSpacing: "-0.01em",
             }}
           >
@@ -1268,7 +891,7 @@ const CommentSlide: React.FC<{
               display: "flex",
               alignItems: "center",
               gap: 10,
-              color: "var(--tt-text-muted)",
+              color: palette.textMuted,
               fontSize: 16,
             }}
           >
@@ -1281,12 +904,14 @@ const CommentSlide: React.FC<{
       </div>
 
       {needsScroll ? (
-        <ScrollingCommentWithTranslation
-          comment={comment}
-          displayCommentStyle={displayCommentStyle}
-          durationInFrames={durationInFrames}
-          fps={fps}
-        />
+        <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
+          <ScrollingCommentWithTranslation
+            comment={comment}
+            displayCommentStyle={displayCommentStyle}
+            durationInFrames={durationInFrames}
+            fps={fps}
+          />
+        </div>
       ) : (
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <p style={{ ...commentBodyStyle, ...displayCommentStyle }}>
@@ -1319,13 +944,107 @@ const CommentSlide: React.FC<{
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-const Avatar: React.FC<{ name: string; src?: string | null }> = ({
-  name,
-  src,
-}) => {
+// 与默认模板一致的长评论滚动实现
+const ScrollingCommentWithTranslation: React.FC<{
+  comment: CommentVideoInputProps["comments"][number]
+  displayCommentStyle: CSSProperties
+  durationInFrames: number
+  fps: number
+}> = ({ comment, displayCommentStyle, durationInFrames, fps }) => {
+  const frame = useCurrentFrame()
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [containerHeight, setContainerHeight] = useState<number | null>(null)
+
+  useLayoutEffect(() => {
+    const node = containerRef.current
+    if (!node) return
+
+    const measure = () => setContainerHeight(node.getBoundingClientRect().height)
+    measure()
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(measure)
+      observer.observe(node)
+      return () => observer.disconnect()
+    }
+
+    return undefined
+  }, [])
+
+  const fadeTime = Math.min(fps * 0.8, 12)
+  const minDwellFrames = Math.round(0.2 * fps)
+  const scrollStart = fadeTime
+
+  const isChineseTranslation = isLikelyChinese(comment.translatedContent)
+
+  const fontSize = displayCommentStyle.fontSize as number
+  const lineHeight = displayCommentStyle.lineHeight as number
+  const lineHeightPx = fontSize * lineHeight
+  const mainTextLines = Math.ceil(comment.content.length / 50)
+  let estimatedTotalHeight = mainTextLines * lineHeightPx
+
+  let translationStyle: CSSProperties | null = null
+  if (comment.translatedContent && comment.translatedContent !== comment.content) {
+    const translationFontSize = isChineseTranslation ? 52 : 24
+    const translationLineHeight = isChineseTranslation ? 1.4 : 1.48
+    const translationLineHeightPx = translationFontSize * translationLineHeight
+    const translationLines = Math.ceil(comment.translatedContent.length / 50)
+    estimatedTotalHeight += 20 + translationLines * translationLineHeightPx
+
+    translationStyle = {
+      marginTop: 20,
+      padding: "16px 20px",
+      borderRadius: 16,
+      backgroundColor: isChineseTranslation ? "transparent" : "rgba(239, 68, 68, 0.08)",
+      color: isChineseTranslation ? palette.accent : palette.textSecondary,
+      borderLeft: isChineseTranslation ? "none" : "4px solid rgba(239, 68, 68, 0.3)",
+      fontSize: translationFontSize,
+      lineHeight: translationLineHeight,
+      letterSpacing: isChineseTranslation ? "0.024em" : "normal",
+    }
+  }
+
+  const viewportHeight = containerHeight ?? 320
+  const effectiveContentH = estimatedTotalHeight
+  const maxScroll = Math.max(0, effectiveContentH - viewportHeight)
+
+  const availableForScroll = Math.max(durationInFrames - fadeTime - minDwellFrames, 0)
+  const minScrollFrames = Math.round(fps * 0.6)
+  const pixelsPerSecond = 100
+  const desiredScrollFrames = maxScroll > 0 ? Math.ceil((maxScroll / pixelsPerSecond) * fps) : 0
+  const scrollDurationFrames = maxScroll > 0 ? Math.min(availableForScroll, Math.max(minScrollFrames, desiredScrollFrames)) : 0
+  const scrollEnd = scrollStart + scrollDurationFrames
+
+  const currentScroll = maxScroll > 0 && scrollDurationFrames > 0
+    ? interpolate(frame, [scrollStart, scrollEnd], [0, maxScroll], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.ease })
+    : 0
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flex: 1,
+        minHeight: 0,
+        flexDirection: 'column',
+        gap: 0,
+      }}
+    >
+      <div style={{ transform: `translateY(-${currentScroll}px)`, display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div style={{ ...displayCommentStyle, whiteSpace: 'pre-wrap', marginBottom: 0 }}>{comment.content}</div>
+        {comment.translatedContent && comment.translatedContent !== comment.content ? (
+          <div style={translationStyle ?? undefined}>{comment.translatedContent}</div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+const Avatar: React.FC<{ name: string; src?: string | null }> = ({ name, src }) => {
   if (src) {
     return (
       <div
@@ -1354,9 +1073,8 @@ const Avatar: React.FC<{ name: string; src?: string | null }> = ({
           }}
         />
       </div>
-    );
+    )
   }
-
   return (
     <div
       style={{
@@ -1374,7 +1092,7 @@ const Avatar: React.FC<{ name: string; src?: string | null }> = ({
         position: "relative",
       }}
     >
-      {name.charAt(0).toUpperCase()}
+      {name?.charAt(0)?.toUpperCase()}
       {/* Corner accent */}
       <div
         style={{
@@ -1388,80 +1106,5 @@ const Avatar: React.FC<{ name: string; src?: string | null }> = ({
         }}
       />
     </div>
-  );
-};
-
-const VideoPlaceholder: React.FC = () => {
-  const ref = useRef<HTMLDivElement>(null);
-
-  return (
-    <div
-      ref={ref}
-      style={{
-        width: VIDEO_WIDTH,
-        alignSelf: "center",
-        border: `2px solid ${palette.border}`,
-        backgroundColor: palette.surface,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
-      {/* Film frame perforations */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 8,
-          backgroundColor: palette.border,
-          zIndex: 2,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 8,
-          backgroundColor: palette.border,
-          zIndex: 2,
-        }}
-      />
-      
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          paddingTop: `${(VIDEO_HEIGHT / VIDEO_WIDTH) * 100}%`,
-          backgroundImage: `
-            linear-gradient(135deg, ${palette.surface} 0%, ${palette.background} 100%)
-          `,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {/* Cinematic aspect ratio indicator */}
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            fontSize: 14,
-            color: palette.textMuted,
-            letterSpacing: "0.3em",
-            fontWeight: 700,
-            textTransform: "uppercase",
-          }}
-        >
-          16:9
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// use shared formatter from lib/utils
+  )
+}

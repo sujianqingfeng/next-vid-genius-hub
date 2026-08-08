@@ -4,17 +4,13 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ensureDir, normalizeCommentsSnapshot } from './lib.mjs'
+import { ensureDir, normalizeCommentsSnapshot, runProcess } from './lib.mjs'
+import { REMOTION_FPS, buildCommentTimeline, buildComposeArgs } from './comments-timeline.mjs'
 
 const runtimeDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const fps = 30
+const fps = REMOTION_FPS
 
-function durationForComment(comment) {
-	const characters = String(comment.content || '').length + String(comment.translatedContent || '').length
-	return Math.round(Math.max(3.5, Math.min(10, 3.5 + characters / 38)) * fps)
-}
-
-export async function renderCommentsVideo({ inputPath, outputPath, template }) {
+export async function renderCommentsVideo({ inputPath, outputPath, template, sourceVideoPath, templateConfig }) {
 	const rawSnapshot = JSON.parse(await fs.readFile(inputPath, 'utf8'))
 	if (rawSnapshot?.kind !== 'mediaflow-safe-comments') {
 		throw new Error('render-comments only accepts comments.safe.json produced by materialize-comments')
@@ -32,22 +28,23 @@ export async function renderCommentsVideo({ inputPath, outputPath, template }) {
 	}))
 	if (!comments.length) throw new Error('Safe comments snapshot is empty')
 
-	const coverDurationInFrames = fps * 3
-	const commentDurationsInFrames = comments.map(durationForComment)
-	const durationInFrames = coverDurationInFrames + commentDurationsInFrames.reduce((sum, duration) => sum + duration, 0)
-	const orientation = template === 'portrait' ? 'portrait' : 'landscape'
-	const compositionId = orientation === 'portrait' ? 'MediaflowCommentsPortrait' : 'MediaflowCommentsLandscape'
+	const timeline = buildCommentTimeline(comments, fps)
+	const { coverDurationInFrames, commentDurationsInFrames, totalDurationInFrames, coverDurationSeconds, totalDurationSeconds } =
+		timeline
+	const compositionId = template === 'vertical' ? 'CommentsVideoVertical' : 'CommentsVideo'
 	const inputProps = {
 		videoInfo: snapshot.videoInfo,
 		comments,
 		coverDurationInFrames,
 		commentDurationsInFrames,
 		fps,
-		orientation,
+		templateConfig,
 	}
 
 	await ensureDir(path.dirname(outputPath))
 	const bundleDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mediaflow-remotion-'))
+	// When composing onto a source video, the Remotion render is an intermediate overlay.
+	const overlayPath = sourceVideoPath ? path.join(bundleDir, '_overlay.mp4') : outputPath
 	try {
 		const serveUrl = await bundle({
 			entryPoint: path.join(runtimeDir, 'remotion', 'index.ts'),
@@ -58,11 +55,11 @@ export async function renderCommentsVideo({ inputPath, outputPath, template }) {
 		const composition = compositions.find((candidate) => candidate.id === compositionId)
 		if (!composition) throw new Error(`Bundled Remotion composition missing: ${compositionId}`)
 		await renderMedia({
-			composition: { ...composition, durationInFrames, fps },
+			composition: { ...composition, durationInFrames: totalDurationInFrames, fps },
 			serveUrl,
 			codec: 'h264',
 			audioCodec: 'aac',
-			outputLocation: outputPath,
+			outputLocation: overlayPath,
 			inputProps,
 			onProgress: ({ progress }) => {
 				if (Math.round(progress * 100) % 20 === 0) {
@@ -70,6 +67,22 @@ export async function renderCommentsVideo({ inputPath, outputPath, template }) {
 				}
 			},
 		})
+
+		if (sourceVideoPath) {
+			console.error('[mediaflow] Composing overlay onto source video')
+			await runProcess(
+				'ffmpeg',
+				buildComposeArgs({
+					overlayPath,
+					sourceVideoPath,
+					outputPath,
+					fps,
+					coverDurationSeconds,
+					totalDurationSeconds,
+					preset: 'veryfast',
+				}),
+			)
+		}
 	} finally {
 		await fs.rm(bundleDir, { recursive: true, force: true })
 	}
