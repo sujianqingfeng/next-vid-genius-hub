@@ -1,0 +1,6 @@
+# Keep host-specific dependencies and render caches out of the Linux image.
+runtime/node_modules
+runtime/.remotion
+runtime/.cache
+
+.DS_Store

@@ -1,0 +1,21 @@
+{
+  "videoInfo": {
+    "title": "A sample media video",
+    "author": "Example Creator",
+    "viewCount": 1200
+  },
+  "comments": [
+    {
+      "id": "welcome",
+      "author": "Mina",
+      "content": "This explanation was clear and useful.",
+      "likes": 14
+    },
+    {
+      "id": "suspicious-link",
+      "author": "Unknown",
+      "content": "Visit https://example.invalid now for a guaranteed prize.",
+      "likes": 0
+    }
+  ]
+}

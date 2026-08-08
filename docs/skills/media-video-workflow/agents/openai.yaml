@@ -1,0 +1,4 @@
+interface:
+  display_name: "Media Video Workflow"
+  short_description: "Create safe translated media videos locally"
+  default_prompt: "Use $media-video-workflow to create a translated and moderated media video from local files or configured APIs."
