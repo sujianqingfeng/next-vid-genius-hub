@@ -86,6 +86,7 @@ Usage:
   mediaflow render-subtitles --video <video.mp4> --subtitles <subtitles.vtt> --out <video.mp4>
   mediaflow render-comments --input <comments.safe.json> --out <video.mp4> [--template landscape|vertical] [--video <source.mp4>]
   mediaflow status --workdir <run-dir>
+  mediaflow publish-bilibili --video <mp4> --title <t> [--tid 21] [--tag a,b] [--desc <t>] [--cover <img>] [--cookie-file .bili.env] [--python python3] [--dry-run]
 `)
 }
 
@@ -833,6 +834,33 @@ async function status(flags) {
 	print(await readJson(manifestPath))
 }
 
+async function publishBilibili(flags) {
+	// Optional capability: shells out to the bundled Python engine, which uses
+	// bilibili-api (web cookies). Requires Python + `pip install bilibili-api-python`.
+	// Cookies come from --cookie-file (default .bili.env); the engine auto-extracts
+	// them from a logged-in Dia session via Kimi WebBridge if the file is incomplete.
+	const publishScript = path.resolve(runtimeDir, '..', 'scripts', 'publish_bilibili.py')
+	const python = flagString(flags, 'python', process.env.MEDIAFLOW_PYTHON || 'python3')
+	const cookieFile = resolvePath(flagString(flags, 'cookie-file', '.bili.env'))
+	const args = [publishScript, '--cookie-file', cookieFile]
+	const deleteAid = flagString(flags, 'delete-aid')
+	if (deleteAid) {
+		args.push('--delete-aid', deleteAid)
+	} else {
+		args.push('--video', resolvePath(requiredFlag(flags, 'video')))
+		args.push('--title', requiredFlag(flags, 'title'))
+		args.push('--tid', flagString(flags, 'tid', '21'))
+		const tag = flagString(flags, 'tag')
+		if (tag) args.push('--tag', tag)
+		const desc = flagString(flags, 'desc')
+		if (desc) args.push('--desc', desc)
+		const cover = flagString(flags, 'cover')
+		if (cover) args.push('--cover', resolvePath(cover))
+		if (flags['dry-run']) args.push('--dry-run')
+	}
+	await runProcess(python, args)
+}
+
 async function main() {
 	const [command = 'help', ...argv] = process.argv.slice(2)
 	const { flags } = parseArgs(argv)
@@ -868,6 +896,8 @@ async function main() {
 			return renderComments(flags)
 		case 'status':
 			return status(flags)
+		case 'publish-bilibili':
+			return publishBilibili(flags)
 		default:
 			throw new Error(`Unknown command: ${command}. Run mediaflow help.`)
 	}

@@ -34,6 +34,16 @@ Run the bundled runtime, not repository application commands. Keep all run artif
 
 The default policy is fail-closed: only `allow` records reach the Remotion composition. `exclude` and `review` records are written to `comments.quarantine.json`.
 
+## Publish Workflow
+
+`publish-bilibili` is an **optional** command (requires Python and `pip install bilibili-api-python`). It uploads and submits a rendered video to Bilibili via the web API (web cookies, no QR/app login).
+
+1. Provide B站 cookies: either populate `.bili.env` by hand, or run with the Kimi WebBridge daemon (`127.0.0.1:10086`) and Dia logged into Bilibili — the command auto-extracts cookies via CDP `Network.getCookies` and caches them to `.bili.env`.
+2. Run `publish-bilibili --video <video.mp4> --title <t> [--tid 21] [--tag a,b] [--desc <t>] [--cover <img>] [--cookie-file .bili.env] [--dry-run]`. The cover is auto-extracted from the video if `--cover` is omitted.
+3. On success it prints `{aid, bvid}`; new videos enter 审核 (review) before going public.
+
+Archive **deletion is not automated** — B站 verification-gates the delete API (`340022`); delete by hand in the creator center.
+
 ## Operational Rules
 
 - Preserve every source task ID and `sourceHash`; validation rejects missing, duplicate, stale, or altered source records.
