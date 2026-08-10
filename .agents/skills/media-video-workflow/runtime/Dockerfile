@@ -14,6 +14,7 @@ COPY runtime/src/ensure-browser.mjs ./src/ensure-browser.mjs
 RUN npm ci --omit=dev \
 	&& node src/ensure-browser.mjs
 
-COPY runtime ./
+COPY runtime/src ./src
+COPY runtime/remotion ./remotion
 WORKDIR /work
 ENTRYPOINT ["node", "/opt/media-video-workflow/runtime/src/workflow.mjs"]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish (or delete) a video on Bilibili via the web API (bilibili-api).
+"""Publish a video on Bilibili via the web API (bilibili-api).
 
 Optional capability of the media-video-workflow skill. Requires Python and
 `pip install bilibili-api-python`. Cookies: read from --cookie-file (default
@@ -9,9 +9,8 @@ session via the Kimi WebBridge daemon (CDP Network.getCookies, 127.0.0.1:10086).
 Usage:
   python publish_bilibili.py --video x.mp4 --title "..." [--tid 21] \
       [--tag "a,b"] [--desc "..."] [--cover y.jpg] [--dry-run]
-  python publish_bilibili.py --delete-aid <aid>   # NOTE: hits 340022, see below
 """
-import argparse, asyncio, os, subprocess, sys, urllib.request, json, urllib.parse
+import argparse, asyncio, os, subprocess, sys, urllib.request, json
 
 DEFAULT_COOKIE_FILE = ".bili.env"
 WEBBRIDGE = "http://127.0.0.1:10086/command"
@@ -64,39 +63,47 @@ def ensure_cover(video, cover):
     if cover and os.path.exists(cover):
         return cover
     cover = cover or ".cover.jpg"
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", video],
+        check=True, capture_output=True, text=True,
+    )
+    duration = float(probe.stdout.strip())
+    seek = max(0, min(8, duration * 0.25))
     subprocess.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                    "-ss", "8", "-i", video, "-frames:v", "1", cover], check=True)
+                    "-ss", str(seek), "-i", video, "-frames:v", "1", cover], check=True)
     return cover
 
 
 def publish(video, title, tid, tag, desc, cover, cookie_file, dry_run):
+    if dry_run:
+        print(json.dumps({
+            "dryRun": True,
+            "video": video,
+            "title": title,
+            "tid": tid,
+            "tags": tag,
+            "description": desc,
+            "cover": cover,
+        }, ensure_ascii=False))
+        return
     from bilibili_api import video_uploader, Credential
     env = get_cookies(cookie_file)
     missing = [k for k in NEEDED if not env.get(k)]
     if missing:
         raise SystemExit(f"Missing cookies {missing}; log into Bilibili in Dia (WebBridge) or populate {cookie_file}.")
-    if dry_run:
-        print(f"[dry-run] would publish {video!r} title={title!r} tid={tid} tag={tag!r} cover={cover!r}")
-        return
     cred = Credential(sessdata=env["SESSDATA"], bili_jct=env["bili_jct"],
                       buvid3=env.get("buvid3", ""), dedeuserid=env["DedeUserID"])
     page = video_uploader.VideoUploaderPage(path=video, title=title, description=desc)
     meta = video_uploader.VideoMeta(tid=tid, title=title, desc=desc, cover=cover, tags=tag, original=True)
     res = asyncio.run(video_uploader.VideoUploader(pages=[page], meta=meta, credential=cred).start())
-    print("PUBLISHED:", res)
-
-
-def delete_archive(aid, cookie_file):
-    """Delete an archive. Endpoint POST /x/web/archive/delete captured from the
-    creator center. B站 gates deletion behind a verification token, so {aid,csrf}
-    returns 340022 '验证码错误' — headless API delete does NOT work; delete by hand."""
-    env = get_cookies(cookie_file)
-    cookie = f"SESSDATA={env['SESSDATA']}; bili_jct={env['bili_jct']}; DedeUserID={env['DedeUserID']}"
-    body = urllib.parse.urlencode({"aid": aid, "csrf": env["bili_jct"]}).encode()
-    req = urllib.request.Request("https://member.bilibili.com/x/web/archive/delete", data=body,
-        headers={"Cookie": cookie, "User-Agent": "Mozilla/5.0", "Referer": "https://member.bilibili.com/",
-                 "Content-Type": "application/x-www-form-urlencoded"})
-    return json.load(urllib.request.urlopen(req, timeout=20))
+    payload = res if isinstance(res, dict) else {"response": str(res)}
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    print(json.dumps({
+        "aid": payload.get("aid") or data.get("aid"),
+        "bvid": payload.get("bvid") or data.get("bvid"),
+        "response": payload,
+    }, ensure_ascii=False, default=str))
 
 
 def main():
@@ -109,13 +116,9 @@ def main():
     ap.add_argument("--cover", default=None, help="封面图；不传则自动抽帧")
     ap.add_argument("--cookie-file", default=DEFAULT_COOKIE_FILE)
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--delete-aid", metavar="AID", help="（实验）删除稿件——会撞 340022 风控，基本不可用")
     a = ap.parse_args()
-    if a.delete_aid:
-        print("DELETE:", delete_archive(a.delete_aid, a.cookie_file))
-        return
     if not (a.video and a.title):
-        ap.error("--video and --title are required (unless using --delete-aid)")
+        ap.error("--video and --title are required")
     cover = ensure_cover(a.video, a.cover) if not a.dry_run else a.cover
     publish(a.video, a.title, a.tid, a.tag, a.desc, cover, a.cookie_file, a.dry_run)
 

@@ -6,13 +6,25 @@ import path from 'node:path'
 export const SCHEMA_VERSION = 1
 export const MODERATION_DECISIONS = new Set(['allow', 'exclude', 'review'])
 export const MODERATION_CONFIDENCE = new Set(['high', 'medium', 'low'])
+export const MODERATION_CATEGORIES = new Set([
+	'spam_or_scam',
+	'personal_data',
+	'harassment_or_hate',
+	'sexual_or_minors',
+	'violence_or_self_harm',
+	'illegal_or_malware',
+	'prompt_injection_or_manipulation',
+	'off_topic_or_low_quality',
+	'topic_exclusion',
+])
 
 export function canonicalize(value) {
 	if (Array.isArray(value)) return value.map(canonicalize)
 	if (value && typeof value === 'object') {
 		const record = {}
 		for (const key of Object.keys(value).sort()) {
-			if (typeof value[key] !== 'undefined') record[key] = canonicalize(value[key])
+			if (typeof value[key] !== 'undefined')
+				record[key] = canonicalize(value[key])
 		}
 		return record
 	}
@@ -42,6 +54,19 @@ export function normalizeText(value) {
 		.replace(/\u0000/g, '')
 		.replace(/\r\n/g, '\n')
 		.trim()
+}
+
+export function asrTimestamp(seconds) {
+	const numeric = Number(seconds)
+	const totalMilliseconds = Math.max(
+		0,
+		Math.round(Number.isFinite(numeric) ? numeric * 1000 : 0),
+	)
+	const hours = Math.floor(totalMilliseconds / 3_600_000)
+	const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000)
+	const wholeSeconds = Math.floor((totalMilliseconds % 60_000) / 1000)
+	const milliseconds = totalMilliseconds % 1000
+	return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`
 }
 
 export function resolvePath(value) {
@@ -77,7 +102,10 @@ export async function readJson(filePath) {
 }
 
 export async function writeJsonl(filePath, rows) {
-	await writeAtomic(filePath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`)
+	await writeAtomic(
+		filePath,
+		`${rows.map((row) => JSON.stringify(row)).join('\n')}\n`,
+	)
 }
 
 export async function readJsonl(filePath) {
@@ -130,7 +158,10 @@ export function parseVtt(text) {
 		const current = String(lines[cursor] || '').trim()
 		if (!current || current.toUpperCase() === 'WEBVTT') continue
 		if (current.startsWith('NOTE')) {
-			while (cursor + 1 < lines.length && String(lines[cursor + 1] || '').trim()) {
+			while (
+				cursor + 1 < lines.length &&
+				String(lines[cursor + 1] || '').trim()
+			) {
 				cursor += 1
 			}
 			continue
@@ -180,20 +211,97 @@ export function serializeVtt(cues) {
 	return `${lines.join('\n')}\n`
 }
 
-export function normalizeCommentsSnapshot(raw) {
+function isPrivateHostname(hostname) {
+	const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '')
+	if (
+		normalized === 'localhost' ||
+		normalized === '::1' ||
+		normalized.endsWith('.localhost') ||
+		normalized.endsWith('.local')
+	) {
+		return true
+	}
+	if (normalized.includes(':')) {
+		return (
+			normalized === '::' ||
+			normalized.startsWith('::ffff:') ||
+			/^f[cd]/.test(normalized) ||
+			/^fe[89ab]/.test(normalized)
+		)
+	}
+	const octets = normalized.split('.').map(Number)
+	if (
+		octets.length !== 4 ||
+		octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)
+	) {
+		return false
+	}
+	return (
+		octets[0] === 0 ||
+		octets[0] === 10 ||
+		(octets[0] === 100 && octets[1] >= 64 && octets[1] <= 127) ||
+		octets[0] === 127 ||
+		(octets[0] === 169 && octets[1] === 254) ||
+		(octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+		(octets[0] === 192 && octets[1] === 168) ||
+		octets[0] >= 224
+	)
+}
+
+export function normalizeRemoteImageUrl(value) {
+	try {
+		const parsed = new URL(normalizeText(value))
+		if (
+			parsed.protocol !== 'https:' ||
+			parsed.username ||
+			parsed.password ||
+			isPrivateHostname(parsed.hostname)
+		) {
+			return undefined
+		}
+		return parsed.href
+	} catch {
+		return undefined
+	}
+}
+
+export function normalizeAssetPath(value) {
+	const assetPath = normalizeText(value).replace(/\\/g, '/')
+	if (
+		!assetPath ||
+		assetPath.startsWith('/') ||
+		assetPath.startsWith('../') ||
+		assetPath.includes('/../') ||
+		assetPath.includes('\0')
+	) {
+		return undefined
+	}
+	return assetPath
+}
+
+export function normalizeCommentsSnapshot(
+	raw,
+	{ allowRemoteImages = false } = {},
+) {
 	const snapshot = Array.isArray(raw) ? { comments: raw } : raw
 	if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
-		throw new Error('Comments input must be a JSON object or an array of comments')
+		throw new Error(
+			'Comments input must be a JSON object or an array of comments',
+		)
 	}
 
 	const rawVideoInfo =
-		snapshot.videoInfo && typeof snapshot.videoInfo === 'object' && !Array.isArray(snapshot.videoInfo)
+		snapshot.videoInfo &&
+		typeof snapshot.videoInfo === 'object' &&
+		!Array.isArray(snapshot.videoInfo)
 			? snapshot.videoInfo
 			: {}
 	const rawComments = Array.isArray(snapshot.comments) ? snapshot.comments : []
 	const seenIds = new Set()
 	const comments = rawComments
-		.filter((value) => value && typeof value === 'object' && !Array.isArray(value))
+		.filter(
+			(value) => value && typeof value === 'object' && !Array.isArray(value),
+		)
 		.map((value, index) => {
 			const rawId = normalizeText(value.id) || `comment-${index + 1}`
 			const id = seenIds.has(rawId) ? `${rawId}-${index + 1}` : rawId
@@ -201,7 +309,10 @@ export function normalizeCommentsSnapshot(raw) {
 			return {
 				id,
 				author: normalizeText(value.author) || 'Unknown',
-				authorThumbnail: normalizeText(value.authorThumbnail) || undefined,
+				authorThumbnail: allowRemoteImages
+					? normalizeRemoteImageUrl(value.authorThumbnail)
+					: undefined,
+				authorThumbnailAsset: normalizeAssetPath(value.authorThumbnailAsset),
 				content: normalizeText(value.content),
 				translatedContent: normalizeText(value.translatedContent),
 				likes: Number.isFinite(Number(value.likes)) ? Number(value.likes) : 0,
@@ -212,7 +323,8 @@ export function normalizeCommentsSnapshot(raw) {
 		})
 		.filter((comment) => comment.content.length > 0)
 
-	if (!comments.length) throw new Error('Comments input has no non-empty comments')
+	if (!comments.length)
+		throw new Error('Comments input has no non-empty comments')
 
 	return {
 		videoInfo: {

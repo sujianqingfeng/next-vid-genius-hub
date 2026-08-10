@@ -20,8 +20,8 @@ For every `kind: "comment"` row, add a `moderation` object using the policy in `
 - Use `allow` only when the comment is clearly safe for publication.
 - Use `exclude` for clear policy violations.
 - Use `review` for ambiguous content. The runtime quarantines it by default, so uncertainty never reaches the rendered video.
-- Use short bounded `reasonCode` values such as `safe_relevant`, `external_link_scam`, or `harassment_targeted`; do not include long free-form rationale.
-- Populate `categories` with zero or more policy category IDs.
+- Use lowercase `reasonCode` values of at most 64 characters, with letters, digits, and underscores only, such as `safe_relevant`, `external_link_scam`, or `harassment_targeted`.
+- Populate `categories` only with IDs from `moderation-policy.md`. Use no categories for `allow`, and at least one category for `exclude`.
 
 ## Finish
 

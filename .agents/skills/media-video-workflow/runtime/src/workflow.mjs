@@ -5,9 +5,11 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+	MODERATION_CATEGORIES,
 	MODERATION_CONFIDENCE,
 	MODERATION_DECISIONS,
 	SCHEMA_VERSION,
+	asrTimestamp,
 	createTask,
 	ensureDir,
 	normalizeCommentsSnapshot,
@@ -25,8 +27,12 @@ import {
 	writeJson,
 	writeJsonl,
 } from './lib.mjs'
+import { fetchAvatarAsset } from './avatar-assets.mjs'
 
-const runtimeDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const runtimeDir = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	'..',
+)
 
 function parseArgs(argv) {
 	const positional = []
@@ -73,7 +79,7 @@ function usage() {
 	console.log(`mediaflow - standalone translated media workflow
 
 Usage:
-  mediaflow doctor
+  mediaflow doctor [--for local|prepare|download|subtitles|comments|asr|publish]
   mediaflow download --url <url> --out <video.mp4> [--quality 1080] [--cookies <cookies.txt>] [--remote-components ejs:github|none] [--proxy <url>]
   mediaflow fetch-comments --url <url> --out <comments.json> [--max-comments 100] [--cookies <cookies.txt>] [--remote-components ejs:github|none] [--proxy <url>]
   mediaflow extract-audio --video <video.mp4> --out <audio.wav>
@@ -82,9 +88,9 @@ Usage:
   mediaflow prepare-comments --input <comments.json> --out <run-dir> [--target-language zh-CN]
   mediaflow validate --kind <subtitles|comments> --tasks <results.jsonl> [--manifest <manifest.json>]
   mediaflow materialize-subtitles --tasks <results.jsonl> --out <bilingual.vtt> [--format bilingual|replace]
-  mediaflow materialize-comments --tasks <results.jsonl> --out <output-dir>
+  mediaflow materialize-comments --tasks <results.jsonl> --out <output-dir> [--fetch-avatars]
   mediaflow render-subtitles --video <video.mp4> --subtitles <subtitles.vtt> --out <video.mp4>
-  mediaflow render-comments --input <comments.safe.json> --out <video.mp4> [--template landscape|vertical] [--video <source.mp4>]
+  mediaflow render-comments --input <comments.safe.json> --out <video.mp4> [--template landscape|vertical] [--video <source.mp4>] [--assets <assets-dir>] [--allow-remote-images]
   mediaflow status --workdir <run-dir>
   mediaflow publish-bilibili --video <mp4> --title <t> [--tid 21] [--tag a,b] [--desc <t>] [--cover <img>] [--cookie-file .bili.env] [--python python3] [--dry-run]
 `)
@@ -110,25 +116,52 @@ async function loadManifestForTasks(tasksPath, flags) {
 		? resolvePath(flags.manifest)
 		: path.join(workDirForTasks(tasksPath), 'manifest.json')
 	if (!(await pathExists(manifestPath))) {
-		throw new Error(`Manifest not found: ${manifestPath}. Pass --manifest explicitly if needed.`)
+		throw new Error(
+			`Manifest not found: ${manifestPath}. Pass --manifest explicitly if needed.`,
+		)
 	}
 	const manifest = await readJson(manifestPath)
 	if (manifest.schemaVersion !== SCHEMA_VERSION) {
-		throw new Error(`Unsupported manifest schema version: ${String(manifest.schemaVersion)}`)
+		throw new Error(
+			`Unsupported manifest schema version: ${String(manifest.schemaVersion)}`,
+		)
 	}
 	return { manifestPath, manifest, workDir: path.dirname(manifestPath) }
 }
 
 function expectedTaskMap(manifest) {
-	if (!Array.isArray(manifest.expectedTasks) || !manifest.expectedTasks.length) {
+	if (
+		!Array.isArray(manifest.expectedTasks) ||
+		!manifest.expectedTasks.length
+	) {
 		throw new Error('Manifest has no expected task records')
 	}
 	return new Map(manifest.expectedTasks.map((task) => [task.id, task]))
 }
 
+function assertManifestState(manifest, expectedState, command) {
+	if (manifest.state !== expectedState) {
+		throw new Error(
+			`${command} requires manifest state="${expectedState}"; current state is "${String(manifest.state)}"`,
+		)
+	}
+}
+
+async function ensureNewRunDir(workDir) {
+	if (!(await pathExists(workDir))) return
+	const entries = await fs.readdir(workDir)
+	if (entries.length) {
+		throw new Error(
+			`Run directory is not empty: ${workDir}. Choose a new --out directory.`,
+		)
+	}
+}
+
 function validateRows(rows, manifest, workflow) {
 	if (manifest.workflow !== workflow) {
-		throw new Error(`Task manifest is for ${manifest.workflow}, not ${workflow}`)
+		throw new Error(
+			`Task manifest is for ${manifest.workflow}, not ${workflow}`,
+		)
 	}
 	if (!rows.length) throw new Error('Task result file is empty')
 
@@ -139,14 +172,23 @@ function validateRows(rows, manifest, workflow) {
 			throw new Error('Each JSONL row must be an object')
 		}
 		if (row.schemaVersion !== SCHEMA_VERSION) {
-			throw new Error(`Unsupported task schema version for ${String(row.id || 'unknown')}`)
+			throw new Error(
+				`Unsupported task schema version for ${String(row.id || 'unknown')}`,
+			)
 		}
 		const id = normalizeText(row.id)
 		const expectedTask = expected.get(id)
 		if (!expectedTask) throw new Error(`Unexpected task id: ${id || '(empty)'}`)
 		if (accepted.has(id)) throw new Error(`Duplicate task id: ${id}`)
-		if (row.kind !== expectedTask.kind) throw new Error(`Task kind changed for ${id}`)
-		if (row.sourceHash !== expectedTask.sourceHash || sourceHash(row) !== expectedTask.sourceHash) {
+		if (row.kind !== expectedTask.kind)
+			throw new Error(`Task kind changed for ${id}`)
+		if (row.targetLanguage !== manifest.targetLanguage) {
+			throw new Error(`Target language changed for ${id}`)
+		}
+		if (
+			row.sourceHash !== expectedTask.sourceHash ||
+			sourceHash(row) !== expectedTask.sourceHash
+		) {
 			throw new Error(`Source content changed or hash mismatch for ${id}`)
 		}
 		if (normalizeText(row.translation).length === 0) {
@@ -158,7 +200,11 @@ function validateRows(rows, manifest, workflow) {
 
 		if (workflow === 'comments' && row.kind === 'comment') {
 			const moderation = row.moderation
-			if (!moderation || typeof moderation !== 'object' || Array.isArray(moderation)) {
+			if (
+				!moderation ||
+				typeof moderation !== 'object' ||
+				Array.isArray(moderation)
+			) {
 				throw new Error(`Missing moderation record for ${id}`)
 			}
 			if (!MODERATION_DECISIONS.has(moderation.decision)) {
@@ -170,8 +216,31 @@ function validateRows(rows, manifest, workflow) {
 			if (!Array.isArray(moderation.categories)) {
 				throw new Error(`Moderation categories must be an array for ${id}`)
 			}
-			if (!normalizeText(moderation.reasonCode)) {
-				throw new Error(`Moderation reasonCode is required for ${id}`)
+			const categories = moderation.categories.map((category) =>
+				normalizeText(category),
+			)
+			if (categories.some((category) => !MODERATION_CATEGORIES.has(category))) {
+				throw new Error(`Invalid moderation category for ${id}`)
+			}
+			if (new Set(categories).size !== categories.length) {
+				throw new Error(`Duplicate moderation category for ${id}`)
+			}
+			const reasonCode = normalizeText(moderation.reasonCode)
+			if (!/^[a-z0-9_]{1,64}$/.test(reasonCode)) {
+				throw new Error(`Invalid moderation reasonCode for ${id}`)
+			}
+			if (
+				moderation.decision === 'allow' &&
+				(categories.length || reasonCode !== 'safe_relevant')
+			) {
+				throw new Error(
+					`Allowed comment ${id} must use no categories and reasonCode="safe_relevant"`,
+				)
+			}
+			if (moderation.decision === 'exclude' && !categories.length) {
+				throw new Error(
+					`Excluded comment ${id} must include a moderation category`,
+				)
 			}
 		}
 		accepted.set(id, row)
@@ -179,7 +248,9 @@ function validateRows(rows, manifest, workflow) {
 
 	const missing = [...expected.keys()].filter((id) => !accepted.has(id))
 	if (missing.length) {
-		throw new Error(`Missing ${missing.length} task result(s): ${missing.slice(0, 12).join(', ')}`)
+		throw new Error(
+			`Missing ${missing.length} task result(s): ${missing.slice(0, 12).join(', ')}`,
+		)
 	}
 
 	return accepted
@@ -188,6 +259,7 @@ function validateRows(rows, manifest, workflow) {
 async function prepareSubtitles(flags) {
 	const sourcePath = resolvePath(requiredFlag(flags, 'input'))
 	const workDir = resolvePath(requiredFlag(flags, 'out'))
+	await ensureNewRunDir(workDir)
 	const targetLanguage = flagString(flags, 'target-language', 'zh-CN')
 	const sourceText = await fs.readFile(sourcePath, 'utf8')
 	const cues = parseVtt(sourceText)
@@ -229,14 +301,23 @@ async function prepareSubtitles(flags) {
 	}
 	await writeJsonl(taskPath, tasks)
 	await writeManifest(manifestPath, manifest)
-	print({ workDir, manifestPath, taskPath, state: manifest.state, tasks: tasks.length })
+	print({
+		workDir,
+		manifestPath,
+		taskPath,
+		state: manifest.state,
+		tasks: tasks.length,
+	})
 }
 
 async function prepareComments(flags) {
 	const sourcePath = resolvePath(requiredFlag(flags, 'input'))
 	const workDir = resolvePath(requiredFlag(flags, 'out'))
+	await ensureNewRunDir(workDir)
 	const targetLanguage = flagString(flags, 'target-language', 'zh-CN')
-	const snapshot = normalizeCommentsSnapshot(await readJson(sourcePath))
+	const snapshot = normalizeCommentsSnapshot(await readJson(sourcePath), {
+		allowRemoteImages: true,
+	})
 
 	const inputDir = path.join(workDir, 'input')
 	const tasksDir = path.join(workDir, 'tasks')
@@ -282,7 +363,13 @@ async function prepareComments(flags) {
 	}
 	await writeJsonl(taskPath, tasks)
 	await writeManifest(manifestPath, manifest)
-	print({ workDir, manifestPath, taskPath, state: manifest.state, tasks: tasks.length })
+	print({
+		workDir,
+		manifestPath,
+		taskPath,
+		state: manifest.state,
+		tasks: tasks.length,
+	})
 }
 
 async function validate(flags) {
@@ -292,12 +379,22 @@ async function validate(flags) {
 	}
 	const tasksPath = resolvePath(requiredFlag(flags, 'tasks'))
 	const rows = await readJsonl(tasksPath)
-	const { manifestPath, manifest, workDir } = await loadManifestForTasks(tasksPath, flags)
+	const { manifestPath, manifest, workDir } = await loadManifestForTasks(
+		tasksPath,
+		flags,
+	)
+	assertManifestState(manifest, 'awaiting_agent', 'validate')
 	const accepted = validateRows(rows, manifest, workflow)
 	manifest.state = 'validated'
 	manifest.artifacts.validatedTasks = relativeArtifact(workDir, tasksPath)
 	await writeManifest(manifestPath, manifest)
-	print({ manifestPath, tasksPath, workflow, state: manifest.state, validated: accepted.size })
+	print({
+		manifestPath,
+		tasksPath,
+		workflow,
+		state: manifest.state,
+		validated: accepted.size,
+	})
 }
 
 async function materializeSubtitles(flags) {
@@ -308,12 +405,25 @@ async function materializeSubtitles(flags) {
 		throw new Error('--format must be bilingual or replace')
 	}
 	const rows = await readJsonl(tasksPath)
-	const { manifestPath, manifest, workDir } = await loadManifestForTasks(tasksPath, flags)
+	const { manifestPath, manifest, workDir } = await loadManifestForTasks(
+		tasksPath,
+		flags,
+	)
+	assertManifestState(manifest, 'validated', 'materialize-subtitles')
+	if (
+		resolveArtifact(workDir, manifest.artifacts.validatedTasks) !== tasksPath
+	) {
+		throw new Error(
+			'materialize-subtitles must use the task file recorded by validate',
+		)
+	}
 	const tasks = validateRows(rows, manifest, 'subtitles')
 	const cues = manifest.expectedTasks.map((expected) => {
 		const task = tasks.get(expected.id)
 		const source = task.source
-		const sourceLines = Array.isArray(source.sourceLines) ? source.sourceLines : [source.sourceText]
+		const sourceLines = Array.isArray(source.sourceLines)
+			? source.sourceLines
+			: [source.sourceText]
 		return {
 			start: source.start,
 			end: source.end,
@@ -335,10 +445,23 @@ async function materializeComments(flags) {
 	const tasksPath = resolvePath(requiredFlag(flags, 'tasks'))
 	const outputDir = resolvePath(requiredFlag(flags, 'out'))
 	const rows = await readJsonl(tasksPath)
-	const { manifestPath, manifest, workDir } = await loadManifestForTasks(tasksPath, flags)
+	const { manifestPath, manifest, workDir } = await loadManifestForTasks(
+		tasksPath,
+		flags,
+	)
+	assertManifestState(manifest, 'validated', 'materialize-comments')
+	if (
+		resolveArtifact(workDir, manifest.artifacts.validatedTasks) !== tasksPath
+	) {
+		throw new Error(
+			'materialize-comments must use the task file recorded by validate',
+		)
+	}
 	const tasks = validateRows(rows, manifest, 'comments')
 	const sourcePath = resolveArtifact(workDir, manifest.artifacts.source)
-	const snapshot = normalizeCommentsSnapshot(await readJson(sourcePath))
+	const snapshot = normalizeCommentsSnapshot(await readJson(sourcePath), {
+		allowRemoteImages: true,
+	})
 	const title = tasks.get('comment-title:1')
 	const safe = []
 	const quarantine = []
@@ -351,7 +474,9 @@ async function materializeComments(flags) {
 			translatedContent: normalizeText(task.translation),
 			moderation: {
 				decision: moderation.decision,
-				categories: moderation.categories.map((category) => normalizeText(category)).filter(Boolean),
+				categories: moderation.categories
+					.map((category) => normalizeText(category))
+					.filter(Boolean),
 				confidence: moderation.confidence,
 				reasonCode: normalizeText(moderation.reasonCode),
 			},
@@ -364,6 +489,57 @@ async function materializeComments(flags) {
 	}
 
 	await ensureDir(outputDir)
+	const fetchAvatars = Boolean(flags['fetch-avatars'])
+	const avatarStats = {
+		requested: 0,
+		unique: 0,
+		fetched: 0,
+		cached: 0,
+		failed: 0,
+		errors: [],
+	}
+	if (fetchAvatars) {
+		const avatarDir = path.join(outputDir, 'assets', 'avatars')
+		await ensureDir(avatarDir)
+		const avatarGroups = new Map()
+		for (const record of safe) {
+			const remoteUrl = record.authorThumbnail
+			delete record.authorThumbnail
+			if (!remoteUrl || record.authorThumbnailAsset) continue
+			avatarStats.requested += 1
+			const group = avatarGroups.get(remoteUrl) || []
+			group.push(record)
+			avatarGroups.set(remoteUrl, group)
+		}
+		avatarStats.unique = avatarGroups.size
+		const entries = [...avatarGroups.entries()]
+		let nextEntry = 0
+		const fetchWorker = async () => {
+			while (nextEntry < entries.length) {
+				const entryIndex = nextEntry
+				nextEntry += 1
+				const [remoteUrl, records] = entries[entryIndex]
+				try {
+					const result = await fetchAvatarAsset(remoteUrl, avatarDir)
+					for (const record of records)
+						record.authorThumbnailAsset = result.assetPath
+					if (result.cached) avatarStats.cached += records.length
+					else avatarStats.fetched += records.length
+				} catch (error) {
+					avatarStats.failed += records.length
+					for (const record of records) {
+						avatarStats.errors.push({
+							id: record.id,
+							error: error instanceof Error ? error.message : String(error),
+						})
+					}
+				}
+			}
+		}
+		await Promise.all(
+			Array.from({ length: Math.min(4, entries.length) }, () => fetchWorker()),
+		)
+	}
 	const safePath = path.join(outputDir, 'comments.safe.json')
 	const quarantinePath = path.join(outputDir, 'comments.quarantine.json')
 	const reportPath = path.join(outputDir, 'moderation-report.json')
@@ -371,21 +547,38 @@ async function materializeComments(flags) {
 		schemaVersion: SCHEMA_VERSION,
 		kind: 'mediaflow-safe-comments',
 		policy: 'default-fail-closed',
-		videoInfo: { ...snapshot.videoInfo, translatedTitle: normalizeText(title.translation) },
+		videoInfo: {
+			...snapshot.videoInfo,
+			translatedTitle: normalizeText(title.translation),
+		},
+		assets: {
+			avatarDirectory: 'assets/avatars',
+			fetchAvatars,
+			requested: avatarStats.requested,
+			unique: avatarStats.unique,
+			fetched: avatarStats.fetched,
+			cached: avatarStats.cached,
+			failed: avatarStats.failed,
+		},
 		comments: safe,
 	})
 	await writeJson(quarantinePath, {
 		schemaVersion: SCHEMA_VERSION,
 		kind: 'mediaflow-quarantined-comments',
 		policy: 'default-fail-closed',
-		videoInfo: { ...snapshot.videoInfo, translatedTitle: normalizeText(title.translation) },
+		videoInfo: {
+			...snapshot.videoInfo,
+			translatedTitle: normalizeText(title.translation),
+		},
 		comments: quarantine,
 	})
 	const byDecision = Object.fromEntries(
 		[...MODERATION_DECISIONS].map((decision) => [
 			decision,
-			quarantine.filter((comment) => comment.moderation.decision === decision).length +
-				safe.filter((comment) => comment.moderation.decision === decision).length,
+			quarantine.filter((comment) => comment.moderation.decision === decision)
+				.length +
+				safe.filter((comment) => comment.moderation.decision === decision)
+					.length,
 		]),
 	)
 	await writeJson(reportPath, {
@@ -396,13 +589,36 @@ async function materializeComments(flags) {
 		allowedComments: safe.length,
 		quarantinedComments: quarantine.length,
 		byDecision,
+		avatars: avatarStats,
 	})
 	manifest.state = 'materialized'
 	manifest.artifacts.safeComments = relativeArtifact(workDir, safePath)
-	manifest.artifacts.quarantinedComments = relativeArtifact(workDir, quarantinePath)
+	manifest.artifacts.quarantinedComments = relativeArtifact(
+		workDir,
+		quarantinePath,
+	)
 	manifest.artifacts.moderationReport = relativeArtifact(workDir, reportPath)
+	if (fetchAvatars) {
+		manifest.artifacts.avatarAssets = relativeArtifact(
+			workDir,
+			path.join(outputDir, 'assets', 'avatars'),
+		)
+	}
 	await writeManifest(manifestPath, manifest)
-	print({ manifestPath, safePath, quarantinePath, reportPath, allowed: safe.length, quarantined: quarantine.length })
+	print({
+		manifestPath,
+		safePath,
+		quarantinePath,
+		reportPath,
+		allowed: safe.length,
+		quarantined: quarantine.length,
+		avatars: {
+			requested: avatarStats.requested,
+			fetched: avatarStats.fetched,
+			cached: avatarStats.cached,
+			failed: avatarStats.failed,
+		},
+	})
 }
 
 function ffmpegSubtitleFilename(filePath) {
@@ -438,16 +654,29 @@ async function renderComments(flags) {
 	const inputPath = resolvePath(requiredFlag(flags, 'input'))
 	const outputPath = resolvePath(requiredFlag(flags, 'out'))
 	const templateRaw = flagString(flags, 'template', 'landscape')
-	const template = templateRaw === 'vertical' || templateRaw === 'portrait' ? 'vertical' : 'landscape'
+	if (!['landscape', 'vertical', 'portrait'].includes(templateRaw)) {
+		throw new Error('--template must be landscape or vertical')
+	}
+	const template =
+		templateRaw === 'vertical' || templateRaw === 'portrait'
+			? 'vertical'
+			: 'landscape'
 	const sourceVideoPath = flagString(flags, 'video')
+	const assetsDir = flagString(flags, 'assets')
 	const { renderCommentsVideo } = await import('./render-comments.mjs')
 	await renderCommentsVideo({
 		inputPath,
 		outputPath,
 		template,
 		sourceVideoPath: sourceVideoPath ? resolvePath(sourceVideoPath) : undefined,
+		allowRemoteImages: Boolean(flags['allow-remote-images']),
+		assetsDir: assetsDir ? resolvePath(assetsDir) : undefined,
 	})
-	print({ outputPath, renderer: `remotion-${template}`, composedWithSource: Boolean(sourceVideoPath) })
+	print({
+		outputPath,
+		renderer: `remotion-${template}`,
+		composedWithSource: Boolean(sourceVideoPath),
+	})
 }
 
 async function extractAudio(flags) {
@@ -473,15 +702,6 @@ async function extractAudio(flags) {
 	print({ outputPath, sampleRate: 16000, channels: 1 })
 }
 
-function asrTimestamp(seconds) {
-	const safe = Math.max(0, Number(seconds))
-	const hours = Math.floor(safe / 3600)
-	const minutes = Math.floor((safe % 3600) / 60)
-	const wholeSeconds = Math.floor(safe % 60)
-	const milliseconds = Math.round((safe - Math.floor(safe)) * 1000)
-	return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`
-}
-
 function vttFromSegments(segments) {
 	const cues = segments
 		.filter(
@@ -489,14 +709,15 @@ function vttFromSegments(segments) {
 				segment &&
 				Number.isFinite(Number(segment.start)) &&
 				Number.isFinite(Number(segment.end)) &&
-					normalizeText(segment.text),
+				normalizeText(segment.text),
 		)
 		.map((segment) => ({
 			start: asrTimestamp(segment.start),
 			end: asrTimestamp(segment.end),
 			lines: [normalizeText(segment.text)],
 		}))
-	if (!cues.length) throw new Error('ASR response did not contain timestamped segments')
+	if (!cues.length)
+		throw new Error('ASR response did not contain timestamped segments')
 	return serializeVtt(cues)
 }
 
@@ -526,12 +747,22 @@ const CF_ASR_CHUNK_SECONDS = 30
 async function audioDurationSeconds(filePath) {
 	const result = spawnSync(
 		'ffprobe',
-		['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath],
+		[
+			'-v',
+			'error',
+			'-show_entries',
+			'format=duration',
+			'-of',
+			'default=noprint_wrappers=1:nokey=1',
+			filePath,
+		],
 		{ encoding: 'utf8' },
 	)
-	if (result.status !== 0) throw new Error(`ffprobe could not read duration for ${filePath}`)
+	if (result.status !== 0)
+		throw new Error(`ffprobe could not read duration for ${filePath}`)
 	const seconds = Number((result.stdout || '').trim())
-	if (!Number.isFinite(seconds)) throw new Error(`Could not parse audio duration for ${filePath}`)
+	if (!Number.isFinite(seconds))
+		throw new Error(`Could not parse audio duration for ${filePath}`)
 	return seconds
 }
 
@@ -549,7 +780,9 @@ function parseCloudflareVttCues(vtt) {
 	for (let i = 0; i < lines.length; i += 1) {
 		if (!lines[i].includes('-->')) continue
 		const [leftRaw, rightRaw] = lines[i].split('-->')
-		const startSec = cfTimestampToSeconds((leftRaw || '').trim().split(/\s+/)[0])
+		const startSec = cfTimestampToSeconds(
+			(leftRaw || '').trim().split(/\s+/)[0],
+		)
 		const endSec = cfTimestampToSeconds((rightRaw || '').trim().split(/\s+/)[0])
 		if (startSec == null || endSec == null) continue
 		const textLines = []
@@ -566,7 +799,8 @@ function parseCloudflareVttCues(vtt) {
 }
 
 function cloudflareCuesFromResult(result) {
-	if (typeof result.vtt === 'string' && result.vtt.trim()) return parseCloudflareVttCues(result.vtt)
+	if (typeof result.vtt === 'string' && result.vtt.trim())
+		return parseCloudflareVttCues(result.vtt)
 	const segments = Array.isArray(result.segments) ? result.segments : []
 	return segments
 		.filter(
@@ -589,7 +823,9 @@ async function cloudflareRequest({ bytes, contentType, url, apiKey }) {
 		body: bytes,
 	})
 	if (!response.ok) {
-		throw new Error(`Cloudflare ASR request failed: ${response.status} ${await response.text()}`)
+		throw new Error(
+			`Cloudflare ASR request failed: ${response.status} ${await response.text()}`,
+		)
 	}
 	const json = await response.json()
 	return (json && json.result) || {}
@@ -600,9 +836,14 @@ async function cloudflareAsr({ audioPath, url, apiKey }) {
 	const duration = await audioDurationSeconds(audioPath)
 	const records =
 		duration > CF_ASR_CHUNK_SECONDS
-			? await cloudflareChunkedCues({ audioPath, duration, contentType, url, apiKey })
+			? await cloudflareChunkedCues({ audioPath, duration, url, apiKey })
 			: cloudflareCuesFromResult(
-					await cloudflareRequest({ bytes: await fs.readFile(audioPath), contentType, url, apiKey }),
+					await cloudflareRequest({
+						bytes: await fs.readFile(audioPath),
+						contentType,
+						url,
+						apiKey,
+					}),
 				)
 	const cues = records.map((record) => ({
 		start: asrTimestamp(record.startSec),
@@ -613,7 +854,7 @@ async function cloudflareAsr({ audioPath, url, apiKey }) {
 	return serializeVtt(cues)
 }
 
-async function cloudflareChunkedCues({ audioPath, duration, contentType, url, apiKey }) {
+async function cloudflareChunkedCues({ audioPath, duration, url, apiKey }) {
 	const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mediaflow-cf-asr-'))
 	const records = []
 	try {
@@ -637,26 +878,40 @@ async function cloudflareChunkedCues({ audioPath, duration, contentType, url, ap
 				chunkPath,
 			])
 			const bytes = await fs.readFile(chunkPath)
-			try {
-				const result = await cloudflareRequest({ bytes, contentType, url, apiKey })
-				for (const cue of cloudflareCuesFromResult(result)) {
-					records.push({ startSec: cue.startSec + start, endSec: cue.endSec + start, text: cue.text })
-				}
-			} catch (error) {
-				console.error(`[mediaflow] ASR chunk @${start}s skipped: ${error.message}`)
+			const result = await cloudflareRequest({
+				bytes,
+				contentType: audioContentType(chunkPath),
+				url,
+				apiKey,
+			})
+			const chunkCues = cloudflareCuesFromResult(result)
+			if (!chunkCues.length) {
+				throw new Error(`Cloudflare ASR produced no cues for chunk @${start}s`)
+			}
+			for (const cue of chunkCues) {
+				records.push({
+					startSec: cue.startSec + start,
+					endSec: cue.endSec + start,
+					text: cue.text,
+				})
 			}
 		}
 	} finally {
 		await fs.rm(tmpDir, { recursive: true, force: true })
 	}
-	if (!records.length) throw new Error('Cloudflare ASR produced no cues across chunks')
+	if (!records.length)
+		throw new Error('Cloudflare ASR produced no cues across chunks')
 	return records
 }
 
 async function asr(flags) {
 	const audioPath = resolvePath(requiredFlag(flags, 'audio'))
 	const outputPath = resolvePath(requiredFlag(flags, 'out'))
-	const apiUrl = flagString(flags, 'api-url', process.env.MEDIAFLOW_ASR_API_URL || '')
+	const apiUrl = flagString(
+		flags,
+		'api-url',
+		process.env.MEDIAFLOW_ASR_API_URL || '',
+	)
 	const apiKey = process.env.MEDIAFLOW_ASR_API_KEY || ''
 	if (!apiUrl) throw new Error('Set MEDIAFLOW_ASR_API_URL or pass --api-url')
 	if (!apiKey) throw new Error('Set MEDIAFLOW_ASR_API_KEY before running ASR')
@@ -676,7 +931,14 @@ async function asr(flags) {
 		const form = new FormData()
 		const bytes = await fs.readFile(audioPath)
 		form.append('file', new Blob([bytes]), path.basename(audioPath))
-		form.append('model', flagString(flags, 'model', process.env.MEDIAFLOW_ASR_MODEL || 'whisper-1'))
+		form.append(
+			'model',
+			flagString(
+				flags,
+				'model',
+				process.env.MEDIAFLOW_ASR_MODEL || 'whisper-1',
+			),
+		)
 		form.append('response_format', 'verbose_json')
 		const language = flagString(flags, 'language')
 		if (language) form.append('language', language)
@@ -686,7 +948,9 @@ async function asr(flags) {
 			body: form,
 		})
 		if (!response.ok) {
-			throw new Error(`ASR request failed: ${response.status} ${await response.text()}`)
+			throw new Error(
+				`ASR request failed: ${response.status} ${await response.text()}`,
+			)
 		}
 		const contentType = response.headers.get('content-type') || ''
 		vtt = contentType.includes('text/vtt')
@@ -701,7 +965,11 @@ async function asr(flags) {
 function isYoutubeUrl(value) {
 	try {
 		const hostname = new URL(value).hostname.toLowerCase()
-		return hostname === 'youtu.be' || hostname === 'youtube.com' || hostname.endsWith('.youtube.com')
+		return (
+			hostname === 'youtu.be' ||
+			hostname === 'youtube.com' ||
+			hostname.endsWith('.youtube.com')
+		)
 	} catch {
 		return false
 	}
@@ -716,7 +984,11 @@ function appendYtDlpAccessArgs(args, flags, url, commentLimit = null) {
 		// yt-dlp only finds storyboard images and "Requested format is not available".
 		// `--remote-components ejs:github` is the yt-dlp-recommended default; pass
 		// `--remote-components none` to opt out (e.g. fully offline runs).
-		const remoteComponents = flagString(flags, 'remote-components', 'ejs:github')
+		const remoteComponents = flagString(
+			flags,
+			'remote-components',
+			'ejs:github',
+		)
 		if (remoteComponents && remoteComponents.toLowerCase() !== 'none') {
 			args.push('--remote-components', remoteComponents)
 		}
@@ -742,7 +1014,8 @@ async function download(flags) {
 	const url = requiredFlag(flags, 'url')
 	const outputPath = resolvePath(requiredFlag(flags, 'out'))
 	const quality = Number(flagString(flags, 'quality', '1080'))
-	if (!Number.isFinite(quality) || quality <= 0) throw new Error('--quality must be a positive number')
+	if (!Number.isFinite(quality) || quality <= 0)
+		throw new Error('--quality must be a positive number')
 	await ensureDir(path.dirname(outputPath))
 	const args = [
 		'--no-playlist',
@@ -763,7 +1036,9 @@ async function fetchComments(flags) {
 	const url = requiredFlag(flags, 'url')
 	const outputPath = resolvePath(requiredFlag(flags, 'out'))
 	const commentLimit = maxComments(flags)
-	const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'mediaflow-comments-'))
+	const tempDir = await fs.mkdtemp(
+		path.join(os.tmpdir(), 'mediaflow-comments-'),
+	)
 	try {
 		const outputTemplate = path.join(tempDir, 'source.%(ext)s')
 		const args = [
@@ -777,24 +1052,30 @@ async function fetchComments(flags) {
 		appendYtDlpAccessArgs(args, flags, url, commentLimit)
 		args.push(url)
 		await runProcess('yt-dlp', args)
-		const infoFile = (await fs.readdir(tempDir)).find((name) => name.endsWith('.info.json'))
+		const infoFile = (await fs.readdir(tempDir)).find((name) =>
+			name.endsWith('.info.json'),
+		)
 		if (!infoFile) throw new Error('yt-dlp did not create an info JSON file')
 		const raw = await readJson(path.join(tempDir, infoFile))
 		const comments = Array.isArray(raw.comments) ? raw.comments : []
-		const snapshot = normalizeCommentsSnapshot({
-			videoInfo: {
-				title: raw.title,
-				author: raw.uploader || raw.channel,
-				viewCount: raw.view_count,
+		const snapshot = normalizeCommentsSnapshot(
+			{
+				videoInfo: {
+					title: raw.title,
+					author: raw.uploader || raw.channel,
+					viewCount: raw.view_count,
+				},
+				comments: comments.map((comment) => ({
+					id: comment.id,
+					author: comment.author,
+					authorThumbnail: comment.author_thumbnail,
+					content: comment.text || comment.content,
+					likes: comment.like_count,
+					replyCount: comment.reply_count,
+				})),
 			},
-			comments: comments.map((comment) => ({
-				id: comment.id,
-				author: comment.author,
-				content: comment.text || comment.content,
-				likes: comment.like_count,
-				replyCount: comment.reply_count,
-			})),
-		})
+			{ allowRemoteImages: true },
+		)
 		await ensureDir(path.dirname(outputPath))
 		await writeJson(outputPath, snapshot)
 		print({ outputPath, comments: snapshot.comments.length, source: url })
@@ -812,20 +1093,51 @@ function binaryAvailable(command) {
 	}
 }
 
-async function doctor() {
+async function doctor(flags) {
+	const profile = flagString(flags, 'for', 'local')
+	const requirements = {
+		local: ['nodeSupported', 'ffmpeg', 'remotionRuntimeInstalled'],
+		prepare: ['nodeSupported'],
+		download: ['nodeSupported', 'ffmpeg', 'ytdlp'],
+		subtitles: ['nodeSupported', 'ffmpeg'],
+		comments: ['nodeSupported', 'ffmpeg', 'remotionRuntimeInstalled'],
+		asr: ['nodeSupported', 'ffmpeg', 'asrConfigured'],
+		publish: ['nodeSupported', 'ffmpeg', 'python', 'bilibiliApiInstalled'],
+	}
+	if (!requirements[profile]) {
+		throw new Error(
+			'--for must be local, prepare, download, subtitles, comments, asr, or publish',
+		)
+	}
 	const nodeMajor = Number(process.versions.node.split('.')[0])
-	const remotionRenderer = await pathExists(path.join(runtimeDir, 'node_modules', '@remotion', 'renderer'))
+	const remotionRenderer = await pathExists(
+		path.join(runtimeDir, 'node_modules', '@remotion', 'renderer'),
+	)
+	const python = process.env.MEDIAFLOW_PYTHON || 'python3'
+	const dockerCliAvailable = binaryAvailable('docker')
 	const report = {
+		profile,
 		node: process.version,
 		nodeSupported: nodeMajor >= 20,
 		ffmpeg: binaryAvailable('ffmpeg'),
 		ytdlp: binaryAvailable('yt-dlp'),
 		remotionRuntimeInstalled: remotionRenderer,
-		asrConfigured: Boolean(process.env.MEDIAFLOW_ASR_API_URL && process.env.MEDIAFLOW_ASR_API_KEY),
-		dockerAvailable: binaryAvailable('docker'),
+		asrConfigured: Boolean(
+			process.env.MEDIAFLOW_ASR_API_URL && process.env.MEDIAFLOW_ASR_API_KEY,
+		),
+		python: binaryAvailable(python),
+		bilibiliApiInstalled:
+			spawnSync(python, ['-c', 'import bilibili_api'], { stdio: 'ignore' })
+				.status === 0,
+		dockerCliAvailable,
+		dockerDaemonAvailable:
+			dockerCliAvailable &&
+			spawnSync('docker', ['info'], { stdio: 'ignore' }).status === 0,
 	}
+	report.requiredChecks = requirements[profile]
+	report.ok = report.requiredChecks.every((name) => report[name])
 	print(report)
-	if (!report.nodeSupported) process.exitCode = 1
+	if (!report.ok) process.exitCode = 1
 }
 
 async function status(flags) {
@@ -839,25 +1151,36 @@ async function publishBilibili(flags) {
 	// bilibili-api (web cookies). Requires Python + `pip install bilibili-api-python`.
 	// Cookies come from --cookie-file (default .bili.env); the engine auto-extracts
 	// them from a logged-in Dia session via Kimi WebBridge if the file is incomplete.
-	const publishScript = path.resolve(runtimeDir, '..', 'scripts', 'publish_bilibili.py')
-	const python = flagString(flags, 'python', process.env.MEDIAFLOW_PYTHON || 'python3')
+	const publishScript = path.resolve(
+		runtimeDir,
+		'..',
+		'scripts',
+		'publish_bilibili.py',
+	)
+	const python = flagString(
+		flags,
+		'python',
+		process.env.MEDIAFLOW_PYTHON || 'python3',
+	)
 	const cookieFile = resolvePath(flagString(flags, 'cookie-file', '.bili.env'))
-	const args = [publishScript, '--cookie-file', cookieFile]
-	const deleteAid = flagString(flags, 'delete-aid')
-	if (deleteAid) {
-		args.push('--delete-aid', deleteAid)
-	} else {
-		args.push('--video', resolvePath(requiredFlag(flags, 'video')))
-		args.push('--title', requiredFlag(flags, 'title'))
-		args.push('--tid', flagString(flags, 'tid', '21'))
-		const tag = flagString(flags, 'tag')
-		if (tag) args.push('--tag', tag)
-		const desc = flagString(flags, 'desc')
-		if (desc) args.push('--desc', desc)
-		const cover = flagString(flags, 'cover')
-		if (cover) args.push('--cover', resolvePath(cover))
-		if (flags['dry-run']) args.push('--dry-run')
-	}
+	const args = [
+		publishScript,
+		'--cookie-file',
+		cookieFile,
+		'--video',
+		resolvePath(requiredFlag(flags, 'video')),
+		'--title',
+		requiredFlag(flags, 'title'),
+		'--tid',
+		flagString(flags, 'tid', '21'),
+	]
+	const tag = flagString(flags, 'tag')
+	if (tag) args.push('--tag', tag)
+	const desc = flagString(flags, 'desc')
+	if (desc) args.push('--desc', desc)
+	const cover = flagString(flags, 'cover')
+	if (cover) args.push('--cover', resolvePath(cover))
+	if (flags['dry-run']) args.push('--dry-run')
 	await runProcess(python, args)
 }
 
@@ -871,7 +1194,7 @@ async function main() {
 			usage()
 			return
 		case 'doctor':
-			return doctor()
+			return doctor(flags)
 		case 'download':
 			return download(flags)
 		case 'fetch-comments':

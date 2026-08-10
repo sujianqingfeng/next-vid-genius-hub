@@ -2,7 +2,7 @@
 
 ## Run Layout
 
-`prepare-subtitles` and `prepare-comments` create this layout under `--out`:
+`prepare-subtitles` and `prepare-comments` require a new or empty `--out` directory and create this layout:
 
 ```text
 <run-dir>/
@@ -40,6 +40,7 @@ Comment rows additionally require:
 ```
 
 Use `allow`, `exclude`, or `review` for `decision`; use `high`, `medium`, or `low` for `confidence`.
+Categories must be IDs from `moderation-policy.md`. An `allow` row must use no categories and `reasonCode: "safe_relevant"`; an `exclude` row must include at least one category. Validation also rejects a changed `targetLanguage`.
 
 ## State Transitions
 
@@ -47,13 +48,14 @@ Use `allow`, `exclude`, or `review` for `decision`; use `high`, `medium`, or `lo
 awaiting_agent -> validated -> materialized
 ```
 
-`validate` rejects incomplete, duplicate, unexpected, stale, or source-mutated rows. `materialize-comments` writes only `allow` rows to `comments.safe.json`.
+`validate` requires `awaiting_agent` and rejects incomplete, duplicate, unexpected, stale, source-mutated, target-language-mutated, or policy-invalid rows. Materialization requires the exact task file recorded by `validate`; `materialize-comments` writes only `allow` rows to `comments.safe.json`.
 
 ## External Commands
 
 - `download` and `fetch-comments` use local `yt-dlp` and need an explicit URL. When a platform requires authentication, pass a user-exported cookie file with `--cookies <cookies.txt>`; the runtime never reads browser cookies implicitly. YouTube comment collection defaults to 100 records and accepts `--max-comments <positive-integer|all>`.
 - For YouTube the runtime forces a Node.js JS runtime (`--js-runtimes node`) and, by default, fetches the nsig challenge solver from GitHub (`--remote-components ejs:github`). Without the solver, modern YouTube only exposes storyboard images and downloads fail with "Requested format is not available". This needs `node` reachable on `PATH` and outbound network to GitHub; pass `--remote-components none` to opt out for fully offline runs.
 - `extract-audio` and `render-subtitles` use local `ffmpeg`.
-- `asr` only runs when `MEDIAFLOW_ASR_API_URL` and `MEDIAFLOW_ASR_API_KEY` are configured, or an explicit `--api-url` is provided. The provider is auto-detected from the URL host: an OpenAI-compatible `/v1/audio/transcriptions` endpoint by default (multipart `file` field, reads `segments`), or **Cloudflare Workers AI** when the host is `api.cloudflare.com` — set `MEDIAFLOW_ASR_API_URL` to `https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/openai/whisper`; the audio is POSTed as a raw binary body with a container `Content-Type`, and the ready-made `result.vtt` is consumed. Because Cloudflare times out on long audio, audio longer than 30s is automatically split into 30s chunks (via ffmpeg), transcribed per chunk, and the cues are offset and merged back onto the original timeline. No `MEDIAFLOW_ASR_MODEL` is needed for Cloudflare (the model is in the URL path), and `--language` is not honored by the Cloudflare REST endpoint (use single-language audio).
-- `render-comments` renders `comments.safe.json` with the bundled Remotion project in `runtime/remotion` (the branded "外网真实评论 / TubeTweet Studio" template, vendored from `packages/remotion-project`). Templates: `landscape` (default, `CommentsVideo`) and `vertical` (`CommentsVideoVertical`); both render a 1920×1080 canvas at 50 fps with per-comment durations derived from the comment timeline. Pass `--video <source.mp4>` to enable **compose-on-video**: the source video is scaled into the template's video slot via `ffmpeg` (so the output contains the original footage); without it the video slot is an empty placeholder. The renderer is fail-closed: only `comments.safe.json` (all `allow`) is accepted.
+- `asr` only runs when `MEDIAFLOW_ASR_API_URL` and `MEDIAFLOW_ASR_API_KEY` are configured, or an explicit `--api-url` is provided. The provider is auto-detected from the URL host: an OpenAI-compatible `/v1/audio/transcriptions` endpoint by default (multipart `file` field, reads `segments`), or **Cloudflare Workers AI** when the host is `api.cloudflare.com` — set `MEDIAFLOW_ASR_API_URL` to `https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/@cf/openai/whisper`; the audio is POSTed as a raw binary body with a container `Content-Type`, and the ready-made `result.vtt` is consumed. Audio longer than 30s is split into 30s WAV chunks, transcribed per chunk, and merged back onto the original timeline. Any failed or empty chunk fails the ASR job so the output cannot silently omit an interval. No `MEDIAFLOW_ASR_MODEL` is needed for Cloudflare (the model is in the URL path), and `--language` is not honored by the Cloudflare REST endpoint (use single-language audio).
+- `render-comments` renders `comments.safe.json` with the bundled Remotion project in `runtime/remotion` (the branded "外网真实评论 / TubeTweet Studio" template, vendored from `packages/remotion-project`). Templates: `landscape` (default, `CommentsVideo`) and `vertical` (`CommentsVideoVertical`); both render a 1920×1080 canvas at 50 fps with per-comment durations derived from the comment timeline. Pass `--video <source.mp4>` to enable **compose-on-video**. Remote avatars are stripped by default; `--allow-remote-images` enables only public HTTPS image URLs. The renderer is fail-closed: only `comments.safe.json` (all `allow`) is accepted.
+- `materialize-comments --fetch-avatars` downloads avatars only for `allow` comments into `<output-dir>/assets/avatars/`. Requests require public HTTPS URLs, follow redirects only after revalidation, accept JPEG/PNG/WebP/GIF signatures, enforce a 256 KiB limit and a 10 second timeout, and never send cookies. Successful rows replace the remote URL with `authorThumbnailAsset: "avatars/<sha256>.<ext>"`; failures are reported and use the template's initials fallback. `render-comments` reads the cached assets automatically from the safe snapshot's sibling `assets/` directory; `--assets <dir>` overrides it. The older `--allow-remote-images` flag remains an explicit direct-network compatibility mode.
 - `publish-bilibili` is an **optional** command (requires Python and `pip install bilibili-api-python`). It uploads a video and submits it to Bilibili via the web API (`bilibili-api`, web cookies — no QR/app login). Cookies come from `--cookie-file` (default `.bili.env`); if incomplete, the engine auto-extracts them from a logged-in Dia/Chromium session via the Kimi WebBridge daemon (CDP `Network.getCookies` at `127.0.0.1:10086`). The cover is auto-extracted from the video if `--cover` is omitted. Override the interpreter with `--python` or `MEDIAFLOW_PYTHON`. **Archive deletion is not supported**: B站 gates `/x/web/archive/delete` behind a verification token (returns `340022`), so deletes must be done by hand in the creator center.
