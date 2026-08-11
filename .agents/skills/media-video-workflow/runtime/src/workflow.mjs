@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -28,6 +28,18 @@ import {
 	writeJsonl,
 } from './lib.mjs'
 import { fetchAvatarAsset } from './avatar-assets.mjs'
+import { buildCommentTimeline, REMOTION_FPS } from './comments-timeline.mjs'
+import {
+	resolveRegistryPath,
+	loadRegistry,
+	saveRegistry,
+	findRecord,
+	deriveRecordId,
+	upsertRecord,
+	mapReviewState,
+	readBiliCookies,
+	fetchArchiveState,
+} from './registry.mjs'
 
 const runtimeDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -90,9 +102,15 @@ Usage:
   mediaflow materialize-subtitles --tasks <results.jsonl> --out <bilingual.vtt> [--format bilingual|replace]
   mediaflow materialize-comments --tasks <results.jsonl> --out <output-dir> [--fetch-avatars]
   mediaflow render-subtitles --video <video.mp4> --subtitles <subtitles.vtt> --out <video.mp4>
-  mediaflow render-comments --input <comments.safe.json> --out <video.mp4> [--template landscape|vertical] [--video <source.mp4>] [--assets <assets-dir>] [--allow-remote-images]
+  mediaflow render-comments --input <comments.safe.json> --out <video.mp4> [--template landscape|vertical] [--video <source.mp4>] [--assets <assets-dir>] [--allow-remote-images] [--plan]
   mediaflow status --workdir <run-dir>
-  mediaflow publish-bilibili --video <mp4> --title <t> [--tid 21] [--tag a,b] [--desc <t>] [--cover <img>] [--cookie-file .bili.env] [--python python3] [--dry-run]
+  mediaflow publish-bilibili --video <mp4> --title <t> [--tid 21] [--tag a,b] [--desc <t>] [--cover <img>] [--cookie-file .bili.env] [--python python3] [--source-url <url>] [--no-registry] [--dry-run]
+  mediaflow registry add --url <yt> [--id <slug>] [--job-dir <dir>] [--video <mp4>] [--title <t>] [--bvid <BV>] [--aid <id>] [--registry <file>]
+  mediaflow registry list [--status processing|passed|rejected|rendered|draft] [--json] [--registry <file>]
+  mediaflow registry show <id> [--registry <file>]
+  mediaflow registry refresh [--id <id>] [--cookie-file <.bili.env>] [--registry <file>]
+  mediaflow registry rerun <id> [--step comments|render|publish] [--template landscape|vertical] [--video <src|out>] [--out <mp4>] [--registry <file>]
+  mediaflow registry open <id> [--registry <file>]
 `)
 }
 
@@ -191,11 +209,18 @@ function validateRows(rows, manifest, workflow) {
 		) {
 			throw new Error(`Source content changed or hash mismatch for ${id}`)
 		}
-		if (normalizeText(row.translation).length === 0) {
-			throw new Error(`Missing translation for ${id}`)
-		}
 		if (normalizeText(row.status) !== 'completed') {
 			throw new Error(`Task ${id} must have status="completed"`)
+		}
+		// A translation is required for rows that will be rendered: subtitle
+		// cues and the comment title (cover card). Allowed comments are gated
+		// below (after moderation is validated). Excluded/reviewed comments are
+		// quarantined and never rendered, so their translation is optional.
+		if (
+			(row.kind === 'subtitle' || row.kind === 'comment-title') &&
+			normalizeText(row.translation).length === 0
+		) {
+			throw new Error(`Missing translation for ${id}`)
 		}
 
 		if (workflow === 'comments' && row.kind === 'comment') {
@@ -241,6 +266,12 @@ function validateRows(rows, manifest, workflow) {
 				throw new Error(
 					`Excluded comment ${id} must include a moderation category`,
 				)
+			}
+			if (
+				moderation.decision === 'allow' &&
+				normalizeText(row.translation).length === 0
+			) {
+				throw new Error(`Allowed comment ${id} requires a translation`)
 			}
 		}
 		accepted.set(id, row)
@@ -650,9 +681,43 @@ async function renderSubtitles(flags) {
 	print({ outputPath, renderer: 'ffmpeg-subtitles' })
 }
 
+function round1(value) {
+	return Math.round((value + Number.EPSILON) * 10) / 10
+}
+
+function fmtDuration(totalSeconds) {
+	const s = Math.max(0, Math.round(totalSeconds))
+	const m = Math.floor(s / 60)
+	const r = s % 60
+	return `${m}:${String(r).padStart(2, '0')}`
+}
+
+function probeMediaDuration(filePath) {
+	const result = spawnSync(
+		'ffprobe',
+		[
+			'-v',
+			'error',
+			'-show_entries',
+			'format=duration',
+			'-of',
+			'default=noprint_wrappers=1:nokey=1',
+			filePath,
+		],
+		{ encoding: 'utf8' },
+	)
+	if (result.status !== 0 || !result.stdout) {
+		throw new Error(`ffprobe could not read duration for ${filePath}`)
+	}
+	const parsed = parseFloat(result.stdout.trim())
+	if (!Number.isFinite(parsed)) {
+		throw new Error(`ffprobe returned no duration for ${filePath}`)
+	}
+	return parsed
+}
+
 async function renderComments(flags) {
 	const inputPath = resolvePath(requiredFlag(flags, 'input'))
-	const outputPath = resolvePath(requiredFlag(flags, 'out'))
 	const templateRaw = flagString(flags, 'template', 'landscape')
 	if (!['landscape', 'vertical', 'portrait'].includes(templateRaw)) {
 		throw new Error('--template must be landscape or vertical')
@@ -662,6 +727,53 @@ async function renderComments(flags) {
 			? 'vertical'
 			: 'landscape'
 	const sourceVideoPath = flagString(flags, 'video')
+
+	// --plan: print the comment timeline (per-comment on-screen seconds, total
+	// duration, and source loop count when --video is given) without rendering.
+	// Lets the agent size the allow-set before spending render time.
+	if (Boolean(flags['plan'])) {
+		const snapshot = normalizeCommentsSnapshot(await readJson(inputPath), {
+			allowRemoteImages: true,
+		})
+		const comments = Array.isArray(snapshot.comments) ? snapshot.comments : []
+		const timeline = buildCommentTimeline(comments, REMOTION_FPS)
+		let cursor = timeline.coverDurationSeconds
+		const schedule = comments.map((comment, index) => {
+			const duration = timeline.commentDurationsInFrames[index] / REMOTION_FPS
+			const entry = {
+				index: index + 1,
+				author: comment.author || '',
+				start: round1(cursor),
+				end: round1(cursor + duration),
+				duration: round1(duration),
+			}
+			cursor += duration
+			return entry
+		})
+		const summary = {
+			plan: true,
+			template,
+			coverSeconds: round1(timeline.coverDurationSeconds),
+			commentCount: comments.length,
+			totalSeconds: round1(timeline.totalDurationSeconds),
+			totalDuration: fmtDuration(timeline.totalDurationSeconds),
+		}
+		if (sourceVideoPath) {
+			const resolvedSource = resolvePath(sourceVideoPath)
+			const sourceDuration = probeMediaDuration(resolvedSource)
+			summary.composeOnVideo = true
+			summary.sourceVideo = resolvedSource
+			summary.sourceSeconds = round1(sourceDuration)
+			summary.sourceDuration = fmtDuration(sourceDuration)
+			summary.sourceLoopCount = round1(
+				timeline.totalDurationSeconds / sourceDuration,
+			)
+		}
+		print({ ...summary, schedule })
+		return
+	}
+
+	const outputPath = resolvePath(requiredFlag(flags, 'out'))
 	const assetsDir = flagString(flags, 'assets')
 	const { renderCommentsVideo } = await import('./render-comments.mjs')
 	await renderCommentsVideo({
@@ -1151,6 +1263,8 @@ async function publishBilibili(flags) {
 	// bilibili-api (web cookies). Requires Python + `pip install bilibili-api-python`.
 	// Cookies come from --cookie-file (default .bili.env); the engine auto-extracts
 	// them from a logged-in Dia session via Kimi WebBridge if the file is incomplete.
+	// On success the engine prints a JSON line ({aid, bvid}); we capture it to record
+	// the submission in the local registry (unless --no-registry / _registrySkip).
 	const publishScript = path.resolve(
 		runtimeDir,
 		'..',
@@ -1181,12 +1295,369 @@ async function publishBilibili(flags) {
 	const cover = flagString(flags, 'cover')
 	if (cover) args.push('--cover', resolvePath(cover))
 	if (flags['dry-run']) args.push('--dry-run')
-	await runProcess(python, args)
+	const stdout = await runCapturingStdout(python, args)
+	const jsonLine = stdout
+		.split('\n')
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.slice(-1)[0]
+	let result = {}
+	if (jsonLine) {
+		try {
+			result = JSON.parse(jsonLine)
+		} catch {
+			result = { response: jsonLine }
+		}
+	}
+	print(result)
+	if (
+		!flags['dry-run'] &&
+		!flags['no-registry'] &&
+		!flags._registrySkip &&
+		(result.aid || result.bvid)
+	) {
+		try {
+			await recordPublish(flags, result)
+		} catch (error) {
+			console.error(`[mediaflow] registry update skipped: ${error.message}`)
+		}
+	}
+	return result
+}
+
+// Run a child process, streaming stderr to the terminal (so upload/ffmpeg
+// progress stays visible) while capturing stdout.
+function runCapturingStdout(command, args) {
+	return new Promise((resolve, reject) => {
+		const child = spawn(command, args, {
+			stdio: ['ignore', 'pipe', 'inherit'],
+			env: process.env,
+		})
+		let stdout = ''
+		child.stdout.on('data', (chunk) => {
+			stdout += chunk
+		})
+		child.once('error', reject)
+		child.once('close', (code) => {
+			if (code === 0) resolve(stdout)
+			else reject(new Error(`${command} exited with code ${code ?? 'unknown'}`))
+		})
+	})
+}
+
+// Upsert the just-published submission into the local registry.
+async function recordPublish(flags, result) {
+	const videoPath = resolvePath(requiredFlag(flags, 'video'))
+	const sourceUrl = flagString(flags, 'source-url')
+	const id =
+		(sourceUrl && deriveRecordId(sourceUrl)) ||
+		path.basename(path.dirname(videoPath))
+	const reg = await loadRegistry(resolveRegistryPath(flags))
+	const existing = findRecord(reg, id)
+	const rec = upsertRecord(reg, {
+		id,
+		sourceUrl: sourceUrl || (existing && existing.sourceUrl) || null,
+		jobDir: path.dirname(videoPath),
+		title: requiredFlag(flags, 'title'),
+		publish: {
+			platform: 'bilibili',
+			aid: result.aid,
+			bvid: result.bvid,
+			publishedAt: now(),
+			reviewState: 'processing',
+			reviewCheckedAt: null,
+			stateDesc: '',
+			rejectReason: '',
+		},
+	})
+	await saveRegistry(reg)
+	print({ registry: reg.path, recordId: rec.id, bvid: result.bvid })
+}
+
+function recordStatus(rec) {
+	if (rec.publish) return rec.publish.reviewState
+	if (rec.outputs && rec.outputs.length) return 'rendered'
+	return 'draft'
+}
+
+async function registryHub(flags, positional) {
+	const sub = (positional && positional[0]) || 'list'
+	switch (sub) {
+		case 'add':
+			return registryAdd(flags)
+		case 'list':
+			return registryList(flags)
+		case 'show':
+			return registryShow(flags, positional)
+		case 'refresh':
+			return registryRefresh(flags)
+		case 'rerun':
+			return registryRerun(flags, positional)
+		case 'open':
+			return registryOpen(flags, positional)
+		default:
+			throw new Error(
+				`Unknown registry subcommand: ${sub} (add|list|show|refresh|rerun|open)`,
+			)
+	}
+}
+
+async function registryAdd(flags) {
+	const reg = await loadRegistry(resolveRegistryPath(flags))
+	const sourceUrl = flagString(flags, 'url')
+	const id = flagString(flags, 'id') || deriveRecordId(sourceUrl)
+	if (!id) throw new Error('Could not derive a record id; pass --id <slug>')
+	const patch = { id, sourceUrl: sourceUrl || null }
+	const jobDir = flagString(flags, 'job-dir')
+	if (jobDir) patch.jobDir = resolvePath(jobDir)
+	const title = flagString(flags, 'title')
+	if (title) patch.title = title
+	const video = flagString(flags, 'video')
+	if (video) {
+		patch.outputs = [
+			{
+				path: resolvePath(video),
+				template: flagString(flags, 'template', 'landscape'),
+				createdAt: now(),
+			},
+		]
+	}
+	const bvid = flagString(flags, 'bvid')
+	const aid = flagString(flags, 'aid')
+	if (bvid || aid) {
+		patch.publish = {
+			platform: 'bilibili',
+			aid: aid || null,
+			bvid: bvid || null,
+			publishedAt: now(),
+			reviewState: 'processing',
+			reviewCheckedAt: null,
+			stateDesc: '',
+			rejectReason: '',
+		}
+	}
+	const rec = upsertRecord(reg, patch)
+	await saveRegistry(reg)
+	print({ registry: reg.path, record: rec })
+}
+
+async function registryList(flags) {
+	const reg = await loadRegistry(resolveRegistryPath(flags))
+	const status = flagString(flags, 'status')
+	let recs = reg.records
+	if (status) {
+		recs = recs.filter(
+			(r) => recordStatus(r) === status || (r.publish && r.publish.reviewState === status),
+		)
+	}
+	if (flags.json) {
+		print({ registry: reg.path, count: recs.length, records: recs })
+		return
+	}
+	if (!recs.length) {
+		console.log(
+			`(no records${status ? ` matching --status ${status}` : ''}) in ${reg.path}`,
+		)
+		return
+	}
+	const rows = recs.map((r) => ({
+		id: r.id,
+		status: recordStatus(r),
+		review: r.publish ? r.publish.reviewState : '—',
+		bvid: r.publish ? r.publish.bvid : '—',
+		title: (r.title || '').slice(0, 40),
+	}))
+	const cols = ['id', 'status', 'review', 'bvid', 'title']
+	const widths = cols.map(
+		(c, i) => Math.max(c.length, ...rows.map((r) => String(r[cols[i]]).length)),
+		0,
+	)
+	const fmt = (r) =>
+		cols.map((c, i) => String(r ? r[c] : c).padEnd(widths[i])).join('  ')
+	console.log(fmt(null))
+	console.log(widths.map((w) => '-'.repeat(w)).join('  '))
+	rows.forEach((row) => console.log(fmt(row)))
+	console.log(`\n${recs.length} record(s) · ${reg.path}`)
+}
+
+function requireRecord(reg, id) {
+	const rec = id && findRecord(reg, id)
+	if (!rec) throw new Error(`No registry record with id ${id || '(none)'}`)
+	return rec
+}
+
+async function registryShow(flags, positional) {
+	const reg = await loadRegistry(resolveRegistryPath(flags))
+	const id = (positional && positional[1]) || flagString(flags, 'id')
+	print(requireRecord(reg, id))
+}
+
+async function registryOpen(flags, positional) {
+	const reg = await loadRegistry(resolveRegistryPath(flags))
+	const id = (positional && positional[1]) || flagString(flags, 'id')
+	const rec = requireRecord(reg, id)
+	const jobDir = rec.jobDir
+	print({
+		id: rec.id,
+		review: rec.publish ? rec.publish.reviewState : null,
+		rejectReason: rec.publish ? rec.publish.rejectReason : null,
+		paths: {
+			jobDir,
+			sourceVideo: jobDir ? path.join(jobDir, 'source.mp4') : null,
+			comments: jobDir ? path.join(jobDir, 'comments.json') : null,
+			materialized: jobDir
+				? path.join(jobDir, 'materialized', 'comments.safe.json')
+				: null,
+			outputs: (rec.outputs || []).map((o) => o.path),
+		},
+	})
+}
+
+async function registryRefresh(flags) {
+	const reg = await loadRegistry(resolveRegistryPath(flags))
+	const onlyId = flagString(flags, 'id')
+	const cookieFile = resolvePath(
+		flagString(flags, 'cookie-file', 'mediaflow-work/.bili.env'),
+	)
+	const cookies = await readBiliCookies(cookieFile)
+	if (!cookies.SESSDATA) {
+		throw new Error(
+			`No SESSDATA in ${cookieFile}; log into Bilibili in Dia (WebBridge) or populate the file.`,
+		)
+	}
+	const targets = reg.records.filter(
+		(r) => r.publish && r.publish.aid && (!onlyId || r.id === onlyId),
+	)
+	if (!targets.length) {
+		console.log('No published records to refresh.')
+		return
+	}
+	const summary = { passed: 0, processing: 0, rejected: 0, error: 0 }
+	for (const rec of targets) {
+		try {
+			const info = await fetchArchiveState(rec.publish.aid, cookies)
+			const reviewState = mapReviewState(info.state, info.rejectReason)
+			rec.publish = {
+				...rec.publish,
+				reviewState,
+				stateDesc: info.stateDesc,
+				rejectReason: info.rejectReason,
+				reviewCheckedAt: now(),
+			}
+			if (info.bvid && !rec.publish.bvid) rec.publish.bvid = info.bvid
+			summary[reviewState] += 1
+			console.log(
+				`${rec.id}\t${reviewState}\t${info.stateDesc || ''}\t${rec.publish.bvid || ''}`,
+			)
+		} catch (error) {
+			summary.error += 1
+			console.log(`${rec.id}\terror\t${error.message}`)
+		}
+	}
+	await saveRegistry(reg)
+	print({ registry: reg.path, refreshed: targets.length, ...summary })
+}
+
+async function registryRerun(flags, positional) {
+	const reg = await loadRegistry(resolveRegistryPath(flags))
+	const id = (positional && positional[1]) || flagString(flags, 'id')
+	const rec = requireRecord(reg, id)
+	const step = flagString(flags, 'step', 'render')
+	if (!rec.jobDir) {
+		throw new Error(`Record ${rec.id} has no jobDir; cannot rerun.`)
+	}
+	if (step === 'comments') {
+		const out = path.join(rec.jobDir, `comments-rerun-${Date.now()}`)
+		await prepareComments({
+			input: path.join(rec.jobDir, 'comments.json'),
+			out,
+			'target-language': flagString(flags, 'target-language', 'zh-CN'),
+		})
+		print({
+			step,
+			runDir: out,
+			next: 'Re-moderate the new pending tasks, then validate + materialize + render.',
+		})
+		return
+	}
+	if (step === 'render') {
+		const safeJson = path.join(rec.jobDir, 'materialized', 'comments.safe.json')
+		const template = flagString(flags, 'template', 'landscape')
+		const sourceVideo =
+			flagString(flags, 'video') || path.join(rec.jobDir, 'source.mp4')
+		const outPath =
+			flagString(flags, 'out') ||
+			path.join(rec.jobDir, `urkl-comments-rerun-${template}.mp4`)
+		await renderComments({
+			input: safeJson,
+			out: outPath,
+			template,
+			video: sourceVideo,
+		})
+		upsertRecord(reg, {
+			id: rec.id,
+			outputs: [{ path: outPath, template, createdAt: now() }],
+		})
+		await saveRegistry(reg)
+		print({ step, registry: reg.path, output: outPath })
+		return
+	}
+	if (step === 'publish') {
+		const video =
+			flagString(flags, 'video') ||
+			(rec.outputs &&
+				rec.outputs[rec.outputs.length - 1] &&
+				rec.outputs[rec.outputs.length - 1].path)
+		if (!video) {
+			throw new Error('No output to publish; pass --video or rerun --step render first.')
+		}
+		const title = flagString(flags, 'title') || `${rec.title || rec.id}（重发）`
+		const result = await publishBilibili({
+			video,
+			title,
+			tid: flagString(flags, 'tid', '21'),
+			tag: flagString(flags, 'tag'),
+			desc: flagString(flags, 'desc'),
+			'cookie-file': flagString(flags, 'cookie-file', 'mediaflow-work/.bili.env'),
+			'source-url': rec.sourceUrl || '',
+			_registrySkip: true,
+		})
+		if (rec.publish) {
+			rec.publishHistory = [...(rec.publishHistory || []), rec.publish]
+		}
+		upsertRecord(reg, {
+			id: rec.id,
+			publish: {
+				platform: 'bilibili',
+				aid: result.aid,
+				bvid: result.bvid,
+				publishedAt: now(),
+				reviewState: 'processing',
+				reviewCheckedAt: null,
+				stateDesc: '',
+				rejectReason: '',
+			},
+		})
+		await saveRegistry(reg)
+		const prior =
+			rec.publishHistory &&
+			rec.publishHistory[rec.publishHistory.length - 1] &&
+			rec.publishHistory[rec.publishHistory.length - 1].bvid
+		print({
+			step,
+			registry: reg.path,
+			newBvid: result.bvid,
+			priorBvid: prior || null,
+			note: 'Prior submission marked superseded; delete it by hand in 创作中心 (API delete is blocked).',
+		})
+		return
+	}
+	throw new Error(`Unknown rerun step: ${step} (use comments|render|publish)`)
 }
 
 async function main() {
 	const [command = 'help', ...argv] = process.argv.slice(2)
-	const { flags } = parseArgs(argv)
+	const { positional, flags } = parseArgs(argv)
 	switch (command) {
 		case 'help':
 		case '--help':
@@ -1221,6 +1692,8 @@ async function main() {
 			return status(flags)
 		case 'publish-bilibili':
 			return publishBilibili(flags)
+		case 'registry':
+			return registryHub(flags, positional)
 		default:
 			throw new Error(`Unknown command: ${command}. Run mediaflow help.`)
 	}

@@ -189,23 +189,29 @@ try {
 			return { ...task, translation: 'translated title', status: 'completed' }
 		}
 		const isSuspicious = task.source.content.includes('https://')
+		const moderation = isSuspicious
+			? {
+					decision: 'exclude',
+					categories: ['spam_or_scam'],
+					confidence: 'high',
+					reasonCode: 'external_link_scam',
+				}
+			: {
+					decision: 'allow',
+					categories: [],
+					confidence: 'high',
+					reasonCode: 'safe_relevant',
+				}
 		return {
 			...task,
-			translation: `translated: ${task.source.content}`,
+			// Excluded comments are quarantined and never rendered, so their
+			// translation is optional (may be empty); allows are translated.
+			translation:
+				moderation.decision === 'exclude'
+					? ''
+					: `translated: ${task.source.content}`,
 			status: 'completed',
-			moderation: isSuspicious
-				? {
-						decision: 'exclude',
-						categories: ['spam_or_scam'],
-						confidence: 'high',
-						reasonCode: 'external_link_scam',
-					}
-				: {
-						decision: 'allow',
-						categories: [],
-						confidence: 'high',
-						reasonCode: 'safe_relevant',
-					},
+			moderation,
 		}
 	})
 	const commentsResultPath = path.join(
@@ -232,6 +238,20 @@ try {
 		'--tasks',
 		invalidCategoryPath,
 	)
+	// An allow comment with an empty translation must still be rejected, even
+	// though exclude/review comments may leave translation empty.
+	const allowNoXlatPath = path.join(
+		commentsRun,
+		'tasks',
+		'comments.allow-noxlat.jsonl',
+	)
+	const allowNoXlat = structuredClone(commentsResults)
+	const firstAllowNoXlat = allowNoXlat.find(
+		(task) => task.kind === 'comment' && task.moderation.decision === 'allow',
+	)
+	firstAllowNoXlat.translation = ''
+	await writeJsonl(allowNoXlatPath, allowNoXlat)
+	expectFailure('validate', '--kind', 'comments', '--tasks', allowNoXlatPath)
 	expectFailure(
 		'materialize-comments',
 		'--tasks',
