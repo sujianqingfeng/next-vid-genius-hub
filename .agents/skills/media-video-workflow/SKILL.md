@@ -18,10 +18,12 @@ Run the bundled runtime, not repository application commands. Keep all run artif
 
 1. Obtain a VTT file with `asr` or an existing transcript.
 2. Run `node scripts/mediaflow.mjs prepare-subtitles --input <transcript.vtt> --out <run-dir>`. The run directory must be new or empty.
-3. Read `references/agent-tasks.md`, translate every generated task, and write a result JSONL file without changing IDs, hashes, source text, or timings.
+3. Read `references/agent-tasks.md` and `references/moderation-policy.md`, then translate **and classify** every task and write a result JSONL file without changing IDs, hashes, source text, or timings. `allow` cues require a `translation`; `exclude`/`review` cues may leave it empty (they are quarantined and never burned).
 4. Run `node scripts/mediaflow.mjs validate --kind subtitles --tasks <result.jsonl>`.
 5. Run `node scripts/mediaflow.mjs materialize-subtitles --tasks <result.jsonl> --out <bilingual.vtt>`.
 6. Run `node scripts/mediaflow.mjs render-subtitles --video <video.mp4> --subtitles <bilingual.vtt> --out <output.mp4>`.
+
+The default policy is fail-closed: only `allow` cues are burned into the output VTT. `exclude` and `review` cues are written to a sibling `subtitles.quarantine.json`, and a tally is written to `moderation-report.json`.
 
 ## Comments Workflow
 

@@ -1,6 +1,6 @@
 # Default Moderation Policy
 
-Classify content for publication in a translated comments video. This policy is content- and behavior-based; it does not treat a political opinion, language, nationality, or identity as unsafe by itself.
+Classify content for publication in a translated video — both comment rows and subtitle cues. This policy is content- and behavior-based; it does not treat a political opinion, language, nationality, or identity as unsafe by itself. The same category set applies to both kinds; `off_topic_or_low_quality` and `topic_exclusion` are comment-oriented but remain valid for subtitle cues when they fit.
 
 ## Categories
 

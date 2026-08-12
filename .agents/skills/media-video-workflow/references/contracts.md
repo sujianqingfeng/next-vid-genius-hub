@@ -26,7 +26,7 @@ Tasks are JSONL: one independent JSON object per line. Each row contains:
 - `translation`: agent-owned translated text
 - `status`: set to `completed` when finished
 
-Comment rows additionally require:
+Comment and subtitle rows additionally require a `moderation` object:
 
 ```json
 {
@@ -40,7 +40,7 @@ Comment rows additionally require:
 ```
 
 Use `allow`, `exclude`, or `review` for `decision`; use `high`, `medium`, or `low` for `confidence`.
-Categories must be IDs from `moderation-policy.md`. An `allow` row must use no categories and `reasonCode: "safe_relevant"`; an `exclude` row must include at least one category. Validation also rejects a changed `targetLanguage`. A non-empty `translation` is required for subtitle cues, the comment title, and `allow` comments (these are rendered); `exclude`/`review` comments are quarantined and never rendered, so their `translation` may be left empty.
+Categories must be IDs from `moderation-policy.md`. An `allow` row must use no categories and `reasonCode: "safe_relevant"`; an `exclude` row must include at least one category. Validation also rejects a changed `targetLanguage`. A non-empty `translation` is required for `allow` subtitle cues, the comment title, and `allow` comments (these are rendered); `exclude`/`review` subtitles and comments are quarantined and never rendered, so their `translation` may be left empty.
 
 ## State Transitions
 
@@ -48,7 +48,7 @@ Categories must be IDs from `moderation-policy.md`. An `allow` row must use no c
 awaiting_agent -> validated -> materialized
 ```
 
-`validate` requires `awaiting_agent` and rejects incomplete, duplicate, unexpected, stale, source-mutated, target-language-mutated, or policy-invalid rows. Materialization requires the exact task file recorded by `validate`; `materialize-comments` writes only `allow` rows to `comments.safe.json`.
+`validate` requires `awaiting_agent` and rejects incomplete, duplicate, unexpected, stale, source-mutated, target-language-mutated, or policy-invalid rows. Materialization requires the exact task file recorded by `validate`; `materialize-comments` writes only `allow` rows to `comments.safe.json`, and `materialize-subtitles` burns only `allow` cues into the output VTT (writing `exclude`/`review` cues to a sibling `subtitles.quarantine.json` and a tally to `moderation-report.json`).
 
 ## External Commands
 

@@ -99,11 +99,30 @@ try {
 	)
 	const subtitleResults = (
 		await readJsonl(path.join(subtitleRun, 'tasks', 'subtitles.pending.jsonl'))
-	).map((task) => ({
-		...task,
-		translation: `translated: ${task.source.sourceText}`,
-		status: 'completed',
-	}))
+	).map((task, index) => {
+		// First cue is quarantined (exclude) to exercise the fail-closed split;
+		// the rest are allowed and rendered.
+		const excluded = index === 0
+		const moderation = excluded
+			? {
+					decision: 'exclude',
+					categories: ['personal_data'],
+					confidence: 'high',
+					reasonCode: 'private_info_in_subtitle',
+				}
+			: {
+					decision: 'allow',
+					categories: [],
+					confidence: 'high',
+					reasonCode: 'safe_relevant',
+				}
+		return {
+			...task,
+			translation: excluded ? '' : `translated: ${task.source.sourceText}`,
+			status: 'completed',
+			moderation,
+		}
+	})
 	const subtitleResultPath = path.join(
 		subtitleRun,
 		'tasks',
@@ -149,6 +168,45 @@ try {
 		'--out',
 		prematureSubtitleOutput,
 	)
+	// A subtitle allow cue with an unknown moderation category must be rejected.
+	const invalidCategorySubtitlePath = path.join(
+		subtitleRun,
+		'tasks',
+		'subtitles.invalid-category.jsonl',
+	)
+	const invalidCategorySubtitle = structuredClone(subtitleResults)
+	const allowedSubtitle = invalidCategorySubtitle.find(
+		(task) => task.kind === 'subtitle' && task.moderation.decision === 'allow',
+	)
+	allowedSubtitle.moderation.categories = ['unknown_category']
+	await writeJsonl(invalidCategorySubtitlePath, invalidCategorySubtitle)
+	expectFailure(
+		'validate',
+		'--kind',
+		'subtitles',
+		'--tasks',
+		invalidCategorySubtitlePath,
+	)
+	// A subtitle allow cue with an empty translation must be rejected, even
+	// though exclude/review cues may leave translation empty.
+	const allowNoXlatSubtitlePath = path.join(
+		subtitleRun,
+		'tasks',
+		'subtitles.allow-noxlat.jsonl',
+	)
+	const allowNoXlatSubtitle = structuredClone(subtitleResults)
+	const firstAllowSubtitle = allowNoXlatSubtitle.find(
+		(task) => task.kind === 'subtitle' && task.moderation.decision === 'allow',
+	)
+	firstAllowSubtitle.translation = ''
+	await writeJsonl(allowNoXlatSubtitlePath, allowNoXlatSubtitle)
+	expectFailure(
+		'validate',
+		'--kind',
+		'subtitles',
+		'--tasks',
+		allowNoXlatSubtitlePath,
+	)
 	run('validate', '--kind', 'subtitles', '--tasks', subtitleResultPath)
 	const subtitleOutput = path.join(tempDir, 'subtitles.bilingual.vtt')
 	run(
@@ -158,8 +216,35 @@ try {
 		'--out',
 		subtitleOutput,
 	)
-	if (!(await fs.readFile(subtitleOutput, 'utf8')).includes('translated:')) {
+	const subtitleVtt = await fs.readFile(subtitleOutput, 'utf8')
+	if (!subtitleVtt.includes('translated:')) {
 		throw new Error('Subtitle materialization did not write translations')
+	}
+	// The excluded cue must be absent from the burned VTT, and present in the
+	// sibling quarantine + report files (fail-closed materialization).
+	if (subtitleVtt.includes('Welcome to the workflow.')) {
+		throw new Error('Excluded subtitle cue was burned into the output VTT')
+	}
+	const subtitleQuarantine = JSON.parse(
+		await fs.readFile(path.join(tempDir, 'subtitles.quarantine.json'), 'utf8'),
+	)
+	if (
+		subtitleQuarantine.cues?.length !== 1 ||
+		subtitleQuarantine.cues[0].moderation?.decision !== 'exclude'
+	) {
+		throw new Error('Subtitle quarantine did not capture the excluded cue')
+	}
+	const subtitleReport = JSON.parse(
+		await fs.readFile(path.join(tempDir, 'moderation-report.json'), 'utf8'),
+	)
+	if (
+		subtitleReport.totalCues !== 2 ||
+		subtitleReport.allowedCues !== 1 ||
+		subtitleReport.quarantinedCues !== 1 ||
+		subtitleReport.byDecision?.allow !== 1 ||
+		subtitleReport.byDecision?.exclude !== 1
+	) {
+		throw new Error('Subtitle moderation report tallies are incorrect')
 	}
 
 	const commentsInput = path.join(tempDir, 'comments-with-avatar.json')

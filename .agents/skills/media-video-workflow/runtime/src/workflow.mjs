@@ -188,6 +188,60 @@ async function ensureNewRunDir(workDir) {
 	}
 }
 
+// Shared moderation validation for any rendered-text row kind (today:
+// `comment` and `subtitle`). Throws on a missing or policy-invalid
+// moderation record. Mirrored between comments and subtitles so both flows
+// stay fail-closed with identical rules.
+function validateModeration(row, id) {
+	const moderation = row.moderation
+	if (
+		!moderation ||
+		typeof moderation !== 'object' ||
+		Array.isArray(moderation)
+	) {
+		throw new Error(`Missing moderation record for ${id}`)
+	}
+	if (!MODERATION_DECISIONS.has(moderation.decision)) {
+		throw new Error(`Invalid moderation decision for ${id}`)
+	}
+	if (!MODERATION_CONFIDENCE.has(moderation.confidence)) {
+		throw new Error(`Invalid moderation confidence for ${id}`)
+	}
+	if (!Array.isArray(moderation.categories)) {
+		throw new Error(`Moderation categories must be an array for ${id}`)
+	}
+	const categories = moderation.categories.map((category) =>
+		normalizeText(category),
+	)
+	if (categories.some((category) => !MODERATION_CATEGORIES.has(category))) {
+		throw new Error(`Invalid moderation category for ${id}`)
+	}
+	if (new Set(categories).size !== categories.length) {
+		throw new Error(`Duplicate moderation category for ${id}`)
+	}
+	const reasonCode = normalizeText(moderation.reasonCode)
+	if (!/^[a-z0-9_]{1,64}$/.test(reasonCode)) {
+		throw new Error(`Invalid moderation reasonCode for ${id}`)
+	}
+	if (
+		moderation.decision === 'allow' &&
+		(categories.length || reasonCode !== 'safe_relevant')
+	) {
+		throw new Error(
+			`Allowed ${id} must use no categories and reasonCode="safe_relevant"`,
+		)
+	}
+	if (moderation.decision === 'exclude' && !categories.length) {
+		throw new Error(`Excluded ${id} must include a moderation category`)
+	}
+	if (
+		moderation.decision === 'allow' &&
+		normalizeText(row.translation).length === 0
+	) {
+		throw new Error(`Allowed ${id} requires a translation`)
+	}
+}
+
 function validateRows(rows, manifest, workflow) {
 	if (manifest.workflow !== workflow) {
 		throw new Error(
@@ -225,67 +279,20 @@ function validateRows(rows, manifest, workflow) {
 		if (normalizeText(row.status) !== 'completed') {
 			throw new Error(`Task ${id} must have status="completed"`)
 		}
-		// A translation is required for rows that will be rendered: subtitle
-		// cues and the comment title (cover card). Allowed comments are gated
-		// below (after moderation is validated). Excluded/reviewed comments are
-		// quarantined and never rendered, so their translation is optional.
+		// A translation is required for rows that are always rendered. The
+		// comment title (cover card) is always rendered, so it always needs a
+		// translation. Subtitle cues and comments are rendered only when
+		// moderated `allow`; their translation requirement is enforced inside
+		// validateModeration below, so excluded/reviewed rows may leave it empty.
 		if (
-			(row.kind === 'subtitle' || row.kind === 'comment-title') &&
+			row.kind === 'comment-title' &&
 			normalizeText(row.translation).length === 0
 		) {
 			throw new Error(`Missing translation for ${id}`)
 		}
 
-		if (workflow === 'comments' && row.kind === 'comment') {
-			const moderation = row.moderation
-			if (
-				!moderation ||
-				typeof moderation !== 'object' ||
-				Array.isArray(moderation)
-			) {
-				throw new Error(`Missing moderation record for ${id}`)
-			}
-			if (!MODERATION_DECISIONS.has(moderation.decision)) {
-				throw new Error(`Invalid moderation decision for ${id}`)
-			}
-			if (!MODERATION_CONFIDENCE.has(moderation.confidence)) {
-				throw new Error(`Invalid moderation confidence for ${id}`)
-			}
-			if (!Array.isArray(moderation.categories)) {
-				throw new Error(`Moderation categories must be an array for ${id}`)
-			}
-			const categories = moderation.categories.map((category) =>
-				normalizeText(category),
-			)
-			if (categories.some((category) => !MODERATION_CATEGORIES.has(category))) {
-				throw new Error(`Invalid moderation category for ${id}`)
-			}
-			if (new Set(categories).size !== categories.length) {
-				throw new Error(`Duplicate moderation category for ${id}`)
-			}
-			const reasonCode = normalizeText(moderation.reasonCode)
-			if (!/^[a-z0-9_]{1,64}$/.test(reasonCode)) {
-				throw new Error(`Invalid moderation reasonCode for ${id}`)
-			}
-			if (
-				moderation.decision === 'allow' &&
-				(categories.length || reasonCode !== 'safe_relevant')
-			) {
-				throw new Error(
-					`Allowed comment ${id} must use no categories and reasonCode="safe_relevant"`,
-				)
-			}
-			if (moderation.decision === 'exclude' && !categories.length) {
-				throw new Error(
-					`Excluded comment ${id} must include a moderation category`,
-				)
-			}
-			if (
-				moderation.decision === 'allow' &&
-				normalizeText(row.translation).length === 0
-			) {
-				throw new Error(`Allowed comment ${id} requires a translation`)
-			}
+		if (row.kind === 'comment' || row.kind === 'subtitle') {
+			validateModeration(row, id)
 		}
 		accepted.set(id, row)
 	}
@@ -462,27 +469,87 @@ async function materializeSubtitles(flags) {
 		)
 	}
 	const tasks = validateRows(rows, manifest, 'subtitles')
-	const cues = manifest.expectedTasks.map((expected) => {
+	// Fail-closed: only `allow` cues are burned into the output VTT.
+	// `exclude`/`review` cues are quarantined and never rendered.
+	const safe = []
+	const quarantine = []
+	for (const expected of manifest.expectedTasks) {
 		const task = tasks.get(expected.id)
 		const source = task.source
 		const sourceLines = Array.isArray(source.sourceLines)
 			? source.sourceLines
 			: [source.sourceText]
-		return {
-			start: source.start,
-			end: source.end,
-			lines:
-				format === 'replace'
-					? [normalizeText(task.translation)]
-					: [...sourceLines, normalizeText(task.translation)],
+		const moderation = {
+			decision: task.moderation.decision,
+			categories: task.moderation.categories
+				.map((category) => normalizeText(category))
+				.filter(Boolean),
+			confidence: task.moderation.confidence,
+			reasonCode: normalizeText(task.moderation.reasonCode),
 		}
-	})
+		if (moderation.decision === 'allow') {
+			safe.push({
+				start: source.start,
+				end: source.end,
+				lines:
+					format === 'replace'
+						? [normalizeText(task.translation)]
+						: [...sourceLines, normalizeText(task.translation)],
+			})
+		} else {
+			quarantine.push({
+				id: task.id,
+				start: source.start,
+				end: source.end,
+				sourceText: normalizeText(source.sourceText),
+				moderation,
+			})
+		}
+	}
 	await ensureDir(path.dirname(outputPath))
-	await fs.writeFile(outputPath, serializeVtt(cues), 'utf8')
+	await fs.writeFile(outputPath, serializeVtt(safe), 'utf8')
+	const outputDir = path.dirname(outputPath)
+	const quarantinePath = path.join(outputDir, 'subtitles.quarantine.json')
+	const reportPath = path.join(outputDir, 'moderation-report.json')
+	await writeJson(quarantinePath, {
+		schemaVersion: SCHEMA_VERSION,
+		kind: 'mediaflow-quarantined-subtitles',
+		policy: 'default-fail-closed',
+		cues: quarantine,
+	})
+	const byDecision = Object.fromEntries(
+		[...MODERATION_DECISIONS].map((decision) => [
+			decision,
+			decision === 'allow'
+				? safe.length
+				: quarantine.filter((cue) => cue.moderation.decision === decision)
+						.length,
+		]),
+	)
+	await writeJson(reportPath, {
+		schemaVersion: SCHEMA_VERSION,
+		generatedAt: now(),
+		policy: 'default-fail-closed',
+		totalCues: manifest.expectedTasks.length,
+		allowedCues: safe.length,
+		quarantinedCues: quarantine.length,
+		byDecision,
+	})
 	manifest.state = 'materialized'
 	manifest.artifacts.subtitle = relativeArtifact(workDir, outputPath)
+	manifest.artifacts.quarantinedSubtitles = relativeArtifact(
+		workDir,
+		quarantinePath,
+	)
+	manifest.artifacts.moderationReport = relativeArtifact(workDir, reportPath)
 	await writeManifest(manifestPath, manifest)
-	print({ manifestPath, outputPath, cues: cues.length, format })
+	print({
+		manifestPath,
+		outputPath,
+		cues: safe.length,
+		quarantined: quarantine.length,
+		format,
+	})
 }
 
 async function materializeComments(flags) {
