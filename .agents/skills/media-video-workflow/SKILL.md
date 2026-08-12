@@ -55,6 +55,16 @@ A local registry (`mediaflow-work/registry.json`; override with `--registry <fil
 - `registry add --url <yt> [--bvid <BV>] [--aid <id>] [--job-dir …] [--video …]` — register a record by hand, e.g. backfill a video published before this feature.
 - `registry rerun <id> --step <comments|render|publish>` — re-handle a record: re-prepare moderation (`comments`), re-render from the existing `comments.safe.json` (`render`), or re-publish as a new submission and mark the old one superseded (`publish`). Deleting the old B站 entry is still manual.
 
+## Channels Workflow
+
+A channel watchlist (`mediaflow-work/channels.json`; override `--channels <file>` or `MEDIAFLOW_CHANNELS`) for the upstream side: which channels you re-publish from. `channels check` lists the latest N uploads per channel **read-only** (no download, no registry writes) and annotates each with its registry status (`published` / `draft` / `new`), so a glance shows what's fresh versus already done.
+
+- `channels add --url <yt-channel> [--name <n>] [--max <N>]` — register a channel (id/name derived from the URL; latest N to list, default 10).
+- `channels list` / `channels show <id>` / `channels remove <id>`.
+- `channels check [--id <id>] [--max <N>]` — fetch each channel's latest N via `yt-dlp --flat-playlist` (cookies from `mediaflow-work/cookies.txt`; no nsig) and print `id [status] title url`. `[new]` items are candidates to run through download → comments → render → publish; afterward `check` shows them as `[published]`.
+
+Checking is a one-command sweep across all channels. To run it on a schedule, wrap `channels check` in cron or a loop.
+
 ## Operational Rules
 
 - Preserve every source task ID and `sourceHash`; validation rejects missing, duplicate, stale, or altered source records.

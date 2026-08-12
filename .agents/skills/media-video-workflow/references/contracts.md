@@ -86,3 +86,13 @@ Record shape:
 Commands: `registry add` (register or backfill a record; include `--bvid`/`--aid` for a video already published), `registry list [--status …]`, `registry show <id>`, `registry open <id>` (artifact paths), `registry refresh [--id <id>]` (poll B站's member API per published record using `.bili.env` cookies), and `registry rerun <id> --step comments|render|publish` (re-prepare moderation, re-render from the existing `comments.safe.json`, or re-publish as a new submission and mark the prior one superseded).
 
 `refresh` maps the member-API `data.archive.state`: `0` → `passed`, a negative state with a non-empty `reject_reason` → `rejected`, any other negative state → `processing`. `publish-bilibili` auto-upserts the registry on success; the record `id` is derived from `--source-url`, or from the `--video` path's parent directory. Deleting a superseded B站 entry stays manual — the API delete is verification-gated (`340022`).
+
+## Channels
+
+A channel watchlist (`mediaflow-work/channels.json`; override `--channels <file>` or `MEDIAFLOW_CHANNELS`) tracks the upstream channels you re-publish from. `channels check` lists each channel's latest N uploads read-only and annotates them with their registry status. One record per channel:
+
+```json
+{ "id": "<slug>", "url": "https://www.youtube.com/…/videos", "name": "…", "platform": "youtube", "max": 10, "createdAt": "…", "lastCheckedAt": "…" }
+```
+
+Commands: `channels add --url <yt>` (derives id/name from the URL; a bare channel URL is normalized to its `/videos` uploads tab; `--max` sets how many latest to list, default 10), `channels list`, `channels show <id>`, `channels remove <id>`, and `channels check [--id <id>] [--max <N>]`. `check` runs `yt-dlp --flat-playlist` (cookies from `mediaflow-work/cookies.txt`; `--remote-components none` — flat-playlist needs no nsig solver) and prints `<id>\t[<status>]\t<title>\t<url>` per video, where `status` is `published` / `draft` / `new` by looking the video id up in the registry. `check` is read-only: it does not download or create registry records — pick `[new]` items and run the normal download → comments → render → publish flow.

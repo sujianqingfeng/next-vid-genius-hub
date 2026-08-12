@@ -40,6 +40,14 @@ import {
 	readBiliCookies,
 	fetchArchiveState,
 } from './registry.mjs'
+import {
+	resolveChannelsPath,
+	loadChannels,
+	saveChannels,
+	findChannel,
+	deriveChannel,
+	normalizeChannelUrl,
+} from './channels.mjs'
 
 const runtimeDir = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -111,6 +119,11 @@ Usage:
   mediaflow registry refresh [--id <id>] [--cookie-file <.bili.env>] [--registry <file>]
   mediaflow registry rerun <id> [--step comments|render|publish] [--template landscape|vertical] [--video <src|out>] [--out <mp4>] [--registry <file>]
   mediaflow registry open <id> [--registry <file>]
+  mediaflow channels add --url <yt-channel> [--name <n>] [--max <N>] [--channels <file>]
+  mediaflow channels list [--channels <file>]
+  mediaflow channels show <id> [--channels <file>]
+  mediaflow channels remove <id> [--channels <file>]
+  mediaflow channels check [--id <id>] [--max <N>] [--cookies <cookies.txt>] [--channels <file>]
 `)
 }
 
@@ -1655,6 +1668,173 @@ async function registryRerun(flags, positional) {
 	throw new Error(`Unknown rerun step: ${step} (use comments|render|publish)`)
 }
 
+// Fetch a channel's latest N uploads as {id, title} via flat-playlist (no
+// download, no nsig). Cookies pass the bot wall; remote-components is skipped.
+async function fetchChannelLatest(url, max, flags) {
+	const args = [
+		'--flat-playlist',
+		'--no-warnings',
+		'--print',
+		'%(id)s\t%(title)s',
+		'--playlist-end',
+		String(max),
+	]
+	const cookieDefault =
+		(await pathExists('mediaflow-work/cookies.txt'))
+			? 'mediaflow-work/cookies.txt'
+			: ''
+	appendYtDlpAccessArgs(
+		args,
+		{
+			cookies: flagString(flags, 'cookies', cookieDefault),
+			'remote-components': 'none',
+		},
+		url,
+	)
+	args.push(url)
+	const stdout = await runCapturingStdout('yt-dlp', args)
+	const entries = []
+	for (const line of stdout.split('\n')) {
+		const trimmed = line.trim()
+		if (!trimmed) continue
+		const idx = trimmed.indexOf('\t')
+		if (idx > 0) entries.push({ id: trimmed.slice(0, idx), title: trimmed.slice(idx + 1) })
+		else entries.push({ id: trimmed, title: '' })
+	}
+	return entries
+}
+
+function channelRecordStatus(registryIds, reg, videoId) {
+	if (!registryIds.has(videoId)) return 'new'
+	const rec = reg.records.find((r) => r.id === videoId)
+	if (rec && rec.publish) return 'published'
+	return 'draft'
+}
+
+async function channelsHub(flags, positional) {
+	const sub = (positional && positional[0]) || 'list'
+	switch (sub) {
+		case 'add':
+			return channelsAdd(flags)
+		case 'list':
+			return channelsList(flags)
+		case 'show':
+			return channelsShow(flags, positional)
+		case 'remove':
+			return channelsRemove(flags, positional)
+		case 'check':
+			return channelsCheck(flags, positional)
+		default:
+			throw new Error(
+				`Unknown channels subcommand: ${sub} (add|list|show|remove|check)`,
+			)
+	}
+}
+
+async function channelsAdd(flags) {
+	const store = await loadChannels(resolveChannelsPath(flags))
+	const url = requiredFlag(flags, 'url')
+	const derived = deriveChannel(url)
+	const id = flagString(flags, 'id') || derived.id
+	if (findChannel(store, id)) {
+		throw new Error(`Channel ${id} already exists; use --id or remove it first.`)
+	}
+	const max = Number(flagString(flags, 'max', '10'))
+	const channel = {
+		id,
+		url: normalizeChannelUrl(url),
+		name: flagString(flags, 'name') || derived.name,
+		platform: derived.platform,
+		max: Number.isFinite(max) && max > 0 ? max : 10,
+		createdAt: now(),
+		lastCheckedAt: null,
+	}
+	store.channels.push(channel)
+	await saveChannels(store)
+	print({ channelsFile: store.path, channel })
+}
+
+async function channelsList(flags) {
+	const store = await loadChannels(resolveChannelsPath(flags))
+	if (!store.channels.length) {
+		console.log(`(no channels) in ${store.path}`)
+		return
+	}
+	const rows = store.channels.map((c) => ({
+		id: c.id,
+		name: c.name,
+		platform: c.platform,
+		max: String(c.max ?? 10),
+		lastChecked: c.lastCheckedAt ? c.lastCheckedAt.slice(0, 10) : '—',
+	}))
+	const cols = ['id', 'name', 'platform', 'max', 'lastChecked']
+	const widths = cols.map(
+		(_, i) => Math.max(cols[i].length, ...rows.map((r) => String(r[cols[i]]).length)),
+		0,
+	)
+	const fmt = (r) => cols.map((c, i) => String(r ? r[c] : c).padEnd(widths[i])).join('  ')
+	console.log(fmt(null))
+	console.log(widths.map((w) => '-'.repeat(w)).join('  '))
+	rows.forEach((row) => console.log(fmt(row)))
+	console.log(`\n${store.channels.length} channel(s) · ${store.path}`)
+}
+
+async function channelsShow(flags, positional) {
+	const store = await loadChannels(resolveChannelsPath(flags))
+	const id = (positional && positional[1]) || flagString(flags, 'id')
+	const ch = id && findChannel(store, id)
+	if (!ch) throw new Error(`No channel with id ${id || '(none)'}`)
+	print(ch)
+}
+
+async function channelsRemove(flags, positional) {
+	const store = await loadChannels(resolveChannelsPath(flags))
+	const id = (positional && positional[1]) || flagString(flags, 'id')
+	const idx = store.channels.findIndex((c) => c.id === id)
+	if (idx < 0) throw new Error(`No channel with id ${id || '(none)'}`)
+	const [removed] = store.channels.splice(idx, 1)
+	await saveChannels(store)
+	print({ channelsFile: store.path, removed })
+}
+
+async function channelsCheck(flags, positional) {
+	const store = await loadChannels(resolveChannelsPath(flags))
+	const onlyId = (positional && positional[1]) || flagString(flags, 'id')
+	const targets = onlyId
+		? store.channels.filter((c) => c.id === onlyId)
+		: store.channels
+	if (!targets.length) {
+		console.log(onlyId ? `No channel with id ${onlyId}.` : 'No channels to check.')
+		return
+	}
+	const maxOverride = flags.max ? Number(flagString(flags, 'max')) : null
+	const reg = await loadRegistry(resolveRegistryPath(flags))
+	const registryIds = new Set(reg.records.map((r) => r.id))
+	let total = 0
+	for (const ch of targets) {
+		const max =
+			(maxOverride && Number.isFinite(maxOverride) ? maxOverride : ch.max) || 10
+		let entries = []
+		try {
+			entries = await fetchChannelLatest(ch.url, max, flags)
+		} catch (error) {
+			console.log(`== ${ch.name} (${ch.id}) ==\n  fetch error: ${error.message}`)
+			continue
+		}
+		ch.lastCheckedAt = now()
+		console.log(`== ${ch.name} (${ch.id}) — latest ${entries.length} ==`)
+		for (const e of entries) {
+			const status = channelRecordStatus(registryIds, reg, e.id)
+			console.log(
+				`${e.id}\t[${status}]\t${(e.title || '').slice(0, 60)}\thttps://youtu.be/${e.id}`,
+			)
+			total += 1
+		}
+	}
+	await saveChannels(store)
+	print({ channelsFile: store.path, checked: targets.length, videosListed: total })
+}
+
 async function main() {
 	const [command = 'help', ...argv] = process.argv.slice(2)
 	const { positional, flags } = parseArgs(argv)
@@ -1694,6 +1874,8 @@ async function main() {
 			return publishBilibili(flags)
 		case 'registry':
 			return registryHub(flags, positional)
+		case 'channels':
+			return channelsHub(flags, positional)
 		default:
 			throw new Error(`Unknown command: ${command}. Run mediaflow help.`)
 	}
